@@ -1,0 +1,104 @@
+package io.morin.archcode.context.overview;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.morin.archcode.Fixtures;
+import io.morin.archcode.view.OverviewView;
+import io.morin.archcode.workspace.RawWorkspace;
+import io.morin.archcode.workspace.WorkspaceFactory;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+@QuarkusTest
+@Slf4j
+class OverviewContextFactoryTest {
+
+    @Inject
+    WorkspaceFactory workspaceFactory;
+
+    @Inject
+    OverviewContextFactory contextFactory;
+
+    @ParameterizedTest
+    @ValueSource(strings = { "solution_a", "solution_a.system_a", "solution_a.system_a.container_a" })
+    void shouldCreate(String viewReference) {
+        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithIngressAndEgress().build()).build();
+        val workspace = workspaceFactory.create(rawWorkspace);
+
+        val view = OverviewView.builder().viewId("shouldCreate").element(viewReference).build();
+
+        val context = contextFactory.create(workspace, view);
+        assertEquals(3, context.getItems().size());
+        assertEquals(2, context.getLinks().size());
+        assertEquals(
+            "solution_c",
+            context
+                .getLinks()
+                .stream()
+                .filter(l -> l.getTo().getReference().equals(viewReference))
+                .findFirst()
+                .orElseThrow()
+                .getFrom()
+                .getReference()
+        );
+        assertEquals(
+            "solution_b",
+            context
+                .getLinks()
+                .stream()
+                .filter(l -> l.getFrom().getReference().equals(viewReference))
+                .findFirst()
+                .orElseThrow()
+                .getTo()
+                .getReference()
+        );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "sol_a.sys_aa.con_aaa" })
+    void shouldCreateInternal(String viewReference) {
+        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithInternalXgress().build()).build();
+        val workspace = workspaceFactory.create(rawWorkspace);
+        val view = OverviewView.builder().viewId("shouldCreateInternal").element(viewReference).build();
+        val context = contextFactory.create(workspace, view);
+        assertEquals(1, context.getItems().size());
+        assertEquals(4, context.getLinks().size());
+        assertTrue(
+            context
+                .getLinks()
+                .stream()
+                .filter(l -> l.getFrom().getReference().equals(viewReference))
+                .anyMatch(l -> l.getTo().getReference().equals("sol_a.sys_ab")),
+            "sol_a.sys_aa.con_aaa -> sol_a.sys_ab"
+        );
+        assertTrue(
+            context
+                .getLinks()
+                .stream()
+                .filter(l -> l.getFrom().getReference().equals(viewReference))
+                .anyMatch(l -> l.getTo().getReference().equals("sol_a.sys_aa.con_aab")),
+            "sol_a.sys_aa.con_aaa -> sol_a.sys_aa.con_aab"
+        );
+        assertTrue(
+            context
+                .getLinks()
+                .stream()
+                .filter(l -> l.getFrom().getReference().equals("sol_a.sys_ab"))
+                .anyMatch(l -> l.getTo().getReference().equals(viewReference)),
+            "sol_a.sys_ab -> sol_a.sys_aa.con_aaa"
+        );
+        assertTrue(
+            context
+                .getLinks()
+                .stream()
+                .filter(l -> l.getFrom().getReference().equals("sol_a.sys_aa.con_aab"))
+                .anyMatch(l -> l.getTo().getReference().equals(viewReference)),
+            "sol_a.sys_aa.con_aab -> sol_a.sys_aa.con_aaa"
+        );
+    }
+}

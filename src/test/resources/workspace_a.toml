@@ -1,0 +1,19 @@
+[[elements]]
+kind = "solution"
+urn = "solution-a"
+name = "Solution #A"
+
+[[elements]]
+kind = "group"
+urn = "group-a"
+name = "Group #A"
+
+[[elements.elements]]
+kind = "system"
+urn = "system-a"
+name = "System #A"
+
+[[elements.elements]]
+kind = "system"
+urn = "system-b"
+name = "System #B"
