@@ -8,7 +8,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     {
         @JsonSubTypes.Type(value = System.class, name = "system"),
         @JsonSubTypes.Type(value = ModelGroup.class, name = "group"),
-        @JsonSubTypes.Type(value = Solution.class, name = "solution")
+        @JsonSubTypes.Type(value = Solution.class, name = "solution"),
+        @JsonSubTypes.Type(value = Person.class, name = "person")
     }
 )
 public interface ModelElement extends Element {}

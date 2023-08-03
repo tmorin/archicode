@@ -97,9 +97,6 @@ public class OverviewContextFactory {
                 val toItem = itemByReference.get(groomedLink.getToReference());
                 val syntheticRelationships = groomedLink.getRelationships().getOrDefault(SYNTHETIC, emptySet());
                 val naturalRelationships = groomedLink.getRelationships().getOrDefault(NATURAL, emptySet());
-                log.info("-----");
-                log.info("syntheticRelationships {}", syntheticRelationships);
-                log.info("naturalRelationships {}", naturalRelationships);
                 if (!syntheticRelationships.isEmpty()) {
                     val qualifiers = syntheticRelationships
                         .stream()

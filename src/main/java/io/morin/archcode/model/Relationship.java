@@ -1,8 +1,8 @@
 package io.morin.archcode.model;
 
-import java.util.HashSet;
 import java.util.Set;
 import lombok.Builder;
+import lombok.Singular;
 import lombok.ToString;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -18,6 +18,6 @@ public class Relationship {
 
     String label;
 
-    @Builder.Default
-    Set<String> qualifiers = new HashSet<>();
+    @Singular
+    Set<String> qualifiers;
 }

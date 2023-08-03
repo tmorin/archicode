@@ -26,7 +26,7 @@ public class EgressMetaLinkFinder implements MetaLinkFinder {
     @Override
     public Set<MetaLink> find(Workspace workspace, String viewReference) {
         val metaLinks = new HashSet<MetaLink>();
-        Workspace.Utilities.walkDownFromElement(
+        Workspace.Utilities.walkDown(
             workspace.getElementByReference(viewReference),
             fromElement -> {
                 val elementMetaLinks = fromElement

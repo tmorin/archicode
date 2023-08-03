@@ -6,7 +6,10 @@ import io.morin.archcode.model.Model;
 import io.morin.archcode.model.ModelElement;
 import io.morin.archcode.model.Parent;
 import io.morin.archcode.view.View;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -80,10 +83,6 @@ public class Workspace {
             .collect(Collectors.toSet());
     }
 
-    public Set<Element> listSourceElements(String destination) {
-        return sourceElementsByDestinationIndex.getOrDefault(destination, new HashSet<>());
-    }
-
     /**
      * Select all elements having a relationship matching the destination or being descendants of the destination.
      *
@@ -110,29 +109,27 @@ public class Workspace {
     @UtilityClass
     public class Utilities {
 
-        public void walkDownModels(Set<Model> models, BiConsumer<Element, Element> consumer) {
-            for (Model model : models) {
-                for (ModelElement element : model.getElements()) {
-                    consumer.accept(null, element);
-                    Utilities.walkDownModelsElement(element, consumer);
-                }
+        public void walkDown(Model model, BiConsumer<Element, Element> consumer) {
+            for (ModelElement element : model.getElements()) {
+                consumer.accept(null, element);
+                walkDown(element, consumer);
             }
         }
 
-        private void walkDownModelsElement(Element element, BiConsumer<Element, Element> consumer) {
+        private void walkDown(Element element, BiConsumer<Element, Element> consumer) {
             if (element instanceof Parent<?>) {
                 for (Element child : ((Parent<?>) element).getElements()) {
                     consumer.accept(element, child);
-                    walkDownModelsElement(child, consumer);
+                    walkDown(child, consumer);
                 }
             }
         }
 
-        public void walkDownFromElement(Element element, Consumer<Element> consumer) {
+        public void walkDown(Element element, Consumer<Element> consumer) {
             consumer.accept(element);
             if (element instanceof Parent<?>) {
                 for (Element child : ((Parent<?>) element).getElements()) {
-                    walkDownFromElement(child, consumer);
+                    walkDown(child, consumer);
                 }
             }
         }

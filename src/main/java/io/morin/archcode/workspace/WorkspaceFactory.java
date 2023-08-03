@@ -27,8 +27,8 @@ public class WorkspaceFactory {
         val elementByReferenceIndex = new HashMap<String, Element>();
         val referenceByElementIndex = new HashMap<Element, String>();
 
-        Workspace.Utilities.walkDownModels(
-            rawWorkspace.getModels(),
+        Workspace.Utilities.walkDown(
+            rawWorkspace.getModel(),
             (parent, element) -> {
                 Optional
                     .ofNullable(parent)

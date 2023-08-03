@@ -13,8 +13,7 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class RawWorkspace {
 
-    @Singular
-    Set<Model> models;
+    Model model;
 
     @Singular
     Set<View> views;
