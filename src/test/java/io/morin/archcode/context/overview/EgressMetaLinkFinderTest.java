@@ -3,8 +3,8 @@ package io.morin.archcode.context.overview;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.morin.archcode.Fixtures;
-import io.morin.archcode.model.*;
-import io.morin.archcode.model.System;
+import io.morin.archcode.element.application.*;
+import io.morin.archcode.element.application.System;
 import io.morin.archcode.workspace.RawWorkspace;
 import io.morin.archcode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
@@ -27,7 +27,7 @@ class EgressMetaLinkFinderTest {
     void shouldFindSameItemLevel() {
         val viewReference = "solution_a.system_a.container_a";
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithEgress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val metaLinks = egressMetaLinkFinder.find(workspace, viewReference);
@@ -40,7 +40,7 @@ class EgressMetaLinkFinderTest {
 
     @Test
     void shouldFindLowerItemLevel() {
-        val modelBuilder = Model.builder();
+        val modelBuilder = Application.builder();
 
         // solution_a.system_a -> solution_b.system_b.container_b
         val relationship = Relationship.builder().destination("solution_b.system_b.container_b").build();
@@ -52,7 +52,7 @@ class EgressMetaLinkFinderTest {
         modelBuilder.element(solution_a).element(solution_b);
 
         val model = modelBuilder.build();
-        val rawWorkspace = RawWorkspace.builder().model(model).build();
+        val rawWorkspace = RawWorkspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val metaLinks = egressMetaLinkFinder.find(workspace, "solution_a.system_a");
@@ -64,7 +64,7 @@ class EgressMetaLinkFinderTest {
 
     @Test
     void shouldFindUpperItemLevel() {
-        val modelBuilder = Model.builder();
+        val modelBuilder = Application.builder();
 
         val system_b = System.builder().id("system_b").build();
         val solution_b = Solution.builder().id("solution_b").element(system_b).build();
@@ -78,7 +78,7 @@ class EgressMetaLinkFinderTest {
         modelBuilder.element(solution_a);
 
         val model = modelBuilder.build();
-        val rawWorkspace = RawWorkspace.builder().model(model).build();
+        val rawWorkspace = RawWorkspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val metaLinks = egressMetaLinkFinder.find(workspace, "solution_a.system_a.container_a");
@@ -94,7 +94,7 @@ class EgressMetaLinkFinderTest {
     @Test
     void shouldFindInternalEgress() {
         val model = Fixtures.createWithInternalEgress().build();
-        val rawWorkspace = RawWorkspace.builder().model(model).build();
+        val rawWorkspace = RawWorkspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val metaLinks = egressMetaLinkFinder.find(workspace, "sol_a.sys_aa");
@@ -107,7 +107,7 @@ class EgressMetaLinkFinderTest {
     @Test
     void shouldNotFindInternalIngress() {
         val model = Fixtures.createWithInternalIngress().build();
-        val rawWorkspace = RawWorkspace.builder().model(model).build();
+        val rawWorkspace = RawWorkspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val metaLinks = egressMetaLinkFinder.find(workspace, "sol_a.sys_aa");

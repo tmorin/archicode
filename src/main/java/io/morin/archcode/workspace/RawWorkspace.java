@@ -1,6 +1,6 @@
 package io.morin.archcode.workspace;
 
-import io.morin.archcode.model.Model;
+import io.morin.archcode.element.application.Application;
 import io.morin.archcode.view.View;
 import java.util.Set;
 import lombok.Builder;
@@ -13,7 +13,7 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class RawWorkspace {
 
-    Model model;
+    Application application;
 
     @Singular
     Set<View> views;

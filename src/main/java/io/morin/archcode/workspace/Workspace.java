@@ -1,10 +1,10 @@
 package io.morin.archcode.workspace;
 
 import io.morin.archcode.ArchcodeException;
-import io.morin.archcode.model.Element;
-import io.morin.archcode.model.Model;
-import io.morin.archcode.model.ModelElement;
-import io.morin.archcode.model.Parent;
+import io.morin.archcode.element.Element;
+import io.morin.archcode.element.application.Application;
+import io.morin.archcode.element.application.ApplicationElement;
+import io.morin.archcode.element.application.Parent;
 import io.morin.archcode.view.View;
 import java.util.Arrays;
 import java.util.Map;
@@ -109,8 +109,8 @@ public class Workspace {
     @UtilityClass
     public class Utilities {
 
-        public void walkDown(Model model, BiConsumer<Element, Element> consumer) {
-            for (ModelElement element : model.getElements()) {
+        public void walkDown(Application application, BiConsumer<Element, Element> consumer) {
+            for (ApplicationElement element : application.getElements()) {
                 consumer.accept(null, element);
                 walkDown(element, consumer);
             }

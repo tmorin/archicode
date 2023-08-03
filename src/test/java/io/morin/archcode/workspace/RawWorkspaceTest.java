@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
-import io.morin.archcode.model.*;
-import io.morin.archcode.model.System;
+import io.morin.archcode.element.application.*;
+import io.morin.archcode.element.application.System;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,12 +28,12 @@ class RawWorkspaceTest {
         RawWorkspace =
             RawWorkspace
                 .builder()
-                .model(
-                    Model
+                .application(
+                    Application
                         .builder()
                         .element(Solution.builder().id("solution-a").name("Solution #A").build())
                         .element(
-                            ModelGroup
+                            ApplicationGroup
                                 .builder()
                                 .id("group")
                                 .name("Group #A")

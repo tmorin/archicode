@@ -1,5 +1,6 @@
-package io.morin.archcode.model;
+package io.morin.archcode.element.application;
 
+import io.morin.archcode.element.AbstractElement;
 import lombok.ToString;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
@@ -9,4 +10,4 @@ import lombok.extern.jackson.Jacksonized;
 @ToString(onlyExplicitlyIncluded = true)
 @SuperBuilder
 @Jacksonized
-public class Component extends AbstractElement implements ContainerElement {}
+public class Person extends AbstractElement implements ApplicationElement {}

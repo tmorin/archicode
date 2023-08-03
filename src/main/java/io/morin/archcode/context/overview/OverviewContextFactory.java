@@ -53,11 +53,15 @@ public class OverviewContextFactory {
 
         val itemByReference = new HashMap<String, Item>();
 
-        val items = Stream
-            .concat(
-                allGroomedLinks.stream().map(GroomedLink::getFromReference),
-                allGroomedLinks.stream().map(GroomedLink::getToReference)
-            )
+        val itemReferences = new HashSet<String>();
+        itemReferences.addAll(allGroomedLinks.stream().map(GroomedLink::getFromReference).collect(Collectors.toSet()));
+        itemReferences.addAll(allGroomedLinks.stream().map(GroomedLink::getToReference).collect(Collectors.toSet()));
+        if (itemReferences.isEmpty()) {
+            itemReferences.add(viewReference);
+        }
+
+        val items = itemReferences
+            .stream()
             .flatMap(reference -> {
                 val references = new HashSet<String>();
                 val parts = reference.split("\\.");

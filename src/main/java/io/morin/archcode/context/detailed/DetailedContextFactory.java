@@ -5,7 +5,7 @@ import io.morin.archcode.context.Context;
 import io.morin.archcode.context.Item;
 import io.morin.archcode.context.Link;
 import io.morin.archcode.context.overview.OverviewContextFactory;
-import io.morin.archcode.model.Parent;
+import io.morin.archcode.element.application.Parent;
 import io.morin.archcode.view.DetailedView;
 import io.morin.archcode.view.OverviewView;
 import io.morin.archcode.workspace.Workspace;

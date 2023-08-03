@@ -1,26 +1,22 @@
-package io.morin.archcode.model;
+package io.morin.archcode.element.application;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.morin.archcode.element.AbstractElement;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import lombok.Builder;
 import lombok.Singular;
 import lombok.ToString;
 import lombok.Value;
+import lombok.experimental.SuperBuilder;
 import lombok.extern.jackson.Jacksonized;
 
 @Value
 @ToString(onlyExplicitlyIncluded = true)
-@Builder
+@SuperBuilder
 @Jacksonized
-public class Relationship {
-
-    @ToString.Include
-    String destination;
-
-    String label;
+public class System extends AbstractElement implements ApplicationElement, Parent<SystemElement>, SolutionElement {
 
     @Singular
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<String> qualifiers;
+    Set<SystemElement> elements;
 }

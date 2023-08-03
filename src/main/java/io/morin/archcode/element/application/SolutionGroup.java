@@ -1,6 +1,7 @@
-package io.morin.archcode.model;
+package io.morin.archcode.element.application;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.morin.archcode.element.AbstractElement;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Singular;
@@ -13,9 +14,9 @@ import lombok.extern.jackson.Jacksonized;
 @ToString(onlyExplicitlyIncluded = true)
 @SuperBuilder
 @Jacksonized
-public class System extends AbstractElement implements ModelElement, Parent<SystemElement>, SolutionElement {
+public class SolutionGroup extends AbstractElement implements Parent<SolutionElement>, SolutionElement {
 
     @Singular
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<SystemElement> elements;
+    Set<SolutionElement> elements;
 }

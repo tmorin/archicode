@@ -59,10 +59,10 @@ class ArchcodeCommandTest {
         renderCommand.viewsDirPath = Path.of("shouldRenderPerspectives");
         renderCommand.renderPerspectives();
         assertTrue(
-                Path
-                        .of("target/ArchcodeCommandTest/shouldRenderPerspectives/plantuml/solution_a.system_a_a_overview.puml")
-                        .toFile()
-                        .exists()
+            Path
+                .of("target/ArchcodeCommandTest/shouldRenderPerspectives/plantuml/solution_a.system_a_a_overview.puml")
+                .toFile()
+                .exists()
         );
     }
 }

@@ -6,6 +6,7 @@ import io.morin.archcode.context.Link;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.AccessLevel;
@@ -59,7 +60,7 @@ public class PlantumlEngineRenderer implements EngineRenderer {
             buf.append(Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId()));
             buf.append(System.lineSeparator());
 
-            buf.append(PlantumlUtilities.generateTechnology(item));
+            buf.append(PlantumlUtilities.generateQualifiers(item));
             buf.append(System.lineSeparator());
 
             Optional
@@ -75,9 +76,10 @@ public class PlantumlEngineRenderer implements EngineRenderer {
         } else {
             buf.append(
                 String.format(
-                    "rectangle %s as \"%s\" %s {",
+                    "rectangle %s as \"%s\\n%s\" %s {",
                     item.getItemId(),
                     Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId()),
+                    PlantumlUtilities.generateQualifiers(item),
                     stereotypes
                 )
             );
@@ -98,8 +100,15 @@ public class PlantumlEngineRenderer implements EngineRenderer {
         buf.append(" --> ");
         buf.append(link.getTo().getItemId());
 
+        val descriptionAsList = new ArrayList<String>();
+        Optional.ofNullable(link.getLabel()).filter(v -> !v.isBlank()).ifPresent(descriptionAsList::add);
         Optional
-            .ofNullable(link.getLabel())
+            .of(PlantumlUtilities.generateQualifiers(link))
+            .filter(v -> !v.isBlank())
+            .ifPresent(descriptionAsList::add);
+
+        Optional
+            .of(String.join("\\n", descriptionAsList))
             .filter(v -> !v.isBlank())
             .ifPresent(description -> {
                 buf.append(" : ");
@@ -107,7 +116,6 @@ public class PlantumlEngineRenderer implements EngineRenderer {
             });
 
         buf.append(System.lineSeparator());
-
         return buf.toString();
     }
 }

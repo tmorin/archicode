@@ -31,7 +31,7 @@ class MetaLinkGroomerTest {
     void shouldGroomIngressMetaLinks() {
         val viewReference = "solution_a.system_a";
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithIngress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val ingressMetaLinks = ingressMetaLinkFinder.find(workspace, viewReference);
@@ -49,7 +49,7 @@ class MetaLinkGroomerTest {
     void shouldGroomEgressMetaLinks() {
         val viewReference = "solution_a.system_a";
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithEgress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val egressMetaLinks = egressMetaLinkFinder.find(workspace, viewReference);
@@ -67,7 +67,7 @@ class MetaLinkGroomerTest {
     void shouldGroomInternalEgressMetaLinks() {
         val viewReference = "sol_a.sys_aa.con_aaa";
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithInternalEgress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val egressMetaLinks = egressMetaLinkFinder.find(workspace, viewReference);
@@ -101,7 +101,7 @@ class MetaLinkGroomerTest {
     void shouldGroomInternalIngressMetaLinks() {
         val viewReference = "sol_a.sys_aa.con_aaa";
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithInternalIngress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val ingressMetaLinks = ingressMetaLinkFinder.find(workspace, viewReference);
