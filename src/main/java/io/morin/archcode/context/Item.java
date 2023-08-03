@@ -1,8 +1,9 @@
 package io.morin.archcode.context;
 
 import io.morin.archcode.ArchcodeException;
-import io.morin.archcode.model.*;
-import io.morin.archcode.model.System;
+import io.morin.archcode.element.Element;
+import io.morin.archcode.element.application.*;
+import io.morin.archcode.element.application.System;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -37,6 +38,7 @@ public class Item {
     Set<Item> children = new HashSet<>();
 
     public enum Kind {
+        PERSON,
         SOLUTION,
         SYSTEM,
         CONTAINER,
@@ -52,6 +54,8 @@ public class Item {
                 return Kind.SYSTEM;
             } else if (element instanceof Solution) {
                 return Kind.SOLUTION;
+            } else if (element instanceof Person) {
+                return Kind.PERSON;
             } else if (element instanceof Parent<?>) {
                 return Kind.GROUP;
             }

@@ -1,4 +1,4 @@
-package io.morin.archcode.model;
+package io.morin.archcode.element.application;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.LinkedHashSet;
@@ -13,14 +13,14 @@ import lombok.extern.jackson.Jacksonized;
 @ToString(onlyExplicitlyIncluded = true)
 @Builder
 @Jacksonized
-public class Model implements Parent<ModelElement> {
+public class Relationship {
 
     @ToString.Include
-    String name;
+    String destination;
 
-    String description;
+    String label;
 
     @Singular
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<ModelElement> elements;
+    Set<String> qualifiers;
 }

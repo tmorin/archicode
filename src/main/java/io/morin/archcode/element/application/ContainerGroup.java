@@ -1,6 +1,7 @@
-package io.morin.archcode.model;
+package io.morin.archcode.element.application;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.morin.archcode.element.AbstractElement;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Singular;

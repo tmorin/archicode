@@ -1,6 +1,7 @@
-package io.morin.archcode.model;
+package io.morin.archcode.element.application;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.morin.archcode.element.AbstractElement;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Singular;
@@ -13,11 +14,9 @@ import lombok.extern.jackson.Jacksonized;
 @ToString(onlyExplicitlyIncluded = true)
 @SuperBuilder
 @Jacksonized
-public class Container extends AbstractElement implements Parent<ContainerElement>, SystemElement {
-
-    String technology;
+public class Solution extends AbstractElement implements Parent<SolutionElement>, ApplicationElement {
 
     @Singular
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<ContainerElement> elements;
+    Set<SolutionElement> elements;
 }

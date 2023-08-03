@@ -26,7 +26,7 @@ class DetailedContextFactoryTest {
     void shouldCreate() {
         val viewReference = "solution_a.system_a";
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithIngressAndEgress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val view = DetailedView.builder().viewId("shouldCreate").element(viewReference).build();

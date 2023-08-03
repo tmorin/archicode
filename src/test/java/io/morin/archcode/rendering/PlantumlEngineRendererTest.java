@@ -74,7 +74,7 @@ class PlantumlEngineRendererTest {
     void shouldRenderDetailedViewWithIngressAndEgress(String viewReference) {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithIngressAndEgress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val context = detailedContextFactory.create(workspace, view);
@@ -94,7 +94,7 @@ class PlantumlEngineRendererTest {
     void shouldRenderDetailedViewWithInternalEgress(String viewReference) {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithInternalEgress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val context = detailedContextFactory.create(workspace, view);
@@ -114,7 +114,7 @@ class PlantumlEngineRendererTest {
     void shouldRenderDetailedViewWithInternalIngress(String viewReference) {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithInternalIngress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val context = detailedContextFactory.create(workspace, view);
@@ -134,7 +134,7 @@ class PlantumlEngineRendererTest {
     void shouldRenderDetailedViewWithXgress(String viewReference) {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithInternalXgress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalXgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val context = detailedContextFactory.create(workspace, view);

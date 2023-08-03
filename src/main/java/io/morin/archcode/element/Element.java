@@ -1,5 +1,6 @@
-package io.morin.archcode.model;
+package io.morin.archcode.element;
 
+import io.morin.archcode.element.application.Relationship;
 import java.util.Map;
 import java.util.Set;
 

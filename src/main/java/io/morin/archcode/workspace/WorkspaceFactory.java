@@ -1,6 +1,6 @@
 package io.morin.archcode.workspace;
 
-import io.morin.archcode.model.Element;
+import io.morin.archcode.element.Element;
 import io.morin.archcode.view.View;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
@@ -25,7 +25,7 @@ public class WorkspaceFactory {
         val referenceByElementIndex = new HashMap<Element, String>();
 
         Workspace.Utilities.walkDown(
-            rawWorkspace.getModel(),
+            rawWorkspace.getApplication(),
             (parent, element) -> {
                 Optional
                     .ofNullable(parent)

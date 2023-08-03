@@ -1,7 +1,7 @@
 package io.morin.archcode;
 
-import io.morin.archcode.model.*;
-import io.morin.archcode.model.System;
+import io.morin.archcode.element.application.*;
+import io.morin.archcode.element.application.System;
 import io.morin.archcode.view.DetailedView;
 import io.morin.archcode.view.OverviewView;
 import io.morin.archcode.workspace.RawWorkspace;
@@ -16,71 +16,71 @@ public class Fixtures {
      * <p>
      * solution_a.system_a.container_a -> solution_b.system_b.container_b
      */
-    public Model.ModelBuilder createWithIngressAndEgress() {
-        val modelBuilder = Model.builder();
+    public Application.ApplicationBuilder createWithIngressAndEgress() {
+        val ApplicationBuilder = Application.builder();
 
         val container_b = Container.builder().id("container_b").build();
         val system_b = System.builder().id("system_b").element(container_b).build();
         val solution_b = Solution.builder().id("solution_b").element(system_b).build();
-        modelBuilder.element(solution_b);
+        ApplicationBuilder.element(solution_b);
 
         // solution_a.system_a.container_a -> solution_b.system_b.container_b
         val relationship_from_a = Relationship.builder().destination("solution_b.system_b.container_b").build();
         val container_a = Container.builder().id("container_a").relationship(relationship_from_a).build();
         val system_a = System.builder().id("system_a").element(container_a).build();
         val solution_a = Solution.builder().id("solution_a").element(system_a).build();
-        modelBuilder.element(solution_a);
+        ApplicationBuilder.element(solution_a);
 
         // solution_c.system_c.container_c -> solution_a.system_a.container_a
         val relationship_to_a = Relationship.builder().destination("solution_a.system_a.container_a").build();
         val container_c = Container.builder().id("container_c").relationship(relationship_to_a).build();
         val system_c = System.builder().id("system_c").element(container_c).build();
         val solution_c = Solution.builder().id("solution_c").element(system_c).build();
-        modelBuilder.element(solution_c);
+        ApplicationBuilder.element(solution_c);
 
-        return modelBuilder;
+        return ApplicationBuilder;
     }
 
     /**
      * solution_c.system_c.container_c -> solution_a.system_a.container_a
      */
-    public Model.ModelBuilder createWithIngress() {
-        val modelBuilder = Model.builder();
+    public Application.ApplicationBuilder createWithIngress() {
+        val ApplicationBuilder = Application.builder();
 
         val container_a = Container.builder().id("container_a").build();
         val system_a = System.builder().id("system_a").element(container_a).build();
         val solution_a = Solution.builder().id("solution_a").element(system_a).build();
-        modelBuilder.element(solution_a);
+        ApplicationBuilder.element(solution_a);
 
         // solution_c.system_c.container_c -> solution_a.system_a.container_a
         val relationship_to_a = Relationship.builder().destination("solution_a.system_a.container_a").build();
         val container_c = Container.builder().id("container_c").relationship(relationship_to_a).build();
         val system_c = System.builder().id("system_c").element(container_c).build();
         val solution_c = Solution.builder().id("solution_c").element(system_c).build();
-        modelBuilder.element(solution_c);
+        ApplicationBuilder.element(solution_c);
 
-        return modelBuilder;
+        return ApplicationBuilder;
     }
 
     /**
      * solution_a.system_a.container_a -> solution_b.system_b.container_b
      */
-    public Model.ModelBuilder createWithEgress() {
-        val modelBuilder = Model.builder();
+    public Application.ApplicationBuilder createWithEgress() {
+        val ApplicationBuilder = Application.builder();
 
         val container_b = Container.builder().id("container_b").build();
         val system_b = System.builder().id("system_b").element(container_b).build();
         val solution_b = Solution.builder().id("solution_b").element(system_b).build();
-        modelBuilder.element(solution_b);
+        ApplicationBuilder.element(solution_b);
 
         // solution_a.system_a.container_a -> solution_b.system_b.container_b
         val relationship_from_a = Relationship.builder().destination("solution_b.system_b.container_b").build();
         val container_a = Container.builder().id("container_a").relationship(relationship_from_a).build();
         val system_a = System.builder().id("system_a").element(container_a).build();
         val solution_a = Solution.builder().id("solution_a").element(system_a).build();
-        modelBuilder.element(solution_a);
+        ApplicationBuilder.element(solution_a);
 
-        return modelBuilder;
+        return ApplicationBuilder;
     }
 
     /**
@@ -92,8 +92,8 @@ public class Fixtures {
      * <p>
      * sol_a.sys_ab.con_aba -> sol_a.sys_aa.con_aaa
      */
-    public Model.ModelBuilder createWithInternalXgress() {
-        val modelBuilder = Model.builder();
+    public Application.ApplicationBuilder createWithInternalXgress() {
+        val ApplicationBuilder = Application.builder();
 
         val rel_from_con_aab = Relationship.builder().destination("sol_a.sys_aa.con_aaa").build();
         val rel_from_con_aba = Relationship.builder().destination("sol_a.sys_aa.con_aaa").build();
@@ -114,17 +114,17 @@ public class Fixtures {
         val sys_ab = System.builder().id("sys_ab").element(con_aba).build();
 
         val sol_a = Solution.builder().id("sol_a").element(sys_aa).element(sys_ab).build();
-        modelBuilder.element(sol_a);
+        ApplicationBuilder.element(sol_a);
 
-        return modelBuilder;
+        return ApplicationBuilder;
     }
 
     /**sol_a.sys_aa.con_aaa -> sol_a.sys_aa.con_aab
      * <p>
      * sol_a.sys_aa.con_aaa -> sol_a.sys_ab.con_aba.com_abaa
      */
-    public Model.ModelBuilder createWithInternalEgress() {
-        val modelBuilder = Model.builder();
+    public Application.ApplicationBuilder createWithInternalEgress() {
+        val ApplicationBuilder = Application.builder();
 
         val rel_to_con_aab = Relationship.builder().destination("sol_a.sys_aa.con_aab").build();
         val rel_to_con_aba = Relationship.builder().destination("sol_a.sys_ab.con_aba").build();
@@ -142,9 +142,9 @@ public class Fixtures {
         val sys_ab = System.builder().id("sys_ab").element(con_aba).build();
 
         val sol_a = Solution.builder().id("sol_a").element(sys_aa).element(sys_ab).build();
-        modelBuilder.element(sol_a);
+        ApplicationBuilder.element(sol_a);
 
-        return modelBuilder;
+        return ApplicationBuilder;
     }
 
     /**
@@ -152,8 +152,8 @@ public class Fixtures {
      * <p>
      * sol_a.sys_ab.con_aba -> sol_a.sys_aa.con_aaa
      */
-    public Model.ModelBuilder createWithInternalIngress() {
-        val modelBuilder = Model.builder();
+    public Application.ApplicationBuilder createWithInternalIngress() {
+        val ApplicationBuilder = Application.builder();
 
         val rel_from_con_aab = Relationship.builder().destination("sol_a.sys_aa.con_aaa").build();
         val rel_from_con_aba = Relationship.builder().destination("sol_a.sys_aa.con_aaa").build();
@@ -166,9 +166,9 @@ public class Fixtures {
         val sys_ab = System.builder().id("sys_ab").element(con_aba).build();
 
         val sol_a = Solution.builder().id("sol_a").element(sys_aa).element(sys_ab).build();
-        modelBuilder.element(sol_a);
+        ApplicationBuilder.element(sol_a);
 
-        return modelBuilder;
+        return ApplicationBuilder;
     }
 
     public static final System system_a_a = System
@@ -216,7 +216,7 @@ public class Fixtures {
         .build();
     public static final RawWorkspace workspace_a = RawWorkspace
         .builder()
-        .model(Model.builder().element(solution_a).element(solution_b).element(solution_c).build())
+        .application(Application.builder().element(solution_a).element(solution_b).element(solution_c).build())
         .view(view_solution_a_overview)
         .view(view_solution_a_detailed)
         .build();

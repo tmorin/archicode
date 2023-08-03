@@ -27,7 +27,7 @@ class OverviewContextFactoryTest {
     @ParameterizedTest
     @ValueSource(strings = { "solution_a", "solution_a.system_a", "solution_a.system_a.container_a" })
     void shouldCreate(String viewReference) {
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithIngressAndEgress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
 
         val view = OverviewView.builder().viewId("shouldCreate").element(viewReference).build();
@@ -62,7 +62,7 @@ class OverviewContextFactoryTest {
     @ParameterizedTest
     @ValueSource(strings = { "sol_a.sys_aa.con_aaa" })
     void shouldCreateInternal(String viewReference) {
-        val rawWorkspace = RawWorkspace.builder().model(Fixtures.createWithInternalXgress().build()).build();
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalXgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
         val view = OverviewView.builder().viewId("shouldCreateInternal").element(viewReference).build();
         val context = contextFactory.create(workspace, view);

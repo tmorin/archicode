@@ -1,6 +1,6 @@
 package io.morin.archcode.context;
 
-import io.morin.archcode.model.Relationship;
+import io.morin.archcode.element.application.Relationship;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
