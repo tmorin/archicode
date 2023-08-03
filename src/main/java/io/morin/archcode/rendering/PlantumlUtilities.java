@@ -14,7 +14,8 @@ public class PlantumlUtilities {
         buf.append(item.getKind().name().toLowerCase());
 
         Optional
-            .ofNullable(item.getElement().getQualifier())
+            .ofNullable(item.getElement().getQualifiers())
+            .map(qualifiers -> String.join(" / ", qualifiers))
             .filter(v -> !v.isBlank())
             .ifPresent(technology -> {
                 buf.append(": ");

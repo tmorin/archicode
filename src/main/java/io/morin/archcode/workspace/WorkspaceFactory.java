@@ -4,10 +4,7 @@ import io.morin.archcode.model.Element;
 import io.morin.archcode.view.View;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -44,8 +41,9 @@ public class WorkspaceFactory {
                             referenceByElementIndex.put(element, element.getId());
                         }
                     );
-                element
-                    .getRelationships()
+                Optional
+                    .ofNullable(element.getRelationships())
+                    .orElse(Collections.emptySet())
                     .forEach(relationship -> {
                         sourceElementsByDestinationIndex.putIfAbsent(relationship.getDestination(), new HashSet<>());
                         sourceElementsByDestinationIndex.get(relationship.getDestination()).add(element);

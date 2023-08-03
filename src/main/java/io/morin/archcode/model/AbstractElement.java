@@ -1,5 +1,9 @@
 package io.morin.archcode.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -16,9 +20,17 @@ public abstract class AbstractElement implements Element {
 
     String name;
     String description;
-    String qualifier;
 
     @Singular
+    @JsonDeserialize(as = LinkedHashSet.class)
+    Set<String> qualifiers;
+
+    @Singular
+    @JsonDeserialize(as = LinkedHashMap.class)
+    Map<String, String> tags;
+
+    @Singular
+    @JsonDeserialize(as = LinkedHashSet.class)
     Set<Relationship> relationships;
 
     @Override

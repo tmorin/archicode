@@ -9,7 +9,4 @@ import lombok.extern.jackson.Jacksonized;
 @ToString(onlyExplicitlyIncluded = true)
 @SuperBuilder
 @Jacksonized
-public class Component extends AbstractElement implements TechnologyElement, ContainerElement {
-
-    String technology;
-}
+public class Component extends AbstractElement implements ContainerElement {}

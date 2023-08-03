@@ -1,5 +1,6 @@
 package io.morin.archcode.model;
 
+import java.util.Map;
 import java.util.Set;
 
 public interface Element {
@@ -9,7 +10,9 @@ public interface Element {
 
     String getDescription();
 
-    String getQualifier();
+    Set<String> getQualifiers();
+
+    Map<String, String> getTags();
 
     Set<Relationship> getRelationships();
 }

@@ -18,9 +18,9 @@ import lombok.val;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class WorkspaceMapperFactory {
 
-    YAMLMapper yamlMapper = YAMLMapper.builder().serializationInclusion(JsonInclude.Include.NON_NULL).build();
-    TomlMapper tomlMapper = TomlMapper.builder().serializationInclusion(JsonInclude.Include.NON_NULL).build();
-    JsonMapper jsonMapper = JsonMapper.builder().serializationInclusion(JsonInclude.Include.NON_NULL).build();
+    YAMLMapper yamlMapper = YAMLMapper.builder().serializationInclusion(JsonInclude.Include.NON_EMPTY).build();
+    TomlMapper tomlMapper = TomlMapper.builder().serializationInclusion(JsonInclude.Include.NON_EMPTY).build();
+    JsonMapper jsonMapper = JsonMapper.builder().serializationInclusion(JsonInclude.Include.NON_EMPTY).build();
 
     public ObjectMapper create(Path path) {
         val workspaceFormat = WorkspaceFormat
