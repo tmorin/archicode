@@ -3,12 +3,15 @@ package io.morin.archcode.rendering;
 import io.morin.archcode.context.Context;
 import io.morin.archcode.context.Item;
 import io.morin.archcode.context.Link;
+import io.morin.archcode.workspace.Styles;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -29,17 +32,31 @@ public class PlantumlEngineRenderer implements EngineRenderer {
             outputStreamWriter.write("@startuml");
             outputStreamWriter.write(System.lineSeparator());
 
+            outputStreamWriter.write("skinparam defaultTextAlignment center");
+            outputStreamWriter.write(System.lineSeparator());
+            outputStreamWriter.write("skinparam wrapWidth 200");
+            outputStreamWriter.write(System.lineSeparator());
+            outputStreamWriter.write("skinparam maxMessageSize 150");
+            outputStreamWriter.write(System.lineSeparator());
+
             outputStreamWriter.write("hide stereotype");
             outputStreamWriter.write(System.lineSeparator());
 
             for (Item item : context.getItems()) {
-                outputStreamWriter.write(renderItem(item));
+                outputStreamWriter.write(renderItem(context, item));
             }
 
             outputStreamWriter.write(System.lineSeparator());
 
             for (Link link : context.getLinks()) {
-                outputStreamWriter.write(renderLink(link));
+                outputStreamWriter.write(renderLink(context, link));
+            }
+
+            for (Map.Entry<String, Styles.Style> entry : context.getWorkspace().getStyles().getByTags().entrySet()) {
+                outputStreamWriter.write(renderSkinparam(entry, "rectangle"));
+                outputStreamWriter.write(renderSkinparam(entry, "database"));
+                outputStreamWriter.write(renderSkinparam(entry, "card"));
+                outputStreamWriter.write(renderSkinparam(entry, "node"));
             }
 
             outputStreamWriter.write("@enduml");
@@ -47,17 +64,69 @@ public class PlantumlEngineRenderer implements EngineRenderer {
         }
     }
 
+    private static String renderSkinparam(Map.Entry<String, Styles.Style> entry, String shape) {
+        val buf = new StringBuilder();
+        val stereotype = entry.getKey();
+        val style = entry.getValue();
+
+        buf.append(String.format("skinparam %s<<%s>> {", shape, stereotype));
+        buf.append(System.lineSeparator());
+
+        if (style.getBackgroundColor() != null && !style.getBackgroundColor().isBlank()) {
+            buf.append(String.format("BackgroundColor %s", style.getBackgroundColor()));
+            buf.append(System.lineSeparator());
+        }
+
+        if (style.getBorderColor() != null && !style.getBorderColor().isBlank()) {
+            buf.append(String.format("BorderColor %s", style.getBorderColor()));
+            buf.append(System.lineSeparator());
+        }
+
+        if (style.getBorderStyle() != null && !style.getBorderStyle().isBlank()) {
+            buf.append(String.format("BorderStyle %s", style.getBorderStyle()));
+            buf.append(System.lineSeparator());
+        }
+
+        if (style.getRoundCorner() > 0) {
+            buf.append(String.format("RoundCorner %s", style.getRoundCorner()));
+            buf.append(System.lineSeparator());
+        }
+
+        if (style.getForegroundColor() != null && !style.getForegroundColor().isBlank()) {
+            buf.append(String.format("FontColor %s", style.getForegroundColor()));
+            buf.append(System.lineSeparator());
+        }
+
+        if (style.isShadowing()) {
+            buf.append("shadowing true");
+            buf.append(System.lineSeparator());
+        }
+
+        buf.append("}");
+        buf.append(System.lineSeparator());
+
+        return buf.toString();
+    }
+
     @SneakyThrows
-    private String renderItem(Item item) {
+    private String renderItem(Context context, Item item) {
         val buf = new StringBuilder();
 
-        val stereotypes = String.join(" ", List.of(String.format("<<%s>>", item.getKind())));
+        val stereotypes = new HashSet<>(item.getElement().getQualifiers());
+        stereotypes.add(item.getKind().toString().toLowerCase());
+        val stereotypesAsString = String.join(
+            " ",
+            stereotypes.stream().map(value -> String.format("<<%s>>", value)).collect(Collectors.toSet())
+        );
 
         if (item.getChildren().isEmpty()) {
-            buf.append(String.format("rectangle %s %s [", item.getItemId(), stereotypes));
+            val shape = item.getElement().getTags().getOrDefault(TAG_RENDERING_SHAPE, "rectangle");
+            buf.append(String.format("%s %s %s [", shape, item.getItemId(), stereotypesAsString));
             buf.append(System.lineSeparator());
 
+            buf.append("**");
             buf.append(Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId()));
+            buf.append("**");
             buf.append(System.lineSeparator());
 
             buf.append(PlantumlUtilities.generateQualifiers(item));
@@ -80,12 +149,12 @@ public class PlantumlEngineRenderer implements EngineRenderer {
                     item.getItemId(),
                     Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId()),
                     PlantumlUtilities.generateQualifiers(item),
-                    stereotypes
+                    stereotypesAsString
                 )
             );
             buf.append(System.lineSeparator());
 
-            item.getChildren().forEach(child -> buf.append(renderItem(child)));
+            item.getChildren().forEach(child -> buf.append(renderItem(context, child)));
 
             buf.append("}");
             buf.append(System.lineSeparator());
@@ -93,7 +162,7 @@ public class PlantumlEngineRenderer implements EngineRenderer {
         return buf.toString();
     }
 
-    private String renderLink(Link link) {
+    private String renderLink(Context context, Link link) {
         val buf = new StringBuilder();
 
         buf.append(link.getFrom().getItemId());
@@ -101,12 +170,15 @@ public class PlantumlEngineRenderer implements EngineRenderer {
         buf.append(link.getTo().getItemId());
 
         val descriptionAsList = new ArrayList<String>();
-        Optional.ofNullable(link.getLabel()).filter(v -> !v.isBlank()).ifPresent(descriptionAsList::add);
+        Optional
+            .ofNullable(link.getLabel())
+            .filter(v -> !v.isBlank())
+            .map(label -> String.format("**%s**", label))
+            .ifPresent(descriptionAsList::add);
         Optional
             .of(PlantumlUtilities.generateQualifiers(link))
             .filter(v -> !v.isBlank())
             .ifPresent(descriptionAsList::add);
-
         Optional
             .of(String.join("\\n", descriptionAsList))
             .filter(v -> !v.isBlank())

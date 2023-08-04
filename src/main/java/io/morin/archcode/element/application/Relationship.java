@@ -1,7 +1,9 @@
 package io.morin.archcode.element.application;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Singular;
@@ -23,4 +25,8 @@ public class Relationship {
     @Singular
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<String> qualifiers;
+
+    @Singular
+    @JsonDeserialize(as = LinkedHashMap.class)
+    Map<String, String> tags;
 }

@@ -3,23 +3,14 @@ package io.morin.archcode.context;
 import io.morin.archcode.element.application.Relationship;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.UUID;
 import lombok.*;
-import lombok.experimental.FieldDefaults;
 import lombok.extern.jackson.Jacksonized;
 
-@Builder
+@Value
 @ToString(onlyExplicitlyIncluded = true)
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Builder
 @Jacksonized
-@Getter
-@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class Link {
-
-    @NonNull
-    @Builder.Default
-    @EqualsAndHashCode.Include
-    String linkId = String.format("link_%s", UUID.randomUUID().toString().replace("-", ""));
 
     @NonNull
     @ToString.Include
