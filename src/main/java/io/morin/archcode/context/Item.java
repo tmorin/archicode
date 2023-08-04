@@ -8,15 +8,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import lombok.*;
-import lombok.experimental.FieldDefaults;
 import lombok.extern.jackson.Jacksonized;
 
-@Builder
+@Value
 @ToString(onlyExplicitlyIncluded = true)
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Builder
 @Jacksonized
-@Getter
-@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class Item {
 
     @NonNull
