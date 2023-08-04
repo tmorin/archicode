@@ -61,10 +61,10 @@ class OverviewContextFactoryTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "sol_a.sys_aa.con_aaa" })
-    void shouldCreateInternal(String viewReference) {
+    void shouldCreateInternalLevel2(String viewReference) {
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalXgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace);
-        val view = OverviewView.builder().viewId("shouldCreateInternal").element(viewReference).build();
+        val view = OverviewView.builder().viewId("shouldCreateInternalLevel2").element(viewReference).build();
         val context = contextFactory.create(workspace, view);
         assertEquals(1, context.getItems().size());
         assertEquals(4, context.getLinks().size());
@@ -99,6 +99,24 @@ class OverviewContextFactoryTest {
                 .filter(l -> l.getFrom().getReference().equals("sol_a.sys_aa.con_aab"))
                 .anyMatch(l -> l.getTo().getReference().equals(viewReference)),
             "sol_a.sys_aa.con_aab -> sol_a.sys_aa.con_aaa"
+        );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "sol_a.sys_aa" })
+    void shouldCreateInternalLevel1(String viewReference) {
+        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createInternalEgress().build()).build();
+        val workspace = workspaceFactory.create(rawWorkspace);
+        val view = OverviewView.builder().viewId("shouldCreateInternalLevel1").element(viewReference).build();
+        val context = contextFactory.create(workspace, view);
+        assertEquals(1, context.getItems().size());
+        assertTrue(
+            context
+                .getLinks()
+                .stream()
+                .filter(l -> l.getFrom().getReference().equals(viewReference))
+                .anyMatch(l -> l.getTo().getReference().equals("sol_a.sys_ab")),
+            "sol_a.sys_aa -> sol_a.sys_ab"
         );
     }
 }

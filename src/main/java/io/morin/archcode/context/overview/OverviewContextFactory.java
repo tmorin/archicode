@@ -7,12 +7,14 @@ import static java.util.Collections.emptySet;
 import io.morin.archcode.context.Context;
 import io.morin.archcode.context.Item;
 import io.morin.archcode.context.Link;
+import io.morin.archcode.element.application.Relationship;
 import io.morin.archcode.view.OverviewView;
 import io.morin.archcode.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
@@ -106,13 +108,25 @@ public class OverviewContextFactory {
                         .stream()
                         .flatMap(l -> l.getQualifiers().stream())
                         .collect(Collectors.toSet());
+
+                    val defaultLabel = Optional
+                        .ofNullable(workspace.getSettings().getRelationships().getDefaultSyntheticLabel())
+                        .orElse("uses");
+                    val label = syntheticRelationships.size() == 1
+                        ? syntheticRelationships
+                            .stream()
+                            .findFirst()
+                            .map(Relationship::getLabel)
+                            .filter(v -> !v.isBlank())
+                            .orElse(defaultLabel)
+                        : defaultLabel;
                     return Stream.of(
                         Link
                             .builder()
                             .from(fromItem)
                             .to(toItem)
                             .synthetic(true)
-                            .label("uses")
+                            .label(label)
                             .qualifiers(qualifiers)
                             .relationships(syntheticRelationships)
                             .build()
@@ -123,7 +137,6 @@ public class OverviewContextFactory {
                         .map(relationship ->
                             Link
                                 .builder()
-                                .linkId(String.format("link_%s", relationship.hashCode()))
                                 .from(fromItem)
                                 .to(toItem)
                                 .label(relationship.getLabel())

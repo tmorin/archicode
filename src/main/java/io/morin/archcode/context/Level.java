@@ -30,8 +30,12 @@ public enum Level {
         return reference;
     }
 
-    public static Level down(Level targetFromLevel) {
+    public static Level down(@NonNull Level targetFromLevel) {
         return Level.values()[Math.max(targetFromLevel.ordinal() - 1, 0)];
+    }
+
+    public static Level max(@NonNull Level a, @NonNull Level b) {
+        return Level.values()[Math.max(a.ordinal(), b.ordinal())];
     }
 
     public Predicate<Level> isUpper() {

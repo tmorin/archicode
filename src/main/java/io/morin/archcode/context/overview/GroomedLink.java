@@ -18,6 +18,20 @@ import lombok.extern.jackson.Jacksonized;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class GroomedLink {
 
+    public enum RelationshipKind {
+        NATURAL,
+        SYNTHETIC
+    }
+
+    enum Direction {
+        INGRESS,
+        EGRESS
+    }
+
+    @NonNull
+    @ToString.Include
+    Direction direction;
+
     @NonNull
     @ToString.Include
     String fromReference;
@@ -44,9 +58,4 @@ public class GroomedLink {
     @Builder.Default
     @EqualsAndHashCode.Include
     Map<RelationshipKind, Set<Relationship>> relationships = new EnumMap<>(RelationshipKind.class);
-
-    public enum RelationshipKind {
-        NATURAL,
-        SYNTHETIC
-    }
 }

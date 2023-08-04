@@ -13,8 +13,15 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class RawWorkspace {
 
-    Application application;
+    @Builder.Default
+    Application application = Application.builder().build();
 
     @Singular
     Set<View> views;
+
+    @Builder.Default
+    Settings settings = Settings.builder().build();
+
+    @Builder.Default
+    Styles styles = Styles.builder().build();
 }

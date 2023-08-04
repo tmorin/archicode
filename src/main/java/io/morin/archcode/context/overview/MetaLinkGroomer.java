@@ -1,6 +1,7 @@
 package io.morin.archcode.context.overview;
 
 import io.morin.archcode.context.Level;
+import io.morin.archcode.context.overview.GroomedLink.Direction;
 import io.morin.archcode.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.HashMap;
@@ -15,11 +16,6 @@ import lombok.val;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class MetaLinkGroomer {
-
-    private enum Direction {
-        INGRESS,
-        EGRESS
-    }
 
     public Set<GroomedLink> groomEgress(Workspace workspace, String fromReference, Set<MetaLink> metaLinks) {
         val fromLevelTarget = Level.from(fromReference);
@@ -78,6 +74,7 @@ public class MetaLinkGroomer {
             val groomedKey = String.format("%s -> %s", groomedFromReference, groomedToReference);
             val groomedLinkBuilder = GroomedLink
                 .builder()
+                .direction(direction)
                 .fromReference(groomedFromReference)
                 .fromElement(groomedFromElement)
                 .fromLevel(groomedFromLevel)
@@ -112,7 +109,7 @@ public class MetaLinkGroomer {
                 .equals(Level.downReferenceTo(metaLink.getToReference(), Level.L0))
         ) {
             // THEN the target level of FROM must be parent level of TO
-            return Level.down(linkTargetToLevel);
+            return Level.max(Level.down(linkTargetToLevel), Level.L1);
         }
 
         return linkTargetFromLevel;
@@ -136,7 +133,7 @@ public class MetaLinkGroomer {
                 .equals(Level.downReferenceTo(metaLink.getToReference(), Level.L0))
         ) {
             // THEN the target level of TO must be parent level of FROM
-            return Level.down(linkTargetFromLevel);
+            return Level.max(Level.down(linkTargetFromLevel), Level.L1);
         }
 
         return linkTargetToLevel;
