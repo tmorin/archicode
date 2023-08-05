@@ -1,9 +1,9 @@
 package io.morin.archicode.context;
 
 import io.morin.archicode.ArchiCodeException;
-import io.morin.archicode.element.Element;
-import io.morin.archicode.element.application.*;
-import io.morin.archicode.element.application.System;
+import io.morin.archicode.resource.element.Element;
+import io.morin.archicode.resource.element.application.*;
+import io.morin.archicode.resource.element.application.System;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;

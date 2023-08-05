@@ -1,6 +1,6 @@
 package io.morin.archicode.context;
 
-import io.morin.archicode.element.application.Relationship;
+import io.morin.archicode.resource.element.application.Relationship;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.*;

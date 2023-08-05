@@ -1,8 +1,8 @@
 package io.morin.archicode.context.overview;
 
 import io.morin.archicode.context.Level;
-import io.morin.archicode.element.Element;
-import io.morin.archicode.element.application.Relationship;
+import io.morin.archicode.resource.element.Element;
+import io.morin.archicode.resource.element.application.Relationship;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;

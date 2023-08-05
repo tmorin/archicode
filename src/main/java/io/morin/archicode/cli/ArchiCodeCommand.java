@@ -12,10 +12,10 @@ import picocli.CommandLine;
 public class ArchiCodeCommand {
 
     @CommandLine.Option(
-        names = { "-w", "--workspace" },
-        description = "The workspace file.",
-        defaultValue = "workspace.yaml",
-        paramLabel = "<workspace file>"
+        names = { "-w", "--resources" },
+        description = "The resources file.",
+        defaultValue = "resources.yaml",
+        paramLabel = "<resources file>"
     )
     Path workspaceFilePath;
 }

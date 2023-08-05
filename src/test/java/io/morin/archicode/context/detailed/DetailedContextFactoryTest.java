@@ -3,8 +3,8 @@ package io.morin.archicode.context.detailed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.morin.archicode.Fixtures;
-import io.morin.archicode.view.DetailedView;
-import io.morin.archicode.workspace.RawWorkspace;
+import io.morin.archicode.resource.view.DetailedView;
+import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -27,7 +27,7 @@ class DetailedContextFactoryTest {
     void shouldCreate() {
         val viewReference = "solution_a.system_a";
 
-        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val view = DetailedView.builder().viewId("shouldCreate").element(viewReference).build();

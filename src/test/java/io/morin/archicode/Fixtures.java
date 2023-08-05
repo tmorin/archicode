@@ -1,10 +1,10 @@
 package io.morin.archicode;
 
-import io.morin.archicode.element.application.*;
-import io.morin.archicode.element.application.System;
-import io.morin.archicode.view.DetailedView;
-import io.morin.archicode.view.OverviewView;
-import io.morin.archicode.workspace.RawWorkspace;
+import io.morin.archicode.resource.element.application.*;
+import io.morin.archicode.resource.element.application.System;
+import io.morin.archicode.resource.view.DetailedView;
+import io.morin.archicode.resource.view.OverviewView;
+import io.morin.archicode.resource.workspace.Workspace;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
 import lombok.val;
@@ -54,7 +54,7 @@ public class Fixtures {
         .viewId("view_solution_a_detailed")
         .element("solution_a")
         .build();
-    public static final RawWorkspace workspace_a = RawWorkspace
+    public static final Workspace workspace_a = Workspace
         .builder()
         .application(Application.builder().elements(Set.of(solution_a, solution_b, solution_c)).build())
         .view(view_solution_a_overview)

@@ -3,10 +3,10 @@ package io.morin.archicode.context;
 import io.morin.archicode.context.deep.DeepContextFactory;
 import io.morin.archicode.context.detailed.DetailedContextFactory;
 import io.morin.archicode.context.overview.OverviewContextFactory;
-import io.morin.archicode.view.DeepView;
-import io.morin.archicode.view.DetailedView;
-import io.morin.archicode.view.OverviewView;
-import io.morin.archicode.view.View;
+import io.morin.archicode.resource.view.DeepView;
+import io.morin.archicode.resource.view.DetailedView;
+import io.morin.archicode.resource.view.OverviewView;
+import io.morin.archicode.resource.view.ViewResource;
 import io.morin.archicode.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.AccessLevel;
@@ -24,7 +24,7 @@ public class ContextFactory {
     OverviewContextFactory overviewContextFactory;
     DeepContextFactory deepContextFactory;
 
-    public Context create(Workspace workspace, View view) {
+    public Context create(Workspace workspace, ViewResource view) {
         if (view instanceof DetailedView detailedView) {
             return detailedContextFactory.create(workspace, detailedView);
         } else if (view instanceof OverviewView overviewView) {

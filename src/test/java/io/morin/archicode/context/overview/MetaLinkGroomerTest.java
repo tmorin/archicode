@@ -3,7 +3,9 @@ package io.morin.archicode.context.overview;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.morin.archicode.Fixtures;
-import io.morin.archicode.workspace.RawWorkspace;
+import io.morin.archicode.context.metalink.EgressMetaLinkFinder;
+import io.morin.archicode.context.metalink.IngressMetaLinkFinder;
+import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -32,7 +34,7 @@ class MetaLinkGroomerTest {
     void shouldGroomIngressMetaLinks() {
         val viewReference = "solution_a.system_a";
 
-        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngress().build()).build();
+        val rawWorkspace = Workspace.builder().application(Fixtures.createWithIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val ingressMetaLinks = ingressMetaLinkFinder.find(workspace, viewReference);
@@ -50,7 +52,7 @@ class MetaLinkGroomerTest {
     void shouldGroomEgressMetaLinks() {
         val viewReference = "solution_a.system_a";
 
-        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithEgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(Fixtures.createWithEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val egressMetaLinks = egressMetaLinkFinder.find(workspace, viewReference);
@@ -68,7 +70,7 @@ class MetaLinkGroomerTest {
     void shouldGroomInternalEgressMetaLinks() {
         val viewReference = "sol_a.sys_aa.con_aaa";
 
-        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val egressMetaLinks = egressMetaLinkFinder.find(workspace, viewReference);
@@ -102,7 +104,7 @@ class MetaLinkGroomerTest {
     void shouldGroomInternalIngressMetaLinks() {
         val viewReference = "sol_a.sys_aa.con_aaa";
 
-        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
+        val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val ingressMetaLinks = ingressMetaLinkFinder.find(workspace, viewReference);

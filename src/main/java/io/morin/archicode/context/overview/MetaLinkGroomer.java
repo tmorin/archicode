@@ -1,6 +1,7 @@
 package io.morin.archicode.context.overview;
 
 import io.morin.archicode.context.Level;
+import io.morin.archicode.context.metalink.MetaLink;
 import io.morin.archicode.context.overview.GroomedLink.Direction;
 import io.morin.archicode.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;

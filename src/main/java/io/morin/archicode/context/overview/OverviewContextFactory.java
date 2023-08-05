@@ -7,8 +7,10 @@ import static java.util.Collections.emptySet;
 import io.morin.archicode.context.Context;
 import io.morin.archicode.context.Item;
 import io.morin.archicode.context.Link;
-import io.morin.archicode.element.application.Relationship;
-import io.morin.archicode.view.OverviewView;
+import io.morin.archicode.context.metalink.EgressMetaLinkFinder;
+import io.morin.archicode.context.metalink.IngressMetaLinkFinder;
+import io.morin.archicode.resource.element.application.Relationship;
+import io.morin.archicode.resource.view.OverviewView;
 import io.morin.archicode.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Arrays;
@@ -86,7 +88,7 @@ public class OverviewContextFactory {
                             .kind(Item.Kind.from(element))
                             .build()
                 );
-                workspace
+                io.morin.archicode.resource.workspace.Workspace.Utilities
                     .findParentReference(elementReference)
                     .ifPresent(parentReference -> itemByReference.get(parentReference).getChildren().add(item));
                 return item;
