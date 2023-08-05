@@ -5,6 +5,7 @@ import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.ApplicationElement;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.deployment.Deployment;
+import io.morin.archicode.resource.element.deployment.DeploymentElement;
 import io.morin.archicode.resource.view.View;
 import java.util.Arrays;
 import java.util.Optional;
@@ -51,6 +52,13 @@ public class Workspace {
 
         public void walkDown(Application application, BiConsumer<Element, Element> consumer) {
             for (ApplicationElement element : application.getElements()) {
+                consumer.accept(null, element);
+                walkDown(element, consumer);
+            }
+        }
+
+        public void walkDown(Deployment deployment, BiConsumer<Element, Element> consumer) {
+            for (DeploymentElement element : deployment.getElements()) {
                 consumer.accept(null, element);
                 walkDown(element, consumer);
             }

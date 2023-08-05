@@ -15,7 +15,7 @@ import lombok.extern.jackson.Jacksonized;
 @ToString(onlyExplicitlyIncluded = true)
 @SuperBuilder
 @Jacksonized
-public class Environment extends AbstractElement implements Parent<EnvironmentElement> {
+public class Environment extends AbstractElement implements Parent<EnvironmentElement>, DeploymentElement {
 
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)

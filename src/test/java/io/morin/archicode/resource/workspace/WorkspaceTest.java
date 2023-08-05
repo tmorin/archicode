@@ -1,4 +1,4 @@
-package io.morin.archicode.workspace;
+package io.morin.archicode.resource.workspace;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -7,7 +7,6 @@ import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.morin.archicode.resource.element.application.*;
 import io.morin.archicode.resource.element.application.System;
-import io.morin.archicode.resource.workspace.Workspace;
 import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.val;

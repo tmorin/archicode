@@ -15,6 +15,9 @@ public class Workspace {
     public ElementIndex appIndex = ElementIndex.builder().build();
 
     @Builder.Default
+    public ElementIndex depIndex = ElementIndex.builder().build();
+
+    @Builder.Default
     public ViewIndex viewIndex = ViewIndex.builder().build();
 
     @Delegate

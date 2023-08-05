@@ -19,5 +19,9 @@ public class Node extends AbstractElement implements Parent<NodeElement>, Enviro
 
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
+    Set<String> applications = new LinkedHashSet<>();
+
+    @Builder.Default
+    @JsonDeserialize(as = LinkedHashSet.class)
     Set<NodeElement> elements = new LinkedHashSet<>();
 }
