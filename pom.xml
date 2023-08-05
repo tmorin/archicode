@@ -3,13 +3,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.morin.archcode</groupId>
-    <artifactId>archcode</artifactId>
+    <groupId>io.morin.archicode</groupId>
+    <artifactId>archicode</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>archcode</name>
-    <url>https://github.com/tmorin/archcode</url>
+    <name>ArchiCode</name>
+    <url>https://github.com/tmorin/archicode</url>
     <description>Just architecture as code.</description>
 
     <licenses>
@@ -28,22 +28,22 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git@github.com:tmorin/archcode.git</connection>
-        <developerConnection>scm:git:git@github.com:tmorin/archcode.git</developerConnection>
-        <url>https://github.com/tmorin/archcode</url>
+        <connection>scm:git:git@github.com:tmorin/archicode.git</connection>
+        <developerConnection>scm:git:git@github.com:tmorin/archicode.git</developerConnection>
+        <url>https://github.com/tmorin/archicode</url>
         <tag>HEAD</tag>
     </scm>
 
     <ciManagement>
-        <url>https://github.com/tmorin/archcode/actions</url>
+        <url>https://github.com/tmorin/archicode/actions</url>
         <system>GitHub Actions</system>
     </ciManagement>
 
     <distributionManagement>
         <repository>
             <id>github</id>
-            <name>GitHub Archcode Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/tmorin/archcode</url>
+            <name>GitHub ArchiCode Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/tmorin/archicode</url>
         </repository>
     </distributionManagement>
 

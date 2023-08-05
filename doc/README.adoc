@@ -1,4 +1,4 @@
-= Archcode
+= ArchiCode
 
 == Information System
 
