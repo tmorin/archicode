@@ -17,80 +17,6 @@ import lombok.val;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class MetaLinkGroomer {
 
-    public Set<GroomedLink> groomEgress(Workspace workspace, String fromReference, Set<MetaLink> metaLinks) {
-        val fromLevelTarget = Level.from(fromReference);
-        val toLevelTarget = Level.L0;
-        return getGroomedLinks(workspace, metaLinks, Direction.EGRESS, fromLevelTarget, toLevelTarget);
-    }
-
-    public Set<GroomedLink> groomIngress(Workspace workspace, String toReference, Set<MetaLink> metaLinks) {
-        val fromLevelTarget = Level.L0;
-        val toLevelTarget = Level.from(toReference);
-        return getGroomedLinks(workspace, metaLinks, Direction.INGRESS, fromLevelTarget, toLevelTarget);
-    }
-
-    private Set<GroomedLink> getGroomedLinks(
-        Workspace workspace,
-        Set<MetaLink> metaLinks,
-        Direction direction,
-        Level fromLevelTarget,
-        Level toLevelTarget
-    ) {
-        val groomedLinks = new HashMap<String, GroomedLink>();
-
-        metaLinks.forEach(metaLink -> {
-            var localFromLevelTarget = fromLevelTarget;
-            var localToLevelTarget = toLevelTarget;
-
-            // when EGRESS
-            if (Direction.EGRESS.equals(direction)) {
-                localToLevelTarget = resolveLocalToLevelTarget(metaLink, localFromLevelTarget, localToLevelTarget);
-            }
-            // when INGRESS
-            else if (Direction.INGRESS.equals(direction)) {
-                localFromLevelTarget = resolveLocalFromLevelTarget(metaLink, localFromLevelTarget, localToLevelTarget);
-            }
-
-            var groomedFromReference = metaLink.getFromReference();
-            var groomedFromElement = metaLink.getFromElement();
-            val fromLevelIsUpper = metaLink.getFromLevel().isUpper().test(localFromLevelTarget);
-            if (fromLevelIsUpper) {
-                groomedFromReference = Level.downReferenceTo(metaLink.getFromReference(), localFromLevelTarget);
-                groomedFromElement = workspace.getElementByReference(groomedFromReference);
-            }
-            val groomedFromLevel = Level.from(groomedFromReference);
-
-            var groomedToReference = metaLink.getToReference();
-            var groomedToElement = metaLink.getToElement();
-
-            var toLevelIsUpper = false;
-            toLevelIsUpper = metaLink.getToLevel().isUpper().test(localToLevelTarget);
-            if (toLevelIsUpper) {
-                groomedToReference = Level.downReferenceTo(metaLink.getToReference(), localToLevelTarget);
-                groomedToElement = workspace.getElementByReference(groomedToReference);
-            }
-            val groomedToLevel = Level.from(groomedToReference);
-
-            val groomedKey = String.format("%s -> %s", groomedFromReference, groomedToReference);
-            val groomedLinkBuilder = GroomedLink
-                .builder()
-                .direction(direction)
-                .fromReference(groomedFromReference)
-                .fromElement(groomedFromElement)
-                .fromLevel(groomedFromLevel)
-                .toReference(groomedToReference)
-                .toElement(groomedToElement)
-                .toLevel(groomedToLevel);
-
-            groomedLinks.computeIfAbsent(groomedKey, s -> groomedLinkBuilder.build());
-
-            val isSynthetic = fromLevelIsUpper || toLevelIsUpper;
-            fillGroomedLinkRelationships(groomedLinks, groomedKey, metaLink, isSynthetic);
-        });
-
-        return new HashSet<>(groomedLinks.values());
-    }
-
     private static Level resolveLocalFromLevelTarget(
         MetaLink metaLink,
         Level linkTargetFromLevel,
@@ -166,5 +92,79 @@ public class MetaLinkGroomer {
                 .get(GroomedLink.RelationshipKind.NATURAL)
                 .add(metaLink.getRelationship());
         }
+    }
+
+    public Set<GroomedLink> groomEgress(Workspace workspace, String fromReference, Set<MetaLink> metaLinks) {
+        val fromLevelTarget = Level.from(fromReference);
+        val toLevelTarget = Level.L0;
+        return getGroomedLinks(workspace, metaLinks, Direction.EGRESS, fromLevelTarget, toLevelTarget);
+    }
+
+    public Set<GroomedLink> groomIngress(Workspace workspace, String toReference, Set<MetaLink> metaLinks) {
+        val fromLevelTarget = Level.L0;
+        val toLevelTarget = Level.from(toReference);
+        return getGroomedLinks(workspace, metaLinks, Direction.INGRESS, fromLevelTarget, toLevelTarget);
+    }
+
+    private Set<GroomedLink> getGroomedLinks(
+        Workspace workspace,
+        Set<MetaLink> metaLinks,
+        Direction direction,
+        Level fromLevelTarget,
+        Level toLevelTarget
+    ) {
+        val groomedLinks = new HashMap<String, GroomedLink>();
+
+        metaLinks.forEach(metaLink -> {
+            var localFromLevelTarget = fromLevelTarget;
+            var localToLevelTarget = toLevelTarget;
+
+            // when EGRESS
+            if (Direction.EGRESS.equals(direction)) {
+                localToLevelTarget = resolveLocalToLevelTarget(metaLink, localFromLevelTarget, localToLevelTarget);
+            }
+            // when INGRESS
+            else if (Direction.INGRESS.equals(direction)) {
+                localFromLevelTarget = resolveLocalFromLevelTarget(metaLink, localFromLevelTarget, localToLevelTarget);
+            }
+
+            var groomedFromReference = metaLink.getFromReference();
+            var groomedFromElement = metaLink.getFromElement();
+            val fromLevelIsUpper = metaLink.getFromLevel().isUpper().test(localFromLevelTarget);
+            if (fromLevelIsUpper) {
+                groomedFromReference = Level.downReferenceTo(metaLink.getFromReference(), localFromLevelTarget);
+                groomedFromElement = workspace.getElementByReference(groomedFromReference);
+            }
+            val groomedFromLevel = Level.from(groomedFromReference);
+
+            var groomedToReference = metaLink.getToReference();
+            var groomedToElement = metaLink.getToElement();
+
+            var toLevelIsUpper = false;
+            toLevelIsUpper = metaLink.getToLevel().isUpper().test(localToLevelTarget);
+            if (toLevelIsUpper) {
+                groomedToReference = Level.downReferenceTo(metaLink.getToReference(), localToLevelTarget);
+                groomedToElement = workspace.getElementByReference(groomedToReference);
+            }
+            val groomedToLevel = Level.from(groomedToReference);
+
+            val groomedKey = String.format("%s -> %s", groomedFromReference, groomedToReference);
+            val groomedLinkBuilder = GroomedLink
+                .builder()
+                .direction(direction)
+                .fromReference(groomedFromReference)
+                .fromElement(groomedFromElement)
+                .fromLevel(groomedFromLevel)
+                .toReference(groomedToReference)
+                .toElement(groomedToElement)
+                .toLevel(groomedToLevel);
+
+            groomedLinks.computeIfAbsent(groomedKey, s -> groomedLinkBuilder.build());
+
+            val isSynthetic = fromLevelIsUpper || toLevelIsUpper;
+            fillGroomedLinkRelationships(groomedLinks, groomedKey, metaLink, isSynthetic);
+        });
+
+        return new HashSet<>(groomedLinks.values());
     }
 }

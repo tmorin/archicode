@@ -14,6 +14,11 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class Styles {
 
+    @Singular
+    @JsonDeserialize(as = LinkedHashMap.class)
+    @JsonProperty("by-tags")
+    Map<String, Style> byTags;
+
     @Value
     @Builder
     @Jacksonized
@@ -36,9 +41,4 @@ public class Styles {
 
         boolean shadowing;
     }
-
-    @Singular
-    @JsonDeserialize(as = LinkedHashMap.class)
-    @JsonProperty("by-tags")
-    Map<String, Style> byTags;
 }
