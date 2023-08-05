@@ -4,6 +4,7 @@ import io.morin.archicode.context.ContextFactory;
 import io.morin.archicode.context.Item;
 import io.morin.archicode.element.application.Parent;
 import io.morin.archicode.rendering.Renderer;
+import io.morin.archicode.view.DeepView;
 import io.morin.archicode.view.DetailedView;
 import io.morin.archicode.view.OverviewView;
 import io.morin.archicode.view.View;
@@ -92,6 +93,21 @@ public class RenderCommand {
                     )
                     .build();
                 views.add(overviewElementView);
+
+                val deepView = DeepView
+                    .builder()
+                    .element(reference)
+                    .viewId(String.format("%s_%s", reference.replace("/", "_"), "deep"))
+                    .description(
+                        String.format(
+                            "%s - %s - %s",
+                            Item.Kind.from(element).getLabel(),
+                            element.getName(),
+                            workspace.getSettings().getViews().getLabels().getDeep()
+                        )
+                    )
+                    .build();
+                views.add(deepView);
 
                 if (element instanceof Parent<?> parentElement && (!parentElement.getElements().isEmpty())) {
                     val detailedElementView = DetailedView
