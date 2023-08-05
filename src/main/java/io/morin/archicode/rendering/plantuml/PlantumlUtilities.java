@@ -1,7 +1,7 @@
 package io.morin.archicode.rendering.plantuml;
 
-import io.morin.archicode.context.Item;
-import io.morin.archicode.context.Link;
+import io.morin.archicode.viewpoint.Item;
+import io.morin.archicode.viewpoint.Link;
 import java.util.Optional;
 import lombok.experimental.UtilityClass;
 import lombok.val;

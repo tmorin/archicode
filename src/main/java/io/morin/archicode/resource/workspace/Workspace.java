@@ -5,7 +5,7 @@ import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.ApplicationElement;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.deployment.Deployment;
-import io.morin.archicode.resource.view.ViewResource;
+import io.morin.archicode.resource.view.View;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
@@ -30,7 +30,7 @@ public class Workspace {
     Deployment deployment = Deployment.builder().build();
 
     @Singular
-    Set<ViewResource> views;
+    Set<View> views;
 
     @Builder.Default
     Settings settings = Settings.builder().build();

@@ -1,6 +1,6 @@
 package io.morin.archicode.rendering;
 
-import io.morin.archicode.context.Context;
+import io.morin.archicode.viewpoint.Viewpoint;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.io.FileOutputStream;
 import java.nio.file.Path;
@@ -21,13 +21,13 @@ public class Renderer {
     RendererFactoryRepository rendererFactoryRepository;
 
     @SneakyThrows
-    public void render(Context context, String rendererName, Path outputDirPath) {
+    public void render(Viewpoint viewpoint, String rendererName, Path outputDirPath) {
         val rendererFactory = rendererFactoryRepository.getRenderFactory(rendererName);
 
         val outputFilePath = Paths.get(
             outputDirPath.toString(),
             rendererFactory.getDirectory(),
-            String.format("%s.%s", context.getView().getViewId(), rendererFactory.getExtension())
+            String.format("%s.%s", viewpoint.getView().getViewId(), rendererFactory.getExtension())
         );
 
         if (outputFilePath.toFile().getParentFile().mkdirs()) {
@@ -36,7 +36,7 @@ public class Renderer {
 
         val viewRenderer = rendererFactory.createViewRenderer();
         try (val oStream = new FileOutputStream(outputFilePath.toFile())) {
-            viewRenderer.render(context, oStream);
+            viewRenderer.render(viewpoint, oStream);
         }
     }
 }

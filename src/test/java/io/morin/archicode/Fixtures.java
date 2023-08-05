@@ -1,9 +1,9 @@
 package io.morin.archicode;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.resource.element.application.*;
 import io.morin.archicode.resource.element.application.System;
-import io.morin.archicode.resource.view.DetailedView;
-import io.morin.archicode.resource.view.OverviewView;
+import io.morin.archicode.resource.view.View;
 import io.morin.archicode.resource.workspace.Workspace;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
@@ -12,6 +12,7 @@ import lombok.val;
 @UtilityClass
 public class Fixtures {
 
+    static ObjectMapper objectMapper = new ObjectMapper();
     public static final System system_a_a = System
         .builder()
         .id("system_a_a")
@@ -44,22 +45,41 @@ public class Fixtures {
         .name("Solution#C")
         .description("label of Solution#C")
         .build();
-    public static final OverviewView view_solution_a_overview = OverviewView
-        .builder()
-        .viewId("view_solution_a_overview")
-        .element("solution_a")
-        .build();
-    public static final DetailedView view_solution_a_detailed = DetailedView
-        .builder()
-        .viewId("view_solution_a_detailed")
-        .element("solution_a")
-        .build();
+    public static final View view_solution_a_overview = createOverviewView("view_solution_a_overview", "solution_a");
+    public static final View view_solution_a_detailed = createDetailedView("view_solution_a_detailed", "solution_a");
     public static final Workspace workspace_a = Workspace
         .builder()
         .application(Application.builder().elements(Set.of(solution_a, solution_b, solution_c)).build())
         .view(view_solution_a_overview)
         .view(view_solution_a_detailed)
         .build();
+
+    public View createOverviewView(String viewId, String reference) {
+        return View
+            .builder()
+            .viewpoint("overview")
+            .viewId(viewId)
+            .properties(objectMapper.createObjectNode().put("element", reference))
+            .build();
+    }
+
+    public View createDetailedView(String viewId, String reference) {
+        return View
+            .builder()
+            .viewpoint("detailed")
+            .viewId(viewId)
+            .properties(objectMapper.createObjectNode().put("element", reference))
+            .build();
+    }
+
+    public View createDeepView(String viewId, String reference) {
+        return View
+            .builder()
+            .viewpoint("deep")
+            .viewId(viewId)
+            .properties(objectMapper.createObjectNode().put("element", reference))
+            .build();
+    }
 
     /**
      * sol_a.sys_aa.con_aaa -> sol_a.sys_ab.con_aba
