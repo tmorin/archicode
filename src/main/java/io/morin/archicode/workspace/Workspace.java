@@ -21,14 +21,14 @@ import lombok.val;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class Workspace {
 
-    @Delegate
-    RawWorkspace rawWorkspace;
-
     @Builder.Default
     public ElementIndex appIndex = ElementIndex.builder().build();
 
     @Builder.Default
     public ViewIndex viewIndex = ViewIndex.builder().build();
+
+    @Delegate
+    RawWorkspace rawWorkspace;
 
     public Optional<String> findParentReference(String reference) {
         val parts = reference.split("\\.");

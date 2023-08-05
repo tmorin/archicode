@@ -5,7 +5,6 @@ import io.morin.archicode.element.Element;
 import io.morin.archicode.element.application.Application;
 import io.morin.archicode.element.application.ApplicationElement;
 import io.morin.archicode.element.application.Parent;
-import io.morin.archicode.manifest.Candidate;
 import io.morin.archicode.manifest.ResourceParser;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
@@ -26,7 +25,7 @@ public class WorkspaceFactory {
     MapperFactory mapperFactory;
     ResourceParser resourceParser;
 
-    private static void index(Candidate appCandidate, ElementIndex appElementIndex) {
+    private static void index(ResourceParser.Candidate appCandidate, ElementIndex appElementIndex) {
         Optional
             .ofNullable(appCandidate.getParent())
             .ifPresentOrElse(
@@ -94,7 +93,7 @@ public class WorkspaceFactory {
     }
 
     @SneakyThrows
-    public Workspace create(RawWorkspace rawWorkspace, Map<Class<?>, Set<Candidate>> manifests) {
+    public Workspace create(RawWorkspace rawWorkspace, Map<Class<?>, Set<ResourceParser.Candidate>> manifests) {
         val appIndex = ElementIndex.builder().build();
 
         log.debug("index the elements of the workspace");
@@ -105,7 +104,7 @@ public class WorkspaceFactory {
 
         log.debug("index the elements discovered in the manifests");
         val appCandidates = manifests.getOrDefault(Application.class, Set.of());
-        val indexedAppCandidates = new HashSet<Candidate>();
+        val indexedAppCandidates = new HashSet<ResourceParser.Candidate>();
         for (val appCandidate : appCandidates) {
             index(appCandidate, appIndex);
             Workspace.Utilities.walkDown(

@@ -8,12 +8,10 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
 @Slf4j
 @ApplicationScoped
@@ -61,5 +59,22 @@ public class ResourceParser {
         }
 
         return map;
+    }
+
+    @Value
+    @Builder
+    @Jacksonized
+    @ToString(onlyExplicitlyIncluded = true)
+    public static class Candidate {
+
+        String parent;
+
+        @NonNull
+        @ToString.Include
+        String reference;
+
+        @NonNull
+        @ToString.Include
+        Element element;
     }
 }
