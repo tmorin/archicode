@@ -1,23 +1,20 @@
 package io.morin.archicode.viewpoint;
 
 import io.morin.archicode.workspace.Workspace;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Set;
 import java.util.stream.Collectors;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
-@ApplicationScoped
+@Slf4j
+@Builder
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-@Slf4j
-public class IngressMetaLinkFinder implements MetaLinkFinder {
+public class MetaLinkFinderForIngress implements MetaLinkFinder {
 
     @Override
-    public Set<MetaLink> find(Workspace workspace, String toReference) {
+    public Set<MetaLink> find(@NonNull Workspace workspace, @NonNull String toReference) {
         val fromElements = workspace.appIndex.searchFromElements(toReference);
         return fromElements
             .stream()

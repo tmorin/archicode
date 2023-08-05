@@ -1,19 +1,19 @@
-package io.morin.archicode.viewpoint.overview;
+package io.morin.archicode.viewpoint;
 
-import io.morin.archicode.viewpoint.Level;
-import io.morin.archicode.viewpoint.MetaLink;
-import io.morin.archicode.viewpoint.overview.GroomedLink.Direction;
+import io.morin.archicode.viewpoint.GroomedLink.Direction;
 import io.morin.archicode.workspace.Workspace;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
-@ApplicationScoped
+@Slf4j
+@Builder
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class MetaLinkGroomer {

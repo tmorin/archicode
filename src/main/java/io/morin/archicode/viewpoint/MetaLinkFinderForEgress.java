@@ -1,19 +1,18 @@
 package io.morin.archicode.viewpoint;
 
 import io.morin.archicode.workspace.Workspace;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
-import lombok.val;
+import lombok.extern.slf4j.Slf4j;
 
-@ApplicationScoped
+@Slf4j
+@Builder
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-public class EgressMetaLinkFinder implements MetaLinkFinder {
+public class MetaLinkFinderForEgress implements MetaLinkFinder {
 
     /**
      * Find all associations where the reference or one of its descendant is the source of a relationship.
@@ -23,7 +22,7 @@ public class EgressMetaLinkFinder implements MetaLinkFinder {
      * @return the result
      */
     @Override
-    public Set<MetaLink> find(Workspace workspace, String viewReference) {
+    public Set<MetaLink> find(@NonNull Workspace workspace, @NonNull String viewReference) {
         val metaLinks = new HashSet<MetaLink>();
         io.morin.archicode.resource.workspace.Workspace.Utilities.walkDown(
             workspace.appIndex.getElementByReference(viewReference),

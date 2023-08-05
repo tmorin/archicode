@@ -4,33 +4,34 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.*;
 import io.morin.archicode.workspace.Workspace;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
-@ApplicationScoped
+@Slf4j
+@Builder
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-@Slf4j
-public class DeepViewpointFactory {
+public class DeepViewpointFactory implements ViewpointFactory {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    @NonNull
+    ObjectMapper objectMapper;
 
-    EgressMetaLinkFinder egressMetaLinkFinder;
-    IngressMetaLinkFinder ingressMetaLinkFinder;
+    @NonNull
+    MetaLinkFinderForEgress metaLinkFinderForEgress;
+
+    @NonNull
+    MetaLinkFinderForIngress metaLinkFinderForIngress;
 
     @SneakyThrows
-    public Viewpoint create(Workspace workspace, View view) {
+    @Override
+    public Viewpoint create(@NonNull Workspace workspace, @NonNull View view) {
         log.debug("create viewpoint for {}", view);
 
-        val properties = OBJECT_MAPPER.readValue(
+        val properties = objectMapper.readValue(
             Objects.requireNonNull(view.getProperties().toString()),
             DeepViewProperties.class
         );
@@ -43,8 +44,8 @@ public class DeepViewpointFactory {
                 workspace.appIndex.streamDescendants(viewReference).map(Map.Entry::getKey)
             )
             .flatMap(reference -> {
-                val egressMetaLinks = egressMetaLinkFinder.find(workspace, reference);
-                val ingressMetaLinks = ingressMetaLinkFinder.find(workspace, reference);
+                val egressMetaLinks = metaLinkFinderForEgress.find(workspace, reference);
+                val ingressMetaLinks = metaLinkFinderForIngress.find(workspace, reference);
                 return Stream.concat(egressMetaLinks.stream(), ingressMetaLinks.stream());
             })
             .collect(Collectors.toSet());

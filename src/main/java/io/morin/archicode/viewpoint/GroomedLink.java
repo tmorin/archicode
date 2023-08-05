@@ -1,8 +1,7 @@
-package io.morin.archicode.viewpoint.overview;
+package io.morin.archicode.viewpoint;
 
 import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Relationship;
-import io.morin.archicode.viewpoint.Level;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
@@ -54,7 +53,7 @@ public class GroomedLink {
         SYNTHETIC
     }
 
-    enum Direction {
+    public enum Direction {
         INGRESS,
         EGRESS
     }

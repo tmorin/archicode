@@ -1,9 +1,9 @@
 package io.morin.archicode.rendering.plantuml;
 
-import io.morin.archicode.rendering.RendererDefinition;
 import io.morin.archicode.rendering.ViewRenderer;
+import io.morin.archicode.rendering.ViewRendererService;
 
-public class PlantumlRendererDefinition implements RendererDefinition {
+public class PlantumlViewRendererService implements ViewRendererService {
 
     private static final String NAME = "plantuml";
     private static final String DIRECTORY = "plantuml";

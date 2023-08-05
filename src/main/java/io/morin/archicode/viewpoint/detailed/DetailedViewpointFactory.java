@@ -7,27 +7,26 @@ import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
+import io.morin.archicode.viewpoint.ViewpointFactory;
 import io.morin.archicode.viewpoint.overview.OverviewViewpointFactory;
 import io.morin.archicode.workspace.Workspace;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.util.*;
 import java.util.stream.Collectors;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
-@ApplicationScoped
+@Slf4j
+@Builder
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-@Slf4j
-public class DetailedViewpointFactory {
+public class DetailedViewpointFactory implements ViewpointFactory {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    @NonNull
+    ObjectMapper objectMapper;
 
-    OverviewViewpointFactory contextFactory;
+    @NonNull
+    OverviewViewpointFactory overviewViewpointFactory;
 
     private static void mergeCandidateItem(HashMap<String, Item> cache, Set<Item> finalChildren, Item candidateItem) {
         if (!cache.containsKey(candidateItem.getItemId())) {
@@ -46,10 +45,11 @@ public class DetailedViewpointFactory {
     }
 
     @SneakyThrows
-    public Viewpoint create(Workspace workspace, View view) {
+    @Override
+    public Viewpoint create(@NonNull Workspace workspace, @NonNull View view) {
         log.debug("create viewpoint for {}", view);
 
-        val properties = OBJECT_MAPPER.readValue(
+        val properties = objectMapper.readValue(
             Objects.requireNonNull(view.getProperties().toString()),
             DetailedViewProperties.class
         );
@@ -69,13 +69,13 @@ public class DetailedViewpointFactory {
             .stream()
             .map(workspace.appIndex::getReferenceByElement)
             .map(reference ->
-                contextFactory.create(
+                overviewViewpointFactory.create(
                     workspace,
                     View
                         .builder()
                         .viewpoint("overview")
                         .viewId(UUID.randomUUID().toString())
-                        .properties(OBJECT_MAPPER.createObjectNode().put("element", reference))
+                        .properties(objectMapper.createObjectNode().put("element", reference))
                         .build()
                 )
             )

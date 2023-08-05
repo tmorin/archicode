@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.morin.archicode.Fixtures;
 import io.morin.archicode.resource.workspace.Workspace;
+import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -17,13 +18,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusTest
 @Slf4j
-class OverviewViewpointFactoryTest {
+class OverviewViewpointServiceRepositoryTest {
 
     @Inject
     WorkspaceFactory workspaceFactory;
 
     @Inject
-    OverviewViewpointFactory contextFactory;
+    ViewpointServiceRepository viewpointServiceRepository;
 
     @ParameterizedTest
     @ValueSource(strings = { "solution_a", "solution_a.system_a", "solution_a.system_a.container_a" })
@@ -33,7 +34,7 @@ class OverviewViewpointFactoryTest {
 
         val view = Fixtures.createOverviewView("shouldCreate", viewReference);
 
-        val context = contextFactory.create(workspace, view);
+        val context = viewpointServiceRepository.get("overview").createViewpointFactory().create(workspace, view);
         assertEquals(3, context.getItems().size());
         assertEquals(2, context.getLinks().size());
         assertEquals(
@@ -66,7 +67,7 @@ class OverviewViewpointFactoryTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalXgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Collections.emptyMap());
         val view = Fixtures.createOverviewView("shouldCreateInternalLevel2", viewReference);
-        val context = contextFactory.create(workspace, view);
+        val context = viewpointServiceRepository.get("overview").createViewpointFactory().create(workspace, view);
         assertEquals(1, context.getItems().size());
         assertEquals(4, context.getLinks().size());
         assertTrue(
@@ -109,7 +110,7 @@ class OverviewViewpointFactoryTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Collections.emptyMap());
         val view = Fixtures.createOverviewView("shouldCreateInternalLevel1", viewReference);
-        val context = contextFactory.create(workspace, view);
+        val context = viewpointServiceRepository.get("overview").createViewpointFactory().create(workspace, view);
         assertEquals(1, context.getItems().size());
         assertTrue(
             context
