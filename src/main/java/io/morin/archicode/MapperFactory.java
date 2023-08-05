@@ -1,11 +1,11 @@
-package io.morin.archicode.workspace;
+package io.morin.archicode;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
-import io.morin.archicode.ArchicodeException;
+import io.morin.archicode.manifest.ResourceFormat;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
 import lombok.AccessLevel;
@@ -16,17 +16,17 @@ import lombok.val;
 @ApplicationScoped
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-public class WorkspaceMapperFactory {
+public class MapperFactory {
 
     YAMLMapper yamlMapper = YAMLMapper.builder().serializationInclusion(JsonInclude.Include.NON_EMPTY).build();
     TomlMapper tomlMapper = TomlMapper.builder().serializationInclusion(JsonInclude.Include.NON_EMPTY).build();
     JsonMapper jsonMapper = JsonMapper.builder().serializationInclusion(JsonInclude.Include.NON_EMPTY).build();
 
     public ObjectMapper create(Path path) {
-        val workspaceFormat = WorkspaceFormat
+        val format = ResourceFormat
             .resolve(path)
-            .orElseThrow(() -> new ArchicodeException("The workspace file `%s` doesn't match a handled format.", path));
-        switch (workspaceFormat) {
+            .orElseThrow(() -> new ArchiCodeException("The path `%s` doesn't match a handled format.", path));
+        switch (format) {
             case YAML -> {
                 return yamlMapper;
             }
@@ -36,7 +36,7 @@ public class WorkspaceMapperFactory {
             case JSON -> {
                 return jsonMapper;
             }
-            default -> throw new IllegalStateException("Unexpected value: " + workspaceFormat);
+            default -> throw new IllegalStateException("Unexpected value: " + format);
         }
     }
 }

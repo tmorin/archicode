@@ -5,6 +5,7 @@ import io.morin.archicode.element.application.System;
 import io.morin.archicode.view.DetailedView;
 import io.morin.archicode.view.OverviewView;
 import io.morin.archicode.workspace.RawWorkspace;
+import java.util.Set;
 import lombok.experimental.UtilityClass;
 import lombok.val;
 
@@ -20,13 +21,13 @@ public class Fixtures {
         val rel_to_con_aba = Relationship.builder().destination("sol_a.sys_ab.con_aba").build();
 
         val con_aaa = Container.builder().id("con_aaa").relationship(rel_to_con_aba).build();
-        val sys_aa = System.builder().id("sys_aa").element(con_aaa).build();
+        val sys_aa = System.builder().id("sys_aa").elements(Set.of(con_aaa)).build();
 
         val con_aba = Container.builder().id("con_aba").build();
-        val sys_ab = System.builder().id("sys_ab").element(con_aba).build();
+        val sys_ab = System.builder().id("sys_ab").elements(Set.of(con_aba)).build();
 
-        val sol_a = Solution.builder().id("sol_a").element(sys_aa).element(sys_ab).build();
-        applicationBuilder.element(sol_a);
+        val sol_a = Solution.builder().id("sol_a").elements(Set.of(sys_aa, sys_ab)).build();
+        applicationBuilder.elements(Set.of(sol_a));
 
         return applicationBuilder;
     }
@@ -40,23 +41,22 @@ public class Fixtures {
         val applicationBuilder = Application.builder();
 
         val container_b = Container.builder().id("container_b").build();
-        val system_b = System.builder().id("system_b").element(container_b).build();
-        val solution_b = Solution.builder().id("solution_b").element(system_b).build();
-        applicationBuilder.element(solution_b);
+        val system_b = System.builder().id("system_b").elements(Set.of(container_b)).build();
+        val solution_b = Solution.builder().id("solution_b").elements(Set.of(system_b)).build();
 
         // solution_a.system_a.container_a -> solution_b.system_b.container_b
         val relationship_from_a = Relationship.builder().destination("solution_b.system_b.container_b").build();
         val container_a = Container.builder().id("container_a").relationship(relationship_from_a).build();
-        val system_a = System.builder().id("system_a").element(container_a).build();
-        val solution_a = Solution.builder().id("solution_a").element(system_a).build();
-        applicationBuilder.element(solution_a);
+        val system_a = System.builder().id("system_a").elements(Set.of(container_a)).build();
+        val solution_a = Solution.builder().id("solution_a").elements(Set.of(system_a)).build();
 
         // solution_c.system_c.container_c -> solution_a.system_a.container_a
         val relationship_to_a = Relationship.builder().destination("solution_a.system_a.container_a").build();
         val container_c = Container.builder().id("container_c").relationship(relationship_to_a).build();
-        val system_c = System.builder().id("system_c").element(container_c).build();
-        val solution_c = Solution.builder().id("solution_c").element(system_c).build();
-        applicationBuilder.element(solution_c);
+        val system_c = System.builder().id("system_c").elements(Set.of(container_c)).build();
+        val solution_c = Solution.builder().id("solution_c").elements(Set.of(system_c)).build();
+
+        applicationBuilder.elements(Set.of(solution_a, solution_b, solution_c));
 
         return applicationBuilder;
     }
@@ -68,16 +68,16 @@ public class Fixtures {
         val applicationBuilder = Application.builder();
 
         val container_a = Container.builder().id("container_a").build();
-        val system_a = System.builder().id("system_a").element(container_a).build();
-        val solution_a = Solution.builder().id("solution_a").element(system_a).build();
-        applicationBuilder.element(solution_a);
+        val system_a = System.builder().id("system_a").elements(Set.of(container_a)).build();
+        val solution_a = Solution.builder().id("solution_a").elements(Set.of(system_a)).build();
 
         // solution_c.system_c.container_c -> solution_a.system_a.container_a
         val relationship_to_a = Relationship.builder().destination("solution_a.system_a.container_a").build();
         val container_c = Container.builder().id("container_c").relationship(relationship_to_a).build();
-        val system_c = System.builder().id("system_c").element(container_c).build();
-        val solution_c = Solution.builder().id("solution_c").element(system_c).build();
-        applicationBuilder.element(solution_c);
+        val system_c = System.builder().id("system_c").elements(Set.of(container_c)).build();
+        val solution_c = Solution.builder().id("solution_c").elements(Set.of(system_c)).build();
+
+        applicationBuilder.elements(Set.of(solution_a, solution_c));
 
         return applicationBuilder;
     }
@@ -89,16 +89,16 @@ public class Fixtures {
         val applicationBuilder = Application.builder();
 
         val container_b = Container.builder().id("container_b").build();
-        val system_b = System.builder().id("system_b").element(container_b).build();
-        val solution_b = Solution.builder().id("solution_b").element(system_b).build();
-        applicationBuilder.element(solution_b);
+        val system_b = System.builder().id("system_b").elements(Set.of(container_b)).build();
+        val solution_b = Solution.builder().id("solution_b").elements(Set.of(system_b)).build();
 
         // solution_a.system_a.container_a -> solution_b.system_b.container_b
         val relationship_from_a = Relationship.builder().destination("solution_b.system_b.container_b").build();
         val container_a = Container.builder().id("container_a").relationship(relationship_from_a).build();
-        val system_a = System.builder().id("system_a").element(container_a).build();
-        val solution_a = Solution.builder().id("solution_a").element(system_a).build();
-        applicationBuilder.element(solution_a);
+        val system_a = System.builder().id("system_a").elements(Set.of(container_a)).build();
+        val solution_a = Solution.builder().id("solution_a").elements(Set.of(system_a)).build();
+
+        applicationBuilder.elements(Set.of(solution_a, solution_b));
 
         return applicationBuilder;
     }
@@ -128,13 +128,13 @@ public class Fixtures {
             .relationship(rel_to_con_aba)
             .build();
         val con_aab = Container.builder().id("con_aab").relationship(rel_from_con_aab).build();
-        val sys_aa = System.builder().id("sys_aa").element(con_aaa).element(con_aab).build();
+        val sys_aa = System.builder().id("sys_aa").elements(Set.of(con_aaa, con_aab)).build();
 
         val con_aba = Container.builder().id("con_aba").relationship(rel_from_con_aba).build();
-        val sys_ab = System.builder().id("sys_ab").element(con_aba).build();
+        val sys_ab = System.builder().id("sys_ab").elements(Set.of(con_aba)).build();
 
-        val sol_a = Solution.builder().id("sol_a").element(sys_aa).element(sys_ab).build();
-        applicationBuilder.element(sol_a);
+        val sol_a = Solution.builder().id("sol_a").elements(Set.of(sys_aa, sys_ab)).build();
+        applicationBuilder.elements(Set.of(sol_a));
 
         return applicationBuilder;
     }
@@ -157,13 +157,13 @@ public class Fixtures {
             .relationship(rel_to_con_aba)
             .build();
         val con_aab = Container.builder().id("con_aab").build();
-        val sys_aa = System.builder().id("sys_aa").element(con_aaa).element(con_aab).build();
+        val sys_aa = System.builder().id("sys_aa").elements(Set.of(con_aaa, con_aab)).build();
 
         val con_aba = Container.builder().id("con_aba").build();
-        val sys_ab = System.builder().id("sys_ab").element(con_aba).build();
+        val sys_ab = System.builder().id("sys_ab").elements(Set.of(con_aba)).build();
 
-        val sol_a = Solution.builder().id("sol_a").element(sys_aa).element(sys_ab).build();
-        applicationBuilder.element(sol_a);
+        val sol_a = Solution.builder().id("sol_a").elements(Set.of(sys_aa, sys_ab)).build();
+        applicationBuilder.elements(Set.of(sol_a));
 
         return applicationBuilder;
     }
@@ -181,13 +181,13 @@ public class Fixtures {
 
         val con_aaa = Container.builder().id("con_aaa").build();
         val con_aab = Container.builder().id("con_aab").relationship(rel_from_con_aab).build();
-        val sys_aa = System.builder().id("sys_aa").element(con_aaa).element(con_aab).build();
+        val sys_aa = System.builder().id("sys_aa").elements(Set.of(con_aaa, con_aab)).build();
 
         val con_aba = Container.builder().id("con_aba").relationship(rel_from_con_aba).build();
-        val sys_ab = System.builder().id("sys_ab").element(con_aba).build();
+        val sys_ab = System.builder().id("sys_ab").elements(Set.of(con_aba)).build();
 
-        val sol_a = Solution.builder().id("sol_a").element(sys_aa).element(sys_ab).build();
-        applicationBuilder.element(sol_a);
+        val sol_a = Solution.builder().id("sol_a").elements(Set.of(sys_aa, sys_ab)).build();
+        applicationBuilder.elements(Set.of(sol_a));
 
         return applicationBuilder;
     }
@@ -209,8 +209,7 @@ public class Fixtures {
         .builder()
         .id("solution_a")
         .name("Solution#A")
-        .element(system_a_a)
-        .element(system_a_b)
+        .elements(Set.of(system_a_a, system_a_b))
         .relationship(Relationship.builder().destination("solution_b").label("uses").build())
         .build();
     public static final Solution solution_b = Solution
@@ -237,7 +236,7 @@ public class Fixtures {
         .build();
     public static final RawWorkspace workspace_a = RawWorkspace
         .builder()
-        .application(Application.builder().element(solution_a).element(solution_b).element(solution_c).build())
+        .application(Application.builder().elements(Set.of(solution_a, solution_b, solution_c)).build())
         .view(view_solution_a_overview)
         .view(view_solution_a_detailed)
         .build();

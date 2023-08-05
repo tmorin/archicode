@@ -1,6 +1,6 @@
 package io.morin.archicode.workspace;
 
-import io.morin.archicode.ArchicodeException;
+import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.element.Element;
 import io.morin.archicode.element.application.Application;
 import io.morin.archicode.element.application.ApplicationElement;
@@ -46,7 +46,7 @@ public class Workspace {
     }
 
     public View getView(String viewId) {
-        return searchView(viewId).orElseThrow(() -> new ArchicodeException("unable to find the view %s", viewId));
+        return searchView(viewId).orElseThrow(() -> new ArchiCodeException("unable to find the view %s", viewId));
     }
 
     public Optional<Element> searchElement(String reference) {
@@ -61,7 +61,7 @@ public class Workspace {
      */
     public Element getElementByReference(String reference) {
         return searchElement(reference)
-            .orElseThrow(() -> new ArchicodeException("unable to find the element %s", reference));
+            .orElseThrow(() -> new ArchiCodeException("unable to find the element %s", reference));
     }
 
     /**
@@ -116,7 +116,7 @@ public class Workspace {
             }
         }
 
-        private void walkDown(Element element, BiConsumer<Element, Element> consumer) {
+        public void walkDown(Element element, BiConsumer<Element, Element> consumer) {
             if (element instanceof Parent<?>) {
                 for (Element child : ((Parent<?>) element).getElements()) {
                     consumer.accept(element, child);

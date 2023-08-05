@@ -7,6 +7,7 @@ import io.morin.archicode.workspace.RawWorkspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ class MetaLinkGroomerTest {
         val viewReference = "solution_a.system_a";
 
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngress().build()).build();
-        val workspace = workspaceFactory.create(rawWorkspace);
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val ingressMetaLinks = ingressMetaLinkFinder.find(workspace, viewReference);
         ingressMetaLinks.forEach(ingressMetaLink -> log.info("ingressMetaLink {}", ingressMetaLink));
@@ -50,7 +51,7 @@ class MetaLinkGroomerTest {
         val viewReference = "solution_a.system_a";
 
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithEgress().build()).build();
-        val workspace = workspaceFactory.create(rawWorkspace);
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val egressMetaLinks = egressMetaLinkFinder.find(workspace, viewReference);
         egressMetaLinks.forEach(egressMetaLink -> log.info("egressMetaLink {}", egressMetaLink));
@@ -68,7 +69,7 @@ class MetaLinkGroomerTest {
         val viewReference = "sol_a.sys_aa.con_aaa";
 
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
-        val workspace = workspaceFactory.create(rawWorkspace);
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val egressMetaLinks = egressMetaLinkFinder.find(workspace, viewReference);
         egressMetaLinks.forEach(egressMetaLink -> log.info("egressMetaLink {}", egressMetaLink));
@@ -102,7 +103,7 @@ class MetaLinkGroomerTest {
         val viewReference = "sol_a.sys_aa.con_aaa";
 
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
-        val workspace = workspaceFactory.create(rawWorkspace);
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val ingressMetaLinks = ingressMetaLinkFinder.find(workspace, viewReference);
         ingressMetaLinks.forEach(ingressMetaLink -> log.info("ingressMetaLink {}", ingressMetaLink));

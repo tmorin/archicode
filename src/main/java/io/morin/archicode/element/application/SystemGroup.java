@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.morin.archicode.element.AbstractElement;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import lombok.Singular;
+import lombok.Builder;
 import lombok.ToString;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
@@ -16,7 +16,7 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class SystemGroup extends AbstractElement implements Parent<SystemElement>, SystemElement {
 
-    @Singular
+    @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<SystemElement> elements;
+    Set<SystemElement> elements = new LinkedHashSet<>();
 }

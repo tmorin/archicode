@@ -1,6 +1,6 @@
 package io.morin.archicode.context.detailed;
 
-import io.morin.archicode.ArchicodeException;
+import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.context.Context;
 import io.morin.archicode.context.Item;
 import io.morin.archicode.context.Link;
@@ -53,7 +53,7 @@ public class DetailedContextFactory {
         // leave early if the element of the view is not a parent
         // because there is nothing inside to inspect
         if (!(parentCandidate instanceof Parent<?> parent)) {
-            throw new ArchicodeException("the element %s is not a parent one", parentCandidate);
+            throw new ArchiCodeException("the element %s is not a parent one", parentCandidate);
         }
 
         // foreach child of the view item, an Overview View is built

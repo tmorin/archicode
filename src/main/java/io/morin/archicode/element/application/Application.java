@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Builder;
-import lombok.Singular;
 import lombok.ToString;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -15,7 +14,7 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class Application implements Parent<ApplicationElement> {
 
-    @Singular
+    @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<ApplicationElement> elements;
+    Set<ApplicationElement> elements = new LinkedHashSet<>();
 }

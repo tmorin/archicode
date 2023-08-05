@@ -8,6 +8,7 @@ import io.morin.archicode.workspace.RawWorkspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class DetailedContextFactoryTest {
         val viewReference = "solution_a.system_a";
 
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
-        val workspace = workspaceFactory.create(rawWorkspace);
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val view = DetailedView.builder().viewId("shouldCreate").element(viewReference).build();
 

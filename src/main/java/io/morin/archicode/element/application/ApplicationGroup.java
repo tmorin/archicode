@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.morin.archicode.element.AbstractElement;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import lombok.Singular;
+import lombok.Builder;
 import lombok.ToString;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
@@ -16,7 +16,7 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class ApplicationGroup extends AbstractElement implements Parent<ApplicationElement>, ApplicationElement {
 
-    @Singular
+    @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<ApplicationElement> elements;
+    Set<ApplicationElement> elements = new LinkedHashSet<>();
 }
