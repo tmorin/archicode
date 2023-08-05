@@ -75,6 +75,9 @@ public class PlantumlViewRenderer implements ViewRenderer {
             outputStreamWriter.write("@startuml");
             outputStreamWriter.write(System.lineSeparator());
 
+            outputStreamWriter.write(String.format("title %s", context.getView().getDescription()));
+            outputStreamWriter.write(System.lineSeparator());
+
             outputStreamWriter.write("skinparam defaultTextAlignment center");
             outputStreamWriter.write(System.lineSeparator());
             outputStreamWriter.write("skinparam wrapWidth 200");

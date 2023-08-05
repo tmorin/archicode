@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 import lombok.extern.jackson.Jacksonized;
 
 @Value
@@ -34,13 +35,18 @@ public class Item {
     @Builder.Default
     Set<Item> children = new HashSet<>();
 
+    @RequiredArgsConstructor
+    @Getter
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     public enum Kind {
-        PERSON,
-        SOLUTION,
-        SYSTEM,
-        CONTAINER,
-        COMPONENT,
-        GROUP;
+        PERSON("Person"),
+        SOLUTION("Solution"),
+        SYSTEM("System"),
+        CONTAINER("Container"),
+        COMPONENT("Component"),
+        GROUP("Group");
+
+        String label;
 
         public static Kind from(@NonNull Element element) {
             if (element instanceof Component) {

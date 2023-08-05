@@ -1,6 +1,7 @@
 package io.morin.archicode.cli;
 
 import io.morin.archicode.context.ContextFactory;
+import io.morin.archicode.context.Item;
 import io.morin.archicode.element.application.Parent;
 import io.morin.archicode.rendering.Renderer;
 import io.morin.archicode.view.DetailedView;
@@ -74,20 +75,37 @@ public class RenderCommand {
             .listAllElementReferences(element -> element instanceof Parent<?>)
             .stream()
             .flatMap(reference -> {
+                val element = workspace.appIndex.getElementByReference(reference);
+
                 val views = new HashSet<View>();
                 val overviewElementView = OverviewView
                     .builder()
                     .element(reference)
                     .viewId(String.format("%s_%s", reference.replace("/", "_"), "overview"))
+                    .description(
+                        String.format(
+                            "%s - %s - %s",
+                            Item.Kind.from(element).getLabel(),
+                            element.getName(),
+                            workspace.getSettings().getViews().getLabels().getOverview()
+                        )
+                    )
                     .build();
                 views.add(overviewElementView);
 
-                val element = workspace.appIndex.getElementByReference(reference);
                 if (element instanceof Parent<?> parentElement && (!parentElement.getElements().isEmpty())) {
                     val detailedElementView = DetailedView
                         .builder()
                         .element(reference)
                         .viewId(String.format("%s_%s", reference.replace("/", "_"), "detailed"))
+                        .description(
+                            String.format(
+                                "%s - %s - %s",
+                                Item.Kind.from(element).getLabel(),
+                                element.getName(),
+                                workspace.getSettings().getViews().getLabels().getDetailed()
+                            )
+                        )
                         .build();
                     views.add(detailedElementView);
                 }
