@@ -19,18 +19,18 @@ public class IngressMetaLinkFinder implements MetaLinkFinder {
 
     @Override
     public Set<MetaLink> find(Workspace workspace, String toReference) {
-        val fromElements = workspace.searchFromElements(toReference);
+        val fromElements = workspace.appIndex.searchFromElements(toReference);
         return fromElements
             .stream()
             .flatMap(fromElement -> {
-                val fromReference = workspace.getReferenceByElement(fromElement);
+                val fromReference = workspace.appIndex.getReferenceByElement(fromElement);
                 val fromLevel = Level.from(fromReference);
                 return fromElement
                     .getRelationships()
                     .stream()
                     .filter(relationship -> relationship.getDestination().startsWith(toReference))
                     .map(relationship -> {
-                        val toElement = workspace.getElementByReference(relationship.getDestination());
+                        val toElement = workspace.appIndex.getElementByReference(relationship.getDestination());
                         val toLevel = Level.from(relationship.getDestination());
                         return MetaLink
                             .builder()

@@ -48,7 +48,7 @@ public class DetailedContextFactory {
     public Context create(Workspace workspace, DetailedView view) {
         log.debug("create context for {}", view);
 
-        val parentCandidate = workspace.getElementByReference(view.getElement());
+        val parentCandidate = workspace.appIndex.getElementByReference(view.getElement());
 
         // leave early if the element of the view is not a parent
         // because there is nothing inside to inspect
@@ -61,7 +61,7 @@ public class DetailedContextFactory {
         val childContexts = parent
             .getElements()
             .stream()
-            .map(workspace::getReferenceByElement)
+            .map(workspace.appIndex::getReferenceByElement)
             .map(reference ->
                 contextFactory.create(
                     workspace,

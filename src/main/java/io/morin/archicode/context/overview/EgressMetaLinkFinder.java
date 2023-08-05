@@ -27,16 +27,16 @@ public class EgressMetaLinkFinder implements MetaLinkFinder {
     public Set<MetaLink> find(Workspace workspace, String viewReference) {
         val metaLinks = new HashSet<MetaLink>();
         Workspace.Utilities.walkDown(
-            workspace.getElementByReference(viewReference),
+            workspace.appIndex.getElementByReference(viewReference),
             fromElement -> {
                 val elementMetaLinks = fromElement
                     .getRelationships()
                     .stream()
                     .map(relationship -> {
-                        val fromReference = workspace.getReferenceByElement(fromElement);
+                        val fromReference = workspace.appIndex.getReferenceByElement(fromElement);
                         val fromLevel = Level.from(fromReference);
                         val toReference = relationship.getDestination();
-                        val toElement = workspace.getElementByReference(toReference);
+                        val toElement = workspace.appIndex.getElementByReference(toReference);
                         val toLevel = Level.from(toReference);
                         return MetaLink
                             .builder()

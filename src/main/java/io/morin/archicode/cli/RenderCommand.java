@@ -65,12 +65,12 @@ public class RenderCommand {
 
         for (String viewId : viewIds) {
             log.info("render {}", viewId);
-            val view = workspace.getView(viewId);
+            val view = workspace.viewIndex.getView(viewId);
             val context = contextFactory.create(workspace, view);
             renderer.render(context, rendererName, outputDirPath);
         }
 
-        workspace
+        workspace.appIndex
             .listAllElementReferences(element -> element instanceof Parent<?>)
             .stream()
             .flatMap(reference -> {
@@ -82,7 +82,7 @@ public class RenderCommand {
                     .build();
                 views.add(overviewElementView);
 
-                val element = workspace.getElementByReference(reference);
+                val element = workspace.appIndex.getElementByReference(reference);
                 if (element instanceof Parent<?> parentElement && (!parentElement.getElements().isEmpty())) {
                     val detailedElementView = DetailedView
                         .builder()

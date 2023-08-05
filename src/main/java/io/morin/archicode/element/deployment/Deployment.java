@@ -5,7 +5,6 @@ import io.morin.archicode.element.application.Parent;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Builder;
-import lombok.Singular;
 import lombok.ToString;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -16,7 +15,7 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class Deployment implements Parent<DeploymentElement> {
 
-    @Singular
+    @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<DeploymentElement> elements;
+    Set<DeploymentElement> elements = new LinkedHashSet<>();
 }
