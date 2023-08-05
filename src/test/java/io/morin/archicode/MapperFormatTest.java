@@ -1,13 +1,12 @@
-package io.morin.archicode.workspace;
+package io.morin.archicode;
 
-import io.morin.archicode.MapperFormat;
 import io.quarkus.test.junit.QuarkusTest;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-class RawMapperFormatTest {
+class MapperFormatTest {
 
     @Test
     void resolve() {

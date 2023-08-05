@@ -30,14 +30,14 @@ public class DetailedViewpointFactory implements ViewpointFactory {
 
     private static void mergeCandidateItem(HashMap<String, Item> cache, Set<Item> finalChildren, Item candidateItem) {
         if (!cache.containsKey(candidateItem.getItemId())) {
-            // the candidate item is not yet handled
+            // the candidates item is not yet handled
             cache.put(candidateItem.getItemId(), candidateItem);
-            // therefore the candidate's children must be handled as well
+            // therefore the candidates's children must be handled as well
             finalChildren.add(candidateItem);
         } else {
-            // the candidate item is already handled
+            // the candidates item is already handled
             val finalItem = cache.get(candidateItem.getReference());
-            // but the candidate's children are maybe not yet handled
+            // but the candidates's children are maybe not yet handled
             candidateItem
                 .getChildren()
                 .forEach(candidateChild -> mergeCandidateItem(cache, finalItem.getChildren(), candidateChild));
