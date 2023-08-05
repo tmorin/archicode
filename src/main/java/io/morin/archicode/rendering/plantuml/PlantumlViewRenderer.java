@@ -1,10 +1,10 @@
 package io.morin.archicode.rendering.plantuml;
 
-import io.morin.archicode.context.Context;
-import io.morin.archicode.context.Item;
-import io.morin.archicode.context.Link;
 import io.morin.archicode.rendering.ViewRenderer;
 import io.morin.archicode.resource.workspace.Styles;
+import io.morin.archicode.viewpoint.Item;
+import io.morin.archicode.viewpoint.Link;
+import io.morin.archicode.viewpoint.Viewpoint;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
@@ -70,12 +70,12 @@ public class PlantumlViewRenderer implements ViewRenderer {
 
     @Override
     @SneakyThrows
-    public void render(Context context, OutputStream outputStream) {
+    public void render(Viewpoint viewpoint, OutputStream outputStream) {
         try (val outputStreamWriter = new OutputStreamWriter(outputStream)) {
             outputStreamWriter.write("@startuml");
             outputStreamWriter.write(System.lineSeparator());
 
-            outputStreamWriter.write(String.format("title %s", context.getView().getDescription()));
+            outputStreamWriter.write(String.format("title %s", viewpoint.getView().getDescription()));
             outputStreamWriter.write(System.lineSeparator());
 
             outputStreamWriter.write("skinparam defaultTextAlignment center");
@@ -88,17 +88,17 @@ public class PlantumlViewRenderer implements ViewRenderer {
             outputStreamWriter.write("hide stereotype");
             outputStreamWriter.write(System.lineSeparator());
 
-            for (Item item : context.getItems()) {
+            for (Item item : viewpoint.getItems()) {
                 outputStreamWriter.write(renderItem(item));
             }
 
             outputStreamWriter.write(System.lineSeparator());
 
-            for (Link link : context.getLinks()) {
+            for (Link link : viewpoint.getLinks()) {
                 outputStreamWriter.write(renderLink(link));
             }
 
-            for (Map.Entry<String, Styles.Style> entry : context.getWorkspace().getStyles().getByTags().entrySet()) {
+            for (Map.Entry<String, Styles.Style> entry : viewpoint.getWorkspace().getStyles().getByTags().entrySet()) {
                 outputStreamWriter.write(renderSkinparam(entry, "rectangle"));
                 outputStreamWriter.write(renderSkinparam(entry, "database"));
                 outputStreamWriter.write(renderSkinparam(entry, "card"));

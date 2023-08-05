@@ -1,7 +1,7 @@
 package io.morin.archicode.workspace;
 
 import io.morin.archicode.ArchiCodeException;
-import io.morin.archicode.resource.view.ViewResource;
+import io.morin.archicode.resource.view.View;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -18,13 +18,13 @@ public class ViewIndex {
 
     @NonNull
     @Builder.Default
-    Map<String, ViewResource> viewByViewIdIndex = new HashMap<>();
+    Map<String, View> viewByViewIdIndex = new HashMap<>();
 
-    public Optional<ViewResource> searchView(String viewId) {
+    public Optional<View> searchView(String viewId) {
         return Optional.ofNullable(viewByViewIdIndex.get(viewId));
     }
 
-    public ViewResource getView(String viewId) {
+    public View getView(String viewId) {
         return searchView(viewId).orElseThrow(() -> new ArchiCodeException("unable to find the view %s", viewId));
     }
 }
