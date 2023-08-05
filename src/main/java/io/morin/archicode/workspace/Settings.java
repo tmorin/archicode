@@ -41,6 +41,12 @@ public class Settings {
     @Jacksonized
     public static class Views {
 
+        @Builder.Default
+        Labels labels = Labels.builder().build();
+
+        @Builder.Default
+        String path = "views";
+
         @Value
         @Builder
         @Jacksonized
@@ -55,11 +61,5 @@ public class Settings {
             @Builder.Default
             String deep = "Deep View";
         }
-
-        @Builder.Default
-        Labels labels = Labels.builder().build();
-
-        @Builder.Default
-        String path = "views";
     }
 }
