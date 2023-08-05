@@ -1,61 +1,60 @@
 package io.morin.archicode.viewpoint.overview;
 
-import static io.morin.archicode.viewpoint.overview.GroomedLink.RelationshipKind.NATURAL;
-import static io.morin.archicode.viewpoint.overview.GroomedLink.RelationshipKind.SYNTHETIC;
+import static io.morin.archicode.viewpoint.GroomedLink.RelationshipKind.NATURAL;
+import static io.morin.archicode.viewpoint.GroomedLink.RelationshipKind.SYNTHETIC;
 import static java.util.Collections.emptySet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.resource.element.application.Relationship;
 import io.morin.archicode.resource.view.View;
-import io.morin.archicode.viewpoint.Item;
-import io.morin.archicode.viewpoint.Link;
-import io.morin.archicode.viewpoint.Viewpoint;
-import io.morin.archicode.viewpoint.EgressMetaLinkFinder;
-import io.morin.archicode.viewpoint.IngressMetaLinkFinder;
+import io.morin.archicode.viewpoint.*;
 import io.morin.archicode.workspace.Workspace;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
-@ApplicationScoped
+@Slf4j
+@Builder
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-@Slf4j
-public class OverviewViewpointFactory {
+public class OverviewViewpointFactory implements ViewpointFactory {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    @NonNull
+    ObjectMapper objectMapper;
 
-    EgressMetaLinkFinder egressMetaLinkFinder;
-    IngressMetaLinkFinder ingressMetaLinkFinder;
+    @NonNull
+    MetaLinkFinderForEgress metaLinkFinderForEgress;
+
+    @NonNull
+    MetaLinkFinderForIngress metaLinkFinderForIngress;
+
+    @NonNull
     MetaLinkGroomer metaLinkGroomer;
 
     @SneakyThrows
-    public Viewpoint create(Workspace workspace, View view) {
+    @Override
+    public Viewpoint create(@NonNull Workspace workspace, @NonNull View view) {
         log.debug("create viewpoint for {}", view);
 
-        val properties = OBJECT_MAPPER.readValue(
+        val properties = objectMapper.readValue(
             Objects.requireNonNull(view.getProperties().toString()),
             OverviewViewProperties.class
         );
 
         val viewReference = properties.getElement();
 
-        val egressMetaLinks = egressMetaLinkFinder.find(workspace, viewReference);
+        val egressMetaLinks = metaLinkFinderForEgress.find(workspace, viewReference);
         egressMetaLinks.forEach(metaLink -> log.debug("egress {}", metaLink));
         val egressGroomedLinks = metaLinkGroomer.groomEgress(workspace, viewReference, egressMetaLinks);
         egressGroomedLinks.forEach(groomedLink -> log.debug("egress {}", groomedLink));
 
-        val ingressMetaLinks = ingressMetaLinkFinder.find(workspace, viewReference);
+        val ingressMetaLinks = metaLinkFinderForIngress.find(workspace, viewReference);
         ingressMetaLinks.forEach(metaLink -> log.debug("ingress {}", metaLink));
         val ingressGroomedLinks = metaLinkGroomer.groomIngress(workspace, viewReference, ingressMetaLinks);
         ingressGroomedLinks.forEach(groomedLink -> log.debug("ingress {}", groomedLink));

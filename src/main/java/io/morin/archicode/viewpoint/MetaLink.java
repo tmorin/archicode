@@ -2,7 +2,6 @@ package io.morin.archicode.viewpoint;
 
 import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Relationship;
-import io.morin.archicode.viewpoint.Level;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.jackson.Jacksonized;

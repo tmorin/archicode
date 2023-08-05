@@ -1,0 +1,3 @@
+io.morin.archicode.viewpoint.deep.DeepViewpointService
+io.morin.archicode.viewpoint.detailed.DetailedViewpointService
+io.morin.archicode.viewpoint.overview.OverviewViewpointService

@@ -2,8 +2,7 @@ package io.morin.archicode.rendering;
 
 import io.morin.archicode.Fixtures;
 import io.morin.archicode.resource.workspace.Workspace;
-import io.morin.archicode.viewpoint.detailed.DetailedViewpointFactory;
-import io.morin.archicode.viewpoint.overview.OverviewViewpointFactory;
+import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -24,31 +23,28 @@ import org.junit.jupiter.params.provider.ValueSource;
 class PlantumlViewRendererTest {
 
     @Inject
-    ViewRendererRepository viewRendererRepository;
+    ViewRendererServiceRepository viewRendererServiceRepository;
 
     ViewRenderer plantumlRenderer;
 
     @Inject
-    DetailedViewpointFactory detailedViewpointFactory;
-
-    @Inject
-    OverviewViewpointFactory overviewViewpointFactory;
+    ViewpointServiceRepository viewpointServiceRepository;
 
     @Inject
     WorkspaceFactory workspaceFactory;
 
     @BeforeEach
     void setUp() {
-        plantumlRenderer = viewRendererRepository.getRenderFactory("plantuml").createViewRenderer();
+        plantumlRenderer = viewRendererServiceRepository.get("plantuml").createViewRenderer();
     }
 
     @Test
     @SneakyThrows
     void shouldRenderOverview() {
-        val context = overviewViewpointFactory.create(
-            workspaceFactory.create(Fixtures.workspace_a, Map.of()),
-            Fixtures.view_solution_a_overview
-        );
+        val context = viewpointServiceRepository
+            .get("overview")
+            .createViewpointFactory()
+            .create(workspaceFactory.create(Fixtures.workspace_a, Map.of()), Fixtures.view_solution_a_overview);
 
         val tmpFile = new File("target/view_solution_a_overview.puml");
         try (val os = new FileOutputStream(tmpFile)) {
@@ -62,10 +58,10 @@ class PlantumlViewRendererTest {
     @Test
     @SneakyThrows
     void shouldRenderDetailed() {
-        val context = detailedViewpointFactory.create(
-            workspaceFactory.create(Fixtures.workspace_a, Map.of()),
-            Fixtures.view_solution_a_detailed
-        );
+        val context = viewpointServiceRepository
+            .get("detailed")
+            .createViewpointFactory()
+            .create(workspaceFactory.create(Fixtures.workspace_a, Map.of()), Fixtures.view_solution_a_detailed);
 
         val tmpFile = new File("target/view_solution_a_detailed.puml");
         try (val os = new FileOutputStream(tmpFile)) {
@@ -85,7 +81,7 @@ class PlantumlViewRendererTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val context = detailedViewpointFactory.create(workspace, view);
+        val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
 
         val tmpFile = new File(String.format("target/ing-eg__%s.puml", viewReference));
         try (val os = new FileOutputStream(tmpFile)) {
@@ -105,7 +101,7 @@ class PlantumlViewRendererTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val context = detailedViewpointFactory.create(workspace, view);
+        val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
 
         val tmpFile = new File(String.format("target/int-eg_%s.puml", viewReference));
         try (val os = new FileOutputStream(tmpFile)) {
@@ -125,7 +121,7 @@ class PlantumlViewRendererTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val context = detailedViewpointFactory.create(workspace, view);
+        val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
 
         val tmpFile = new File(String.format("target/int-ing_%s.puml", viewReference));
         try (val os = new FileOutputStream(tmpFile)) {
@@ -145,7 +141,7 @@ class PlantumlViewRendererTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalXgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val context = detailedViewpointFactory.create(workspace, view);
+        val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
 
         val tmpFile = new File(String.format("target/int-x_%s.puml", viewReference));
         try (val os = new FileOutputStream(tmpFile)) {

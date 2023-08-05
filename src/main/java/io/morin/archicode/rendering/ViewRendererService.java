@@ -1,6 +1,6 @@
 package io.morin.archicode.rendering;
 
-public interface RendererDefinition {
+public interface ViewRendererService {
     String getName();
 
     String getExtension();

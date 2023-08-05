@@ -12,12 +12,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
@@ -70,7 +67,7 @@ public class PlantumlViewRenderer implements ViewRenderer {
 
     @Override
     @SneakyThrows
-    public void render(Viewpoint viewpoint, OutputStream outputStream) {
+    public void render(@NonNull Viewpoint viewpoint, @NonNull OutputStream outputStream) {
         try (val outputStreamWriter = new OutputStreamWriter(outputStream)) {
             outputStreamWriter.write("@startuml");
             outputStreamWriter.write(System.lineSeparator());

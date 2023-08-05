@@ -5,7 +5,7 @@ import io.morin.archicode.rendering.Renderer;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.Item;
-import io.morin.archicode.viewpoint.ViewpointFactory;
+import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
@@ -34,7 +34,7 @@ public class RenderCommand {
     Renderer renderer;
 
     @Inject
-    ViewpointFactory viewpointFactory;
+    ViewpointServiceRepository viewpointServiceRepository;
 
     @CommandLine.Option(
         names = { "-e", "--renderer" },
@@ -68,8 +68,11 @@ public class RenderCommand {
         for (String viewId : viewIds) {
             log.info("render {}", viewId);
             val view = workspace.viewIndex.getView(viewId);
-            val context = viewpointFactory.create(workspace, view);
-            renderer.render(context, rendererName, outputDirPath);
+            val viewpoint = viewpointServiceRepository
+                .get(view.getViewpoint())
+                .createViewpointFactory()
+                .create(workspace, view);
+            renderer.render(viewpoint, rendererName, outputDirPath);
         }
 
         workspace.appIndex
@@ -133,8 +136,11 @@ public class RenderCommand {
             })
             .forEach(view -> {
                 log.info("render {}", view.getViewId());
-                val context = viewpointFactory.create(workspace, view);
-                renderer.render(context, rendererName, outputDirPath);
+                val viewpoint = viewpointServiceRepository
+                    .get(view.getViewpoint())
+                    .createViewpointFactory()
+                    .create(workspace, view);
+                renderer.render(viewpoint, rendererName, outputDirPath);
             });
     }
 }

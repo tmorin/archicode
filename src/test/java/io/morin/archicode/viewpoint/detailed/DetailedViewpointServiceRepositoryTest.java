@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.morin.archicode.Fixtures;
 import io.morin.archicode.resource.workspace.Workspace;
+import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -14,13 +15,13 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 @Slf4j
-class DetailedViewpointFactoryTest {
+class DetailedViewpointServiceRepositoryTest {
 
     @Inject
     WorkspaceFactory workspaceFactory;
 
     @Inject
-    DetailedViewpointFactory contextFactory;
+    ViewpointServiceRepository viewpointServiceRepository;
 
     @Test
     void shouldCreate() {
@@ -31,7 +32,7 @@ class DetailedViewpointFactoryTest {
 
         val view = Fixtures.createDetailedView("shouldCreate", viewReference);
 
-        val context = contextFactory.create(workspace, view);
+        val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
         assertEquals(3, context.getItems().size());
         assertEquals(2, context.getLinks().size());
     }
