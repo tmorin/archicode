@@ -1,4 +1,4 @@
-package io.morin.archicode.viewpoint.metalink;
+package io.morin.archicode.viewpoint;
 
 import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Relationship;

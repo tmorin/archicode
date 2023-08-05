@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.morin.archicode.Fixtures;
 import io.morin.archicode.resource.workspace.Workspace;
-import io.morin.archicode.viewpoint.metalink.EgressMetaLinkFinder;
-import io.morin.archicode.viewpoint.metalink.IngressMetaLinkFinder;
+import io.morin.archicode.viewpoint.EgressMetaLinkFinder;
+import io.morin.archicode.viewpoint.IngressMetaLinkFinder;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;

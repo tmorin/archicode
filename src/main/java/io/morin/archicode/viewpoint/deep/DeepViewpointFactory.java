@@ -2,12 +2,7 @@ package io.morin.archicode.viewpoint.deep;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.resource.view.View;
-import io.morin.archicode.viewpoint.Item;
-import io.morin.archicode.viewpoint.Link;
-import io.morin.archicode.viewpoint.Viewpoint;
-import io.morin.archicode.viewpoint.metalink.EgressMetaLinkFinder;
-import io.morin.archicode.viewpoint.metalink.IngressMetaLinkFinder;
-import io.morin.archicode.viewpoint.metalink.MetaLink;
+import io.morin.archicode.viewpoint.*;
 import io.morin.archicode.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.*;

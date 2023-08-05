@@ -18,11 +18,11 @@ import lombok.val;
 @Slf4j
 public class Renderer {
 
-    RendererFactoryRepository rendererFactoryRepository;
+    ViewRendererRepository viewRendererRepository;
 
     @SneakyThrows
     public void render(Viewpoint viewpoint, String rendererName, Path outputDirPath) {
-        val rendererFactory = rendererFactoryRepository.getRenderFactory(rendererName);
+        val rendererFactory = viewRendererRepository.getRenderFactory(rendererName);
 
         val outputFilePath = Paths.get(
             outputDirPath.toString(),
