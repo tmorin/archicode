@@ -3,8 +3,8 @@ package io.morin.archicode.cli;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.morin.archicode.Fixtures;
+import io.morin.archicode.MapperFactory;
 import io.morin.archicode.rendering.RendererEngine;
-import io.morin.archicode.workspace.WorkspaceMapperFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.charset.StandardCharsets;
@@ -23,7 +23,7 @@ class ArchiCodeCommandTest {
     RenderCommand renderCommand;
 
     @Inject
-    WorkspaceMapperFactory workspaceMapperFactory;
+    MapperFactory mapperFactory;
 
     @BeforeEach
     @SneakyThrows
@@ -33,7 +33,7 @@ class ArchiCodeCommandTest {
         val wksFile = Path.of("target", ArchiCodeCommandTest.class.getSimpleName(), "workspace.yaml");
         Files.writeString(
             wksFile,
-            workspaceMapperFactory.create(wksFile).writeValueAsString(Fixtures.workspace_a),
+            mapperFactory.create(wksFile).writeValueAsString(Fixtures.workspace_a),
             StandardCharsets.UTF_8
         );
         ArchiCodeCommand archiCodeCommand = new ArchiCodeCommand();

@@ -1,6 +1,6 @@
 package io.morin.archicode.context;
 
-import io.morin.archicode.ArchicodeException;
+import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.element.Element;
 import io.morin.archicode.element.application.*;
 import io.morin.archicode.element.application.System;
@@ -56,7 +56,7 @@ public class Item {
             } else if (element instanceof Parent<?>) {
                 return Kind.GROUP;
             }
-            throw new ArchicodeException("unable to find a matching for", element);
+            throw new ArchiCodeException("unable to find a matching for", element);
         }
     }
 }

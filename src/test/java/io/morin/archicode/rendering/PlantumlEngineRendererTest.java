@@ -11,6 +11,7 @@ import jakarta.inject.Inject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
+import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -38,7 +39,7 @@ class PlantumlEngineRendererTest {
     @SneakyThrows
     void shouldRenderOverview() {
         val context = overviewContextFactory.create(
-            workspaceFactory.create(Fixtures.workspace_a),
+            workspaceFactory.create(Fixtures.workspace_a, Map.of()),
             Fixtures.view_solution_a_overview
         );
 
@@ -55,7 +56,7 @@ class PlantumlEngineRendererTest {
     @SneakyThrows
     void shouldRenderDetailed() {
         val context = detailedContextFactory.create(
-            workspaceFactory.create(Fixtures.workspace_a),
+            workspaceFactory.create(Fixtures.workspace_a, Map.of()),
             Fixtures.view_solution_a_detailed
         );
 
@@ -75,7 +76,7 @@ class PlantumlEngineRendererTest {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
-        val workspace = workspaceFactory.create(rawWorkspace);
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val context = detailedContextFactory.create(workspace, view);
 
@@ -95,7 +96,7 @@ class PlantumlEngineRendererTest {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
-        val workspace = workspaceFactory.create(rawWorkspace);
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val context = detailedContextFactory.create(workspace, view);
 
@@ -115,7 +116,7 @@ class PlantumlEngineRendererTest {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
-        val workspace = workspaceFactory.create(rawWorkspace);
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val context = detailedContextFactory.create(workspace, view);
 
@@ -135,7 +136,7 @@ class PlantumlEngineRendererTest {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
         val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalXgress().build()).build();
-        val workspace = workspaceFactory.create(rawWorkspace);
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val context = detailedContextFactory.create(workspace, view);
 

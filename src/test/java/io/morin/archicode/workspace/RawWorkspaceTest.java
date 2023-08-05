@@ -7,6 +7,7 @@ import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.morin.archicode.element.application.*;
 import io.morin.archicode.element.application.System;
+import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,51 +32,71 @@ class RawWorkspaceTest {
                 .application(
                     Application
                         .builder()
-                        .element(Solution.builder().id("solution-a").name("Solution #A").build())
-                        .element(
-                            ApplicationGroup
-                                .builder()
-                                .id("group")
-                                .name("Group #A")
-                                .element(
-                                    System
-                                        .builder()
-                                        .id("system-a")
-                                        .name("System #A")
-                                        .element(Container.builder().id("backend").name("Backend #A").build())
-                                        .build()
-                                )
-                                .element(
-                                    System
-                                        .builder()
-                                        .id("system-a")
-                                        .name("System #A")
-                                        .element(Container.builder().id("backend").name("Backend #A").build())
-                                        .build()
-                                )
-                                .element(
-                                    System
-                                        .builder()
-                                        .id("system-b")
-                                        .name("System #B")
-                                        .element(
-                                            Container
+                        .elements(Set.of(Solution.builder().id("solution-a").name("Solution #A").build()))
+                        .elements(
+                            Set.of(
+                                ApplicationGroup
+                                    .builder()
+                                    .id("group")
+                                    .name("Group #A")
+                                    .elements(
+                                        Set.of(
+                                            System
                                                 .builder()
-                                                .id("backend")
-                                                .name("Backend #B")
-                                                .relationship(Relationship.builder().destination("./database").build())
-                                                .relationship(
-                                                    Relationship
-                                                        .builder()
-                                                        .destination("/solution-a/group/system-a/backend")
-                                                        .build()
+                                                .id("system-a")
+                                                .name("System #A")
+                                                .elements(
+                                                    Set.of(Container.builder().id("backend").name("Backend #A").build())
                                                 )
                                                 .build()
                                         )
-                                        .element(Container.builder().id("database").name("Database #B").build())
-                                        .build()
-                                )
-                                .build()
+                                    )
+                                    .elements(
+                                        Set.of(
+                                            System
+                                                .builder()
+                                                .id("system-a")
+                                                .name("System #A")
+                                                .elements(
+                                                    Set.of(Container.builder().id("backend").name("Backend #A").build())
+                                                )
+                                                .build()
+                                        )
+                                    )
+                                    .elements(
+                                        Set.of(
+                                            System
+                                                .builder()
+                                                .id("system-b")
+                                                .name("System #B")
+                                                .elements(
+                                                    Set.of(
+                                                        Container
+                                                            .builder()
+                                                            .id("backend")
+                                                            .name("Backend #B")
+                                                            .relationship(
+                                                                Relationship.builder().destination("./database").build()
+                                                            )
+                                                            .relationship(
+                                                                Relationship
+                                                                    .builder()
+                                                                    .destination("/solution-a/group/system-a/backend")
+                                                                    .build()
+                                                            )
+                                                            .build()
+                                                    )
+                                                )
+                                                .elements(
+                                                    Set.of(
+                                                        Container.builder().id("database").name("Database #B").build()
+                                                    )
+                                                )
+                                                .build()
+                                        )
+                                    )
+                                    .build()
+                            )
                         )
                         .build()
                 )

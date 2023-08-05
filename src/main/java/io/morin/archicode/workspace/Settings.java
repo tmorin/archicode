@@ -10,6 +10,9 @@ import lombok.extern.jackson.Jacksonized;
 public class Settings {
 
     @Builder.Default
+    Manifests manifests = Manifests.builder().build();
+
+    @Builder.Default
     Relationships relationships = Relationships.builder().build();
 
     @Value
@@ -19,5 +22,14 @@ public class Settings {
 
         @Builder.Default
         String defaultSyntheticLabel = "uses";
+    }
+
+    @Value
+    @Builder
+    @Jacksonized
+    public static class Manifests {
+
+        @Builder.Default
+        String path = "manifests";
     }
 }
