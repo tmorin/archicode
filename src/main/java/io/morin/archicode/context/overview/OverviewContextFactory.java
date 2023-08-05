@@ -74,7 +74,7 @@ public class OverviewContextFactory {
             .distinct()
             .sorted()
             .map(elementReference -> {
-                val element = workspace.getElementByReference(elementReference);
+                val element = workspace.appIndex.getElementByReference(elementReference);
                 val item = itemByReference.computeIfAbsent(
                     elementReference,
                     s ->

@@ -7,7 +7,6 @@ import io.morin.archicode.element.application.ApplicationElement;
 import io.morin.archicode.element.application.Parent;
 import io.morin.archicode.manifest.Candidate;
 import io.morin.archicode.manifest.ResourceParser;
-import io.morin.archicode.view.View;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
 import java.util.*;
@@ -27,12 +26,7 @@ public class WorkspaceFactory {
     MapperFactory mapperFactory;
     ResourceParser resourceParser;
 
-    private static void index(
-        Candidate appCandidate,
-        HashMap<String, Element> elementByReferenceIndex,
-        HashMap<Element, String> referenceByElementIndex,
-        HashMap<String, Set<Element>> sourceElementsByDestinationIndex
-    ) {
+    private static void index(Candidate appCandidate, ElementIndex appElementIndex) {
         Optional
             .ofNullable(appCandidate.getParent())
             .ifPresentOrElse(
@@ -41,96 +35,82 @@ public class WorkspaceFactory {
                     val element = appCandidate.getElement();
 
                     log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
-                    elementByReferenceIndex.put(elementReference, element);
-                    referenceByElementIndex.put(element, elementReference);
+                    appElementIndex.elementByReferenceIndex.put(elementReference, element);
+                    appElementIndex.referenceByElementIndex.put(element, elementReference);
                 },
                 () -> {
                     val elementReference = appCandidate.getReference();
                     val element = appCandidate.getElement();
 
                     log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
-                    elementByReferenceIndex.put(elementReference, element);
-                    referenceByElementIndex.put(element, elementReference);
+                    appElementIndex.elementByReferenceIndex.put(elementReference, element);
+                    appElementIndex.referenceByElementIndex.put(element, elementReference);
                 }
             );
         Optional
             .ofNullable(appCandidate.getElement().getRelationships())
             .orElse(Collections.emptySet())
             .forEach(relationship -> {
-                sourceElementsByDestinationIndex.putIfAbsent(relationship.getDestination(), new HashSet<>());
-                sourceElementsByDestinationIndex.get(relationship.getDestination()).add(appCandidate.getElement());
+                appElementIndex.sourceElementsByDestinationIndex.putIfAbsent(
+                    relationship.getDestination(),
+                    new HashSet<>()
+                );
+                appElementIndex.sourceElementsByDestinationIndex
+                    .get(relationship.getDestination())
+                    .add(appCandidate.getElement());
             });
     }
 
-    private static void index(
-        Element parent,
-        Element element,
-        HashMap<Element, String> referenceByElementIndex,
-        HashMap<String, Element> elementByReferenceIndex,
-        HashMap<String, Set<Element>> sourceElementsByDestinationIndex
-    ) {
+    private static void index(Element parent, Element element, ElementIndex appElementIndex) {
         Optional
             .ofNullable(parent)
             .ifPresentOrElse(
                 p -> {
-                    val parentReference = referenceByElementIndex.get(p);
+                    val parentReference = appElementIndex.referenceByElementIndex.get(p);
                     val elementReference = String.format("%s.%s", parentReference, element.getId());
 
                     log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
-                    elementByReferenceIndex.put(elementReference, element);
-                    referenceByElementIndex.put(element, elementReference);
+                    appElementIndex.elementByReferenceIndex.put(elementReference, element);
+                    appElementIndex.referenceByElementIndex.put(element, elementReference);
                 },
                 () -> {
                     val elementReference = element.getId();
 
                     log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
-                    elementByReferenceIndex.put(elementReference, element);
-                    referenceByElementIndex.put(element, elementReference);
+                    appElementIndex.elementByReferenceIndex.put(elementReference, element);
+                    appElementIndex.referenceByElementIndex.put(element, elementReference);
                 }
             );
         Optional
             .ofNullable(element.getRelationships())
             .orElse(Collections.emptySet())
             .forEach(relationship -> {
-                sourceElementsByDestinationIndex.putIfAbsent(relationship.getDestination(), new HashSet<>());
-                sourceElementsByDestinationIndex.get(relationship.getDestination()).add(element);
+                appElementIndex.sourceElementsByDestinationIndex.putIfAbsent(
+                    relationship.getDestination(),
+                    new HashSet<>()
+                );
+                appElementIndex.sourceElementsByDestinationIndex.get(relationship.getDestination()).add(element);
             });
     }
 
     @SneakyThrows
     public Workspace create(RawWorkspace rawWorkspace, Map<Class<?>, Set<Candidate>> manifests) {
-        val sourceElementsByDestinationIndex = new HashMap<String, Set<Element>>();
-        val elementByReferenceIndex = new HashMap<String, Element>();
-        val referenceByElementIndex = new HashMap<Element, String>();
+        val appIndex = ElementIndex.builder().build();
 
         log.debug("index the elements of the workspace");
         Workspace.Utilities.walkDown(
             rawWorkspace.getApplication(),
-            (parent, element) ->
-                index(
-                    parent,
-                    element,
-                    referenceByElementIndex,
-                    elementByReferenceIndex,
-                    sourceElementsByDestinationIndex
-                )
+            (parent, element) -> index(parent, element, appIndex)
         );
 
         log.debug("index the elements discovered in the manifests");
         val appCandidates = manifests.getOrDefault(Application.class, Set.of());
         val indexedAppCandidates = new HashSet<Candidate>();
         for (val appCandidate : appCandidates) {
-            index(appCandidate, elementByReferenceIndex, referenceByElementIndex, sourceElementsByDestinationIndex);
+            index(appCandidate, appIndex);
             Workspace.Utilities.walkDown(
                 appCandidate.getElement(),
-                (parent, element) ->
-                    index(
-                        parent,
-                        element,
-                        referenceByElementIndex,
-                        elementByReferenceIndex,
-                        sourceElementsByDestinationIndex
-                    )
+                (parent, element) -> index(parent, element, appIndex)
             );
             indexedAppCandidates.add(appCandidate);
         }
@@ -138,29 +118,24 @@ public class WorkspaceFactory {
 
         log.debug("register the elements discovered in the manifests");
         indexedAppCandidates.forEach(appCandidate -> {
-            val parentCandidate = elementByReferenceIndex.get(appCandidate.getParent());
+            val parentCandidate = appIndex.elementByReferenceIndex.get(appCandidate.getParent());
             if (parentCandidate instanceof Parent parent) {
-                referenceByElementIndex.remove(elementByReferenceIndex.remove(appCandidate.getParent()));
+                appIndex.referenceByElementIndex.remove(
+                    appIndex.elementByReferenceIndex.remove(appCandidate.getParent())
+                );
                 parent.getElements().add(appCandidate.getElement());
-                elementByReferenceIndex.put(appCandidate.getParent(), parentCandidate);
-                referenceByElementIndex.put(parentCandidate, appCandidate.getParent());
+                appIndex.elementByReferenceIndex.put(appCandidate.getParent(), parentCandidate);
+                appIndex.referenceByElementIndex.put(parentCandidate, appCandidate.getParent());
             } else if (parentCandidate instanceof ApplicationElement applicationElement) {
                 rawWorkspace.getApplication().getElements().add(applicationElement);
             }
         });
 
         log.debug("index the views of the workspace");
-        val viewByViewIdIndex = new HashMap<String, View>();
-        rawWorkspace.getViews().forEach(view -> viewByViewIdIndex.put(view.getViewId(), view));
+        val viewIndex = ViewIndex.builder().build();
+        rawWorkspace.getViews().forEach(view -> viewIndex.viewByViewIdIndex.put(view.getViewId(), view));
 
-        return Workspace
-            .builder()
-            .rawWorkspace(rawWorkspace)
-            .sourceElementsByDestinationIndex(sourceElementsByDestinationIndex)
-            .elementByReferenceIndex(elementByReferenceIndex)
-            .referenceByElementIndex(referenceByElementIndex)
-            .viewByViewIdIndex(viewByViewIdIndex)
-            .build();
+        return Workspace.builder().rawWorkspace(rawWorkspace).appIndex(appIndex).viewIndex(viewIndex).build();
     }
 
     @SneakyThrows
