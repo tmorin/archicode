@@ -29,6 +29,22 @@ public class DetailedContextFactory {
 
     OverviewContextFactory contextFactory;
 
+    private static void mergeCandidateItem(HashMap<String, Item> cache, Set<Item> finalChildren, Item candidateItem) {
+        if (!cache.containsKey(candidateItem.getItemId())) {
+            // the candidate item is not yet handled
+            cache.put(candidateItem.getItemId(), candidateItem);
+            // therefore the candidate's children must be handled as well
+            finalChildren.add(candidateItem);
+        } else {
+            // the candidate item is already handled
+            val finalItem = cache.get(candidateItem.getReference());
+            // but the candidate's children are maybe not yet handled
+            candidateItem
+                .getChildren()
+                .forEach(candidateChild -> mergeCandidateItem(cache, finalItem.getChildren(), candidateChild));
+        }
+    }
+
     public Context create(Workspace workspace, DetailedView view) {
         log.info("create context for {}", view);
 
@@ -66,21 +82,5 @@ public class DetailedContextFactory {
         }
 
         return Context.builder().workspace(workspace).view(view).items(allItems).links(allLinks).build();
-    }
-
-    private static void mergeCandidateItem(HashMap<String, Item> cache, Set<Item> finalChildren, Item candidateItem) {
-        if (!cache.containsKey(candidateItem.getItemId())) {
-            // the candidate item is not yet handled
-            cache.put(candidateItem.getItemId(), candidateItem);
-            // therefore the candidate's children must be handled as well
-            finalChildren.add(candidateItem);
-        } else {
-            // the candidate item is already handled
-            val finalItem = cache.get(candidateItem.getReference());
-            // but the candidate's children are maybe not yet handled
-            candidateItem
-                .getChildren()
-                .forEach(candidateChild -> mergeCandidateItem(cache, finalItem.getChildren(), candidateChild));
-        }
     }
 }

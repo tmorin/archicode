@@ -19,7 +19,7 @@ public class EgressMetaLinkFinder implements MetaLinkFinder {
     /**
      * Find all associations where the reference or one of its descendant is the source of a relationship.
      *
-     * @param workspace the workspace
+     * @param workspace     the workspace
      * @param viewReference the reference
      * @return the result
      */

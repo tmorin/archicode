@@ -25,45 +25,6 @@ import lombok.val;
 @Slf4j
 public class PlantumlEngineRenderer implements EngineRenderer {
 
-    @Override
-    @SneakyThrows
-    public void render(Context context, OutputStream outputStream) {
-        try (val outputStreamWriter = new OutputStreamWriter(outputStream)) {
-            outputStreamWriter.write("@startuml");
-            outputStreamWriter.write(System.lineSeparator());
-
-            outputStreamWriter.write("skinparam defaultTextAlignment center");
-            outputStreamWriter.write(System.lineSeparator());
-            outputStreamWriter.write("skinparam wrapWidth 200");
-            outputStreamWriter.write(System.lineSeparator());
-            outputStreamWriter.write("skinparam maxMessageSize 150");
-            outputStreamWriter.write(System.lineSeparator());
-
-            outputStreamWriter.write("hide stereotype");
-            outputStreamWriter.write(System.lineSeparator());
-
-            for (Item item : context.getItems()) {
-                outputStreamWriter.write(renderItem(item));
-            }
-
-            outputStreamWriter.write(System.lineSeparator());
-
-            for (Link link : context.getLinks()) {
-                outputStreamWriter.write(renderLink(link));
-            }
-
-            for (Map.Entry<String, Styles.Style> entry : context.getWorkspace().getStyles().getByTags().entrySet()) {
-                outputStreamWriter.write(renderSkinparam(entry, "rectangle"));
-                outputStreamWriter.write(renderSkinparam(entry, "database"));
-                outputStreamWriter.write(renderSkinparam(entry, "card"));
-                outputStreamWriter.write(renderSkinparam(entry, "node"));
-            }
-
-            outputStreamWriter.write("@enduml");
-            outputStreamWriter.write(System.lineSeparator());
-        }
-    }
-
     private static String renderSkinparam(Map.Entry<String, Styles.Style> entry, String shape) {
         val buf = new StringBuilder();
         val stereotype = entry.getKey();
@@ -106,6 +67,45 @@ public class PlantumlEngineRenderer implements EngineRenderer {
         buf.append(System.lineSeparator());
 
         return buf.toString();
+    }
+
+    @Override
+    @SneakyThrows
+    public void render(Context context, OutputStream outputStream) {
+        try (val outputStreamWriter = new OutputStreamWriter(outputStream)) {
+            outputStreamWriter.write("@startuml");
+            outputStreamWriter.write(System.lineSeparator());
+
+            outputStreamWriter.write("skinparam defaultTextAlignment center");
+            outputStreamWriter.write(System.lineSeparator());
+            outputStreamWriter.write("skinparam wrapWidth 200");
+            outputStreamWriter.write(System.lineSeparator());
+            outputStreamWriter.write("skinparam maxMessageSize 150");
+            outputStreamWriter.write(System.lineSeparator());
+
+            outputStreamWriter.write("hide stereotype");
+            outputStreamWriter.write(System.lineSeparator());
+
+            for (Item item : context.getItems()) {
+                outputStreamWriter.write(renderItem(item));
+            }
+
+            outputStreamWriter.write(System.lineSeparator());
+
+            for (Link link : context.getLinks()) {
+                outputStreamWriter.write(renderLink(link));
+            }
+
+            for (Map.Entry<String, Styles.Style> entry : context.getWorkspace().getStyles().getByTags().entrySet()) {
+                outputStreamWriter.write(renderSkinparam(entry, "rectangle"));
+                outputStreamWriter.write(renderSkinparam(entry, "database"));
+                outputStreamWriter.write(renderSkinparam(entry, "card"));
+                outputStreamWriter.write(renderSkinparam(entry, "node"));
+            }
+
+            outputStreamWriter.write("@enduml");
+            outputStreamWriter.write(System.lineSeparator());
+        }
     }
 
     @SneakyThrows

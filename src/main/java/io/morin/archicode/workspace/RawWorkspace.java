@@ -1,6 +1,7 @@
 package io.morin.archicode.workspace;
 
 import io.morin.archicode.element.application.Application;
+import io.morin.archicode.element.deployment.Deployment;
 import io.morin.archicode.view.View;
 import java.util.Set;
 import lombok.Builder;
@@ -15,6 +16,9 @@ public class RawWorkspace {
 
     @Builder.Default
     Application application = Application.builder().build();
+
+    @Builder.Default
+    Deployment deployment = Deployment.builder().build();
 
     @Singular
     Set<View> views;

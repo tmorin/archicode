@@ -17,11 +17,11 @@ public enum WorkspaceFormat {
     TOML(".toml"),
     JSON(".json");
 
+    Set<String> extensions;
+
     WorkspaceFormat(String... extensions) {
         this.extensions = Set.of(extensions);
     }
-
-    Set<String> extensions;
 
     public static Optional<WorkspaceFormat> resolve(Path path) {
         return Arrays

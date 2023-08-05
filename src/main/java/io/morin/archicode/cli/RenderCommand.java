@@ -22,15 +22,6 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "render")
 public class RenderCommand {
 
-    @RequiredArgsConstructor
-    static class RendererEngineConvert implements CommandLine.ITypeConverter<RendererEngine> {
-
-        @Override
-        public RendererEngine convert(String value) {
-            return RendererEngine.valueOf(value.toUpperCase());
-        }
-    }
-
     @CommandLine.ParentCommand
     ArchiCodeCommand archiCodeCommand;
 
@@ -113,5 +104,14 @@ public class RenderCommand {
                 val context = contextFactory.create(workspace, view);
                 renderer.render(context, rendererEngine, outputDirPath);
             });
+    }
+
+    @RequiredArgsConstructor
+    static class RendererEngineConvert implements CommandLine.ITypeConverter<RendererEngine> {
+
+        @Override
+        public RendererEngine convert(String value) {
+            return RendererEngine.valueOf(value.toUpperCase());
+        }
     }
 }

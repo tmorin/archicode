@@ -9,6 +9,9 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class Settings {
 
+    @Builder.Default
+    Relationships relationships = Relationships.builder().build();
+
     @Value
     @Builder
     @Jacksonized
@@ -17,7 +20,4 @@ public class Settings {
         @Builder.Default
         String defaultSyntheticLabel = "uses";
     }
-
-    @Builder.Default
-    Relationships relationships = Relationships.builder().build();
 }
