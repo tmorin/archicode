@@ -1,6 +1,6 @@
 package io.morin.archicode.context;
 
-import io.morin.archicode.view.View;
+import io.morin.archicode.resource.view.ViewResource;
 import io.morin.archicode.workspace.Workspace;
 import java.util.Set;
 import lombok.*;
@@ -16,7 +16,7 @@ public class Context {
     Workspace workspace;
 
     @NonNull
-    View view;
+    ViewResource view;
 
     @Singular
     Set<Item> items;

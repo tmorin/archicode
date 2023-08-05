@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
-import io.morin.archicode.manifest.ResourceFormat;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
 import lombok.AccessLevel;
@@ -23,7 +22,7 @@ public class MapperFactory {
     JsonMapper jsonMapper = JsonMapper.builder().serializationInclusion(JsonInclude.Include.NON_EMPTY).build();
 
     public ObjectMapper create(Path path) {
-        val format = ResourceFormat
+        val format = MapperFormat
             .resolve(path)
             .orElseThrow(() -> new ArchiCodeException("The path `%s` doesn't match a handled format.", path));
         switch (format) {

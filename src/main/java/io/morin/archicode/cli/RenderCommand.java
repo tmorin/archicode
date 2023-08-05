@@ -2,12 +2,12 @@ package io.morin.archicode.cli;
 
 import io.morin.archicode.context.ContextFactory;
 import io.morin.archicode.context.Item;
-import io.morin.archicode.element.application.Parent;
 import io.morin.archicode.rendering.Renderer;
-import io.morin.archicode.view.DeepView;
-import io.morin.archicode.view.DetailedView;
-import io.morin.archicode.view.OverviewView;
-import io.morin.archicode.view.View;
+import io.morin.archicode.resource.element.application.Parent;
+import io.morin.archicode.resource.view.DeepView;
+import io.morin.archicode.resource.view.DetailedView;
+import io.morin.archicode.resource.view.OverviewView;
+import io.morin.archicode.resource.view.ViewResource;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
@@ -78,7 +78,7 @@ public class RenderCommand {
             .flatMap(reference -> {
                 val element = workspace.appIndex.getElementByReference(reference);
 
-                val views = new HashSet<View>();
+                val views = new HashSet<ViewResource>();
                 val overviewElementView = OverviewView
                     .builder()
                     .element(reference)

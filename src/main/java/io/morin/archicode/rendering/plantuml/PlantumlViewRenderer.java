@@ -4,7 +4,7 @@ import io.morin.archicode.context.Context;
 import io.morin.archicode.context.Item;
 import io.morin.archicode.context.Link;
 import io.morin.archicode.rendering.ViewRenderer;
-import io.morin.archicode.workspace.Styles;
+import io.morin.archicode.resource.workspace.Styles;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;

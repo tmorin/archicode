@@ -1,7 +1,7 @@
 package io.morin.archicode.workspace;
 
 import io.morin.archicode.ArchiCodeException;
-import io.morin.archicode.element.Element;
+import io.morin.archicode.resource.element.Element;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;

@@ -30,7 +30,7 @@ class ArchiCodeCommandTest {
     void setUp() {
         val wksDir = Path.of("target", ArchiCodeCommandTest.class.getSimpleName());
         wksDir.toFile().mkdirs();
-        val wksFile = Path.of("target", ArchiCodeCommandTest.class.getSimpleName(), "workspace.yaml");
+        val wksFile = Path.of("target", ArchiCodeCommandTest.class.getSimpleName(), "resources.yaml");
         Files.writeString(
             wksFile,
             mapperFactory.create(wksFile).writeValueAsString(Fixtures.workspace_a),

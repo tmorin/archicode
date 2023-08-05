@@ -3,9 +3,10 @@ package io.morin.archicode.context.overview;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.morin.archicode.Fixtures;
-import io.morin.archicode.element.application.*;
-import io.morin.archicode.element.application.System;
-import io.morin.archicode.workspace.RawWorkspace;
+import io.morin.archicode.context.metalink.IngressMetaLinkFinder;
+import io.morin.archicode.resource.element.application.*;
+import io.morin.archicode.resource.element.application.System;
+import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -40,7 +41,7 @@ class IngressMetaLinkFinderTest {
         modelBuilder.elements(Set.of(solution_a, solution_b));
 
         val model = modelBuilder.build();
-        val rawWorkspace = RawWorkspace.builder().application(model).build();
+        val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val metaLinks = ingressMetaLinkFinder.find(workspace, "solution_b.system_b.container_b");
@@ -67,7 +68,7 @@ class IngressMetaLinkFinderTest {
         modelBuilder.elements(Set.of(solution_a, solution_b));
 
         val model = modelBuilder.build();
-        val rawWorkspace = RawWorkspace.builder().application(model).build();
+        val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val metaLinks = ingressMetaLinkFinder.find(workspace, "solution_b.system_b.container_b");
@@ -91,7 +92,7 @@ class IngressMetaLinkFinderTest {
         modelBuilder.elements(Set.of(solution_a, solution_b));
 
         val model = modelBuilder.build();
-        val rawWorkspace = RawWorkspace.builder().application(model).build();
+        val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val metaLinks = ingressMetaLinkFinder.find(workspace, "solution_b.system_b");
@@ -107,7 +108,7 @@ class IngressMetaLinkFinderTest {
     @Test
     void shouldNotFindInternalEgress() {
         val model = Fixtures.createWithInternalEgress().build();
-        val rawWorkspace = RawWorkspace.builder().application(model).build();
+        val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val metaLinks = ingressMetaLinkFinder.find(workspace, "sol_a.sys_aa");
@@ -118,7 +119,7 @@ class IngressMetaLinkFinderTest {
     @Test
     void shouldFindInternalIngress() {
         val model = Fixtures.createWithInternalIngress().build();
-        val rawWorkspace = RawWorkspace.builder().application(model).build();
+        val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val metaLinks = ingressMetaLinkFinder.find(workspace, "sol_a.sys_aa");

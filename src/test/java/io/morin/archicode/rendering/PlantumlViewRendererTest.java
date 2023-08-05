@@ -3,8 +3,8 @@ package io.morin.archicode.rendering;
 import io.morin.archicode.Fixtures;
 import io.morin.archicode.context.detailed.DetailedContextFactory;
 import io.morin.archicode.context.overview.OverviewContextFactory;
-import io.morin.archicode.view.DetailedView;
-import io.morin.archicode.workspace.RawWorkspace;
+import io.morin.archicode.resource.view.DetailedView;
+import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -83,7 +83,7 @@ class PlantumlViewRendererTest {
     void shouldRenderDetailedViewWithIngressAndEgress(String viewReference) {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
-        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val context = detailedContextFactory.create(workspace, view);
@@ -103,7 +103,7 @@ class PlantumlViewRendererTest {
     void shouldRenderDetailedViewWithInternalEgress(String viewReference) {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
-        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val context = detailedContextFactory.create(workspace, view);
@@ -123,7 +123,7 @@ class PlantumlViewRendererTest {
     void shouldRenderDetailedViewWithInternalIngress(String viewReference) {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
-        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
+        val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val context = detailedContextFactory.create(workspace, view);
@@ -143,7 +143,7 @@ class PlantumlViewRendererTest {
     void shouldRenderDetailedViewWithXgress(String viewReference) {
         val view = DetailedView.builder().viewId(viewReference).element(viewReference).build();
 
-        val rawWorkspace = RawWorkspace.builder().application(Fixtures.createWithInternalXgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalXgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val context = detailedContextFactory.create(workspace, view);
