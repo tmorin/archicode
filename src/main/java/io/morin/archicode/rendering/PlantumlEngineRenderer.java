@@ -43,13 +43,13 @@ public class PlantumlEngineRenderer implements EngineRenderer {
             outputStreamWriter.write(System.lineSeparator());
 
             for (Item item : context.getItems()) {
-                outputStreamWriter.write(renderItem(context, item));
+                outputStreamWriter.write(renderItem(item));
             }
 
             outputStreamWriter.write(System.lineSeparator());
 
             for (Link link : context.getLinks()) {
-                outputStreamWriter.write(renderLink(context, link));
+                outputStreamWriter.write(renderLink(link));
             }
 
             for (Map.Entry<String, Styles.Style> entry : context.getWorkspace().getStyles().getByTags().entrySet()) {
@@ -109,7 +109,7 @@ public class PlantumlEngineRenderer implements EngineRenderer {
     }
 
     @SneakyThrows
-    private String renderItem(Context context, Item item) {
+    private String renderItem(Item item) {
         val buf = new StringBuilder();
 
         val stereotypes = new HashSet<>(item.getElement().getQualifiers());
@@ -154,7 +154,7 @@ public class PlantumlEngineRenderer implements EngineRenderer {
             );
             buf.append(System.lineSeparator());
 
-            item.getChildren().forEach(child -> buf.append(renderItem(context, child)));
+            item.getChildren().forEach(child -> buf.append(renderItem(child)));
 
             buf.append("}");
             buf.append(System.lineSeparator());
@@ -162,7 +162,7 @@ public class PlantumlEngineRenderer implements EngineRenderer {
         return buf.toString();
     }
 
-    private String renderLink(Context context, Link link) {
+    private String renderLink(Link link) {
         val buf = new StringBuilder();
 
         buf.append(link.getFrom().getItemId());

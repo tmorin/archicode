@@ -16,7 +16,7 @@ class RawWorkspaceTest {
 
     TomlMapper tomlMapper;
     YAMLMapper yamlMapper;
-    RawWorkspace RawWorkspace;
+    RawWorkspace rawWorkspace;
 
     @BeforeEach
     @SneakyThrows
@@ -25,7 +25,7 @@ class RawWorkspaceTest {
         tomlMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         yamlMapper = new YAMLMapper();
         yamlMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        RawWorkspace =
+        rawWorkspace =
             RawWorkspace
                 .builder()
                 .application(
@@ -85,18 +85,18 @@ class RawWorkspaceTest {
     @Test
     @SneakyThrows
     void shouldCreateTomlDocument() {
-        val workspaceAsToml = tomlMapper.writeValueAsString(RawWorkspace);
+        val workspaceAsToml = tomlMapper.writeValueAsString(rawWorkspace);
         java.lang.System.out.println(workspaceAsToml);
         val newModel = tomlMapper.readValue(workspaceAsToml, RawWorkspace.class);
-        assertEquals(RawWorkspace, newModel);
+        assertEquals(rawWorkspace, newModel);
     }
 
     @Test
     @SneakyThrows
     void shouldCreateYamlDocument() {
-        val workspaceAsYaml = yamlMapper.writeValueAsString(RawWorkspace);
+        val workspaceAsYaml = yamlMapper.writeValueAsString(rawWorkspace);
         java.lang.System.out.println(workspaceAsYaml);
         val newModel = yamlMapper.readValue(workspaceAsYaml, RawWorkspace.class);
-        assertEquals(RawWorkspace, newModel);
+        assertEquals(rawWorkspace, newModel);
     }
 }
