@@ -1,7 +1,7 @@
 package io.morin.archicode.viewpoint.overview;
 
 import io.morin.archicode.viewpoint.Level;
-import io.morin.archicode.viewpoint.metalink.MetaLink;
+import io.morin.archicode.viewpoint.MetaLink;
 import io.morin.archicode.viewpoint.overview.GroomedLink.Direction;
 import io.morin.archicode.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;

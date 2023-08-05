@@ -24,7 +24,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class PlantumlViewRendererTest {
 
     @Inject
-    RendererFactoryRepository rendererFactoryRepository;
+    ViewRendererRepository viewRendererRepository;
 
     ViewRenderer plantumlRenderer;
 
@@ -39,7 +39,7 @@ class PlantumlViewRendererTest {
 
     @BeforeEach
     void setUp() {
-        plantumlRenderer = rendererFactoryRepository.getRenderFactory("plantuml").createViewRenderer();
+        plantumlRenderer = viewRendererRepository.getRenderFactory("plantuml").createViewRenderer();
     }
 
     @Test

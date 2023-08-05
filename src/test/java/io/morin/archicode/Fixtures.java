@@ -72,15 +72,6 @@ public class Fixtures {
             .build();
     }
 
-    public View createDeepView(String viewId, String reference) {
-        return View
-            .builder()
-            .viewpoint("deep")
-            .viewId(viewId)
-            .properties(objectMapper.createObjectNode().put("element", reference))
-            .build();
-    }
-
     /**
      * sol_a.sys_aa.con_aaa -> sol_a.sys_ab.con_aba
      */

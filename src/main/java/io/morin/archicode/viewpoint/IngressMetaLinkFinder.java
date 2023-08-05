@@ -1,6 +1,5 @@
-package io.morin.archicode.viewpoint.metalink;
+package io.morin.archicode.viewpoint;
 
-import io.morin.archicode.viewpoint.Level;
 import io.morin.archicode.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Set;
