@@ -1,10 +1,10 @@
-package io.morin.archicode.rendering;
+package io.morin.archicode.rendering.plantuml;
 
 import io.morin.archicode.context.Context;
 import io.morin.archicode.context.Item;
 import io.morin.archicode.context.Link;
+import io.morin.archicode.rendering.ViewRenderer;
 import io.morin.archicode.workspace.Styles;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
@@ -19,11 +19,10 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
-@ApplicationScoped
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 @Slf4j
-public class PlantumlEngineRenderer implements EngineRenderer {
+public class PlantumlViewRenderer implements ViewRenderer {
 
     private static String renderSkinparam(Map.Entry<String, Styles.Style> entry, String shape) {
         val buf = new StringBuilder();

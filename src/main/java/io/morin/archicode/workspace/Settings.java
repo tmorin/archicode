@@ -13,6 +13,9 @@ public class Settings {
     Manifests manifests = Manifests.builder().build();
 
     @Builder.Default
+    Views views = Views.builder().build();
+
+    @Builder.Default
     Relationships relationships = Relationships.builder().build();
 
     @Value
@@ -31,5 +34,14 @@ public class Settings {
 
         @Builder.Default
         String path = "manifests";
+    }
+
+    @Value
+    @Builder
+    @Jacksonized
+    public static class Views {
+
+        @Builder.Default
+        String path = "views";
     }
 }

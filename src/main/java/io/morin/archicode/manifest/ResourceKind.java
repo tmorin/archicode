@@ -29,6 +29,8 @@ public enum ResourceKind {
     private static final Map<String, List<ResourceKind>> INDEX = Arrays
         .stream(ResourceKind.values())
         .collect(Collectors.groupingBy(ResourceKind::getId));
+    private final Class<?> type;
+    private final Class<?> category;
 
     public static Optional<ResourceKind> findById(String id) {
         return INDEX.getOrDefault(id, Collections.emptyList()).stream().findFirst();
@@ -41,7 +43,4 @@ public enum ResourceKind {
     public String getSubTypeName() {
         return this.name().toLowerCase().substring(Math.max(this.name().indexOf("_"), 0));
     }
-
-    private final Class<?> type;
-    private final Class<?> category;
 }

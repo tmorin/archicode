@@ -1,9 +1,9 @@
 package io.morin.archicode.cli;
 
-import io.morin.archicode.rendering.RendererEngine;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
+import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -18,9 +18,9 @@ class CustomRenderingTest {
         archiCodeCommand.workspaceFilePath = Path.of(".custom/cara.yaml");
         renderCommand.archiCodeCommand = archiCodeCommand;
         renderCommand.viewsDirPath = Path.of("views");
-        renderCommand.rendererEngine = RendererEngine.PLANTUML;
+        renderCommand.rendererName = "plantuml";
         if (archiCodeCommand.workspaceFilePath.toFile().exists()) {
-            renderCommand.renderPerspectives();
+            renderCommand.renderViews(Collections.emptySet());
         }
     }
 }

@@ -3,7 +3,6 @@ package io.morin.archicode.cli;
 import io.morin.archicode.context.ContextFactory;
 import io.morin.archicode.element.application.Parent;
 import io.morin.archicode.rendering.Renderer;
-import io.morin.archicode.rendering.RendererEngine;
 import io.morin.archicode.view.DetailedView;
 import io.morin.archicode.view.OverviewView;
 import io.morin.archicode.view.View;
@@ -11,8 +10,9 @@ import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -39,15 +39,13 @@ public class RenderCommand {
         paramLabel = "renderer",
         defaultValue = "plantuml",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
-        description = "The rendered engine.",
-        converter = RendererEngineConvert.class
+        description = "The name of the renderer."
     )
-    RendererEngine rendererEngine;
+    String rendererName;
 
     @CommandLine.Option(
         names = { "-o", "--output" },
         paramLabel = "path",
-        defaultValue = "./views",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
         description = "The output directory."
     )
@@ -55,31 +53,28 @@ public class RenderCommand {
 
     @SneakyThrows
     @CommandLine.Command(name = "views", description = "Render views")
-    void renderViews(@CommandLine.Parameters(description = "The view identifiers to render.") Set<String> viewIds) {
+    void renderViews(
+        @CommandLine.Parameters(description = "The view identifiers to render.") @NonNull Set<String> viewIds
+    ) {
         val workspace = workspaceFactory.create(archiCodeCommand.workspaceFilePath);
-        val outputDirPath = Path.of(archiCodeCommand.workspaceFilePath.toFile().getParent(), viewsDirPath.toString());
+
+        val outputDirPath = Path.of(
+            archiCodeCommand.workspaceFilePath.toFile().getParent(),
+            Optional.ofNullable(viewsDirPath).orElse(Path.of(workspace.getSettings().getViews().getPath())).toString()
+        );
+
         for (String viewId : viewIds) {
             log.info("render {}", viewId);
             val view = workspace.getView(viewId);
             val context = contextFactory.create(workspace, view);
-            renderer.render(context, rendererEngine, outputDirPath);
+            renderer.render(context, rendererName, outputDirPath);
         }
-    }
 
-    @SneakyThrows
-    @CommandLine.Command(name = "perspectives", description = "Render perspectives")
-    void renderPerspectives() {
-        val workspace = workspaceFactory.create(archiCodeCommand.workspaceFilePath);
-        val outputDirPath = Path.of(
-            archiCodeCommand.workspaceFilePath.toFile().getAbsoluteFile().getParent(),
-            viewsDirPath.toString()
-        );
         workspace
             .listAllElementReferences(element -> element instanceof Parent<?>)
             .stream()
             .flatMap(reference -> {
                 val views = new HashSet<View>();
-
                 val overviewElementView = OverviewView
                     .builder()
                     .element(reference)
@@ -102,16 +97,7 @@ public class RenderCommand {
             .forEach(view -> {
                 log.info("render {}", view.getViewId());
                 val context = contextFactory.create(workspace, view);
-                renderer.render(context, rendererEngine, outputDirPath);
+                renderer.render(context, rendererName, outputDirPath);
             });
-    }
-
-    @RequiredArgsConstructor
-    static class RendererEngineConvert implements CommandLine.ITypeConverter<RendererEngine> {
-
-        @Override
-        public RendererEngine convert(String value) {
-            return RendererEngine.valueOf(value.toUpperCase());
-        }
     }
 }

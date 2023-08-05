@@ -4,12 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.morin.archicode.Fixtures;
 import io.morin.archicode.MapperFactory;
-import io.morin.archicode.rendering.RendererEngine;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.val;
@@ -39,7 +39,7 @@ class ArchiCodeCommandTest {
         ArchiCodeCommand archiCodeCommand = new ArchiCodeCommand();
         archiCodeCommand.workspaceFilePath = wksFile;
         renderCommand.archiCodeCommand = archiCodeCommand;
-        renderCommand.rendererEngine = RendererEngine.PLANTUML;
+        renderCommand.rendererName = "plantuml";
     }
 
     @Test
@@ -57,7 +57,7 @@ class ArchiCodeCommandTest {
     @Test
     void shouldRenderPerspectives() {
         renderCommand.viewsDirPath = Path.of("shouldRenderPerspectives");
-        renderCommand.renderPerspectives();
+        renderCommand.renderViews(Collections.emptySet());
         assertTrue(
             Path
                 .of("target/ArchiCodeCommandTest/shouldRenderPerspectives/plantuml/solution_a.system_a_a_overview.puml")

@@ -38,14 +38,21 @@ public class ResourceParser {
             .orElseThrow(() -> new ArchiCodeException("unable to read the path %s", path));
 
         for (Path manifestFile : Arrays.stream(manifestFilesAsArray).map(File::toPath).collect(Collectors.toSet())) {
+            log.info("parse the manifest {}", manifestFile);
+
             val mapper = mapperFactory.create(manifestFile);
             val resource = mapper.readValue(manifestFile.toFile(), Resource.class);
             val item = ResourceConverter.builder().resource(resource).mapper(mapper).build().convert();
+
             if (item instanceof Element element) {
+                val reference = Optional
+                    .ofNullable(resource.getHeader().getParent())
+                    .map(parentReference -> String.format("%s.%s", parentReference, element.getId()))
+                    .orElse(element.getId());
                 val candidate = Candidate
                     .builder()
                     .parent(resource.getHeader().getParent())
-                    .reference(String.format("%s.%s", resource.getHeader().getParent(), element.getId()))
+                    .reference(reference)
                     .element(element)
                     .build();
                 map.putIfAbsent(resource.getKind().getCategory(), new HashSet<>());

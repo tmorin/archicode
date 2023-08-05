@@ -1,4 +1,4 @@
-package io.morin.archicode.rendering;
+package io.morin.archicode.rendering.plantuml;
 
 import io.morin.archicode.context.Item;
 import io.morin.archicode.context.Link;
