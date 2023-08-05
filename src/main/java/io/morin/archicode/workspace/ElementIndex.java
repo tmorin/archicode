@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.NonNull;
@@ -78,5 +79,15 @@ public class ElementIndex {
             .filter(e -> e.getKey().startsWith(destination))
             .flatMap(e -> e.getValue().stream())
             .collect(Collectors.toSet());
+    }
+
+    /**
+     * List all descendants of given reference.
+     *
+     * @param reference the reference
+     * @return the descendants
+     */
+    public Stream<Map.Entry<String, Element>> streamDescendants(String reference) {
+        return elementByReferenceIndex.entrySet().stream().filter(e -> e.getKey().startsWith(reference));
     }
 }

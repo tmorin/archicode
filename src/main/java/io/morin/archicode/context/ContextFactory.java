@@ -1,7 +1,9 @@
 package io.morin.archicode.context;
 
+import io.morin.archicode.context.deep.DeepContextFactory;
 import io.morin.archicode.context.detailed.DetailedContextFactory;
 import io.morin.archicode.context.overview.OverviewContextFactory;
+import io.morin.archicode.view.DeepView;
 import io.morin.archicode.view.DetailedView;
 import io.morin.archicode.view.OverviewView;
 import io.morin.archicode.view.View;
@@ -19,14 +21,16 @@ import lombok.extern.slf4j.Slf4j;
 public class ContextFactory {
 
     DetailedContextFactory detailedContextFactory;
-
     OverviewContextFactory overviewContextFactory;
+    DeepContextFactory deepContextFactory;
 
     public Context create(Workspace workspace, View view) {
         if (view instanceof DetailedView detailedView) {
             return detailedContextFactory.create(workspace, detailedView);
         } else if (view instanceof OverviewView overviewView) {
             return overviewContextFactory.create(workspace, overviewView);
+        } else if (view instanceof DeepView deepView) {
+            return deepContextFactory.create(workspace, deepView);
         }
         throw new IllegalStateException("Unexpected value: " + view);
     }
