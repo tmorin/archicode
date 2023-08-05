@@ -40,7 +40,7 @@ public class WorkspaceFactory {
                     val elementReference = appCandidate.getReference();
                     val element = appCandidate.getElement();
 
-                    log.debug("index {} {}", elementReference, element);
+                    log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
                     elementByReferenceIndex.put(elementReference, element);
                     referenceByElementIndex.put(element, elementReference);
                 },
@@ -48,7 +48,7 @@ public class WorkspaceFactory {
                     val elementReference = appCandidate.getReference();
                     val element = appCandidate.getElement();
 
-                    log.debug("index {} {}", elementReference, element);
+                    log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
                     elementByReferenceIndex.put(elementReference, element);
                     referenceByElementIndex.put(element, elementReference);
                 }
@@ -76,14 +76,14 @@ public class WorkspaceFactory {
                     val parentReference = referenceByElementIndex.get(p);
                     val elementReference = String.format("%s.%s", parentReference, element.getId());
 
-                    log.debug("index (p) {} {}", elementReference, element);
+                    log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
                     elementByReferenceIndex.put(elementReference, element);
                     referenceByElementIndex.put(element, elementReference);
                 },
                 () -> {
                     val elementReference = element.getId();
 
-                    log.debug("index (r) {} {}", elementReference, element);
+                    log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
                     elementByReferenceIndex.put(elementReference, element);
                     referenceByElementIndex.put(element, elementReference);
                 }
@@ -138,14 +138,13 @@ public class WorkspaceFactory {
 
         log.debug("register the elements discovered in the manifests");
         indexedAppCandidates.forEach(appCandidate -> {
-            val element = elementByReferenceIndex.get(appCandidate.getReference());
-            if (elementByReferenceIndex.get(appCandidate.getParent()) instanceof Parent parent) {
-                elementByReferenceIndex.remove(appCandidate.getParent());
+            val parentCandidate = elementByReferenceIndex.get(appCandidate.getParent());
+            if (parentCandidate instanceof Parent parent) {
                 referenceByElementIndex.remove(elementByReferenceIndex.remove(appCandidate.getParent()));
-                parent.getElements().add(element);
-                elementByReferenceIndex.put(appCandidate.getParent(), element);
-                referenceByElementIndex.put(element, appCandidate.getParent());
-            } else if (element instanceof ApplicationElement applicationElement) {
+                parent.getElements().add(appCandidate.getElement());
+                elementByReferenceIndex.put(appCandidate.getParent(), parentCandidate);
+                referenceByElementIndex.put(parentCandidate, appCandidate.getParent());
+            } else if (parentCandidate instanceof ApplicationElement applicationElement) {
                 rawWorkspace.getApplication().getElements().add(applicationElement);
             }
         });
