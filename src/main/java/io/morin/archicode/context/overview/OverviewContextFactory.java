@@ -14,7 +14,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
@@ -34,24 +33,24 @@ public class OverviewContextFactory {
     MetaLinkGroomer metaLinkGroomer;
 
     public Context create(Workspace workspace, OverviewView view) {
-        log.info("create context for {}", view);
+        log.debug("create context for {}", view);
 
         val viewReference = view.getElement();
 
         val egressMetaLinks = egressMetaLinkFinder.find(workspace, viewReference);
-        egressMetaLinks.forEach(metaLink -> log.info("egress {}", metaLink));
+        egressMetaLinks.forEach(metaLink -> log.debug("egress {}", metaLink));
         val egressGroomedLinks = metaLinkGroomer.groomEgress(workspace, viewReference, egressMetaLinks);
-        egressGroomedLinks.forEach(groomedLink -> log.info("egress {}", groomedLink));
+        egressGroomedLinks.forEach(groomedLink -> log.debug("egress {}", groomedLink));
 
         val ingressMetaLinks = ingressMetaLinkFinder.find(workspace, viewReference);
-        ingressMetaLinks.forEach(metaLink -> log.info("ingress {}", metaLink));
+        ingressMetaLinks.forEach(metaLink -> log.debug("ingress {}", metaLink));
         val ingressGroomedLinks = metaLinkGroomer.groomIngress(workspace, viewReference, ingressMetaLinks);
-        ingressGroomedLinks.forEach(groomedLink -> log.info("ingress {}", groomedLink));
+        ingressGroomedLinks.forEach(groomedLink -> log.debug("ingress {}", groomedLink));
 
         val allGroomedLinks = Stream
             .concat(egressGroomedLinks.stream(), ingressGroomedLinks.stream())
             .collect(Collectors.toSet());
-        allGroomedLinks.forEach(groomedLink -> log.info("all {}", groomedLink));
+        allGroomedLinks.forEach(groomedLink -> log.debug("all {}", groomedLink));
 
         val itemByReference = new HashMap<String, Item>();
 
@@ -94,7 +93,7 @@ public class OverviewContextFactory {
             })
             .filter(item -> !item.getReference().contains("."))
             .collect(Collectors.toSet());
-        items.forEach(item -> log.info("item {}", item));
+        items.forEach(item -> log.debug("item {}", item));
 
         val links = allGroomedLinks
             .stream()
@@ -108,10 +107,7 @@ public class OverviewContextFactory {
                         .stream()
                         .flatMap(l -> l.getQualifiers().stream())
                         .collect(Collectors.toSet());
-
-                    val defaultLabel = Optional
-                        .ofNullable(workspace.getSettings().getRelationships().getDefaultSyntheticLabel())
-                        .orElse("uses");
+                    val defaultLabel = workspace.getSettings().getRelationships().getDefaultSyntheticLabel();
                     val label = syntheticRelationships.size() == 1
                         ? syntheticRelationships
                             .stream()
@@ -148,7 +144,7 @@ public class OverviewContextFactory {
                 return Stream.empty();
             })
             .collect(Collectors.toSet());
-        links.forEach(link -> log.info("link {}", link));
+        links.forEach(link -> log.debug("link {}", link));
 
         return Context.builder().workspace(workspace).view(view).items(items).links(links).build();
     }

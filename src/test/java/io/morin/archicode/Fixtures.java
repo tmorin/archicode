@@ -12,6 +12,55 @@ import lombok.val;
 @UtilityClass
 public class Fixtures {
 
+    public static final System system_a_a = System
+        .builder()
+        .id("system_a_a")
+        .name("System#A_A")
+        .relationship(Relationship.builder().destination("solution_b").label("uses").build())
+        .relationship(Relationship.builder().destination("solution_c").label("uses").build())
+        .build();
+    public static final System system_a_b = System
+        .builder()
+        .id("system_a_b")
+        .name("System#A_B")
+        .relationship(Relationship.builder().destination("solution_b").label("uses").build())
+        .build();
+    public static final Solution solution_a = Solution
+        .builder()
+        .id("solution_a")
+        .name("Solution#A")
+        .elements(Set.of(system_a_a, system_a_b))
+        .relationship(Relationship.builder().destination("solution_b").label("uses").build())
+        .build();
+    public static final Solution solution_b = Solution
+        .builder()
+        .id("solution_b")
+        .name("Solution#B")
+        .description("label of Solution#B")
+        .build();
+    public static final Solution solution_c = Solution
+        .builder()
+        .id("solution_c")
+        .name("Solution#C")
+        .description("label of Solution#C")
+        .build();
+    public static final OverviewView view_solution_a_overview = OverviewView
+        .builder()
+        .viewId("view_solution_a_overview")
+        .element("solution_a")
+        .build();
+    public static final DetailedView view_solution_a_detailed = DetailedView
+        .builder()
+        .viewId("view_solution_a_detailed")
+        .element("solution_a")
+        .build();
+    public static final RawWorkspace workspace_a = RawWorkspace
+        .builder()
+        .application(Application.builder().elements(Set.of(solution_a, solution_b, solution_c)).build())
+        .view(view_solution_a_overview)
+        .view(view_solution_a_detailed)
+        .build();
+
     /**
      * sol_a.sys_aa.con_aaa -> sol_a.sys_ab.con_aba
      */
@@ -191,53 +240,4 @@ public class Fixtures {
 
         return applicationBuilder;
     }
-
-    public static final System system_a_a = System
-        .builder()
-        .id("system_a_a")
-        .name("System#A_A")
-        .relationship(Relationship.builder().destination("solution_b").label("uses").build())
-        .relationship(Relationship.builder().destination("solution_c").label("uses").build())
-        .build();
-    public static final System system_a_b = System
-        .builder()
-        .id("system_a_b")
-        .name("System#A_B")
-        .relationship(Relationship.builder().destination("solution_b").label("uses").build())
-        .build();
-    public static final Solution solution_a = Solution
-        .builder()
-        .id("solution_a")
-        .name("Solution#A")
-        .elements(Set.of(system_a_a, system_a_b))
-        .relationship(Relationship.builder().destination("solution_b").label("uses").build())
-        .build();
-    public static final Solution solution_b = Solution
-        .builder()
-        .id("solution_b")
-        .name("Solution#B")
-        .description("label of Solution#B")
-        .build();
-    public static final Solution solution_c = Solution
-        .builder()
-        .id("solution_c")
-        .name("Solution#C")
-        .description("label of Solution#C")
-        .build();
-    public static final OverviewView view_solution_a_overview = OverviewView
-        .builder()
-        .viewId("view_solution_a_overview")
-        .element("solution_a")
-        .build();
-    public static final DetailedView view_solution_a_detailed = DetailedView
-        .builder()
-        .viewId("view_solution_a_detailed")
-        .element("solution_a")
-        .build();
-    public static final RawWorkspace workspace_a = RawWorkspace
-        .builder()
-        .application(Application.builder().elements(Set.of(solution_a, solution_b, solution_c)).build())
-        .view(view_solution_a_overview)
-        .view(view_solution_a_detailed)
-        .build();
 }

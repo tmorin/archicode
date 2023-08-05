@@ -22,7 +22,7 @@ public class ResourceConverter {
         contentWithKind.put("kind", resource.getKind().getSubTypeName());
 
         val contentWithKindAsString = contentWithKind.toString();
-        log.info("convert {}", contentWithKindAsString);
+        log.debug("convert {}", contentWithKindAsString);
         return (T) mapper.readValue(contentWithKindAsString, resource.getKind().getType());
     }
 }

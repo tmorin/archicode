@@ -15,16 +15,19 @@ import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusTest
 @Slf4j
-class PlantumlEngineRendererTest {
+class PlantumlViewRendererTest {
 
     @Inject
-    PlantumlEngineRenderer plantumlRenderer;
+    RendererFactoryRepository rendererFactoryRepository;
+
+    ViewRenderer plantumlRenderer;
 
     @Inject
     DetailedContextFactory detailedContextFactory;
@@ -34,6 +37,11 @@ class PlantumlEngineRendererTest {
 
     @Inject
     WorkspaceFactory workspaceFactory;
+
+    @BeforeEach
+    void setUp() {
+        plantumlRenderer = rendererFactoryRepository.getRenderFactory("plantuml").createViewRenderer();
+    }
 
     @Test
     @SneakyThrows

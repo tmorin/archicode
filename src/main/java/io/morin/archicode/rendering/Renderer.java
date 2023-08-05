@@ -18,22 +18,25 @@ import lombok.val;
 @Slf4j
 public class Renderer {
 
-    RendererFactory rendererFactory;
+    RendererFactoryRepository rendererFactoryRepository;
 
     @SneakyThrows
-    public void render(Context context, RendererEngine rendererEngine, Path outputDirPath) {
+    public void render(Context context, String rendererName, Path outputDirPath) {
+        val rendererFactory = rendererFactoryRepository.getRenderFactory(rendererName);
+
         val outputFilePath = Paths.get(
             outputDirPath.toString(),
-            rendererEngine.getFolder(),
-            String.format("%s.%s", context.getView().getViewId(), rendererEngine.getExtension())
+            rendererFactory.getDirectory(),
+            String.format("%s.%s", context.getView().getViewId(), rendererFactory.getExtension())
         );
 
         if (outputFilePath.toFile().getParentFile().mkdirs()) {
             log.trace("outputFilePath parent already created");
         }
 
+        val viewRenderer = rendererFactory.createViewRenderer();
         try (val oStream = new FileOutputStream(outputFilePath.toFile())) {
-            rendererFactory.create(rendererEngine).render(context, oStream);
+            viewRenderer.render(context, oStream);
         }
     }
 }

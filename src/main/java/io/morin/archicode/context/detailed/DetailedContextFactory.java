@@ -46,7 +46,7 @@ public class DetailedContextFactory {
     }
 
     public Context create(Workspace workspace, DetailedView view) {
-        log.info("create context for {}", view);
+        log.debug("create context for {}", view);
 
         val parentCandidate = workspace.getElementByReference(view.getElement());
 
