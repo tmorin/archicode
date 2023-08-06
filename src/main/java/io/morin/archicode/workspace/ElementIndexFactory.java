@@ -79,6 +79,21 @@ public class ElementIndexFactory {
             }
         });
 
+        log.info(
+            "{} - size of elementByReferenceIndex : {}",
+            root.getClass().getSimpleName(),
+            index.elementByReferenceIndex.size()
+        );
+        log.info(
+            "{} - size of referenceByElementIndex : {}",
+            root.getClass().getSimpleName(),
+            index.referenceByElementIndex.size()
+        );
+        log.info(
+            "{} - size of sourceElementsByDestinationIndex : {}",
+            root.getClass().getSimpleName(),
+            index.sourceElementsByDestinationIndex.size()
+        );
         return index;
     }
 }

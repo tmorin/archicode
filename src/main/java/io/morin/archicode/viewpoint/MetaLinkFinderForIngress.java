@@ -1,6 +1,6 @@
 package io.morin.archicode.viewpoint;
 
-import io.morin.archicode.workspace.Workspace;
+import io.morin.archicode.workspace.ElementIndex;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.*;
@@ -14,19 +14,19 @@ import lombok.extern.slf4j.Slf4j;
 public class MetaLinkFinderForIngress implements MetaLinkFinder {
 
     @Override
-    public Set<MetaLink> find(@NonNull Workspace workspace, @NonNull String toReference) {
-        val fromElements = workspace.appIndex.searchFromElements(toReference);
+    public Set<MetaLink> find(@NonNull ElementIndex index, @NonNull String toReference) {
+        val fromElements = index.searchFromElements(toReference);
         return fromElements
             .stream()
             .flatMap(fromElement -> {
-                val fromReference = workspace.appIndex.getReferenceByElement(fromElement);
+                val fromReference = index.getReferenceByElement(fromElement);
                 val fromLevel = Level.from(fromReference);
                 return fromElement
                     .getRelationships()
                     .stream()
                     .filter(relationship -> relationship.getDestination().startsWith(toReference))
                     .map(relationship -> {
-                        val toElement = workspace.appIndex.getElementByReference(relationship.getDestination());
+                        val toElement = index.getElementByReference(relationship.getDestination());
                         val toLevel = Level.from(relationship.getDestination());
                         return MetaLink
                             .builder()

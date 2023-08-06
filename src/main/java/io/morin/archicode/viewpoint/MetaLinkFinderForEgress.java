@@ -1,6 +1,6 @@
 package io.morin.archicode.viewpoint;
 
-import io.morin.archicode.workspace.Workspace;
+import io.morin.archicode.workspace.ElementIndex;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,24 +17,24 @@ public class MetaLinkFinderForEgress implements MetaLinkFinder {
     /**
      * Find all associations where the reference or one of its descendant is the source of a relationship.
      *
-     * @param workspace     the resources
+     * @param index     the index
      * @param viewReference the reference
      * @return the result
      */
     @Override
-    public Set<MetaLink> find(@NonNull Workspace workspace, @NonNull String viewReference) {
+    public Set<MetaLink> find(@NonNull ElementIndex index, @NonNull String viewReference) {
         val metaLinks = new HashSet<MetaLink>();
         io.morin.archicode.resource.workspace.Workspace.Utilities.walkDown(
-            workspace.appIndex.getElementByReference(viewReference),
+            index.getElementByReference(viewReference),
             fromElement -> {
                 val elementMetaLinks = fromElement
                     .getRelationships()
                     .stream()
                     .map(relationship -> {
-                        val fromReference = workspace.appIndex.getReferenceByElement(fromElement);
+                        val fromReference = index.getReferenceByElement(fromElement);
                         val fromLevel = Level.from(fromReference);
                         val toReference = relationship.getDestination();
-                        val toElement = workspace.appIndex.getElementByReference(toReference);
+                        val toElement = index.getElementByReference(toReference);
                         val toLevel = Level.from(toReference);
                         return MetaLink
                             .builder()
