@@ -94,7 +94,7 @@ class PlantumlViewRendererTest {
     @ParameterizedTest
     @ValueSource(strings = { "solution_a", "solution_a.system_a" })
     void shouldRenderDetailedViewWithIngressAndEgress(String viewReference) {
-        val view = WorkspaceAFixtures.createDetailedView(viewReference, viewReference);
+        val view = ResourceFixtures.createDetailedView(viewReference, viewReference);
 
         val rawWorkspace = Workspace
             .builder()
@@ -114,7 +114,7 @@ class PlantumlViewRendererTest {
     @ParameterizedTest
     @ValueSource(strings = { "sol_a.sys_aa" })
     void shouldRenderDetailedViewWithInternalEgress(String viewReference) {
-        val view = WorkspaceAFixtures.createDetailedView(viewReference, viewReference);
+        val view = ResourceFixtures.createDetailedView(viewReference, viewReference);
 
         val rawWorkspace = Workspace.builder().application(ResourceFixtures.createWithInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
@@ -131,7 +131,7 @@ class PlantumlViewRendererTest {
     @ParameterizedTest
     @ValueSource(strings = { "sol_a.sys_aa" })
     void shouldRenderDetailedViewWithInternalIngress(String viewReference) {
-        val view = WorkspaceAFixtures.createDetailedView(viewReference, viewReference);
+        val view = ResourceFixtures.createDetailedView(viewReference, viewReference);
 
         val rawWorkspace = Workspace
             .builder()
@@ -151,7 +151,7 @@ class PlantumlViewRendererTest {
     @ParameterizedTest
     @ValueSource(strings = { "sol_a.sys_aa" })
     void shouldRenderDetailedViewWithXgress(String viewReference) {
-        val view = WorkspaceAFixtures.createDetailedView(viewReference, viewReference);
+        val view = ResourceFixtures.createDetailedView(viewReference, viewReference);
 
         val rawWorkspace = Workspace.builder().application(ResourceFixtures.createWithInternalXgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());

@@ -1,24 +1,25 @@
 package io.morin.archicode.viewpoint.deep;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.morin.archicode.resource.element.deployment.Node;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.*;
+import io.morin.archicode.workspace.ElementIndex;
 import io.morin.archicode.workspace.Workspace;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.NonNull;
+import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 
 @Slf4j
-@Builder
-@RequiredArgsConstructor
+@SuperBuilder
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-public class DeepViewpointFactory implements ViewpointFactory {
-
-    @NonNull
-    ObjectMapper objectMapper;
+public class DeepViewpointFactory extends AbstractViewPointFactory implements ViewpointFactory {
 
     @NonNull
     MetaLinkFinderForEgress metaLinkFinderForEgress;
@@ -40,6 +41,25 @@ public class DeepViewpointFactory implements ViewpointFactory {
 
         val viewReference = properties.getElement();
 
+        val allMetaLinks = listAllMetaLinksRelatedToViewReference(mainIndex, viewReference);
+
+        val mainItemReferences = collectAsSet(
+            allMetaLinks.stream().map(MetaLink::getFromReference),
+            allMetaLinks.stream().map(MetaLink::getToReference),
+            Stream.of(viewReference)
+        );
+
+        val mainContent = createItemAndLinksForCurrentLayer(mainItemReferences, mainIndex, allMetaLinks);
+        val allItems = new HashSet<>(mainContent.items);
+        val allLinks = new HashSet<>(mainContent.links);
+
+        val appContent = createItemAndLinksForAppLayer(workspace, mainContent.items);
+        allLinks.addAll(appContent.links);
+
+        return Viewpoint.builder().workspace(workspace).view(view).items(allItems).links(allLinks).build();
+    }
+
+    private Set<MetaLink> listAllMetaLinksRelatedToViewReference(ElementIndex mainIndex, String viewReference) {
         val allMetaLinks = Stream
             .concat(Stream.of(viewReference), mainIndex.streamDescendants(viewReference).map(Map.Entry::getKey))
             .flatMap(reference -> {
@@ -49,67 +69,94 @@ public class DeepViewpointFactory implements ViewpointFactory {
             })
             .collect(Collectors.toSet());
         allMetaLinks.forEach(metaLink -> log.debug("metaLink {}", metaLink));
+        return allMetaLinks;
+    }
 
-        val itemByReference = new HashMap<String, Item>();
+    @SneakyThrows
+    private Content createItemAndLinksForCurrentLayer(
+        Set<String> mainItemReferences,
+        ElementIndex mainIndex,
+        Set<MetaLink> allMetaLinks
+    ) {
+        val content = new Content();
 
-        val itemReferences = new HashSet<String>();
-        itemReferences.addAll(allMetaLinks.stream().map(MetaLink::getFromReference).collect(Collectors.toSet()));
-        itemReferences.addAll(allMetaLinks.stream().map(MetaLink::getToReference).collect(Collectors.toSet()));
-        if (itemReferences.isEmpty()) {
-            itemReferences.add(viewReference);
-        }
+        val mainItemByReference = new HashMap<String, Item>();
 
-        val items = itemReferences
+        val mainItems = createItems(mainItemReferences, mainIndex, mainItemByReference);
+        mainItems.forEach(item -> log.debug("mainItem {}", item));
+        content.items.addAll(mainItems);
+
+        val mainLinks = createLinks(allMetaLinks, mainItemByReference);
+        mainLinks.forEach(link -> log.debug("mainLink {}", link));
+        content.links.addAll(mainLinks);
+
+        return content;
+    }
+
+    private Content createItemAndLinksForAppLayer(Workspace workspace, Set<Item> mainItemByReference) {
+        val content = new Content();
+
+        val appItemByReference = new HashMap<String, Set<Item>>();
+
+        val appItems = mainItemByReference
             .stream()
-            .flatMap(reference -> {
-                val references = new HashSet<String>();
-                val parts = reference.split("\\.");
-                for (int i = 0; i < parts.length; i++) {
-                    references.add(String.join(".", Arrays.copyOf(parts, i + 1)));
-                }
-                return references.stream();
-            })
-            .distinct()
-            .sorted()
-            .map(elementReference -> {
-                val element = mainIndex.getElementByReference(elementReference);
-                val item = itemByReference.computeIfAbsent(
-                    elementReference,
-                    s ->
-                        Item
+            .flatMap(Item::stream)
+            .filter(i -> i.getElement() instanceof Node)
+            .flatMap(item -> {
+                val node = (Node) item.getElement();
+                return node
+                    .getApplications()
+                    .stream()
+                    .map(reference -> {
+                        val appElement = workspace.appIndex.elementByReferenceIndex.get(reference);
+                        val newAppItem = Item
                             .builder()
-                            .itemId(elementReference)
-                            .reference(elementReference)
-                            .element(element)
-                            .kind(Item.Kind.from(element))
-                            .build()
-                );
-                io.morin.archicode.resource.workspace.Workspace.Utilities
-                    .findParentReference(elementReference)
-                    .ifPresent(parentReference -> itemByReference.get(parentReference).getChildren().add(item));
-                return item;
+                            .itemId(node.getId() + "_" + reference.replace(".", "_"))
+                            .reference("app:" + reference.replace(".", "_"))
+                            .element(appElement)
+                            .kind(Item.Kind.from(appElement))
+                            .build();
+                        appItemByReference.putIfAbsent(reference, new HashSet<>());
+                        appItemByReference.get(reference).add(newAppItem);
+                        item.getChildren().add(newAppItem);
+                        return newAppItem;
+                    });
             })
-            .filter(item -> !item.getReference().contains("."))
             .collect(Collectors.toSet());
-        items.forEach(item -> log.debug("item {}", item));
+        appItems.forEach(item -> log.debug("appItem {}", item));
+        content.items.addAll(appItems);
 
-        val links = allMetaLinks
+        val appLinks = appItemByReference
+            .entrySet()
             .stream()
-            .map(metaLink -> {
-                val fromItem = itemByReference.get(metaLink.getFromReference());
-                val toItem = itemByReference.get(metaLink.getToReference());
-                return Link
-                    .builder()
-                    .from(fromItem)
-                    .to(toItem)
-                    .label(metaLink.getRelationship().getLabel())
-                    .qualifiers(metaLink.getRelationship().getQualifiers())
-                    .relationship(metaLink.getRelationship())
-                    .build();
-            })
+            .flatMap(entry ->
+                entry
+                    .getValue()
+                    .stream()
+                    .flatMap(fromItem ->
+                        fromItem
+                            .getElement()
+                            .getRelationships()
+                            .stream()
+                            .filter(relationship -> appItemByReference.containsKey(relationship.getDestination()))
+                            .flatMap(relationship ->
+                                appItemByReference
+                                    .get(relationship.getDestination())
+                                    .stream()
+                                    .map(toItem -> Link.builder().from(fromItem).to(toItem).build())
+                            )
+                    )
+            )
             .collect(Collectors.toSet());
-        links.forEach(link -> log.debug("link {}", link));
+        appLinks.forEach(link -> log.debug("appLink {}", link));
+        content.links.addAll(appLinks);
 
-        return Viewpoint.builder().workspace(workspace).view(view).items(items).links(links).build();
+        return content;
+    }
+
+    private record Content(Set<Item> items, Set<Link> links) {
+        public Content() {
+            this(new HashSet<>(), new HashSet<>());
+        }
     }
 }

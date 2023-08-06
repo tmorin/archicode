@@ -31,7 +31,7 @@ public class ElementIndexFactory {
     Set<ManifestParser.Candidate> candidates;
 
     public ElementIndex create() {
-        log.debug("index the  elements of the resources");
+        log.debug("index the elements of the resources {}", root);
 
         if (root instanceof Application application) {
             Workspace.Utilities.walkDown(
@@ -39,7 +39,6 @@ public class ElementIndexFactory {
                 (parent, element) -> ElementIndexUtilities.index(parent, element, index)
             );
         } else if (root instanceof Deployment deployment) {
-            log.debug("index the elements of the resources");
             Workspace.Utilities.walkDown(
                 deployment,
                 (parent, element) -> ElementIndexUtilities.index(parent, element, index)

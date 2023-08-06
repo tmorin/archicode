@@ -1,0 +1,33 @@
+application:
+  elements:
+    - kind: "system"
+      id: "sys_a"
+      elements:
+        - kind: "container"
+          id: "con_aa"
+          relationships:
+            - destination: "sys_b.con_ba"
+    - kind: "system"
+      id: "sys_b"
+      elements:
+        - kind: "container"
+          id: "con_ba"
+deployment:
+  elements:
+    - kind: "environment"
+      id: "env"
+      elements:
+        - kind: "node"
+          id: "node_a"
+          applications:
+            - "sys_a.con_aa"
+          relationships:
+            - destination: "env.node_b"
+        - kind: "node"
+          id: "node_b"
+          relationships:
+            - destination: "env.node_c"
+        - kind: "node"
+          id: "node_c"
+          applications:
+            - "sys_b.con_ba"

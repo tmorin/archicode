@@ -1,29 +1,25 @@
 package io.morin.archicode.viewpoint.detailed;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.view.View;
-import io.morin.archicode.viewpoint.Item;
-import io.morin.archicode.viewpoint.Link;
-import io.morin.archicode.viewpoint.Viewpoint;
-import io.morin.archicode.viewpoint.ViewpointFactory;
+import io.morin.archicode.viewpoint.*;
 import io.morin.archicode.viewpoint.overview.OverviewViewpointFactory;
 import io.morin.archicode.workspace.Workspace;
 import java.util.*;
 import java.util.stream.Collectors;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.NonNull;
+import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 
 @Slf4j
-@Builder
-@RequiredArgsConstructor
+@SuperBuilder
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-public class DetailedViewpointFactory implements ViewpointFactory {
-
-    @NonNull
-    ObjectMapper objectMapper;
+public class DetailedViewpointFactory extends AbstractViewPointFactory implements ViewpointFactory {
 
     @NonNull
     OverviewViewpointFactory overviewViewpointFactory;

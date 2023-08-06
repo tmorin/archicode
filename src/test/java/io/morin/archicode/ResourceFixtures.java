@@ -2,6 +2,7 @@ package io.morin.archicode;
 
 import io.morin.archicode.resource.element.application.*;
 import io.morin.archicode.resource.element.application.System;
+import io.morin.archicode.resource.view.View;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
 import lombok.val;
@@ -200,5 +201,31 @@ public class ResourceFixtures {
         applicationBuilder.elements(Set.of(per_a, per_b, sol_a));
 
         return applicationBuilder;
+    }
+
+    public View createOverviewView(String viewId, String reference) {
+        return View
+            .builder()
+            .viewpoint("overview")
+            .viewId(viewId)
+            .properties(WorkspaceAFixtures.objectMapper.createObjectNode().put("element", reference))
+            .build();
+    }
+
+    public View createDetailedView(String viewId, String reference) {
+        return View
+            .builder()
+            .viewpoint("detailed")
+            .viewId(viewId)
+            .properties(WorkspaceAFixtures.objectMapper.createObjectNode().put("element", reference))
+            .build();
+    }
+
+    public View.ViewBuilder createDeepViewBuilder(String viewId, String reference) {
+        return View
+            .builder()
+            .viewpoint("deep")
+            .viewId(viewId)
+            .properties(WorkspaceAFixtures.objectMapper.createObjectNode().put("element", reference));
     }
 }

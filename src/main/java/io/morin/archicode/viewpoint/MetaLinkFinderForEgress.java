@@ -17,7 +17,7 @@ public class MetaLinkFinderForEgress implements MetaLinkFinder {
     /**
      * Find all associations where the reference or one of its descendant is the source of a relationship.
      *
-     * @param index     the index
+     * @param index         the index
      * @param viewReference the reference
      * @return the result
      */
