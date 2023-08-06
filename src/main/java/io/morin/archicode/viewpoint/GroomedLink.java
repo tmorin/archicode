@@ -9,11 +9,10 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.jackson.Jacksonized;
 
+@Value
 @Builder
 @ToString(onlyExplicitlyIncluded = true)
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Jacksonized
-@Getter
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class GroomedLink {
 
@@ -45,7 +44,6 @@ public class GroomedLink {
 
     @NonNull
     @Builder.Default
-    @EqualsAndHashCode.Include
     Map<RelationshipKind, Set<Relationship>> relationships = new EnumMap<>(RelationshipKind.class);
 
     public enum RelationshipKind {

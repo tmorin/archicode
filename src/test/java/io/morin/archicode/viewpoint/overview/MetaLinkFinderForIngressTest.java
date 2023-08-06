@@ -2,7 +2,7 @@ package io.morin.archicode.viewpoint.overview;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import io.morin.archicode.Fixtures;
+import io.morin.archicode.ResourceFixtures;
 import io.morin.archicode.resource.element.application.*;
 import io.morin.archicode.resource.element.application.System;
 import io.morin.archicode.resource.workspace.Workspace;
@@ -31,7 +31,7 @@ class MetaLinkFinderForIngressTest {
 
         // solution_a.system_a.container_a -> solution_b.system_b.container_b
         val relationship = Relationship.builder().destination("solution_b.system_b.container_b").build();
-        val container_a = Container.builder().id("container_a").relationship(relationship).build();
+        val container_a = Container.builder().id("container_a").relationships(Set.of(relationship)).build();
         val system_a = System.builder().id("system_a").elements(Set.of(container_a)).build();
         val solution_a = Solution.builder().id("solution_a").elements(Set.of(system_a)).build();
         val container_b = Container.builder().id("container_b").build();
@@ -59,7 +59,7 @@ class MetaLinkFinderForIngressTest {
 
         // solution_a.system_a -> solution_b.system_b.container_b
         val relationship = Relationship.builder().destination("solution_b.system_b.container_b").build();
-        val system_a = System.builder().id("system_a").relationship(relationship).build();
+        val system_a = System.builder().id("system_a").relationships(Set.of(relationship)).build();
         val solution_a = Solution.builder().id("solution_a").elements(Set.of(system_a)).build();
         val container_b = Container.builder().id("container_b").build();
         val system_b = System.builder().id("system_b").elements(Set.of(container_b)).build();
@@ -83,7 +83,7 @@ class MetaLinkFinderForIngressTest {
 
         // solution_a.system_a.container_a -> solution_b.system_b
         val relationship = Relationship.builder().destination("solution_b.system_b").build();
-        val container_a = Container.builder().id("container_a").relationship(relationship).build();
+        val container_a = Container.builder().id("container_a").relationships(Set.of(relationship)).build();
         val system_a = System.builder().id("system_a").elements(Set.of(container_a)).build();
         val solution_a = Solution.builder().id("solution_a").elements(Set.of(system_a)).build();
         val system_b = System.builder().id("system_b").build();
@@ -106,7 +106,7 @@ class MetaLinkFinderForIngressTest {
 
     @Test
     void shouldNotFindInternalEgress() {
-        val model = Fixtures.createWithInternalEgress().build();
+        val model = ResourceFixtures.createWithInternalEgress().build();
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
@@ -117,7 +117,7 @@ class MetaLinkFinderForIngressTest {
 
     @Test
     void shouldFindInternalIngress() {
-        val model = Fixtures.createWithInternalIngress().build();
+        val model = ResourceFixtures.createWithInternalIngress().build();
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 

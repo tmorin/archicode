@@ -1,0 +1,18 @@
+application:
+  elements:
+    - kind: "solution"
+      id: "sol_a"
+      elements:
+        - kind: "system"
+          id: "sys_aa"
+    - kind: "person"
+      id: "per_a"
+      relationships:
+        - destination: "sol_a.sys_aa"
+    - kind: "person"
+      id: "per_b"
+      relationships:
+        - destination: "sol_a.sys_aa"
+settings:
+  views:
+    path: "views_case_a"

@@ -1,6 +1,5 @@
 package io.morin.archicode.cli;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.rendering.Renderer;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.view.View;
@@ -21,8 +20,6 @@ import picocli.CommandLine;
 @Slf4j
 @CommandLine.Command(name = "render")
 public class RenderCommand {
-
-    static ObjectMapper objectMapper = new ObjectMapper();
 
     @CommandLine.ParentCommand
     ArchiCodeCommand archiCodeCommand;

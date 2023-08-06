@@ -5,9 +5,9 @@ import io.morin.archicode.MapperFactory;
 public interface ViewRendererService {
     String getName();
 
-    String getExtension();
-
-    String getDirectory();
+    default String getDirectory() {
+        return getName();
+    }
 
     ViewRenderer createViewRenderer();
 

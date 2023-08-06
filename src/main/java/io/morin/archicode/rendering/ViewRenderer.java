@@ -5,7 +5,7 @@ import java.nio.file.Path;
 import lombok.NonNull;
 
 public interface ViewRenderer {
-    String TAG_RENDERING_SHAPE = "rendering-shape";
+    String TAG_RENDERING_SHAPE = "rendering-defaultShape";
 
     void render(@NonNull Viewpoint viewpoint, @NonNull Path outputPath);
 }

@@ -22,17 +22,17 @@ public abstract class AbstractElement implements Element {
     String name;
     String description;
 
-    @Singular
+    @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<String> qualifiers;
+    Set<String> qualifiers = new LinkedHashSet<>();
 
-    @Singular
+    @Builder.Default
     @JsonDeserialize(as = LinkedHashMap.class)
-    Map<String, String> tags;
+    Map<String, String> tags = new LinkedHashMap<>();
 
-    @Singular
+    @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
-    Set<Relationship> relationships;
+    Set<Relationship> relationships = new LinkedHashSet<>();
 
     @Override
     public String toString() {

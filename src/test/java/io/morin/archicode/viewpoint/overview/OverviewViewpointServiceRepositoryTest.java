@@ -3,7 +3,8 @@ package io.morin.archicode.viewpoint.overview;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.morin.archicode.Fixtures;
+import io.morin.archicode.ResourceFixtures;
+import io.morin.archicode.WorkspaceAFixtures;
 import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.workspace.WorkspaceFactory;
@@ -29,10 +30,13 @@ class OverviewViewpointServiceRepositoryTest {
     @ParameterizedTest
     @ValueSource(strings = { "solution_a", "solution_a.system_a", "solution_a.system_a.container_a" })
     void shouldCreate(String viewReference) {
-        val rawWorkspace = Workspace.builder().application(Fixtures.createWithIngressAndEgress().build()).build();
+        val rawWorkspace = Workspace
+            .builder()
+            .application(ResourceFixtures.createWithIngressAndEgress().build())
+            .build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val view = Fixtures.createOverviewView("shouldCreate", viewReference);
+        val view = WorkspaceAFixtures.createOverviewView("shouldCreate", viewReference);
 
         val context = viewpointServiceRepository.get("overview").createViewpointFactory().create(workspace, view);
         assertEquals(3, context.getItems().size());
@@ -64,9 +68,9 @@ class OverviewViewpointServiceRepositoryTest {
     @ParameterizedTest
     @ValueSource(strings = { "sol_a.sys_aa.con_aaa" })
     void shouldCreateInternalLevel2(String viewReference) {
-        val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalXgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(ResourceFixtures.createWithInternalXgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Collections.emptyMap());
-        val view = Fixtures.createOverviewView("shouldCreateInternalLevel2", viewReference);
+        val view = WorkspaceAFixtures.createOverviewView("shouldCreateInternalLevel2", viewReference);
         val context = viewpointServiceRepository.get("overview").createViewpointFactory().create(workspace, view);
         assertEquals(1, context.getItems().size());
         assertEquals(4, context.getLinks().size());
@@ -107,9 +111,9 @@ class OverviewViewpointServiceRepositoryTest {
     @ParameterizedTest
     @ValueSource(strings = { "sol_a.sys_aa" })
     void shouldCreateInternalLevel1(String viewReference) {
-        val rawWorkspace = Workspace.builder().application(Fixtures.createInternalEgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(ResourceFixtures.createInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Collections.emptyMap());
-        val view = Fixtures.createOverviewView("shouldCreateInternalLevel1", viewReference);
+        val view = WorkspaceAFixtures.createOverviewView("shouldCreateInternalLevel1", viewReference);
         val context = viewpointServiceRepository.get("overview").createViewpointFactory().create(workspace, view);
         assertEquals(1, context.getItems().size());
         assertTrue(

@@ -75,14 +75,19 @@ class WorkspaceTest {
                                                             .builder()
                                                             .id("backend")
                                                             .name("Backend #B")
-                                                            .relationship(
-                                                                Relationship.builder().destination("./database").build()
-                                                            )
-                                                            .relationship(
-                                                                Relationship
-                                                                    .builder()
-                                                                    .destination("/solution-a/group/system-a/backend")
-                                                                    .build()
+                                                            .relationships(
+                                                                Set.of(
+                                                                    Relationship
+                                                                        .builder()
+                                                                        .destination("./database")
+                                                                        .build(),
+                                                                    Relationship
+                                                                        .builder()
+                                                                        .destination(
+                                                                            "/solution-a/group/system-a/backend"
+                                                                        )
+                                                                        .build()
+                                                                )
                                                             )
                                                             .build()
                                                     )
