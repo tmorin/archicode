@@ -1,14 +1,16 @@
 package io.morin.archicode.rendering;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import io.morin.archicode.Fixtures;
 import io.morin.archicode.resource.workspace.Workspace;
+import io.morin.archicode.viewpoint.Viewpoint;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,21 @@ class PlantumlViewRendererTest {
         plantumlRenderer = viewRendererServiceRepository.get("plantuml").createViewRenderer();
     }
 
+    Path prepareOutDir(String testcase, Viewpoint viewpoint) {
+        val outDir = Path.of(
+            "target",
+            this.getClass().getSimpleName(),
+            testcase,
+            viewpoint.getView().getLayer().name().toLowerCase()
+        );
+        if (outDir.toFile().mkdirs()) {
+            log.trace("{} has been created", outDir);
+        }
+        plantumlRenderer.render(viewpoint, outDir);
+
+        return Path.of(outDir.toString(), String.format("%s.puml", viewpoint.getView().getViewId()));
+    }
+
     @Test
     @SneakyThrows
     void shouldRenderOverview() {
@@ -46,13 +63,10 @@ class PlantumlViewRendererTest {
             .createViewpointFactory()
             .create(workspaceFactory.create(Fixtures.workspace_a, Map.of()), Fixtures.view_solution_a_overview);
 
-        val tmpFile = new File("target/view_solution_a_overview.puml");
-        try (val os = new FileOutputStream(tmpFile)) {
-            plantumlRenderer.render(context, os);
-        } finally {
-            log.info("{}", tmpFile.toPath());
-            log.info("{}", Files.readString(tmpFile.toPath()));
-        }
+        val outFile = prepareOutDir("shouldRenderOverview", context);
+        val outContent = Files.readString(outFile);
+        log.info("{}", outContent);
+        assertNotNull(outContent);
     }
 
     @Test
@@ -63,13 +77,10 @@ class PlantumlViewRendererTest {
             .createViewpointFactory()
             .create(workspaceFactory.create(Fixtures.workspace_a, Map.of()), Fixtures.view_solution_a_detailed);
 
-        val tmpFile = new File("target/view_solution_a_detailed.puml");
-        try (val os = new FileOutputStream(tmpFile)) {
-            plantumlRenderer.render(context, os);
-        } finally {
-            log.info("{}", tmpFile.toPath());
-            log.info("{}", Files.readString(tmpFile.toPath()));
-        }
+        val outFile = prepareOutDir("shouldRenderDetailed", context);
+        val outContent = Files.readString(outFile);
+        log.info("{}", outContent);
+        assertNotNull(outContent);
     }
 
     @SneakyThrows
@@ -83,13 +94,10 @@ class PlantumlViewRendererTest {
 
         val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
 
-        val tmpFile = new File(String.format("target/ing-eg__%s.puml", viewReference));
-        try (val os = new FileOutputStream(tmpFile)) {
-            plantumlRenderer.render(context, os);
-        } finally {
-            log.info("{}", tmpFile.toPath());
-            log.info("{}", Files.readString(tmpFile.toPath()));
-        }
+        val outFile = prepareOutDir("shouldRenderDetailedViewWithIngressAndEgress", context);
+        val outContent = Files.readString(outFile);
+        log.info("{}", outContent);
+        assertNotNull(outContent);
     }
 
     @SneakyThrows
@@ -103,13 +111,10 @@ class PlantumlViewRendererTest {
 
         val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
 
-        val tmpFile = new File(String.format("target/int-eg_%s.puml", viewReference));
-        try (val os = new FileOutputStream(tmpFile)) {
-            plantumlRenderer.render(context, os);
-        } finally {
-            log.info("{}", tmpFile.toPath());
-            log.info("{}", Files.readString(tmpFile.toPath()));
-        }
+        val outFile = prepareOutDir("shouldRenderDetailedViewWithInternalEgress", context);
+        val outContent = Files.readString(outFile);
+        log.info("{}", outContent);
+        assertNotNull(outContent);
     }
 
     @SneakyThrows
@@ -123,13 +128,10 @@ class PlantumlViewRendererTest {
 
         val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
 
-        val tmpFile = new File(String.format("target/int-ing_%s.puml", viewReference));
-        try (val os = new FileOutputStream(tmpFile)) {
-            plantumlRenderer.render(context, os);
-        } finally {
-            log.info("{}", tmpFile.toPath());
-            log.info("{}", Files.readString(tmpFile.toPath()));
-        }
+        val outFile = prepareOutDir("shouldRenderDetailedViewWithInternalEgress", context);
+        val outContent = Files.readString(outFile);
+        log.info("{}", outContent);
+        assertNotNull(outContent);
     }
 
     @SneakyThrows
@@ -143,12 +145,9 @@ class PlantumlViewRendererTest {
 
         val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
 
-        val tmpFile = new File(String.format("target/int-x_%s.puml", viewReference));
-        try (val os = new FileOutputStream(tmpFile)) {
-            plantumlRenderer.render(context, os);
-        } finally {
-            log.info("{}", tmpFile.toPath());
-            log.info("{}", Files.readString(tmpFile.toPath()));
-        }
+        val outFile = prepareOutDir("shouldRenderDetailedViewWithInternalEgress", context);
+        val outContent = Files.readString(outFile);
+        log.info("{}", outContent);
+        assertNotNull(outContent);
     }
 }
