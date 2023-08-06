@@ -42,7 +42,7 @@ public class DeepViewpointService implements ViewpointService {
                     String.format(
                         "%s - %s - %s",
                         Item.Kind.from(element).getLabel(),
-                        element.getName(),
+                        Optional.ofNullable(element.getName()).orElse(element.getId()),
                         views.getLabels().getOverview()
                     )
                 )

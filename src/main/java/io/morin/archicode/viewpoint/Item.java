@@ -18,7 +18,6 @@ import lombok.extern.jackson.Jacksonized;
 public class Item {
 
     @NonNull
-    @EqualsAndHashCode.Include
     @Builder.Default
     String itemId = String.format("item_%s", UUID.randomUUID().toString().replace("-", ""));
 
@@ -44,7 +43,9 @@ public class Item {
         SYSTEM("System"),
         CONTAINER("Container"),
         COMPONENT("Component"),
-        GROUP("Group");
+        GROUP("Group"),
+        ENVIRONMENT("Environment"),
+        NODE("Node");
 
         String label;
 

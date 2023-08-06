@@ -52,14 +52,14 @@ public class OverviewViewpointFactory implements ViewpointFactory {
         val viewReference = properties.getElement();
 
         val egressMetaLinks = metaLinkFinderForEgress.find(mainIndex, viewReference);
-        egressMetaLinks.forEach(metaLink -> log.debug("egress {}", metaLink));
+        egressMetaLinks.forEach(metaLink -> log.debug("egress {} {}", metaLink, metaLink.hashCode()));
         val egressGroomedLinks = metaLinkGroomer.groomEgress(mainIndex, viewReference, egressMetaLinks);
-        egressGroomedLinks.forEach(groomedLink -> log.debug("egress {}", groomedLink));
+        egressGroomedLinks.forEach(groomedLink -> log.debug("egress {} {}", groomedLink, groomedLink.hashCode()));
 
         val ingressMetaLinks = metaLinkFinderForIngress.find(mainIndex, viewReference);
-        ingressMetaLinks.forEach(metaLink -> log.debug("ingress {}", metaLink));
+        ingressMetaLinks.forEach(metaLink -> log.debug("ingress {} {}", metaLink, metaLink.hashCode()));
         val ingressGroomedLinks = metaLinkGroomer.groomIngress(mainIndex, viewReference, ingressMetaLinks);
-        ingressGroomedLinks.forEach(groomedLink -> log.debug("ingress {}", groomedLink));
+        ingressGroomedLinks.forEach(groomedLink -> log.debug("ingress {} {}", groomedLink, groomedLink.hashCode()));
 
         val allGroomedLinks = Stream
             .concat(egressGroomedLinks.stream(), ingressGroomedLinks.stream())

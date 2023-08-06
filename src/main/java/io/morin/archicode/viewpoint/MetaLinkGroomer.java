@@ -116,7 +116,13 @@ public class MetaLinkGroomer {
     ) {
         val groomedLinks = new HashMap<String, GroomedLink>();
 
+        log.trace("direction {}", direction);
+        log.trace("toLevelTarget {}", toLevelTarget);
+        log.trace("fromLevelTarget {}", fromLevelTarget);
+
         metaLinks.forEach(metaLink -> {
+            log.trace("groom {}", metaLink);
+
             var localFromLevelTarget = fromLevelTarget;
             var localToLevelTarget = toLevelTarget;
 
@@ -150,6 +156,8 @@ public class MetaLinkGroomer {
             val groomedToLevel = Level.from(groomedToReference);
 
             val groomedKey = String.format("%s -> %s", groomedFromReference, groomedToReference);
+            log.trace("groomedKey {}", groomedKey);
+
             val groomedLinkBuilder = GroomedLink
                 .builder()
                 .direction(direction)
@@ -160,7 +168,9 @@ public class MetaLinkGroomer {
                 .toElement(groomedToElement)
                 .toLevel(groomedToLevel);
 
-            groomedLinks.computeIfAbsent(groomedKey, s -> groomedLinkBuilder.build());
+            val groomedLink = groomedLinks.computeIfAbsent(groomedKey, s -> groomedLinkBuilder.build());
+            log.trace("groomedLink {} {}", groomedLinks.size(), groomedLink.hashCode());
+            log.trace("groomedLinks {}", groomedLinks.size());
 
             val isSynthetic = fromLevelIsUpper || toLevelIsUpper;
             fillGroomedLinkRelationships(groomedLinks, groomedKey, metaLink, isSynthetic);

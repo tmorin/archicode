@@ -2,7 +2,7 @@ package io.morin.archicode.viewpoint.overview;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import io.morin.archicode.Fixtures;
+import io.morin.archicode.ResourceFixtures;
 import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.viewpoint.MetaLinkFinderForEgress;
 import io.morin.archicode.viewpoint.MetaLinkFinderForIngress;
@@ -32,7 +32,7 @@ class MetaLinkGroomerTest {
     void shouldGroomIngressMetaLinks() {
         val viewReference = "solution_a.system_a";
 
-        val rawWorkspace = Workspace.builder().application(Fixtures.createWithIngress().build()).build();
+        val rawWorkspace = Workspace.builder().application(ResourceFixtures.createWithIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val ingressMetaLinks = metaLinkFinderForIngress.find(workspace.appIndex, viewReference);
@@ -50,7 +50,7 @@ class MetaLinkGroomerTest {
     void shouldGroomEgressMetaLinks() {
         val viewReference = "solution_a.system_a";
 
-        val rawWorkspace = Workspace.builder().application(Fixtures.createWithEgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(ResourceFixtures.createWithEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val egressMetaLinks = metaLinkFinderForEgress.find(workspace.appIndex, viewReference);
@@ -68,7 +68,7 @@ class MetaLinkGroomerTest {
     void shouldGroomInternalEgressMetaLinks() {
         val viewReference = "sol_a.sys_aa.con_aaa";
 
-        val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
+        val rawWorkspace = Workspace.builder().application(ResourceFixtures.createWithInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val egressMetaLinks = metaLinkFinderForEgress.find(workspace.appIndex, viewReference);
@@ -102,7 +102,10 @@ class MetaLinkGroomerTest {
     void shouldGroomInternalIngressMetaLinks() {
         val viewReference = "sol_a.sys_aa.con_aaa";
 
-        val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
+        val rawWorkspace = Workspace
+            .builder()
+            .application(ResourceFixtures.createWithInternalIngress().build())
+            .build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
         val ingressMetaLinks = metaLinkFinderForIngress.find(workspace.appIndex, viewReference);
@@ -126,6 +129,45 @@ class MetaLinkGroomerTest {
             groomedLinks
                 .stream()
                 .filter(l -> l.getFromReference().equals("sol_a.sys_aa.con_aab"))
+                .findFirst()
+                .orElseThrow()
+                .getToReference()
+        );
+    }
+
+    @Test
+    void shouldGroomWithTwoIngressFromPersons() {
+        val viewReference = "sol_a.sys_aa";
+
+        val rawWorkspace = Workspace
+            .builder()
+            .application(ResourceFixtures.createWithTwoIngressFromPersons().build())
+            .build();
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
+
+        val ingressMetaLinks = metaLinkFinderForIngress.find(workspace.appIndex, viewReference);
+        ingressMetaLinks.forEach(ingressMetaLink ->
+            log.info("ingressMetaLink {} {}", ingressMetaLink, ingressMetaLink.hashCode())
+        );
+
+        val groomedLinks = metaLinkGroomer.groomIngress(workspace.appIndex, viewReference, ingressMetaLinks);
+        groomedLinks.forEach(groomedLink -> log.info("groomedLink {}", groomedLink));
+
+        assertEquals(2, groomedLinks.size());
+        assertEquals(
+            viewReference,
+            groomedLinks
+                .stream()
+                .filter(l -> l.getFromReference().equals("per_a"))
+                .findFirst()
+                .orElseThrow()
+                .getToReference()
+        );
+        assertEquals(
+            viewReference,
+            groomedLinks
+                .stream()
+                .filter(l -> l.getFromReference().equals("per_b"))
                 .findFirst()
                 .orElseThrow()
                 .getToReference()

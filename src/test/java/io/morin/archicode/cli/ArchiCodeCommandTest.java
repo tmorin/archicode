@@ -2,8 +2,8 @@ package io.morin.archicode.cli;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.morin.archicode.Fixtures;
 import io.morin.archicode.MapperFactory;
+import io.morin.archicode.WorkspaceAFixtures;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.charset.StandardCharsets;
@@ -33,7 +33,7 @@ class ArchiCodeCommandTest {
         val wksFile = Path.of("target", ArchiCodeCommandTest.class.getSimpleName(), "resources.yaml");
         Files.writeString(
             wksFile,
-            mapperFactory.create(wksFile).writeValueAsString(Fixtures.workspace_a),
+            mapperFactory.create(wksFile).writeValueAsString(WorkspaceAFixtures.createWorkspace()),
             StandardCharsets.UTF_8
         );
         ArchiCodeCommand archiCodeCommand = new ArchiCodeCommand();
@@ -48,7 +48,7 @@ class ArchiCodeCommandTest {
         renderCommand.renderViews(Set.of("view_solution_a_overview"));
         assertTrue(
             Path
-                .of("target/ArchiCodeCommandTest/shouldRenderViews/plantuml/view_solution_a_overview.puml")
+                .of("target/ArchiCodeCommandTest/shouldRenderViews/plantuml/application/view_solution_a_overview.puml")
                 .toFile()
                 .exists()
         );
@@ -60,7 +60,9 @@ class ArchiCodeCommandTest {
         renderCommand.renderViews(Collections.emptySet());
         assertTrue(
             Path
-                .of("target/ArchiCodeCommandTest/shouldRenderPerspectives/plantuml/solution_a.system_a_a_overview.puml")
+                .of(
+                    "target/ArchiCodeCommandTest/shouldRenderPerspectives/plantuml/application/solution_a.system_a_a_overview.puml"
+                )
                 .toFile()
                 .exists()
         );
