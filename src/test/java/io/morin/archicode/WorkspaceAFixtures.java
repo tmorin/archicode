@@ -59,8 +59,14 @@ public class WorkspaceAFixtures {
         .name("Solution#C")
         .description("label of Solution#C")
         .build();
-    public static final View view_solution_a_overview = createOverviewView("view_solution_a_overview", "solution_a");
-    public static final View view_solution_a_detailed = createDetailedView("view_solution_a_detailed", "solution_a");
+    public static final View view_solution_a_overview = ResourceFixtures.createOverviewView(
+        "view_solution_a_overview",
+        "solution_a"
+    );
+    public static final View view_solution_a_detailed = ResourceFixtures.createDetailedView(
+        "view_solution_a_detailed",
+        "solution_a"
+    );
 
     public Workspace createWorkspace() {
         return Workspace
@@ -68,24 +74,6 @@ public class WorkspaceAFixtures {
             .application(Application.builder().elements(Set.of(solution_a, solution_b, solution_c)).build())
             .view(view_solution_a_overview)
             .view(view_solution_a_detailed)
-            .build();
-    }
-
-    public View createOverviewView(String viewId, String reference) {
-        return View
-            .builder()
-            .viewpoint("overview")
-            .viewId(viewId)
-            .properties(objectMapper.createObjectNode().put("element", reference))
-            .build();
-    }
-
-    public View createDetailedView(String viewId, String reference) {
-        return View
-            .builder()
-            .viewpoint("detailed")
-            .viewId(viewId)
-            .properties(objectMapper.createObjectNode().put("element", reference))
             .build();
     }
 }

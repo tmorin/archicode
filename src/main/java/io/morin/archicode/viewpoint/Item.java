@@ -4,9 +4,12 @@ import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.*;
 import io.morin.archicode.resource.element.application.System;
+import io.morin.archicode.resource.element.deployment.Environment;
+import io.morin.archicode.resource.element.deployment.Node;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.jackson.Jacksonized;
@@ -34,6 +37,10 @@ public class Item {
     @Builder.Default
     Set<Item> children = new HashSet<>();
 
+    public Stream<Item> stream() {
+        return Stream.concat(Stream.of(this), this.children.stream().flatMap(Item::stream));
+    }
+
     @RequiredArgsConstructor
     @Getter
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
@@ -60,6 +67,10 @@ public class Item {
                 return Kind.SOLUTION;
             } else if (element instanceof Person) {
                 return Kind.PERSON;
+            } else if (element instanceof Environment) {
+                return Kind.ENVIRONMENT;
+            } else if (element instanceof Node) {
+                return Kind.NODE;
             } else if (element instanceof Parent<?>) {
                 return Kind.GROUP;
             }

@@ -4,29 +4,26 @@ import static io.morin.archicode.viewpoint.GroomedLink.RelationshipKind.NATURAL;
 import static io.morin.archicode.viewpoint.GroomedLink.RelationshipKind.SYNTHETIC;
 import static java.util.Collections.emptySet;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.resource.element.application.Relationship;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.*;
 import io.morin.archicode.workspace.Workspace;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.NonNull;
+import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 
 @Slf4j
-@Builder
-@RequiredArgsConstructor
+@SuperBuilder
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-public class OverviewViewpointFactory implements ViewpointFactory {
-
-    @NonNull
-    ObjectMapper objectMapper;
+public class OverviewViewpointFactory extends AbstractViewPointFactory implements ViewpointFactory {
 
     @NonNull
     MetaLinkFinderForEgress metaLinkFinderForEgress;
@@ -68,45 +65,13 @@ public class OverviewViewpointFactory implements ViewpointFactory {
 
         val itemByReference = new HashMap<String, Item>();
 
-        val itemReferences = new HashSet<String>();
-        itemReferences.addAll(allGroomedLinks.stream().map(GroomedLink::getFromReference).collect(Collectors.toSet()));
-        itemReferences.addAll(allGroomedLinks.stream().map(GroomedLink::getToReference).collect(Collectors.toSet()));
-        if (itemReferences.isEmpty()) {
-            itemReferences.add(viewReference);
-        }
+        val itemReferences = collectAsSet(
+            allGroomedLinks.stream().map(GroomedLink::getFromReference),
+            allGroomedLinks.stream().map(GroomedLink::getToReference),
+            Stream.of(viewReference)
+        );
 
-        val items = itemReferences
-            .stream()
-            .flatMap(reference -> {
-                val references = new HashSet<String>();
-                val parts = reference.split("\\.");
-                for (int i = 0; i < parts.length; i++) {
-                    references.add(String.join(".", Arrays.copyOf(parts, i + 1)));
-                }
-                return references.stream();
-            })
-            .distinct()
-            .sorted()
-            .map(elementReference -> {
-                val element = mainIndex.getElementByReference(elementReference);
-                val item = itemByReference.computeIfAbsent(
-                    elementReference,
-                    s ->
-                        Item
-                            .builder()
-                            .itemId(elementReference)
-                            .reference(elementReference)
-                            .element(element)
-                            .kind(Item.Kind.from(element))
-                            .build()
-                );
-                io.morin.archicode.resource.workspace.Workspace.Utilities
-                    .findParentReference(elementReference)
-                    .ifPresent(parentReference -> itemByReference.get(parentReference).getChildren().add(item));
-                return item;
-            })
-            .filter(item -> !item.getReference().contains("."))
-            .collect(Collectors.toSet());
+        val items = createItems(itemReferences, mainIndex, itemByReference);
         items.forEach(item -> log.debug("item {}", item));
 
         val links = allGroomedLinks

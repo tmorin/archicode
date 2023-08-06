@@ -3,7 +3,6 @@ package io.morin.archicode.viewpoint.detailed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.morin.archicode.ResourceFixtures;
-import io.morin.archicode.WorkspaceAFixtures;
 import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.workspace.WorkspaceFactory;
@@ -34,7 +33,7 @@ class DetailedViewpointServiceRepositoryTest {
             .build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val view = WorkspaceAFixtures.createDetailedView("shouldCreate", viewReference);
+        val view = ResourceFixtures.createDetailedView("shouldCreate", viewReference);
 
         val context = viewpointServiceRepository.get("detailed").createViewpointFactory().create(workspace, view);
         assertEquals(3, context.getItems().size());
