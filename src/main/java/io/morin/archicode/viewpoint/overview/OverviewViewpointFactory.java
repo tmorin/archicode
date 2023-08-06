@@ -42,6 +42,8 @@ public class OverviewViewpointFactory implements ViewpointFactory {
     public Viewpoint create(@NonNull Workspace workspace, @NonNull View view) {
         log.debug("create viewpoint for {}", view);
 
+        val mainIndex = workspace.resolveMainIndexForView(view);
+
         val properties = objectMapper.readValue(
             Objects.requireNonNull(view.getProperties().toString()),
             OverviewViewProperties.class
@@ -49,14 +51,14 @@ public class OverviewViewpointFactory implements ViewpointFactory {
 
         val viewReference = properties.getElement();
 
-        val egressMetaLinks = metaLinkFinderForEgress.find(workspace, viewReference);
+        val egressMetaLinks = metaLinkFinderForEgress.find(mainIndex, viewReference);
         egressMetaLinks.forEach(metaLink -> log.debug("egress {}", metaLink));
-        val egressGroomedLinks = metaLinkGroomer.groomEgress(workspace, viewReference, egressMetaLinks);
+        val egressGroomedLinks = metaLinkGroomer.groomEgress(mainIndex, viewReference, egressMetaLinks);
         egressGroomedLinks.forEach(groomedLink -> log.debug("egress {}", groomedLink));
 
-        val ingressMetaLinks = metaLinkFinderForIngress.find(workspace, viewReference);
+        val ingressMetaLinks = metaLinkFinderForIngress.find(mainIndex, viewReference);
         ingressMetaLinks.forEach(metaLink -> log.debug("ingress {}", metaLink));
-        val ingressGroomedLinks = metaLinkGroomer.groomIngress(workspace, viewReference, ingressMetaLinks);
+        val ingressGroomedLinks = metaLinkGroomer.groomIngress(mainIndex, viewReference, ingressMetaLinks);
         ingressGroomedLinks.forEach(groomedLink -> log.debug("ingress {}", groomedLink));
 
         val allGroomedLinks = Stream
@@ -86,7 +88,7 @@ public class OverviewViewpointFactory implements ViewpointFactory {
             .distinct()
             .sorted()
             .map(elementReference -> {
-                val element = workspace.appIndex.getElementByReference(elementReference);
+                val element = mainIndex.getElementByReference(elementReference);
                 val item = itemByReference.computeIfAbsent(
                     elementReference,
                     s ->

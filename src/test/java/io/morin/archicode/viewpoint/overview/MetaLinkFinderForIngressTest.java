@@ -43,7 +43,7 @@ class MetaLinkFinderForIngressTest {
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val metaLinks = metaLinkFinderForIngress.find(workspace, "solution_b.system_b.container_b");
+        val metaLinks = metaLinkFinderForIngress.find(workspace.appIndex, "solution_b.system_b.container_b");
         log.info("solution_b.system_b.container_b {}", metaLinks);
         assertEquals(1, metaLinks.size());
         assertEquals(
@@ -70,7 +70,7 @@ class MetaLinkFinderForIngressTest {
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val metaLinks = metaLinkFinderForIngress.find(workspace, "solution_b.system_b.container_b");
+        val metaLinks = metaLinkFinderForIngress.find(workspace.appIndex, "solution_b.system_b.container_b");
         log.info("solution_a.system_a {}", metaLinks);
         assertEquals(1, metaLinks.size());
         assertEquals("solution_a.system_a", metaLinks.stream().findFirst().orElseThrow().getFromReference());
@@ -94,7 +94,7 @@ class MetaLinkFinderForIngressTest {
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val metaLinks = metaLinkFinderForIngress.find(workspace, "solution_b.system_b");
+        val metaLinks = metaLinkFinderForIngress.find(workspace.appIndex, "solution_b.system_b");
         log.info("solution_a.system_a.container_a {}", metaLinks);
         assertEquals(1, metaLinks.size());
         assertEquals(
@@ -110,7 +110,7 @@ class MetaLinkFinderForIngressTest {
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val metaLinks = metaLinkFinderForIngress.find(workspace, "sol_a.sys_aa");
+        val metaLinks = metaLinkFinderForIngress.find(workspace.appIndex, "sol_a.sys_aa");
         metaLinks.forEach(metaLink -> log.info("metaLink {}", metaLink));
         assertEquals(0, metaLinks.size());
     }
@@ -121,7 +121,7 @@ class MetaLinkFinderForIngressTest {
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val metaLinks = metaLinkFinderForIngress.find(workspace, "sol_a.sys_aa");
+        val metaLinks = metaLinkFinderForIngress.find(workspace.appIndex, "sol_a.sys_aa");
         metaLinks.forEach(metaLink -> log.info("metaLink {}", metaLink));
         assertEquals(1, metaLinks.size());
         assertEquals("sol_a.sys_ab.con_aba", metaLinks.stream().findFirst().orElseThrow().getFromReference());

@@ -35,10 +35,10 @@ class MetaLinkGroomerTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val ingressMetaLinks = metaLinkFinderForIngress.find(workspace, viewReference);
+        val ingressMetaLinks = metaLinkFinderForIngress.find(workspace.appIndex, viewReference);
         ingressMetaLinks.forEach(ingressMetaLink -> log.info("ingressMetaLink {}", ingressMetaLink));
 
-        val groomedLinks = metaLinkGroomer.groomIngress(workspace, viewReference, ingressMetaLinks);
+        val groomedLinks = metaLinkGroomer.groomIngress(workspace.appIndex, viewReference, ingressMetaLinks);
         groomedLinks.forEach(groomedLink -> log.info("groomedLink {}", groomedLink));
 
         assertEquals(1, groomedLinks.size());
@@ -53,10 +53,10 @@ class MetaLinkGroomerTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val egressMetaLinks = metaLinkFinderForEgress.find(workspace, viewReference);
+        val egressMetaLinks = metaLinkFinderForEgress.find(workspace.appIndex, viewReference);
         egressMetaLinks.forEach(egressMetaLink -> log.info("egressMetaLink {}", egressMetaLink));
 
-        val groomedLinks = metaLinkGroomer.groomEgress(workspace, viewReference, egressMetaLinks);
+        val groomedLinks = metaLinkGroomer.groomEgress(workspace.appIndex, viewReference, egressMetaLinks);
         groomedLinks.forEach(groomedLink -> log.info("groomedLink {}", groomedLink));
 
         assertEquals(1, groomedLinks.size());
@@ -71,10 +71,10 @@ class MetaLinkGroomerTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val egressMetaLinks = metaLinkFinderForEgress.find(workspace, viewReference);
+        val egressMetaLinks = metaLinkFinderForEgress.find(workspace.appIndex, viewReference);
         egressMetaLinks.forEach(egressMetaLink -> log.info("egressMetaLink {}", egressMetaLink));
 
-        val groomedLinks = metaLinkGroomer.groomEgress(workspace, viewReference, egressMetaLinks);
+        val groomedLinks = metaLinkGroomer.groomEgress(workspace.appIndex, viewReference, egressMetaLinks);
         groomedLinks.forEach(groomedLink -> log.info("groomedLink {}", groomedLink));
 
         assertEquals(2, groomedLinks.size());
@@ -105,10 +105,10 @@ class MetaLinkGroomerTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithInternalIngress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val ingressMetaLinks = metaLinkFinderForIngress.find(workspace, viewReference);
+        val ingressMetaLinks = metaLinkFinderForIngress.find(workspace.appIndex, viewReference);
         ingressMetaLinks.forEach(ingressMetaLink -> log.info("ingressMetaLink {}", ingressMetaLink));
 
-        val groomedLinks = metaLinkGroomer.groomIngress(workspace, viewReference, ingressMetaLinks);
+        val groomedLinks = metaLinkGroomer.groomIngress(workspace.appIndex, viewReference, ingressMetaLinks);
         groomedLinks.forEach(groomedLink -> log.info("groomedLink {}", groomedLink));
 
         assertEquals(2, groomedLinks.size());

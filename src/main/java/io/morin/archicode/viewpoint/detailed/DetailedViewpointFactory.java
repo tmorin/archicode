@@ -32,12 +32,12 @@ public class DetailedViewpointFactory implements ViewpointFactory {
         if (!cache.containsKey(candidateItem.getItemId())) {
             // the candidates item is not yet handled
             cache.put(candidateItem.getItemId(), candidateItem);
-            // therefore the candidates's children must be handled as well
+            // therefore the candidates' children must be handled as well
             finalChildren.add(candidateItem);
         } else {
             // the candidates item is already handled
             val finalItem = cache.get(candidateItem.getReference());
-            // but the candidates's children are maybe not yet handled
+            // but the candidates' children are maybe not yet handled
             candidateItem
                 .getChildren()
                 .forEach(candidateChild -> mergeCandidateItem(cache, finalItem.getChildren(), candidateChild));
@@ -49,12 +49,14 @@ public class DetailedViewpointFactory implements ViewpointFactory {
     public Viewpoint create(@NonNull Workspace workspace, @NonNull View view) {
         log.debug("create viewpoint for {}", view);
 
+        val mainIndex = workspace.resolveMainIndexForView(view);
+
         val properties = objectMapper.readValue(
             Objects.requireNonNull(view.getProperties().toString()),
             DetailedViewProperties.class
         );
 
-        val parentCandidate = workspace.appIndex.getElementByReference(properties.getElement());
+        val parentCandidate = mainIndex.getElementByReference(properties.getElement());
 
         // leave early if the element of the view is not a parent
         // because there is nothing inside to inspect
@@ -67,13 +69,14 @@ public class DetailedViewpointFactory implements ViewpointFactory {
         val childContexts = parent
             .getElements()
             .stream()
-            .map(workspace.appIndex::getReferenceByElement)
+            .map(mainIndex::getReferenceByElement)
             .map(reference ->
                 overviewViewpointFactory.create(
                     workspace,
                     View
                         .builder()
                         .viewpoint("overview")
+                        .layer(view.getLayer())
                         .viewId(UUID.randomUUID().toString())
                         .properties(objectMapper.createObjectNode().put("element", reference))
                         .build()

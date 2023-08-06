@@ -14,14 +14,25 @@ import lombok.extern.jackson.Jacksonized;
 public class View {
 
     @NonNull
+    @ToString.Include
     String viewId;
 
     @NonNull
+    @ToString.Include
     String viewpoint;
+
+    @Builder.Default
+    @ToString.Include
+    Layer layer = Layer.APPLICATION;
 
     String name;
 
     String description;
 
     JsonNode properties;
+
+    public enum Layer {
+        APPLICATION,
+        DEPLOYMENT
+    }
 }

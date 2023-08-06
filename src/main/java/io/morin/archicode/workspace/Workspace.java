@@ -1,5 +1,6 @@
 package io.morin.archicode.workspace;
 
+import io.morin.archicode.resource.view.View;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.Delegate;
@@ -22,4 +23,11 @@ public class Workspace {
 
     @Delegate
     io.morin.archicode.resource.workspace.Workspace resources;
+
+    public ElementIndex resolveMainIndexForView(View view) {
+        if (view.getLayer().equals(View.Layer.APPLICATION)) {
+            return appIndex;
+        }
+        return depIndex;
+    }
 }

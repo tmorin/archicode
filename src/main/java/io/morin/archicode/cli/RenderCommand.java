@@ -4,12 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.rendering.Renderer;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.view.View;
-import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
+import io.morin.archicode.workspace.ElementIndex;
+import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import lombok.NonNull;
@@ -75,65 +75,30 @@ public class RenderCommand {
             renderer.render(viewpoint, rendererName, outputDirPath);
         }
 
-        workspace.appIndex
+        renderBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION, outputDirPath);
+        renderBuiltinViews(workspace, workspace.depIndex, View.Layer.DEPLOYMENT, outputDirPath);
+    }
+
+    private void renderBuiltinViews(Workspace workspace, ElementIndex index, View.Layer layer, Path outputDirPath) {
+        index
             .listAllElementReferences(element -> element instanceof Parent<?>)
             .stream()
-            .flatMap(reference -> {
-                val element = workspace.appIndex.getElementByReference(reference);
-
-                val views = new HashSet<View>();
-                val overviewElementView = View
-                    .builder()
-                    .viewpoint("overview")
-                    .viewId(String.format("%s_%s", reference.replace("/", "_"), "overview"))
-                    .description(
-                        String.format(
-                            "%s - %s - %s",
-                            Item.Kind.from(element).getLabel(),
-                            element.getName(),
-                            workspace.getSettings().getViews().getLabels().getOverview()
-                        )
-                    )
-                    .properties(objectMapper.createObjectNode().put("element", reference))
-                    .build();
-                views.add(overviewElementView);
-
-                val deepView = View
-                    .builder()
-                    .viewpoint("deep")
-                    .viewId(String.format("%s_%s", reference.replace("/", "_"), "deep"))
-                    .description(
-                        String.format(
-                            "%s - %s - %s",
-                            Item.Kind.from(element).getLabel(),
-                            element.getName(),
-                            workspace.getSettings().getViews().getLabels().getDeep()
-                        )
-                    )
-                    .properties(objectMapper.createObjectNode().put("element", reference))
-                    .build();
-                views.add(deepView);
-
-                if (element instanceof Parent<?> parentElement && (!parentElement.getElements().isEmpty())) {
-                    val detailedElementView = View
-                        .builder()
-                        .viewpoint("detailed")
-                        .viewId(String.format("%s_%s", reference.replace("/", "_"), "detailed"))
-                        .description(
-                            String.format(
-                                "%s - %s - %s",
-                                Item.Kind.from(element).getLabel(),
-                                element.getName(),
-                                workspace.getSettings().getViews().getLabels().getDetailed()
+            .flatMap(reference ->
+                viewpointServiceRepository
+                    .getAll()
+                    .stream()
+                    .map(viewpointService ->
+                        viewpointService
+                            .createViewBuilder(
+                                reference,
+                                index.getElementByReference(reference),
+                                workspace.getSettings().getViews()
                             )
-                        )
-                        .properties(objectMapper.createObjectNode().put("element", reference))
-                        .build();
-                    views.add(detailedElementView);
-                }
-
-                return views.stream();
-            })
+                            .map(viewBuilder -> viewBuilder.layer(layer).build())
+                    )
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+            )
             .forEach(view -> {
                 log.info("render {}", view.getViewId());
                 val viewpoint = viewpointServiceRepository

@@ -33,7 +33,7 @@ class MetaLinkFinderForEgressTest {
         val rawWorkspace = Workspace.builder().application(Fixtures.createWithEgress().build()).build();
         val workspace = workspaceFactory.create(rawWorkspace, Collections.emptyMap());
 
-        val metaLinks = metaLinkFinderForEgress.find(workspace, viewReference);
+        val metaLinks = metaLinkFinderForEgress.find(workspace.appIndex, viewReference);
 
         log.info("solution_a.system_a.container_a {}", metaLinks);
         assertEquals(1, metaLinks.size());
@@ -58,7 +58,7 @@ class MetaLinkFinderForEgressTest {
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Collections.emptyMap());
 
-        val metaLinks = metaLinkFinderForEgress.find(workspace, "solution_a.system_a");
+        val metaLinks = metaLinkFinderForEgress.find(workspace.appIndex, "solution_a.system_a");
         log.info("solution_a.system_a {}", metaLinks);
         assertEquals(1, metaLinks.size());
         assertEquals("solution_a.system_a", metaLinks.stream().findFirst().orElseThrow().getFromReference());
@@ -84,7 +84,7 @@ class MetaLinkFinderForEgressTest {
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Collections.emptyMap());
 
-        val metaLinks = metaLinkFinderForEgress.find(workspace, "solution_a.system_a.container_a");
+        val metaLinks = metaLinkFinderForEgress.find(workspace.appIndex, "solution_a.system_a.container_a");
         log.info("solution_a.system_a.container_a {}", metaLinks);
         assertEquals(1, metaLinks.size());
         assertEquals(
@@ -100,7 +100,7 @@ class MetaLinkFinderForEgressTest {
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Collections.emptyMap());
 
-        val metaLinks = metaLinkFinderForEgress.find(workspace, "sol_a.sys_aa");
+        val metaLinks = metaLinkFinderForEgress.find(workspace.appIndex, "sol_a.sys_aa");
         metaLinks.forEach(metaLink -> log.info("metaLink {}", metaLink));
         assertEquals(1, metaLinks.size());
         assertEquals("sol_a.sys_ab.con_aba", metaLinks.stream().findFirst().orElseThrow().getToReference());
@@ -113,7 +113,7 @@ class MetaLinkFinderForEgressTest {
         val rawWorkspace = Workspace.builder().application(model).build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val metaLinks = metaLinkFinderForEgress.find(workspace, "sol_a.sys_aa");
+        val metaLinks = metaLinkFinderForEgress.find(workspace.appIndex, "sol_a.sys_aa");
         metaLinks.forEach(metaLink -> log.info("metaLink {}", metaLink));
         assertEquals(0, metaLinks.size());
     }

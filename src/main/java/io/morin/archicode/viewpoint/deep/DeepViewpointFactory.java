@@ -31,6 +31,8 @@ public class DeepViewpointFactory implements ViewpointFactory {
     public Viewpoint create(@NonNull Workspace workspace, @NonNull View view) {
         log.debug("create viewpoint for {}", view);
 
+        val mainIndex = workspace.resolveMainIndexForView(view);
+
         val properties = objectMapper.readValue(
             Objects.requireNonNull(view.getProperties().toString()),
             DeepViewProperties.class
@@ -39,13 +41,10 @@ public class DeepViewpointFactory implements ViewpointFactory {
         val viewReference = properties.getElement();
 
         val allMetaLinks = Stream
-            .concat(
-                Stream.of(viewReference),
-                workspace.appIndex.streamDescendants(viewReference).map(Map.Entry::getKey)
-            )
+            .concat(Stream.of(viewReference), mainIndex.streamDescendants(viewReference).map(Map.Entry::getKey))
             .flatMap(reference -> {
-                val egressMetaLinks = metaLinkFinderForEgress.find(workspace, reference);
-                val ingressMetaLinks = metaLinkFinderForIngress.find(workspace, reference);
+                val egressMetaLinks = metaLinkFinderForEgress.find(mainIndex, reference);
+                val ingressMetaLinks = metaLinkFinderForIngress.find(mainIndex, reference);
                 return Stream.concat(egressMetaLinks.stream(), ingressMetaLinks.stream());
             })
             .collect(Collectors.toSet());
@@ -73,7 +72,7 @@ public class DeepViewpointFactory implements ViewpointFactory {
             .distinct()
             .sorted()
             .map(elementReference -> {
-                val element = workspace.appIndex.getElementByReference(elementReference);
+                val element = mainIndex.getElementByReference(elementReference);
                 val item = itemByReference.computeIfAbsent(
                     elementReference,
                     s ->

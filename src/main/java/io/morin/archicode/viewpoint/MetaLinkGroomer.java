@@ -1,7 +1,7 @@
 package io.morin.archicode.viewpoint;
 
 import io.morin.archicode.viewpoint.GroomedLink.Direction;
-import io.morin.archicode.workspace.Workspace;
+import io.morin.archicode.workspace.ElementIndex;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -95,20 +95,20 @@ public class MetaLinkGroomer {
         }
     }
 
-    public Set<GroomedLink> groomEgress(Workspace workspace, String fromReference, Set<MetaLink> metaLinks) {
+    public Set<GroomedLink> groomEgress(ElementIndex index, String fromReference, Set<MetaLink> metaLinks) {
         val fromLevelTarget = Level.from(fromReference);
         val toLevelTarget = Level.L0;
-        return getGroomedLinks(workspace, metaLinks, Direction.EGRESS, fromLevelTarget, toLevelTarget);
+        return getGroomedLinks(index, metaLinks, Direction.EGRESS, fromLevelTarget, toLevelTarget);
     }
 
-    public Set<GroomedLink> groomIngress(Workspace workspace, String toReference, Set<MetaLink> metaLinks) {
+    public Set<GroomedLink> groomIngress(ElementIndex index, String toReference, Set<MetaLink> metaLinks) {
         val fromLevelTarget = Level.L0;
         val toLevelTarget = Level.from(toReference);
-        return getGroomedLinks(workspace, metaLinks, Direction.INGRESS, fromLevelTarget, toLevelTarget);
+        return getGroomedLinks(index, metaLinks, Direction.INGRESS, fromLevelTarget, toLevelTarget);
     }
 
     private Set<GroomedLink> getGroomedLinks(
-        Workspace workspace,
+        ElementIndex index,
         Set<MetaLink> metaLinks,
         Direction direction,
         Level fromLevelTarget,
@@ -134,7 +134,7 @@ public class MetaLinkGroomer {
             val fromLevelIsUpper = metaLink.getFromLevel().isUpper().test(localFromLevelTarget);
             if (fromLevelIsUpper) {
                 groomedFromReference = Level.downReferenceTo(metaLink.getFromReference(), localFromLevelTarget);
-                groomedFromElement = workspace.appIndex.getElementByReference(groomedFromReference);
+                groomedFromElement = index.getElementByReference(groomedFromReference);
             }
             val groomedFromLevel = Level.from(groomedFromReference);
 
@@ -145,7 +145,7 @@ public class MetaLinkGroomer {
             toLevelIsUpper = metaLink.getToLevel().isUpper().test(localToLevelTarget);
             if (toLevelIsUpper) {
                 groomedToReference = Level.downReferenceTo(metaLink.getToReference(), localToLevelTarget);
-                groomedToElement = workspace.appIndex.getElementByReference(groomedToReference);
+                groomedToElement = index.getElementByReference(groomedToReference);
             }
             val groomedToLevel = Level.from(groomedToReference);
 
