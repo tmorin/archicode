@@ -5,8 +5,9 @@ import io.morin.archicode.resource.workspace.Styles;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
-import java.io.OutputStream;
+import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
@@ -67,43 +68,54 @@ public class PlantumlViewRenderer implements ViewRenderer {
 
     @Override
     @SneakyThrows
-    public void render(@NonNull Viewpoint viewpoint, @NonNull OutputStream outputStream) {
-        try (val outputStreamWriter = new OutputStreamWriter(outputStream)) {
-            outputStreamWriter.write("@startuml");
-            outputStreamWriter.write(System.lineSeparator());
+    public void render(@NonNull Viewpoint viewpoint, @NonNull Path outputPath) {
+        val outputPumlFile = Path.of(outputPath.toString(), String.format("%s.puml", viewpoint.getView().getViewId()));
 
-            outputStreamWriter.write(String.format("title %s", viewpoint.getView().getDescription()));
-            outputStreamWriter.write(System.lineSeparator());
+        try (val outputStream = new FileOutputStream(outputPumlFile.toFile())) {
+            try (val outputStreamWriter = new OutputStreamWriter(outputStream)) {
+                outputStreamWriter.write("@startuml");
+                outputStreamWriter.write(System.lineSeparator());
 
-            outputStreamWriter.write("skinparam defaultTextAlignment center");
-            outputStreamWriter.write(System.lineSeparator());
-            outputStreamWriter.write("skinparam wrapWidth 200");
-            outputStreamWriter.write(System.lineSeparator());
-            outputStreamWriter.write("skinparam maxMessageSize 150");
-            outputStreamWriter.write(System.lineSeparator());
+                val v = viewpoint.getView().getDescription();
+                if (v != null && !v.isBlank()) {
+                    outputStreamWriter.write(String.format("title %s", viewpoint.getView().getDescription()));
+                    outputStreamWriter.write(System.lineSeparator());
+                }
 
-            outputStreamWriter.write("hide stereotype");
-            outputStreamWriter.write(System.lineSeparator());
+                outputStreamWriter.write("skinparam defaultTextAlignment center");
+                outputStreamWriter.write(System.lineSeparator());
+                outputStreamWriter.write("skinparam wrapWidth 200");
+                outputStreamWriter.write(System.lineSeparator());
+                outputStreamWriter.write("skinparam maxMessageSize 150");
+                outputStreamWriter.write(System.lineSeparator());
 
-            for (Item item : viewpoint.getItems()) {
-                outputStreamWriter.write(renderItem(item));
+                outputStreamWriter.write("hide stereotype");
+                outputStreamWriter.write(System.lineSeparator());
+
+                for (Item item : viewpoint.getItems()) {
+                    outputStreamWriter.write(renderItem(item));
+                }
+
+                outputStreamWriter.write(System.lineSeparator());
+
+                for (Link link : viewpoint.getLinks()) {
+                    outputStreamWriter.write(renderLink(link));
+                }
+
+                for (Map.Entry<String, Styles.Style> entry : viewpoint
+                    .getWorkspace()
+                    .getStyles()
+                    .getByTags()
+                    .entrySet()) {
+                    outputStreamWriter.write(renderSkinparam(entry, "rectangle"));
+                    outputStreamWriter.write(renderSkinparam(entry, "database"));
+                    outputStreamWriter.write(renderSkinparam(entry, "card"));
+                    outputStreamWriter.write(renderSkinparam(entry, "node"));
+                }
+
+                outputStreamWriter.write("@enduml");
+                outputStreamWriter.write(System.lineSeparator());
             }
-
-            outputStreamWriter.write(System.lineSeparator());
-
-            for (Link link : viewpoint.getLinks()) {
-                outputStreamWriter.write(renderLink(link));
-            }
-
-            for (Map.Entry<String, Styles.Style> entry : viewpoint.getWorkspace().getStyles().getByTags().entrySet()) {
-                outputStreamWriter.write(renderSkinparam(entry, "rectangle"));
-                outputStreamWriter.write(renderSkinparam(entry, "database"));
-                outputStreamWriter.write(renderSkinparam(entry, "card"));
-                outputStreamWriter.write(renderSkinparam(entry, "node"));
-            }
-
-            outputStreamWriter.write("@enduml");
-            outputStreamWriter.write(System.lineSeparator());
         }
     }
 

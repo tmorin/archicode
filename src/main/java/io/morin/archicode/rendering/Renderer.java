@@ -2,7 +2,6 @@ package io.morin.archicode.rendering;
 
 import io.morin.archicode.viewpoint.Viewpoint;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.io.FileOutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import lombok.AccessLevel;
@@ -24,19 +23,16 @@ public class Renderer {
     public void render(Viewpoint viewpoint, String rendererName, Path outputDirPath) {
         val viewRendererService = viewRendererServiceRepository.get(rendererName);
 
-        val outputFilePath = Paths.get(
+        val outputViewpointPath = Paths.get(
             outputDirPath.toString(),
             viewRendererService.getDirectory(),
-            String.format("%s.%s", viewpoint.getView().getViewId(), viewRendererService.getExtension())
+            viewpoint.getView().getLayer().name().toLowerCase()
         );
 
-        if (outputFilePath.toFile().getParentFile().mkdirs()) {
-            log.trace("outputFilePath parent already created");
+        if (outputViewpointPath.toFile().mkdirs()) {
+            log.trace("{} parent already created", outputViewpointPath);
         }
 
-        val viewRenderer = viewRendererService.createViewRenderer();
-        try (val oStream = new FileOutputStream(outputFilePath.toFile())) {
-            viewRenderer.render(viewpoint, oStream);
-        }
+        viewRendererService.createViewRenderer().render(viewpoint, outputViewpointPath);
     }
 }
