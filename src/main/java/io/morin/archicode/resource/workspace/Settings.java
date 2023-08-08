@@ -1,5 +1,6 @@
 package io.morin.archicode.resource.workspace;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -24,6 +25,7 @@ public class Settings {
     public static class Relationships {
 
         @Builder.Default
+        @JsonProperty("default-synthetic-label")
         String defaultSyntheticLabel = "uses";
     }
 

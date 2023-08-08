@@ -43,7 +43,7 @@ public class DeepViewpointService implements ViewpointService {
                         "%s - %s - %s",
                         Item.Kind.from(element).getLabel(),
                         Optional.ofNullable(element.getName()).orElse(element.getId()),
-                        views.getLabels().getOverview()
+                        views.getLabels().getDeep()
                     )
                 )
                 .properties(mapperFactory.create(MapperFormat.JSON).createObjectNode().put("element", reference))

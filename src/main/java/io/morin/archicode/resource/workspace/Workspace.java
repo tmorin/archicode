@@ -39,6 +39,9 @@ public class Workspace {
     @Builder.Default
     Styles styles = Styles.builder().build();
 
+    @Builder.Default
+    Formatters formatters = Formatters.builder().build();
+
     @UtilityClass
     public static class Utilities {
 
