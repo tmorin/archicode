@@ -14,6 +14,22 @@ import lombok.extern.jackson.Jacksonized;
 @Jacksonized
 public class Styles {
 
+    Style atomic;
+
+    @Builder.Default
+    Style composite = Style
+        .builder()
+        .backgroundColor("transparent")
+        .lineColor("darkgray")
+        .lineStyle(5)
+        .fontStyle("normal")
+        .build();
+
+    @Singular
+    @JsonDeserialize(as = LinkedHashMap.class)
+    @JsonProperty("by-qualifiers")
+    Map<String, Style> byQualifiers;
+
     @Singular
     @JsonDeserialize(as = LinkedHashMap.class)
     @JsonProperty("by-tags")
@@ -27,17 +43,23 @@ public class Styles {
         @JsonProperty("background-color")
         String backgroundColor;
 
-        @JsonProperty("border-color")
-        String borderColor;
+        @JsonProperty("line-color")
+        String lineColor;
 
-        @JsonProperty("border-style")
-        String borderStyle;
+        @JsonProperty("line-style")
+        Integer lineStyle;
+
+        @JsonProperty("line-thickness")
+        Integer lineThickness;
 
         @JsonProperty("round-corner")
-        int roundCorner;
+        Integer roundCorner;
 
-        @JsonProperty("foreground-color")
-        String foregroundColor;
+        @JsonProperty("font-color")
+        String fontColor;
+
+        @JsonProperty("font-style")
+        String fontStyle;
 
         boolean shadowing;
     }

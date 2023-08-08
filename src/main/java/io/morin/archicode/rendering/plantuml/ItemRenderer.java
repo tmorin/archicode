@@ -1,7 +1,9 @@
 package io.morin.archicode.rendering.plantuml;
 
 import io.morin.archicode.rendering.RenderingShape;
+import io.morin.archicode.rendering.ViewRenderer;
 import io.morin.archicode.viewpoint.Item;
+import io.morin.archicode.viewpoint.Viewpoint;
 import java.util.Optional;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -21,13 +23,13 @@ class ItemRenderer {
     @Builder.Default
     CompositeItemRenderer compositeItemRenderer = CompositeItemRenderer.builder().build();
 
-    String render(@NonNull Item item) {
+    String render(@NonNull Viewpoint viewpoint, @NonNull Item item) {
         val buf = new StringBuilder();
 
         if (item.getChildren().isEmpty()) {
-            buf.append(atomicItemRenderer.render(item));
+            buf.append(atomicItemRenderer.render(viewpoint, item));
         } else {
-            buf.append(compositeItemRenderer.render(item));
+            buf.append(compositeItemRenderer.render(viewpoint, item));
         }
 
         return buf.toString();
@@ -39,15 +41,24 @@ class ItemRenderer {
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     static class AtomicItemRenderer {
 
-        @NonNull
-        @Builder.Default
-        RenderingShape shape = RenderingShape.getDefault();
-
-        String render(@NonNull Item item) {
+        String render(@NonNull Viewpoint viewpoint, @NonNull Item item) {
             val buf = new StringBuilder();
 
+            val atomicFormatter = viewpoint.getWorkspace().getFormatters().getAtomic();
+
+            val shape = RenderingShape
+                .valueOf(
+                    item
+                        .getElement()
+                        .getTags()
+                        .getOrDefault(ViewRenderer.TAG_RENDERING_SHAPE, RenderingShape.getDefault(item).name())
+                        .toUpperCase()
+                )
+                .name()
+                .toLowerCase();
+
             // <shape> <id> <stereotypes> <<atomic>> [
-            buf.append(shape.name().toLowerCase());
+            buf.append(shape);
             buf.append(" ");
             buf.append(item.getItemId());
             buf.append(" ");
@@ -55,14 +66,17 @@ class ItemRenderer {
             buf.append(" [");
             buf.append(System.lineSeparator());
 
-            // **<name>**
-            buf.append("**");
-            buf.append(Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId()));
-            buf.append("**");
+            // <name>
+            buf.append(
+                String.format(
+                    atomicFormatter.getName(),
+                    Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId())
+                )
+            );
             buf.append(System.lineSeparator());
 
             // <qualifiers>
-            buf.append(PlantumlUtilities.generateQualifiers(item));
+            buf.append(String.format(atomicFormatter.getQualifiers(), PlantumlUtilities.generateQualifiers(item)));
             buf.append(System.lineSeparator());
 
             // <description>
@@ -70,7 +84,7 @@ class ItemRenderer {
                 .ofNullable(item.getElement().getDescription())
                 .filter(s -> !s.isBlank())
                 .ifPresent(s -> {
-                    buf.append(String.format("%s", item.getElement().getDescription()));
+                    buf.append(String.format(atomicFormatter.getDescription(), item.getElement().getDescription()));
                     buf.append(System.lineSeparator());
                 });
 
@@ -91,17 +105,24 @@ class ItemRenderer {
         @Builder.Default
         RenderingShape shape = RenderingShape.RECTANGLE;
 
-        String render(@NonNull Item item) {
+        String render(@NonNull Viewpoint viewpoint, @NonNull Item item) {
             val buf = new StringBuilder();
+
+            val compositeFormatter = viewpoint.getWorkspace().getFormatters().getComposite();
 
             // rectangle <id> as "<label>\n<qualifiers>" <<stereotypes>> {
             buf.append(shape.name().toLowerCase());
             buf.append(" ");
             buf.append(item.getItemId());
             buf.append(" as \"");
-            buf.append(Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId()));
+            buf.append(
+                String.format(
+                    compositeFormatter.getName(),
+                    Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId())
+                )
+            );
             buf.append("\\n");
-            buf.append(PlantumlUtilities.generateQualifiers(item));
+            buf.append(String.format(compositeFormatter.getQualifiers(), PlantumlUtilities.generateQualifiers(item)));
             buf.append("\" ");
             buf.append(PlantumlUtilities.generateStereotypes(item, "composite"));
             buf.append(" {");
@@ -109,7 +130,7 @@ class ItemRenderer {
 
             // render children
             ItemRenderer itemRenderer = ItemRenderer.builder().build();
-            item.getChildren().forEach(child -> buf.append(itemRenderer.render(child)));
+            item.getChildren().forEach(child -> buf.append(itemRenderer.render(viewpoint, child)));
 
             buf.append("}");
             buf.append(System.lineSeparator());

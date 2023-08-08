@@ -18,40 +18,17 @@ class StyleShapeRenderer {
         val stereotype = entry.getKey();
         val style = entry.getValue();
 
-        buf.append(String.format("skinparam %s<<%s>> {", shape, stereotype));
+        if (style.isShadowing()) {
+            buf.append(String.format("skinparam %sShadowing<<%s>> true", shape, stereotype));
+            buf.append(System.lineSeparator());
+        }
+
+        buf.append("<style>");
         buf.append(System.lineSeparator());
 
-        if (style.getBackgroundColor() != null && !style.getBackgroundColor().isBlank()) {
-            buf.append(String.format("BackgroundColor %s", style.getBackgroundColor()));
-            buf.append(System.lineSeparator());
-        }
+        buf.append(PlantumlUtilities.generateStyle(style, stereotype, shape));
 
-        if (style.getBorderColor() != null && !style.getBorderColor().isBlank()) {
-            buf.append(String.format("BorderColor %s", style.getBorderColor()));
-            buf.append(System.lineSeparator());
-        }
-
-        if (style.getBorderStyle() != null && !style.getBorderStyle().isBlank()) {
-            buf.append(String.format("BorderStyle %s", style.getBorderStyle()));
-            buf.append(System.lineSeparator());
-        }
-
-        if (style.getRoundCorner() > 0) {
-            buf.append(String.format("RoundCorner %s", style.getRoundCorner()));
-            buf.append(System.lineSeparator());
-        }
-
-        if (style.getForegroundColor() != null && !style.getForegroundColor().isBlank()) {
-            buf.append(String.format("FontColor %s", style.getForegroundColor()));
-            buf.append(System.lineSeparator());
-        }
-
-        if (style.isShadowing()) {
-            buf.append("shadowing true");
-            buf.append(System.lineSeparator());
-        }
-
-        buf.append("}");
+        buf.append("</style>");
         buf.append(System.lineSeparator());
 
         return buf.toString();

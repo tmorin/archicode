@@ -54,7 +54,7 @@ public class DetailedViewpointService implements ViewpointService {
                             "%s - %s - %s",
                             Item.Kind.from(parent).getLabel(),
                             Optional.ofNullable(element.getName()).orElse(element.getId()),
-                            views.getLabels().getOverview()
+                            views.getLabels().getDetailed()
                         )
                     )
                     .properties(mapperFactory.create(MapperFormat.JSON).createObjectNode().put("element", reference))

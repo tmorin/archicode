@@ -8,6 +8,7 @@ import io.morin.archicode.viewpoint.Viewpoint;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.Map;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -46,25 +47,26 @@ public class PlantumlViewRenderer implements ViewRenderer {
 
                 outputStreamWriter.write(titleRenderer.render(viewpoint));
 
-                outputStreamWriter.write(styleRenderer.render());
+                outputStreamWriter.write(styleRenderer.render(viewpoint));
 
                 for (Item item : viewpoint.getItems()) {
-                    outputStreamWriter.write(itemRenderer.render(item));
+                    outputStreamWriter.write(itemRenderer.render(viewpoint, item));
                 }
 
                 for (Link link : viewpoint.getLinks()) {
-                    outputStreamWriter.write(linkRenderer.render(link));
+                    outputStreamWriter.write(linkRenderer.render(viewpoint, link));
                 }
 
-                for (Map.Entry<String, Styles.Style> entry : viewpoint
-                    .getWorkspace()
-                    .getStyles()
-                    .getByTags()
-                    .entrySet()) {
-                    outputStreamWriter.write(styleShapeRenderer.render("rectangle", entry));
-                    outputStreamWriter.write(styleShapeRenderer.render("database", entry));
+                val entries = new HashSet<Map.Entry<String, Styles.Style>>();
+                entries.addAll(viewpoint.getWorkspace().getStyles().getByQualifiers().entrySet());
+                entries.addAll(viewpoint.getWorkspace().getStyles().getByTags().entrySet());
+                for (Map.Entry<String, Styles.Style> entry : entries) {
+                    outputStreamWriter.write(styleShapeRenderer.render("actor", entry));
                     outputStreamWriter.write(styleShapeRenderer.render("card", entry));
+                    outputStreamWriter.write(styleShapeRenderer.render("database", entry));
                     outputStreamWriter.write(styleShapeRenderer.render("node", entry));
+                    outputStreamWriter.write(styleShapeRenderer.render("person", entry));
+                    outputStreamWriter.write(styleShapeRenderer.render("rectangle", entry));
                 }
 
                 outputStreamWriter.write("@enduml");
