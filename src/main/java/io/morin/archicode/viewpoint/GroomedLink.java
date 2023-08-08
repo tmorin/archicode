@@ -10,7 +10,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.jackson.Jacksonized;
 
 @Value
-@Builder
+@Builder(toBuilder = true)
 @ToString(onlyExplicitlyIncluded = true)
 @Jacksonized
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)

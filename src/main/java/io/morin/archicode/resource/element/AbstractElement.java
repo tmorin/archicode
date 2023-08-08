@@ -12,7 +12,7 @@ import lombok.experimental.SuperBuilder;
 
 @Getter
 @EqualsAndHashCode
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public abstract class AbstractElement implements Element {
 

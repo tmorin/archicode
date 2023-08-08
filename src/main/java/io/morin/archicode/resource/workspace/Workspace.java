@@ -20,7 +20,7 @@ import lombok.extern.jackson.Jacksonized;
 import lombok.val;
 
 @Value
-@Builder
+@Builder(toBuilder = true)
 @Jacksonized
 public class Workspace {
 

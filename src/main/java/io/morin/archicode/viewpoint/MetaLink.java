@@ -6,7 +6,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.jackson.Jacksonized;
 
-@Builder
+@Builder(toBuilder = true)
 @ToString(onlyExplicitlyIncluded = true)
 @Jacksonized
 @Getter

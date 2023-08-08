@@ -13,7 +13,7 @@ import lombok.extern.jackson.Jacksonized;
 
 @Value
 @ToString(onlyExplicitlyIncluded = true)
-@Builder
+@Builder(toBuilder = true)
 @Jacksonized
 public class Relationship {
 

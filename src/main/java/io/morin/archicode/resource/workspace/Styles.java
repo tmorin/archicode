@@ -10,7 +10,7 @@ import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 @Value
-@Builder
+@Builder(toBuilder = true)
 @Jacksonized
 public class Styles {
 
