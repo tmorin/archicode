@@ -1,0 +1,7 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  parent: "ecom"
+content:
+  id: "iam"
+  name: "Identity And Access Management"

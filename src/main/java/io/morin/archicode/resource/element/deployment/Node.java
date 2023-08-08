@@ -13,7 +13,7 @@ import lombok.extern.jackson.Jacksonized;
 
 @Value
 @ToString(onlyExplicitlyIncluded = true)
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @Jacksonized
 public class Node extends AbstractElement implements Parent<NodeElement>, EnvironmentElement, NodeElement {
 

@@ -8,6 +8,6 @@ import lombok.extern.jackson.Jacksonized;
 
 @Value
 @ToString(onlyExplicitlyIncluded = true)
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @Jacksonized
 public class Component extends AbstractElement implements ContainerElement {}
