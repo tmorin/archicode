@@ -1,5 +1,6 @@
 package io.morin.archicode.viewpoint.overview;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.element.Element;
@@ -8,6 +9,7 @@ import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.*;
 import java.util.Optional;
 import lombok.NonNull;
+import lombok.val;
 
 public class OverviewViewpointService implements ViewpointService {
 
@@ -32,8 +34,10 @@ public class OverviewViewpointService implements ViewpointService {
     public Optional<View.ViewBuilder> createViewBuilder(
         @NonNull String reference,
         @NonNull Element element,
-        @NonNull Settings.Views views
+        @NonNull Settings.Views views,
+        ObjectNode properties
     ) {
+        val om = mapperFactory.create(MapperFormat.JSON);
         return Optional.of(
             View
                 .builder()
@@ -47,7 +51,13 @@ public class OverviewViewpointService implements ViewpointService {
                         views.getLabels().getOverview()
                     )
                 )
-                .properties(mapperFactory.create(MapperFormat.JSON).createObjectNode().put("element", reference))
+                .properties(
+                    mapperFactory
+                        .create(MapperFormat.JSON)
+                        .createObjectNode()
+                        .put("element", reference)
+                        .setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode))
+                )
         );
     }
 
@@ -55,7 +65,7 @@ public class OverviewViewpointService implements ViewpointService {
     public ViewpointFactory createViewpointFactory() {
         return OverviewViewpointFactory
             .builder()
-            .objectMapper(mapperFactory.create(MapperFormat.JSON))
+            .objectMapper(mapperFactory.createLazy(MapperFormat.JSON))
             .metaLinkFinderForEgress(metaLinkFinderForEgress)
             .metaLinkFinderForIngress(metaLinkFinderForIngress)
             .metaLinkGroomer(metaLinkGroomer)

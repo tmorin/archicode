@@ -1,5 +1,6 @@
 package io.morin.archicode.viewpoint;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.view.View;
@@ -15,7 +16,8 @@ public interface ViewpointService {
     default Optional<View.ViewBuilder> createViewBuilder(
         @NonNull String reference,
         @NonNull Element element,
-        @NonNull Settings.Views views
+        @NonNull Settings.Views views,
+        ObjectNode properties
     ) {
         return Optional.empty();
     }
