@@ -1,5 +1,6 @@
 package io.morin.archicode.viewpoint.detailed;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.element.Element;
@@ -10,6 +11,7 @@ import io.morin.archicode.viewpoint.*;
 import io.morin.archicode.viewpoint.overview.OverviewViewpointFactory;
 import java.util.Optional;
 import lombok.NonNull;
+import lombok.val;
 
 public class DetailedViewpointService implements ViewpointService {
 
@@ -34,8 +36,10 @@ public class DetailedViewpointService implements ViewpointService {
     public Optional<View.ViewBuilder> createViewBuilder(
         @NonNull String reference,
         @NonNull Element element,
-        @NonNull Settings.Views views
+        @NonNull Settings.Views views,
+        ObjectNode properties
     ) {
+        val om = mapperFactory.create(MapperFormat.JSON);
         return Optional
             .of(element)
             .filter(v -> {
@@ -57,7 +61,13 @@ public class DetailedViewpointService implements ViewpointService {
                             views.getLabels().getDetailed()
                         )
                     )
-                    .properties(mapperFactory.create(MapperFormat.JSON).createObjectNode().put("element", reference))
+                    .properties(
+                        mapperFactory
+                            .create(MapperFormat.JSON)
+                            .createObjectNode()
+                            .put("element", reference)
+                            .setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode))
+                    )
             );
     }
 
@@ -65,7 +75,7 @@ public class DetailedViewpointService implements ViewpointService {
     public ViewpointFactory createViewpointFactory() {
         return DetailedViewpointFactory
             .builder()
-            .objectMapper(mapperFactory.create(MapperFormat.JSON))
+            .objectMapper(mapperFactory.createLazy(MapperFormat.JSON))
             .overviewViewpointFactory(
                 OverviewViewpointFactory
                     .builder()

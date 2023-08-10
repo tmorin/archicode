@@ -1,5 +1,8 @@
 package io.morin.archicode.cli;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.morin.archicode.MapperFactory;
+import io.morin.archicode.MapperFormat;
 import io.morin.archicode.rendering.Renderer;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.view.View;
@@ -33,6 +36,9 @@ public class RenderCommand {
     @Inject
     ViewpointServiceRepository viewpointServiceRepository;
 
+    @Inject
+    MapperFactory mapperFactory;
+
     @CommandLine.Option(
         names = { "-e", "--renderer" },
         paramLabel = "renderer",
@@ -49,6 +55,14 @@ public class RenderCommand {
         description = "The output directory."
     )
     Path viewsDirPath;
+
+    @CommandLine.Option(
+        names = { "-p", "--view-properties" },
+        paramLabel = "properties",
+        showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
+        description = "Optional properties of the view in JSON."
+    )
+    String viewPropertiesAsJson;
 
     @SneakyThrows
     @CommandLine.Command(name = "views", description = "Render views")
@@ -79,6 +93,7 @@ public class RenderCommand {
         renderBuiltinViews(workspace, workspace.depIndex, View.Layer.DEPLOYMENT, outputDirPath, viewIds);
     }
 
+    @SneakyThrows
     private void renderBuiltinViews(
         @NonNull Workspace workspace,
         @NonNull ElementIndex index,
@@ -86,6 +101,11 @@ public class RenderCommand {
         @NonNull Path outputDirPath,
         @NonNull Set<String> viewIds
     ) {
+        val om = mapperFactory.create(MapperFormat.JSON);
+        val properties = (ObjectNode) om.readTree(
+            Optional.ofNullable(viewPropertiesAsJson).filter(v -> !v.isEmpty()).orElse("{}")
+        );
+
         index
             .listAllElementReferences(element -> element instanceof Parent<?>)
             .stream()
@@ -98,7 +118,8 @@ public class RenderCommand {
                             .createViewBuilder(
                                 reference,
                                 index.getElementByReference(reference),
-                                workspace.getSettings().getViews()
+                                workspace.getSettings().getViews(),
+                                properties
                             )
                             .map(viewBuilder -> viewBuilder.layer(layer).build())
                     )

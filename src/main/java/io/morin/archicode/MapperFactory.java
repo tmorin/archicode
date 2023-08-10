@@ -1,6 +1,7 @@
 package io.morin.archicode;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.cfg.EnumFeature;
@@ -25,16 +26,37 @@ public class MapperFactory {
         .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
         .serializationInclusion(JsonInclude.Include.NON_EMPTY)
         .build();
+    YAMLMapper yamlMapperLazy = YAMLMapper
+        .builder()
+        .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
+        .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .serializationInclusion(JsonInclude.Include.NON_EMPTY)
+        .build();
     TomlMapper tomlMapper = TomlMapper
         .builder()
         .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
         .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
         .serializationInclusion(JsonInclude.Include.NON_EMPTY)
         .build();
+    TomlMapper tomlMapperLazy = TomlMapper
+        .builder()
+        .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
+        .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .serializationInclusion(JsonInclude.Include.NON_EMPTY)
+        .build();
     JsonMapper jsonMapper = JsonMapper
         .builder()
         .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
         .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+        .serializationInclusion(JsonInclude.Include.NON_EMPTY)
+        .build();
+    JsonMapper jsonMapperLazy = JsonMapper
+        .builder()
+        .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
+        .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .serializationInclusion(JsonInclude.Include.NON_EMPTY)
         .build();
 
@@ -48,6 +70,21 @@ public class MapperFactory {
             }
             case JSON -> {
                 return jsonMapper;
+            }
+            default -> throw new IllegalStateException("Unexpected value: " + format);
+        }
+    }
+
+    public ObjectMapper createLazy(MapperFormat format) {
+        switch (format) {
+            case YAML -> {
+                return yamlMapperLazy;
+            }
+            case TOML -> {
+                return tomlMapperLazy;
+            }
+            case JSON -> {
+                return jsonMapperLazy;
             }
             default -> throw new IllegalStateException("Unexpected value: " + format);
         }

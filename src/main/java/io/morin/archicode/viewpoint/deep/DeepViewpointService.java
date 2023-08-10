@@ -1,5 +1,6 @@
 package io.morin.archicode.viewpoint.deep;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.element.Element;
@@ -8,6 +9,7 @@ import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.*;
 import java.util.Optional;
 import lombok.NonNull;
+import lombok.val;
 
 public class DeepViewpointService implements ViewpointService {
 
@@ -31,8 +33,10 @@ public class DeepViewpointService implements ViewpointService {
     public Optional<View.ViewBuilder> createViewBuilder(
         @NonNull String reference,
         @NonNull Element element,
-        @NonNull Settings.Views views
+        @NonNull Settings.Views views,
+        ObjectNode properties
     ) {
+        val om = mapperFactory.create(MapperFormat.JSON);
         return Optional.of(
             View
                 .builder()
@@ -46,7 +50,12 @@ public class DeepViewpointService implements ViewpointService {
                         views.getLabels().getDeep()
                     )
                 )
-                .properties(mapperFactory.create(MapperFormat.JSON).createObjectNode().put("element", reference))
+                .properties(
+                    om
+                        .createObjectNode()
+                        .put("element", reference)
+                        .setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode))
+                )
         );
     }
 
@@ -54,7 +63,7 @@ public class DeepViewpointService implements ViewpointService {
     public ViewpointFactory createViewpointFactory() {
         return DeepViewpointFactory
             .builder()
-            .objectMapper(mapperFactory.create(MapperFormat.JSON))
+            .objectMapper(mapperFactory.createLazy(MapperFormat.JSON))
             .metaLinkFinderForEgress(metaLinkFinderForEgress)
             .metaLinkFinderForIngress(metaLinkFinderForIngress)
             .build();
