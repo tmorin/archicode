@@ -70,7 +70,7 @@ class ItemRenderer {
             buf.append(
                 String.format(
                     atomicFormatter.getName(),
-                    Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId())
+                    Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId())
                 )
             );
             buf.append(System.lineSeparator());
@@ -118,7 +118,7 @@ class ItemRenderer {
             buf.append(
                 String.format(
                     compositeFormatter.getName(),
-                    Optional.ofNullable(item.getElement().getName()).orElse(item.getItemId())
+                    Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId())
                 )
             );
             buf.append("\\n");

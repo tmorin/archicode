@@ -20,7 +20,13 @@ class LinkRenderer {
         val linkFormatter = viewpoint.getWorkspace().getFormatters().getLink();
 
         buf.append(link.getFrom().getItemId());
-        buf.append(" --> ");
+        buf.append(" ");
+        if (link.getTags().containsKey("rendering-secondary")) {
+            buf.append("..[#gray]>");
+        } else {
+            buf.append("-->");
+        }
+        buf.append(" ");
         buf.append(link.getTo().getItemId());
 
         val descriptionAsList = new ArrayList<String>();

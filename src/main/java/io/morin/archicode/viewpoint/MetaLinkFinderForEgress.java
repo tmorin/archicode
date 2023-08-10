@@ -1,5 +1,7 @@
 package io.morin.archicode.viewpoint;
 
+import static io.morin.archicode.resource.workspace.Workspace.Utilities.isDescendantOf;
+
 import io.morin.archicode.workspace.ElementIndex;
 import java.util.HashSet;
 import java.util.Set;
@@ -47,7 +49,7 @@ public class MetaLinkFinderForEgress implements MetaLinkFinder {
                             .relationship(relationship)
                             .build();
                     })
-                    .filter(metaLink -> !metaLink.getToReference().startsWith(viewReference))
+                    .filter(metaLink -> !isDescendantOf(metaLink.getToReference(), viewReference))
                     .collect(Collectors.toSet());
                 metaLinks.addAll(elementMetaLinks);
             }

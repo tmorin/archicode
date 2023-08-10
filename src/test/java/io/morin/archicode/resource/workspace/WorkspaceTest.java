@@ -1,6 +1,7 @@
 package io.morin.archicode.resource.workspace;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static io.morin.archicode.resource.workspace.Workspace.Utilities.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.dataformat.toml.TomlMapper;
@@ -124,5 +125,50 @@ class WorkspaceTest {
         java.lang.System.out.println(workspaceAsYaml);
         val newModel = yamlMapper.readValue(workspaceAsYaml, Workspace.class);
         assertEquals(workspace, newModel);
+    }
+
+    @Test
+    void shouldBeDescendent() {
+        assertTrue(isDescendantOf("sol_a.sys_aa.con_aaa", "sol_a.sys_aa"));
+    }
+
+    @Test
+    void shouldNotBeDescendentWhenSibling() {
+        assertFalse(isDescendantOf("sol_a.sys_aa.con_aaa", "sol_a.sys_aa.con_aab"));
+    }
+
+    @Test
+    void shouldNotBeDescendentWhenNotSameRoot() {
+        assertFalse(isDescendantOf("sol_a.sys_aa.con_aaa", "sol_a.sys_ab"));
+    }
+
+    @Test
+    void shouldBeAncestor() {
+        assertTrue(isAncestorOf("sol_a.sys_aa", "sol_a.sys_aa.con_aaa"));
+    }
+
+    @Test
+    void shouldNotBeAncestorWhenSibling() {
+        assertFalse(isAncestorOf("sol_a.sys_aa.con_aaa", "sol_a.sys_aa.con_aab"));
+    }
+
+    @Test
+    void shouldNotBeAncestorWhenNotSameRoot() {
+        assertFalse(isAncestorOf("sol_a.sys_aa.con_aaa", "sol_a.sys_ab"));
+    }
+
+    @Test
+    void shouldBeSibling() {
+        assertTrue(isSiblingOf("sol_a.sys_aa.con_aaa", "sol_a.sys_aa.con_aab"));
+    }
+
+    @Test
+    void shouldNotBeSiblingWhenDescendant() {
+        assertFalse(isSiblingOf("sol_a.sys_aa", "sol_a.sys_aa.con_aaa"));
+    }
+
+    @Test
+    void shouldNotBeSiblingWhenNotSameRoot() {
+        assertFalse(isSiblingOf("sol_a.sys_aa.con_aaa", "sol_a.sys_ab.con_aba"));
     }
 }

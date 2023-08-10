@@ -1,17 +1,3 @@
-application:
-  elements:
-    - kind: "system"
-      id: "sys_a"
-      elements:
-        - kind: "container"
-          id: "con_aa"
-          relationships:
-            - destination: "sys_b.con_ba"
-    - kind: "system"
-      id: "sys_b"
-      elements:
-        - kind: "container"
-          id: "con_ba"
 deployment:
   elements:
     - kind: "environment"
@@ -19,15 +5,45 @@ deployment:
       elements:
         - kind: "node"
           id: "node_a"
-          applications:
-            - "sys_a.con_aa"
-          relationships:
-            - destination: "env.node_b"
-        - kind: "node"
-          id: "node_b"
-          relationships:
-            - destination: "env.node_c"
-        - kind: "node"
-          id: "node_c"
-          applications:
-            - "sys_b.con_ba"
+          qualifiers:
+            - "Cloud Provider"
+          elements:
+            - kind: "node"
+              id: "cluster"
+              qualifiers:
+                - "K8sCluster"
+              elements:
+                - kind: "node"
+                  id: "authx"
+                  qualifiers:
+                    - "K8sNamespace"
+                  elements:
+                    - kind: "node"
+                      id: "node_d"
+                      relationships:
+                        - destination: env.node_a.cluster.apracl.apracl_a
+                        - destination: env.node_a.postgresql
+                - kind: "node"
+                  id: "apracl"
+                  qualifiers:
+                    - "K8sNamespace"
+                  elements:
+                    - kind: "node"
+                      id: "apracl_a"
+                - kind: "node"
+                  id: "scp"
+                  qualifiers:
+                    - "K8sNamespace"
+                  elements:
+                    - kind: "node"
+                      id: "scp_a"
+                      relationships:
+                        - destination: env.node_a.cluster.authx.node_d
+                - kind: "node"
+                  id: "iam"
+                  qualifiers:
+                    - "K8sNamespace"
+                  relationships:
+                    - destination: env.node_a.cluster.authx.node_d
+            - kind: "node"
+              id: "postgresql"

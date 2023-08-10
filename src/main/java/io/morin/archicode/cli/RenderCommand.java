@@ -63,20 +63,29 @@ public class RenderCommand {
         );
 
         for (String viewId : viewIds) {
-            log.info("render {}", viewId);
-            val view = workspace.viewIndex.getView(viewId);
-            val viewpoint = viewpointServiceRepository
-                .get(view.getViewpoint())
-                .createViewpointFactory()
-                .create(workspace, view);
-            renderer.render(viewpoint, rendererName, outputDirPath);
+            workspace.viewIndex
+                .searchView(viewId)
+                .ifPresent(view -> {
+                    log.info("render {}", viewId);
+                    val viewpoint = viewpointServiceRepository
+                        .get(view.getViewpoint())
+                        .createViewpointFactory()
+                        .create(workspace, view);
+                    renderer.render(viewpoint, rendererName, outputDirPath);
+                });
         }
 
-        renderBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION, outputDirPath);
-        renderBuiltinViews(workspace, workspace.depIndex, View.Layer.DEPLOYMENT, outputDirPath);
+        renderBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION, outputDirPath, viewIds);
+        renderBuiltinViews(workspace, workspace.depIndex, View.Layer.DEPLOYMENT, outputDirPath, viewIds);
     }
 
-    private void renderBuiltinViews(Workspace workspace, ElementIndex index, View.Layer layer, Path outputDirPath) {
+    private void renderBuiltinViews(
+        @NonNull Workspace workspace,
+        @NonNull ElementIndex index,
+        @NonNull View.Layer layer,
+        @NonNull Path outputDirPath,
+        @NonNull Set<String> viewIds
+    ) {
         index
             .listAllElementReferences(element -> element instanceof Parent<?>)
             .stream()
@@ -96,6 +105,7 @@ public class RenderCommand {
                     .filter(Optional::isPresent)
                     .map(Optional::get)
             )
+            .filter(view -> viewIds.isEmpty() || viewIds.contains(view.getViewId()))
             .forEach(view -> {
                 log.info("render {}", view.getViewId());
                 val viewpoint = viewpointServiceRepository

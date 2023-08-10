@@ -1,5 +1,7 @@
 package io.morin.archicode.viewpoint;
 
+import static io.morin.archicode.resource.workspace.Workspace.Utilities.isAncestorOf;
+
 import io.morin.archicode.viewpoint.GroomedLink.Direction;
 import io.morin.archicode.workspace.ElementIndex;
 import java.util.HashMap;
@@ -24,7 +26,12 @@ public class MetaLinkGroomer {
         Level linkTargetToLevel
     ) {
         // WHEN the parent of TO is an ancestor of FROM
-        if (metaLink.getFromReference().startsWith(Level.downReference(metaLink.getToReference()))) {
+        if (
+            isAncestorOf(
+                Level.downReference(Level.downReferenceTo(metaLink.getToReference(), linkTargetToLevel)),
+                metaLink.getFromReference()
+            )
+        ) {
             // THEN the target level of TO must be the same level as the FROM
             return linkTargetToLevel;
         }
@@ -48,7 +55,12 @@ public class MetaLinkGroomer {
         Level linkTargetToLevel
     ) {
         // WHEN the parent of FROM is an ancestor of TO
-        if (metaLink.getToReference().startsWith(Level.downReference(metaLink.getFromReference()))) {
+        if (
+            isAncestorOf(
+                Level.downReference(Level.downReferenceTo(metaLink.getFromReference(), linkTargetFromLevel)),
+                metaLink.getToReference()
+            )
+        ) {
             // THEN the target level of TO must be the same level as the FROM
             return linkTargetFromLevel;
         }
