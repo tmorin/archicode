@@ -1,7 +1,9 @@
 package io.morin.archicode.viewpoint;
 
 import io.morin.archicode.resource.element.application.Relationship;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import lombok.*;
 import lombok.extern.jackson.Jacksonized;
@@ -27,6 +29,9 @@ public class Link {
 
     @Builder.Default
     Set<String> qualifiers = new LinkedHashSet<>();
+
+    @Builder.Default
+    Map<String, String> tags = new LinkedHashMap<>();
 
     @NonNull
     @Singular

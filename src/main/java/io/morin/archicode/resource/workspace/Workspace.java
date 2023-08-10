@@ -12,12 +12,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import lombok.Builder;
-import lombok.Singular;
-import lombok.Value;
+import lombok.*;
 import lombok.experimental.UtilityClass;
 import lombok.extern.jackson.Jacksonized;
-import lombok.val;
 
 @Value
 @Builder(toBuilder = true)
@@ -45,8 +42,73 @@ public class Workspace {
     @UtilityClass
     public static class Utilities {
 
+        private static String[] splitReference(@NonNull String reference) {
+            return reference.split("\\.");
+        }
+
+        /**
+         * @param actualParts the actual
+         * @param expectedParts the expected
+         * @return true if the actual parts starts with the expected parts with the respect of the ordering
+         */
+        private static boolean isActualStartWithExpected(String[] actualParts, String[] expectedParts) {
+            for (int i = 0; i < expectedParts.length; i++) {
+                val candidatePart = actualParts[i];
+                val referencePart = expectedParts[i];
+                if (!candidatePart.equals(referencePart)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * @param candidate the candidate
+         * @param reference the reference
+         * @return true if the candidate is a sibling of the reference
+         */
+        public static boolean isSiblingOf(@NonNull String candidate, @NonNull String reference) {
+            val candidateParts = splitReference(candidate);
+            val referenceParts = splitReference(reference);
+            // leave early if the candidate cannot be an ancestor
+            if (candidateParts.length != referenceParts.length) {
+                return false;
+            }
+            return isActualStartWithExpected(candidateParts, referenceParts);
+        }
+
+        /**
+         * @param candidate the candidate
+         * @param reference the reference
+         * @return true if the candidate is a descendent of the second one
+         */
+        public static boolean isDescendantOf(@NonNull String candidate, @NonNull String reference) {
+            val candidateParts = splitReference(candidate);
+            val referenceParts = splitReference(reference);
+            // leave early if the candidate cannot be an ancestor
+            if (candidateParts.length <= referenceParts.length) {
+                return false;
+            }
+            return isActualStartWithExpected(candidateParts, referenceParts);
+        }
+
+        /**
+         * @param candidate the candidate
+         * @param reference the reference
+         * @return true if the candidate is n ancestor of the second one
+         */
+        public static boolean isAncestorOf(@NonNull String candidate, @NonNull String reference) {
+            val candidateParts = splitReference(candidate);
+            val referenceParts = splitReference(reference);
+            // leave early if the candidate cannot be an ancestor
+            if (candidateParts.length >= referenceParts.length) {
+                return false;
+            }
+            return isActualStartWithExpected(referenceParts, candidateParts);
+        }
+
         public Optional<String> findParentReference(String reference) {
-            val parts = reference.split("\\.");
+            val parts = splitReference(reference);
             if (parts.length == 1) {
                 return Optional.empty();
             }

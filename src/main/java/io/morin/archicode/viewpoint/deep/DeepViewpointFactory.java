@@ -53,8 +53,10 @@ public class DeepViewpointFactory extends AbstractViewPointFactory implements Vi
         val allItems = new HashSet<>(mainContent.items);
         val allLinks = new HashSet<>(mainContent.links);
 
-        val appContent = createItemAndLinksForAppLayer(workspace, mainContent.items);
-        allLinks.addAll(appContent.links);
+        if (properties.isShowApplicationLinks()) {
+            val appContent = createItemAndLinksForAppLayer(workspace, mainContent.items);
+            allLinks.addAll(appContent.links);
+        }
 
         return Viewpoint.builder().workspace(workspace).view(view).items(allItems).links(allLinks).build();
     }
@@ -143,7 +145,14 @@ public class DeepViewpointFactory extends AbstractViewPointFactory implements Vi
                                 appItemByReference
                                     .get(relationship.getDestination())
                                     .stream()
-                                    .map(toItem -> Link.builder().from(fromItem).to(toItem).build())
+                                    .map(toItem ->
+                                        Link
+                                            .builder()
+                                            .from(fromItem)
+                                            .to(toItem)
+                                            .tags(Map.of("rendering-secondary", ""))
+                                            .build()
+                                    )
                             )
                     )
             )
