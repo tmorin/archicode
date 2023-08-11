@@ -7,6 +7,7 @@ import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.deployment.Deployment;
 import io.morin.archicode.resource.element.deployment.DeploymentElement;
 import io.morin.archicode.resource.view.View;
+import io.morin.archicode.viewpoint.Level;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
@@ -69,9 +70,9 @@ public class Workspace {
          */
         public static boolean isSiblingOf(@NonNull String candidate, @NonNull String reference) {
             val candidateParts = splitReference(candidate);
-            val referenceParts = splitReference(reference);
+            val referenceParts = splitReference(Level.downReference(reference));
             // leave early if the candidate cannot be an ancestor
-            if (candidateParts.length != referenceParts.length) {
+            if (candidateParts.length <= referenceParts.length) {
                 return false;
             }
             return isActualStartWithExpected(candidateParts, referenceParts);
