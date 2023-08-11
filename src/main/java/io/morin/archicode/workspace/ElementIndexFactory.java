@@ -30,6 +30,7 @@ public class ElementIndexFactory {
     @NonNull
     Set<ManifestParser.Candidate> candidates;
 
+    @SuppressWarnings({ "unchecked" })
     public ElementIndex create() {
         log.debug("index the elements of the resources {}", root);
 
@@ -71,10 +72,11 @@ public class ElementIndexFactory {
                 if (root instanceof Application application) {
                     application.getElements().add(applicationElement);
                 }
-            } else if (parentCandidate instanceof DeploymentElement deploymentElement) {
-                if (root instanceof Deployment deployment) {
-                    deployment.getElements().add(deploymentElement);
-                }
+            } else if (
+                parentCandidate instanceof DeploymentElement deploymentElement &&
+                (root instanceof Deployment deployment)
+            ) {
+                deployment.getElements().add(deploymentElement);
             }
         });
 
