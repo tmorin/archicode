@@ -1,5 +1,6 @@
 package io.morin.archicode.cli;
 
+import io.morin.archicode.MapperFormat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
@@ -11,25 +12,26 @@ import org.junit.jupiter.api.Test;
 class CustomRenderingTest {
 
     @Inject
-    RenderCommand renderCommand;
+    GenerateViews generateViews;
 
     @SneakyThrows
     @Test
     void mayRenderCustom() {
-        ArchiCodeCommand archiCodeCommand = new ArchiCodeCommand();
-        archiCodeCommand.workspaceFilePath = Path.of(".custom/cara.yaml");
-        renderCommand.archiCodeCommand = archiCodeCommand;
-        renderCommand.viewsDirPath = Path.of("views");
-        renderCommand.rendererName = "plantuml";
-        renderCommand.viewPropertiesAsJson = "{ \"show-application-links\": false }";
-        if (archiCodeCommand.workspaceFilePath.toFile().exists()) {
-            renderCommand.renderViews(
-                Set.of(
-                    "reference.cloudprovider.cluster.authx.backend_deep",
-                    "reference.cloudprovider.cluster.authx.backend_detailed",
-                    "reference.cloudprovider.cluster.authx.backend_overview"
-                )
+        ArchiCode archiCode = new ArchiCode();
+        archiCode.workspaceFilePath = Path.of(".custom/cara.yaml");
+        generateViews.archiCode = archiCode;
+        generateViews.viewsDirPath = Path.of("views");
+        generateViews.rendererName = "plantuml";
+        generateViews.viewPropertiesAsJson = "{ \"show-application-links\": false }";
+        generateViews.viewPropertiesFormat = MapperFormat.JSON;
+        generateViews.viewIds =
+            Set.of(
+                "reference.cloudprovider.cluster.authx.backend_deep",
+                "reference.cloudprovider.cluster.authx.backend_detailed",
+                "reference.cloudprovider.cluster.authx.backend_overview"
             );
+        if (archiCode.workspaceFilePath.toFile().exists()) {
+            generateViews.run();
         }
     }
 }

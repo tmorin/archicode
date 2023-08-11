@@ -6,7 +6,7 @@ import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-class CaseBTest extends AbstractRenderTest {
+class CaseBTest extends AbstractGenerateViews {
 
     @SneakyThrows
     @Test
