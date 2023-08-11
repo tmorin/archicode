@@ -3,6 +3,7 @@ package io.morin.archicode.cli;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.morin.archicode.MapperFactory;
+import io.morin.archicode.MapperFormat;
 import io.morin.archicode.WorkspaceAFixtures;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -17,10 +18,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-class ArchiCodeCommandTest {
+class ArchiCodeTest {
 
     @Inject
-    RenderCommand renderCommand;
+    GenerateViews generateViews;
 
     @Inject
     MapperFactory mapperFactory;
@@ -28,24 +29,26 @@ class ArchiCodeCommandTest {
     @BeforeEach
     @SneakyThrows
     void setUp() {
-        val wksDir = Path.of("target", ArchiCodeCommandTest.class.getSimpleName());
+        val wksDir = Path.of("target", ArchiCodeTest.class.getSimpleName());
         wksDir.toFile().mkdirs();
-        val wksFile = Path.of("target", ArchiCodeCommandTest.class.getSimpleName(), "resources.yaml");
+        val wksFile = Path.of("target", ArchiCodeTest.class.getSimpleName(), "resources.yaml");
         Files.writeString(
             wksFile,
             mapperFactory.create(wksFile).writeValueAsString(WorkspaceAFixtures.createWorkspace()),
             StandardCharsets.UTF_8
         );
-        ArchiCodeCommand archiCodeCommand = new ArchiCodeCommand();
-        archiCodeCommand.workspaceFilePath = wksFile;
-        renderCommand.archiCodeCommand = archiCodeCommand;
-        renderCommand.rendererName = "plantuml";
+        ArchiCode archiCode = new ArchiCode();
+        archiCode.workspaceFilePath = wksFile;
+        generateViews.archiCode = archiCode;
+        generateViews.rendererName = "plantuml";
+        generateViews.viewPropertiesFormat = MapperFormat.JSON;
     }
 
     @Test
     void shouldRenderViews() {
-        renderCommand.viewsDirPath = Path.of("shouldRenderViews");
-        renderCommand.renderViews(Set.of("view_solution_a_overview"));
+        generateViews.viewsDirPath = Path.of("shouldRenderViews");
+        generateViews.viewIds = Set.of("view_solution_a_overview");
+        generateViews.run();
         assertTrue(
             Path
                 .of("target/ArchiCodeCommandTest/shouldRenderViews/plantuml/application/view_solution_a_overview.puml")
@@ -56,8 +59,9 @@ class ArchiCodeCommandTest {
 
     @Test
     void shouldRenderPerspectives() {
-        renderCommand.viewsDirPath = Path.of("shouldRenderPerspectives");
-        renderCommand.renderViews(Collections.emptySet());
+        generateViews.viewsDirPath = Path.of("shouldRenderPerspectives");
+        generateViews.viewIds = Collections.emptySet();
+        generateViews.run();
         assertTrue(
             Path
                 .of(

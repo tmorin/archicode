@@ -21,11 +21,11 @@ import lombok.val;
 import picocli.CommandLine;
 
 @Slf4j
-@CommandLine.Command(name = "render")
-public class RenderCommand {
+@CommandLine.Command(name = "generate", description = "Generate the views.")
+public class GenerateViews implements Runnable {
 
     @CommandLine.ParentCommand
-    ArchiCodeCommand archiCodeCommand;
+    ArchiCode archiCode;
 
     @Inject
     WorkspaceFactory workspaceFactory;
@@ -64,15 +64,25 @@ public class RenderCommand {
     )
     String viewPropertiesAsJson;
 
-    @SneakyThrows
-    @CommandLine.Command(name = "views", description = "Render views")
-    void renderViews(
-        @CommandLine.Parameters(description = "The view identifiers to render.") @NonNull Set<String> viewIds
-    ) {
-        val workspace = workspaceFactory.create(archiCodeCommand.workspaceFilePath);
+    @CommandLine.Option(
+        names = { "--view-properties-format" },
+        paramLabel = "format",
+        showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
+        defaultValue = "json",
+        description = "The format of the view properties.",
+        converter = { MapperFormatConverter.class }
+    )
+    MapperFormat viewPropertiesFormat;
+
+    @CommandLine.Parameters(description = "The view identifiers to render.", paramLabel = "VIEW IDS")
+    Set<String> viewIds;
+
+    @Override
+    public void run() {
+        val workspace = workspaceFactory.create(archiCode.workspaceFilePath);
 
         val outputDirPath = Path.of(
-            archiCodeCommand.workspaceFilePath.toFile().getParent(),
+            archiCode.workspaceFilePath.toFile().getParent(),
             Optional.ofNullable(viewsDirPath).orElse(Path.of(workspace.getSettings().getViews().getPath())).toString()
         );
 
@@ -101,7 +111,7 @@ public class RenderCommand {
         @NonNull Path outputDirPath,
         @NonNull Set<String> viewIds
     ) {
-        val om = mapperFactory.create(MapperFormat.JSON);
+        val om = mapperFactory.create(viewPropertiesFormat);
         val properties = (ObjectNode) om.readTree(
             Optional.ofNullable(viewPropertiesAsJson).filter(v -> !v.isEmpty()).orElse("{}")
         );

@@ -10,7 +10,7 @@ import lombok.val;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-class CaseATest extends AbstractRenderTest {
+class CaseATest extends AbstractGenerateViews {
 
     @SneakyThrows
     @Test
