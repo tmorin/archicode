@@ -1,5 +1,6 @@
 package io.morin.archicode.resource.element;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.morin.archicode.resource.element.application.Relationship;
 import java.util.LinkedHashMap;
@@ -17,6 +18,7 @@ import lombok.experimental.SuperBuilder;
 public abstract class AbstractElement implements Element {
 
     @NonNull
+    @JsonProperty(required = true)
     String id;
 
     String name;

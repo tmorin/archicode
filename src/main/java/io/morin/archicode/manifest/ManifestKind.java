@@ -1,11 +1,14 @@
 package io.morin.archicode.manifest;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import io.morin.archicode.resource.element.application.*;
 import io.morin.archicode.resource.element.application.System;
 import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.element.technology.Technology;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -32,10 +35,7 @@ public enum ManifestKind {
     private final Class<?> type;
     private final Class<?> category;
 
-    public static Optional<ManifestKind> findById(String id) {
-        return INDEX.getOrDefault(id, Collections.emptyList()).stream().findFirst();
-    }
-
+    @JsonValue
     public String getId() {
         return "archicode.morin.io/" + this.name().toLowerCase().replace("_", "-");
     }
