@@ -1,8 +1,0 @@
-header:
-  kind: "archicode.morin.io/system"
-  version: "1"
-content:
-  id: "socialidp"
-  name: "Social Identity Provider"
-  tags:
-    rendering-stereotypes: "external"

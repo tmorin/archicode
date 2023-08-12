@@ -73,7 +73,7 @@ public class DetailedViewpointFactory extends AbstractViewPointFactory implement
                         .builder()
                         .viewpoint("overview")
                         .layer(view.getLayer())
-                        .viewId(UUID.randomUUID().toString())
+                        .id(UUID.randomUUID().toString())
                         .properties(objectMapper.createObjectNode().put("element", reference))
                         .build()
                 )

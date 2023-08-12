@@ -7,7 +7,7 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "views",
     description = "Manage the views of the workspace.",
-    subcommands = { GenerateViewsCommand.class, ListViewsCommand.class }
+    subcommands = { GenerateViewsCommand.class }
 )
 public class ViewsGroup {
 

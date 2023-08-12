@@ -1,4 +1,5 @@
 = ArchiCode
+:authors: Thibault Morin
 :TOC:
 
 == Introduction
@@ -12,7 +13,6 @@ Incorporating concepts from the ArchiMate Standard, ArchiCode's model is rooted 
 This documentation will guide you through the features, domain, commands, and best practices for utilizing ArchiCode in your architectural projects. Let's explore how ArchiCode can elevate your architecture-as-code journey.
 
 == Features
-
 
 .Structured Application Component Design
 ArchiCode provides a structured data model that empowers architects to design and define the intricate composition of application components. Craft comprehensive architectures using ArchiCode's data model.
@@ -269,6 +269,34 @@ Within the ArchiCode domain, the concept of a "Node" aligns harmoniously with it
 include::examples/domain_technology/manifests/laptop.yaml[]
 ----
 
+=== Relationships
+
+// - A Relationship links two Elements of the same Layer.
+// - An Element of the Technology Layer can reference an Element of the Application Layer.
+// - ArchiCode promotes natural in-depth relationships between Elements for accuracy, but smartly manage synthetic relationships at upper level to maintain clarity.
+
+In the ArchiCode domain, relationships serve as essential conduits that navigate the intricate architectural landscape. Let's delve into the nuances of relationships and their pivotal role within this framework:
+
+- Interconnection of Elements: A "Relationship" within ArchiCode emerges as a bridge that seamlessly links two "Elements" existing within a singular architectural "Layer." This interconnectedness facilitates a coherent representation of how architectural components interact and collaborate.
+
+- Layer Interactions: Notably, an "Element" within the Technology Layer possesses the capability to reference an "Element" residing within the Application Layer. This cross-layer referencing enriches your architectural design by articulating dependencies that transcend traditional boundaries.
+
+- Striking the Balance: ArchiCode takes a deliberate approach in fostering relationships. It promotes the establishment of intricate and in-depth relationships between Elements, enhancing accuracy and authenticity. Simultaneously, at higher levels, ArchiCode employs astute management of synthetic relationships to maintain clarity and comprehensibility.
+
+.Relationship Composition
+[plantuml, relationship_composition]
+----
+@startuml
+hide empty members
+rectangle Element
+rectangle Relationship
+Element *--> "*" Relationship
+Relationship o--> "1" Element
+@enduml
+----
+
+As you traverse the ArchiCode landscape, you'll discover that relationships are more than mere connections; they embody the intricate tapestry of your architecture. These relationships intertwine Elements, forging a harmonious narrative that elucidates dependencies, interactions, and the synergy that fuels your architectural vision. In this realm, relationships are not just links; they're the vital conduits that breathe life into your architectural masterpiece.
+
 === Viewpoints and Views
 
 // - The purpose of ArchiCode is to finally generate views of the Application and Technology layers.
@@ -348,12 +376,127 @@ ArchiCode introduces a systematic approach to rendering views, enriching archite
 
 By introducing a robust rendering mechanism, employing opinionated rules for artifact generation, and facilitating the pluggable Renderer Service, ArchiCode enhances architectural communication by transforming abstract architectural concepts into tangible representations.
 
-// == Commands
-// === Generate views
+== Commands
+
+// - ArchiCode provides commands to generate views located in a workspace.
+// - ArchiCode provides commands to query the data model of the workspace.
+
+Within the realm of ArchiCode, an array of meticulously designed commands empowers you to wield precision and control over your architectural workspace. Let's delve into ArchiCode's command utilities, which enable you to seamlessly generate views and explore the intricacies of your workspace's data model:
+
+- View Generation Commands: ArchiCode offers a range of commands dedicated to the seamless generation of views situated within your workspace. These commands enable you to customize the generation of views, providing a streamlined approach to shaping your architectural visualization.
+
+- Data Model Querying Commands: ArchiCode equips you with specialized commands designed to query the intricate data model of your workspace. These commands serve as a window into your architecture's foundational elements, facilitating insightful exploration and analysis.
+
+As you delve deeper into the Command section of ArchiCode's documentation, you'll uncover the diverse set of commands at your disposal, each contributing to a more intuitive, efficient, and informed architectural workflow. Let's embark on this journey through the realm of ArchiCode's commands, discovering how they enhance your ability to shape, explore, and communicate architectural concepts.
+
+=== Generate views
+
+.Generate Views - The command line
+[shell]
+----
+archicode views generate --help
+----
+
+// - The command Generate View triggers the generation of views.
+// - By default, the command discovers all possible views based on the elements of the Application Layer and the Technology Layer.
+// - By default, the command generate Views for all available Viewpoints.
+// - By default, the command generate Views with the built-in Renderer based on Plantuml.
+// - By default, the command generate Views in a folder named views in the workspace folder.
+
+// - The command can be customized to render only a given set of views based on their ViewId.
+
+// - The command can be customized to render using a given Renderer Engine.
+
+// - The command can be customized specifying custom View properties.
+
+The "Generate Views" command within ArchiCode serves as a dynamic catalyst for creating comprehensive architectural views. This command is designed to efficiently produce visual representations of your architecture, aiding communication and understanding. Here's a comprehensive breakdown of its functionality:
+
+- Triggering View Generation: The "Generate Views" command is the key that unlocks the process of generating architectural views. Upon invocation, ArchiCode springs into action, initiating the creation of visual artifacts that encapsulate your architectural design.
+
+- Default Behavior: By default, this command leverages the power of discovery. It automatically identifies and generates views based on the elements present within both the Application Layer and the Technology Layer of your architecture.
+
+- Inclusive Viewpoint Generation: The default behavior extends to encompass all available viewpoints. This means that ArchiCode generates views for a comprehensive range of architectural perspectives, enabling a holistic portrayal of your design.
+
+- Built-in Renderer Integration: By default, the "Generate Views" command uses the ArchiCode's Plantuml Renderer. This integration ensures that the generated views are easily understandable and sharable.
+
+- Organized Output: By default, the command orchestrates the organization of generated views within a dedicated "views" folder, nested within your workspace folder. This structured arrangement enhances clarity and enables efficient access to your visual representations.
+
+The command offers also customization Capabilities:
+
+- Selective View Rendering: The power of customization lies in your hands. The command can be tailored to render specific views based on their unique identifier, providing you with control over the scope of generated visualizations.
+
+.Generate Views - Selective View Rendering
+[shell]
+----
+archicode views generate --view-id=view_a  --view-id=view_b
+----
+
+- Renderer Engine Flexibility: You have the freedom to opt for a preferred Renderer Engine. The command allows you to specify a particular engine, aligning the rendering process with your architectural preferences.
+
+.Generate Views - Renderer Engine Flexibility
+[shell]
+----
+archicode views generate --engine=kubernetes-network-policies
+----
+
+- Fine-Tuned View Properties: Further customization extends to individual view properties. ArchiCode empowers you to specify custom properties, ensuring that the generated views align precisely with your architectural objectives.
+
+.Generate Views - Fine-Tuned View Properties
+[shell]
+----
+archicode views generate --properties='{ "key" : "value" }'
+----
+
+=== Query views
+
+.Query Views - The command line
+[shell]
+----
+archicode query views --help
+----
+
+// - The command Query View is designed to filter views and customize output format.
+// - The filtering leverage on JSON Path to deeply query the View model.
+// - The command supports the output formats: YAML, TOML, JSON and custom.
+// - The custom output format expects a template given as option of the command line.
+// - The template engine is Velocity and the filtered data can be accessed with JSON Path.
+// - By default, the command doesn't apply any filtering or formatting.
+
+The "Query Views" command within ArchiCode offers a versatile toolkit for precise exploration and customization of architectural views. Here's an in-depth look at the capabilities and features of the "Query Views" command:
+
+- Default Behavior: As a testament to flexibility, the "Query Views" command, by default, refrains from applying any filtering or formatting. This ensures that you have the freedom to explore your architectural views without any predetermined constraints.
+
+- Focused Exploration: The essence of the "Query Views" command lies in its ability to fine-tune your exploration. Designed with precision in mind, this command empowers you to filter and tailor your view output according to your architectural inquiries.
+
+The command offers also customization Capabilities:
+
+- Dynamic Filtering: The command harnesses the power of JSON Path, enabling you to apply intricate filters that delve deep into the View model. This dynamic filtering mechanism facilitates targeted extraction of specific architectural insights.
+
+.Query Views - Dynamic Filtering
+[shell]
+----
+archicode query views -q '$.[?(@.viewpoint=="deep")]'
+----
+
+- Customizable Output Formats: ArchiCode's "Query Views" command extends flexibility by supporting various output formats, including YAML, TOML, JSON, and a customizable option. This ensures that your extracted data aligns seamlessly with your preferred format.
+
+.Query Views - Customizable Output Formats
+[shell]
+----
+archicode query views -f toml
+----
+
+- Template-Based Customization: The command's customizable output format integrates a template-based approach. By leveraging the Velocity template engine, you can define specific output structures tailored to your architectural needs.
+
+.Query Views - Template-Based Customization
+[shell]
+----
+archicode query views -f custom -t '$d.e("$.[*].id")'
+----
+
 // === Generate JSON Schemas
 // == Best Practices
 // === Design Guidelines
 // === Source Code Organization
 // === Viewpoint Utilization
 // === CI/CD Integration
-

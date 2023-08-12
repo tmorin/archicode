@@ -42,7 +42,7 @@ public class OverviewViewpointService implements ViewpointService {
             View
                 .builder()
                 .viewpoint(NAME)
-                .viewId(String.format("%s_%s", reference.replace("/", "_"), NAME))
+                .id(String.format("%s_%s", reference.replace("/", "_"), NAME))
                 .description(
                     String.format(
                         "%s - %s - %s",

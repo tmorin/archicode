@@ -16,7 +16,7 @@ import picocli.CommandLine;
 public class GetSchemasQuery implements Runnable {
 
     @Inject
-    CommandOutputWriter commandOutputWriter;
+    QueryOutputWriter queryOutputWriter;
 
     @Inject
     MapperFactory mapperFactory;
@@ -54,6 +54,6 @@ public class GetSchemasQuery implements Runnable {
                 case MANIFEST -> schemaGen.generateSchema(Manifest.class);
             };
         val schemaAsJson = mapper.writeValueAsString(schema);
-        commandOutputWriter.write(schemaAsJson);
+        queryOutputWriter.write(schemaAsJson);
     }
 }

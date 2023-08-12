@@ -27,7 +27,7 @@ docker run -v "$(pwd):/wks" --rm thibaultmorin/archicode:0.1.0-SNAPSHOT query sc
 ## Commands
 
 ```
-archicode views generate [ID_A, ID_B, ...]
-
+archicode views generate
+archicode query views
 archicode query schemas [workspace|manifest]
 ```

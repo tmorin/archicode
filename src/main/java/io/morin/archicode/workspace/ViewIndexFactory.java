@@ -20,7 +20,7 @@ public class ViewIndexFactory {
     Set<View> views;
 
     public ViewIndex create() {
-        views.forEach(view -> index.viewByViewIdIndex.put(view.getViewId(), view));
+        views.forEach(view -> index.viewByViewIdIndex.put(view.getId(), view));
         return index;
     }
 }

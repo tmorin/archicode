@@ -15,7 +15,7 @@ public class View {
 
     @NonNull
     @ToString.Include
-    String viewId;
+    String id;
 
     @NonNull
     @ToString.Include
