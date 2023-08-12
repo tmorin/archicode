@@ -1,6 +1,6 @@
 package io.morin.archicode.viewpoint.deep;
 
-import io.morin.archicode.resource.element.deployment.Node;
+import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.*;
 import io.morin.archicode.workspace.ElementIndex;

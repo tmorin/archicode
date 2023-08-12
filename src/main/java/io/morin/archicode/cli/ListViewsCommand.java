@@ -20,11 +20,11 @@ import lombok.val;
 import picocli.CommandLine;
 
 @Slf4j
-@CommandLine.Command(name = "generate", description = "Generate the views.")
-public class ListViews implements Runnable {
+@CommandLine.Command(name = "list", description = "List the views of the workspace.")
+public class ListViewsCommand implements Runnable {
 
     @CommandLine.ParentCommand
-    ArchiCode archiCode;
+    ViewsGroup viewsGroup;
 
     @Inject
     MapperFactory mapperFactory;
@@ -37,7 +37,7 @@ public class ListViews implements Runnable {
 
     @CommandLine.Option(
         names = { "-f", "--format" },
-        paramLabel = "format",
+        paramLabel = "FORMAT",
         defaultValue = "yaml",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
         description = "The output format.",
@@ -48,13 +48,13 @@ public class ListViews implements Runnable {
     @SneakyThrows
     @Override
     public void run() {
-        val workspace = workspaceFactory.create(archiCode.workspaceFilePath);
+        val workspace = workspaceFactory.create(viewsGroup.archiCode.workspaceFilePath);
 
         val mapper = mapperFactory.create(outputFormat).writerWithDefaultPrettyPrinter();
 
         val allViews = new HashSet<>(workspace.getViews());
         allViews.addAll(getBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION));
-        allViews.addAll(getBuiltinViews(workspace, workspace.depIndex, View.Layer.DEPLOYMENT));
+        allViews.addAll(getBuiltinViews(workspace, workspace.depIndex, View.Layer.TECHNOLOGY));
 
         System.out.println(mapper.writeValueAsString(allViews));
     }

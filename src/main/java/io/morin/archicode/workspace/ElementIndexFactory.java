@@ -4,8 +4,8 @@ import io.morin.archicode.manifest.ManifestParser;
 import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.ApplicationElement;
 import io.morin.archicode.resource.element.application.Parent;
-import io.morin.archicode.resource.element.deployment.Deployment;
-import io.morin.archicode.resource.element.deployment.DeploymentElement;
+import io.morin.archicode.resource.element.technology.Technology;
+import io.morin.archicode.resource.element.technology.TechnologyElement;
 import io.morin.archicode.resource.workspace.Workspace;
 import java.util.HashSet;
 import java.util.Set;
@@ -39,13 +39,13 @@ public class ElementIndexFactory {
                 application,
                 (parent, element) -> ElementIndexUtilities.index(parent, element, index)
             );
-        } else if (root instanceof Deployment deployment) {
+        } else if (root instanceof Technology technology) {
             Workspace.Utilities.walkDown(
-                deployment,
+                technology,
                 (parent, element) -> ElementIndexUtilities.index(parent, element, index)
             );
         } else {
-            throw new IllegalStateException("root must be Application or Deployment");
+            throw new IllegalStateException("root must be Application or Technology");
         }
 
         log.debug("index the elements discovered in the manifests");
@@ -73,10 +73,10 @@ public class ElementIndexFactory {
                     application.getElements().add(applicationElement);
                 }
             } else if (
-                parentCandidate instanceof DeploymentElement deploymentElement &&
-                (root instanceof Deployment deployment)
+                parentCandidate instanceof TechnologyElement technologyElement &&
+                (root instanceof Technology technology)
             ) {
-                deployment.getElements().add(deploymentElement);
+                technology.getElements().add(technologyElement);
             }
         });
 

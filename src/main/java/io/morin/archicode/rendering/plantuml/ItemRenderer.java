@@ -4,6 +4,7 @@ import io.morin.archicode.rendering.RenderingShape;
 import io.morin.archicode.rendering.ViewRenderer;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Viewpoint;
+
 import java.util.Optional;
 import lombok.*;
 import lombok.experimental.FieldDefaults;

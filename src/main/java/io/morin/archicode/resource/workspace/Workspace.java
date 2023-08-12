@@ -4,8 +4,8 @@ import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.ApplicationElement;
 import io.morin.archicode.resource.element.application.Parent;
-import io.morin.archicode.resource.element.deployment.Deployment;
-import io.morin.archicode.resource.element.deployment.DeploymentElement;
+import io.morin.archicode.resource.element.technology.Technology;
+import io.morin.archicode.resource.element.technology.TechnologyElement;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.Level;
 import java.util.Arrays;
@@ -26,7 +26,7 @@ public class Workspace {
     Application application = Application.builder().build();
 
     @Builder.Default
-    Deployment deployment = Deployment.builder().build();
+    Technology technology = Technology.builder().build();
 
     @Singular
     Set<View> views;
@@ -123,8 +123,8 @@ public class Workspace {
             }
         }
 
-        public void walkDown(Deployment deployment, BiConsumer<Element, Element> consumer) {
-            for (DeploymentElement element : deployment.getElements()) {
+        public void walkDown(Technology technology, BiConsumer<Element, Element> consumer) {
+            for (TechnologyElement element : technology.getElements()) {
                 consumer.accept(null, element);
                 walkDown(element, consumer);
             }

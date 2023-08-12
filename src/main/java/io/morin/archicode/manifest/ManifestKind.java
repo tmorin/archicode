@@ -2,9 +2,9 @@ package io.morin.archicode.manifest;
 
 import io.morin.archicode.resource.element.application.*;
 import io.morin.archicode.resource.element.application.System;
-import io.morin.archicode.resource.element.deployment.Deployment;
-import io.morin.archicode.resource.element.deployment.Environment;
-import io.morin.archicode.resource.element.deployment.Node;
+import io.morin.archicode.resource.element.technology.Environment;
+import io.morin.archicode.resource.element.technology.Node;
+import io.morin.archicode.resource.element.technology.Technology;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -22,9 +22,9 @@ public enum ManifestKind {
     SOLUTION_GROUP(SolutionGroup.class, Application.class),
     SYSTEM(System.class, Application.class),
     SYSTEM_GROUP(SolutionGroup.class, Application.class),
-    // DEPLOYMENT
-    ENVIRONMENT(Environment.class, Deployment.class),
-    NODE(Node.class, Deployment.class);
+    // TECHNOLOGY
+    ENVIRONMENT(Environment.class, Technology.class),
+    NODE(Node.class, Technology.class);
 
     private static final Map<String, List<ManifestKind>> INDEX = Arrays
         .stream(ManifestKind.values())

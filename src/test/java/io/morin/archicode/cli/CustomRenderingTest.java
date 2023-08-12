@@ -6,32 +6,35 @@ import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.Set;
 import lombok.SneakyThrows;
+import lombok.val;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class CustomRenderingTest {
 
     @Inject
-    GenerateViews generateViews;
+    GenerateViewsCommand generateViewsCommand;
 
     @SneakyThrows
     @Test
     void mayRenderCustom() {
         ArchiCode archiCode = new ArchiCode();
         archiCode.workspaceFilePath = Path.of(".custom/acme.yaml");
-        generateViews.archiCode = archiCode;
-        generateViews.viewsDirPath = Path.of("views");
-        generateViews.rendererName = "plantuml";
-        generateViews.viewPropertiesAsJson = "{ \"show-application-links\": false }";
-        generateViews.viewPropertiesFormat = MapperFormat.JSON;
-        generateViews.viewIds =
+        val views = new ViewsGroup();
+        views.archiCode = archiCode;
+        generateViewsCommand.viewsGroup = views;
+        generateViewsCommand.viewsDirPath = Path.of("views");
+        generateViewsCommand.rendererName = "plantuml";
+        generateViewsCommand.viewPropertiesAsJson = "{ \"show-application-links\": false }";
+        generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
+        generateViewsCommand.viewIds =
             Set.of(
                 "reference.cloudprovider.cluster.auth.backend_deep",
                 "reference.cloudprovider.cluster.auth.backend_detailed",
                 "reference.cloudprovider.cluster.auth.backend_overview"
             );
         if (archiCode.workspaceFilePath.toFile().exists()) {
-            generateViews.run();
+            generateViewsCommand.run();
         }
     }
 }

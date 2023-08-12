@@ -1,4 +1,4 @@
-deployment:
+technology:
   elements:
     - kind: "environment"
       id: "env"

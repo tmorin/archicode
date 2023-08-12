@@ -11,12 +11,9 @@ import picocli.CommandLine;
 @TopCommand
 @CommandLine.Command(
     description = "ArchiCode provides features to support architecture work with an as-code approach.",
-    subcommands = { ViewsCommand.class }
+    subcommands = { ViewsGroup.class }
 )
 public class ArchiCode {
-
-    @CommandLine.ParentCommand
-    ArchiCode archiCode;
 
     @Inject
     WorkspaceFactory workspaceFactory;
@@ -28,10 +25,19 @@ public class ArchiCode {
     ViewpointServiceRepository viewpointServiceRepository;
 
     @CommandLine.Option(
-        names = { "-w", "--resources" },
-        description = "The resources file.",
-        defaultValue = "resources.yaml",
-        paramLabel = "<resources file>"
+        names = { "-w", "--workspace" },
+        description = "The workspace file.",
+        defaultValue = "workspace.yaml",
+        paramLabel = "<workspace file>",
+        scope = CommandLine.ScopeType.INHERIT
     )
     Path workspaceFilePath;
+
+    @CommandLine.Option(
+        names = { "-h", "--help" },
+        usageHelp = true,
+        description = "Display this help message.",
+        scope = CommandLine.ScopeType.INHERIT
+    )
+    boolean usageHelpRequested;
 }

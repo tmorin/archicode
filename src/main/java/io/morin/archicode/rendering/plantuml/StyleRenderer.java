@@ -1,6 +1,7 @@
 package io.morin.archicode.rendering.plantuml;
 
 import io.morin.archicode.viewpoint.Viewpoint;
+
 import java.util.Optional;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
