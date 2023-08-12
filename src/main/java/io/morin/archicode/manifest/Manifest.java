@@ -1,8 +1,8 @@
 package io.morin.archicode.manifest;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.morin.archicode.ArchiCodeException;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.ToString;
@@ -16,16 +16,16 @@ import lombok.extern.jackson.Jacksonized;
 public class Manifest {
 
     @NonNull
+    @JsonProperty(required = true)
     Manifest.Header header;
 
     @NonNull
+    @JsonProperty(required = true)
     ObjectNode content;
 
     @JsonIgnore
     public ManifestKind getKind() {
-        return ManifestKind
-            .findById(header.getKind())
-            .orElseThrow(() -> new ArchiCodeException("unable to find the Manifest Kind %s", header.getKind()));
+        return header.kind;
     }
 
     @Value
@@ -35,9 +35,11 @@ public class Manifest {
     public static class Header {
 
         @NonNull
-        String kind;
+        @JsonProperty(required = true)
+        ManifestKind kind;
 
         @NonNull
+        @JsonProperty(required = true)
         String version;
 
         String parent;

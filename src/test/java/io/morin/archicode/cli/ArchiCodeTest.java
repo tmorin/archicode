@@ -53,7 +53,7 @@ class ArchiCodeTest {
         generateViewsCommand.run();
         assertTrue(
             Path
-                .of("target/ArchiCodeCommandTest/shouldRenderViews/plantuml/application/view_solution_a_overview.puml")
+                .of("target/ArchiCodeTest/shouldRenderViews/plantuml/application/view_solution_a_overview.puml")
                 .toFile()
                 .exists()
         );
@@ -67,7 +67,7 @@ class ArchiCodeTest {
         assertTrue(
             Path
                 .of(
-                    "target/ArchiCodeCommandTest/shouldRenderPerspectives/plantuml/application/solution_a.system_a_a_overview.puml"
+                    "target/ArchiCodeTest/shouldRenderPerspectives/plantuml/application/solution_a.system_a_a_overview.puml"
                 )
                 .toFile()
                 .exists()

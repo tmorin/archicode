@@ -11,7 +11,7 @@ import picocli.CommandLine;
 @TopCommand
 @CommandLine.Command(
     description = "ArchiCode provides features to support architecture work with an as-code approach.",
-    subcommands = { ViewsGroup.class }
+    subcommands = { ViewsGroup.class, QueryGroup.class }
 )
 public class ArchiCode {
 

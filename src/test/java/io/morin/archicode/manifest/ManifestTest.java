@@ -34,7 +34,7 @@ class ManifestTest {
                               name: "Kubernetes Cluster"
                         """;
         val resource = yamlMapper.readValue(resourceAsString, Manifest.class);
-        assertEquals(ManifestKind.NODE.getId(), resource.getHeader().getKind());
+        assertEquals(ManifestKind.NODE, resource.getHeader().getKind());
         assertEquals("1", resource.getHeader().getVersion());
         assertEquals("reference.cloudprovider", resource.getHeader().getParent());
         assertEquals("cloudprovider", resource.getContent().get("id").asText());
