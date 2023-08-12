@@ -1,6 +1,0 @@
-header:
-  kind: "archicode.morin.io/solution"
-  version: "1"
-content:
-  id: "ecom"
-  name: "The e-Commerce Solution"

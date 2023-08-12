@@ -14,10 +14,12 @@ import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Level;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.jboss.logmanager.Logger;
 import picocli.CommandLine;
 
 @Slf4j
@@ -39,7 +41,12 @@ public class GenerateViewsCommand implements Runnable {
     @Inject
     MapperFactory mapperFactory;
 
-    @CommandLine.Parameters(description = "The view identifiers to render.", paramLabel = "IDS")
+    @CommandLine.Option(
+        names = { "-v", "--view-id" },
+        paramLabel = "VIEW_ID",
+        arity = "0..*",
+        description = "An identifiers of a view to render."
+    )
     Set<String> viewIds;
 
     @CommandLine.Option(
@@ -62,7 +69,6 @@ public class GenerateViewsCommand implements Runnable {
     @CommandLine.Option(
         names = { "-p", "--properties" },
         paramLabel = "PROPERTIES",
-        showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
         description = "Optional properties of the views."
     )
     String viewPropertiesAsJson;
@@ -79,6 +85,8 @@ public class GenerateViewsCommand implements Runnable {
 
     @Override
     public void run() {
+        Logger.getGlobal().setLevel(Level.INFO);
+
         val workspace = workspaceFactory.create(viewsGroup.archiCode.workspaceFilePath);
 
         val outputDirPath = Path.of(
@@ -136,9 +144,9 @@ public class GenerateViewsCommand implements Runnable {
                     .filter(Optional::isPresent)
                     .map(Optional::get)
             )
-            .filter(view -> viewIds.isEmpty() || viewIds.contains(view.getViewId()))
+            .filter(view -> viewIds.isEmpty() || viewIds.contains(view.getId()))
             .forEach(view -> {
-                log.info("render {}", view.getViewId());
+                log.info("render {}", view.getId());
                 val viewpoint = viewpointServiceRepository
                     .get(view.getViewpoint())
                     .createViewpointFactory()

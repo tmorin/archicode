@@ -207,7 +207,7 @@ public class ResourceFixtures {
         return View
             .builder()
             .viewpoint("overview")
-            .viewId(viewId)
+            .id(viewId)
             .properties(WorkspaceAFixtures.objectMapper.createObjectNode().put("element", reference))
             .build();
     }
@@ -216,7 +216,7 @@ public class ResourceFixtures {
         return View
             .builder()
             .viewpoint("detailed")
-            .viewId(viewId)
+            .id(viewId)
             .properties(WorkspaceAFixtures.objectMapper.createObjectNode().put("element", reference))
             .build();
     }
@@ -225,7 +225,7 @@ public class ResourceFixtures {
         return View
             .builder()
             .viewpoint("deep")
-            .viewId(viewId)
+            .id(viewId)
             .properties(WorkspaceAFixtures.objectMapper.createObjectNode().put("element", reference));
     }
 }
