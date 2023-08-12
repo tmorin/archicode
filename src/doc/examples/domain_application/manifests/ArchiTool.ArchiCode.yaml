@@ -1,0 +1,6 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  parent: "ArchiTool"
+content:
+  id: "ArchiCode"
