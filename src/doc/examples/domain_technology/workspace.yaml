@@ -1,0 +1,4 @@
+technology:
+  elements:
+    - kind: "environment"
+      id: "Reference"

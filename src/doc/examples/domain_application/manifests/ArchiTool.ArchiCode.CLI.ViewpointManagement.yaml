@@ -1,0 +1,6 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  parent: "ArchiTool.ArchiCode.CommandLineInterface"
+content:
+  id: "ViewpointManagement"

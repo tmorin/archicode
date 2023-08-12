@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  parent: "Reference"
+content:
+  id: "Laptop"
+  elements:
+    - kind: "Node"
+      id: "OperatingSystem"
+      elements:
+        - kind: "Node"
+          id: "TerminalSession"

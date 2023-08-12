@@ -1,0 +1,19 @@
+technology:
+  elements:
+    - kind: "environment"
+      id: "Reference"
+      elements:
+        - kind: "Node"
+          id: "Laptop"
+          elements:
+            - kind: "Node"
+              id: "OperatingSystem"
+              elements:
+                - kind: "Node"
+                  id: "TerminalSession"
+views:
+  - kind: "view"
+    viewpoint: "overview"
+    layer: "technology"
+    properties:
+      element: "Reference.Laptop.OperatingSystem.TechnicalSession"

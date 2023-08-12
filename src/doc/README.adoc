@@ -1,0 +1,359 @@
+= ArchiCode
+:TOC:
+
+== Introduction
+
+Welcome to the ArchiCode Command Line Tool Documentation. ArchiCode is a powerful tool designed to assist architects in creating models and generating views using an efficient as-code approach. Drawing inspiration from both the C4 Model and the ArchiMate Standard, ArchiCode provides a data model and a command line interface to streamline your architectural workflow.
+
+With ArchiCode, architects can easily design models and produce views while adhering to the principles of the C4 Model. Our built-in viewpoints handle various levels of abstraction, ensuring your architectural vision is accurately represented in your projects.
+
+Incorporating concepts from the ArchiMate Standard, ArchiCode's model is rooted in the structural Aspect and spans the Application and Technology layers. This integration adds depth and clarity to your architectural creations.
+
+This documentation will guide you through the features, domain, commands, and best practices for utilizing ArchiCode in your architectural projects. Let's explore how ArchiCode can elevate your architecture-as-code journey.
+
+== Features
+
+
+.Structured Application Component Design
+ArchiCode provides a structured data model that empowers architects to design and define the intricate composition of application components. Craft comprehensive architectures using ArchiCode's data model.
+
+.Precise Technology Node Modeling
+Seamlessly define the structure of technology nodes within your architecture. ArchiCode facilitates precise modeling to ensure your technology strategies are accurately captured.
+
+.Flexible Source Formats
+ArchiCode adapts to your preferences by supporting multiple source formats, including YAML, TOML, and JSON. Work with the format that suits your workflow best.
+
+.Manifest-Style Source Code Organization
+Embrace a Kubernetes-like manifest approach to organize your source code more efficiently. ArchiCode simplifies the management of complex architectures by providing a structured and organized view.
+
+.Automated View Generation
+With ArchiCode, creating informative views is effortless. Leverage pre-defined viewpoints to automatically generate views that communicate your architectural concepts effectively.
+
+.Intelligent Relationship Management
+ArchiCode's viewpoints smartly manage relationships, providing a clear representation of how components interact within your architecture.
+
+.Seamless CI/CD Integration
+Integrate ArchiCode seamlessly into your CI/CD pipelines. Ensure architectural integrity throughout your development lifecycle.
+
+.Extensibility Through Plug-gable Engines
+Customize and extend ArchiCode's functionality by plugging in renderer engines. Tailor the tool to match your unique requirements.
+
+.Diverse Viewpoint Providers
+ArchiCode's high extensibility is further amplified by integrating viewpoint providers. Enhance your architectural perspectives with specialized viewpoints.
+
+This next parts will comprehensively guide you through ArchiCode's features, commands, and best practices, enabling you to harness the full potential of this tool in your architectural endeavors. Let's delve into the details and unlock the benefits ArchiCode has to offer.
+
+== Domain
+
+The ArchiCode domain serves as the foundational framework for your architectural endeavors, encompassing essential elements that facilitate and enhance your architectural work:
+
+- Workspace: ArchiCode's workspace provides the supportive backdrop for all your architecture projects, offering an organized and collaborative environment.
+
+- Application Layer: Within the ArchiCode domain, the Application layer hosts a rich array of elements coming from the C4 Model, enabling you to meticulously design and model application components with precision and clarity.
+
+- Technology Layer: Embracing the Technology layer of the ArchiCode domain empowers you to delve into the realm of deployment nodes, strategically configuring your architecture's technological aspects.
+
+- Viewpoint and Views: Navigating within the ArchiCode domain grants you access to a spectrum of viewpoints and customizable views, facilitating effective architectural communication and visualization.
+
+- Technical Configuration: The ArchiCode domain encompasses essential technical configurations, enabling you to tailor the tool to your specific architectural requirements.
+
+As we delve into each facet of the ArchiCode domain, you'll gain a comprehensive understanding of how each element contributes to your architectural prowess. Let's embark on a guided exploration through the diverse dimensions of the ArchiCode domain.
+
+=== Workspace
+
+In ArchiCode, a workspace is a fundamental construct that orchestrates the foundation of your architectural endeavors. It acts as a cohesive hub, streamlining the definition and configuration of your architecture work. Key aspects of the workspace include:
+
+- Plain Text Format: A workspace is represented as a plain text file, allowing you to choose between YAML, TOML, or JSON formats. This flexibility ensures that the workspace aligns seamlessly with your preferred configuration style.
+
+- Centralized Definition and Configuration: The workspace serves as a central repository for defining and configuring your architecture work. This consolidation streamlines your workflow and provides a clear reference point for all aspects of your project.
+
+- Enrichment with Manifests: Workspaces can be enriched through the inclusion of manifests. A manifest, also presented as a plain text file in YAML, TOML, or JSON format, further refines and specifies architectural details within the workspace.
+
+- Manifest for Enhanced Organization: The concept of manifests introduces a structural layer that enhances source code organization. By encapsulating architectural components, manifests contribute to a cleaner and more comprehensible separation of concerns.
+
+- Collaboration Support: Embracing the manifest concept not only refines source code organization but also provides enhanced collaboration capabilities. Manifests facilitate clearer communication among team members by offering a well-defined structure and purpose.
+
+The following snippet describes a workspace designing the `CommandLineInterface` container of the `ArchiCode` system and its localization in the `Reference` environment.
+
+.The content of `workspace.yaml`
+[source,yaml]
+----
+include::examples/domain_workspace/workspace.yaml[]
+----
+
+The following snippet describes a manifest designing the `User` person and is relationship with the `CommandLineInterface` container.
+
+.The content of `manifests/user.yaml`
+[source,yaml]
+----
+include::examples/domain_workspace/manifests/user.yaml[]
+----
+
+Incorporating workspaces and manifests into your architectural workflow within ArchiCode empowers you with an efficient and organized foundation for your projects. Let's explore further as we navigate through the various dimensions of the ArchiCode domain.
+
+=== Application Layer
+
+// - In ArchiCode, the Application Layer matches the Application Layer of ArchiMate.
+// - In ArchiMate the application layer is defined as "The Application Layer depicts application services that support the business, and the applications that realize them."
+// - ArchiCode focuses exclusively on the structure of the Application Layer, i.e. the Structure aspect of ArchiMate.
+// - In ArchiCode, the Application Layer matches the C4 Model with an additional element, the Solution, on top of the System element.
+
+In ArchiCode, the Application Layer embodies a pivotal aspect of your architectural design, harmonizing with both the ArchiMate Standard and the C4 Model. Key insights into the Application Layer include:
+
+- Correlation with ArchiMate: Drawing inspiration from the ArchiMate Standard, ArchiCode's Application Layer mirrors the Application Layer within the ArchiMate framework.
+
+- Structural Focus: ArchiCode delves specifically into the structural realm of the Application Layer. It emphasizes the "Structure" aspect of ArchiMate, enabling architects to meticulously design and define the composition of application components.
+
+- Alignment with C4 Model: Building upon the alignment with ArchiMate, ArchiCode's Application Layer extends its compatibility to the C4 Model. This alignment, inclusive of a unique "Solution" element, complements the foundational "System" element, enriching the architectural vocabulary.
+
+==== Application Layer Composition
+
+// - The Application Layer is composed of Solutions and Systems.
+// - A Solution is composed of Systems
+// - A System is composed of Containers
+// - A Container is composed of Components
+
+- Solutions and Systems: At the apex of the Application Layer, you encounter "Solutions" and "Systems." A Solution encapsulates one or more Systems, establishing a higher-level conceptual grouping.
+
+- Systems and Containers: Delving deeper, a "System" encompasses "Containers," delineating the delineating technological boundaries of your architecture. These Containers form the backbone of your application's operational flow.
+
+- Containers and Components: Within each Container resides a multitude of "Components," embodying the granular building blocks of your architecture. These Components epitomize the specific functionalities that drive your application's behavior.
+
+.Application Layer Composition
+[plantuml, application_layer_composition]
+----
+@startuml
+hide empty members
+rectangle Workspace
+rectangle ApplicationLayer as "Application Layer"
+rectangle Solution
+rectangle System
+rectangle Container
+rectangle Component
+Workspace *--> "1" ApplicationLayer
+ApplicationLayer *--> "*" Solution
+ApplicationLayer *--> "*" System
+Solution *--> "*" System
+System *--> "*" Container
+Container *--> "*" Component
+@enduml
+----
+
+This hierarchical structure empowers you to systematically model and articulate the intricate relationships and dependencies between Solutions, Systems, Containers, and Components within your architectural design. As you navigate through ArchiCode's Application Layer, you gain a comprehensive understanding of how these components harmonize to shape your architectural vision.
+
+==== Solution
+
+// - A Solution makes senses when the architecture work covers many systems.
+
+In the context of the ArchiCode domain, the concept of "Solutions" takes on a pivotal role, particularly when orchestrating architectural endeavors that span multiple systems. Here's a closer look at the significance of Solutions:
+
+- Multi-System Scope: Solutions come to the forefront when your architecture work extends its reach across multiple systems. They provide a coherent and organized approach to manage and address the complexities that arise from a diverse ecosystem of interconnected systems.
+
+- Holistic View: By grouping related Systems under a common Solution, you achieve a holistic and top-level perspective. This organizational structure allows you to grasp the overarching design intent and align it seamlessly with the intricacies of your multi-system architecture.
+
+- Modularity and Scalability: Solutions inherently promote modularity and scalability. They enable you to encapsulate specific sets of Systems, facilitating targeted enhancements, updates, and expansions while maintaining a clear demarcation of responsibilities.
+
+- Efficient Management: Solutions offer an efficient management framework, streamlining the handling of interdependencies, resource allocation, and cross-cutting concerns across Systems. This, in turn, fosters improved coordination and resource utilization.
+
+- Enhanced Communication: Solutions enhance communication by providing a concise reference point for discussing architectural decisions and rationale. This clarity aids in effective collaboration among stakeholders, ensuring everyone shares a common understanding of the architectural landscape.
+
+Incorporating Solutions into your architectural repertoire within ArchiCode empowers you to navigate the complexities of multi-system architectures with finesse, coherence, and strategic foresight.
+
+.The manifest of the ArchiTool solution
+[source,yaml]
+----
+include::examples/domain_application/manifests/ArchiTool.yaml[]
+----
+
+
+
+==== System
+
+// - A System in ArchiCode is equivalent to a System in C4 Model.
+
+In the ArchiCode domain, the concept of a "System" resonates harmoniously with the counterpart found in the C4 Model.
+
+.The manifest of the ArchiCode system
+[source,yaml]
+----
+include::examples/domain_application/manifests/ArchiTool.ArchiCode.yaml[]
+----
+
+==== Container
+
+// - A Container in ArchiCode is equivalent to a Container in C4 Model.
+
+Within the ArchiCode domain, the concept of a "Container" maintains a parallel equivalence with its counterpart in the C4 Model.
+
+.The manifest of a Node element
+[source,yaml]
+----
+include::examples/domain_application/manifests/ArchiTool.ArchiCode.CLI.yaml[]
+----
+
+==== Component
+
+// - A Component in ArchiCode is equivalent to a Component in C4 Model.
+
+In the realm of the ArchiCode domain, the concept of a "Component" resonates in harmony with its counterpart within the C4 Model.
+
+.The manifest of the ViewpointManagement component
+[source,yaml]
+----
+include::examples/domain_application/manifests/ArchiTool.ArchiCode.CLI.ViewpointManagement.yaml[]
+----
+
+=== Technology Layer
+
+// - In ArchiCode, the Technology Layer matches the Technology Layer of ArchiMate.
+// - In ArchiMate the application layer is defined as "The Technology Layer comprises both information and operational technology. You can model, for example, processing, storage, and communication technology in support of the application world and Business Layers, and model operational or physical technology with facilities, physical equipment, materials, and distribution networks."
+// - ArchiCode focuses exclusively on the structure of the Technology Layer, i.e. the Structure aspect of ArchiMate.
+// - In ArchiCode, the Technology Layer matches the Deployment representations of the C4 Model, but there is only two elements, the Environment and the Node.
+
+In the ArchiCode domain, the "Technology Layer" emerges as a pivotal facet that resonates with both the ArchiMate Standard and the Deployment representations within the C4 Model. Here's a comprehensive exploration of this layer:
+
+- Correlation with ArchiMate: Mirroring the ArchiMate framework, ArchiCode's Technology Layer corresponds to the "Technology Layer" within ArchiMate. This alignment facilitates a seamless integration of architectural principles across domains.
+- Structural Focus: ArchiCode, delves into the structural aspect of the Technology Layer. It exclusively emphasizes the "Structure" facet of ArchiMate, enabling architects to meticulously model and define the composition of technological elements that underpin your architecture.
+- Equivalence with C4 Model: The Technology Layer in ArchiCode aligns with the Deployment representations found within the C4 Model. However, ArchiCode simplifies this representation by reducing to two foundational elements: "Environment" and "Node." These elements encapsulate the essence of the Technology Layer, providing a streamlined yet comprehensive view of technological aspects.
+
+==== Technology Layer Composition
+
+// - The Technology Layer is composed of Environments.
+// - A Environment is composed of Nodes
+// - A Node is composed of
+
+Within the ArchiCode domain, the Technology Layer unfolds as a structured hierarchy, comprising essential elements that contribute to the technological fabric of your architecture. Let's delve into this composition:
+
+- Environments and Nodes: At the forefront of the Technology Layer, you encounter "Environments" and "Nodes." An Environment encapsulates one or more Nodes, forming a high-level organizational unit that represents distinct technological contexts.
+- Nodes and Sub-Nodes: Delving deeper, a "Node" encompasses both "Nodes" and "Sub-Nodes." This hierarchical arrangement enables the precise delineation of technological elements, allowing for finer-grained representation and definition.
+
+.Technology Layer Composition
+[plantuml, technology_layer_composition]
+----
+@startuml
+hide empty members
+rectangle Workspace
+rectangle TechnologyLayer as "Technology Layer"
+rectangle Environment
+rectangle Node
+Workspace *--> "1" TechnologyLayer
+TechnologyLayer *--> "*" Environment
+Environment *--> "*" Node
+Node *--> "*" Node
+@enduml
+----
+
+Within this well-defined framework, you gain the ability to systematically depict and elucidate the complex interactions, dependencies, and relationships that exist among Environments, Nodes, and Sub-Nodes within your technological architecture. As you delve further into the ArchiCode domain, you'll cultivate a comprehensive understanding of how these components intricately weave together to form the rich tapestry of your architectural technological landscape.
+
+==== Environment
+
+// - A Environment in ArchiCode is equivalent to an Environment in the Deployment representation of the C4 Model.
+
+In the ArchiCode domain, the concept of an "Environment" resonates in parallel with its counterpart within the Deployment representation of the C4 Model.
+
+.The workspace defining the Reference environment
+[source,yaml]
+----
+include::examples/domain_technology/workspace.yaml[]
+----
+
+==== Node
+
+// - A Node in ArchiCode is equivalent to a Node in the Deployment representation of the C4 Model.
+
+Within the ArchiCode domain, the concept of a "Node" aligns harmoniously with its counterpart within the Deployment representation of the C4 Model.
+
+.The manifest of the Laptop node embedding the OperatingSystem and the TerminalSession nodes
+[source,yaml]
+----
+include::examples/domain_technology/manifests/laptop.yaml[]
+----
+
+=== Viewpoints and Views
+
+// - The purpose of ArchiCode is to finally generate views of the Application and Technology layers.
+// - In ArchiCode, a View is primarily the aggregation of a Viewpoint and a Layer.
+// - In ArchiCode, a Viewpoint is an opinionated set of pre-defined rules extracting and transforming data related to the Layer of View.
+
+ArchiCode serves a fundamental purpose: the generation of comprehensive views that illuminate both the Application and Technology layers of your architectural design. This purpose aligns seamlessly with architectural principles and methodologies. Let's delve into the mechanics that facilitate this purpose within ArchiCode:
+
+- View Composition in ArchiCode: Within the ArchiCode framework, a "View" emerges as a coherent amalgamation of two crucial components: a "Viewpoint" and a "Layer." This composition ensures that each view encapsulates a well-defined perspective on your architecture.
+
+- Viewpoint Definition in ArchiCode: In the context of ArchiCode, a "Viewpoint" embodies a set of opinionated and pre-defined rules. These rules play a pivotal role in the extraction and transformation of data. This structuring ensures that views effectively communicate specific architectural aspects.
+
+==== Viewpoints and Views Composition
+
+// - A workspace contains many Views.
+// - A View is associated to one Viewpoint.
+// - A View is associated to one Layer.
+
+Within the ArchiCode workspace, the concept of "Views" plays a pivotal role in portraying architectural insights. Let's explore the characteristics of Views and their associations within the workspace:
+
+- View and Viewpoint Association: In the realm of ArchiCode, every View is intrinsically linked to a designated "Viewpoint." This association ensures that each View is curated to encapsulate the viewpoint's specific perspective on the architectural content.
+
+- View and Layer Association: Additionally, every View within ArchiCode is associated with a distinct "Layer." This connection anchors the View's focus to a specific architectural layer, allowing for a clear and structured portrayal of the intended architectural context.
+
+.Viewpoints and Views Composition
+[plantuml, viewpoint_views_composition]
+----
+@startuml
+hide empty members
+rectangle Workspace
+rectangle View
+rectangle Viewpoint
+rectangle Layer
+Workspace *--> "*" View
+View o--> "1" Viewpoint
+View o--> "1" Layer
+@enduml
+----
+
+By incorporating Views within the ArchiCode workspace and meticulously associating them with relevant Viewpoints and Layers, you harness a powerful tool for effectively communicating architectural insights. As we continue our exploration of ArchiCode, you'll delve further into the mechanics of Views and their pivotal role in conveying the depth and breadth of your architectural design.
+
+==== Views
+
+// - ArchiCode emphases the dynamic generation of views.
+// - ArchiCode leverage on pluggable Viewpoint Service to dynamically generate views according to the elements of both layers Application and Technology.
+// - ArchiCode allows also ad-hoc definition of views.
+
+ArchiCode places a strong emphasis on the dynamic generation of views, fostering a dynamic and adaptable approach to architectural visualization. Here's how ArchiCode leverages this dynamic view generation:
+
+- Pluggable Viewpoint Service: ArchiCode harnesses a pluggable Viewpoint Service architecture, enabling the dynamic generation of views that seamlessly align with the elements of both the Application and Technology layers. This extensible framework empowers architects to tailor viewpoints according to their architectural needs.
+
+- Diverse Architectural Elements: With ArchiCode, the dynamic view generation process taps into the rich spectrum of architectural elements within the Application and Technology layers. This ensures that views are not only comprehensive but also finely tuned to convey the intricacies of your design.
+
+- Ad-Hoc View Definition: ArchiCode takes flexibility a step further by allowing architects to define ad-hoc views. This empowers you to create specialized viewpoints that cater to specific architectural inquiries or scenarios, providing an extra layer of customization.
+
+.The workspace defined a View representing an __overview__ of the TerminalSession node
+[source,yaml]
+----
+include::examples/domain_viewpoint_views/workspace.yaml[]
+----
+
+By embracing dynamic view generation, leveraging pluggable Viewpoint Services, and facilitating ad-hoc view definitions, ArchiCode equips architects with a robust toolkit for capturing, communicating, and exploring architectural insights in a dynamic and tailored manner. As we navigate deeper into ArchiCode's capabilities, you'll uncover the rendering of views and how they enhance your architectural workflow.
+
+==== Rendering
+
+// - In ArchiCode, a View is rendered by a Renderer.
+// - In ArchiCode, a Renderer is an opinionated set of pre-defined rules generating artifacts for the end user.
+// - ArchiCode leverage on pluggable Renderer Service to generate views.
+
+ArchiCode introduces a systematic approach to rendering views, enriching architectural communication through visualization. Here's how ArchiCode orchestrates the process of rendering views:
+
+- View Rendering Mechanism: Within ArchiCode, each View is rendered by a designated "Renderer." This integral component takes the architectural model and translates it into tangible artifacts that resonate with the end user, facilitating a comprehensive understanding of the design.
+
+- Renderer Definition: A "Renderer" within ArchiCode embodies a set of opinionated and pre-defined rules. These rules are specifically tailored to generate artifacts that eloquently present architectural insights, ensuring consistency and clarity in communication.
+
+- Pluggable Renderer Service: ArchiCode harnesses a pluggable Renderer Service architecture, enabling seamless integration and utilization of diverse renderers. This extensibility empowers architects to choose the most suitable renderer for the intended audience or purpose.
+
+By introducing a robust rendering mechanism, employing opinionated rules for artifact generation, and facilitating the pluggable Renderer Service, ArchiCode enhances architectural communication by transforming abstract architectural concepts into tangible representations.
+
+// == Commands
+// === Generate views
+// === Generate JSON Schemas
+// == Best Practices
+// === Design Guidelines
+// === Source Code Organization
+// === Viewpoint Utilization
+// === CI/CD Integration
+

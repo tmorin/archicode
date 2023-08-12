@@ -1,0 +1,6 @@
+application:
+  elements:
+    - kind: "person"
+      id: "user"
+      relationships:
+        - destination: "ArchiTool.ArchiCode.CommandLineInterface"
