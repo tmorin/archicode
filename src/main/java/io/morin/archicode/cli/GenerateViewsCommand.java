@@ -21,11 +21,11 @@ import lombok.val;
 import picocli.CommandLine;
 
 @Slf4j
-@CommandLine.Command(name = "generate", description = "Generate the views.")
-public class GenerateViews implements Runnable {
+@CommandLine.Command(name = "generate", description = "Generate the views of the workspace.")
+public class GenerateViewsCommand implements Runnable {
 
     @CommandLine.ParentCommand
-    ArchiCode archiCode;
+    ViewsGroup viewsGroup;
 
     @Inject
     WorkspaceFactory workspaceFactory;
@@ -39,34 +39,37 @@ public class GenerateViews implements Runnable {
     @Inject
     MapperFactory mapperFactory;
 
+    @CommandLine.Parameters(description = "The view identifiers to render.", paramLabel = "IDS")
+    Set<String> viewIds;
+
     @CommandLine.Option(
-        names = { "-e", "--renderer" },
-        paramLabel = "renderer",
+        names = { "-e", "--engine" },
+        paramLabel = "ENGINE",
         defaultValue = "plantuml",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
-        description = "The name of the renderer."
+        description = "The name of the rendering engine."
     )
     String rendererName;
 
     @CommandLine.Option(
         names = { "-o", "--output" },
-        paramLabel = "path",
+        paramLabel = "PATH",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
         description = "The output directory."
     )
     Path viewsDirPath;
 
     @CommandLine.Option(
-        names = { "-p", "--view-properties" },
-        paramLabel = "properties",
+        names = { "-p", "--properties" },
+        paramLabel = "PROPERTIES",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
-        description = "Optional properties of the view in JSON."
+        description = "Optional properties of the views."
     )
     String viewPropertiesAsJson;
 
     @CommandLine.Option(
-        names = { "--view-properties-format" },
-        paramLabel = "format",
+        names = { "--properties-format" },
+        paramLabel = "FORMAT",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
         defaultValue = "json",
         description = "The format of the view properties.",
@@ -74,15 +77,12 @@ public class GenerateViews implements Runnable {
     )
     MapperFormat viewPropertiesFormat;
 
-    @CommandLine.Parameters(description = "The view identifiers to render.", paramLabel = "VIEW IDS")
-    Set<String> viewIds;
-
     @Override
     public void run() {
-        val workspace = workspaceFactory.create(archiCode.workspaceFilePath);
+        val workspace = workspaceFactory.create(viewsGroup.archiCode.workspaceFilePath);
 
         val outputDirPath = Path.of(
-            archiCode.workspaceFilePath.toFile().getParent(),
+            viewsGroup.archiCode.workspaceFilePath.toFile().getParent(),
             Optional.ofNullable(viewsDirPath).orElse(Path.of(workspace.getSettings().getViews().getPath())).toString()
         );
 
@@ -100,7 +100,7 @@ public class GenerateViews implements Runnable {
         }
 
         renderBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION, outputDirPath, viewIds);
-        renderBuiltinViews(workspace, workspace.depIndex, View.Layer.DEPLOYMENT, outputDirPath, viewIds);
+        renderBuiltinViews(workspace, workspace.depIndex, View.Layer.TECHNOLOGY, outputDirPath, viewIds);
     }
 
     @SneakyThrows

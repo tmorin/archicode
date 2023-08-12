@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.morin.archicode.resource.element.application.Container;
-import io.morin.archicode.resource.element.deployment.Node;
+import io.morin.archicode.resource.element.technology.Node;
 import io.quarkus.test.junit.QuarkusTest;
 import lombok.SneakyThrows;
 import lombok.val;

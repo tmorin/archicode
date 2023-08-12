@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 class ArchiCodeTest {
 
     @Inject
-    GenerateViews generateViews;
+    GenerateViewsCommand generateViewsCommand;
 
     @Inject
     MapperFactory mapperFactory;
@@ -39,16 +39,18 @@ class ArchiCodeTest {
         );
         ArchiCode archiCode = new ArchiCode();
         archiCode.workspaceFilePath = wksFile;
-        generateViews.archiCode = archiCode;
-        generateViews.rendererName = "plantuml";
-        generateViews.viewPropertiesFormat = MapperFormat.JSON;
+        val views = new ViewsGroup();
+        views.archiCode = archiCode;
+        generateViewsCommand.viewsGroup = views;
+        generateViewsCommand.rendererName = "plantuml";
+        generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
     }
 
     @Test
     void shouldRenderViews() {
-        generateViews.viewsDirPath = Path.of("shouldRenderViews");
-        generateViews.viewIds = Set.of("view_solution_a_overview");
-        generateViews.run();
+        generateViewsCommand.viewsDirPath = Path.of("shouldRenderViews");
+        generateViewsCommand.viewIds = Set.of("view_solution_a_overview");
+        generateViewsCommand.run();
         assertTrue(
             Path
                 .of("target/ArchiCodeCommandTest/shouldRenderViews/plantuml/application/view_solution_a_overview.puml")
@@ -59,9 +61,9 @@ class ArchiCodeTest {
 
     @Test
     void shouldRenderPerspectives() {
-        generateViews.viewsDirPath = Path.of("shouldRenderPerspectives");
-        generateViews.viewIds = Collections.emptySet();
-        generateViews.run();
+        generateViewsCommand.viewsDirPath = Path.of("shouldRenderPerspectives");
+        generateViewsCommand.viewIds = Collections.emptySet();
+        generateViewsCommand.run();
         assertTrue(
             Path
                 .of(

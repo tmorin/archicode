@@ -3,7 +3,7 @@ package io.morin.archicode.workspace;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.manifest.ManifestParser;
 import io.morin.archicode.resource.element.application.Application;
-import io.morin.archicode.resource.element.deployment.Deployment;
+import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.resource.workspace.Workspace;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
@@ -38,11 +38,11 @@ public class WorkspaceFactory {
             .build()
             .create();
 
-        log.debug("index the deployment elements");
+        log.debug("index the technology elements");
         val depIndex = ElementIndexFactory
             .builder()
-            .root(resources.getDeployment())
-            .candidates(manifests.getOrDefault(Deployment.class, Set.of()))
+            .root(resources.getTechnology())
+            .candidates(manifests.getOrDefault(Technology.class, Set.of()))
             .build()
             .create();
 

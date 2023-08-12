@@ -33,6 +33,6 @@ public class View {
 
     public enum Layer {
         APPLICATION,
-        DEPLOYMENT
+        TECHNOLOGY
     }
 }

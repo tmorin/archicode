@@ -2,6 +2,7 @@ package io.morin.archicode.rendering.plantuml;
 
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
+
 import java.util.ArrayList;
 import java.util.Optional;
 import lombok.*;

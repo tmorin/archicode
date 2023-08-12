@@ -1,4 +1,4 @@
-package io.morin.archicode.resource.element.deployment;
+package io.morin.archicode.resource.element.technology;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;

@@ -9,16 +9,18 @@ import lombok.val;
 public abstract class AbstractGenerateViews {
 
     @Inject
-    GenerateViews generateViews;
+    GenerateViewsCommand generateViewsCommand;
 
     void renderWithPlantuml(Path workspacePath, String... viewIds) {
         val archiCodeCommand = new ArchiCode();
         archiCodeCommand.workspaceFilePath = workspacePath;
-        generateViews.archiCode = archiCodeCommand;
-        generateViews.viewsDirPath = Path.of(workspacePath.getFileName().toString().replace(".", "_"));
-        generateViews.rendererName = "plantuml";
-        generateViews.viewPropertiesFormat = MapperFormat.JSON;
-        generateViews.viewIds = Set.of(viewIds);
-        generateViews.run();
+        val views = new ViewsGroup();
+        views.archiCode = archiCodeCommand;
+        generateViewsCommand.viewsGroup = views;
+        generateViewsCommand.viewsDirPath = Path.of(workspacePath.getFileName().toString().replace(".", "_"));
+        generateViewsCommand.rendererName = "plantuml";
+        generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
+        generateViewsCommand.viewIds = Set.of(viewIds);
+        generateViewsCommand.run();
     }
 }
