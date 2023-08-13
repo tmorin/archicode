@@ -13,13 +13,13 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-rectangle EcommercePlatform <<solution>> <<atomic>> [
-EcommercePlatform
-[solution]
-]
 person User <<atomic>> <<person>> [
 User
 [person]
+]
+rectangle EcommercePlatform <<solution>> <<atomic>> [
+EcommercePlatform
+[solution]
 ]
 User --> EcommercePlatform : uses
 @enduml

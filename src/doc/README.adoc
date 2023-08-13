@@ -581,7 +581,6 @@ archicode query schemas manifest
 // - Source Code Organization
 // - Diagrams styling
 // - Label formatting
-// - Viewpoint Utilization
 // - CI/CD Integration
 
 Welcome to the "Best Practices" segment of ArchiCode, where we embark on a journey of refining your architectural prowess and optimizing your workflow. This section delves into a comprehensive array of practices that elevate your architectural design, foster collaboration, and streamline your processes. Let's delve into the key areas this part covers:
@@ -947,8 +946,61 @@ In essence, ArchiCode empowers architects to iteratively design, refine, and com
 // - A manifest represents a single resource.
 // - By default, ArchiCode discover manifests located in the folder "manifests" sibling to the workspace file.
 
+Efficiently organizing your source code is a cornerstone of successful architectural endeavors, and ArchiCode is your companion in this journey. Let's delve into the best practices for structuring your source code using ArchiCode:
 
-// === Viewpoint Utilization
-// === Diagrams styling
-// === Label formatting
-// === CI/CD Integration
+- Workspace Dynamics: The workspace file, named `workspace.yaml` by default, serves as a centralized repository for your architectural data.
+
+- Scaling Challenges: As your architectural vision flourishes, the workspace file's contents may expand, leading to management complexities. Recognizing the need for efficient management, ArchiCode introduces the concept of manifests. A manifest embodies a singular architectural resource, enabling focused and structured representation. With manifests, ArchiCode empowers you to break down complex elements into distinct resources, enhancing manageability and granularity. ArchiCode streamlines the process of manifest discovery by default. It effortlessly detects manifests residing in the "manifests" folder, positioned as a sibling to the workspace file.
+
+.Example of an ArchiCode project directory
+----
+- project_dir/ <1>
+    - manifests/ <2>
+        - application/ <3>
+            - <FILENAME>.{yaml,toml,json} <4>
+            - ....
+        - technology/ <5>
+            - <FILENAME>.{yaml,toml,json}
+            - ....
+    - views/ <6>
+        - <RENDERER NAME>/ <7>
+            - application/ <8>
+                - <VIEW_ID>.<EXTENSION> <9>
+                - ....
+            - technoloy/
+                - <VIEW_ID>.<EXTENSION>
+                - ....
+    - workspace.yaml <10>
+----
+<1> The directory of the project.
+<2> The directory containing the manifests.
+<3> An arbitrary directory containing the manifest related to the Application layer.
+<4> A manifest file.
+<5> An arbitrary directory containing the manifest related to the Technology layer.
+<6> The directory containing the generated views.
+<7> By convention, Render renders their views in subdirectory matching the Render's name.
+<8> By convention, Render renders views in directory layers.
+<9> By convention, the filename of rendered views is the view identifier. The extension depends on the Renderer.
+<10> The workspace file is mandatory even if empty.
+
+//-
+
+* Manifest Diversity: ArchiCode efficiently handles multiple manifest directories, facilitating the seamless incorporation of manifests, including those from package managers like NPM. This versatility enables architects to integrate diverse architectural elements from various sources. This integration showcases ArchiCode's adaptability and its role in enhancing architectural endeavors.
+
+.Example of manifest provided by NPM modules
+----
+- project_dir/ <1>
+    - manifests/ <2>
+    - node_modules/ <3>
+        - <MODULE_NAME>/ <4>
+    - workspace.yaml <5>
+----
+<1> The directory of the project.
+<2> The directory containing the manifests defined in the project.
+<3> The directory containing the installed NPM modules.
+<4> The directory containing the NPM module importing the other manifests.
+<5> The `workspace.yaml` must declare both directories `manifests` and `node_modules/<MODULE_NAME>` to be able to discover all manifests
+
+// - Diagrams styling
+// - Label formatting
+// - CI/CD Integration

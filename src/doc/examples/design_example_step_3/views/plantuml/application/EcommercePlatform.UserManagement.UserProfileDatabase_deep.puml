@@ -15,12 +15,12 @@ FontStyle: normal
 </style>
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
 rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" <<composite>> {
-rectangle EcommercePlatform.UserManagement.UserProfileDatabase <<container>> <<atomic>> [
-UserProfileDatabase
-[container]
-]
 rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
 UserProfileService
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileDatabase <<container>> <<atomic>> [
+UserProfileDatabase
 [container]
 ]
 }

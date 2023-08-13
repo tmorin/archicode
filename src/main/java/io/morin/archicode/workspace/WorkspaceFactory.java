@@ -67,12 +67,10 @@ public class WorkspaceFactory {
         val rawWorkspace = workspaceMapper.readValue(path.toFile(), Workspace.class);
 
         // parse the manifests
-        val manifestsPath = Path.of(
-            path.toFile().getParentFile().toPath().toString(),
-            rawWorkspace.getSettings().getManifests().getPath()
+        val manifests = manifestParser.parse(
+            path.toFile().getParentFile().toPath(),
+            rawWorkspace.getSettings().getManifests().getPaths()
         );
-
-        val manifests = manifestParser.parse(manifestsPath);
 
         return create(rawWorkspace, manifests);
     }

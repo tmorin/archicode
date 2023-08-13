@@ -14,12 +14,12 @@ FontStyle: normal
 }
 </style>
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
-rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
-UserInterface
-[system]
-]
 rectangle EcommercePlatform.ContentManagement <<system>> <<atomic>> [
 ContentManagement
+[system]
+]
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
 [system]
 ]
 }
