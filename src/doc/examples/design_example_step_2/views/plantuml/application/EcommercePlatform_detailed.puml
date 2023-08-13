@@ -1,0 +1,58 @@
+@startuml EcommercePlatform_detailed
+title Solution - EcommercePlatform - Detailed View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle SocialIdentityProvider <<system>> <<atomic>> [
+SocialIdentityProvider
+[system]
+]
+person User <<atomic>> <<person>> [
+User
+[person]
+]
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing <<system>> <<atomic>> [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog <<system>> <<atomic>> [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.ContentManagement <<system>> <<atomic>> [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.UserManagement <<system>> <<atomic>> [
+UserManagement
+[system]
+]
+}
+rectangle PaymentGateway <<system>> <<atomic>> [
+PaymentGateway
+[system]
+]
+EcommercePlatform.OrderProcessing --> EcommercePlatform.ProductCatalog
+EcommercePlatform.OrderProcessing --> PaymentGateway
+User --> EcommercePlatform.UserInterface
+EcommercePlatform.UserManagement --> SocialIdentityProvider
+EcommercePlatform.UserInterface --> EcommercePlatform.OrderProcessing
+EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement
+EcommercePlatform.UserInterface --> EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --> EcommercePlatform.ContentManagement
+@enduml

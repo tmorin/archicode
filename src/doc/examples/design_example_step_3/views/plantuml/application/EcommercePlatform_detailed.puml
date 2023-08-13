@@ -1,0 +1,58 @@
+@startuml EcommercePlatform_detailed
+title Solution - EcommercePlatform - Detailed View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
+rectangle EcommercePlatform.OrderProcessing <<system>> <<atomic>> [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog <<system>> <<atomic>> [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement <<system>> <<atomic>> [
+UserManagement
+[system]
+]
+rectangle EcommercePlatform.ContentManagement <<system>> <<atomic>> [
+ContentManagement
+[system]
+]
+}
+rectangle SocialIdentityProvider <<system>> <<atomic>> [
+SocialIdentityProvider
+[system]
+]
+person User <<atomic>> <<person>> [
+User
+[person]
+]
+rectangle PaymentGateway <<system>> <<atomic>> [
+PaymentGateway
+[system]
+]
+EcommercePlatform.UserInterface --> EcommercePlatform.ContentManagement
+EcommercePlatform.OrderProcessing --> EcommercePlatform.ProductCatalog
+EcommercePlatform.OrderProcessing --> PaymentGateway
+User --> EcommercePlatform.UserInterface
+EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement : uses
+EcommercePlatform.UserInterface --> EcommercePlatform.OrderProcessing
+EcommercePlatform.UserManagement --> SocialIdentityProvider : uses
+EcommercePlatform.UserInterface --> EcommercePlatform.ProductCatalog
+@enduml

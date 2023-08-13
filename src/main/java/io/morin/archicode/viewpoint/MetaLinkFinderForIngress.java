@@ -1,7 +1,6 @@
 package io.morin.archicode.viewpoint;
 
 import static io.morin.archicode.resource.workspace.Workspace.Utilities.isDescendantOf;
-import static io.morin.archicode.resource.workspace.Workspace.Utilities.isSiblingOf;
 
 import io.morin.archicode.workspace.ElementIndex;
 import java.util.Set;
@@ -28,8 +27,8 @@ public class MetaLinkFinderForIngress implements MetaLinkFinder {
                     .getRelationships()
                     .stream()
                     .filter(relationship ->
-                        isDescendantOf(relationship.getDestination(), toReference) ||
-                        isSiblingOf(relationship.getDestination(), toReference)
+                        relationship.getDestination().equals(toReference) ||
+                        isDescendantOf(relationship.getDestination(), toReference)
                     )
                     .map(relationship -> {
                         val toElement = index.getElementByReference(relationship.getDestination());

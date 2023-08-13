@@ -1,0 +1,25 @@
+@startuml User_overview
+title Person - User - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle EcommercePlatform <<solution>> <<atomic>> [
+EcommercePlatform
+[solution]
+]
+person User <<atomic>> <<person>> [
+User
+[person]
+]
+User --> EcommercePlatform : uses
+@enduml

@@ -624,24 +624,21 @@ ArchiCode advocates an architectural design philosophy characterized by incremen
 
 By embracing ArchiCode's incremental and in-depth design approach, architects embark on a transformative journey of iterative refinement. This methodology ensures that architectural designs are not only comprehensive but also well-structured, intelligible, and unburdened by unnecessary clutter.
 
-==== Example
+==== Example: An ecommerce platform
+
+===== Introduction
 
 // - The example depicts the process to iteratively design and refine the model of an ecommerce platform.
 
-===== Step #1
+In the realm of software architecture, ArchiCode stands as a versatile tool that facilitates the systematic design and refinement of intricate systems. In this example, we embark on an iterative journey to architect an e-commerce platform, revealing how ArchiCode empowers architects to create coherent and well-defined architectural models. We commence by identifying high-level elements and relationships, progressively breaking down the system into specialized containers and interactions. Notably, while the outlined steps establish a structured foundation, ArchiCode's true strength lies in its adaptability, enabling architects to customize the process to fit the unique demands of their projects. As we delve into this exploration, ArchiCode emerges as a dynamic instrument, empowering architects to craft intricate architectural designs that seamlessly connect vision with implementation.
 
-// - Firstly, we identify the highest elements of the application layer.
+===== Step #1: Shape the highest elements of the application layer
+
+// - The first task is to identity the highest elements of the application layer.
 //   - We have the platform it-self, named EcommercePlatform, identified as a Solution.
 //   - We have the users, named User, for whom the platform is for.
 //   - We have the social identity providers, named SocialIdentityProvider, like Google, Microsoft ...
 //   - We have the payment gateway, named PaymentGateway, like Stripe, Braintree ...
-// - The second task of the first step is to identity the relationships between the elements,
-//   - User uses the platforms, so we create the relationship from User to EcommercePlatform.
-//   - The platform leverages on external social identity providers, so we create the relationship from EcommercePlatform to SocialIdentityProvider.
-//   - The platform leverages on payment gateway, so we create the relationship from EcommercePlatform to PaymentGateway.
-// - Finally, a first generation of views can be done.
-//   - The view "EcommercePlatform_deep.puml"
-
 
 In this initial step, we identify the foundational elements of the application layer:
 
@@ -659,6 +656,11 @@ In this initial step, we identify the foundational elements of the application l
 include::examples/design_example_step_1/workspace_element.yaml[]
 ----
 
+// - The second task is to identity the relationships between the elements,
+//   - User uses the platforms, so we create the relationship from User to EcommercePlatform.
+//   - The platform leverages on external social identity providers, so we create the relationship from EcommercePlatform to SocialIdentityProvider.
+//   - The platform leverages on payment gateway, so we create the relationship from EcommercePlatform to PaymentGateway.
+
 Once the elements are identified, we design the relationships between them:
 
 - User uses EcommercePlatform: A direct relationship is established from the "User" element to the "EcommercePlatform" element. This relationship signifies that users engage with the platform to explore products, make purchases, and manage their accounts.
@@ -673,20 +675,279 @@ Once the elements are identified, we design the relationships between them:
 include::examples/design_example_step_1/workspace_element.yaml[]
 ----
 
-This initial step establishes a clear foundation by identifying the key elements and relationships within the e-commerce platform's application layer. Subsequent steps will involve further refinement, detailing, and the creation of viewpoints to provide a comprehensive representation of the system's architecture.
+// - Finally, a first generation of views can be done.
+//   - At this level of abstraction, the Overview viewpoint is the most suitable.
+//   - The viewpoints shows the Ingress and Egress relationships of a given element.
+//   - ArchiCode smartly generates a view for each element of the model.
+
+After establishing the relationships, the next task involves generating a first generation of views:
+
+- Overview Viewpoint: At this level of abstraction, the "Overview" viewpoint is the most suitable. This viewpoint provides a broad perspective of the relationships and interactions related to the e-commerce platform.
+
+- Ingress and Egress Relationships: The viewpoint showcases the "Ingress" relationships, highlighting how elements such as "User" enter the platform. Additionally, it depicts "Egress" relationships, illustrating how the platform  interact with dependencies.
+
+.Step #1 - Generate the "Overview" views
+[shell]
+----
+archicode views generate --viewpoint=overview
+----
+
+The command generates four Plantuml files in the `./views/plantuml/application` folder:
+
+- `EcommercePlatform_overview.puml`
+- `PaymentGateway_overview.puml`
+- `SocialIdentityProvider_overview.puml`
+- `User_overview.puml`
+
+The view `EcommercePlatform_overview.puml` is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships where the `EcommercePlatform` element is involved.
+
+.Step #1 - The overview of the ecommerce platform
+[plantuml, EcommercePlatform_overview]
+----
+include::examples/design_example_step_1/views/plantuml/application/EcommercePlatform_overview.puml[]
+----
+
+The view `PaymentGateway_overview.puml` is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships where the `PaymentGateway` element is involved.
+
+.Step #1 - The overview of the payment gateway
+[plantuml, PaymentGateway_overview]
+----
+include::examples/design_example_step_1/views/plantuml/application/PaymentGateway_overview.puml[]
+----
+
+The concept is similar for the others generated views.
+
+This initial step established a clear foundation by identifying the key elements and relationships within the e-commerce platform's application layer.
+
+===== Step #2: Identify the systems of the solution
+
+// - The second step focus on the systems composing the platform and the underlying relationships.
+// - The first task is the decomposition of the EcommercePlatform Solution in System elements.
+// - The second task is the design of the relationships between the Systems elements of the EcommercePlatform Solution element.
+// - The third task is the refinement of the Ingress and Egress relationships of the EcommercePlatform Solution element to replace it by one of the System elements.
+// - Then, the generation of the views can be done. At this level of abstraction, the Detailed viewpoint is the most suitable. The Viewpoint shows the Ingress and Egress relationships on children of a given element.
+
+In this step, we delve deeper into the systems that compose the e-commerce platform and establish relationships between them.
+
+The first task involves breaking down the "EcommercePlatform" Solution into distinct "System" elements, each responsible for specific functionalities:
+
+- Product Catalog: Manages product categorization, listings, and details.
+
+- User Management: Handles user authentication, profiles, and preferences.
+
+- Order Processing: Facilitates order creation, payment processing, and order tracking.
+
+- Content Management: Manages website content, including product descriptions and promotional banners.
+
+- User Interface: Provides personalized product recommendations based on user behavior.
+
+.Step #2 - The addition of the system elements in `workspace.yaml`
+[source,yaml]
+----
+include::examples/design_example_step_2/workspace_element.yaml[]
+----
+
+The second task focuses on designing relationships between the newly defined "System" elements:
+
+- User Interface → Product Catalog: The "User Interface" system interacts with the "Product Catalog" system to present products to users and allow browsing and selection.
+
+- User Interface → User Management: The "User Interface" system communicates with the "User Management" system to manage user authentication and profile-related interactions.
+
+- User Interface → Order Processing: The "User Interface" system connects with the "Order Processing" system to handle order creation and transaction processing.
+
+- User Interface → Content Management: The "User Interface" system engages with the "Content Management" system to display dynamic website content to users.
+
+- User Management → Social Identity Provider: The "User Management" system integrates with external "Social Identity Providers" to ensure secure user authentication and identity verification.
+
+- Order Processing → Product Catalog: The "Order Processing" system collaborates with the "Product Catalog" system to validate product availability and manage order-related information.
+
+- Order Processing → Payment Gateway: The "Order Processing" system interfaces with external "Payment Gateway" services to facilitate secure payment processing and transaction completion.
+
+.Step #2 - The addition of the relationships in `workspace.yaml`
+[source,yaml]
+----
+include::examples/design_example_step_2/workspace_relationship.yaml[]
+----
+
+In the third task, we refine the "Ingress" and "Egress" relationships of the "EcommercePlatform" Solution element to enhance clarity and streamline the representation:
+
+- The "Ingress" relationship from "User" can be removed, as it is now covered by the "User Interface" system. User interactions with the authentication and profile management, catalogs, ordering or content functionalities are now directed to the "User Interface" system.
+
+- The "Egress" relationship from the "EcommercePlatform" to "Social Identity Provider" can be removed, as it is now covered by the "User Management" system's integration with "Social Identity Providers" for secure user authentication and identity verification.
+
+- The "Egress" relationship from the "EcommercePlatform" to "Payment Gateway" can be removed, as it is now covered by the "Order Processing" system's interaction with external "Payment Gateway" services for secure payment processing and transaction completion.
+
+.Step #2 - The removal of useless relationships in `workspace.yaml`
+[source,yaml]
+----
+include::examples/design_example_step_2/workspace_refined.yaml[]
+----
+
+Upon refining relationships and elements, we generate detailed views using the "Detailed" viewpoint:
+
+- Detailed Viewpoint: At this level of abstraction, the "Detailed" viewpoint is most suitable. It provides an in-depth exploration of the interactions between child elements within a given parent element.
+
+- Ingress and Egress Relationships: The viewpoint showcases the "Ingress" and "Egress" relationships within each "System" element, providing a comprehensive understanding of how functionalities and data flow between systems.
+
+.Step #2 - Generate the "Overview" and "Detailed" views
+[shell]
+----
+archicode views generate --viewpoint=overview --viewpoint=detailed
+----
+
+The command generates the additional Plantuml files in the `./views/plantuml/application` folder.
+
+- `EcommercePlatform.ContentManagement_overview.puml`
+- `EcommercePlatform.OrderProcessing_overview.puml`
+- `EcommercePlatform.ProductCatalog_overview.puml`
+- `EcommercePlatform.UserInterface_overview.puml`
+- `EcommercePlatform.UserManagement_overview.puml`
+- `EcommercePlatform_detailed.puml`
+
+The view `EcommercePlatform_detailed.puml` is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships where the children of the `EcommercePlatform` element are involved.
+
+.Step #2 - The detailed of the ecommerce platform
+[plantuml, EcommercePlatform_detailed]
+----
+include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform_detailed.puml[]
+----
+
+The view `EcommercePlatform.UserInterface_overview.puml` is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships of the `UserInterface` element.
 
 
+.Step #2 - The overview of the user interface
+[plantuml, EcommercePlatform.UserInterface_overview]
+----
+include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform.UserInterface_overview.puml[]
+----
+
+The view `EcommercePlatform_overview.puml` is still available but the drawn relationships are now synthetic ones.
+
+.Step #2 - The overview of the ecommerce platform with synthetic relationships
+[plantuml, EcommercePlatform_overview_synthetic]
+----
+include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform_overview.puml[]
+----
+
+The second step focused on the intricate composition of systems within the e-commerce platform and the establishment of relationships between them.
+
+===== Step #3: Deep dive into User Management
+
+// - The third step focuses on the containers composing the platform's systems and the underlying relationships. In this example, we focus only on User Management.
+// - The first task is the decomposition of the UserManagement System in Container elements.
+// - The second task is the design of the relationships between the Container elements of the UserManagement System element.
+// - The third task is the refinement of the Ingress and Egress relationships of the UserManagement System element to replace it by ones of the Container elements.
+// - Then, the generation of the views can be done. At this level of abstraction, the Deep viewpoint can be used . The Viewpoint shows the Ingress and Egress relationships on descendants of a given element.
+
+In this step, we shift our focus to the containers that compose the platform's systems, starting with the "User Management" system, and establish relationships between them.
+
+The first task involves decomposing the "UserManagement" System into distinct "Container" elements, each responsible for specific functionalities:
+
+- IdentityAndAccessManagement Container: Manages user authentication, login processes, and role-based access control.
+
+- UserProfile Container: Handles user profile management, including personal information, preferences, and settings.
+
+- UserProfile Database: Stores and manages user profile data, providing a reliable data source for the UserProfile Container.
+
+.Step #3 - The addition container elements in `workspace.yaml`
+[source,yaml]
+----
+include::examples/design_example_step_3/workspace_element.yaml[]
+----
+
+The second task focuses on designing relationships between the newly defined "Container" elements:
+
+- IdentityAndAccessManagement → UserProfileService: The "IdentityAndAccessManagement" Container communicates with the "UserProfileService" Container to provide access to user profile information after successful authentication.
+
+- UserProfileService → UserProfileDatabase: The "UserProfileService" Container interacts with the "UserProfileDatabase" to store and retrieve user profile data.
+
+.Step #3 - The addition container elements in `workspace.yaml`
+[source,yaml]
+----
+include::examples/design_example_step_3/workspace_relationship.yaml[]
+----
+
+In the third task, we refine the "Ingress" and "Egress" relationships of the "UserManagement" System element to enhance clarity and streamline the representation:
+
+- The "Ingress" relationship from "UserInterface" to "UserManagement" is refined to become "UserInterface" → "UserProfileService". This change reflects the more granular interaction between the "UserInterface" and the dedicated "UserProfileService" container, specifically designed to handle user profile-related operations.
+
+- The "Egress" relationship from "UserManagement" to "SocialIdentityProvider" is refined to become "IdentityAndAccessManagement" → "SocialIdentityProvider". This adjustment aligns with the system's architecture, where the "IdentityAndAccessManagement" container handles interactions with "Social Identity Providers" for secure user authentication and identity verification.
+
+.Step #3 - The addition container elements in `workspace.yaml`
+[source,yaml]
+----
+include::examples/design_example_step_3/workspace_refined.yaml[]
+----
+
+Upon refining relationships and elements, we generate detailed views using the "Deep" viewpoint:
+
+- Deep Viewpoint: At this level of abstraction, the "Deep" viewpoint is relevant. It provides an exploration of the "Ingress" and "Egress" relationships on descendants of a given element, offering a comprehensive understanding of interactions within the system.
+
+- Ingress and Egress Relationships: The viewpoint showcases the "Ingress" and "Egress" relationships within each "Container" element of the "UserManagement" System, providing detailed insights into how functionalities and data flow within the system.
+
+.Step #3 - Generate the views of all viewpoints
+[shell]
+----
+archicode views generate
+----
+
+The command generates many Plantuml files in the `./views/plantuml/application` folder.
+
+The view `EcommercePlatform_deep.puml` is built upon the "Deep" viewpoint and focus on the Ingress and Egress relationships involving the descendants of the `EcommercePlatform` element.
+
+.Step #3 - The deepness of the ecommerce platform
+[plantuml, EcommercePlatform_deep]
+----
+include::examples/design_example_step_3/views/plantuml/application/EcommercePlatform_deep.puml[]
+----
+
+The view `EcommercePlatform.UserManagement_detailed.puml` is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships involving the children of the `UserManagement` element.
+
+.Step #3 - The detailed of the User Management
+[plantuml, EcommercePlatform.UserManagement_detailed]
+----
+include::examples/design_example_step_3/views/plantuml/application/EcommercePlatform.UserManagement_detailed.puml[]
+----
+
+The third step focused on the composition of containers within the "User Management" system, the establishment of relationships between them as well as the refinement of existing relationships.
+
+===== Conclusion
+
+// - The iterative process described in this example is just a backbone.
+// - The iterative process must be tailored according to the architecture work.
+// - The next steps may involve deeper decomposition of the other elements.
+// - The next steps may involve the naming and qualification of the relationships.
+// - The next steps may involve the naming, description and qualification of the elements.
+// - The next steps may involve a customization of the styling and formatting to suite audience expectation.
+// - The next steps may involve the design of the technology layer.
+
+The iterative process outlined in this example serves as a foundational framework for designing and refining the architecture of an e-commerce platform using ArchiCode. It provides a structured approach to create a clear and organized representation of system elements, their relationships, and interactions. However, it is important to recognize that this process acts as a flexible backbone, adaptable to the unique needs and complexities of each architectural endeavor.
+
+.Tailoring the Iterative Process:
+Each architectural project requires a tailored approach to effectively address its specific requirements. Depending on the project's scope and goals, the iterative process may be customized to accommodate deeper levels of decomposition, refined naming and qualification of relationships, as well as more detailed descriptions and qualifications of individual elements.
+
+.Deeper Decomposition and Naming:
+As the design evolves, subsequent iterations may involve further decomposing other elements within the architecture, leading to a more comprehensive and intricate model. Additionally, refining the naming and qualification of relationships enhances clarity and ensures that the architecture accurately reflects the intended interactions.
+
+.Customization for Audience Expectations:
+To effectively communicate the architecture to diverse audiences, customization of styling and formatting becomes essential. Tailoring the visual representation to meet the expectations and preferences of stakeholders ensures that the architectural model is accessible and understandable to all parties involved.
+
+.Incorporating the Technology Layer:
+The final stages of the iterative process may encompass the design of the technology layer, where decisions about technologies, platforms, and frameworks are integrated into the architecture. This step bridges the gap between the high-level conceptual design and the practical implementation of the system.
+
+In essence, ArchiCode empowers architects to iteratively design, refine, and communicate complex architectures. By customizing the iterative process and adapting it to the evolving project requirements, architects can create architecture models that effectively guide development decisions, facilitate communication, and lead to the successful realization of sophisticated systems. The collaborative and adaptable nature of ArchiCode empowers architects to navigate the complexities of modern software and system design with confidence.
+
+=== Source Code Organization
+
+// - The best practices to organize the source code of a project using the tool ArchiCode.
+// - ArchiCode works with workspace file.
+// - The workspace centralizes the data, by default the name is `workspace.yaml`.
+// - As the content of workspace file grows, the management of the file becomes complicated.
+// - Therefore, the manifest concept have been designed to solve big fat workspace files.
+// - A manifest represents a single resource.
+// - By default, ArchiCode discover manifests located in the folder "manifests" sibling to the workspace file.
 
 
-// - An example of the methodology
-// - ArchiCode promotes an incremental and in-depth design approach.
-// - Iteratively, the model is refined from the highest level of abstraction to the lowest one.
-// - The relationships between elements are also refined iteratively.
-// - Relationships covered by those of lower levels can be cleaned for clarity.
-// - Moreover, the built-in Viewpoints of ArchiCode have been designed to generate synthetic relationships. So that, views are never polluted by sibling relationships.
-
-
-// === Source Code Organization
 // === Viewpoint Utilization
 // === Diagrams styling
 // === Label formatting
