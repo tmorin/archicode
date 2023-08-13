@@ -1,0 +1,10 @@
+application:
+  elements:
+    - kind: "person"
+      id: "User"
+    - kind: "solution"
+      id: "EcommercePlatform"
+    - kind: "system"
+      id: "SocialIdentityProvider"
+    - kind: "system"
+      id: "PaymentGateway"

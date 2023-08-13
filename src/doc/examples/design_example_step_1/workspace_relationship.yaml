@@ -1,0 +1,15 @@
+application:
+  elements:
+    - kind: "person"
+      id: "User"
+      relationships:
+        - destination: "EcommercePlatform"
+    - kind: "solution"
+      id: "EcommercePlatform"
+      relationships:
+        - destination: "SocialIdentityProvider"
+        - destination: "PaymentGateway"
+    - kind: "system"
+      id: "SocialIdentityProvider"
+    - kind: "system"
+      id: "PaymentGateway"
