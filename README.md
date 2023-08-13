@@ -1,9 +1,15 @@
 # ArchiCode
 
+> Streamline architectural design and visualization with an as-code approach. Integrates C4 Model and ArchiMate for efficient workflow.
+
 ## Build
 
 ```shell
 ./mvnw package -Dquarkus.container-image.build=true
+```
+
+```shell
+./mvnw package -Dquarkus.container-image.build=true -Dmaven.test.skip
 ```
 
 ```shell
@@ -13,21 +19,13 @@
 ## Run
 
 ```shell
-docker run -v "$(pwd):/wks" --rm thibaultmorin/archicode:0.1.0-SNAPSHOT --help
+docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT --help
 ```
 
 ```shell
-docker run -v "$(pwd):/wks" --rm thibaultmorin/archicode:0.1.0-SNAPSHOT query schemas workspace
+docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT query schemas workspace
 ```
 
 ```shell
-docker run -v "$(pwd):/wks" --rm thibaultmorin/archicode:0.1.0-SNAPSHOT query schemas manifest
-```
-
-## Commands
-
-```
-archicode views generate
-archicode query views
-archicode query schemas [workspace|manifest]
+docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT query schemas manifest
 ```
