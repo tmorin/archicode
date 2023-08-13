@@ -1,6 +1,7 @@
 = ArchiCode
 :authors: Thibault Morin
 :TOC:
+:source-highlighter: coderay
 
 == Introduction
 
@@ -441,7 +442,7 @@ As you delve deeper into the Command section of ArchiCode's documentation, you'l
 === Generate views
 
 .Generate Views - The command line
-[shell]
+[source,shell]
 ----
 archicode views generate --help
 ----
@@ -475,7 +476,7 @@ The command offers also customization Capabilities:
 - Selective View Rendering: The power of customization lies in your hands. The command can be tailored to render specific views based on their unique identifier, providing you with control over the scope of generated visualizations.
 
 .Generate Views - Selective View Rendering
-[shell]
+[source,shell]
 ----
 archicode views generate --view-id=view_a  --view-id=view_b
 ----
@@ -483,7 +484,7 @@ archicode views generate --view-id=view_a  --view-id=view_b
 - Renderer Engine Flexibility: You have the freedom to opt for a preferred Renderer Engine. The command allows you to specify a particular engine, aligning the rendering process with your architectural preferences.
 
 .Generate Views - Renderer Engine Flexibility
-[shell]
+[source,shell]
 ----
 archicode views generate --engine=kubernetes-network-policies
 ----
@@ -491,7 +492,7 @@ archicode views generate --engine=kubernetes-network-policies
 - Fine-Tuned View Properties: Further customization extends to individual view properties. ArchiCode empowers you to specify custom properties, ensuring that the generated views align precisely with your architectural objectives.
 
 .Generate Views - Fine-Tuned View Properties
-[shell]
+[source,shell]
 ----
 archicode views generate --properties='{ "key" : "value" }'
 ----
@@ -499,7 +500,7 @@ archicode views generate --properties='{ "key" : "value" }'
 === Query views
 
 .Query Views - The command line
-[shell]
+[source,shell]
 ----
 archicode query views --help
 ----
@@ -522,7 +523,7 @@ The command offers also customization Capabilities:
 - Dynamic Filtering: The command harnesses the power of JSON Path, enabling you to apply intricate filters that delve deep into the View model. This dynamic filtering mechanism facilitates targeted extraction of specific architectural insights.
 
 .Query Views - Dynamic Filtering
-[shell]
+[source,shell]
 ----
 archicode query views -q '$.[?(@.viewpoint=="deep")]'
 ----
@@ -530,7 +531,7 @@ archicode query views -q '$.[?(@.viewpoint=="deep")]'
 - Customizable Output Formats: ArchiCode's "Query Views" command extends flexibility by supporting various output formats, including YAML, TOML, JSON, and a customizable option. This ensures that your extracted data aligns seamlessly with your preferred format.
 
 .Query Views - Customizable Output Formats
-[shell]
+[source,shell]
 ----
 archicode query views -f toml
 ----
@@ -538,7 +539,7 @@ archicode query views -f toml
 - Template-Based Customization: The command's customizable output format integrates a template-based approach. By leveraging the Velocity template engine, you can define specific output structures tailored to your architectural needs.
 
 .Query Views - Template-Based Customization
-[shell]
+[source,shell]
 ----
 archicode query views -f custom -t '$d.e("$.[*].id")'
 ----
@@ -550,7 +551,7 @@ archicode query views -f custom -t '$d.e("$.[*].id")'
 // - Integrated you your IDE, the JSON Schema improves the coding experience.
 
 .JSON Schemas - The command line
-[shell]
+[source,shell]
 ----
 archicode query schemas --help
 ----
@@ -560,7 +561,7 @@ The "Generate JSON Schema" command within ArchiCode unlocks a world of enhanced 
 - Workspace Model Schema: With the "Generate JSON Schema" command, ArchiCode empowers you to effortlessly create the JSON Schema of the Workspace metamodel.
 
 .JSON Schemas - Generate the JSON Schema for the Workspace metamodel
-[shell]
+[source,shell]
 ----
 archicode query schemas workspace
 ----
@@ -568,7 +569,7 @@ archicode query schemas workspace
 - Manifest Model Schema: The command further extends its prowess to generate the JSON Schema for the Manifest metamodel.
 
 .JSON Schemas - Generate the JSON Schema for the Workspace metamodel
-[shell]
+[source,shell]
 ----
 archicode query schemas manifest
 ----
@@ -686,7 +687,7 @@ After establishing the relationships, the next task involves generating a first 
 - Ingress and Egress Relationships: The viewpoint showcases the "Ingress" relationships, highlighting how elements such as "User" enter the platform. Additionally, it depicts "Egress" relationships, illustrating how the platform  interact with dependencies.
 
 .Step #1 - Generate the "Overview" views
-[shell]
+[source,shell]
 ----
 archicode views generate --viewpoint=overview
 ----
@@ -789,7 +790,7 @@ Upon refining relationships and elements, we generate detailed views using the "
 - Ingress and Egress Relationships: The viewpoint showcases the "Ingress" and "Egress" relationships within each "System" element, providing a comprehensive understanding of how functionalities and data flow between systems.
 
 .Step #2 - Generate the "Overview" and "Detailed" views
-[shell]
+[source,shell]
 ----
 archicode views generate --viewpoint=overview --viewpoint=detailed
 ----
@@ -885,7 +886,7 @@ Upon refining relationships and elements, we generate detailed views using the "
 - Ingress and Egress Relationships: The viewpoint showcases the "Ingress" and "Egress" relationships within each "Container" element of the "UserManagement" System, providing detailed insights into how functionalities and data flow within the system.
 
 .Step #3 - Generate the views of all viewpoints
-[shell]
+[source,shell]
 ----
 archicode views generate
 ----
