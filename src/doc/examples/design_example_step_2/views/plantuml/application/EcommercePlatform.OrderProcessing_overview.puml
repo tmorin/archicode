@@ -1,0 +1,37 @@
+@startuml EcommercePlatform.OrderProcessing_overview
+title System - OrderProcessing - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing <<system>> <<atomic>> [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog <<system>> <<atomic>> [
+ProductCatalog
+[system]
+]
+}
+rectangle PaymentGateway <<system>> <<atomic>> [
+PaymentGateway
+[system]
+]
+EcommercePlatform.OrderProcessing --> EcommercePlatform.ProductCatalog
+EcommercePlatform.OrderProcessing --> PaymentGateway
+EcommercePlatform.UserInterface --> EcommercePlatform.OrderProcessing
+@enduml

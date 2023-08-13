@@ -29,9 +29,9 @@ class CustomRenderingTest {
         generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
         generateViewsCommand.viewIds =
             Set.of(
-                "reference.cloudprovider.cluster.auth.backend_deep",
-                "reference.cloudprovider.cluster.auth.backend_detailed",
-                "reference.cloudprovider.cluster.auth.backend_overview"
+                //"reference.cloudprovider.cluster.auth.backend_deep",
+                //"reference.cloudprovider.cluster.auth.backend_detailed",
+                //"reference.cloudprovider.cluster.auth.backend_overview"
             );
         if (archiCode.workspaceFilePath.toFile().exists()) {
             generateViewsCommand.run();

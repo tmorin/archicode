@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.rendering.Renderer;
-import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.workspace.ElementIndex;
@@ -12,6 +11,7 @@ import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
@@ -42,12 +42,20 @@ public class GenerateViewsCommand implements Runnable {
     MapperFactory mapperFactory;
 
     @CommandLine.Option(
-        names = { "-v", "--view-id" },
+        names = { "-i", "--view" },
         paramLabel = "VIEW_ID",
         arity = "0..*",
-        description = "An identifiers of a view to render."
+        description = "When specified, render only views matching the given identifier."
     )
-    Set<String> viewIds;
+    Set<String> viewIds = new HashSet<>();
+
+    @CommandLine.Option(
+        names = { "-v", "--viewpoint" },
+        paramLabel = "VIEWPOINT_NAME",
+        arity = "0..*",
+        description = "When specified, render only views matching the given viewpoint name."
+    )
+    Set<String> viewpointNames = new HashSet<>();
 
     @CommandLine.Option(
         names = { "-e", "--engine" },
@@ -125,12 +133,15 @@ public class GenerateViewsCommand implements Runnable {
         );
 
         index
-            .listAllElementReferences(element -> element instanceof Parent<?>)
+            .listAllElementReferences(element -> true)
             .stream()
             .flatMap(reference ->
                 viewpointServiceRepository
                     .getAll()
                     .stream()
+                    .filter(viewpointService ->
+                        viewpointNames.isEmpty() || viewpointNames.contains(viewpointService.getName())
+                    )
                     .map(viewpointService ->
                         viewpointService
                             .createViewBuilder(

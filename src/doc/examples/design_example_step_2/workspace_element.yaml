@@ -1,0 +1,26 @@
+application:
+  elements:
+    - kind: "person"
+      id: "User"
+      relationships:
+        - destination: "EcommercePlatform"
+    - kind: "solution"
+      id: "EcommercePlatform"
+      relationships:
+        - destination: "SocialIdentityProvider"
+        - destination: "PaymentGateway"
+      elements:
+        - kind: "system"
+          id: "UserInterface"
+        - kind: "system"
+          id: "ProductCatalog"
+        - kind: "system"
+          id: "UserManagement"
+        - kind: "system"
+          id: "OrderProcessing"
+        - kind: "system"
+          id: "ContentManagement"
+    - kind: "system"
+      id: "SocialIdentityProvider"
+    - kind: "system"
+      id: "PaymentGateway"

@@ -5,11 +5,12 @@ import jakarta.inject.Inject;
 import java.nio.file.Path;
 import java.util.Set;
 import lombok.val;
+import org.junit.jupiter.api.Assertions;
 
 public abstract class AbstractGenerateViews {
 
     @Inject
-    GenerateViewsCommand generateViewsCommand;
+    protected GenerateViewsCommand generateViewsCommand;
 
     protected void renderWithPlantuml(Path workspacePath, String... viewIds) {
         val archiCodeCommand = new ArchiCode();
@@ -23,10 +24,10 @@ public abstract class AbstractGenerateViews {
         generateViewsCommand.rendererName = "plantuml";
         generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
         generateViewsCommand.viewIds = Set.of(viewIds);
-        generateViewsCommand.run();
+        Assertions.assertDoesNotThrow(generateViewsCommand::run);
     }
 
-    protected void renderWithDefault(Path workspacePath, String... viewIds) {
+    protected void renderWithDefault(Path workspacePath, Set<String> viewpointNames, Set<String> viewIds) {
         val archiCodeCommand = new ArchiCode();
         archiCodeCommand.workspaceFilePath = workspacePath;
 
@@ -34,10 +35,11 @@ public abstract class AbstractGenerateViews {
         views.archiCode = archiCodeCommand;
 
         generateViewsCommand.viewsGroup = views;
-        //generateViewsCommand.viewsDirPath = "views";
+        generateViewsCommand.viewpointNames = viewpointNames;
+        generateViewsCommand.viewIds = viewIds;
         generateViewsCommand.rendererName = "plantuml";
         generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
-        generateViewsCommand.viewIds = Set.of(viewIds);
         generateViewsCommand.run();
+        Assertions.assertDoesNotThrow(generateViewsCommand::run);
     }
 }
