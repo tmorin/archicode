@@ -1,0 +1,11 @@
+settings:
+  manifests:
+    path: "manifests"
+  relationships:
+    default-synthetic-label: "uses"
+  views:
+    labels:
+      overview: "Overview"
+      detailed: "Detailed View"
+      deep: "Deep View"
+    path: "views"

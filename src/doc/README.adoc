@@ -81,6 +81,14 @@ The following snippet describes a workspace designing the `CommandLineInterface`
 include::examples/domain_workspace/workspace.yaml[]
 ----
 
+The next one, shows the default properties of a workspace.
+
+.The default properties of a workspace
+[source,yaml]
+----
+include::examples/domain_workspace/default.yaml[]
+----
+
 The following snippet describes a manifest designing the `User` person and is relationship with the `CommandLineInterface` container.
 
 .The content of `manifests/user.yaml`
@@ -88,6 +96,7 @@ The following snippet describes a manifest designing the `User` person and is re
 ----
 include::examples/domain_workspace/manifests/user.yaml[]
 ----
+
 
 Incorporating workspaces and manifests into your architectural workflow within ArchiCode empowers you with an efficient and organized foundation for your projects. Let's explore further as we navigate through the various dimensions of the ArchiCode domain.
 
@@ -210,10 +219,12 @@ include::examples/domain_application/manifests/ArchiTool.ArchiCode.CLI.Viewpoint
 // - ArchiCode focuses exclusively on the structure of the Technology Layer, i.e. the Structure aspect of ArchiMate.
 // - In ArchiCode, the Technology Layer matches the Deployment representations of the C4 Model, but there is only two elements, the Environment and the Node.
 
-In the ArchiCode domain, the "Technology Layer" emerges as a pivotal facet that resonates with both the ArchiMate Standard and the Deployment representations within the C4 Model. Here's a comprehensive exploration of this layer:
+In the ArchiCode domain, the "Technology Layer" emerges as a pivotal facet that resonates with both the ArchiMate Standard and the Deployment representations within the C4 Model.Here's a comprehensive exploration of this layer:
 
-- Correlation with ArchiMate: Mirroring the ArchiMate framework, ArchiCode's Technology Layer corresponds to the "Technology Layer" within ArchiMate. This alignment facilitates a seamless integration of architectural principles across domains.
-- Structural Focus: ArchiCode, delves into the structural aspect of the Technology Layer. It exclusively emphasizes the "Structure" facet of ArchiMate, enabling architects to meticulously model and define the composition of technological elements that underpin your architecture.
+- Correlation with ArchiMate: Mirroring the ArchiMate framework, ArchiCode's Technology Layer corresponds to the "Technology Layer" within ArchiMate.This alignment facilitates a seamless integration of architectural principles across domains.
+
+- Structural Focus: ArchiCode, delves into the structural aspect of the Technology Layer.It exclusively emphasizes the "Structure" facet of ArchiMate, enabling architects to meticulously model and define the composition of technological elements that underpin your architecture.
+
 - Equivalence with C4 Model: The Technology Layer in ArchiCode aligns with the Deployment representations found within the C4 Model. However, ArchiCode simplifies this representation by reducing to two foundational elements: "Environment" and "Node." These elements encapsulate the essence of the Technology Layer, providing a streamlined yet comprehensive view of technological aspects.
 
 ==== Technology Layer Composition
@@ -376,6 +387,44 @@ ArchiCode introduces a systematic approach to rendering views, enriching archite
 
 By introducing a robust rendering mechanism, employing opinionated rules for artifact generation, and facilitating the pluggable Renderer Service, ArchiCode enhances architectural communication by transforming abstract architectural concepts into tangible representations.
 
+=== Technical Configuration
+
+// - ArchiCode is shipped with an opinionated set of configuration.
+// - The default configuration can be changed in the workspace.
+// - The localization of the manifests can be changed.
+// - When a relationship is created based on natural ones, the default label "uses" is configurable.
+// - The generation of the views is also configurable. The output folder can be changed and the labels used in  the built-it viewpoints can be configurable too.
+
+ArchiCode embraces configurability as a cornerstone of its design, affording you the ability to tailor the tool to align seamlessly with your architectural needs. Here's a comprehensive look at ArchiCode's configuration capabilities:
+
+- Opinionated Default Configuration: Out of the box, ArchiCode ships with an opinionated and carefully crafted default configuration. This configuration sets the tone for a seamless and intuitive architectural experience.
+
+- Workspace-Specific Customization: ArchiCode extends the flexibility of configuration to your workspace. The default configuration can be effortlessly customized, allowing you to fine-tune settings and preferences to match the unique demands of your architectural endeavor.
+
+- Manifest Localization: ArchiCode acknowledges the importance of manifest localization. This localization can be dynamically modified, enabling you to adapt and align the tool's behavior with your project's localization requirements.
+
+- Tailored View Generation: ArchiCode's configurability extends to the very essence of view generation. You have the ability to redefine the output folder for generated views, as well as customize the labels utilized in the built-in viewpoints. This level of customization ensures that the generated views align harmoniously with your architectural narrative.
+
+.The default settings of a workspace
+[source,yaml]
+----
+include::examples/domain_configuration/default_settings.yaml[]
+----
+
+.The default configuration for styling
+[source,yaml]
+----
+include::examples/domain_configuration/default_styles.yaml[]
+----
+
+.The default configuration for labels formatting
+[source,yaml]
+----
+include::examples/domain_configuration/default_formatters.yaml[]
+----
+
+By affording you the capability to tailor the configuration of ArchiCode, the tool seamlessly integrates with your architectural process, providing a personalized and adaptable framework. As you explore the depths of ArchiCode's configuration capabilities, you unlock a realm of possibilities that empower you to sculpt your architectural vision with precision and finesse.
+
 == Commands
 
 // - ArchiCode provides commands to generate views located in a workspace.
@@ -494,9 +543,91 @@ archicode query views -f toml
 archicode query views -f custom -t '$d.e("$.[*].id")'
 ----
 
-// === Generate JSON Schemas
-// == Best Practices
-// === Design Guidelines
+=== Generate JSON Schemas
+
+// - The command Generate JSON Schema generate the JSON Schema of the Workspace model.
+// - The command Generate JSON Schema generate the JSON Schema of the Manifest model.
+// - Integrated you your IDE, the JSON Schema improves the coding experience.
+
+.JSON Schemas - The command line
+[shell]
+----
+archicode query schemas --help
+----
+
+The "Generate JSON Schema" command within ArchiCode unlocks a world of enhanced coding experiences, seamlessly integrating precision and structure into your architectural design process. Here's a comprehensive look at its capabilities:
+
+- Workspace Model Schema: With the "Generate JSON Schema" command, ArchiCode empowers you to effortlessly create the JSON Schema of the Workspace metamodel.
+
+.JSON Schemas - Generate the JSON Schema for the Workspace metamodel
+[shell]
+----
+archicode query schemas workspace
+----
+
+- Manifest Model Schema: The command further extends its prowess to generate the JSON Schema for the Manifest metamodel.
+
+.JSON Schemas - Generate the JSON Schema for the Workspace metamodel
+[shell]
+----
+archicode query schemas manifest
+----
+
+- IDE Integration and Coding: By integrating the generated JSON Schema into your Integrated Development Environment (IDE), your coding experience is enriched. The schema acts as a guiding framework, offering autocompletion, validation, and insights that elevate your coding accuracy and efficiency.
+
+== Best Practices
+
+// - Design Guidelines
+// - Source Code Organization
+// - Diagrams styling
+// - Label formatting
+// - Viewpoint Utilization
+// - CI/CD Integration
+
+Welcome to the "Best Practices" segment of ArchiCode, where we embark on a journey of refining your architectural prowess and optimizing your workflow. This section delves into a comprehensive array of practices that elevate your architectural design, foster collaboration, and streamline your processes. Let's delve into the key areas this part covers:
+
+- Design Guidelines: Discover the art of shaping architectural solutions through structured design guidelines. Learn how to create cohesive, effective, and aesthetically pleasing designs that embody architectural excellence.
+
+- Source Code Organization: Uncover strategies for maintaining a well-organized source code that mirrors the intricacies of your architectural vision. Efficient source code organization fosters clarity, modularity, and ease of collaboration.
+
+- Diagrams Styling: Dive into the world of diagrams styling, where visual aesthetics meet informative clarity. Explore techniques to create diagrams that are not only visually appealing but also convey complex architectural concepts with precision.
+
+- Label Formatting: Master the art of label formatting, transforming textual elements into powerful conveyors of architectural information. Learn how to structure labels to enhance comprehension and create meaningful visual cues.
+
+- Viewpoint Utilization: Harness the full potential of viewpoints to construct insightful architectural narratives. Explore the strategic utilization of viewpoints to effectively communicate various aspects of your architecture to different stakeholders.
+
+- CI/CD Integration: Seamlessly integrate ArchiCode into your Continuous Integration/Continuous Deployment (CI/CD) pipeline. Learn how to make architectural design an integral part of your development lifecycle, ensuring consistent and aligned practices.
+
+Through these best practices, you'll unlock the tools and techniques that enable you to transform architectural concepts into tangible realities. Join us as we journey through each facet, unraveling the strategies that contribute to architectural excellence, effective communication, and the harmonious integration of ArchiCode into your architectural process.
+
+=== Design Guidelines
+
+==== Incremental and In-Depth Design Approach
+
+// - ArchiCode promotes an incremental and in-depth design approach.
+// - Iteratively, the model is refined from the highest level of abstraction to the lowest one.
+// - The relationships between elements are also refined iteratively.
+// - Relationships covered by those of lower levels can be cleaned for clarity.
+// - Moreover, the built-in Viewpoints of ArchiCode have been designed to generate synthetic relationships. So that, views are never polluted by sibling relationships.
+
+ArchiCode advocates an architectural design philosophy characterized by incremental refinement and in-depth exploration. This approach empowers architects to craft well-structured and comprehensive designs that capture the essence of architectural vision. Let's delve into the tenets of this methodology:
+
+- Iterative Refinement: In the journey of architectural creation, ArchiCode encourages an iterative process. The model evolves incrementally, starting from the highest levels of abstraction and cascading down to the minutiae of detail. This iterative refinement ensures a nuanced and coherent architectural representation.
+
+- Layered Depth: With each iteration, the model's depth is progressively enriched. As elements are introduced, relationships between them are also refined, layer by layer. This gradual deepening ensures that architectural intricacies are meticulously captured, leading to a holistic and accurate depiction.
+
+- Relationship Refinement: Just as elements undergo iterative enhancements, relationships between them also follow the same iterative path. The relationships are fine-tuned and perfected, aligning with the evolving architectural narrative.
+
+- Clarity in Relationship Hierarchy: ArchiCode empowers architects to prune relationships for clarity. In instances where higher-level relationships are encompassed by those of lower levels, these higher-level relationships can be refined or omitted, ensuring that the architectural landscape remains lucid and uncluttered.
+
+- Synthetic Relationship Generation: A distinctive feature of ArchiCode's built-in Viewpoints lies in their ability to generate synthetic relationships. This intentional design prevents sibling relationships from infiltrating the views, preserving the purity and coherence of each view's focus.
+
+By embracing ArchiCode's incremental and in-depth design approach, architects embark on a transformative journey of iterative refinement. This methodology ensures that architectural designs are not only comprehensive but also well-structured, intelligible, and unburdened by unnecessary clutter.
+
+
+
 // === Source Code Organization
 // === Viewpoint Utilization
+// === Diagrams styling
+// === Label formatting
 // === CI/CD Integration

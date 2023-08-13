@@ -14,10 +14,19 @@ public class Settings {
     Manifests manifests = Manifests.builder().build();
 
     @Builder.Default
-    Views views = Views.builder().build();
+    Relationships relationships = Relationships.builder().build();
 
     @Builder.Default
-    Relationships relationships = Relationships.builder().build();
+    Views views = Views.builder().build();
+
+    @Value
+    @Builder
+    @Jacksonized
+    public static class Manifests {
+
+        @Builder.Default
+        String path = "manifests";
+    }
 
     @Value
     @Builder
@@ -27,15 +36,6 @@ public class Settings {
         @Builder.Default
         @JsonProperty("default-synthetic-label")
         String defaultSyntheticLabel = "uses";
-    }
-
-    @Value
-    @Builder
-    @Jacksonized
-    public static class Manifests {
-
-        @Builder.Default
-        String path = "manifests";
     }
 
     @Value

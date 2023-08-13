@@ -1,0 +1,11 @@
+formatters:
+  atomic:
+    name: "%s"
+    qualifiers: "%s"
+    description: "%s"
+  composite:
+    name: "%s"
+    qualifiers: "%s"
+  link:
+    label: "%s"
+    qualifiers: "%s"
