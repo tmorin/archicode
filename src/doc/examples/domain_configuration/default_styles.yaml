@@ -1,0 +1,7 @@
+styles:
+  composite:
+    shadowing: false
+    background-color: "transparent"
+    line-color: "darkgray"
+    line-style: 5
+    font-style: "normal"
