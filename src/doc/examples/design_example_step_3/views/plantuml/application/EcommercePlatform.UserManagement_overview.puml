@@ -18,12 +18,12 @@ SocialIdentityProvider
 [system]
 ]
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
-rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
-UserInterface
-[system]
-]
 rectangle EcommercePlatform.UserManagement <<system>> <<atomic>> [
 UserManagement
+[system]
+]
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
 [system]
 ]
 }

@@ -1,6 +1,8 @@
 package io.morin.archicode.resource.workspace;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
@@ -25,7 +27,7 @@ public class Settings {
     public static class Manifests {
 
         @Builder.Default
-        String path = "manifests";
+        Set<String> paths = new HashSet<>(Set.of("manifests"));
     }
 
     @Value

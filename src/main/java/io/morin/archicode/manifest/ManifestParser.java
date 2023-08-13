@@ -23,42 +23,48 @@ public class ManifestParser {
     MapperFactory mapperFactory;
 
     @SneakyThrows
-    public Map<Class<?>, Set<Candidate>> parse(Path path) {
-        // leave early of the manifests folder doesn't exist
-        val directory = path.toFile();
-        if (!directory.exists()) {
-            return Collections.emptyMap();
-        }
-
+    public Map<Class<?>, Set<Candidate>> parse(Path wksDir, Set<String> manifestsDirs) {
         val map = new HashMap<Class<?>, Set<Candidate>>();
 
-        val manifestFilesAsArray = Optional
-            .ofNullable(directory.listFiles((dir, name) -> MapperFormat.resolve(name).isPresent()))
-            .orElseThrow(() -> new ArchiCodeException("unable to read the path %s", path));
+        val paths = manifestsDirs
+            .stream()
+            .map(wksDir::resolve)
+            .filter(path -> path.toFile().exists())
+            .collect(Collectors.toSet());
 
-        for (Path manifestFile : Arrays.stream(manifestFilesAsArray).map(File::toPath).collect(Collectors.toSet())) {
-            log.info("parse the manifest {}", manifestFile);
+        for (Path path : paths) {
+            val directory = path.toFile();
 
-            val mapper = mapperFactory.create(manifestFile);
-            val resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
-            val item = ManifestConverter.builder().manifest(resource).mapper(mapper).build().convert();
+            val manifestFilesAsArray = Optional
+                .ofNullable(directory.listFiles((dir, name) -> MapperFormat.resolve(name).isPresent()))
+                .orElseThrow(() -> new ArchiCodeException("unable to read the path %s", path));
 
-            if (item instanceof Element element) {
-                val reference = Optional
-                    .ofNullable(resource.getHeader().getParent())
-                    .map(parentReference -> String.format("%s.%s", parentReference, element.getId()))
-                    .orElse(element.getId());
-                val candidate = Candidate
-                    .builder()
-                    .parent(resource.getHeader().getParent())
-                    .reference(reference)
-                    .element(element)
-                    .build();
-                map.putIfAbsent(resource.getKind().getCategory(), new HashSet<>());
-                map.get(resource.getKind().getCategory()).add(candidate);
+            for (Path manifestFile : Arrays
+                .stream(manifestFilesAsArray)
+                .map(File::toPath)
+                .collect(Collectors.toSet())) {
+                log.info("parse the manifest {}", manifestFile);
+
+                val mapper = mapperFactory.create(manifestFile);
+                val resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
+                val item = ManifestConverter.builder().manifest(resource).mapper(mapper).build().convert();
+
+                if (item instanceof Element element) {
+                    val reference = Optional
+                        .ofNullable(resource.getHeader().getParent())
+                        .map(parentReference -> String.format("%s.%s", parentReference, element.getId()))
+                        .orElse(element.getId());
+                    val candidate = Candidate
+                        .builder()
+                        .parent(resource.getHeader().getParent())
+                        .reference(reference)
+                        .element(element)
+                        .build();
+                    map.putIfAbsent(resource.getKind().getCategory(), new HashSet<>());
+                    map.get(resource.getKind().getCategory()).add(candidate);
+                }
             }
         }
-
         return map;
     }
 

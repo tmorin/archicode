@@ -13,13 +13,13 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-rectangle EcommercePlatform <<solution>> <<atomic>> [
-EcommercePlatform
-[solution]
-]
 rectangle PaymentGateway <<system>> <<atomic>> [
 PaymentGateway
 [system]
+]
+rectangle EcommercePlatform <<solution>> <<atomic>> [
+EcommercePlatform
+[solution]
 ]
 EcommercePlatform --> PaymentGateway : uses
 @enduml

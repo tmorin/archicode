@@ -13,11 +13,11 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
-rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
-UserInterface
+rectangle PaymentGateway <<system>> <<atomic>> [
+PaymentGateway
 [system]
 ]
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
 rectangle EcommercePlatform.OrderProcessing <<system>> <<atomic>> [
 OrderProcessing
 [system]
@@ -26,11 +26,11 @@ rectangle EcommercePlatform.ProductCatalog <<system>> <<atomic>> [
 ProductCatalog
 [system]
 ]
-}
-rectangle PaymentGateway <<system>> <<atomic>> [
-PaymentGateway
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
 [system]
 ]
+}
 EcommercePlatform.OrderProcessing --> EcommercePlatform.ProductCatalog
 EcommercePlatform.OrderProcessing --> PaymentGateway
 EcommercePlatform.UserInterface --> EcommercePlatform.OrderProcessing

@@ -13,15 +13,15 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
+rectangle PaymentGateway <<system>> <<atomic>> [
+PaymentGateway
+[system]
+]
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
 rectangle EcommercePlatform.OrderProcessing <<system>> <<atomic>> [
 OrderProcessing
 [system]
 ]
 }
-rectangle PaymentGateway <<system>> <<atomic>> [
-PaymentGateway
-[system]
-]
 EcommercePlatform.OrderProcessing --> PaymentGateway
 @enduml

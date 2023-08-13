@@ -13,9 +13,9 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-person User <<atomic>> <<person>> [
-User
-[person]
+rectangle PaymentGateway <<system>> <<atomic>> [
+PaymentGateway
+[system]
 ]
 rectangle EcommercePlatform <<solution>> <<atomic>> [
 EcommercePlatform
@@ -25,11 +25,11 @@ rectangle SocialIdentityProvider <<system>> <<atomic>> [
 SocialIdentityProvider
 [system]
 ]
-rectangle PaymentGateway <<system>> <<atomic>> [
-PaymentGateway
-[system]
+person User <<atomic>> <<person>> [
+User
+[person]
 ]
+EcommercePlatform --> PaymentGateway
 User --> EcommercePlatform
 EcommercePlatform --> SocialIdentityProvider
-EcommercePlatform --> PaymentGateway
 @enduml

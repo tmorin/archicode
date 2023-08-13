@@ -13,23 +13,23 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-rectangle SocialIdentityProvider <<system>> <<atomic>> [
-SocialIdentityProvider
-[system]
-]
 person User <<atomic>> <<person>> [
 User
 [person]
-]
-rectangle EcommercePlatform <<solution>> <<atomic>> [
-EcommercePlatform
-[solution]
 ]
 rectangle PaymentGateway <<system>> <<atomic>> [
 PaymentGateway
 [system]
 ]
-EcommercePlatform --> PaymentGateway : uses
-User --> EcommercePlatform : uses
+rectangle SocialIdentityProvider <<system>> <<atomic>> [
+SocialIdentityProvider
+[system]
+]
+rectangle EcommercePlatform <<solution>> <<atomic>> [
+EcommercePlatform
+[solution]
+]
 EcommercePlatform --> SocialIdentityProvider : uses
+User --> EcommercePlatform : uses
+EcommercePlatform --> PaymentGateway : uses
 @enduml
