@@ -11,13 +11,30 @@ public abstract class AbstractGenerateViews {
     @Inject
     GenerateViewsCommand generateViewsCommand;
 
-    void renderWithPlantuml(Path workspacePath, String... viewIds) {
+    protected void renderWithPlantuml(Path workspacePath, String... viewIds) {
         val archiCodeCommand = new ArchiCode();
         archiCodeCommand.workspaceFilePath = workspacePath;
+
         val views = new ViewsGroup();
         views.archiCode = archiCodeCommand;
+
         generateViewsCommand.viewsGroup = views;
         generateViewsCommand.viewsDirPath = Path.of(workspacePath.getFileName().toString().replace(".", "_"));
+        generateViewsCommand.rendererName = "plantuml";
+        generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
+        generateViewsCommand.viewIds = Set.of(viewIds);
+        generateViewsCommand.run();
+    }
+
+    protected void renderWithDefault(Path workspacePath, String... viewIds) {
+        val archiCodeCommand = new ArchiCode();
+        archiCodeCommand.workspaceFilePath = workspacePath;
+
+        val views = new ViewsGroup();
+        views.archiCode = archiCodeCommand;
+
+        generateViewsCommand.viewsGroup = views;
+        //generateViewsCommand.viewsDirPath = "views";
         generateViewsCommand.rendererName = "plantuml";
         generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
         generateViewsCommand.viewIds = Set.of(viewIds);

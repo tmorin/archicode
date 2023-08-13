@@ -624,6 +624,66 @@ ArchiCode advocates an architectural design philosophy characterized by incremen
 
 By embracing ArchiCode's incremental and in-depth design approach, architects embark on a transformative journey of iterative refinement. This methodology ensures that architectural designs are not only comprehensive but also well-structured, intelligible, and unburdened by unnecessary clutter.
 
+==== Example
+
+// - The example depicts the process to iteratively design and refine the model of an ecommerce platform.
+
+===== Step #1
+
+// - Firstly, we identify the highest elements of the application layer.
+//   - We have the platform it-self, named EcommercePlatform, identified as a Solution.
+//   - We have the users, named User, for whom the platform is for.
+//   - We have the social identity providers, named SocialIdentityProvider, like Google, Microsoft ...
+//   - We have the payment gateway, named PaymentGateway, like Stripe, Braintree ...
+// - The second task of the first step is to identity the relationships between the elements,
+//   - User uses the platforms, so we create the relationship from User to EcommercePlatform.
+//   - The platform leverages on external social identity providers, so we create the relationship from EcommercePlatform to SocialIdentityProvider.
+//   - The platform leverages on payment gateway, so we create the relationship from EcommercePlatform to PaymentGateway.
+// - Finally, a first generation of views can be done.
+//   - The view "EcommercePlatform_deep.puml"
+
+
+In this initial step, we identify the foundational elements of the application layer:
+
+- EcommercePlatform: At the core of the system, "EcommercePlatform" is identified as the solution itself, representing the entire e-commerce platform.
+
+- User: This element represents the users who interact with the e-commerce platform, browse products, and make purchases.
+
+- SocialIdentityProvider: External services such as Google and Microsoft are designated as "SocialIdentityProvider," responsible for authenticating users.
+
+- PaymentGateway: The element symbolizes external payment processing services like Stripe and Braintree that facilitate secure financial transactions.
+
+.Step #1 - The addition of the elements in `workspace.yaml`
+[source,yaml]
+----
+include::examples/design_example_step_1/workspace_element.yaml[]
+----
+
+Once the elements are identified, we design the relationships between them:
+
+- User uses EcommercePlatform: A direct relationship is established from the "User" element to the "EcommercePlatform" element. This relationship signifies that users engage with the platform to explore products, make purchases, and manage their accounts.
+
+- EcommercePlatform leverages SocialIdentityProvider: A relationship is created from "EcommercePlatform" to "SocialIdentityProvider" to depict the platform's reliance on external authentication services. This connection ensures a seamless and secure login process for users through trusted identity providers.
+
+- EcommercePlatform leverages PaymentGateway: Another relationship is formed from "EcommercePlatform" to "PaymentGateway" to illustrate the platform's integration with external payment processing services. Through this relationship, the platform enables customers to complete transactions using various payment methods.
+
+.Step #1 - The addition of the relationships in `workspace.yaml`
+[source,yaml]
+----
+include::examples/design_example_step_1/workspace_element.yaml[]
+----
+
+This initial step establishes a clear foundation by identifying the key elements and relationships within the e-commerce platform's application layer. Subsequent steps will involve further refinement, detailing, and the creation of viewpoints to provide a comprehensive representation of the system's architecture.
+
+
+
+
+// - An example of the methodology
+// - ArchiCode promotes an incremental and in-depth design approach.
+// - Iteratively, the model is refined from the highest level of abstraction to the lowest one.
+// - The relationships between elements are also refined iteratively.
+// - Relationships covered by those of lower levels can be cleaned for clarity.
+// - Moreover, the built-in Viewpoints of ArchiCode have been designed to generate synthetic relationships. So that, views are never polluted by sibling relationships.
 
 
 // === Source Code Organization

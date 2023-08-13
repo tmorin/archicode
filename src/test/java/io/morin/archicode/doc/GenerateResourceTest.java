@@ -1,8 +1,12 @@
-package io.morin.archicode.resource.workspace;
+package io.morin.archicode.doc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
+import io.morin.archicode.resource.workspace.Formatters;
+import io.morin.archicode.resource.workspace.Settings;
+import io.morin.archicode.resource.workspace.Styles;
+import io.morin.archicode.resource.workspace.Workspace;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.file.Files;
