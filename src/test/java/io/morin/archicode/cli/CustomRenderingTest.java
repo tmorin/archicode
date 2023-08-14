@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.val;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -34,7 +35,7 @@ class CustomRenderingTest {
                 //"reference.cloudprovider.cluster.authx.backend_overview"
             );
         if (archiCode.workspaceFilePath.toFile().exists()) {
-            generateViewsCommand.run();
+            Assertions.assertDoesNotThrow(generateViewsCommand::run);
         }
     }
 }
