@@ -13,13 +13,13 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-rectangle SocialIdentityProvider <<system>> <<atomic>> [
-SocialIdentityProvider
-[system]
-]
 rectangle EcommercePlatform <<solution>> <<atomic>> [
 EcommercePlatform
 [solution]
+]
+rectangle SocialIdentityProvider <<system>> <<atomic>> [
+SocialIdentityProvider
+[system]
 ]
 EcommercePlatform --> SocialIdentityProvider : uses
 @enduml

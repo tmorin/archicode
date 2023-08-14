@@ -13,15 +13,15 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-person User <<atomic>> <<person>> [
-User
-[person]
-]
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
 rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
 UserInterface
 [system]
 ]
 }
+person User <<atomic>> <<person>> [
+User
+[person]
+]
 User --> EcommercePlatform.UserInterface
 @enduml

@@ -13,35 +13,35 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-person User <<atomic>> <<person>> [
-User
-[person]
-]
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
-rectangle EcommercePlatform.OrderProcessing <<system>> <<atomic>> [
-OrderProcessing
-[system]
-]
 rectangle EcommercePlatform.ContentManagement <<system>> <<atomic>> [
 ContentManagement
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing <<system>> <<atomic>> [
+OrderProcessing
 [system]
 ]
 rectangle EcommercePlatform.ProductCatalog <<system>> <<atomic>> [
 ProductCatalog
 [system]
 ]
-rectangle EcommercePlatform.UserManagement <<system>> <<atomic>> [
-UserManagement
-[system]
-]
 rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
 UserInterface
 [system]
 ]
+rectangle EcommercePlatform.UserManagement <<system>> <<atomic>> [
+UserManagement
+[system]
+]
 }
+person User <<atomic>> <<person>> [
+User
+[person]
+]
 EcommercePlatform.UserInterface --> EcommercePlatform.ContentManagement
-User --> EcommercePlatform.UserInterface
 EcommercePlatform.UserInterface --> EcommercePlatform.OrderProcessing
-EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement
 EcommercePlatform.UserInterface --> EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement
+User --> EcommercePlatform.UserInterface
 @enduml

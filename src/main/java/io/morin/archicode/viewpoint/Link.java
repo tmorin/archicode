@@ -6,13 +6,11 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import lombok.*;
-import lombok.extern.jackson.Jacksonized;
 
 @Value
 @ToString(onlyExplicitlyIncluded = true)
 @Builder(toBuilder = true)
-@Jacksonized
-public class Link {
+public class Link implements Comparable<Link> {
 
     @NonNull
     @ToString.Include
@@ -36,4 +34,11 @@ public class Link {
     @NonNull
     @Singular
     Set<Relationship> relationships;
+
+    @Override
+    public int compareTo(Link o) {
+        return (this.from.getReference() + this.to.getReference() + this.label).compareTo(
+                o.from.getReference() + o.to.getReference() + o.label
+            );
+    }
 }

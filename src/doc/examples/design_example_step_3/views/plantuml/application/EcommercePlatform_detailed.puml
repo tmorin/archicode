@@ -13,11 +13,11 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-person User <<atomic>> <<person>> [
-User
-[person]
-]
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
+rectangle EcommercePlatform.ContentManagement <<system>> <<atomic>> [
+ContentManagement
+[system]
+]
 rectangle EcommercePlatform.OrderProcessing <<system>> <<atomic>> [
 OrderProcessing
 [system]
@@ -26,16 +26,12 @@ rectangle EcommercePlatform.ProductCatalog <<system>> <<atomic>> [
 ProductCatalog
 [system]
 ]
-rectangle EcommercePlatform.ContentManagement <<system>> <<atomic>> [
-ContentManagement
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
 [system]
 ]
 rectangle EcommercePlatform.UserManagement <<system>> <<atomic>> [
 UserManagement
-[system]
-]
-rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
-UserInterface
 [system]
 ]
 }
@@ -47,12 +43,16 @@ rectangle SocialIdentityProvider <<system>> <<atomic>> [
 SocialIdentityProvider
 [system]
 ]
+person User <<atomic>> <<person>> [
+User
+[person]
+]
 EcommercePlatform.OrderProcessing --> EcommercePlatform.ProductCatalog
-EcommercePlatform.UserInterface --> EcommercePlatform.ContentManagement
 EcommercePlatform.OrderProcessing --> PaymentGateway
-EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement : uses
+EcommercePlatform.UserInterface --> EcommercePlatform.ContentManagement
 EcommercePlatform.UserInterface --> EcommercePlatform.OrderProcessing
-User --> EcommercePlatform.UserInterface
 EcommercePlatform.UserInterface --> EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement : uses
 EcommercePlatform.UserManagement --> SocialIdentityProvider : uses
+User --> EcommercePlatform.UserInterface
 @enduml

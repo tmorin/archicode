@@ -14,35 +14,31 @@ FontStyle: normal
 }
 </style>
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
-rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" <<composite>> {
-rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
-UserProfileService
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileDatabase <<container>> <<atomic>> [
-UserProfileDatabase
-[container]
-]
-rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement <<container>> <<atomic>> [
-IdentityAndAccessManagement
-[container]
-]
-}
 rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
 UserInterface
 [system]
 ]
 rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" <<composite>> {
-rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
-UserProfileService
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement <<container>> <<atomic>> [
+IdentityAndAccessManagement
 [container]
 ]
 rectangle EcommercePlatform.UserManagement.UserProfileDatabase <<container>> <<atomic>> [
 UserProfileDatabase
 [container]
 ]
-rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement <<container>> <<atomic>> [
-IdentityAndAccessManagement
+rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
+UserProfileService
+[container]
+]
+}
+rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" <<composite>> {
+rectangle EcommercePlatform.UserManagement.UserProfileDatabase <<container>> <<atomic>> [
+UserProfileDatabase
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
+UserProfileService
 [container]
 ]
 }
@@ -51,8 +47,8 @@ rectangle SocialIdentityProvider <<system>> <<atomic>> [
 SocialIdentityProvider
 [system]
 ]
+EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement.UserProfileService
 EcommercePlatform.UserManagement.IdentityAndAccessManagement --> EcommercePlatform.UserManagement.UserProfileService
 EcommercePlatform.UserManagement.IdentityAndAccessManagement --> SocialIdentityProvider
 EcommercePlatform.UserManagement.UserProfileService --> EcommercePlatform.UserManagement.UserProfileDatabase
-EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement.UserProfileService
 @enduml
