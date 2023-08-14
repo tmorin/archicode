@@ -41,7 +41,7 @@ public class Item implements Comparable<Item> {
 
     @Override
     public int compareTo(Item o) {
-        return this.itemId.compareTo(o.itemId);
+        return this.reference.compareTo(o.reference);
     }
 
     @RequiredArgsConstructor

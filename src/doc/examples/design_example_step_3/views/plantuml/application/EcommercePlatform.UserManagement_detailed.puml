@@ -33,6 +33,10 @@ UserProfileService
 ]
 }
 rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" <<composite>> {
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement <<container>> <<atomic>> [
+IdentityAndAccessManagement
+[container]
+]
 rectangle EcommercePlatform.UserManagement.UserProfileDatabase <<container>> <<atomic>> [
 UserProfileDatabase
 [container]
