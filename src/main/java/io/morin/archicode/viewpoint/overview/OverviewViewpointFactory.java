@@ -23,7 +23,7 @@ import lombok.val;
 @Slf4j
 @SuperBuilder
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-public class OverviewViewpointFactory extends AbstractViewPointFactory implements ViewpointFactory {
+public class OverviewViewpointFactory extends AbstractViewpointFactory implements ViewpointFactory {
 
     @NonNull
     MetaLinkFinderForEgress metaLinkFinderForEgress;

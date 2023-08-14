@@ -20,7 +20,7 @@ import lombok.val;
 @Getter
 @SuperBuilder
 @FieldDefaults(makeFinal = true, level = AccessLevel.PROTECTED)
-public abstract class AbstractViewPointFactory {
+public abstract class AbstractViewpointFactory {
 
     @NonNull
     ObjectMapper objectMapper;

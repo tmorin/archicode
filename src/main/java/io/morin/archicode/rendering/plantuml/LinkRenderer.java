@@ -2,7 +2,6 @@ package io.morin.archicode.rendering.plantuml;
 
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
-
 import java.util.ArrayList;
 import java.util.Optional;
 import lombok.*;
@@ -16,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 class LinkRenderer {
 
     String render(@NonNull Viewpoint viewpoint, @NonNull Link link) {
+        log.debug("render link {}", link);
+
         val buf = new StringBuilder();
 
         val linkFormatter = viewpoint.getWorkspace().getFormatters().getLink();

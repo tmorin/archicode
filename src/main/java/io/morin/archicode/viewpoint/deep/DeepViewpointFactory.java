@@ -19,7 +19,7 @@ import lombok.val;
 @Slf4j
 @SuperBuilder
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-public class DeepViewpointFactory extends AbstractViewPointFactory implements ViewpointFactory {
+public class DeepViewpointFactory extends AbstractViewpointFactory implements ViewpointFactory {
 
     @NonNull
     MetaLinkFinderForEgress metaLinkFinderForEgress;

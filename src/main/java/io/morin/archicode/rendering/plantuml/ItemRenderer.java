@@ -42,6 +42,8 @@ class ItemRenderer {
     static class AtomicItemRenderer {
 
         String render(@NonNull Viewpoint viewpoint, @NonNull Item item) {
+            log.debug("render atomic {}", item);
+
             val buf = new StringBuilder();
 
             val atomicFormatter = viewpoint.getWorkspace().getFormatters().getAtomic();
@@ -106,6 +108,8 @@ class ItemRenderer {
         RenderingShape shape = RenderingShape.RECTANGLE;
 
         String render(@NonNull Viewpoint viewpoint, @NonNull Item item) {
+            log.debug("render composite {}", item);
+
             val buf = new StringBuilder();
 
             val compositeFormatter = viewpoint.getWorkspace().getFormatters().getComposite();
