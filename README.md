@@ -6,28 +6,54 @@
 
 ## Run
 
+The following commands assume the ArchiCode workspace is located in the current directory.
+
+**Show the help information**
 ```shell
 docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT --help
 ```
 
+**Generate all views**
 ```shell
 docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT views generate
 ```
 
+**Get the JSON schema for the Workspace resource**
 ```shell
 docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT query schemas workspace
 ```
 
+**Get the JSON schema for the Manifest resource**
 ```shell
 docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT query schemas manifest
 ```
 
-## Build
+## Maintenance
 
+**Dependencies upgrade**
+```shell
+./mvnw versions:display-dependency-updates
+```
+
+**Quarkus update**
+```shell
+./mvnw quarkus:update
+```
+
+**Release**
+```shell
+./mvnw --batch-mode release:clean \
+&& ./mvnw --batch-mode release:prepare \
+  -DreleaseVersion=X.Y.Z \
+  -DdevelopmentVersion=Y.X.Z-SNAPSHOT
+```
+
+**Build package and OIC image**
 ```shell
 ./mvnw package -Dquarkus.container-image.build=true
 ```
 
+**Build package and OIC image without test execution**
 ```shell
 ./mvnw package -Dquarkus.container-image.build=true -Dmaven.test.skip
 ```
