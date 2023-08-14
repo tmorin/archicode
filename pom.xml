@@ -49,6 +49,7 @@
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>tmorin</sonar.organization>
         <surefire-plugin.version>3.0.0</surefire-plugin.version>
+        <plugin.asciidoctor.skip>false</plugin.asciidoctor.skip>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -205,6 +206,7 @@
                     </dependency>
                 </dependencies>
                 <configuration>
+                    <skip>${plugin.asciidoctor.skip}</skip>
                     <sourceDirectory>src/doc</sourceDirectory>
                     <backend>html5</backend>
                     <requires>

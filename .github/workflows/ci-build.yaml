@@ -39,6 +39,7 @@ jobs:
           ./mvnw deploy \
             --batch-mode \
             -Dmaven.test.skip \
+            -Dplugin.asciidoctor.skip=false \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true
         env:
