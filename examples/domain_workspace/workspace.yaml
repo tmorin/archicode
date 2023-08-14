@@ -1,0 +1,18 @@
+application:
+  elements:
+    - kind: "system"
+      id: "ArchiCode"
+      elements:
+        - kind: "container"
+          id: "CommandLineInterface"
+          qualifier:
+            - "Quarkus"
+technology:
+  elements:
+    - kind: "environment"
+      id: "Reference"
+      elements:
+        - kind: "node"
+          id: "Laptop"
+          applications:
+            - "ArchiCode.CommandLineInterface"

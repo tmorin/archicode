@@ -1,0 +1,27 @@
+@startuml EcommercePlatform.ContentManagement_overview
+title System - ContentManagement - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
+rectangle EcommercePlatform.ContentManagement <<system>> <<atomic>> [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
+[system]
+]
+}
+EcommercePlatform.UserInterface --> EcommercePlatform.ContentManagement
+@enduml

@@ -1,0 +1,29 @@
+@startuml SocialIdentityProvider_deep
+title System - SocialIdentityProvider - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
+rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" <<composite>> {
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement <<container>> <<atomic>> [
+IdentityAndAccessManagement
+[container]
+]
+}
+}
+rectangle SocialIdentityProvider <<system>> <<atomic>> [
+SocialIdentityProvider
+[system]
+]
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --> SocialIdentityProvider
+@enduml

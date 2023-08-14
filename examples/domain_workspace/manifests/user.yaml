@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "User"
+  relationships:
+    - destination: "ArchiCode.CommandLineInterface"
+      qualifiers:
+        - "Console"

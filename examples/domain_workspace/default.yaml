@@ -1,0 +1,34 @@
+application: {}
+technology: {}
+settings:
+  manifests:
+    paths:
+    - "manifests"
+  relationships:
+    default-synthetic-label: "uses"
+  views:
+    labels:
+      overview: "Overview"
+      detailed: "Detailed View"
+      deep: "Deep View"
+    path: "views"
+styles:
+  atomic:
+    shadowing: false
+  composite:
+    shadowing: false
+    background-color: "transparent"
+    line-color: "darkgray"
+    line-style: 5
+    font-style: "normal"
+formatters:
+  atomic:
+    name: "%s"
+    qualifiers: "%s"
+    description: "%s"
+  composite:
+    name: "%s"
+    qualifiers: "%s"
+  link:
+    label: "%s"
+    qualifiers: "%s"

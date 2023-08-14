@@ -1,0 +1,35 @@
+@startuml EcommercePlatform_overview
+title Solution - EcommercePlatform - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle EcommercePlatform <<solution>> <<atomic>> [
+EcommercePlatform
+[solution]
+]
+rectangle PaymentGateway <<system>> <<atomic>> [
+PaymentGateway
+[system]
+]
+rectangle SocialIdentityProvider <<system>> <<atomic>> [
+SocialIdentityProvider
+[system]
+]
+person User <<atomic>> <<person>> [
+User
+[person]
+]
+EcommercePlatform --> PaymentGateway
+EcommercePlatform --> SocialIdentityProvider
+User --> EcommercePlatform
+@enduml

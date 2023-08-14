@@ -1,0 +1,40 @@
+application:
+  elements:
+    - kind: "person"
+      id: "User"
+      relationships:
+        - destination: "EcommercePlatform.UserInterface"
+    - kind: "solution"
+      id: "EcommercePlatform"
+      elements:
+        - kind: "system"
+          id: "UserInterface"
+          relationships:
+            - destination: "EcommercePlatform.ProductCatalog"
+            - destination: "EcommercePlatform.UserManagement"
+            - destination: "EcommercePlatform.OrderProcessing"
+            - destination: "EcommercePlatform.ContentManagement"
+        - kind: "system"
+          id: "ProductCatalog"
+        - kind: "system"
+          id: "UserManagement"
+          relationships:
+            - destination: "SocialIdentityProvider"
+          elements:
+            - kind: "container"
+              id: "IdentityAndAccessManagement"
+            - kind: "container"
+              id: "UserProfileService"
+            - kind: "container"
+              id: "UserProfileDatabase"
+        - kind: "system"
+          id: "OrderProcessing"
+          relationships:
+            - destination: "EcommercePlatform.ProductCatalog"
+            - destination: "PaymentGateway"
+        - kind: "system"
+          id: "ContentManagement"
+    - kind: "system"
+      id: "SocialIdentityProvider"
+    - kind: "system"
+      id: "PaymentGateway"
