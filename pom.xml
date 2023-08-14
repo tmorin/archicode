@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.morin.archicode</groupId>
     <artifactId>archicode</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>0.1.2</version>
     <name>ArchiCode</name>
     <description>Streamline architectural design and visualization with an as-code approach.</description>
     <url>https://github.com/tmorin/archicode</url>
@@ -24,7 +24,7 @@
         <connection>scm:git:git@github.com:tmorin/archicode.git</connection>
         <developerConnection>scm:git:git@github.com:tmorin/archicode.git</developerConnection>
         <url>https://github.com/tmorin/archicode</url>
-      <tag>HEAD</tag>
+      <tag>archicode-0.1.2</tag>
   </scm>
     <ciManagement>
         <system>GitHub Actions</system>
