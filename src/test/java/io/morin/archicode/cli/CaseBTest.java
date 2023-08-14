@@ -5,10 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.test.junit.QuarkusTest;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.TimeUnit;
 import lombok.SneakyThrows;
 import lombok.val;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -19,9 +17,8 @@ class CaseBTest extends AbstractGenerateViews {
     void shouldCreate() {
         renderWithPlantuml(Path.of("src/test/workspaces/case_b.yaml"), "env.node_a.cluster.authx_overview");
         val filePath = Path.of(
-            "src/test/workspaces/case_b_yaml/plantuml/deployment/env.node_a.cluster.authx_overview.puml"
+            "src/test/workspaces/case_b_yaml/plantuml/technology/env.node_a.cluster.authx_overview.puml"
         );
-        Awaitility.await().during(500, TimeUnit.MILLISECONDS).until(() -> filePath.toFile().exists());
         val actual = Files.readString(filePath);
         assertTrue(actual.contains("env.node_a.cluster.scp --> env.node_a.cluster.authx : uses"));
     }
