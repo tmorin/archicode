@@ -5,12 +5,10 @@ import java.util.function.Predicate;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
-import lombok.extern.jackson.Jacksonized;
 import lombok.val;
 
 @Value
 @Builder(toBuilder = true)
-@Jacksonized
 public class Level {
 
     public static final Level L0 = Level.builder().build();

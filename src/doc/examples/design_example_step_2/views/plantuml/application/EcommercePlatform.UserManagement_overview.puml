@@ -14,12 +14,12 @@ FontStyle: normal
 }
 </style>
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
-rectangle EcommercePlatform.UserManagement <<system>> <<atomic>> [
-UserManagement
-[system]
-]
 rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
 UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement <<system>> <<atomic>> [
+UserManagement
 [system]
 ]
 }
@@ -27,6 +27,6 @@ rectangle SocialIdentityProvider <<system>> <<atomic>> [
 SocialIdentityProvider
 [system]
 ]
-EcommercePlatform.UserManagement --> SocialIdentityProvider
 EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement
+EcommercePlatform.UserManagement --> SocialIdentityProvider
 @enduml

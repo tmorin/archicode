@@ -13,22 +13,22 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-rectangle SocialIdentityProvider <<system>> <<atomic>> [
-SocialIdentityProvider
-[system]
-]
 rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
 rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" <<composite>> {
-rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
-UserProfileService
-[container]
-]
 rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement <<container>> <<atomic>> [
 IdentityAndAccessManagement
 [container]
 ]
+rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
+UserProfileService
+[container]
+]
 }
 }
-EcommercePlatform.UserManagement.IdentityAndAccessManagement --> SocialIdentityProvider
+rectangle SocialIdentityProvider <<system>> <<atomic>> [
+SocialIdentityProvider
+[system]
+]
 EcommercePlatform.UserManagement.IdentityAndAccessManagement --> EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --> SocialIdentityProvider
 @enduml

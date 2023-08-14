@@ -4,12 +4,10 @@ import io.morin.archicode.resource.view.View;
 import io.morin.archicode.workspace.Workspace;
 import java.util.Set;
 import lombok.*;
-import lombok.extern.jackson.Jacksonized;
 
 @Value
 @ToString(onlyExplicitlyIncluded = true)
 @Builder(toBuilder = true)
-@Jacksonized
 public class Viewpoint {
 
     @NonNull

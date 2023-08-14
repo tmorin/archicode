@@ -12,13 +12,11 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import lombok.extern.jackson.Jacksonized;
 
 @Value
 @ToString(onlyExplicitlyIncluded = true)
 @Builder(toBuilder = true)
-@Jacksonized
-public class Item {
+public class Item implements Comparable<Item> {
 
     @NonNull
     @Builder.Default
@@ -39,6 +37,11 @@ public class Item {
 
     public Stream<Item> stream() {
         return Stream.concat(Stream.of(this), this.children.stream().flatMap(Item::stream));
+    }
+
+    @Override
+    public int compareTo(Item o) {
+        return this.itemId.compareTo(o.itemId);
     }
 
     @RequiredArgsConstructor

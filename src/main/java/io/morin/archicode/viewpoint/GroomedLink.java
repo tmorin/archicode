@@ -7,12 +7,10 @@ import java.util.Map;
 import java.util.Set;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import lombok.extern.jackson.Jacksonized;
 
 @Value
 @Builder(toBuilder = true)
 @ToString(onlyExplicitlyIncluded = true)
-@Jacksonized
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class GroomedLink {
 

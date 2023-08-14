@@ -4,7 +4,6 @@ import io.morin.archicode.rendering.RenderingShape;
 import io.morin.archicode.rendering.ViewRenderer;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Viewpoint;
-
 import java.util.Optional;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -131,7 +130,12 @@ class ItemRenderer {
 
             // render children
             ItemRenderer itemRenderer = ItemRenderer.builder().build();
-            item.getChildren().forEach(child -> buf.append(itemRenderer.render(viewpoint, child)));
+            item
+                .getChildren()
+                .stream()
+                .sorted()
+                .toList()
+                .forEach(child -> buf.append(itemRenderer.render(viewpoint, child)));
 
             buf.append("}");
             buf.append(System.lineSeparator());

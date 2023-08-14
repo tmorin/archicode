@@ -10,7 +10,6 @@ import java.io.OutputStreamWriter;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Map;
-
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -50,11 +49,11 @@ public class PlantumlViewRenderer implements ViewRenderer {
 
                 outputStreamWriter.write(styleRenderer.render(viewpoint));
 
-                for (Item item : viewpoint.getItems()) {
+                for (Item item : viewpoint.getItems().stream().sorted().toList()) {
                     outputStreamWriter.write(itemRenderer.render(viewpoint, item));
                 }
 
-                for (Link link : viewpoint.getLinks()) {
+                for (Link link : viewpoint.getLinks().stream().sorted().toList()) {
                     outputStreamWriter.write(linkRenderer.render(viewpoint, link));
                 }
 
