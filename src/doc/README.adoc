@@ -1,6 +1,7 @@
 = ArchiCode
 :authors: Thibault Morin
-:TOC:
+:TOC: left
+:toclevels: 3
 :source-highlighter: coderay
 
 == Introduction
@@ -12,6 +13,20 @@ With ArchiCode, architects can easily design models and produce views while adhe
 Incorporating concepts from the ArchiMate Standard, ArchiCode's model is rooted in the structural Aspect and spans the Application and Technology layers. This integration adds depth and clarity to your architectural creations.
 
 This documentation will guide you through the features, domain, commands, and best practices for utilizing ArchiCode in your architectural projects. Let's explore how ArchiCode can elevate your architecture-as-code journey.
+
+== Availability, License, and Deliverables
+
+ArchiCode is an open-source software hosted on GitHub, fostering transparency and collaboration. It operates under the MIT license, granting users flexibility in its use and modification. The software is distributed as a Maven Artifact and an OCI Image (Docker Image), simplifying integration.
+
+- Source Code: ArchiCode's source code is hosted on GitHub at https://github.com/tmorin/archicode, providing access for developers to explore, contribute, and collaborate.
+
+- Licensing: ArchiCode is licensed under the permissive MIT license, enabling users to freely utilize, modify, and distribute the software.
+
+- Deliverables: ArchiCode is conveniently available as a Maven Artifact and an OCI Image, facilitating easy integration into development workflows.
+
+- Access to Deliverables: The practical deliverables can be accessed through the dedicated packages repository at https://github.com/tmorin/archicode/packages.
+
+This accessibility, licensing, and practical distribution emphasize ArchiCode's commitment to fostering an open and collaborative architectural community.
 
 == Features
 
@@ -116,7 +131,7 @@ In ArchiCode, the Application Layer embodies a pivotal aspect of your architectu
 
 - Alignment with C4 Model: Building upon the alignment with ArchiMate, ArchiCode's Application Layer extends its compatibility to the C4 Model. This alignment, inclusive of a unique "Solution" element, complements the foundational "System" element, enriching the architectural vocabulary.
 
-==== Application Layer Composition
+==== Composition
 
 // - The Application Layer is composed of Solutions and Systems.
 // - A Solution is composed of Systems
@@ -228,7 +243,7 @@ In the ArchiCode domain, the "Technology Layer" emerges as a pivotal facet that 
 
 - Equivalence with C4 Model: The Technology Layer in ArchiCode aligns with the Deployment representations found within the C4 Model. However, ArchiCode simplifies this representation by reducing to two foundational elements: "Environment" and "Node." These elements encapsulate the essence of the Technology Layer, providing a streamlined yet comprehensive view of technological aspects.
 
-==== Technology Layer Composition
+==== Composition
 
 // - The Technology Layer is composed of Environments.
 // - A Environment is composed of Nodes
@@ -321,7 +336,7 @@ ArchiCode serves a fundamental purpose: the generation of comprehensive views th
 
 - Viewpoint Definition in ArchiCode: In the context of ArchiCode, a "Viewpoint" embodies a set of opinionated and pre-defined rules. These rules play a pivotal role in the extraction and transformation of data. This structuring ensures that views effectively communicate specific architectural aspects.
 
-==== Viewpoints and Views Composition
+==== Composition
 
 // - A workspace contains many Views.
 // - A View is associated to one Viewpoint.

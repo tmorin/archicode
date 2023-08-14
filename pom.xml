@@ -209,6 +209,7 @@
                     <skip>${plugin.asciidoctor.skip}</skip>
                     <sourceDirectory>src/doc</sourceDirectory>
                     <backend>html5</backend>
+                    <outputFile>index.html</outputFile>
                     <requires>
                         <require>asciidoctor-diagram</require>
                     </requires>
