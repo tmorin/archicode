@@ -7,7 +7,7 @@
     <artifactId>archicode</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>ArchiCode</name>
-    <description>Just architecture as code.</description>
+    <description>Streamline architectural design and visualization with an as-code approach.</description>
     <url>https://github.com/tmorin/archicode</url>
     <licenses>
         <license>
