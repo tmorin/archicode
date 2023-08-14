@@ -37,10 +37,6 @@ rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement <<contain
 IdentityAndAccessManagement
 [container]
 ]
-rectangle EcommercePlatform.UserManagement.UserProfileDatabase <<container>> <<atomic>> [
-UserProfileDatabase
-[container]
-]
 rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
 UserProfileService
 [container]
