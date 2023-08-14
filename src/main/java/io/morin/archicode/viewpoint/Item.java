@@ -8,7 +8,6 @@ import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -19,11 +18,10 @@ import lombok.experimental.FieldDefaults;
 public class Item implements Comparable<Item> {
 
     @NonNull
-    @Builder.Default
-    String itemId = String.format("item_%s", UUID.randomUUID().toString().replace("-", ""));
+    @ToString.Include
+    String itemId;
 
     @NonNull
-    @ToString.Include
     String reference;
 
     @NonNull

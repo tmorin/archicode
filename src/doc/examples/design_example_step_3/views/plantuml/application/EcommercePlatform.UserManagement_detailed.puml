@@ -32,16 +32,6 @@ UserProfileService
 [container]
 ]
 }
-rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" <<composite>> {
-rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement <<container>> <<atomic>> [
-IdentityAndAccessManagement
-[container]
-]
-rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
-UserProfileService
-[container]
-]
-}
 }
 rectangle SocialIdentityProvider <<system>> <<atomic>> [
 SocialIdentityProvider

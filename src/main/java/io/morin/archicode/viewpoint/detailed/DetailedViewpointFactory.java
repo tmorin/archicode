@@ -6,7 +6,10 @@ import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.*;
 import io.morin.archicode.viewpoint.overview.OverviewViewpointFactory;
 import io.morin.archicode.workspace.Workspace;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NonNull;
@@ -19,25 +22,29 @@ import lombok.val;
 @Slf4j
 @SuperBuilder
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-public class DetailedViewpointFactory extends AbstractViewPointFactory implements ViewpointFactory {
+public class DetailedViewpointFactory extends AbstractViewpointFactory implements ViewpointFactory {
 
     @NonNull
     OverviewViewpointFactory overviewViewpointFactory;
 
-    private static void mergeCandidateItem(HashMap<String, Item> cache, Set<Item> finalChildren, Item candidateItem) {
-        if (!cache.containsKey(candidateItem.getItemId())) {
-            // the candidates item is not yet handled
-            cache.put(candidateItem.getItemId(), candidateItem);
-            // therefore the candidates' children must be handled as well
-            finalChildren.add(candidateItem);
-        } else {
-            // the candidates item is already handled
-            val finalItem = cache.get(candidateItem.getReference());
-            // but the candidates' children are maybe not yet handled
+    private static void mergeCandidateItem(@NonNull Set<Item> finalItemSet, @NonNull Item candidateItem) {
+        log.debug("{} candidate item", candidateItem.getItemId());
+
+        val optionalFinalItem = finalItemSet
+            .stream()
+            .filter(c -> c.getItemId().equals(candidateItem.getItemId()))
+            .findFirst();
+
+        if (optionalFinalItem.isEmpty()) {
+            log.debug("{} add candidate item", candidateItem.getItemId());
+            finalItemSet.add(candidateItem);
+        }
+
+        optionalFinalItem.ifPresent(finalItem ->
             candidateItem
                 .getChildren()
-                .forEach(candidateChild -> mergeCandidateItem(cache, finalItem.getChildren(), candidateChild));
-        }
+                .forEach(candidateChild -> mergeCandidateItem(finalItem.getChildren(), candidateChild))
+        );
     }
 
     @SneakyThrows
@@ -82,12 +89,11 @@ public class DetailedViewpointFactory extends AbstractViewPointFactory implement
 
         // the children's Overview Views are merged to get:
         // - a list of all items (with the respected hierarchy)
-        // - a list of all links between the sources (the view's item + its children) and the destination
-        val cache = new HashMap<String, Item>();
         val allItems = new HashSet<Item>();
+        // - a list of all links between the sources (the view's item + its children) and the destination
         val allLinks = new HashSet<Link>();
         for (Viewpoint childViewpoint : childContexts) {
-            childViewpoint.getItems().forEach(candidateItem -> mergeCandidateItem(cache, allItems, candidateItem));
+            childViewpoint.getItems().forEach(candidateItem -> mergeCandidateItem(allItems, candidateItem));
             allLinks.addAll(childViewpoint.getLinks());
         }
 
