@@ -31,31 +31,31 @@ This accessibility, licensing, and practical distribution emphasize ArchiCode's 
 == Features
 
 .Structured Application Component Design
-ArchiCode provides a structured data model that empowers architects to design and define the intricate composition of application components. Craft comprehensive architectures using ArchiCode's data model.
+ArchiCode provides a structured data model that empowers architects to design and define the intricate composition of application components.
 
 .Precise Technology Node Modeling
-Seamlessly define the structure of technology nodes within your architecture. ArchiCode facilitates precise modeling to ensure your technology strategies are accurately captured.
+Seamlessly define the structure of technology nodes within your architecture to ensure your technology strategies are accurately captured.
 
 .Flexible Source Formats
-ArchiCode adapts to your preferences by supporting multiple source formats, including YAML, TOML, and JSON. Work with the format that suits your workflow best.
+ArchiCode adapts to your preferences by supporting multiple source formats, including YAML, TOML, and JSON.
 
 .Manifest-Style Source Code Organization
-Embrace a Kubernetes-like manifest approach to organize your source code more efficiently. ArchiCode simplifies the management of complex architectures by providing a structured and organized view.
+ArchiCode simplifies the management of complex architectures by embracing a Kubernetes-like manifest approach to organize your source code more efficiently.
 
 .Automated View Generation
-With ArchiCode, creating informative views is effortless. Leverage pre-defined viewpoints to automatically generate views that communicate your architectural concepts effectively.
+Leverage pre-defined viewpoints to automatically generate views that communicate your architectural concepts effectively.
 
 .Intelligent Relationship Management
 ArchiCode's viewpoints smartly manage relationships, providing a clear representation of how components interact within your architecture.
 
 .Seamless CI/CD Integration
-Integrate ArchiCode seamlessly into your CI/CD pipelines. Ensure architectural integrity throughout your development lifecycle.
+Integrate ArchiCode seamlessly into your CI/CD pipelines to ensure architectural integrity throughout your development lifecycle.
 
 .Extensibility Through Plug-gable Engines
-Customize and extend ArchiCode's functionality by plugging in renderer engines. Tailor the tool to match your unique requirements.
+Customize and extend ArchiCode's functionality by plugging in renderer engines to tailor the tool to match your unique requirements.
 
 .Diverse Viewpoint Providers
-ArchiCode's high extensibility is further amplified by integrating viewpoint providers. Enhance your architectural perspectives with specialized viewpoints.
+ArchiCode's extensibility goes further by integrating viewpoint providers to enhance your architectural perspectives with specialized viewpoints.
 
 This next parts will comprehensively guide you through ArchiCode's features, commands, and best practices, enabling you to harness the full potential of this tool in your architectural endeavors. Let's delve into the details and unlock the benefits ArchiCode has to offer.
 
@@ -113,7 +113,6 @@ The following snippet describes a manifest designing the `User` person and is re
 include::examples/domain_workspace/manifests/user.yaml[]
 ----
 
-
 Incorporating workspaces and manifests into your architectural workflow within ArchiCode empowers you with an efficient and organized foundation for your projects. Let's explore further as we navigate through the various dimensions of the ArchiCode domain.
 
 === Application Layer
@@ -127,7 +126,7 @@ In ArchiCode, the Application Layer embodies a pivotal aspect of your architectu
 
 - Correlation with ArchiMate: Drawing inspiration from the ArchiMate Standard, ArchiCode's Application Layer mirrors the Application Layer within the ArchiMate framework.
 
-- Structural Focus: ArchiCode delves specifically into the structural realm of the Application Layer. It emphasizes the "Structure" aspect of ArchiMate, enabling architects to meticulously design and define the composition of application components.
+- Structural Focus: ArchiCode delves specifically into the structural realm of the Application Layer. It emphasizes the "Structure" aspect of ArchiMate, enabling architects to design and define the composition of application components.
 
 - Alignment with C4 Model: Building upon the alignment with ArchiMate, ArchiCode's Application Layer extends its compatibility to the C4 Model. This alignment, inclusive of a unique "Solution" element, complements the foundational "System" element, enriching the architectural vocabulary.
 
@@ -164,7 +163,7 @@ Container *--> "*" Component
 @enduml
 ----
 
-This hierarchical structure empowers you to systematically model and articulate the intricate relationships and dependencies between Solutions, Systems, Containers, and Components within your architectural design. As you navigate through ArchiCode's Application Layer, you gain a comprehensive understanding of how these components harmonize to shape your architectural vision.
+This hierarchical structure empowers you to systematically model and articulate the intricate relationships and dependencies between Solutions, Systems, Containers, and Components within your architectural design.
 
 ==== Solution
 
@@ -189,8 +188,6 @@ Incorporating Solutions into your architectural repertoire within ArchiCode empo
 ----
 include::examples/domain_application/manifests/ArchiTool.yaml[]
 ----
-
-
 
 ==== System
 
@@ -270,7 +267,7 @@ Node *--> "*" Node
 @enduml
 ----
 
-Within this well-defined framework, you gain the ability to systematically depict and elucidate the complex interactions, dependencies, and relationships that exist among Environments, Nodes, and Sub-Nodes within your technological architecture. As you delve further into the ArchiCode domain, you'll cultivate a comprehensive understanding of how these components intricately weave together to form the rich tapestry of your architectural technological landscape.
+Within this framework, you gain the ability to systematically depict and elucidate the complex interactions, dependencies, and relationships that exist among Environments, Nodes, and Sub-Nodes within your technological architecture.
 
 ==== Environment
 
@@ -385,7 +382,7 @@ ArchiCode places a strong emphasis on the dynamic generation of views, fostering
 include::examples/domain_viewpoint_views/workspace.yaml[]
 ----
 
-By embracing dynamic view generation, leveraging pluggable Viewpoint Services, and facilitating ad-hoc view definitions, ArchiCode equips architects with a robust toolkit for capturing, communicating, and exploring architectural insights in a dynamic and tailored manner. As we navigate deeper into ArchiCode's capabilities, you'll uncover the rendering of views and how they enhance your architectural workflow.
+By embracing dynamic view generation, leveraging pluggable Viewpoint Services, and facilitating ad-hoc view definitions, ArchiCode equips architects with a toolkit for capturing, communicating, and exploring architectural insights in a dynamic and tailored manner. As we navigate deeper into ArchiCode's capabilities, you'll uncover the rendering of views and how they enhance your architectural workflow.
 
 ==== Rendering
 
@@ -439,7 +436,7 @@ include::examples/domain_configuration/default_styles.yaml[]
 include::examples/domain_configuration/default_formatters.yaml[]
 ----
 
-By affording you the capability to tailor the configuration of ArchiCode, the tool seamlessly integrates with your architectural process, providing a personalized and adaptable framework. As you explore the depths of ArchiCode's configuration capabilities, you unlock a realm of possibilities that empower you to sculpt your architectural vision with precision and finesse.
+By affording you the capability to tailor the configuration of ArchiCode, the tool seamlessly integrates with your architectural process, providing a personalized and adaptable framework.
 
 == Commands
 
