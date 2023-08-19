@@ -1017,3 +1017,207 @@ Efficiently organizing your source code is a cornerstone of successful architect
 // - Diagrams styling
 // - Label formatting
 // - CI/CD Integration
+
+== Appendix
+
+=== Data Structures
+
+==== Base Element
+
+All elements share the attributes of the Base Element.
+
+.Attributes of the Base Element
+|===
+|Name |Type |Comment
+
+|id
+|string
+|The identifier of the element. Its format should match the variable name in Java or Javascript.
+
+|name
+|string
+|The human name of the element.
+
+|description
+|string
+|A short description of the element, usually between 25 and 75 words.
+
+|qualifiers
+|string
+|A list of specific characteristics that helps define or categorize the element.
+They are usually rendered in views.
+It can be the name of the main framework used to implement a container: Spring Boot.
+Or it can be the name of the RDMS for a database Container : PostgreSQL.
+
+|tags
+|string
+|A list of key/value pairs that helps to drive the rendering of views.
+For instance, to assign a predefined shape to the element or to categorize the element during a threat modeling process.
+
+|relationships
+|string
+|The list relationships where the current element is the source.
+
+|===
+
+==== Application Layer
+
+.Attributes of the Application Layer
+|===
+|Name |Type |Comment
+
+|elements
+|an array of Solution or System elements
+|A list of embedded objects.
+
+|===
+
+==== Solution
+
+The Solution Element inherits the attributes of the Base Element.
+
+.Attributes of the Solution Element
+|===
+|Name |Type |Comment
+
+|elements
+|an array of System elements
+|A list of embedded objects.
+
+|===
+
+==== System
+
+The System Element inherits the attributes of the Base Element.
+
+.Attributes of the System Element
+|===
+|Name |Type |Comment
+
+|elements
+|an array of Container elements
+|A list of embedded objects.
+
+|===
+
+==== Container
+
+The Container Element inherits the attributes of the Base Element.
+
+.Attributes of the Container Element
+|===
+|Name |Type |Comment
+
+|elements
+|an array of Component elements
+|A list of embedded objects.
+
+|===
+
+==== Component
+
+The Component Element inherits the attributes of the Base Element.
+
+==== Technology Layer
+
+.Attributes of the Technology Layer
+|===
+|Name |Type |Comment
+
+|elements
+|an array of Environment elements
+|A list of embedded objects.
+
+|===
+
+==== Environment
+
+The Environment Element inherits the attributes of the Base Element.
+
+.Attributes of the Environment Element
+|===
+|Name |Type |Comment
+
+|elements
+|an array of Node elements
+|A list of embedded objects.
+
+|===
+
+==== Node
+
+The Node Element inherits the attributes of the Base Element.
+
+.Attributes of the Node Element
+|===
+|Name |Type |Comment
+
+|applications
+|an array of references which refrence elements of the Application Layer
+|The list of reference elements.
+
+|elements
+|an array of Node elements
+|A list of embedded objects.
+
+|===
+
+==== Relationship
+
+.Attributes of Relationship
+|===
+|Name |Type |Comment
+
+|destination
+|string
+|The reference of the destination element within the same layer.
+
+|label
+|string
+|A human-readable text defining the relationship.
+
+|qualifiers
+|a list of strings
+|A list of specific characteristics that helps define or categorize the relationship.
+They are usually rendered in views.
+It can be the name of the protocol implementing the link.
+
+|tags
+|a list of ky/value pairs
+|A list of key/value pairs that helps to drive the rendering of views.
+For instance, to set TCP ports and IPs driving the rendering of Kubernetes Network Policy manifests.
+
+|===
+
+==== View
+
+.Attributes of View
+|===
+|Name |Type |Comment
+
+|id
+|string
+|The identifier of the view.
+Its format should match the variable name in Java or Javascript.
+
+|viewpoint
+|string
+|The code of the viewpoint identifying the viewpoint service.
+
+|layer
+|string
+|The reference data model of the viewpoint: `application` or `technology`.
+
+|name
+|string
+|The human name of the element.
+
+|description
+|string
+|A short description of the element, usually between 25 and 75 words.
+
+|properties
+|any
+|A custom object containing properties to drive the execution of the viewpoint and/or renderer service.
+
+|===
