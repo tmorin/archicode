@@ -95,10 +95,10 @@ public class GenerateViewsCommand implements Runnable {
     public void run() {
         Logger.getGlobal().setLevel(Level.INFO);
 
-        val workspace = workspaceFactory.create(viewsGroup.archiCode.workspaceFilePath);
+        val workspace = workspaceFactory.create(viewsGroup.archiCode.workspaceFilePath.toAbsolutePath());
 
         val outputDirPath = Path.of(
-            viewsGroup.archiCode.workspaceFilePath.toFile().getParent(),
+            viewsGroup.archiCode.workspaceFilePath.toAbsolutePath().toFile().getParent(),
             Optional.ofNullable(viewsDirPath).orElse(Path.of(workspace.getSettings().getViews().getPath())).toString()
         );
 

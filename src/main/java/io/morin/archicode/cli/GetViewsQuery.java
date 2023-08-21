@@ -75,7 +75,7 @@ public class GetViewsQuery implements Runnable {
     @SneakyThrows
     @Override
     public void run() {
-        val workspace = workspaceFactory.create(queryGroup.archiCode.workspaceFilePath);
+        val workspace = workspaceFactory.create(queryGroup.archiCode.workspaceFilePath.toAbsolutePath());
         val allViews = new HashSet<>(workspace.getViews());
         allViews.addAll(getBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION));
         allViews.addAll(getBuiltinViews(workspace, workspace.depIndex, View.Layer.TECHNOLOGY));

@@ -20,7 +20,7 @@ class CustomRenderingTest {
     @Test
     void mayRenderCustom() {
         ArchiCode archiCode = new ArchiCode();
-        archiCode.workspaceFilePath = Path.of(".custom/cara.yaml");
+        archiCode.workspaceFilePath = Path.of(".custom/workspace.yaml");
         val views = new ViewsGroup();
         views.archiCode = archiCode;
         generateViewsCommand.viewsGroup = views;
