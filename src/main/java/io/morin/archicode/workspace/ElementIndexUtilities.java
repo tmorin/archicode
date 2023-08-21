@@ -13,70 +13,62 @@ import lombok.val;
 @Slf4j
 public class ElementIndexUtilities {
 
-    static void index(ManifestParser.Candidate appCandidate, ElementIndex appElementIndex) {
+    static void index(ManifestParser.Candidate candidate, ElementIndex index) {
         Optional
-            .ofNullable(appCandidate.getParent())
+            .ofNullable(candidate.getParent())
             .ifPresentOrElse(
                 p -> {
-                    val elementReference = appCandidate.getReference();
-                    val element = appCandidate.getElement();
+                    val elementReference = candidate.getReference();
+                    val element = candidate.getElement();
 
                     log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
-                    appElementIndex.elementByReferenceIndex.put(elementReference, element);
-                    appElementIndex.referenceByElementIndex.put(element, elementReference);
+                    index.elementByReferenceIndex.put(elementReference, element);
+                    index.referenceByElementIndex.put(element, elementReference);
                 },
                 () -> {
-                    val elementReference = appCandidate.getReference();
-                    val element = appCandidate.getElement();
+                    val elementReference = candidate.getReference();
+                    val element = candidate.getElement();
 
                     log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
-                    appElementIndex.elementByReferenceIndex.put(elementReference, element);
-                    appElementIndex.referenceByElementIndex.put(element, elementReference);
+                    index.elementByReferenceIndex.put(elementReference, element);
+                    index.referenceByElementIndex.put(element, elementReference);
                 }
             );
         Optional
-            .ofNullable(appCandidate.getElement().getRelationships())
+            .ofNullable(candidate.getElement().getRelationships())
             .orElse(Collections.emptySet())
             .forEach(relationship -> {
-                appElementIndex.sourceElementsByDestinationIndex.putIfAbsent(
-                    relationship.getDestination(),
-                    new HashSet<>()
-                );
-                appElementIndex.sourceElementsByDestinationIndex
-                    .get(relationship.getDestination())
-                    .add(appCandidate.getElement());
+                index.sourceElementsByDestinationIndex.putIfAbsent(relationship.getDestination(), new HashSet<>());
+                index.sourceElementsByDestinationIndex.get(relationship.getDestination()).add(candidate.getElement());
             });
     }
 
-    static void index(Element parent, Element element, ElementIndex appElementIndex) {
+    static void index(Element parent, Element element, ElementIndex index) {
         Optional
             .ofNullable(parent)
             .ifPresentOrElse(
                 p -> {
-                    val parentReference = appElementIndex.referenceByElementIndex.get(p);
+                    val parentReference = index.referenceByElementIndex.get(p);
                     val elementReference = String.format("%s.%s", parentReference, element.getId());
 
                     log.debug("index (p) {} {} {}", elementReference, element, element.hashCode());
-                    appElementIndex.elementByReferenceIndex.put(elementReference, element);
-                    appElementIndex.referenceByElementIndex.put(element, elementReference);
+                    index.elementByReferenceIndex.put(elementReference, element);
+                    index.referenceByElementIndex.put(element, elementReference);
                 },
                 () -> {
                     val elementReference = element.getId();
 
                     log.debug("index (r) {} {} {}", elementReference, element, element.hashCode());
-                    appElementIndex.elementByReferenceIndex.put(elementReference, element);
-                    appElementIndex.referenceByElementIndex.put(element, elementReference);
+                    index.elementByReferenceIndex.put(elementReference, element);
+                    index.referenceByElementIndex.put(element, elementReference);
                 }
             );
         Optional
             .ofNullable(element.getRelationships())
             .orElse(Collections.emptySet())
             .forEach(relationship -> {
-                appElementIndex.sourceElementsByDestinationIndex.putIfAbsent(
-                    relationship.getDestination(),
-                    new HashSet<>()
-                );
-                appElementIndex.sourceElementsByDestinationIndex.get(relationship.getDestination()).add(element);
+                index.sourceElementsByDestinationIndex.putIfAbsent(relationship.getDestination(), new HashSet<>());
+                index.sourceElementsByDestinationIndex.get(relationship.getDestination()).add(element);
             });
     }
 }

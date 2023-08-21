@@ -10,22 +10,34 @@ The following commands assume the ArchiCode workspace is located in the current 
 
 **Show the help information**
 ```shell
-docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT --help
+docker run \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/workdir" -w "/workdir" \
+  --rm ghcr.io/tmorin/archicode --help
 ```
 
 **Generate all views**
 ```shell
-docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT views generate
+docker run \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/workdir" -w "/workdir" \
+  --rm ghcr.io/tmorin/archicode views generate
 ```
 
 **Get the JSON schema for the Workspace resource**
 ```shell
-docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT query schemas workspace
+docker run \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/workdir" -w "/workdir" \
+  --rm ghcr.io/tmorin/archicode query schemas workspace
 ```
 
 **Get the JSON schema for the Manifest resource**
 ```shell
-docker run -v "$(pwd):/wks" --rm ghcr.io/tmorin/archicode:0.1.0-SNAPSHOT query schemas manifest
+docker run \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/workdir" -w "/workdir" \
+  --rm ghcr.io/tmorin/archicode query schemas manifest
 ```
 
 ## Maintenance

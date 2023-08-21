@@ -49,6 +49,7 @@ public class View {
     /**
      * A custom object containing properties to drive the execution of the viewpoint and/or renderer service.
      */
+    @ToString.Include
     JsonNode properties;
 
     public enum Layer {

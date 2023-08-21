@@ -30,6 +30,18 @@ public class ElementIndexFactory {
     @NonNull
     Set<ManifestParser.Candidate> candidates;
 
+    private void reindexAncestors(String reference) {
+        Workspace.Utilities
+            .findParentReference(reference)
+            .ifPresent(parentReference -> {
+                val removedElement = index.elementByReferenceIndex.remove(parentReference);
+                log.debug("reindex {} {} {}", parentReference, removedElement, removedElement.hashCode());
+                index.elementByReferenceIndex.put(parentReference, removedElement);
+                index.referenceByElementIndex.put(removedElement, parentReference);
+                reindexAncestors(parentReference);
+            });
+    }
+
     @SuppressWarnings({ "unchecked" })
     public ElementIndex create() {
         log.debug("index the elements of the resources {}", root);
@@ -64,10 +76,8 @@ public class ElementIndexFactory {
         indexedCandidates.forEach(appCandidate -> {
             val parentCandidate = index.elementByReferenceIndex.get(appCandidate.getParent());
             if (parentCandidate instanceof Parent parent) {
-                index.referenceByElementIndex.remove(index.elementByReferenceIndex.remove(appCandidate.getParent()));
                 parent.getElements().add(appCandidate.getElement());
-                index.elementByReferenceIndex.put(appCandidate.getParent(), parentCandidate);
-                index.referenceByElementIndex.put(parentCandidate, appCandidate.getParent());
+                reindexAncestors(appCandidate.getReference());
             } else if (parentCandidate instanceof ApplicationElement applicationElement) {
                 if (root instanceof Application application) {
                     application.getElements().add(applicationElement);

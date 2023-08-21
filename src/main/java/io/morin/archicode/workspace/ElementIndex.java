@@ -59,10 +59,10 @@ public class ElementIndex {
 
     public Set<String> listAllElementReferences(Predicate<Element> predicate) {
         return elementByReferenceIndex
-            .values()
+            .entrySet()
             .stream()
-            .filter(predicate)
-            .map(referenceByElementIndex::get)
+            .filter(e -> predicate.test(e.getValue()))
+            .map(Map.Entry::getKey)
             .collect(Collectors.toSet());
     }
 
