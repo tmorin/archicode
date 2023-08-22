@@ -18,5 +18,5 @@ public class DeepViewProperties {
 
     @Builder.Default
     @JsonProperty("show-application-links")
-    boolean showApplicationLinks = true;
+    boolean showApplicationLinks = false;
 }
