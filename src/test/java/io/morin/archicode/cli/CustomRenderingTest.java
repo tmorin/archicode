@@ -1,6 +1,5 @@
 package io.morin.archicode.cli;
 
-import io.morin.archicode.MapperFormat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
@@ -26,8 +25,9 @@ class CustomRenderingTest {
         generateViewsCommand.viewsGroup = views;
         generateViewsCommand.viewsDirPath = Path.of("views");
         generateViewsCommand.rendererName = "plantuml";
-        generateViewsCommand.viewPropertiesAsJson = "{ \"show-application-links\": false }";
-        generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
+        //generateViewsCommand.viewPropertiesAsContent = "{ \"show-application-links\": false }";
+        //generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
+        generateViewsCommand.viewPropertiesAsPath = "view-properties.yaml";
         generateViewsCommand.viewIds =
             Set.of(
                 //"reference.cloudprovider.cluster.authx.backend_deep",
