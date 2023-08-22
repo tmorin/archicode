@@ -37,6 +37,12 @@ public class DeepViewpointService implements ViewpointService {
         ObjectNode properties
     ) {
         val om = mapperFactory.create(MapperFormat.JSON);
+
+        val newProperties = om.createObjectNode().put("element", reference);
+        newProperties.put("element", reference);
+        newProperties.setAll(views.getProperties().getOrDefault(NAME, om.createObjectNode()));
+        newProperties.setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode));
+
         return Optional.of(
             View
                 .builder()
@@ -47,15 +53,10 @@ public class DeepViewpointService implements ViewpointService {
                         "%s - %s - %s",
                         Item.Kind.from(element).getLabel(),
                         Optional.ofNullable(element.getName()).orElse(element.getId()),
-                        views.getLabels().getDeep()
+                        views.getLabels().getOrDefault(NAME, "Deep View")
                     )
                 )
-                .properties(
-                    om
-                        .createObjectNode()
-                        .put("element", reference)
-                        .setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode))
-                )
+                .properties(newProperties)
         );
     }
 
