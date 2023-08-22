@@ -27,7 +27,7 @@ class CustomRenderingTest {
         generateViewsCommand.rendererName = "plantuml";
         //generateViewsCommand.viewPropertiesAsContent = "{ \"show-application-links\": false }";
         //generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
-        generateViewsCommand.viewPropertiesAsPath = "view-properties.yaml";
+        //generateViewsCommand.viewPropertiesAsPath = "view-properties.yaml";
         generateViewsCommand.viewIds =
             Set.of(
                 //"reference.cloudprovider.cluster.authx.backend_deep",
