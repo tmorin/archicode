@@ -1,7 +1,10 @@
 package io.morin.archicode.resource.workspace;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Value;
@@ -45,25 +48,22 @@ public class Settings {
     @Jacksonized
     public static class Views {
 
-        @Builder.Default
-        Labels labels = Labels.builder().build();
-
+        /**
+         * The default folder for the generated views.
+         */
         @Builder.Default
         String path = "views";
 
-        @Value
-        @Builder
-        @Jacksonized
-        public static class Labels {
+        /**
+         * The default label.
+         */
+        @Builder.Default
+        Map<String, String> labels = new LinkedHashMap<>();
 
-            @Builder.Default
-            String overview = "Overview";
-
-            @Builder.Default
-            String detailed = "Detailed View";
-
-            @Builder.Default
-            String deep = "Deep View";
-        }
+        /**
+         * The default properties.
+         */
+        @Builder.Default
+        Map<String, ObjectNode> properties = new LinkedHashMap<>();
     }
 }

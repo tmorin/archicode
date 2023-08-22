@@ -40,6 +40,12 @@ public class DetailedViewpointService implements ViewpointService {
         ObjectNode properties
     ) {
         val om = mapperFactory.create(MapperFormat.JSON);
+
+        val newProperties = om.createObjectNode().put("element", reference);
+        newProperties.put("element", reference);
+        newProperties.setAll(views.getProperties().getOrDefault(NAME, om.createObjectNode()));
+        newProperties.setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode));
+
         return Optional
             .of(element)
             .filter(v -> {
@@ -58,16 +64,10 @@ public class DetailedViewpointService implements ViewpointService {
                             "%s - %s - %s",
                             Item.Kind.from(parent).getLabel(),
                             Optional.ofNullable(element.getName()).orElse(element.getId()),
-                            views.getLabels().getDetailed()
+                            views.getLabels().getOrDefault(NAME, "Detailed View")
                         )
                     )
-                    .properties(
-                        mapperFactory
-                            .create(MapperFormat.JSON)
-                            .createObjectNode()
-                            .put("element", reference)
-                            .setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode))
-                    )
+                    .properties(newProperties)
             );
     }
 
