@@ -140,13 +140,13 @@ public class GenerateViewsCommand implements Runnable {
             .ofNullable(viewPropertiesAsPath)
             .map(p -> viewsGroup.archiCode.workspaceFilePath.toAbsolutePath().toAbsolutePath().getParent().resolve(p))
             .map(p -> call(() -> (ObjectNode) mapperFactory.create(p).readTree(p.toFile())))
-            .orElseGet(() ->
-                call(() ->
-                    (ObjectNode) mapperFactory
-                        .create(viewPropertiesFormat)
-                        .readTree(Optional.ofNullable(viewPropertiesAsContent).filter(v -> !v.isEmpty()).orElse("{}"))
-                )
-            );
+            .or(() ->
+                Optional
+                    .ofNullable(viewPropertiesAsContent)
+                    .filter(v -> !v.isEmpty())
+                    .map(c -> call(() -> (ObjectNode) mapperFactory.create(viewPropertiesFormat).readTree(c)))
+            )
+            .orElse(null);
 
         index
             .listAllElementReferences(element -> true)

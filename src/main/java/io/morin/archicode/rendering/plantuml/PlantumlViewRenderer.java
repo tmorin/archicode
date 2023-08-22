@@ -53,7 +53,12 @@ public class PlantumlViewRenderer implements ViewRenderer {
                     outputStreamWriter.write(itemRenderer.render(viewpoint, item));
                 }
 
-                for (Link link : viewpoint.getLinks().stream().sorted().toList()) {
+                for (Link link : viewpoint
+                    .getLinks()
+                    .stream()
+                    .sorted()
+                    .filter(link -> link.getTags().getOrDefault("rendering-secondary", "yes").equals("yes"))
+                    .toList()) {
                     outputStreamWriter.write(linkRenderer.render(viewpoint, link));
                 }
 
