@@ -1,5 +1,7 @@
 package io.morin.archicode.cli;
 
+import static io.morin.archicode.Utilities.call;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
@@ -75,11 +77,11 @@ public class GenerateViewsCommand implements Runnable {
     Path viewsDirPath;
 
     @CommandLine.Option(
-        names = { "-p", "--properties" },
+        names = { "--properties-content" },
         paramLabel = "PROPERTIES",
         description = "Optional properties of the views."
     )
-    String viewPropertiesAsJson;
+    String viewPropertiesAsContent;
 
     @CommandLine.Option(
         names = { "--properties-format" },
@@ -90,6 +92,13 @@ public class GenerateViewsCommand implements Runnable {
         converter = { MapperFormatConverter.class }
     )
     MapperFormat viewPropertiesFormat;
+
+    @CommandLine.Option(
+        names = { "-p", "--properties-path" },
+        paramLabel = "PATH",
+        description = "The path to optional properties of the views."
+    )
+    String viewPropertiesAsPath;
 
     @Override
     public void run() {
@@ -127,10 +136,17 @@ public class GenerateViewsCommand implements Runnable {
         @NonNull Path outputDirPath,
         @NonNull Set<String> viewIds
     ) {
-        val om = mapperFactory.create(viewPropertiesFormat);
-        val properties = (ObjectNode) om.readTree(
-            Optional.ofNullable(viewPropertiesAsJson).filter(v -> !v.isEmpty()).orElse("{}")
-        );
+        val viewProperties = Optional
+            .ofNullable(viewPropertiesAsPath)
+            .map(p -> viewsGroup.archiCode.workspaceFilePath.toAbsolutePath().toAbsolutePath().getParent().resolve(p))
+            .map(p -> call(() -> (ObjectNode) mapperFactory.create(p).readTree(p.toFile())))
+            .orElseGet(() ->
+                call(() ->
+                    (ObjectNode) mapperFactory
+                        .create(viewPropertiesFormat)
+                        .readTree(Optional.ofNullable(viewPropertiesAsContent).filter(v -> !v.isEmpty()).orElse("{}"))
+                )
+            );
 
         index
             .listAllElementReferences(element -> true)
@@ -148,7 +164,7 @@ public class GenerateViewsCommand implements Runnable {
                                 reference,
                                 index.getElementByReference(reference),
                                 workspace.getSettings().getViews(),
-                                properties
+                                viewProperties
                             )
                             .map(viewBuilder -> viewBuilder.layer(layer).build())
                     )
