@@ -1,0 +1,32 @@
+@startuml EcommercePlatform-UserManagement_overview
+title System - UserManagement - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement <<system>> <<atomic>> [
+UserManagement
+[system]
+]
+}
+rectangle SocialIdentityProvider <<system>> <<atomic>> [
+SocialIdentityProvider
+[system]
+]
+EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement : uses
+EcommercePlatform.UserManagement --> SocialIdentityProvider : uses
+@enduml
