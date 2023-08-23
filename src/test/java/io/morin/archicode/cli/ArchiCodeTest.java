@@ -67,7 +67,7 @@ class ArchiCodeTest {
         assertTrue(
             Path
                 .of(
-                    "target/ArchiCodeTest/shouldRenderPerspectives/plantuml/application/solution_a.system_a_a_overview.puml"
+                    "target/ArchiCodeTest/shouldRenderPerspectives/plantuml/application/solution_a_system_a_a-overview.puml"
                 )
                 .toFile()
                 .exists()
