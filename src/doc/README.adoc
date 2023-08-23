@@ -716,7 +716,7 @@ The view `EcommercePlatform_overview.puml` is built upon the "Overview" viewpoin
 .Step #1 - The overview of the ecommerce platform
 [plantuml, EcommercePlatform_overview]
 ----
-include::examples/design_example_step_1/views/plantuml/application/EcommercePlatform_overview.puml[]
+include::examples/design_example_step_1/views/plantuml/application/EcommercePlatform-overview.puml[]
 ----
 
 The view `PaymentGateway_overview.puml` is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships where the `PaymentGateway` element is involved.
@@ -724,7 +724,7 @@ The view `PaymentGateway_overview.puml` is built upon the "Overview" viewpoint a
 .Step #1 - The overview of the payment gateway
 [plantuml, PaymentGateway_overview]
 ----
-include::examples/design_example_step_1/views/plantuml/application/PaymentGateway_overview.puml[]
+include::examples/design_example_step_1/views/plantuml/application/PaymentGateway-overview.puml[]
 ----
 
 The concept is similar for the others generated views.
@@ -821,7 +821,7 @@ The view `EcommercePlatform_detailed.puml` is built upon the "Detailed" viewpoin
 .Step #2 - The detailed of the ecommerce platform
 [plantuml, EcommercePlatform_detailed]
 ----
-include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform_detailed.puml[]
+include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform-detailed.puml[]
 ----
 
 The view `EcommercePlatform.UserInterface_overview.puml` is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships of the `UserInterface` element.
@@ -830,7 +830,7 @@ The view `EcommercePlatform.UserInterface_overview.puml` is built upon the "Over
 .Step #2 - The overview of the user interface
 [plantuml, EcommercePlatform.UserInterface_overview]
 ----
-include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform.UserInterface_overview.puml[]
+include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform_UserInterface-overview.puml[]
 ----
 
 The view `EcommercePlatform_overview.puml` is still available but the drawn relationships are now synthetic ones.
@@ -838,7 +838,7 @@ The view `EcommercePlatform_overview.puml` is still available but the drawn rela
 .Step #2 - The overview of the ecommerce platform with synthetic relationships
 [plantuml, EcommercePlatform_overview_synthetic]
 ----
-include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform_overview.puml[]
+include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform-overview.puml[]
 ----
 
 The second step focused on the intricate composition of systems within the e-commerce platform and the establishment of relationships between them.
@@ -910,7 +910,7 @@ The view `EcommercePlatform_deep.puml` is built upon the "Deep" viewpoint and fo
 .Step #3 - The deepness of the ecommerce platform
 [plantuml, EcommercePlatform_deep]
 ----
-include::examples/design_example_step_3/views/plantuml/application/EcommercePlatform_deep.puml[]
+include::examples/design_example_step_3/views/plantuml/application/EcommercePlatform-deep.puml[]
 ----
 
 The view `EcommercePlatform.UserManagement_detailed.puml` is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships involving the children of the `UserManagement` element.
@@ -918,7 +918,7 @@ The view `EcommercePlatform.UserManagement_detailed.puml` is built upon the "Det
 .Step #3 - The detailed of the User Management
 [plantuml, EcommercePlatform.UserManagement_detailed]
 ----
-include::examples/design_example_step_3/views/plantuml/application/EcommercePlatform.UserManagement_detailed.puml[]
+include::examples/design_example_step_3/views/plantuml/application/EcommercePlatform_UserManagement-detailed.puml[]
 ----
 
 The third step focused on the composition of containers within the "User Management" system, the establishment of relationships between them as well as the refinement of existing relationships.

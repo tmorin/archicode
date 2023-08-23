@@ -47,7 +47,7 @@ public class DeepViewpointService implements ViewpointService {
             View
                 .builder()
                 .viewpoint(NAME)
-                .id(String.format("%s_%s", reference.replace("/", "_"), NAME))
+                .id(String.format("%s-%s", reference.replace("/", "_").replace(".", "_"), NAME))
                 .description(
                     String.format(
                         "%s - %s - %s",
