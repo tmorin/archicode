@@ -15,9 +15,9 @@ class CaseBTest extends AbstractGenerateViews {
     @SneakyThrows
     @Test
     void shouldCreate() {
-        renderWithPlantuml(Path.of("src/test/workspaces/case_b.yaml"), "env.node_a.cluster.auth_overview");
+        renderWithPlantuml(Path.of("src/test/workspaces/case_b.yaml"), "env.node_a.cluster.auth-overview");
         val filePath = Path.of(
-            "src/test/workspaces/case_b_yaml/plantuml/technology/env.node_a.cluster.auth_overview.puml"
+            "src/test/workspaces/case_b_yaml/plantuml/technology/env_node_a_cluster_auth-overview.puml"
         );
         val actual = Files.readString(filePath);
         assertTrue(actual.contains("env.node_a.cluster.vault --> env.node_a.cluster.auth : uses"));

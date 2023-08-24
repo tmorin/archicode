@@ -719,7 +719,7 @@ The view `EcommercePlatform_overview.puml` is built upon the "Overview" viewpoin
 include::examples/design_example_step_1/views/plantuml/application/EcommercePlatform-overview.puml[]
 ----
 
-The view `PaymentGateway_overview.puml` is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships where the `PaymentGateway` element is involved.
+The view `PaymentGateway-overview.puml` is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships where the `PaymentGateway` element is involved.
 
 .Step #1 - The overview of the payment gateway
 [plantuml, PaymentGateway_overview]
@@ -809,14 +809,14 @@ archicode views generate --viewpoint=overview --viewpoint=detailed
 
 The command generates the additional Plantuml files in the `./views/plantuml/application` folder.
 
-- `EcommercePlatform.ContentManagement_overview.puml`
-- `EcommercePlatform.OrderProcessing_overview.puml`
-- `EcommercePlatform.ProductCatalog_overview.puml`
-- `EcommercePlatform.UserInterface_overview.puml`
-- `EcommercePlatform.UserManagement_overview.puml`
-- `EcommercePlatform_detailed.puml`
+- `EcommercePlatform.ContentManagement-overview.puml`
+- `EcommercePlatform.OrderProcessing-overview.puml`
+- `EcommercePlatform.ProductCatalog-overview.puml`
+- `EcommercePlatform.UserInterface-overview.puml`
+- `EcommercePlatform.UserManagement-overview.puml`
+- `EcommercePlatform-detailed.puml`
 
-The view `EcommercePlatform_detailed.puml` is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships where the children of the `EcommercePlatform` element are involved.
+The view `EcommercePlatform-detailed.puml` is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships where the children of the `EcommercePlatform` element are involved.
 
 .Step #2 - The detailed of the ecommerce platform
 [plantuml, EcommercePlatform_detailed]
@@ -824,7 +824,7 @@ The view `EcommercePlatform_detailed.puml` is built upon the "Detailed" viewpoin
 include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform-detailed.puml[]
 ----
 
-The view `EcommercePlatform.UserInterface_overview.puml` is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships of the `UserInterface` element.
+The view `EcommercePlatform.UserInterface-overview.puml` is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships of the `UserInterface` element.
 
 
 .Step #2 - The overview of the user interface
@@ -833,7 +833,7 @@ The view `EcommercePlatform.UserInterface_overview.puml` is built upon the "Over
 include::examples/design_example_step_2/views/plantuml/application/EcommercePlatform_UserInterface-overview.puml[]
 ----
 
-The view `EcommercePlatform_overview.puml` is still available but the drawn relationships are now synthetic ones.
+The view `EcommercePlatform-overview.puml` is still available but the drawn relationships are now synthetic ones.
 
 .Step #2 - The overview of the ecommerce platform with synthetic relationships
 [plantuml, EcommercePlatform_overview_synthetic]
@@ -905,7 +905,7 @@ archicode views generate
 
 The command generates many Plantuml files in the `./views/plantuml/application` folder.
 
-The view `EcommercePlatform_deep.puml` is built upon the "Deep" viewpoint and focus on the Ingress and Egress relationships involving the descendants of the `EcommercePlatform` element.
+The view `EcommercePlatform-deep.puml` is built upon the "Deep" viewpoint and focus on the Ingress and Egress relationships involving the descendants of the `EcommercePlatform` element.
 
 .Step #3 - The deepness of the ecommerce platform
 [plantuml, EcommercePlatform_deep]
@@ -913,7 +913,7 @@ The view `EcommercePlatform_deep.puml` is built upon the "Deep" viewpoint and fo
 include::examples/design_example_step_3/views/plantuml/application/EcommercePlatform-deep.puml[]
 ----
 
-The view `EcommercePlatform.UserManagement_detailed.puml` is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships involving the children of the `UserManagement` element.
+The view `EcommercePlatform.UserManagement-detailed` is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships involving the children of the `UserManagement` element.
 
 .Step #3 - The detailed of the User Management
 [plantuml, EcommercePlatform.UserManagement_detailed]

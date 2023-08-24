@@ -16,7 +16,7 @@ class CaseATest extends AbstractGenerateViews {
     @Test
     void shouldCreate() {
         renderWithPlantuml(Path.of("src/test/workspaces/case_a.yaml"));
-        val filePath = Path.of("src/test/workspaces/case_a_yaml/plantuml/application/sol_a_overview.puml");
+        val filePath = Path.of("src/test/workspaces/case_a_yaml/plantuml/application/sol_a-overview.puml");
         val actual = Files.readString(filePath);
         assertTrue(actual.contains("per_a --> sol_a : uses"));
         assertTrue(actual.contains("per_b --> sol_a : uses"));
