@@ -53,7 +53,7 @@ class PlantumlViewRendererTest {
         }
         plantumlRenderer.render(viewpoint, outDir);
 
-        return Path.of(outDir.toString(), String.format("%s.puml", viewpoint.getView().getId()));
+        return Path.of(outDir.toString(), String.format("%s.puml", viewpoint.getView().getId().replace(".", "_")));
     }
 
     @Test

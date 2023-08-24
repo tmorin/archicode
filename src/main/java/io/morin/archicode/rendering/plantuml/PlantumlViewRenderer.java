@@ -38,11 +38,12 @@ public class PlantumlViewRenderer implements ViewRenderer {
     @Override
     @SneakyThrows
     public void render(@NonNull Viewpoint viewpoint, @NonNull Path outputPath) {
-        val outputPumlFile = Path.of(outputPath.toString(), String.format("%s.puml", viewpoint.getView().getId()));
+        val plantumlViewId = viewpoint.getView().getId().replace(".", "_");
+        val outputPumlFile = Path.of(outputPath.toString(), String.format("%s.puml", plantumlViewId));
 
         try (val outputStream = new FileOutputStream(outputPumlFile.toFile())) {
             try (val outputStreamWriter = new OutputStreamWriter(outputStream)) {
-                outputStreamWriter.write(String.format("@startuml %s", viewpoint.getView().getId()));
+                outputStreamWriter.write(String.format("@startuml %s", plantumlViewId));
                 outputStreamWriter.write(System.lineSeparator());
 
                 outputStreamWriter.write(titleRenderer.render(viewpoint));
