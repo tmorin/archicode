@@ -96,8 +96,10 @@ public class DeepViewpointFactory extends AbstractViewpointFactory implements Vi
     private Content createItemAndLinksForAppLayer(Workspace workspace, Set<Item> mainItemByReference) {
         val content = new Content();
 
+        // the map is used to keep track of the app items created by reference
         val appItemByReference = new HashMap<String, Set<Item>>();
 
+        // discover and collect all items of the application layer
         val appItems = mainItemByReference
             .stream()
             .flatMap(Item::stream)
@@ -126,6 +128,7 @@ public class DeepViewpointFactory extends AbstractViewpointFactory implements Vi
         appItems.forEach(item -> log.debug("appItem {}", item));
         content.items.addAll(appItems);
 
+        // discover and collect all links related to the item of the application layer
         val appLinks = appItemByReference
             .entrySet()
             .stream()

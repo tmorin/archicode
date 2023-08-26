@@ -89,11 +89,13 @@ public class DetailedViewpointFactory extends AbstractViewpointFactory implement
 
         // the children's Overview Views are merged to get:
         // - a list of all items (with the respected hierarchy)
-        val allItems = new HashSet<Item>();
         // - a list of all links between the sources (the view's item + its children) and the destination
+        val allItems = new HashSet<Item>();
         val allLinks = new HashSet<Link>();
         for (Viewpoint childViewpoint : childContexts) {
+            // merge all items
             childViewpoint.getItems().forEach(candidateItem -> mergeCandidateItem(allItems, candidateItem));
+            // merge all links
             allLinks.addAll(childViewpoint.getLinks());
         }
 

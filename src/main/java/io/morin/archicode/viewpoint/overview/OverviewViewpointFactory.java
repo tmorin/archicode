@@ -48,16 +48,23 @@ public class OverviewViewpointFactory extends AbstractViewpointFactory implement
 
         val viewReference = properties.getElement();
 
+        // resolve all natural egress relationships
         val egressMetaLinks = metaLinkFinderForEgress.find(mainIndex, viewReference);
         egressMetaLinks.forEach(metaLink -> log.debug("egress {} {}", metaLink, metaLink.hashCode()));
+
+        // groom all natural egress relationships and resolve synthetic egress relationships
         val egressGroomedLinks = metaLinkGroomer.groomEgress(mainIndex, viewReference, egressMetaLinks);
         egressGroomedLinks.forEach(groomedLink -> log.debug("egress {} {}", groomedLink, groomedLink.hashCode()));
 
+        // resolve all natural ingress relationships
         val ingressMetaLinks = metaLinkFinderForIngress.find(mainIndex, viewReference);
         ingressMetaLinks.forEach(metaLink -> log.debug("ingress {} {}", metaLink, metaLink.hashCode()));
+
+        // groom all natural ingress relationships and resolve synthetic ingress relationships
         val ingressGroomedLinks = metaLinkGroomer.groomIngress(mainIndex, viewReference, ingressMetaLinks);
         ingressGroomedLinks.forEach(groomedLink -> log.debug("ingress {} {}", groomedLink, groomedLink.hashCode()));
 
+        // merge all groomed links
         val allGroomedLinks = Stream
             .concat(egressGroomedLinks.stream(), ingressGroomedLinks.stream())
             .collect(Collectors.toSet());
@@ -65,15 +72,18 @@ public class OverviewViewpointFactory extends AbstractViewpointFactory implement
 
         val itemByReference = new HashMap<String, Item>();
 
+        // collect all item references from groomed links and append the view reference
         val itemReferences = collectAsSet(
             allGroomedLinks.stream().map(GroomedLink::getFromReference),
             allGroomedLinks.stream().map(GroomedLink::getToReference),
             Stream.of(viewReference)
         );
 
+        // create all items based on the collected item references
         val items = createItems(itemReferences, mainIndex, itemByReference);
         items.forEach(item -> log.debug("item {}", item));
 
+        // create all links based on the groomed links
         val links = allGroomedLinks
             .stream()
             .flatMap(groomedLink -> {
@@ -81,12 +91,16 @@ public class OverviewViewpointFactory extends AbstractViewpointFactory implement
                 val toItem = itemByReference.get(groomedLink.getToReference());
                 val syntheticRelationships = groomedLink.getRelationships().getOrDefault(SYNTHETIC, emptySet());
                 val naturalRelationships = groomedLink.getRelationships().getOrDefault(NATURAL, emptySet());
+                // if there are synthetic relationships, create a single link for all synthetic relationships
                 if (!syntheticRelationships.isEmpty()) {
+                    // collect all qualifiers from synthetic relationships
                     val qualifiers = syntheticRelationships
                         .stream()
                         .flatMap(l -> l.getQualifiers().stream())
                         .collect(Collectors.toSet());
+                    // resolve the synthetic label
                     val defaultLabel = workspace.getSettings().getRelationships().getDefaultSyntheticLabel();
+                    // if there is only one synthetic relationship, use its label
                     val label = syntheticRelationships.size() == 1
                         ? syntheticRelationships
                             .stream()
@@ -95,6 +109,7 @@ public class OverviewViewpointFactory extends AbstractViewpointFactory implement
                             .filter(v -> !v.isBlank())
                             .orElse(defaultLabel)
                         : defaultLabel;
+                    // create a single link for all synthetic relationships
                     return Stream.of(
                         Link
                             .builder()
@@ -107,6 +122,7 @@ public class OverviewViewpointFactory extends AbstractViewpointFactory implement
                             .build()
                     );
                 } else if (!naturalRelationships.isEmpty()) {
+                    // create a link for each natural relationship
                     return naturalRelationships
                         .stream()
                         .map(relationship ->

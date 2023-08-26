@@ -60,6 +60,12 @@ public class MapperFactory {
         .serializationInclusion(JsonInclude.Include.NON_EMPTY)
         .build();
 
+    /**
+     * Create a new {@link ObjectMapper} for the given {@link MapperFormat}.
+     *
+     * @param format the format of the mapper
+     * @return the created {@link ObjectMapper}
+     */
     public ObjectMapper create(MapperFormat format) {
         switch (format) {
             case YAML -> {
@@ -75,6 +81,12 @@ public class MapperFactory {
         }
     }
 
+    /**
+     * Create a new {@link ObjectMapper} with a lazy configuration for the given {@link MapperFormat}.
+     *
+     * @param format the format of the mapper
+     * @return the created {@link ObjectMapper}
+     */
     public ObjectMapper createLazy(MapperFormat format) {
         switch (format) {
             case YAML -> {
@@ -90,6 +102,12 @@ public class MapperFactory {
         }
     }
 
+    /**
+     * Create a new {@link ObjectMapper} for the given {@link Path}.
+     *
+     * @param path the path to create the mapper for
+     * @return the created {@link ObjectMapper}
+     */
     public ObjectMapper create(Path path) {
         val format = MapperFormat
             .resolve(path)
