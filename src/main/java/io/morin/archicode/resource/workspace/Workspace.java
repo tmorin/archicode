@@ -43,12 +43,20 @@ public class Workspace {
     @UtilityClass
     public static class Utilities {
 
+        /**
+         * Split the given reference on the dot.
+         *
+         * @param reference the reference
+         * @return the reference of the parent of the given reference
+         */
         private static String[] splitReference(@NonNull String reference) {
             return reference.split("\\.");
         }
 
         /**
-         * @param actualParts the actual
+         * Check if the actual parts starts with the expected parts with the respect of the ordering.
+         *
+         * @param actualParts   the actual
          * @param expectedParts the expected
          * @return true if the actual parts starts with the expected parts with the respect of the ordering
          */
@@ -64,6 +72,8 @@ public class Workspace {
         }
 
         /**
+         * Check if the candidate is a sibling of the reference.
+         *
          * @param candidate the candidate
          * @param reference the reference
          * @return true if the candidate is a sibling of the reference
@@ -79,6 +89,8 @@ public class Workspace {
         }
 
         /**
+         * Check if the candidate is a descendent of the reference.
+         *
          * @param candidate the candidate
          * @param reference the reference
          * @return true if the candidate is a descendent of the second one
@@ -94,6 +106,8 @@ public class Workspace {
         }
 
         /**
+         * Check if the candidate is an ancestor of the reference.
+         *
          * @param candidate the candidate
          * @param reference the reference
          * @return true if the candidate is n ancestor of the second one
@@ -108,6 +122,12 @@ public class Workspace {
             return isActualStartWithExpected(referenceParts, candidateParts);
         }
 
+        /**
+         * Find the parent reference of the given reference.
+         *
+         * @param reference the reference
+         * @return the parent reference of the given reference
+         */
         public Optional<String> findParentReference(String reference) {
             val parts = splitReference(reference);
             if (parts.length == 1) {
@@ -116,6 +136,12 @@ public class Workspace {
             return Optional.of(String.join(".", Arrays.copyOf(parts, parts.length - 1)));
         }
 
+        /**
+         * Walk down the element of the application layer.
+         *
+         * @param application the application
+         * @param consumer    the consumer with the parent and the child
+         */
         public void walkDown(Application application, BiConsumer<Element, Element> consumer) {
             for (ApplicationElement element : application.getElements()) {
                 consumer.accept(null, element);
@@ -123,6 +149,12 @@ public class Workspace {
             }
         }
 
+        /**
+         * Walk down the element of the technology layer.
+         *
+         * @param technology the technology
+         * @param consumer   the consumer with the parent and the child
+         */
         public void walkDown(Technology technology, BiConsumer<Element, Element> consumer) {
             for (TechnologyElement element : technology.getElements()) {
                 consumer.accept(null, element);
@@ -130,6 +162,12 @@ public class Workspace {
             }
         }
 
+        /**
+         * Walk down the descendents of the given element.
+         *
+         * @param element  the element
+         * @param consumer the consumer with the parent and the child
+         */
         public void walkDown(Element element, BiConsumer<Element, Element> consumer) {
             if (element instanceof Parent<?>) {
                 for (Element child : ((Parent<?>) element).getElements()) {
@@ -139,6 +177,12 @@ public class Workspace {
             }
         }
 
+        /**
+         * Walk down the descendents of the given element.
+         *
+         * @param element  the element
+         * @param consumer the consumer with the child
+         */
         public void walkDown(Element element, Consumer<Element> consumer) {
             consumer.accept(element);
             if (element instanceof Parent<?>) {

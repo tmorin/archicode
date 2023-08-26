@@ -15,6 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class MetaLinkFinderForIngress implements MetaLinkFinder {
 
+    /**
+     * Find all associations where the reference or one of its descendant is the destination of a relationship.
+     *
+     * @param index       the index
+     * @param toReference the reference
+     * @return the result
+     */
     @Override
     public Set<MetaLink> find(@NonNull ElementIndex index, @NonNull String toReference) {
         val fromElements = index.searchFromElements(toReference);
@@ -45,7 +52,6 @@ public class MetaLinkFinderForIngress implements MetaLinkFinder {
                             .build();
                     });
             })
-            //.filter(metaLink -> !metaLink.getFromReference().startsWith(toReference))
             .filter(metaLink -> !isDescendantOf(metaLink.getFromReference(), toReference))
             .collect(Collectors.toSet());
     }

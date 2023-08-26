@@ -17,16 +17,36 @@ public enum MapperFormat {
     TOML(".toml"),
     JSON(".json");
 
+    /**
+     * The extensions of the format.
+     */
     Set<String> extensions;
 
+    /**
+     * Create a new {@link MapperFormat} with the given extensions.
+     *
+     * @param extensions the extensions of the format
+     */
     MapperFormat(String... extensions) {
         this.extensions = Set.of(extensions);
     }
 
+    /**
+     * Resolve the {@link MapperFormat} from the given path.
+     *
+     * @param path the path to resolve
+     * @return the resolved {@link MapperFormat}
+     */
     public static Optional<MapperFormat> resolve(Path path) {
         return resolve(path.toString());
     }
 
+    /**
+     * Resolve the {@link MapperFormat} from the given path.
+     *
+     * @param path the path to resolve
+     * @return the resolved {@link MapperFormat}
+     */
     public static Optional<MapperFormat> resolve(String path) {
         return Arrays
             .stream(MapperFormat.values())
