@@ -125,7 +125,7 @@ public class GenerateViewsCommand implements Runnable {
         }
 
         renderBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION, outputDirPath, viewIds);
-        renderBuiltinViews(workspace, workspace.depIndex, View.Layer.TECHNOLOGY, outputDirPath, viewIds);
+        renderBuiltinViews(workspace, workspace.techIndex, View.Layer.TECHNOLOGY, outputDirPath, viewIds);
     }
 
     @SneakyThrows

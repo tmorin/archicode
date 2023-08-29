@@ -32,12 +32,12 @@ public abstract class AbstractViewpointFactory {
         return mainItemReferences;
     }
 
-    protected Set<Link> createLinks(Set<MetaLink> allMetaLinks, HashMap<String, Item> mainItemByReference) {
+    protected Set<Link> createLinks(Set<MetaLink> allMetaLinks, HashMap<String, Item> itemByReference) {
         return allMetaLinks
             .stream()
             .map(metaLink -> {
-                val fromItem = mainItemByReference.get(metaLink.getFromReference());
-                val toItem = mainItemByReference.get(metaLink.getToReference());
+                val fromItem = itemByReference.get(metaLink.getFromReference());
+                val toItem = itemByReference.get(metaLink.getToReference());
                 return Link
                     .builder()
                     .from(fromItem)
@@ -51,11 +51,11 @@ public abstract class AbstractViewpointFactory {
     }
 
     protected Set<Item> createItems(
-        Set<String> mainItemReferences,
-        ElementIndex mainIndex,
-        HashMap<String, Item> mainItemByReference
+        Set<String> itemReferences,
+        ElementIndex elementIndex,
+        HashMap<String, Item> itemByReference
     ) {
-        return mainItemReferences
+        return itemReferences
             .stream()
             .flatMap(reference -> {
                 val references = new HashSet<String>();
@@ -68,8 +68,8 @@ public abstract class AbstractViewpointFactory {
             .distinct()
             .sorted()
             .map(elementReference -> {
-                val element = mainIndex.getElementByReference(elementReference);
-                val item = mainItemByReference.computeIfAbsent(
+                val element = elementIndex.getElementByReference(elementReference);
+                val item = itemByReference.computeIfAbsent(
                     elementReference,
                     s ->
                         Item
@@ -82,7 +82,7 @@ public abstract class AbstractViewpointFactory {
                 );
                 io.morin.archicode.resource.workspace.Workspace.Utilities
                     .findParentReference(elementReference)
-                    .ifPresent(parentReference -> mainItemByReference.get(parentReference).getChildren().add(item));
+                    .ifPresent(parentReference -> itemByReference.get(parentReference).getChildren().add(item));
                 return item;
             })
             .filter(item -> !item.getReference().contains("."))
