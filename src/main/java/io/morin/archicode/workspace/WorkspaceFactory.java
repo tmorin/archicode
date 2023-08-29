@@ -53,7 +53,7 @@ public class WorkspaceFactory {
             .builder()
             .resources(resources)
             .appIndex(appIndex)
-            .depIndex(depIndex)
+            .techIndex(depIndex)
             .viewIndex(viewIndex)
             .build();
     }

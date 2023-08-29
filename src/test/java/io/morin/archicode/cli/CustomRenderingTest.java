@@ -28,12 +28,7 @@ class CustomRenderingTest {
         //generateViewsCommand.viewPropertiesAsContent = "{ \"show-application-links\": false }";
         //generateViewsCommand.viewPropertiesFormat = MapperFormat.JSON;
         //generateViewsCommand.viewPropertiesAsPath = "view-properties.yaml";
-        generateViewsCommand.viewIds =
-            Set.of(
-                //"reference.cloudprovider.cluster.auth.backend_deep",
-                //"reference.cloudprovider.cluster.auth.backend_detailed",
-                //"reference.cloudprovider.cluster.auth.backend_overview"
-            );
+        generateViewsCommand.viewIds = Set.of("ref_telco_esc_postgresql-deep");
         if (archiCode.workspaceFilePath.toFile().exists()) {
             Assertions.assertDoesNotThrow(generateViewsCommand::run);
         }

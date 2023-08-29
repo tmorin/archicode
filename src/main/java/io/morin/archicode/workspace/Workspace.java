@@ -16,7 +16,7 @@ public class Workspace {
     public ElementIndex appIndex = ElementIndex.builder().build();
 
     @Builder.Default
-    public ElementIndex depIndex = ElementIndex.builder().build();
+    public ElementIndex techIndex = ElementIndex.builder().build();
 
     @Builder.Default
     public ViewIndex viewIndex = ViewIndex.builder().build();
@@ -28,6 +28,6 @@ public class Workspace {
         if (view.getLayer().equals(View.Layer.APPLICATION)) {
             return appIndex;
         }
-        return depIndex;
+        return techIndex;
     }
 }
