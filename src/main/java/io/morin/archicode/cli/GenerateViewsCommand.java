@@ -104,11 +104,28 @@ public class GenerateViewsCommand implements Runnable {
     public void run() {
         Logger.getGlobal().setLevel(Level.INFO);
 
-        val workspace = workspaceFactory.create(viewsGroup.archiCode.workspaceFilePath.toAbsolutePath());
+        val workspace = workspaceFactory.create(viewsGroup.archiCode.workspaceFilePath.toAbsolutePath(), viewsDirPath);
+
+        if (workspace.getSettings().getFacets().isGlobalEnabled()) {
+            renderWorkspace(workspace);
+        }
+
+        workspace
+            .getSettings()
+            .getFacets()
+            .getCustoms()
+            .forEach(facet -> {
+                Workspace facetWorkspace = workspaceFactory.create(workspace, facet);
+                renderWorkspace(facetWorkspace);
+            });
+    }
+
+    public void renderWorkspace(Workspace workspace) {
+        log.info("render workspace in {}", workspace.getSettings().getViews().getPath());
 
         val outputDirPath = Path.of(
             viewsGroup.archiCode.workspaceFilePath.toAbsolutePath().toFile().getParent(),
-            Optional.ofNullable(viewsDirPath).orElse(Path.of(workspace.getSettings().getViews().getPath())).toString()
+            workspace.getSettings().getViews().getPath()
         );
 
         for (String viewId : viewIds) {

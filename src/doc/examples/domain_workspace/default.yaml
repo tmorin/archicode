@@ -8,6 +8,8 @@ settings:
     default-synthetic-label: "uses"
   views:
     path: "views"
+  facets:
+    globalEnabled: true
 styles:
   atomic:
     shadowing: false

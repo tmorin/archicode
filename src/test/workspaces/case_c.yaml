@@ -1,0 +1,34 @@
+application:
+  elements:
+    - kind: "solution"
+      id: "sol"
+      elements:
+        - kind: "system"
+          id: "sys_a"
+        - kind: "system"
+          id: "sys_b"
+          relationships:
+            - destination: "sol.sys_a"
+              qualifiers:
+              - "oidc"
+        - kind: "system"
+          id: "sys_c"
+          relationships:
+            - destination: "sol.sys_a"
+              qualifiers:
+                - "tagged"
+              tags:
+                oidc: "true"
+        - kind: "system"
+          id: "sys_d"
+          relationships:
+            - destination: "sol.sys_a"
+              qualifiers:
+                - "blank"
+settings:
+  facets:
+    global-enabled: false
+    customs:
+      - name: oidc
+        jsonPathExpressions:
+          - "$.elements[?(@.kind == 'node')]"
