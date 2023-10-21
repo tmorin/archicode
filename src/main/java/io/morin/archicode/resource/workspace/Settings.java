@@ -3,18 +3,15 @@ package io.morin.archicode.resource.workspace;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
 @Value
-@Builder(toBuilder = true)
 @Jacksonized
+@Builder(toBuilder = true)
 public class Settings {
 
     @Builder.Default
@@ -30,8 +27,8 @@ public class Settings {
     Facets facets = Facets.builder().build();
 
     @Value
-    @Builder(toBuilder = true)
     @Jacksonized
+    @Builder(toBuilder = true)
     public static class Manifests {
 
         @Builder.Default
@@ -39,8 +36,8 @@ public class Settings {
     }
 
     @Value
-    @Builder(toBuilder = true)
     @Jacksonized
+    @Builder(toBuilder = true)
     public static class Relationships {
 
         @Builder.Default
@@ -49,8 +46,8 @@ public class Settings {
     }
 
     @Value
-    @Builder(toBuilder = true)
     @Jacksonized
+    @Builder(toBuilder = true)
     public static class Views {
 
         /**
@@ -73,8 +70,8 @@ public class Settings {
     }
 
     @Value
-    @Builder(toBuilder = true)
     @Jacksonized
+    @Builder(toBuilder = true)
     public static class Facets {
 
         /**
@@ -85,14 +82,24 @@ public class Settings {
         boolean globalEnabled = true;
 
         /**
+         * The template of the directory name.
+         * <p>
+         * The format follows {@link String#format(String, Object...)}.
+         */
+        @NonNull
+        @Builder.Default
+        @JsonAlias("directory-name-template")
+        String directoryNameTemplate = "%s-%s";
+
+        /**
          * The custom facets.
          */
         @Builder.Default
         Set<Facet> customs = new HashSet<>();
 
         @Value
-        @Builder(toBuilder = true)
         @Jacksonized
+        @Builder(toBuilder = true)
         public static class Facet {
 
             /**
@@ -102,10 +109,27 @@ public class Settings {
             String name;
 
             /**
-             * A set of JSON path expressions to evaluate candidate.
+             * A set of expression.
              */
             @Builder.Default
-            Set<String> jsonPathExpressions = new HashSet<>();
+            Set<Action> actions = new LinkedHashSet<>();
+
+            @Value
+            @Jacksonized
+            @Builder(toBuilder = true)
+            public static class Action {
+
+                @NonNull
+                Operator operator;
+
+                @NonNull
+                @JsonAlias("json-path")
+                String jsonPath;
+
+                public enum Operator {
+                    REMOVE
+                }
+            }
         }
     }
 }

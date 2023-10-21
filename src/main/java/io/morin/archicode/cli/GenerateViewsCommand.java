@@ -114,10 +114,7 @@ public class GenerateViewsCommand implements Runnable {
             .getSettings()
             .getFacets()
             .getCustoms()
-            .forEach(facet -> {
-                Workspace facetWorkspace = workspaceFactory.create(workspace, facet);
-                renderWorkspace(facetWorkspace);
-            });
+            .forEach(facet -> renderWorkspace(workspaceFactory.create(workspace, facet)));
     }
 
     public void renderWorkspace(Workspace workspace) {

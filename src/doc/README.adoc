@@ -57,6 +57,9 @@ Customize and extend ArchiCode's functionality by plugging in renderer engines t
 .Diverse Viewpoint Providers
 ArchiCode's extensibility goes further by integrating viewpoint providers to enhance your architectural perspectives with specialized viewpoints.
 
+.Unraveling Clarity Through Facets
+The facet feature in Archicode elegantly simplifies complex architectural views, offering tailored visualizations focused on specific model elements and relationships for enhanced clarity and comprehension.
+
 This next parts will comprehensively guide you through ArchiCode's features, commands, and best practices, enabling you to harness the full potential of this tool in your architectural endeavors. Let's delve into the details and unlock the benefits ArchiCode has to offer.
 
 == Domain
@@ -948,6 +951,191 @@ To effectively communicate the architecture to diverse audiences, customization 
 The final stages of the iterative process may encompass the design of the technology layer, where decisions about technologies, platforms, and frameworks are integrated into the architecture. This step bridges the gap between the high-level conceptual design and the practical implementation of the system.
 
 In essence, ArchiCode empowers architects to iteratively design, refine, and communicate complex architectures. By customizing the iterative process and adapting it to the evolving project requirements, architects can create architecture models that effectively guide development decisions, facilitate communication, and lead to the successful realization of sophisticated systems. The collaborative and adaptable nature of ArchiCode empowers architects to navigate the complexities of modern software and system design with confidence.
+
+==== Tackling view clutter
+
+===== Introduction
+
+// - When the Archicode workspace deeply expresses a model, the views generated become disordered and difficult to understand.
+// - This is particularly the case when systematic interactions such as authorization or observability are designed in.
+// - As a result, views need to be refined to focus on specific concerns.
+// - The facet concept provided by Archicode is a solution for refining views seamlessly.
+// - The facet concept automates the generation of secondary workspaces.
+// - Generation is based on transformation rules that remove elements and relationships based on JSON Path queries.
+// - In this way, it is possible to generate secondary workspaces relevant to a specific subset of elements and relationships, enabling views focused on specific concerns.
+// - For example, this makes it easy to generate views dedicated to authorization or observability, leaving the main views to concentrate on the essentials.
+
+Navigating through complex architectural models often presents a challenge for professionals as intricate details and systematic interactions like authorization or observability make the generated views disordered and complex. As these views become overwhelming, there is an evident need for refined, focused, and organized presentation to enhance clarity and understanding. This is where Archicode steps in, offering an innovative solution to transform this complexity into a streamlined and comprehensible format.
+
+Archicode introduces the facet concept, a feature engineered to automate the generation of secondary workspaces and refine views to focus on specific concerns. By employing transformation rules based on JSON Path queries, facets effectively remove certain elements and relationships, offering a cleaner, focused view of specific subsets. This feature serves as a bridge from the chaos of detailed expressions to an organized, easily understandable visualization, paving the way for enhanced insights into complex architectural models.
+
+===== Step #1: Create the main workspace
+
+// - The first step initializes the workspace.
+// - The model of the previous example is reused.
+// - The task is to create the main workspace based on the model of the ecommerce platform example.
+
+In this initial phase, establishing a well-defined workspace is paramount. We're essentially laying down the groundwork where all subsequent actions and implementations will take place. We revert to a previous model - an ecommerce platform - to set this stage, ensuring we have a tangible, relatable context for the steps that will follow.
+
+In this code snippet, we illustrate the initial configuration and elements included in the workspace.yaml file. This is the foundation upon which the ecommerce platform model is built.
+
+.Step #1 - The initial `workspace.yaml`
+[source,yaml]
+----
+include::examples/facet_example_step_1/workspace.yaml[]
+----
+
+Here, we execute a command to generate the views for all viewpoints. It renders the initial complex view of the ecommerce platform, laying down the groundwork for further refinement.
+
+.Step #1 - Generate the views of all viewpoints
+[source,shell]
+----
+archicode views generate --view=EcommercePlatform-deep
+----
+
+This PlantUML diagram represents the deep view of the ecommerce platform in its initial state. At this stage, all elements and relationships are visible, offering a comprehensive, albeit complex, view of the entire system.
+
+.Step #1 - The deep view of the ecommerce platform
+[plantuml, EcommercePlatform_deep_initial]
+----
+include::examples/facet_example_step_1/views/plantuml/application/EcommercePlatform-deep.puml[]
+----
+
+At the conclusion of this step, we have a fully initialized workspace, adorned with the intricate details of the ecommerce platform model. While comprehensive, this view is also complex and can be overwhelming, setting the stage for the introduction of facets to refine and organize these views in the steps to follow.
+
+===== Step #2: Design the authorization concern
+
+// - The second step is the design of the authorization concern.
+// - The authorization concern is related to the validation of the Access Tokens.
+// - Each component of the ecommerce platform must validate the Access Tokens using the IAM component services.
+// - The task is to design the authorization relationships between the components of the ecommerce platform and the IAM component.
+// - The relationships are qualified with the term _oidc_.
+
+As we step into the second phase of our journey, the focal point shifts towards integrating the authorization concern into our established model. The essence of this step lies in validating Access Tokens, an integral aspect ensuring that every component of the ecommerce platform interacts securely and effectively with the IAM component services.
+
+In the context of the ecommerce platform, every component's interaction is bound by the validation of Access Tokens. We’re designing relationships between the components of the ecommerce platform and the IAM component, all qualified with the term _oidc_.
+
+We expand the ___workspace.yaml___ file to integrate the __oidic__ relationships. It captures the intricate connections between the ecommerce platform components and the IAM component, emphasizing the validation of Access Tokens.
+
+.Step #2 - The `workspace.yaml` with the _oidc_ relationships
+[source,yaml]
+----
+include::examples/facet_example_step_2/workspace.yaml[]
+----
+
+A command is executed to refresh the views, reflecting the newly integrated authorization relationships. This allows for a visualization of how the authorization concern is woven into the ecommerce platform model.
+
+.Step #2 - Generate the views of all viewpoints
+[source,shell]
+----
+archicode views generate --view=EcommercePlatform-deep
+----
+
+With the inclusion of authorization relationships, the PlantUML diagram unveils a more detailed view of the ecommerce platform. The _oidc_ relationships are distinctly highlighted, offering insights into the integration of the authorization concern.
+
+.Step #2 - The deep view of the ecommerce platform
+[plantuml, EcommercePlatform_deep_authorization]
+----
+include::examples/facet_example_step_2/views/plantuml/application/EcommercePlatform-deep.puml[]
+----
+
+By the end of Step #2, the authorization concern is intricately integrated into the ecommerce platform model. The _oidc_ relationships are now visible, marking the onset of a more detailed, yet complex, visualization. This complexity underscores the need for a mechanism to refine and focus the views for enhanced clarity, leading us to the subsequent steps where the facet feature of Archicode comes into play.
+
+===== Step #3: Define the authorization facet
+
+// - The third step is the facet definition for the authorization concern.
+// - The task is the definition of the _oidc_ facet in the workspace configuration.
+// - The name of the facet is _oidc_ so that the generated view folder will have the suffix __-oidc__.
+// - The facet remove all relationships that are not qualified with the term _oidc_.
+
+Step 3 marks a pivotal moment where we delve into the facet definition for authorization, a progression that's essential in honing the focus on specific architectural elements and relationships. The objective is to streamline the view, ensuring that authorization concerns are distinctly highlighted and easily interpretable.
+
+The facet definition is embodied in the creation of the _oidc_ facet within the workspace configuration. This facet, named _oidc_, filters out elements and relationships that aren't tagged with the term _oidc_. The result is a refined view where authorization concerns are not just visible but are the focal point, enabling a deeper, uncluttered insight into these specific interactions.
+
+The _workspace.yaml_ file is enhanced with the definition of the _oidc_ facet. This inclusion is a significant stride towards achieving a tailored view that zeroes in on the authorization aspects of the architecture.
+
+.Step #3 - The `workspace.yaml` with the facet definition
+[source,yaml]
+----
+include::examples/facet_example_step_3/workspace.yaml[]
+----
+
+With the _oidc_ facet defined, we re-run the command to generate the views. The outcome is a set of refined visuals where the focus is intensively on the _odic_ qualified relationships and elements.
+
+.Step #3 - Generate the views of all viewpoints
+[source,shell]
+----
+archicode views generate --view=EcommercePlatform-deep
+----
+
+The transformation is visualized in this updated PlantUML diagram. It presents a view where the clutter is minimized, and the spotlight is on the _odic_ relationships, offering a clear perspective of the authorization dynamics within the ecommerce platform.
+
+.Step #3 - The _oidc_ deep view of the ecommerce platform
+[plantuml, EcommercePlatform_deep_facet]
+----
+include::examples/facet_example_step_3/views-oidc/plantuml/application/EcommercePlatform-deep.puml[]
+----
+
+Concluding Step 3, we have successfully integrated the _oidc_ facet, a move that transitions us from a broad, complex view to a refined, focused visualization of the authorization concern. It underscores the facet feature’s utility in Archicode, offering a tool that adeptly navigates the intricate terrains of complex architectural visualizations, ensuring clarity, focus, and comprehensibility.
+
+===== Step #4: Define the main facet
+
+// - The forth step disable the default facet and define a new one for the main concern.
+// - The task is the definition of the __main__ facet in the workspace configuration.
+// - The name of the facet is __main__ so that the generated view folder will have the suffix __-main__.
+// - The facet remove all relationships that are qualified with the term _oidc_.
+
+In this step, we transition from the specific authorization focus, reintegrating into the broader view of the ecommerce platform. However, the approach is refined; we're disabling the default facet and defining a new one named _main_ to effectively manage the detailed views.
+
+This newly defined _main_ facet is crucial; it's a tool that filters out all relationships tagged with the term _oidc_. The outcome is a holistic yet focused view of the ecommerce platform, excluding the specific authorization elements, for a balanced and comprehensive perspective.
+
+The _workspace.yaml_ is updated to include the definition of the _main_ facet. This acts as a filter, excluding the _oidc_ qualified relationships, thus providing a clearer view of the primary architecture without the specific authorization elements.
+
+.Step #4 - The `workspace.yaml` with the facet definition
+[source,yaml]
+----
+include::examples/facet_example_step_4/workspace.yaml[]
+----
+
+A regeneration of the views is executed to reflect the integration of the _main_ facet. This provides a fresh perspective where the specific authorization elements are filtered out, offering a cleaner, uncluttered view of the ecommerce platform’s primary architecture.
+
+.Step #4 - Generate the views of all viewpoints
+[source,shell]
+----
+archicode views generate --view=EcommercePlatform-deep
+----
+
+This updated PlantUML diagram illustrates the ecommerce platform’s architecture with the _main_ facet applied. It’s a visual representation that offers insights into the primary elements and relationships, free from the specific OIDC authorization elements.
+
+.Step #4 - The __main__ deep view of the ecommerce platform
+[plantuml, EcommercePlatform_deep_main]
+----
+include::examples/facet_example_step_4/views-main/plantuml/application/EcommercePlatform-deep.puml[]
+----
+
+By the closure of Step 4, we have not only successfully defined but also effectively applied the _main_ facet. It reveals a balanced view, where the specific authorization elements are excluded, ensuring that the primary architectural elements and relationships of the ecommerce platform are the focal point. It’s a testament to the adaptability and precision that the facet feature introduces to Archicode, affirming its role in enhancing the visualization and management of complex architectural designs.
+
+===== Conclusion
+
+// - The documentation has elucidated the process of utilizing facets in Archicode to streamline and organize complex workspace views.
+// - The walkthrough exemplified the application of facets in refining views, particularly focusing on specific concerns like authorization and observability, without cluttering the main workspace.
+// - By employing facets, practitioners can easily manage and visualize complex interactions in an organized manner, enhancing readability and understandability.
+
+As we wrap up this insightful exploration, the potency and strategic advantage of utilizing facets in Archicode to streamline complex workspace views stand prominently unveiled. Each step of this guide, meticulously articulated, serves as a testament to the transformational impact of facets – a feature that elevates clarity, focus, and organization in the visualization of intricate architectural models.
+
+.Reflecting on the Journey:
+From the initiation of the workspace, where the complexity and detailed nature of architectural expressions were laid bare, to the seamless integration of specific concerns like authorization, each phase underscored a resonating need – the need for a tool that grants architects and designers the liberty to dive deep without drowning in complexity. The facet feature in Archicode emerges as this indispensable tool, offering a lifeline that transforms intricate views into organized, manageable, and insightful visual narratives.
+
+.The Facet Advantage:
+Through the practical application laid out in the steps, the prowess of facets in isolating and emphasizing specific concerns has been effectively illustrated. In the world of architectural design and modeling, where complexity is a constant companion, facets offer a bridge to clarity. They serve as a lens, focusing on distinct elements and relationships, making the comprehension of complex interactions not just possible but also intuitive.
+
+.Looking Ahead:
+The incorporation of facets in Archicode is not a mere enhancement; it is a pivotal evolution that underscores our commitment to empowering professionals to navigate the intricate landscapes of architectural design with confidence and precision. As we peer into the future, the continuous refinement and enhancement of this feature stand as a priority, promising users an ever-evolving tool that adapts and resonates with the dynamic nature of architectural design.
+
+.Your Journey Awaits:
+We are on the cusp of a new dawn, where the boundaries of understanding and visualizing complex architectural expressions are not just expanded but are also redefined. With facets at your disposal, every view is a canvas of clarity, every model an artwork of organized complexity. We extend an invitation to immerse into this enriched experience, to explore, understand, and innovate with a tool that transforms complexities into insightful visual narratives.
+
+In the intricate dance of elements and relationships that define architectural models, facets emerge as the choreographer, orchestrating a performance where complexity and clarity coexist in harmonious synchrony. Welcome to a world where every detail is visible, every complexity manageable, and every view a journey into profound, yet organized insights. Your canvas of unlimited potential awaits, and we are excited to witness the masterpieces of clarity and innovation that you will create.
 
 === Source Code Organization
 
