@@ -1,0 +1,70 @@
+@startuml EcommercePlatform-deep
+title Solution - EcommercePlatform - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" <<composite>> {
+rectangle EcommercePlatform.ContentManagement <<system>> <<atomic>> [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing <<system>> <<atomic>> [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog <<system>> <<atomic>> [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.UserInterface <<system>> <<atomic>> [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" <<composite>> {
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement <<container>> <<atomic>> [
+IdentityAndAccessManagement
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileDatabase <<container>> <<atomic>> [
+UserProfileDatabase
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileService <<container>> <<atomic>> [
+UserProfileService
+[container]
+]
+}
+}
+rectangle PaymentGateway <<system>> <<atomic>> [
+PaymentGateway
+[system]
+]
+rectangle SocialIdentityProvider <<system>> <<atomic>> [
+SocialIdentityProvider
+[system]
+]
+person User <<atomic>> <<person>> [
+User
+[person]
+]
+EcommercePlatform.OrderProcessing --> EcommercePlatform.ProductCatalog
+EcommercePlatform.OrderProcessing --> PaymentGateway
+EcommercePlatform.UserInterface --> EcommercePlatform.ContentManagement
+EcommercePlatform.UserInterface --> EcommercePlatform.OrderProcessing
+EcommercePlatform.UserInterface --> EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --> EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --> EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --> SocialIdentityProvider
+EcommercePlatform.UserManagement.UserProfileService --> EcommercePlatform.UserManagement.UserProfileDatabase
+User --> EcommercePlatform.UserInterface
+@enduml

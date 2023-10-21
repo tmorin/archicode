@@ -1,5 +1,9 @@
 package io.morin.archicode.workspace;
 
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Option;
+import com.jayway.jsonpath.PathNotFoundException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.manifest.ManifestParser;
@@ -106,10 +110,12 @@ public class WorkspaceFactory {
         io.morin.archicode.workspace.Workspace workspace,
         Facet facet
     ) {
+        log.info("process {}", facet);
+
         val jsonMapper = mapperFactory.create(MapperFormat.JSON);
-        val workspaceAsJson = jsonMapper.writeValueAsString(workspace);
+        val refWorkspaceAsJson = jsonMapper.writeValueAsString(workspace);
         val facetRawWorkspace = jsonMapper
-            .readValue(workspaceAsJson, Workspace.class)
+            .readValue(refWorkspaceAsJson, Workspace.class)
             .toBuilder()
             .settings(
                 workspace
@@ -120,13 +126,38 @@ public class WorkspaceFactory {
                             .getSettings()
                             .getViews()
                             .toBuilder()
-                            .path(String.format("%s-%s", workspace.getSettings().getViews().getPath(), facet.getName()))
+                            .path(
+                                String.format(
+                                    workspace.getSettings().getFacets().getDirectoryNameTemplate(),
+                                    workspace.getSettings().getViews().getPath(),
+                                    facet.getName()
+                                )
+                            )
                             .build()
                     )
                     .build()
             )
             .build();
+        val facetRawWorkspaceAsJson = jsonMapper.writeValueAsString(facetRawWorkspace);
 
-        return create(facetRawWorkspace, Map.of());
+        val facetWorkspaceAsJsonPathContext = JsonPath.parse(
+            facetRawWorkspaceAsJson,
+            Configuration.builder().options(Option.DEFAULT_PATH_LEAF_TO_NULL).build()
+        );
+
+        for (val action : facet.getActions()) {
+            log.info("process {}", action);
+            if (action.getOperator() == Facet.Action.Operator.REMOVE) {
+                try {
+                    facetWorkspaceAsJsonPathContext.delete(action.getJsonPath());
+                } catch (PathNotFoundException pathNotFoundException) {
+                    log.trace("no elements to remove ;)", pathNotFoundException);
+                }
+            }
+        }
+
+        val facetWorkspace = jsonMapper.readValue(facetWorkspaceAsJsonPathContext.jsonString(), Workspace.class);
+
+        return create(facetWorkspace, Map.of());
     }
 }

@@ -10,7 +10,7 @@ application:
           relationships:
             - destination: "sol.sys_a"
               qualifiers:
-              - "oidc"
+                - "oidc"
         - kind: "system"
           id: "sys_c"
           relationships:
@@ -18,17 +18,30 @@ application:
               qualifiers:
                 - "tagged"
               tags:
-                oidc: "true"
+                observability: true
         - kind: "system"
           id: "sys_d"
           relationships:
             - destination: "sol.sys_a"
-              qualifiers:
-                - "blank"
+              tags:
+                observability: false
 settings:
   facets:
     global-enabled: false
     customs:
+      - name: main
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers anyof ['oidc'])]"
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.tags.observability == 'true')]"
       - name: oidc
-        jsonPathExpressions:
-          - "$.elements[?(@.kind == 'node')]"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers noneof ['oidc'])]"
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers == null)]"
+      - name: observability
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.tags.observability != 'true')]"
