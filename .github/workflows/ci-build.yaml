@@ -33,7 +33,7 @@ jobs:
             --batch-mode \
             --update-snapshots \
             -Dsonar.projectKey=tmorin_archicode \
-            -Dsonar.jacoco.reportPath=target/jacoco.exec
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco.exec
       - name: "Publish snapshot artifacts"
         if: ${{ github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore(release)') }}
         run: |
