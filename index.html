@@ -581,6 +581,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <ul class="sectlevel3">
 <li><a href="#_incremental_and_in_depth_design_approach">Incremental and In-Depth Design Approach</a></li>
 <li><a href="#_example_an_ecommerce_platform">Example: An ecommerce platform</a></li>
+<li><a href="#_tackling_view_clutter">Tackling view clutter</a></li>
 </ul>
 </li>
 <li><a href="#_source_code_organization">Source Code Organization</a></li>
@@ -693,6 +694,10 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <p>ArchiCode&#8217;s extensibility goes further by integrating viewpoint providers to enhance your architectural perspectives with specialized viewpoints.</p>
 </div>
 <div class="paragraph">
+<div class="title">Unraveling Clarity Through Facets</div>
+<p>The facet feature in Archicode elegantly simplifies complex architectural views, offering tailored visualizations focused on specific model elements and relationships for enhanced clarity and comprehension.</p>
+</div>
+<div class="paragraph">
 <p>This next parts will comprehensively guide you through ArchiCode&#8217;s features, commands, and best practices, enabling you to harness the full potential of this tool in your architectural endeavors. Let&#8217;s delve into the details and unlock the benefits ArchiCode has to offer.</p>
 </div>
 </div>
@@ -791,6 +796,9 @@ table.CodeRay td.code{padding:0 0 0 .75em}
     <span class="key">default-synthetic-label</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">uses</span><span class="delimiter">&quot;</span></span>
   <span class="key">views</span>:
     <span class="key">path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">views</span><span class="delimiter">&quot;</span></span>
+  <span class="key">facets</span>:
+    <span class="key">globalEnabled</span>: <span class="string"><span class="content">true</span></span>
+    <span class="key">directoryNameTemplate</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">%s-%s</span><span class="delimiter">&quot;</span></span>
 <span class="key">styles</span>:
   <span class="key">atomic</span>:
     <span class="key">shadowing</span>: <span class="string"><span class="content">false</span></span>
@@ -1217,7 +1225,10 @@ table.CodeRay td.code{padding:0 0 0 .75em}
   <span class="key">relationships</span>:
     <span class="key">default-synthetic-label</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">uses</span><span class="delimiter">&quot;</span></span>
   <span class="key">views</span>:
-    <span class="key">path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">views</span><span class="delimiter">&quot;</span></span></code></pre>
+    <span class="key">path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">views</span><span class="delimiter">&quot;</span></span>
+  <span class="key">facets</span>:
+    <span class="key">globalEnabled</span>: <span class="string"><span class="content">true</span></span>
+    <span class="key">directoryNameTemplate</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">%s-%s</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="listingblock">
@@ -2171,6 +2182,417 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_tackling_view_clutter">Tackling view clutter</h4>
+<div class="sect4">
+<h5 id="_introduction_3">Introduction</h5>
+<div class="paragraph">
+<p>Navigating through complex architectural models often presents a challenge for professionals as intricate details and systematic interactions like authorization or observability make the generated views disordered and complex. As these views become overwhelming, there is an evident need for refined, focused, and organized presentation to enhance clarity and understanding. This is where Archicode steps in, offering an innovative solution to transform this complexity into a streamlined and comprehensible format.</p>
+</div>
+<div class="paragraph">
+<p>Archicode introduces the facet concept, a feature engineered to automate the generation of secondary workspaces and refine views to focus on specific concerns. By employing transformation rules based on JSON Path queries, facets effectively remove certain elements and relationships, offering a cleaner, focused view of specific subsets. This feature serves as a bridge from the chaos of detailed expressions to an organized, easily understandable visualization, paving the way for enhanced insights into complex architectural models.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_step_1_create_the_main_workspace">Step #1: Create the main workspace</h5>
+<div class="paragraph">
+<p>In this initial phase, establishing a well-defined workspace is paramount. We&#8217;re essentially laying down the groundwork where all subsequent actions and implementations will take place. We revert to a previous model - an ecommerce platform - to set this stage, ensuring we have a tangible, relatable context for the steps that will follow.</p>
+</div>
+<div class="paragraph">
+<p>In this code snippet, we illustrate the initial configuration and elements included in the workspace.yaml file. This is the foundation upon which the ecommerce platform model is built.</p>
+</div>
+<div class="listingblock">
+<div class="title">Step #1 - The initial <code>workspace.yaml</code></div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">application</span>:
+  <span class="key">elements</span>:
+    - <span class="string"><span class="content">kind: &quot;person&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">User</span><span class="delimiter">&quot;</span></span>
+      <span class="key">relationships</span>:
+        - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserInterface&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;solution&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">EcommercePlatform</span><span class="delimiter">&quot;</span></span>
+      <span class="key">elements</span>:
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserInterface</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileService&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.OrderProcessing&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ContentManagement&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ProductCatalog</span><span class="delimiter">&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserManagement</span><span class="delimiter">&quot;</span></span>
+          <span class="key">elements</span>:
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">IdentityAndAccessManagement</span><span class="delimiter">&quot;</span></span>
+              <span class="key">relationships</span>:
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileService&quot;</span></span>
+                - <span class="string"><span class="content">destination: &quot;SocialIdentityProvider&quot;</span></span>
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileService</span><span class="delimiter">&quot;</span></span>
+              <span class="key">relationships</span>:
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileDatabase&quot;</span></span>
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileDatabase</span><span class="delimiter">&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">OrderProcessing</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;PaymentGateway&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ContentManagement</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SocialIdentityProvider</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">PaymentGateway</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Here, we execute a command to generate the views for all viewpoints. It renders the initial complex view of the ecommerce platform, laying down the groundwork for further refinement.</p>
+</div>
+<div class="listingblock">
+<div class="title">Step #1 - Generate the views of all viewpoints</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode views generate --view=EcommercePlatform-deep</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This PlantUML diagram represents the deep view of the ecommerce platform in its initial state. At this stage, all elements and relationships are visible, offering a comprehensive, albeit complex, view of the entire system.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="EcommercePlatform_deep_initial.png" alt="EcommercePlatform deep initial" width="895" height="573">
+</div>
+<div class="title">Figure 12. Step #1 - The deep view of the ecommerce platform</div>
+</div>
+<div class="paragraph">
+<p>At the conclusion of this step, we have a fully initialized workspace, adorned with the intricate details of the ecommerce platform model. While comprehensive, this view is also complex and can be overwhelming, setting the stage for the introduction of facets to refine and organize these views in the steps to follow.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_step_2_design_the_authorization_concern">Step #2: Design the authorization concern</h5>
+<div class="paragraph">
+<p>As we step into the second phase of our journey, the focal point shifts towards integrating the authorization concern into our established model. The essence of this step lies in validating Access Tokens, an integral aspect ensuring that every component of the ecommerce platform interacts securely and effectively with the IAM component services.</p>
+</div>
+<div class="paragraph">
+<p>In the context of the ecommerce platform, every component&#8217;s interaction is bound by the validation of Access Tokens. We’re designing relationships between the components of the ecommerce platform and the IAM component, all qualified with the term <em>oidc</em>.</p>
+</div>
+<div class="paragraph">
+<p>We expand the <em><em>workspace.yaml</em></em> file to integrate the <em>oidic</em> relationships. It captures the intricate connections between the ecommerce platform components and the IAM component, emphasizing the validation of Access Tokens.</p>
+</div>
+<div class="listingblock">
+<div class="title">Step #2 - The <code>workspace.yaml</code> with the <em>oidc</em> relationships</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">application</span>:
+  <span class="key">elements</span>:
+    - <span class="string"><span class="content">kind: &quot;person&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">User</span><span class="delimiter">&quot;</span></span>
+      <span class="key">relationships</span>:
+        - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserInterface&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;solution&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">EcommercePlatform</span><span class="delimiter">&quot;</span></span>
+      <span class="key">elements</span>:
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserInterface</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileService&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.OrderProcessing&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ContentManagement&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ProductCatalog</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserManagement</span><span class="delimiter">&quot;</span></span>
+          <span class="key">elements</span>:
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">IdentityAndAccessManagement</span><span class="delimiter">&quot;</span></span>
+              <span class="key">relationships</span>:
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileService&quot;</span></span>
+                - <span class="string"><span class="content">destination: &quot;SocialIdentityProvider&quot;</span></span>
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileService</span><span class="delimiter">&quot;</span></span>
+              <span class="key">relationships</span>:
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileDatabase&quot;</span></span>
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+                  <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileDatabase</span><span class="delimiter">&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">OrderProcessing</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;PaymentGateway&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ContentManagement</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+    - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SocialIdentityProvider</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">PaymentGateway</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A command is executed to refresh the views, reflecting the newly integrated authorization relationships. This allows for a visualization of how the authorization concern is woven into the ecommerce platform model.</p>
+</div>
+<div class="listingblock">
+<div class="title">Step #2 - Generate the views of all viewpoints</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode views generate --view=EcommercePlatform-deep</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With the inclusion of authorization relationships, the PlantUML diagram unveils a more detailed view of the ecommerce platform. The <em>oidc</em> relationships are distinctly highlighted, offering insights into the integration of the authorization concern.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="EcommercePlatform_deep_authorization.png" alt="EcommercePlatform deep authorization" width="699" height="958">
+</div>
+<div class="title">Figure 13. Step #2 - The deep view of the ecommerce platform</div>
+</div>
+<div class="paragraph">
+<p>By the end of Step #2, the authorization concern is intricately integrated into the ecommerce platform model. The <em>oidc</em> relationships are now visible, marking the onset of a more detailed, yet complex, visualization. This complexity underscores the need for a mechanism to refine and focus the views for enhanced clarity, leading us to the subsequent steps where the facet feature of Archicode comes into play.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_step_3_define_the_authorization_facet">Step #3: Define the authorization facet</h5>
+<div class="paragraph">
+<p>Step 3 marks a pivotal moment where we delve into the facet definition for authorization, a progression that&#8217;s essential in honing the focus on specific architectural elements and relationships. The objective is to streamline the view, ensuring that authorization concerns are distinctly highlighted and easily interpretable.</p>
+</div>
+<div class="paragraph">
+<p>The facet definition is embodied in the creation of the <em>oidc</em> facet within the workspace configuration. This facet, named <em>oidc</em>, filters out elements and relationships that aren&#8217;t tagged with the term <em>oidc</em>. The result is a refined view where authorization concerns are not just visible but are the focal point, enabling a deeper, uncluttered insight into these specific interactions.</p>
+</div>
+<div class="paragraph">
+<p>The <em>workspace.yaml</em> file is enhanced with the definition of the <em>oidc</em> facet. This inclusion is a significant stride towards achieving a tailored view that zeroes in on the authorization aspects of the architecture.</p>
+</div>
+<div class="listingblock">
+<div class="title">Step #3 - The <code>workspace.yaml</code> with the facet definition</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">application</span>:
+  <span class="key">elements</span>:
+    - <span class="string"><span class="content">kind: &quot;person&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">User</span><span class="delimiter">&quot;</span></span>
+      <span class="key">relationships</span>:
+        - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserInterface&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;solution&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">EcommercePlatform</span><span class="delimiter">&quot;</span></span>
+      <span class="key">elements</span>:
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserInterface</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileService&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.OrderProcessing&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ContentManagement&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ProductCatalog</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserManagement</span><span class="delimiter">&quot;</span></span>
+          <span class="key">elements</span>:
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">IdentityAndAccessManagement</span><span class="delimiter">&quot;</span></span>
+              <span class="key">relationships</span>:
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileService&quot;</span></span>
+                - <span class="string"><span class="content">destination: &quot;SocialIdentityProvider&quot;</span></span>
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileService</span><span class="delimiter">&quot;</span></span>
+              <span class="key">relationships</span>:
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileDatabase&quot;</span></span>
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+                  <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileDatabase</span><span class="delimiter">&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">OrderProcessing</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;PaymentGateway&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ContentManagement</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+    - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SocialIdentityProvider</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">PaymentGateway</span><span class="delimiter">&quot;</span></span>
+<span class="key">settings</span>:
+  <span class="key">facets</span>:
+    <span class="key">customs</span>:
+      - <span class="string"><span class="content">name: &quot;oidc&quot;</span></span>
+        <span class="key">actions</span>:
+          - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
+            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers noneof ['oidc'])]</span><span class="delimiter">&quot;</span></span>
+          - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
+            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers == null)]</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With the <em>oidc</em> facet defined, we re-run the command to generate the views. The outcome is a set of refined visuals where the focus is intensively on the <em>odic</em> qualified relationships and elements.</p>
+</div>
+<div class="listingblock">
+<div class="title">Step #3 - Generate the views of all viewpoints</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode views generate --view=EcommercePlatform-deep</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The transformation is visualized in this updated PlantUML diagram. It presents a view where the clutter is minimized, and the spotlight is on the <em>odic</em> relationships, offering a clear perspective of the authorization dynamics within the ecommerce platform.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="EcommercePlatform_deep_facet.png" alt="EcommercePlatform deep facet" width="810" height="382">
+</div>
+<div class="title">Figure 14. Step #3 - The <em>oidc</em> deep view of the ecommerce platform</div>
+</div>
+<div class="paragraph">
+<p>Concluding Step 3, we have successfully integrated the <em>oidc</em> facet, a move that transitions us from a broad, complex view to a refined, focused visualization of the authorization concern. It underscores the facet feature’s utility in Archicode, offering a tool that adeptly navigates the intricate terrains of complex architectural visualizations, ensuring clarity, focus, and comprehensibility.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_step_4_define_the_main_facet">Step #4: Define the main facet</h5>
+<div class="paragraph">
+<p>In this step, we transition from the specific authorization focus, reintegrating into the broader view of the ecommerce platform. However, the approach is refined; we&#8217;re disabling the default facet and defining a new one named <em>main</em> to effectively manage the detailed views.</p>
+</div>
+<div class="paragraph">
+<p>This newly defined <em>main</em> facet is crucial; it&#8217;s a tool that filters out all relationships tagged with the term <em>oidc</em>. The outcome is a holistic yet focused view of the ecommerce platform, excluding the specific authorization elements, for a balanced and comprehensive perspective.</p>
+</div>
+<div class="paragraph">
+<p>The <em>workspace.yaml</em> is updated to include the definition of the <em>main</em> facet. This acts as a filter, excluding the <em>oidc</em> qualified relationships, thus providing a clearer view of the primary architecture without the specific authorization elements.</p>
+</div>
+<div class="listingblock">
+<div class="title">Step #4 - The <code>workspace.yaml</code> with the facet definition</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">application</span>:
+  <span class="key">elements</span>:
+    - <span class="string"><span class="content">kind: &quot;person&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">User</span><span class="delimiter">&quot;</span></span>
+      <span class="key">relationships</span>:
+        - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserInterface&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;solution&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">EcommercePlatform</span><span class="delimiter">&quot;</span></span>
+      <span class="key">elements</span>:
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserInterface</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileService&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.OrderProcessing&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ContentManagement&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ProductCatalog</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserManagement</span><span class="delimiter">&quot;</span></span>
+          <span class="key">elements</span>:
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">IdentityAndAccessManagement</span><span class="delimiter">&quot;</span></span>
+              <span class="key">relationships</span>:
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileService&quot;</span></span>
+                - <span class="string"><span class="content">destination: &quot;SocialIdentityProvider&quot;</span></span>
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileService</span><span class="delimiter">&quot;</span></span>
+              <span class="key">relationships</span>:
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileDatabase&quot;</span></span>
+                - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+                  <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+            - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+              <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileDatabase</span><span class="delimiter">&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">OrderProcessing</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;PaymentGateway&quot;</span></span>
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+        - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+          <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ContentManagement</span><span class="delimiter">&quot;</span></span>
+          <span class="key">relationships</span>:
+            - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+    - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SocialIdentityProvider</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">PaymentGateway</span><span class="delimiter">&quot;</span></span>
+<span class="key">settings</span>:
+  <span class="key">facets</span>:
+    <span class="key">global-enabled</span>: <span class="string"><span class="content">false</span></span>
+    <span class="key">customs</span>:
+      - <span class="string"><span class="content">name: &quot;main&quot;</span></span>
+        <span class="key">actions</span>:
+          - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
+            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers anyof ['oidc'])]</span><span class="delimiter">&quot;</span></span>
+      - <span class="string"><span class="content">name: &quot;oidc&quot;</span></span>
+        <span class="key">actions</span>:
+          - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
+            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers noneof ['oidc'])]</span><span class="delimiter">&quot;</span></span>
+          - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
+            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers == null)]</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A regeneration of the views is executed to reflect the integration of the <em>main</em> facet. This provides a fresh perspective where the specific authorization elements are filtered out, offering a cleaner, uncluttered view of the ecommerce platform’s primary architecture.</p>
+</div>
+<div class="listingblock">
+<div class="title">Step #4 - Generate the views of all viewpoints</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode views generate --view=EcommercePlatform-deep</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This updated PlantUML diagram illustrates the ecommerce platform’s architecture with the <em>main</em> facet applied. It’s a visual representation that offers insights into the primary elements and relationships, free from the specific OIDC authorization elements.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="EcommercePlatform_deep_main.png" alt="EcommercePlatform deep main" width="895" height="573">
+</div>
+<div class="title">Figure 15. Step #4 - The <em>main</em> deep view of the ecommerce platform</div>
+</div>
+<div class="paragraph">
+<p>By the closure of Step 4, we have not only successfully defined but also effectively applied the <em>main</em> facet. It reveals a balanced view, where the specific authorization elements are excluded, ensuring that the primary architectural elements and relationships of the ecommerce platform are the focal point. It’s a testament to the adaptability and precision that the facet feature introduces to Archicode, affirming its role in enhancing the visualization and management of complex architectural designs.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_conclusion_2">Conclusion</h5>
+<div class="paragraph">
+<p>As we wrap up this insightful exploration, the potency and strategic advantage of utilizing facets in Archicode to streamline complex workspace views stand prominently unveiled. Each step of this guide, meticulously articulated, serves as a testament to the transformational impact of facets – a feature that elevates clarity, focus, and organization in the visualization of intricate architectural models.</p>
+</div>
+<div class="paragraph">
+<div class="title">Reflecting on the Journey:</div>
+<p>From the initiation of the workspace, where the complexity and detailed nature of architectural expressions were laid bare, to the seamless integration of specific concerns like authorization, each phase underscored a resonating need – the need for a tool that grants architects and designers the liberty to dive deep without drowning in complexity. The facet feature in Archicode emerges as this indispensable tool, offering a lifeline that transforms intricate views into organized, manageable, and insightful visual narratives.</p>
+</div>
+<div class="paragraph">
+<div class="title">The Facet Advantage:</div>
+<p>Through the practical application laid out in the steps, the prowess of facets in isolating and emphasizing specific concerns has been effectively illustrated. In the world of architectural design and modeling, where complexity is a constant companion, facets offer a bridge to clarity. They serve as a lens, focusing on distinct elements and relationships, making the comprehension of complex interactions not just possible but also intuitive.</p>
+</div>
+<div class="paragraph">
+<div class="title">Looking Ahead:</div>
+<p>The incorporation of facets in Archicode is not a mere enhancement; it is a pivotal evolution that underscores our commitment to empowering professionals to navigate the intricate landscapes of architectural design with confidence and precision. As we peer into the future, the continuous refinement and enhancement of this feature stand as a priority, promising users an ever-evolving tool that adapts and resonates with the dynamic nature of architectural design.</p>
+</div>
+<div class="paragraph">
+<div class="title">Your Journey Awaits:</div>
+<p>We are on the cusp of a new dawn, where the boundaries of understanding and visualizing complex architectural expressions are not just expanded but are also redefined. With facets at your disposal, every view is a canvas of clarity, every model an artwork of organized complexity. We extend an invitation to immerse into this enriched experience, to explore, understand, and innovate with a tool that transforms complexities into insightful visual narratives.</p>
+</div>
+<div class="paragraph">
+<p>In the intricate dance of elements and relationships that define architectural models, facets emerge as the choreographer, orchestrating a performance where complexity and clarity coexist in harmonious synchrony. Welcome to a world where every detail is visible, every complexity manageable, and every view a journey into profound, yet organized insights. Your canvas of unlimited potential awaits, and we are excited to witness the masterpieces of clarity and innovation that you will create.</p>
+</div>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_source_code_organization">Source Code Organization</h3>
@@ -2645,7 +3067,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-08-24 18:14:28 UTC
+Last updated 2023-10-22 12:20:01 UTC
 </div>
 </div>
 </body>

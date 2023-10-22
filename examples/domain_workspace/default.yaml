@@ -8,6 +8,9 @@ settings:
     default-synthetic-label: "uses"
   views:
     path: "views"
+  facets:
+    globalEnabled: true
+    directoryNameTemplate: "%s-%s"
 styles:
   atomic:
     shadowing: false
