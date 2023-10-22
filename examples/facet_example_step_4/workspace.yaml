@@ -1,0 +1,67 @@
+application:
+  elements:
+    - kind: "person"
+      id: "User"
+      relationships:
+        - destination: "EcommercePlatform.UserInterface"
+    - kind: "solution"
+      id: "EcommercePlatform"
+      elements:
+        - kind: "system"
+          id: "UserInterface"
+          relationships:
+            - destination: "EcommercePlatform.ProductCatalog"
+            - destination: "EcommercePlatform.UserManagement.UserProfileService"
+            - destination: "EcommercePlatform.OrderProcessing"
+            - destination: "EcommercePlatform.ContentManagement"
+        - kind: "system"
+          id: "ProductCatalog"
+          relationships:
+            - destination: "EcommercePlatform.UserManagement.IdentityAndAccessManagement"
+              qualifiers: [ "oidc" ]
+        - kind: "system"
+          id: "UserManagement"
+          elements:
+            - kind: "container"
+              id: "IdentityAndAccessManagement"
+              relationships:
+                - destination: "EcommercePlatform.UserManagement.UserProfileService"
+                - destination: "SocialIdentityProvider"
+            - kind: "container"
+              id: "UserProfileService"
+              relationships:
+                - destination: "EcommercePlatform.UserManagement.UserProfileDatabase"
+                - destination: "EcommercePlatform.UserManagement.IdentityAndAccessManagement"
+                  qualifiers: [ "oidc" ]
+            - kind: "container"
+              id: "UserProfileDatabase"
+        - kind: "system"
+          id: "OrderProcessing"
+          relationships:
+            - destination: "EcommercePlatform.ProductCatalog"
+            - destination: "PaymentGateway"
+            - destination: "EcommercePlatform.UserManagement.IdentityAndAccessManagement"
+              qualifiers: [ "oidc" ]
+        - kind: "system"
+          id: "ContentManagement"
+          relationships:
+            - destination: "EcommercePlatform.UserManagement.IdentityAndAccessManagement"
+              qualifiers: [ "oidc" ]
+    - kind: "system"
+      id: "SocialIdentityProvider"
+    - kind: "system"
+      id: "PaymentGateway"
+settings:
+  facets:
+    global-enabled: false
+    customs:
+      - name: "main"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers anyof ['oidc'])]"
+      - name: "oidc"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers noneof ['oidc'])]"
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers == null)]"
