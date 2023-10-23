@@ -78,12 +78,13 @@ public class ElementIndexFactory {
             if (parentCandidate instanceof Parent parent) {
                 parent.getElements().add(appCandidate.getElement());
                 reindexAncestors(appCandidate.getReference());
-            } else if (parentCandidate instanceof ApplicationElement applicationElement) {
-                if (root instanceof Application application) {
-                    application.getElements().add(applicationElement);
-                }
             } else if (
-                parentCandidate instanceof TechnologyElement technologyElement &&
+                appCandidate.getElement() instanceof ApplicationElement applicationElement &&
+                root instanceof Application application
+            ) {
+                application.getElements().add(applicationElement);
+            } else if (
+                appCandidate.getElement() instanceof TechnologyElement technologyElement &&
                 (root instanceof Technology technology)
             ) {
                 technology.getElements().add(technologyElement);
