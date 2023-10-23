@@ -34,7 +34,6 @@ jobs:
             --update-snapshots \
             -Dsonar.projectKey=tmorin_archicode \
             -Dsonar.java.coveragePlugin=jacoco \
-            -Dsonar.jacoco.reportPaths=target/jacoco-quarkus.exec \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco-report/jacoco.xml
       - name: "Publish snapshot artifacts"
         if: ${{ github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore(release)') }}
