@@ -17,8 +17,7 @@ public class Styles {
     Style atomic;
 
     @Builder.Default
-    Style composite = Style
-        .builder()
+    Style composite = Style.builder()
         .backgroundColor("transparent")
         .lineColor("darkgray")
         .lineStyle(5)

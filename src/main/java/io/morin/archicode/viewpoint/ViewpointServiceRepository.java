@@ -32,8 +32,7 @@ public class ViewpointServiceRepository {
     }
 
     public Set<ViewpointService> getAll() {
-        return ServiceLoader
-            .load(ViewpointService.class)
+        return ServiceLoader.load(ViewpointService.class)
             .stream()
             .map(provider -> {
                 val service = provider.get();

@@ -102,8 +102,7 @@ class MetaLinkGroomerTest {
     void shouldGroomInternalIngressMetaLinks() {
         val viewReference = "sol_a.sys_aa.con_aaa";
 
-        val rawWorkspace = Workspace
-            .builder()
+        val rawWorkspace = Workspace.builder()
             .application(ResourceFixtures.createWithInternalIngress().build())
             .build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
@@ -139,8 +138,7 @@ class MetaLinkGroomerTest {
     void shouldGroomWithTwoIngressFromPersons() {
         val viewReference = "sol_a.sys_aa";
 
-        val rawWorkspace = Workspace
-            .builder()
+        val rawWorkspace = Workspace.builder()
             .application(ResourceFixtures.createWithTwoIngressFromPersons().build())
             .build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());

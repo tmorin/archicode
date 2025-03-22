@@ -15,8 +15,7 @@ class TitleRenderer {
     String render(@NonNull Viewpoint viewpoint) {
         val buf = new StringBuilder();
 
-        Optional
-            .ofNullable(viewpoint.getView().getDescription())
+        Optional.ofNullable(viewpoint.getView().getDescription())
             .filter(v -> !v.isBlank())
             .ifPresent(description -> {
                 buf.append(String.format("title %s", viewpoint.getView().getDescription()));

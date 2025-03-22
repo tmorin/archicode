@@ -48,8 +48,7 @@ public enum MapperFormat {
      * @return the resolved {@link MapperFormat}
      */
     public static Optional<MapperFormat> resolve(String path) {
-        return Arrays
-            .stream(MapperFormat.values())
+        return Arrays.stream(MapperFormat.values())
             .filter(format -> format.extensions.stream().anyMatch(path::endsWith))
             .findFirst();
     }

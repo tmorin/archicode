@@ -20,40 +20,34 @@ import lombok.val;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class MapperFactory {
 
-    YAMLMapper yamlMapper = YAMLMapper
-        .builder()
+    YAMLMapper yamlMapper = YAMLMapper.builder()
         .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
         .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
         .serializationInclusion(JsonInclude.Include.NON_EMPTY)
         .build();
-    YAMLMapper yamlMapperLazy = YAMLMapper
-        .builder()
-        .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
-        .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
-        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-        .serializationInclusion(JsonInclude.Include.NON_EMPTY)
-        .build();
-    TomlMapper tomlMapper = TomlMapper
-        .builder()
-        .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
-        .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
-        .serializationInclusion(JsonInclude.Include.NON_EMPTY)
-        .build();
-    TomlMapper tomlMapperLazy = TomlMapper
-        .builder()
+    YAMLMapper yamlMapperLazy = YAMLMapper.builder()
         .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
         .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .serializationInclusion(JsonInclude.Include.NON_EMPTY)
         .build();
-    JsonMapper jsonMapper = JsonMapper
-        .builder()
+    TomlMapper tomlMapper = TomlMapper.builder()
         .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
         .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
         .serializationInclusion(JsonInclude.Include.NON_EMPTY)
         .build();
-    JsonMapper jsonMapperLazy = JsonMapper
-        .builder()
+    TomlMapper tomlMapperLazy = TomlMapper.builder()
+        .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
+        .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .serializationInclusion(JsonInclude.Include.NON_EMPTY)
+        .build();
+    JsonMapper jsonMapper = JsonMapper.builder()
+        .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
+        .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+        .serializationInclusion(JsonInclude.Include.NON_EMPTY)
+        .build();
+    JsonMapper jsonMapperLazy = JsonMapper.builder()
         .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
         .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
@@ -109,9 +103,9 @@ public class MapperFactory {
      * @return the created {@link ObjectMapper}
      */
     public ObjectMapper create(Path path) {
-        val format = MapperFormat
-            .resolve(path)
-            .orElseThrow(() -> new ArchiCodeException("The path `%s` doesn't match a handled format.", path));
+        val format = MapperFormat.resolve(path).orElseThrow(() ->
+            new ArchiCodeException("The path `%s` doesn't match a handled format.", path)
+        );
         return create(format);
     }
 }

@@ -23,8 +23,8 @@ class GetViewsQueryTest {
         getViewsQuery.outputFormat = OutputFormat.CUSTOM;
         getViewsQuery.query = "$.[0]";
         getViewsQuery.template = """
-                $d.e("$.viewpoint") : $d.e("$.id")
-                """;
+        $d.e("$.viewpoint") : $d.e("$.id")
+        """;
         Assertions.assertDoesNotThrow(getViewsQuery::run);
     }
 

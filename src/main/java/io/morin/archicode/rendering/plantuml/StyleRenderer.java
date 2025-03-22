@@ -1,7 +1,6 @@
 package io.morin.archicode.rendering.plantuml;
 
 import io.morin.archicode.viewpoint.Viewpoint;
-
 import java.util.Optional;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -34,12 +33,12 @@ class StyleRenderer {
         buf.append("<style>");
         buf.append(System.lineSeparator());
 
-        Optional
-            .ofNullable(viewpoint.getWorkspace().getStyles().getAtomic())
-            .ifPresent(style -> buf.append(PlantumlUtilities.generateStyle(style, "atomic", null)));
-        Optional
-            .ofNullable(viewpoint.getWorkspace().getStyles().getComposite())
-            .ifPresent(style -> buf.append(PlantumlUtilities.generateStyle(style, "composite", null)));
+        Optional.ofNullable(viewpoint.getWorkspace().getStyles().getAtomic()).ifPresent(style ->
+            buf.append(PlantumlUtilities.generateStyle(style, "atomic", null))
+        );
+        Optional.ofNullable(viewpoint.getWorkspace().getStyles().getComposite()).ifPresent(style ->
+            buf.append(PlantumlUtilities.generateStyle(style, "composite", null))
+        );
 
         buf.append("</style>");
         buf.append(System.lineSeparator());

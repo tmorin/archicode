@@ -96,8 +96,7 @@ class PlantumlViewRendererTest {
     void shouldRenderDetailedViewWithIngressAndEgress(String viewReference) {
         val view = ResourceFixtures.createDetailedView(viewReference, viewReference);
 
-        val rawWorkspace = Workspace
-            .builder()
+        val rawWorkspace = Workspace.builder()
             .application(ResourceFixtures.createWithIngressAndEgress().build())
             .build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
@@ -133,8 +132,7 @@ class PlantumlViewRendererTest {
     void shouldRenderDetailedViewWithInternalIngress(String viewReference) {
         val view = ResourceFixtures.createDetailedView(viewReference, viewReference);
 
-        val rawWorkspace = Workspace
-            .builder()
+        val rawWorkspace = Workspace.builder()
             .application(ResourceFixtures.createWithInternalIngress().build())
             .build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());

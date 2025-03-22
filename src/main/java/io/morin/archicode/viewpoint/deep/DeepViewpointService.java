@@ -44,8 +44,7 @@ public class DeepViewpointService implements ViewpointService {
         newProperties.setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode));
 
         return Optional.of(
-            View
-                .builder()
+            View.builder()
                 .viewpoint(NAME)
                 .id(String.format("%s-%s", reference.replace("/", "_"), NAME))
                 .description(
@@ -62,8 +61,7 @@ public class DeepViewpointService implements ViewpointService {
 
     @Override
     public ViewpointFactory createViewpointFactory() {
-        return DeepViewpointFactory
-            .builder()
+        return DeepViewpointFactory.builder()
             .objectMapper(mapperFactory.createLazy(MapperFormat.JSON))
             .metaLinkFinderForEgress(metaLinkFinderForEgress)
             .metaLinkFinderForIngress(metaLinkFinderForIngress)

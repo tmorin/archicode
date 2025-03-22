@@ -43,8 +43,9 @@ public class ElementIndex {
      * @return the element
      */
     public Element getElementByReference(String reference) {
-        return searchElement(reference)
-            .orElseThrow(() -> new ArchiCodeException("unable to find the element %s", reference));
+        return searchElement(reference).orElseThrow(() ->
+            new ArchiCodeException("unable to find the element %s", reference)
+        );
     }
 
     /**

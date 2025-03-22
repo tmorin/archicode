@@ -29,9 +29,9 @@ public enum ManifestKind {
     ENVIRONMENT(Environment.class, Technology.class),
     NODE(Node.class, Technology.class);
 
-    private static final Map<String, List<ManifestKind>> INDEX = Arrays
-        .stream(ManifestKind.values())
-        .collect(Collectors.groupingBy(ManifestKind::getId));
+    private static final Map<String, List<ManifestKind>> INDEX = Arrays.stream(ManifestKind.values()).collect(
+        Collectors.groupingBy(ManifestKind::getId)
+    );
     private final Class<?> type;
     private final Class<?> category;
 

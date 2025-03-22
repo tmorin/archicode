@@ -29,8 +29,7 @@ class OverviewViewpointServiceRepositoryTest {
     @ParameterizedTest
     @ValueSource(strings = { "solution_a", "solution_a.system_a", "solution_a.system_a.container_a" })
     void shouldCreate(String viewReference) {
-        val rawWorkspace = Workspace
-            .builder()
+        val rawWorkspace = Workspace.builder()
             .application(ResourceFixtures.createWithIngressAndEgress().build())
             .build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());

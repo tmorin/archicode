@@ -27,8 +27,7 @@ class DetailedViewpointServiceRepositoryTest {
     void shouldCreate() {
         val viewReference = "solution_a.system_a";
 
-        val rawWorkspace = Workspace
-            .builder()
+        val rawWorkspace = Workspace.builder()
             .application(ResourceFixtures.createWithIngressAndEgress().build())
             .build();
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());

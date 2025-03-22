@@ -52,8 +52,7 @@ class ArchiCodeTest {
         generateViewsCommand.viewIds = Set.of("view_solution_a_overview");
         generateViewsCommand.run();
         assertTrue(
-            Path
-                .of("target/ArchiCodeTest/shouldRenderViews/plantuml/application/view_solution_a_overview.puml")
+            Path.of("target/ArchiCodeTest/shouldRenderViews/plantuml/application/view_solution_a_overview.puml")
                 .toFile()
                 .exists()
         );
@@ -65,10 +64,9 @@ class ArchiCodeTest {
         generateViewsCommand.viewIds = Collections.emptySet();
         generateViewsCommand.run();
         assertTrue(
-            Path
-                .of(
-                    "target/ArchiCodeTest/shouldRenderPerspectives/plantuml/application/solution_a_system_a_a-overview.puml"
-                )
+            Path.of(
+                "target/ArchiCodeTest/shouldRenderPerspectives/plantuml/application/solution_a_system_a_a-overview.puml"
+            )
                 .toFile()
                 .exists()
         );

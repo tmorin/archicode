@@ -9,6 +9,7 @@
 The following commands assume the ArchiCode workspace is located in the current directory.
 
 **Show the help information**
+
 ```shell
 docker run \
   -u "$(id -u):$(id -g)" \
@@ -17,6 +18,7 @@ docker run \
 ```
 
 **Generate all views**
+
 ```shell
 docker run \
   -u "$(id -u):$(id -g)" \
@@ -25,6 +27,7 @@ docker run \
 ```
 
 **Get the JSON schema for the Workspace resource**
+
 ```shell
 docker run \
   -u "$(id -u):$(id -g)" \
@@ -33,6 +36,7 @@ docker run \
 ```
 
 **Get the JSON schema for the Manifest resource**
+
 ```shell
 docker run \
   -u "$(id -u):$(id -g)" \
@@ -43,16 +47,19 @@ docker run \
 ## Maintenance
 
 **Dependencies upgrade**
+
 ```shell
 ./mvnw versions:display-dependency-updates
 ```
 
 **Quarkus update**
+
 ```shell
 ./mvnw quarkus:update
 ```
 
 **Release**
+
 ```shell
 ./mvnw --batch-mode release:clean \
 && ./mvnw --batch-mode release:prepare \
@@ -61,11 +68,13 @@ docker run \
 ```
 
 **Build package and OIC image**
+
 ```shell
 ./mvnw package -Dquarkus.container-image.build=true
 ```
 
 **Build package and OIC image without test execution**
+
 ```shell
 ./mvnw package -Dquarkus.container-image.build=true -Dmaven.test.skip
 ```

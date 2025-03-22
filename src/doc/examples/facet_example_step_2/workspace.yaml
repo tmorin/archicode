@@ -32,7 +32,7 @@ application:
               relationships:
                 - destination: "EcommercePlatform.UserManagement.UserProfileDatabase"
                 - destination: "EcommercePlatform.UserManagement.IdentityAndAccessManagement"
-                  qualifiers: [ "oidc" ]
+                  qualifiers: ["oidc"]
             - kind: "container"
               id: "UserProfileDatabase"
         - kind: "system"
@@ -41,12 +41,12 @@ application:
             - destination: "EcommercePlatform.ProductCatalog"
             - destination: "PaymentGateway"
             - destination: "EcommercePlatform.UserManagement.IdentityAndAccessManagement"
-              qualifiers: [ "oidc" ]
+              qualifiers: ["oidc"]
         - kind: "system"
           id: "ContentManagement"
           relationships:
             - destination: "EcommercePlatform.UserManagement.IdentityAndAccessManagement"
-              qualifiers: [ "oidc" ]
+              qualifiers: ["oidc"]
     - kind: "system"
       id: "SocialIdentityProvider"
     - kind: "system"

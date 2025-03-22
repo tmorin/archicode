@@ -48,8 +48,7 @@ class DeepViewpointFactoryTest {
 
         val workspace = workspaceFactory.create(rawWorkspace, Map.of());
 
-        val view = ResourceFixtures
-            .createDeepViewBuilder("shouldCreateTechnologyWithApp", viewReference)
+        val view = ResourceFixtures.createDeepViewBuilder("shouldCreateTechnologyWithApp", viewReference)
             .layer(View.Layer.TECHNOLOGY)
             .build();
 

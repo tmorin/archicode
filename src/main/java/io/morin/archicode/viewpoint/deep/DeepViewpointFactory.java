@@ -33,16 +33,14 @@ public class DeepViewpointFactory implements ViewpointFactory {
     public Viewpoint create(@NonNull Workspace workspace, @NonNull View view) {
         log.debug("create viewpoint for {}", view);
         if (view.getLayer() == View.Layer.APPLICATION) {
-            return ApplicationDeepViewpointFactory
-                .builder()
+            return ApplicationDeepViewpointFactory.builder()
                 .metaLinkFinderForEgress(metaLinkFinderForEgress)
                 .metaLinkFinderForIngress(metaLinkFinderForIngress)
                 .objectMapper(objectMapper)
                 .build()
                 .create(workspace, view);
         } else if (view.getLayer() == View.Layer.TECHNOLOGY) {
-            return TechnologyDeepViewpointFactory
-                .builder()
+            return TechnologyDeepViewpointFactory.builder()
                 .metaLinkFinderForEgress(metaLinkFinderForEgress)
                 .metaLinkFinderForIngress(metaLinkFinderForIngress)
                 .objectMapper(objectMapper)

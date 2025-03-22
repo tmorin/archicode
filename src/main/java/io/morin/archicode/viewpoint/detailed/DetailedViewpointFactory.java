@@ -76,8 +76,7 @@ public class DetailedViewpointFactory extends AbstractViewpointFactory implement
             .map(reference ->
                 overviewViewpointFactory.create(
                     workspace,
-                    View
-                        .builder()
+                    View.builder()
                         .viewpoint("overview")
                         .layer(view.getLayer())
                         .id(UUID.randomUUID().toString())
