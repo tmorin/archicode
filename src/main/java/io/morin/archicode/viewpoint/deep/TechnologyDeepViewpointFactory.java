@@ -72,8 +72,7 @@ public class TechnologyDeepViewpointFactory extends ApplicationDeepViewpointFact
                     .stream()
                     .map(reference -> {
                         val appElement = workspace.appIndex.elementByReferenceIndex.get(reference);
-                        val newAppItem = Item
-                            .builder()
+                        val newAppItem = Item.builder()
                             .itemId(node.getId() + "_" + reference.replace(".", "_"))
                             .reference("app:" + reference.replace(".", "_"))
                             .element(appElement)
@@ -108,8 +107,7 @@ public class TechnologyDeepViewpointFactory extends ApplicationDeepViewpointFact
                                     .get(relationship.getDestination())
                                     .stream()
                                     .map(toItem ->
-                                        Link
-                                            .builder()
+                                        Link.builder()
                                             .from(fromItem)
                                             .to(toItem)
                                             .tags(Map.of("rendering-secondary", "no"))

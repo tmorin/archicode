@@ -46,8 +46,7 @@ public class DetailedViewpointService implements ViewpointService {
         newProperties.setAll(views.getProperties().getOrDefault(NAME, om.createObjectNode()));
         newProperties.setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode));
 
-        return Optional
-            .of(element)
+        return Optional.of(element)
             .filter(v -> {
                 if (v instanceof Parent<?> parent) {
                     return !parent.getElements().isEmpty();
@@ -55,8 +54,7 @@ public class DetailedViewpointService implements ViewpointService {
                 return false;
             })
             .map(parent ->
-                View
-                    .builder()
+                View.builder()
                     .viewpoint(NAME)
                     .id(String.format("%s-%s", reference.replace("/", "_"), NAME))
                     .description(
@@ -73,12 +71,10 @@ public class DetailedViewpointService implements ViewpointService {
 
     @Override
     public ViewpointFactory createViewpointFactory() {
-        return DetailedViewpointFactory
-            .builder()
+        return DetailedViewpointFactory.builder()
             .objectMapper(mapperFactory.createLazy(MapperFormat.JSON))
             .overviewViewpointFactory(
-                OverviewViewpointFactory
-                    .builder()
+                OverviewViewpointFactory.builder()
                     .objectMapper(mapperFactory.create(MapperFormat.JSON))
                     .metaLinkFinderForEgress(metaLinkFinderForEgress)
                     .metaLinkFinderForIngress(metaLinkFinderForIngress)

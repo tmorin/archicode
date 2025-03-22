@@ -38,16 +38,14 @@ public class WorkspaceFactory {
         Map<Class<?>, Set<ManifestParser.Candidate>> manifests
     ) {
         log.debug("index the application elements");
-        val appIndex = ElementIndexFactory
-            .builder()
+        val appIndex = ElementIndexFactory.builder()
             .root(resources.getApplication())
             .candidates(manifests.getOrDefault(Application.class, Set.of()))
             .build()
             .create();
 
         log.debug("index the technology elements");
-        val depIndex = ElementIndexFactory
-            .builder()
+        val depIndex = ElementIndexFactory.builder()
             .root(resources.getTechnology())
             .candidates(manifests.getOrDefault(Technology.class, Set.of()))
             .build()
@@ -56,8 +54,7 @@ public class WorkspaceFactory {
         log.debug("index the views");
         val viewIndex = ViewIndexFactory.builder().views(resources.getViews()).build().create();
 
-        return io.morin.archicode.workspace.Workspace
-            .builder()
+        return io.morin.archicode.workspace.Workspace.builder()
             .resources(resources)
             .appIndex(appIndex)
             .techIndex(depIndex)
@@ -78,8 +75,7 @@ public class WorkspaceFactory {
         val workspaceMapper = mapperFactory.create(path);
         val rawWorkspace = workspaceMapper.readValue(path.toFile(), Workspace.class);
 
-        val fixedRawWorkspace = Optional
-            .ofNullable(viewsDirPath)
+        val fixedRawWorkspace = Optional.ofNullable(viewsDirPath)
             .map(newViewsPath ->
                 rawWorkspace
                     .toBuilder()

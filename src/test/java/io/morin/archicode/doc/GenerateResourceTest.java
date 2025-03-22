@@ -33,8 +33,7 @@ class GenerateResourceTest {
     @Test
     @SneakyThrows
     void generateDefaultWorkspace() {
-        val workspace = Workspace
-            .builder()
+        val workspace = Workspace.builder()
             .styles(Styles.builder().atomic(Styles.Style.builder().build()).build())
             .build();
         val workspaceAsYaml = Assertions.assertDoesNotThrow(() ->

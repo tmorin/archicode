@@ -5,7 +5,6 @@ import static io.morin.archicode.resource.workspace.Workspace.Utilities.isDescen
 import io.morin.archicode.workspace.ElementIndex;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -26,34 +25,32 @@ public class MetaLinkFinderForEgress implements MetaLinkFinder {
     @Override
     public Set<MetaLink> find(@NonNull ElementIndex index, @NonNull String viewReference) {
         val metaLinks = new HashSet<MetaLink>();
-        io.morin.archicode.resource.workspace.Workspace.Utilities.walkDown(
-            index.getElementByReference(viewReference),
-            fromElement -> {
-                val elementMetaLinks = fromElement
-                    .getRelationships()
-                    .stream()
-                    .map(relationship -> {
-                        val fromReference = index.getReferenceByElement(fromElement);
-                        val fromLevel = Level.from(fromReference);
-                        val toReference = relationship.getDestination();
-                        val toElement = index.getElementByReference(toReference);
-                        val toLevel = Level.from(toReference);
-                        return MetaLink
-                            .builder()
-                            .fromReference(fromReference)
-                            .fromElement(fromElement)
-                            .fromLevel(fromLevel)
-                            .toReference(toReference)
-                            .toElement(toElement)
-                            .toLevel(toLevel)
-                            .relationship(relationship)
-                            .build();
-                    })
-                    .filter(metaLink -> !isDescendantOf(metaLink.getToReference(), viewReference))
-                    .collect(Collectors.toSet());
-                metaLinks.addAll(elementMetaLinks);
-            }
-        );
+        val rootElement = index.getElementByReference(viewReference);
+
+        io.morin.archicode.resource.workspace.Workspace.Utilities.walkDown(rootElement, fromElement -> {
+            val fromReference = index.getReferenceByElement(fromElement);
+            val fromLevel = Level.from(fromReference);
+
+            fromElement
+                .getRelationships()
+                .stream()
+                .filter(relationship -> !isDescendantOf(relationship.getDestination(), viewReference))
+                .map(relationship -> {
+                    val toReference = relationship.getDestination();
+                    val toElement = index.getElementByReference(toReference);
+                    val toLevel = Level.from(toReference);
+                    return MetaLink.builder()
+                        .fromReference(fromReference)
+                        .fromElement(fromElement)
+                        .fromLevel(fromLevel)
+                        .toReference(toReference)
+                        .toElement(toElement)
+                        .toLevel(toLevel)
+                        .relationship(relationship)
+                        .build();
+                })
+                .forEach(metaLinks::add);
+        });
         return metaLinks;
     }
 }

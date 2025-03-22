@@ -150,13 +150,11 @@ public class GenerateViewsCommand implements Runnable {
         @NonNull Path outputDirPath,
         @NonNull Set<String> viewIds
     ) {
-        val viewProperties = Optional
-            .ofNullable(viewPropertiesAsPath)
+        val viewProperties = Optional.ofNullable(viewPropertiesAsPath)
             .map(p -> viewsGroup.archiCode.workspaceFilePath.toAbsolutePath().toAbsolutePath().getParent().resolve(p))
             .map(p -> call(() -> (ObjectNode) mapperFactory.create(p).readTree(p.toFile())))
             .or(() ->
-                Optional
-                    .ofNullable(viewPropertiesAsContent)
+                Optional.ofNullable(viewPropertiesAsContent)
                     .filter(v -> !v.isEmpty())
                     .map(c -> call(() -> (ObjectNode) mapperFactory.create(viewPropertiesFormat).readTree(c)))
             )
@@ -169,8 +167,9 @@ public class GenerateViewsCommand implements Runnable {
                 viewpointServiceRepository
                     .getAll()
                     .stream()
-                    .filter(viewpointService ->
-                        viewpointNames.isEmpty() || viewpointNames.contains(viewpointService.getName())
+                    .filter(
+                        viewpointService ->
+                            viewpointNames.isEmpty() || viewpointNames.contains(viewpointService.getName())
                     )
                     .map(viewpointService ->
                         viewpointService

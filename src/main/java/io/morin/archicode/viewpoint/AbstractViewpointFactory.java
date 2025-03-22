@@ -38,8 +38,7 @@ public abstract class AbstractViewpointFactory {
             .map(metaLink -> {
                 val fromItem = itemByReference.get(metaLink.getFromReference());
                 val toItem = itemByReference.get(metaLink.getToReference());
-                return Link
-                    .builder()
+                return Link.builder()
                     .from(fromItem)
                     .to(toItem)
                     .label(metaLink.getRelationship().getLabel())
@@ -69,20 +68,17 @@ public abstract class AbstractViewpointFactory {
             .sorted()
             .map(elementReference -> {
                 val element = elementIndex.getElementByReference(elementReference);
-                val item = itemByReference.computeIfAbsent(
-                    elementReference,
-                    s ->
-                        Item
-                            .builder()
-                            .itemId(elementReference)
-                            .reference(elementReference)
-                            .element(element)
-                            .kind(Item.Kind.from(element))
-                            .build()
+                val item = itemByReference.computeIfAbsent(elementReference, s ->
+                    Item.builder()
+                        .itemId(elementReference)
+                        .reference(elementReference)
+                        .element(element)
+                        .kind(Item.Kind.from(element))
+                        .build()
                 );
-                io.morin.archicode.resource.workspace.Workspace.Utilities
-                    .findParentReference(elementReference)
-                    .ifPresent(parentReference -> itemByReference.get(parentReference).getChildren().add(item));
+                io.morin.archicode.resource.workspace.Workspace.Utilities.findParentReference(
+                    elementReference
+                ).ifPresent(parentReference -> itemByReference.get(parentReference).getChildren().add(item));
                 return item;
             })
             .filter(item -> !item.getReference().contains("."))

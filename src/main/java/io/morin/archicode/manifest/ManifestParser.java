@@ -35,12 +35,11 @@ public class ManifestParser {
         for (Path path : paths) {
             val directory = path.toFile();
 
-            val manifestFilesAsArray = Optional
-                .ofNullable(directory.listFiles((dir, name) -> MapperFormat.resolve(name).isPresent()))
-                .orElseThrow(() -> new ArchiCodeException("unable to read the path %s", path));
+            val manifestFilesAsArray = Optional.ofNullable(
+                directory.listFiles((dir, name) -> MapperFormat.resolve(name).isPresent())
+            ).orElseThrow(() -> new ArchiCodeException("unable to read the path %s", path));
 
-            for (Path manifestFile : Arrays
-                .stream(manifestFilesAsArray)
+            for (Path manifestFile : Arrays.stream(manifestFilesAsArray)
                 .map(File::toPath)
                 .collect(Collectors.toSet())) {
                 log.info("parse the manifest {}", manifestFile);
@@ -50,12 +49,10 @@ public class ManifestParser {
                 val item = ManifestConverter.builder().manifest(resource).mapper(mapper).build().convert();
 
                 if (item instanceof Element element) {
-                    val reference = Optional
-                        .ofNullable(resource.getHeader().getParent())
+                    val reference = Optional.ofNullable(resource.getHeader().getParent())
                         .map(parentReference -> String.format("%s.%s", parentReference, element.getId()))
                         .orElse(element.getId());
-                    val candidate = Candidate
-                        .builder()
+                    val candidate = Candidate.builder()
                         .parent(resource.getHeader().getParent())
                         .reference(reference)
                         .element(element)

@@ -11,8 +11,7 @@ import lombok.val;
 public class ViewpointFixtures {
 
     public Item.ItemBuilder createItemBuilder(Element element) {
-        val builder = Item
-            .builder()
+        val builder = Item.builder()
             .reference(element.getId())
             .itemId(element.getId())
             .element(element)

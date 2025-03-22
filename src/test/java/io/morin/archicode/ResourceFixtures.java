@@ -204,8 +204,7 @@ public class ResourceFixtures {
     }
 
     public View createOverviewView(String viewId, String reference) {
-        return View
-            .builder()
+        return View.builder()
             .viewpoint("overview")
             .id(viewId)
             .properties(WorkspaceAFixtures.objectMapper.createObjectNode().put("element", reference))
@@ -213,8 +212,7 @@ public class ResourceFixtures {
     }
 
     public View createDetailedView(String viewId, String reference) {
-        return View
-            .builder()
+        return View.builder()
             .viewpoint("detailed")
             .id(viewId)
             .properties(WorkspaceAFixtures.objectMapper.createObjectNode().put("element", reference))
@@ -222,8 +220,7 @@ public class ResourceFixtures {
     }
 
     public View.ViewBuilder createDeepViewBuilder(String viewId, String reference) {
-        return View
-            .builder()
+        return View.builder()
             .viewpoint("deep")
             .id(viewId)
             .properties(WorkspaceAFixtures.objectMapper.createObjectNode().put("element", reference));

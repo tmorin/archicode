@@ -56,8 +56,10 @@ public class ApplicationDeepViewpointFactory extends AbstractViewpointFactory im
     }
 
     protected Set<MetaLink> listAllMetaLinksRelatedToViewReference(ElementIndex elementIndex, String viewReference) {
-        val allMetaLinks = Stream
-            .concat(Stream.of(viewReference), elementIndex.streamDescendants(viewReference).map(Map.Entry::getKey))
+        val allMetaLinks = Stream.concat(
+            Stream.of(viewReference),
+            elementIndex.streamDescendants(viewReference).map(Map.Entry::getKey)
+        )
             .flatMap(reference -> {
                 val egressMetaLinks = metaLinkFinderForEgress.find(elementIndex, reference);
                 val ingressMetaLinks = metaLinkFinderForIngress.find(elementIndex, reference);

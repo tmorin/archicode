@@ -39,9 +39,9 @@ class ItemRendererForCompositeTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-                        rectangle sol_id as "sol_id\\n[solution]" <<composite>> {
-                        }
-                        """,
+            rectangle sol_id as "sol_id\\n[solution]" <<composite>> {
+            }
+            """,
             puml
         );
     }
@@ -54,9 +54,9 @@ class ItemRendererForCompositeTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-                        rectangle sol_id as "Name\\n[solution]" <<composite>> {
-                        }
-                        """,
+            rectangle sol_id as "Name\\n[solution]" <<composite>> {
+            }
+            """,
             puml
         );
     }
@@ -71,9 +71,9 @@ class ItemRendererForCompositeTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-                        rectangle sol_id as "sol_id\\n[solution: q1, q2]" <<composite>> <<q1>> <<q2>> {
-                        }
-                        """,
+            rectangle sol_id as "sol_id\\n[solution: q1, q2]" <<composite>> <<q1>> <<q2>> {
+            }
+            """,
             puml
         );
     }
@@ -87,13 +87,13 @@ class ItemRendererForCompositeTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-                        rectangle sol_id as "sol_id\\n[solution]" <<composite>> {
-                        rectangle sys_id <<system>> <<atomic>> [
-                        sys_id
-                        [system]
-                        ]
-                        }
-                        """,
+            rectangle sol_id as "sol_id\\n[solution]" <<composite>> {
+            rectangle sys_id <<system>> <<atomic>> [
+            sys_id
+            [system]
+            ]
+            }
+            """,
             puml
         );
     }

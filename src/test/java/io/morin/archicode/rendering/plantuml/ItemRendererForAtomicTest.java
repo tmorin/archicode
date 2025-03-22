@@ -38,11 +38,11 @@ class ItemRendererForAtomicTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-                rectangle item_id <<solution>> <<atomic>> [
-                item_id
-                [solution]
-                ]
-                """,
+            rectangle item_id <<solution>> <<atomic>> [
+            item_id
+            [solution]
+            ]
+            """,
             puml
         );
     }
@@ -55,11 +55,11 @@ class ItemRendererForAtomicTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-                rectangle item_id <<solution>> <<atomic>> [
-                Name
-                [solution]
-                ]
-                """,
+            rectangle item_id <<solution>> <<atomic>> [
+            Name
+            [solution]
+            ]
+            """,
             puml
         );
     }
@@ -74,11 +74,11 @@ class ItemRendererForAtomicTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-                rectangle item_id <<q1>> <<q2>> <<solution>> <<atomic>> [
-                item_id
-                [solution: q1, q2]
-                ]
-                """,
+            rectangle item_id <<q1>> <<q2>> <<solution>> <<atomic>> [
+            item_id
+            [solution: q1, q2]
+            ]
+            """,
             puml
         );
     }
@@ -91,12 +91,12 @@ class ItemRendererForAtomicTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-                    rectangle item_id <<solution>> <<atomic>> [
-                    item_id
-                    [solution]
-                    description
-                    ]
-                    """,
+            rectangle item_id <<solution>> <<atomic>> [
+            item_id
+            [solution]
+            description
+            ]
+            """,
             puml
         );
     }

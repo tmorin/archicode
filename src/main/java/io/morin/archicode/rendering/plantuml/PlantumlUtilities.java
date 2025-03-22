@@ -25,72 +25,58 @@ class PlantumlUtilities {
         buf.append(String.format(".%s {", stereotype));
         buf.append(System.lineSeparator());
 
-        Optional
-            .ofNullable(shape)
-            .ifPresent(v -> {
-                buf.append(String.format("%s {", v));
-                buf.append(System.lineSeparator());
-            });
+        Optional.ofNullable(shape).ifPresent(v -> {
+            buf.append(String.format("%s {", v));
+            buf.append(System.lineSeparator());
+        });
 
-        Optional
-            .ofNullable(style.getBackgroundColor())
+        Optional.ofNullable(style.getBackgroundColor())
             .filter(v -> !v.isBlank())
             .ifPresent(s -> {
                 buf.append(String.format("BackgroundColor: %s", s));
                 buf.append(System.lineSeparator());
             });
 
-        Optional
-            .ofNullable(style.getLineColor())
+        Optional.ofNullable(style.getLineColor())
             .filter(v -> !v.isBlank())
             .ifPresent(s -> {
                 buf.append(String.format("LineColor: %s", s));
                 buf.append(System.lineSeparator());
             });
 
-        Optional
-            .ofNullable(style.getLineStyle())
-            .ifPresent(s -> {
-                buf.append(String.format("LineStyle: %s", s));
-                buf.append(System.lineSeparator());
-            });
+        Optional.ofNullable(style.getLineStyle()).ifPresent(s -> {
+            buf.append(String.format("LineStyle: %s", s));
+            buf.append(System.lineSeparator());
+        });
 
-        Optional
-            .ofNullable(style.getLineThickness())
-            .ifPresent(s -> {
-                buf.append(String.format("LineThickness: %s", s));
-                buf.append(System.lineSeparator());
-            });
+        Optional.ofNullable(style.getLineThickness()).ifPresent(s -> {
+            buf.append(String.format("LineThickness: %s", s));
+            buf.append(System.lineSeparator());
+        });
 
-        Optional
-            .ofNullable(style.getRoundCorner())
-            .ifPresent(s -> {
-                buf.append(String.format("RoundCorner: %s", s));
-                buf.append(System.lineSeparator());
-            });
+        Optional.ofNullable(style.getRoundCorner()).ifPresent(s -> {
+            buf.append(String.format("RoundCorner: %s", s));
+            buf.append(System.lineSeparator());
+        });
 
-        Optional
-            .ofNullable(style.getFontColor())
+        Optional.ofNullable(style.getFontColor())
             .filter(v -> !v.isBlank())
             .ifPresent(s -> {
                 buf.append(String.format("FontColor: %s", s));
                 buf.append(System.lineSeparator());
             });
 
-        Optional
-            .ofNullable(style.getFontStyle())
+        Optional.ofNullable(style.getFontStyle())
             .filter(v -> !v.isBlank())
             .ifPresent(s -> {
                 buf.append(String.format("FontStyle: %s", s));
                 buf.append(System.lineSeparator());
             });
 
-        Optional
-            .ofNullable(shape)
-            .ifPresent(s -> {
-                buf.append("}");
-                buf.append(System.lineSeparator());
-            });
+        Optional.ofNullable(shape).ifPresent(s -> {
+            buf.append("}");
+            buf.append(System.lineSeparator());
+        });
 
         buf.append("}");
         buf.append(System.lineSeparator());
@@ -100,9 +86,9 @@ class PlantumlUtilities {
 
     String generateStereotypes(@NonNull Item item, @NonNull String... types) {
         val stereotypes = new LinkedHashSet<>(item.getElement().getQualifiers());
-        Optional
-            .ofNullable(item.getElement().getTags().get(ViewRenderer.TAG_ADDITIONAL_STEREOTYPES))
-            .ifPresent(stereotypes::add);
+        Optional.ofNullable(item.getElement().getTags().get(ViewRenderer.TAG_ADDITIONAL_STEREOTYPES)).ifPresent(
+            stereotypes::add
+        );
         stereotypes.addAll(List.of(types));
         return String.join(
             " ",
@@ -115,8 +101,7 @@ class PlantumlUtilities {
         buf.append("[");
         buf.append(item.getKind().name().toLowerCase());
 
-        Optional
-            .ofNullable(item.getElement().getQualifiers())
+        Optional.ofNullable(item.getElement().getQualifiers())
             .map(qualifiers -> String.join(", ", qualifiers))
             .filter(v -> !v.isBlank())
             .ifPresent(qualifiers -> {
@@ -130,8 +115,7 @@ class PlantumlUtilities {
 
     String generateQualifiers(@NonNull Link link) {
         val buf = new StringBuilder();
-        Optional
-            .of(link.getQualifiers())
+        Optional.of(link.getQualifiers())
             .map(qualifiers -> String.join(", ", qualifiers))
             .filter(v -> !v.isBlank())
             .ifPresent(qualifiers -> {

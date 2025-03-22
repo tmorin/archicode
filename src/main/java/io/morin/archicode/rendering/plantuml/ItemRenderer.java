@@ -48,14 +48,13 @@ class ItemRenderer {
 
             val atomicFormatter = viewpoint.getWorkspace().getFormatters().getAtomic();
 
-            val shape = RenderingShape
-                .valueOf(
-                    item
-                        .getElement()
-                        .getTags()
-                        .getOrDefault(ViewRenderer.TAG_RENDERING_SHAPE, RenderingShape.getDefault(item).name())
-                        .toUpperCase()
-                )
+            val shape = RenderingShape.valueOf(
+                item
+                    .getElement()
+                    .getTags()
+                    .getOrDefault(ViewRenderer.TAG_RENDERING_SHAPE, RenderingShape.getDefault(item).name())
+                    .toUpperCase()
+            )
                 .name()
                 .toLowerCase();
 
@@ -82,8 +81,7 @@ class ItemRenderer {
             buf.append(System.lineSeparator());
 
             // <description>
-            Optional
-                .ofNullable(item.getElement().getDescription())
+            Optional.ofNullable(item.getElement().getDescription())
                 .filter(s -> !s.isBlank())
                 .ifPresent(s -> {
                     buf.append(String.format(atomicFormatter.getDescription(), item.getElement().getDescription()));

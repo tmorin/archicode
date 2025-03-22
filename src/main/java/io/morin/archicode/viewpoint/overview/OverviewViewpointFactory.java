@@ -65,9 +65,9 @@ public class OverviewViewpointFactory extends AbstractViewpointFactory implement
         ingressGroomedLinks.forEach(groomedLink -> log.debug("ingress {} {}", groomedLink, groomedLink.hashCode()));
 
         // merge all groomed links
-        val allGroomedLinks = Stream
-            .concat(egressGroomedLinks.stream(), ingressGroomedLinks.stream())
-            .collect(Collectors.toSet());
+        val allGroomedLinks = Stream.concat(egressGroomedLinks.stream(), ingressGroomedLinks.stream()).collect(
+            Collectors.toSet()
+        );
         allGroomedLinks.forEach(groomedLink -> log.debug("all {}", groomedLink));
 
         val itemByReference = new HashMap<String, Item>();
@@ -111,8 +111,7 @@ public class OverviewViewpointFactory extends AbstractViewpointFactory implement
                         : defaultLabel;
                     // create a single link for all synthetic relationships
                     return Stream.of(
-                        Link
-                            .builder()
+                        Link.builder()
                             .from(fromItem)
                             .to(toItem)
                             .synthetic(true)
@@ -126,8 +125,7 @@ public class OverviewViewpointFactory extends AbstractViewpointFactory implement
                     return naturalRelationships
                         .stream()
                         .map(relationship ->
-                            Link
-                                .builder()
+                            Link.builder()
                                 .from(fromItem)
                                 .to(toItem)
                                 .label(relationship.getLabel())

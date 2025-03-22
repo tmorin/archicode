@@ -38,9 +38,9 @@ public class MetaLinkGroomer {
 
         // WHEN the root ancestor of FROM is the root ancestor of TO
         if (
-            Level
-                .downReferenceTo(metaLink.getFromReference(), Level.L0)
-                .equals(Level.downReferenceTo(metaLink.getToReference(), Level.L0))
+            Level.downReferenceTo(metaLink.getFromReference(), Level.L0).equals(
+                Level.downReferenceTo(metaLink.getToReference(), Level.L0)
+            )
         ) {
             // THEN the target level of FROM must be parent level of TO
             return Level.max(Level.down(linkTargetToLevel), Level.L1);
@@ -67,9 +67,9 @@ public class MetaLinkGroomer {
 
         // WHEN the root ancestor of FROM is the root ancestor of TO
         if (
-            Level
-                .downReferenceTo(metaLink.getFromReference(), Level.L0)
-                .equals(Level.downReferenceTo(metaLink.getToReference(), Level.L0))
+            Level.downReferenceTo(metaLink.getFromReference(), Level.L0).equals(
+                Level.downReferenceTo(metaLink.getToReference(), Level.L0)
+            )
         ) {
             // THEN the target level of TO must be parent level of FROM
             return Level.max(Level.down(linkTargetFromLevel), Level.L1);
@@ -170,8 +170,7 @@ public class MetaLinkGroomer {
             val groomedKey = String.format("%s -> %s", groomedFromReference, groomedToReference);
             log.trace("groomedKey {}", groomedKey);
 
-            val groomedLinkBuilder = GroomedLink
-                .builder()
+            val groomedLinkBuilder = GroomedLink.builder()
                 .direction(direction)
                 .fromReference(groomedFromReference)
                 .fromElement(groomedFromElement)

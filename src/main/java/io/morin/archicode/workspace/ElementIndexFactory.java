@@ -31,15 +31,13 @@ public class ElementIndexFactory {
     Set<ManifestParser.Candidate> candidates;
 
     private void reindexAncestors(String reference) {
-        Workspace.Utilities
-            .findParentReference(reference)
-            .ifPresent(parentReference -> {
-                val removedElement = index.elementByReferenceIndex.remove(parentReference);
-                log.debug("reindex {} {} {}", parentReference, removedElement, removedElement.hashCode());
-                index.elementByReferenceIndex.put(parentReference, removedElement);
-                index.referenceByElementIndex.put(removedElement, parentReference);
-                reindexAncestors(parentReference);
-            });
+        Workspace.Utilities.findParentReference(reference).ifPresent(parentReference -> {
+            val removedElement = index.elementByReferenceIndex.remove(parentReference);
+            log.debug("reindex {} {} {}", parentReference, removedElement, removedElement.hashCode());
+            index.elementByReferenceIndex.put(parentReference, removedElement);
+            index.referenceByElementIndex.put(removedElement, parentReference);
+            reindexAncestors(parentReference);
+        });
     }
 
     @SuppressWarnings({ "unchecked" })
@@ -47,14 +45,12 @@ public class ElementIndexFactory {
         log.debug("index the elements of the resources {}", root);
 
         if (root instanceof Application application) {
-            Workspace.Utilities.walkDown(
-                application,
-                (parent, element) -> ElementIndexUtilities.index(parent, element, index)
+            Workspace.Utilities.walkDown(application, (parent, element) ->
+                ElementIndexUtilities.index(parent, element, index)
             );
         } else if (root instanceof Technology technology) {
-            Workspace.Utilities.walkDown(
-                technology,
-                (parent, element) -> ElementIndexUtilities.index(parent, element, index)
+            Workspace.Utilities.walkDown(technology, (parent, element) ->
+                ElementIndexUtilities.index(parent, element, index)
             );
         } else {
             throw new IllegalStateException("root must be Application or Technology");
@@ -64,9 +60,8 @@ public class ElementIndexFactory {
         val indexedCandidates = new HashSet<ManifestParser.Candidate>();
         for (val candidate : candidates) {
             ElementIndexUtilities.index(candidate, index);
-            Workspace.Utilities.walkDown(
-                candidate.getElement(),
-                (parent, element) -> ElementIndexUtilities.index(parent, element, index)
+            Workspace.Utilities.walkDown(candidate.getElement(), (parent, element) ->
+                ElementIndexUtilities.index(parent, element, index)
             );
             indexedCandidates.add(candidate);
         }

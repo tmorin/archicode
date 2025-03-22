@@ -24,24 +24,26 @@ public class MetaLinkFinderForIngress implements MetaLinkFinder {
      */
     @Override
     public Set<MetaLink> find(@NonNull ElementIndex index, @NonNull String toReference) {
-        val fromElements = index.searchFromElements(toReference);
-        return fromElements
+        return index
+            .searchFromElements(toReference)
             .stream()
             .flatMap(fromElement -> {
                 val fromReference = index.getReferenceByElement(fromElement);
+
                 val fromLevel = Level.from(fromReference);
+
                 return fromElement
                     .getRelationships()
                     .stream()
-                    .filter(relationship ->
-                        relationship.getDestination().equals(toReference) ||
-                        isDescendantOf(relationship.getDestination(), toReference)
+                    .filter(
+                        relationship ->
+                            relationship.getDestination().equals(toReference) ||
+                            isDescendantOf(relationship.getDestination(), toReference)
                     )
                     .map(relationship -> {
                         val toElement = index.getElementByReference(relationship.getDestination());
                         val toLevel = Level.from(relationship.getDestination());
-                        return MetaLink
-                            .builder()
+                        return MetaLink.builder()
                             .fromReference(fromReference)
                             .fromElement(fromElement)
                             .fromLevel(fromLevel)

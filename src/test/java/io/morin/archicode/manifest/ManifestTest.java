@@ -21,18 +21,18 @@ class ManifestTest {
     void shouldReadResource() {
         val resourceAsString =
             """
-                        header:
-                          kind: "archicode.morin.io/node"
-                          version: "1"
-                          parent: "reference.cloudprovider"
-                        content:
-                          id: "cloudprovider"
-                          name: "Cloud Provider"
-                          elements:
-                            - kind: "node"
-                              id: "cluster"
-                              name: "Kubernetes Cluster"
-                        """;
+            header:
+              kind: "archicode.morin.io/node"
+              version: "1"
+              parent: "reference.cloudprovider"
+            content:
+              id: "cloudprovider"
+              name: "Cloud Provider"
+              elements:
+                - kind: "node"
+                  id: "cluster"
+                  name: "Kubernetes Cluster"
+            """;
         val resource = yamlMapper.readValue(resourceAsString, Manifest.class);
         assertEquals(ManifestKind.NODE, resource.getHeader().getKind());
         assertEquals("1", resource.getHeader().getVersion());
@@ -48,14 +48,14 @@ class ManifestTest {
     void shouldConvertSimpleResource() {
         val resourceAsString =
             """
-                        header:
-                          kind: "archicode.morin.io/node"
-                          version: "1"
-                          parent: "reference.cloudprovider"
-                        content:
-                          id: "cloudprovider"
-                          name: "Cloud Provider"
-                        """;
+            header:
+              kind: "archicode.morin.io/node"
+              version: "1"
+              parent: "reference.cloudprovider"
+            content:
+              id: "cloudprovider"
+              name: "Cloud Provider"
+            """;
         val resource = yamlMapper.readValue(resourceAsString, Manifest.class);
         Node node = ManifestConverter.builder().mapper(yamlMapper).manifest(resource).build().convert();
         assertEquals("cloudprovider", node.getId());
@@ -66,16 +66,16 @@ class ManifestTest {
     void shouldConvertResourceWithElements() {
         val resourceAsString =
             """
-                        header:
-                          kind: "archicode.morin.io/container"
-                          version: "1"
-                          parent: "sol.sys"
-                        content:
-                          id: "container_a"
-                          elements:
-                            - kind: "component"
-                              id: "component_a"
-                        """;
+            header:
+              kind: "archicode.morin.io/container"
+              version: "1"
+              parent: "sol.sys"
+            content:
+              id: "container_a"
+              elements:
+                - kind: "component"
+                  id: "component_a"
+            """;
         val resource = yamlMapper.readValue(resourceAsString, Manifest.class);
         Container container = ManifestConverter.builder().mapper(yamlMapper).manifest(resource).build().convert();
         assertEquals("container_a", container.getId());
