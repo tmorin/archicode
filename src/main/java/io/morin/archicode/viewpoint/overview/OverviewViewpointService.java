@@ -39,7 +39,7 @@ public class OverviewViewpointService implements ViewpointService {
     ) {
         val om = mapperFactory.create(MapperFormat.JSON);
 
-        val newProperties = om.createObjectNode().put("element", reference);
+        val newProperties = om.createObjectNode();
         newProperties.put("element", reference);
         newProperties.setAll(views.getProperties().getOrDefault(NAME, om.createObjectNode()));
         newProperties.setAll(Optional.ofNullable(properties).orElseGet(om::createObjectNode));
