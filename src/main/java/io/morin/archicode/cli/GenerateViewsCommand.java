@@ -25,6 +25,7 @@ import org.jboss.logmanager.Logger;
 import picocli.CommandLine;
 
 @Slf4j
+@SuppressWarnings("java:S6813")
 @CommandLine.Command(name = "generate", description = "Generate the views of the workspace.")
 public class GenerateViewsCommand implements Runnable {
 
@@ -101,6 +102,7 @@ public class GenerateViewsCommand implements Runnable {
     String viewPropertiesAsPath;
 
     @Override
+    @SuppressWarnings("java:S3252")
     public void run() {
         Logger.getGlobal().setLevel(Level.INFO);
 

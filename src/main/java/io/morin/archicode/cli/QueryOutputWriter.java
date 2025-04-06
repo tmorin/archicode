@@ -40,6 +40,7 @@ public class QueryOutputWriter {
         printStream.println(content);
     }
 
+    @SuppressWarnings("java:S106")
     public void write(@NonNull String content) {
         write(content, System.out);
     }

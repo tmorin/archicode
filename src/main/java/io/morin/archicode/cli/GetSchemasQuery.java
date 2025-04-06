@@ -13,6 +13,7 @@ import picocli.CommandLine;
 
 @Slf4j
 @CommandLine.Command(name = "schemas", description = "Get JSON schemas related to the ArchiCode data model.")
+@SuppressWarnings("java:S6813")
 public class GetSchemasQuery implements Runnable {
 
     @Inject

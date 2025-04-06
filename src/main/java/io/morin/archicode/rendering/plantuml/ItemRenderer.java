@@ -112,7 +112,7 @@ class ItemRenderer {
 
             val compositeFormatter = viewpoint.getWorkspace().getFormatters().getComposite();
 
-            // rectangle <id> as "<label>\n<qualifiers>" <<stereotypes>> {
+            // <code>rectangle <id> as "<label>\n<qualifiers>" <<stereotypes>> {</code>
             buf.append(shape.name().toLowerCase());
             buf.append(" ");
             buf.append(item.getItemId());
