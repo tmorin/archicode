@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 @Slf4j
+@SuppressWarnings("java:S117")
 class DeepViewpointFactoryTest {
 
     @Inject

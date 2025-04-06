@@ -23,6 +23,7 @@ import picocli.CommandLine;
 
 @Slf4j
 @CommandLine.Command(name = "views", description = "List and filter the views of the workspace.")
+@SuppressWarnings("java:S6813")
 public class GetViewsQuery implements Runnable {
 
     @CommandLine.ParentCommand

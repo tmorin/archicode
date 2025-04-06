@@ -8,6 +8,7 @@ import lombok.experimental.UtilityClass;
 import lombok.val;
 
 @UtilityClass
+@SuppressWarnings("java:S117")
 public class ResourceFixtures {
 
     /**

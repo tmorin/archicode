@@ -13,6 +13,7 @@ import picocli.CommandLine;
     description = "ArchiCode provides features to support architecture work with an as-code approach.",
     subcommands = { ViewsGroup.class, QueryGroup.class }
 )
+@SuppressWarnings("java:S6813")
 public class ArchiCode {
 
     @Inject

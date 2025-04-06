@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 @Slf4j
 @QuarkusTest
+@SuppressWarnings("java:S117")
 class QueryOutputWriterTest {
 
     @Inject

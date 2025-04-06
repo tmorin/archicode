@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
+@SuppressWarnings("java:S125")
 class CustomRenderingTest {
 
     @Inject
