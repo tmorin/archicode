@@ -40,7 +40,7 @@ public class ElementIndexFactory {
         });
     }
 
-    @SuppressWarnings({ "unchecked" })
+    @SuppressWarnings({ "unchecked", "java:S6880" })
     public ElementIndex create() {
         log.debug("index the elements of the resources {}", root);
 
