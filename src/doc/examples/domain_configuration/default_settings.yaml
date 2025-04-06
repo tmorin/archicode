@@ -1,7 +1,7 @@
 settings:
   manifests:
     paths:
-      - "manifests"
+    - "manifests"
   relationships:
     default-synthetic-label: "uses"
   views:
