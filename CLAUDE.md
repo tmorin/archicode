@@ -36,7 +36,7 @@ workspace.yaml --> workspace/WorkspaceFactory --> manifest/ManifestParser
 ## Conventions
 
 - Lombok is used pervasively: `@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)` + `@RequiredArgsConstructor` for DI-injected fields, `@Slf4j` for logging, `@SneakyThrows` instead of checked-exception boilerplate.
-- SonarCloud (`tmorin_archicode` project) gates CI. Accepted/false-positive findings are suppressed inline with `@SuppressWarnings("java:S____")` rather than disabled project-wide — follow that pattern instead of broadening suppression scope.
+- SonarCloud is no longer part of CI (removed — see git history). Existing `@SuppressWarnings("java:S____")` annotations are inert leftovers from when it was; no new ones need to follow that pattern.
 
 ## Commit messages
 
