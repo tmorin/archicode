@@ -7,7 +7,7 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "query",
     description = "Query the ArchiCode data model.",
-    subcommands = { GetSchemasQuery.class, GetViewsQuery.class }
+    subcommands = { GetSchemasQuery.class, GetViewsQuery.class, GetGraphQuery.class }
 )
 public class QueryGroup {
 

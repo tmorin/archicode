@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 002
-status: planned
+status: in-progress
 date: 2026-10-04
 related:
   - CLAUDE.md

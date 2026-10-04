@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 002
-status: planned
+status: in-progress
 date: 2026-10-04
 related:
   - docs/wav/wav-002-manifest-web-editor/wbc-002-manifest-web-editor.md
@@ -56,7 +56,7 @@ must be reviewed and accepted before it is treated as final.
 wave_manifest:
   wave: 002
   slug: manifest-web-editor
-  status: planned
+  status: in-progress
   sources: []
   phases:
     - id: P1
@@ -86,7 +86,7 @@ wave_manifest:
       slug: resolved-graph-query
       phase: P1
       depends_on: []
-      run: null
+      run: 4
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/query/**'
@@ -128,7 +128,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-1 | — | `resolved-graph-query` | — | one CLI command that answers "what does this resolve to and what is dangling" | new `query graph` subcommand (naming TBD in its own PRD) that builds the full `ElementIndex`, forces resolution of every relationship the same way `views generate`/`query views` already do, and prints the resolved elements + relationships as JSON | running it against `.custom` prints valid JSON for every element/relationship; running it against a workspace with a deliberately broken `destination` id exits non-zero with the same kind of error `views generate` already produces for that case |
+| W-1 | 0004 | `resolved-graph-query` | — | one CLI command that answers "what does this resolve to and what is dangling" | new `query graph` subcommand (naming TBD in its own PRD) that builds the full `ElementIndex`, forces resolution of every relationship the same way `views generate`/`query views` already do, and prints the resolved elements + relationships as JSON | running it against `.custom` prints valid JSON for every element/relationship; running it against a workspace with a deliberately broken `destination` id exits non-zero with the same kind of error `views generate` already produces for that case |
 
 **Gate:** the command above is merged and both criteria in the manifest hold, checked by running it against `.custom` and against a one-off workspace with a dangling reference.
 
