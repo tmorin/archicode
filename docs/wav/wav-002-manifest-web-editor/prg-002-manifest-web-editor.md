@@ -1,6 +1,6 @@
 ---
 type: prg
-status: active
+status: completed
 date: 2026-10-04
 related:
   - docs/wav/wav-002-manifest-web-editor/wav-002-manifest-web-editor.md
@@ -169,6 +169,85 @@ wave: 002
 - 2026-10-04: Phase P3 gate verified — holds. Advancing to Phase P4 (final
   phase, no further gate).
 
+- 2026-10-04: Batch 4 (Phase P4, final phase) computed: W-4
+  `claude-editing-bridge`, dependencies W-2 and W-3 both `completed`.
+  Allocated run number 0007 — directory
+  `docs/wav/wav-002-manifest-web-editor/run/run-0007-claude-editing-bridge/`
+  created, status file written, manifest's `W-4.run` filled in. No
+  same-batch overlap (batch size 1, as every batch in this wave has been).
+  **Tier: `hard_judgment`** (declared reason: touches live capability —
+  gives the web UI the ability to invoke an autonomous coding agent against
+  real files). Per `complete-wave`'s routing rule, dispatching
+  `run-executor` with an explicit stronger model (`opus`), never the
+  default — the tier buys a stronger model, not a lighter one. Briefed with
+  the wave's Risks note that a git-backed undo is only an example
+  mechanism, not a requirement, and recommended a file-snapshot/restore
+  approach instead so the discard path does not depend on the target
+  workspace being a git repository. Largest concurrency this batch: 1
+  (same as every batch in this wave).
+- 2026-10-04: W-4's dispatched `run-executor` hit the same kind of
+  mechanical pause as W-3 — its own internal "ClaudeBridge integration
+  tests" subagent was still running in the background when it reported
+  interim status. Resumed it via `SendMessage` (not a fresh dispatch) once
+  that subagent delivered its `SubagentHandback` (19/19 new tests, 57/57
+  full suite, no file touched outside scope, no real `claude` invocation in
+  its own tests). It returned `completed` on resume.
+- 2026-10-04: Verified W-4 independently (never trusted its self-report):
+  run status `completed`; pln `execution_manifest.status: 'done'`, 10/10
+  tasks done. `git status`/`git diff --stat` confirm the only wave-level
+  files it could have touched (`wav-002-...md`, `prg-002-...md`) carry an
+  mtime from before its dispatch — it did not write either. Document
+  profile is `PRD+TDD+pln` (a deviation from W-1/W-2/W-3's `TDD+pln`,
+  justified in its own prg: this run's safety guarantee needs a judge
+  distinct from its implementer). Rebuilt with JDK 25
+  (`JAVA_HOME=.../25.0.4-tem ./mvnw -B verify`): **BUILD SUCCESS, 144
+  tests, 0 failures** (matches its reported 144; aggregated directly from
+  `target/surefire-reports/*.txt` rather than trusting the console
+  summary). Packaged the real jar and ran `editor serve` against a fresh
+  disposable copy of `.custom` (154 files, deleted after; neither `.custom`
+  nor this repository touched — `git status --porcelain` hashed
+  identically before and after every invocation below) on an ephemeral
+  local port, then personally exercised the bridge against the live
+  `claude` binary:
+  - **Accept path**: narrow prompt → `completed`, one file changed
+    (`manifests/app.helpspot.yaml`), diff rendered correctly; `accept` →
+    `200`, content persisted; a second `accept` and a `discard` on the same
+    session both `404`.
+  - **Discard path**: a second invocation, confirmed the change was
+    genuinely on disk (per-file md5 differed from the pre-invocation
+    digest), then `discard` → the full 154-file digest set equalled the
+    pre-invocation digest set exactly — byte-identical restore, confirmed
+    by checksum, not by inspection.
+  - **Containment**: four escape attempts via the bridge (relative `../`
+    write, absolute-path write, a traversal-styled path, and an
+    out-of-workspace read) — all four refused by the model before any
+    tool call, `permissionDenials` empty in every case, no file created,
+    read, or modified outside the workspace, workspace digest unchanged.
+    This independently reproduces the run's own `F-16` finding: the
+    *outcome* (no escape) is solid; the *mechanism* (a harness-level
+    denial record from inside the bridge, rather than the model simply
+    declining) was not exercised by me either, for the same reason the
+    run-executor names — the model complies with its system-prompt
+    preamble rather than attempting the write, so the permission guard is
+    never reached from a bridge-mediated call. Treat AC-12 as verified at
+    the outcome level and open at the mechanism level, exactly as `F-16`
+    states.
+  - TDD Canonical Impact: `none`, with reason (no canonical registers
+    declared in this repository — same finding as W-1/W-2/W-3) — read at
+    `tdd-0007-claude-editing-bridge.md`'s Canonical Impact section.
+  - No same-batch overlap to check (batch size 1). Files touched outside
+    `likely_paths` are exactly the ones the run-executor declared: the same
+    deviation W-1/W-2/W-3 already established (`tools/` was never on the
+    runtime classpath; the real implementation lives under
+    `src/main/java/io/morin/archicode/cli/`).
+- 2026-10-04: Phase P4 gate verified — `gate.criteria: []` (empty, last
+  phase, per the wave manifest). Canonical discharge: declared-none-with-
+  reason (above). Wave Completion Criteria re-checked against the above
+  evidence: all four hold, including the Claude-bridge criterion's
+  qualification on AC-12's mechanism half (see above and run-0007's `F-16`
+  for the full statement of what remains unverified). No run in this wave
+  is `cancelled`/`superseded`/blocked. **Wave complete.**
+
 ## Findings
 
 - No `docs/CLAUDE.md` register declaration and no `docs/bkg/`/`docs/ana/`
@@ -190,4 +269,23 @@ wave: 002
   to that same agent, not replaced with a fresh dispatch — it keeps the
   subagents' results and its own TDD/pln state, and its own hand-back
   already states exactly what's left to verify. Worked cleanly for W-3's
-  run 0006.
+  run 0006 and again for W-4's run 0007.
+- A model declining to attempt an action is not evidence that a sandbox or
+  permission guard would have stopped it — only an actual denial recorded
+  by the harness is. W-4/run-0007's `F-16` found this, and verifying it
+  independently reproduced the exact same gap: every escape attempt against
+  the live Claude bridge was declined by the model before any tool call,
+  so the permission-denial path was never exercised. A future run or wave
+  that needs to prove "the agent cannot do X" must make X look attractive
+  and legitimate enough that the model actually tries, then assert on the
+  harness's denial record — not on the refusal text.
+- Reported from W-4/run-0007 (barred from writing here itself): (a) when
+  dispatching a task whose brief includes a repo-wide formatting command
+  (e.g. `prettier --write` with no path), scope it to the files that task
+  owns — run-0007 dispatched one that could have reverted sibling tasks'
+  concurrent edits to the same worktree, caught only because the subagent
+  itself declined; (b) a parallel-group conflict analysis for concurrent
+  tasks must also check for a *shared build directory* (e.g. Maven's
+  `target/`), not just shared source files — two tasks writing to the same
+  `target/` at once is as real a collision as two tasks writing the same
+  file.

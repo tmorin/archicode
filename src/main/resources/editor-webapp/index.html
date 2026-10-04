@@ -21,6 +21,16 @@
     --color-success-bg: #e8f7ee;
     --color-app-layer: #2f6fed;
     --color-tech-layer: #c0392b;
+    --color-diff-add: #15602f;
+    --color-diff-add-bg: #e4f6ea;
+    --color-diff-del: #8a1818;
+    --color-diff-del-bg: #fce9e9;
+    --color-diff-hunk: #4a3fae;
+    --color-diff-hunk-bg: #eeecfa;
+    --color-diff-context: #3b4252;
+    --color-badge-bg: #eef1f6;
+    --color-disabled-bg: #e4e7ec;
+    --color-disabled-text: #8a93a3;
     font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 
@@ -178,7 +188,7 @@
     display: none !important;
   }
 
-  #graph-view h2, #editor-view h2 {
+  #graph-view h2, #editor-view h2, #assist-view h2 {
     font-size: 15px;
     margin: 0 0 12px 0;
   }
@@ -269,6 +279,13 @@
     background: var(--color-accent-dark);
   }
 
+  #save-btn:disabled,
+  #save-btn:disabled:hover {
+    background: var(--color-disabled-bg);
+    color: var(--color-disabled-text);
+    cursor: not-allowed;
+  }
+
   #editor-textarea {
     width: 100%;
     height: 560px;
@@ -328,6 +345,325 @@
     font-style: italic;
     margin: 0;
   }
+
+  /* ---------- Assist tab ---------- */
+
+  .lock-note {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  #tree.tree-locked {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .assist-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .assist-meta {
+    font-size: 12px;
+    color: var(--color-muted);
+    margin: 0 0 12px 0;
+  }
+
+  #assist-prompt {
+    width: 100%;
+    height: 130px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    resize: vertical;
+    background: var(--color-panel);
+    color: var(--color-text);
+  }
+
+  #assist-prompt:disabled {
+    background: var(--color-disabled-bg);
+    color: var(--color-disabled-text);
+    cursor: not-allowed;
+  }
+
+  .assist-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 10px 0 14px 0;
+  }
+
+  .assist-btn {
+    border: none;
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--color-accent);
+  }
+
+  .assist-btn:hover {
+    background: var(--color-accent-dark);
+  }
+
+  .assist-btn.assist-btn-accept {
+    background: var(--color-success);
+  }
+
+  .assist-btn.assist-btn-discard {
+    background: var(--color-error);
+  }
+
+  .assist-btn:disabled,
+  .assist-btn:disabled:hover {
+    background: var(--color-disabled-bg);
+    color: var(--color-disabled-text);
+    cursor: not-allowed;
+  }
+
+  .assist-progress {
+    font-size: 13px;
+    color: var(--color-warning);
+    font-weight: 600;
+  }
+
+  .assist-banner {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+    border: 2px solid var(--color-warning);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .assist-banner h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+  }
+
+  .assist-banner ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  .assist-banner li {
+    margin-bottom: 5px;
+  }
+
+  .assist-section {
+    margin-bottom: 14px;
+  }
+
+  .assist-section h3 {
+    font-size: 13px;
+    margin: 0 0 8px 0;
+  }
+
+  .assist-outcome {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: var(--color-badge-bg);
+    color: var(--color-text);
+  }
+
+  .assist-outcome.outcome-completed {
+    background: var(--color-success-bg);
+    border-color: var(--color-success);
+    color: var(--color-success);
+  }
+
+  .assist-outcome.outcome-failed,
+  .assist-outcome.outcome-timeout {
+    background: var(--color-error-bg);
+    border-color: var(--color-error);
+    color: var(--color-error);
+  }
+
+  .assist-summary {
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 10px 0;
+  }
+
+  .denials {
+    border: 1px solid var(--color-error);
+    background: var(--color-error-bg);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+
+  .denials h3 {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    color: var(--color-error);
+  }
+
+  .denials p.denials-intro {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    color: var(--color-error);
+  }
+
+  .denial {
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .denial-tool {
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  .denial-path {
+    font-family: monospace;
+    word-break: break-all;
+    color: var(--color-muted);
+  }
+
+  .denial summary {
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 6px;
+    color: var(--color-accent-dark);
+  }
+
+  .denial-detail {
+    max-height: 180px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: monospace;
+    font-size: 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 8px;
+    margin-top: 6px;
+  }
+
+  .change-block {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-panel);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .change-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .change-path {
+    flex: 1;
+    font-family: monospace;
+    font-size: 13px;
+    word-break: break-all;
+  }
+
+  .change-badge {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 9px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: var(--color-badge-bg);
+    color: var(--color-muted);
+  }
+
+  .change-badge.change-created {
+    background: var(--color-success-bg);
+    border-color: var(--color-success);
+    color: var(--color-success);
+  }
+
+  .change-badge.change-modified {
+    background: var(--color-warning-bg);
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+  }
+
+  .change-badge.change-deleted {
+    background: var(--color-error-bg);
+    border-color: var(--color-error);
+    color: var(--color-error);
+  }
+
+  .change-note {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--color-muted);
+  }
+
+  .diff {
+    margin: 0;
+    padding: 8px 0;
+    overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .diff-line {
+    padding: 0 12px;
+    white-space: pre;
+  }
+
+  .diff-add {
+    background: var(--color-diff-add-bg);
+    color: var(--color-diff-add);
+  }
+
+  .diff-del {
+    background: var(--color-diff-del-bg);
+    color: var(--color-diff-del);
+  }
+
+  .diff-hunk {
+    background: var(--color-diff-hunk-bg);
+    color: var(--color-diff-hunk);
+    font-weight: 600;
+  }
+
+  .diff-context {
+    color: var(--color-diff-context);
+  }
 </style>
 </head>
 <body>
@@ -336,12 +672,15 @@
     <nav id="tabs">
       <button type="button" class="tab active" data-tab="graph">Graph</button>
       <button type="button" class="tab" data-tab="editor">Editor</button>
+      <button type="button" class="tab" data-tab="assist">Assist</button>
     </nav>
   </header>
 
   <div id="layout">
     <aside id="sidebar">
       <h2>Manifests</h2>
+      <div id="tree-lock-note" class="lock-note hidden">Editing is paused: a Claude change is pending review on
+        the Assist tab. Accept or discard it first — a discard would revert any hand edit made now.</div>
       <div id="tree"><div id="tree-loading" class="tree-dir-title">Loading…</div></div>
     </aside>
 
@@ -357,6 +696,9 @@
 
       <section id="editor-view" class="view">
         <h2>Editor</h2>
+        <div id="editor-lock-note" class="lock-note hidden">Saving is disabled while a Claude change is pending
+          review on the Assist tab: discarding that change restores the whole workspace from the snapshot taken
+          before it ran, which would also revert anything you save here now.</div>
         <div id="editor-empty">Select a manifest from the tree or the graph to begin editing.</div>
         <div id="editor-main" class="hidden">
           <div class="editor-toolbar">
@@ -373,6 +715,27 @@
           </div>
         </div>
       </section>
+
+      <section id="assist-view" class="view">
+        <h2>Assist</h2>
+
+        <div id="assist-unavailable" class="error-box hidden"></div>
+        <p id="assist-meta" class="assist-meta hidden"></p>
+
+        <div id="assist-prompt-block">
+          <label class="assist-label" for="assist-prompt">Describe the change you want made to this workspace</label>
+          <textarea id="assist-prompt" spellcheck="false"
+            placeholder="e.g. add a new application component named &quot;billing&quot; to manifests/sol_a.yaml"></textarea>
+          <div class="assist-actions">
+            <button type="button" id="assist-submit" class="assist-btn">Submit</button>
+            <span id="assist-progress" class="assist-progress hidden"></span>
+          </div>
+        </div>
+
+        <div id="assist-error" class="error-box hidden"></div>
+        <div id="assist-result"></div>
+        <div id="assist-pending"></div>
+      </section>
     </main>
   </div>
 
@@ -385,8 +748,13 @@
     referenceToPath: new Map(),
     schema: null,
     schemaLoaded: false,
-    currentPath: null
+    currentPath: null,
+    claudeStatus: null,
+    pendingChange: null,
+    assistBusy: false
   };
+
+  var VIEW_IDS = { graph: "graph-view", editor: "editor-view", assist: "assist-view" };
 
   function qs(id) { return document.getElementById(id); }
 
@@ -401,8 +769,9 @@
     document.querySelectorAll("#tabs .tab").forEach(function (btn) {
       btn.classList.toggle("active", btn.getAttribute("data-tab") === tab);
     });
-    qs("graph-view").classList.toggle("active", tab === "graph");
-    qs("editor-view").classList.toggle("active", tab === "editor");
+    Object.keys(VIEW_IDS).forEach(function (name) {
+      qs(VIEW_IDS[name]).classList.toggle("active", name === tab);
+    });
   }
 
   document.querySelectorAll("#tabs .tab").forEach(function (btn) {
@@ -777,6 +1146,10 @@
     if (!state.currentPath) {
       return;
     }
+    // Saving is paused while a Claude change is pending review: a discard would revert this save too.
+    if (state.pendingChange) {
+      return;
+    }
 
     var textarea = qs("editor-textarea");
     var saveError = qs("save-error");
@@ -821,12 +1194,503 @@
       });
   });
 
+  // ---------- Assist (GET /api/claude/status, POST /api/claude/{invoke,accept,discard}) ----------
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) {
+      node.className = className;
+    }
+    if (text !== null && text !== undefined) {
+      // Always textContent: every string below comes from the server and may contain the operator's own
+      // file content, which must never be interpreted as markup.
+      node.textContent = String(text);
+    }
+    return node;
+  }
+
+  function cssToken(value) {
+    return String(value === null || value === undefined ? "" : value).replace(/[^a-z]/gi, "").toLowerCase();
+  }
+
+  // Every non-2xx answer from /api/claude/* carries a plain-text, operator-readable message.
+  function readErrorBody(res) {
+    return res.text().then(function (body) {
+      throw new Error(body && body.trim() ? body.trim() : ("HTTP " + res.status));
+    });
+  }
+
+  function showAssistError(message) {
+    var box = qs("assist-error");
+    box.textContent = escapeForText(message);
+    box.classList.remove("hidden");
+  }
+
+  function clearAssistError() {
+    var box = qs("assist-error");
+    box.textContent = "";
+    box.classList.add("hidden");
+  }
+
+  function setAssistControlsEnabled(enabled) {
+    var usable = enabled && !!(state.claudeStatus && state.claudeStatus.available);
+    qs("assist-prompt").disabled = !usable;
+    qs("assist-submit").disabled = !usable;
+  }
+
+  function disableAssistControls(reason) {
+    qs("assist-prompt").disabled = true;
+    qs("assist-submit").disabled = true;
+    qs("assist-meta").classList.add("hidden");
+    var box = qs("assist-unavailable");
+    box.textContent = escapeForText(reason);
+    box.classList.remove("hidden");
+  }
+
+  // AC-17: unavailability is discovered on load, not on submission.
+  function loadClaudeStatus() {
+    fetch("/api/claude/status")
+      .then(function (res) {
+        if (!res.ok) {
+          return readErrorBody(res);
+        }
+        return res.json();
+      })
+      .then(function (status) {
+        state.claudeStatus = status;
+        applyClaudeAvailability();
+        if (status.pending) {
+          renderPendingChange(status.pending, true);
+        }
+      })
+      .catch(function (err) {
+        state.claudeStatus = null;
+        disableAssistControls(
+          "Could not read the Claude editing bridge status, so this tab is disabled: " + escapeForText(err.message)
+        );
+      });
+  }
+
+  function applyClaudeAvailability() {
+    var status = state.claudeStatus;
+    if (!status) {
+      return;
+    }
+
+    if (!status.available) {
+      disableAssistControls(
+        status.reason
+          ? status.reason
+          : "The Claude editing bridge is not available on this server, so no change can be requested here."
+      );
+      return;
+    }
+
+    var box = qs("assist-unavailable");
+    box.textContent = "";
+    box.classList.add("hidden");
+
+    var meta = qs("assist-meta");
+    var parts = ["Model: " + escapeForText(status.model || "(server default)")];
+    if (status.timeoutSeconds) {
+      parts.push("the server gives up after " + status.timeoutSeconds + "s");
+    }
+    parts.push(
+      status.workspaceContainsVcsDirectory
+        ? "this workspace contains a version-control directory"
+        : "no version-control directory in this workspace"
+    );
+    meta.textContent = parts.join(" · ");
+    meta.classList.remove("hidden");
+
+    setAssistControlsEnabled(!state.pendingChange && !state.assistBusy);
+  }
+
+  // Requirement 10: client-side-only mitigation. A hand save made during the review window would be
+  // reverted by a discard, so saving and tree-driven editing are paused until the change is decided.
+  function setEditorLocked(locked) {
+    qs("save-btn").disabled = locked;
+    qs("editor-lock-note").classList.toggle("hidden", !locked);
+    qs("tree-lock-note").classList.toggle("hidden", !locked);
+    qs("tree").classList.toggle("tree-locked", locked);
+  }
+
+  function submitPrompt() {
+    if (state.assistBusy || state.pendingChange) {
+      return;
+    }
+    var prompt = qs("assist-prompt").value;
+    if (!prompt.trim()) {
+      showAssistError("Describe the change you want made before submitting.");
+      return;
+    }
+
+    clearAssistError();
+    qs("assist-result").innerHTML = "";
+    state.assistBusy = true;
+    setAssistControlsEnabled(false);
+
+    var progress = qs("assist-progress");
+    var seconds = state.claudeStatus ? state.claudeStatus.timeoutSeconds : null;
+    progress.textContent =
+      "Running the Claude CLI against this workspace. This can take minutes" +
+      (seconds ? (" — the server gives up after " + seconds + "s") : "") +
+      ". Leave this page open; the files are not changed until the invocation finishes.";
+    progress.classList.remove("hidden");
+
+    fetch("/api/claude/invoke", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: prompt
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          return readErrorBody(res);
+        }
+        return res.json();
+      })
+      .then(function (result) {
+        state.assistBusy = false;
+        progress.classList.add("hidden");
+        renderInvokeResult(result);
+      })
+      .catch(function (err) {
+        state.assistBusy = false;
+        progress.classList.add("hidden");
+        // The prompt text is deliberately left in the textarea so it can be edited and retried.
+        showAssistError(err.message);
+        setAssistControlsEnabled(true);
+      });
+  }
+
+  function renderInvokeResult(result) {
+    var container = qs("assist-result");
+    container.innerHTML = "";
+
+    var section = el("div", "assist-section");
+    var outcome = escapeForText(result.outcome) || "unknown";
+    section.appendChild(el("span", "assist-outcome outcome-" + cssToken(outcome), "Outcome: " + outcome));
+
+    if (result.agentSummary) {
+      section.appendChild(el("div", "assist-summary", result.agentSummary));
+    }
+
+    var stats = [];
+    if (result.numTurns !== null && result.numTurns !== undefined) {
+      stats.push(result.numTurns + " turn(s)");
+    }
+    if (result.costUsd !== null && result.costUsd !== undefined) {
+      stats.push("$" + Number(result.costUsd).toFixed(4));
+    }
+    if (result.durationMs !== null && result.durationMs !== undefined) {
+      stats.push((Number(result.durationMs) / 1000).toFixed(1) + "s");
+    }
+    if (stats.length > 0) {
+      section.appendChild(el("p", "assist-meta", stats.join(" · ")));
+    }
+    container.appendChild(section);
+
+    if (result.changed && result.pending) {
+      renderPendingChange(result.pending, false);
+      return;
+    }
+
+    // AC-4: nothing changed, so no Accept control is offered at all.
+    container.appendChild(
+      el(
+        "div",
+        "change-note",
+        "No file in the workspace was changed, so there is nothing to accept or discard and the workspace is " +
+          "exactly as it was."
+      )
+    );
+
+    // FR-11/AC-12: an invocation that tried to leave the workspace and was stopped usually changes nothing, so
+    // the denial record has to be shown on this branch too — it is the one place the containment guarantee is
+    // observable, and it would otherwise be the one place it is hidden.
+    var topLevelDenials = result.permissionDenials || [];
+    if (topLevelDenials.length > 0) {
+      container.appendChild(denialsSection(topLevelDenials));
+    }
+
+    setAssistControlsEnabled(true);
+  }
+
+  // The single render path for a pending change, used by both the status response (page load) and the
+  // invoke response — which is what stops a refresh orphaning a change under review.
+  function renderPendingChange(pending, recovered) {
+    state.pendingChange = pending;
+    setAssistControlsEnabled(false);
+    setEditorLocked(true);
+
+    var container = qs("assist-pending");
+    container.innerHTML = "";
+    container.appendChild(pendingBanner(pending, recovered));
+
+    // Rendered alongside the diff and the controls, never instead of them: a failed or timed-out
+    // invocation that changed files still needs a decision.
+    if (pending.message) {
+      container.appendChild(el("div", "error-box", pending.message));
+    }
+
+    container.appendChild(
+      el(
+        "p",
+        "assist-meta",
+        [
+          "Change id: " + escapeForText(pending.sessionId),
+          "invocation outcome: " + (escapeForText(pending.outcome) || "unknown"),
+          pending.filesCaptured + " file(s) in the restore snapshot"
+        ].join(" · ")
+      )
+    );
+
+    var denials = pending.permissionDenials || [];
+    if (denials.length > 0) {
+      container.appendChild(denialsSection(denials));
+    }
+
+    container.appendChild(changesSection(pending.changes || []));
+    container.appendChild(decisionControls(pending.sessionId));
+  }
+
+  // AC-5 / FR-7: the most important text on the page.
+  function pendingBanner(pending, recovered) {
+    var banner = el("div", "assist-banner");
+    banner.appendChild(
+      el(
+        "h3",
+        null,
+        recovered
+          ? "A change is already pending review — the files on disk are changed right now"
+          : "This change is already on disk — it needs your decision"
+      )
+    );
+
+    var list = document.createElement("ul");
+    [
+      "The files listed below have ALREADY been written to the workspace. What is on disk right now is the " +
+        "changed state, not the state from before the invocation.",
+      "Discard is the action that puts them back, byte for byte, from the snapshot taken before the invocation " +
+        "ran. Accept keeps what is on disk and releases that snapshot.",
+      "Stopping the server while this change is pending leaves the files changed: nothing is reverted on " +
+        "shutdown, and the snapshot is lost, so the change can no longer be undone from here."
+    ].forEach(function (line) {
+      list.appendChild(el("li", null, line));
+    });
+
+    if (pending.workspaceContainsVcsDirectory) {
+      list.appendChild(
+        el(
+          "li",
+          null,
+          "This workspace contains a version-control directory, and a discard restores the WHOLE workspace " +
+            "directory including that version-control directory — so any commit you make while this change is " +
+            "under review would be reverted too."
+        )
+      );
+    }
+
+    banner.appendChild(list);
+    return banner;
+  }
+
+  function denialsSection(denials) {
+    var box = el("div", "denials");
+    box.appendChild(el("h3", null, "Blocked actions — the invocation attempted these and was denied"));
+    box.appendChild(
+      el(
+        "p",
+        "denials-intro",
+        "None of these were carried out. They are listed so the containment is visible: this is what the agent " +
+          "tried to reach and was refused."
+      )
+    );
+
+    denials.forEach(function (denial) {
+      var item = el("div", "denial");
+      item.appendChild(el("div", "denial-tool", "Tool: " + (escapeForText(denial.toolName) || "(not reported)")));
+      item.appendChild(el("div", "denial-path", "Path: " + (escapeForText(denial.filePath) || "(not reported)")));
+      if (denial.detail) {
+        var details = document.createElement("details");
+        details.appendChild(el("summary", null, "Show what it attempted"));
+        details.appendChild(el("div", "denial-detail", denial.detail));
+        item.appendChild(details);
+      }
+      box.appendChild(item);
+    });
+    return box;
+  }
+
+  function changesSection(changes) {
+    var section = el("div", "assist-section");
+    section.appendChild(el("h3", null, "Changed files (" + changes.length + ")"));
+
+    if (changes.length === 0) {
+      // Explicitly NOT "nothing happened": the change is on disk, it just could not be diffed.
+      section.appendChild(
+        el(
+          "div",
+          "error-box",
+          "No per-file diff could be computed for this change. That does not mean nothing happened: whatever the " +
+            "invocation wrote is on disk, and Discard below is still the only way to put the workspace back. The " +
+            "message above says why the diff is missing."
+        )
+      );
+      return section;
+    }
+
+    changes.forEach(function (change) {
+      var block = el("div", "change-block");
+
+      var head = el("div", "change-head");
+      head.appendChild(el("span", "change-path", change.path));
+      var changeType = escapeForText(change.changeType) || "unknown";
+      head.appendChild(el("span", "change-badge change-" + cssToken(changeType), changeType));
+      block.appendChild(head);
+
+      if (change.binary) {
+        block.appendChild(
+          el("div", "change-note", "Binary file — this change is real, but no diff can be shown for it.")
+        );
+      } else if (change.truncated) {
+        block.appendChild(
+          el(
+            "div",
+            "change-note",
+            "Too large to diff here — this change is real, but no diff can be shown for it."
+          )
+        );
+      } else if (change.diff) {
+        block.appendChild(renderDiff(change.diff));
+      } else {
+        block.appendChild(el("div", "change-note", "No diff text was supplied for this file."));
+      }
+
+      section.appendChild(block);
+    });
+    return section;
+  }
+
+  function renderDiff(diffText) {
+    var wrapper = el("div", "diff");
+    String(diffText).split("\n").forEach(function (line) {
+      var cls = "diff-line diff-context";
+      if (line.indexOf("@@") === 0) {
+        cls = "diff-line diff-hunk";
+      } else if (line.charAt(0) === "+") {
+        cls = "diff-line diff-add";
+      } else if (line.charAt(0) === "-") {
+        cls = "diff-line diff-del";
+      }
+      wrapper.appendChild(el("div", cls, line.length === 0 ? " " : line));
+    });
+    return wrapper;
+  }
+
+  function decisionControls(sessionId) {
+    var row = el("div", "assist-actions");
+
+    var accept = el("button", "assist-btn assist-btn-accept", "Accept — keep these changes");
+    accept.type = "button";
+    accept.id = "assist-accept";
+    accept.addEventListener("click", function () {
+      decide("accept", sessionId);
+    });
+
+    var discard = el("button", "assist-btn assist-btn-discard", "Discard — put the files back");
+    discard.type = "button";
+    discard.id = "assist-discard";
+    discard.addEventListener("click", function () {
+      decide("discard", sessionId);
+    });
+
+    var progress = el("span", "assist-progress hidden");
+    progress.id = "assist-decision-progress";
+
+    row.appendChild(accept);
+    row.appendChild(discard);
+    row.appendChild(progress);
+    return row;
+  }
+
+  function decide(action, sessionId) {
+    var accept = qs("assist-accept");
+    var discard = qs("assist-discard");
+    if (!accept || !discard || accept.disabled || discard.disabled) {
+      return;
+    }
+
+    // Both are disabled while either request is in flight.
+    accept.disabled = true;
+    discard.disabled = true;
+    clearAssistError();
+
+    var progress = qs("assist-decision-progress");
+    progress.textContent = action === "accept"
+      ? "Accepting and releasing the snapshot…"
+      : "Discarding and restoring the workspace from the snapshot…";
+    progress.classList.remove("hidden");
+
+    fetch("/api/claude/" + action + "/" + encodeURIComponent(sessionId), { method: "POST" })
+      .then(function (res) {
+        if (!res.ok) {
+          return readErrorBody(res);
+        }
+        return res.json();
+      })
+      .then(function (result) {
+        // AC-11: the pending block (and with it both buttons) is removed for good.
+        clearPendingChange();
+        qs("assist-result").appendChild(
+          el(
+            "div",
+            "success-indicator",
+            action === "accept"
+              ? "Accepted. " + result.files + " changed file(s) were kept, and the restore snapshot has been " +
+                "released — this change can no longer be discarded from here."
+              : "Discarded. " + result.filesRestored + " file(s) restored, " + result.filesDeleted +
+                " deleted, " + result.directoriesRemoved + " directory/ies removed. The workspace is back to " +
+                "its state from before the invocation."
+          )
+        );
+        // Re-read the rest of the page from disk so it reflects reality.
+        loadManifests();
+        loadGraph();
+        loadClaudeStatus();
+      })
+      .catch(function (err) {
+        showAssistError(err.message);
+        // A refused decision (for example a failed restore) deliberately keeps the change pending
+        // server-side, so the two buttons come back and the operator can retry.
+        if (qs("assist-accept")) {
+          qs("assist-accept").disabled = false;
+        }
+        if (qs("assist-discard")) {
+          qs("assist-discard").disabled = false;
+        }
+        if (qs("assist-decision-progress")) {
+          qs("assist-decision-progress").classList.add("hidden");
+        }
+      });
+  }
+
+  function clearPendingChange() {
+    state.pendingChange = null;
+    qs("assist-pending").innerHTML = "";
+    setEditorLocked(false);
+    setAssistControlsEnabled(true);
+  }
+
+  qs("assist-submit").addEventListener("click", submitPrompt);
+
   // ---------- Init ----------
 
   function init() {
     loadManifests();
     loadGraph();
     loadSchemaOnce();
+    loadClaudeStatus();
   }
 
   init();

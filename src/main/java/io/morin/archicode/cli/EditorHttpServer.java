@@ -13,12 +13,15 @@ import jakarta.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -29,7 +32,7 @@ import lombok.val;
 /**
  * The local, unauthenticated HTTP server backing the manifest editor (see {@code docker run ... editor serve}).
  * <p>
- * Exposes six routes:
+ * Exposes ten routes:
  * <ul>
  *   <li>{@code GET /} — the single-page manifest editor webapp, served byte-for-byte from the classpath resource
  *       {@code /editor-webapp/index.html} (run-0006 TDD {@code DEC-1}).</li>
@@ -42,11 +45,19 @@ import lombok.val;
  *       {@code DEC-3}.</li>
  *   <li>{@code GET /api/manifests/{path}} — the raw byte content of the manifest file at {@code path}.</li>
  *   <li>{@code PUT /api/manifests/{path}} — validate then persist a manifest file's content.</li>
+ *   <li>{@code GET /api/claude/status} — whether the Claude editing bridge can run here, and any change
+ *       currently under review (run-0007 TDD {@code CTR-1}).</li>
+ *   <li>{@code POST /api/claude/invoke} — apply one prose change request; the body is the prompt and nothing
+ *       else (run-0007 TDD {@code CTR-2}).</li>
+ *   <li>{@code POST /api/claude/accept/{sessionId}} — keep the pending change.</li>
+ *   <li>{@code POST /api/claude/discard/{sessionId}} — undo it, byte-for-byte.</li>
  * </ul>
- * Implemented on the JDK's own {@code com.sun.net.httpserver.HttpServer} (no new Maven dependency; see this
- * run's TDD, {@code DEC-2}). Manifest read/write resolve {@code settings.manifests.paths} from the raw workspace
- * resource only (not the fully-indexed graph), so an unrelated dangling reference never blocks reading or fixing
- * a manifest (TDD {@code DEC-3}); only {@code GET /api/graph} builds the full, indexed workspace.
+ * Implemented on the JDK's own {@code com.sun.net.httpserver.HttpServer} (no new Maven dependency; see
+ * run-0005's TDD, {@code DEC-2}). Manifest read/write resolve {@code settings.manifests.paths} from the raw
+ * workspace resource only (not the fully-indexed graph), so an unrelated dangling reference never blocks reading
+ * or fixing a manifest (run-0006 TDD {@code DEC-3}); only {@code GET /api/graph} builds the full, indexed
+ * workspace. That resolution now lives in {@link WorkspaceLayout} so the Claude bridge can share it
+ * (run-0007 TDD {@code DEC-8}).
  */
 @Slf4j
 @ApplicationScoped
@@ -55,7 +66,18 @@ public class EditorHttpServer {
     private static final String MANIFESTS_PREFIX = "/api/manifests/";
     private static final String MANIFESTS_LISTING_PATH = "/api/manifests";
     private static final String SCHEMAS_PREFIX = "/api/schemas/";
+    private static final String CLAUDE_PREFIX = "/api/claude/";
     private static final String WEBAPP_RESOURCE = "/editor-webapp/index.html";
+
+    /**
+     * Handler threads. Before run-0007 this server had no executor at all, so {@code HttpServer} ran every
+     * handler on the single thread {@code start()} creates — harmless for four parse-and-respond handlers, and
+     * unacceptable once one handler can occupy that thread for minutes: {@code status}, the tree, the graph and,
+     * worst of all, {@code accept}/{@code discard} would be unserviceable for the duration of the very change
+     * the operator was trying to undo. Four is ample for one operator and, unlike an unbounded pool, is not an
+     * abusable resource on an unauthenticated port (run-0007 TDD {@code DEC-16}).
+     */
+    private static final int HANDLER_THREADS = 4;
 
     @Inject
     WorkspaceFactory workspaceFactory;
@@ -64,10 +86,31 @@ public class EditorHttpServer {
     MapperFactory mapperFactory;
 
     @Inject
+    WorkspaceLayout workspaceLayout;
+
+    @Inject
+    ClaudeBridge claudeBridge;
+
+    @Inject
     GetGraphQuery getGraphQuery;
 
     @Inject
     GetSchemasQuery getSchemasQuery;
+
+    /**
+     * Start the server with the default Claude bridge settings.
+     * <p>
+     * This three-argument signature is deliberately unchanged from run-0005 so every existing caller and test
+     * keeps working untouched (run-0007 TDD {@code CON-2}).
+     *
+     * @param host              the address to bind to
+     * @param port              the port to bind to (0 for an ephemeral port, used by tests)
+     * @param workspaceFilePath the workspace file this server reads/writes against
+     * @return the started, already-bound {@link HttpServer}
+     */
+    public HttpServer start(@NonNull String host, int port, @NonNull Path workspaceFilePath) {
+        return start(host, port, workspaceFilePath, ClaudeBridge.Settings.defaults());
+    }
 
     /**
      * Start the server.
@@ -75,28 +118,39 @@ public class EditorHttpServer {
      * @param host              the address to bind to
      * @param port              the port to bind to (0 for an ephemeral port, used by tests)
      * @param workspaceFilePath the workspace file this server reads/writes against
+     * @param claudeSettings    the Claude editing bridge's fixed settings for this server
      * @return the started, already-bound {@link HttpServer}
      */
     @SneakyThrows
-    public HttpServer start(@NonNull String host, int port, @NonNull Path workspaceFilePath) {
+    public HttpServer start(
+        @NonNull String host,
+        int port,
+        @NonNull Path workspaceFilePath,
+        @NonNull ClaudeBridge.Settings claudeSettings
+    ) {
         val server = HttpServer.create(new InetSocketAddress(host, port), 0);
+        server.setExecutor(Executors.newFixedThreadPool(HANDLER_THREADS));
         server.createContext("/", this::handleRoot);
         server.createContext("/api/graph", exchange -> handleGraph(exchange, workspaceFilePath));
         server.createContext(SCHEMAS_PREFIX, this::handleSchema);
         server.createContext(MANIFESTS_LISTING_PATH, exchange -> handleManifestsListing(exchange, workspaceFilePath));
         server.createContext(MANIFESTS_PREFIX, exchange -> handleManifest(exchange, workspaceFilePath));
+        server.createContext(CLAUDE_PREFIX, exchange -> handleClaude(exchange, workspaceFilePath, claudeSettings));
         server.start();
         log.info("editor http server listening on {}:{}", host, server.getAddress().getPort());
         return server;
     }
 
     /**
-     * Stop the given server, releasing its port immediately.
+     * Stop the given server, releasing its port immediately and shutting down its handler pool.
      *
      * @param server the server to stop
      */
     public void stop(@NonNull HttpServer server) {
         server.stop(0);
+        if (server.getExecutor() instanceof ExecutorService executorService) {
+            executorService.shutdownNow();
+        }
     }
 
     @SneakyThrows
@@ -119,6 +173,72 @@ public class EditorHttpServer {
         }
     }
 
+    /**
+     * The Claude editing bridge's four routes (run-0007 TDD {@code DEC-1}), dispatched on the path suffix.
+     * <p>
+     * {@code POST invoke}'s request body is the prompt and nothing else: there is no structured field in which a
+     * workspace, directory or path could be smuggled, which is what makes PRD {@code AC-13} structurally true
+     * rather than merely unimplemented. Every refusal arrives as a {@link ClaudeBridge.BridgeRefusal} carrying
+     * its own status, and a non-2xx from {@code invoke} means no invocation ran against the workspace, no
+     * capture is held and no file was touched (TDD {@code CTR-2}).
+     */
+    @SneakyThrows
+    private void handleClaude(HttpExchange exchange, Path workspaceFilePath, ClaudeBridge.Settings settings) {
+        val suffix = exchange.getRequestURI().getPath().substring(CLAUDE_PREFIX.length());
+        try {
+            if ("status".equals(suffix)) {
+                if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                    methodNotAllowed(exchange);
+                    return;
+                }
+                writeJson(exchange, 200, claudeBridge.status(workspaceFilePath, settings));
+                return;
+            }
+
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                methodNotAllowed(exchange);
+                return;
+            }
+
+            if ("invoke".equals(suffix)) {
+                val prompt = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                writeJson(exchange, 200, claudeBridge.invoke(workspaceFilePath, settings, prompt));
+            } else if (suffix.startsWith("accept/")) {
+                writeJson(exchange, 200, claudeBridge.accept(sessionId(suffix, "accept/")));
+            } else if (suffix.startsWith("discard/")) {
+                writeJson(exchange, 200, claudeBridge.discard(sessionId(suffix, "discard/")));
+            } else {
+                writeResponse(
+                    exchange,
+                    404,
+                    "text/plain; charset=utf-8",
+                    ("unknown claude bridge route: " + suffix).getBytes(StandardCharsets.UTF_8)
+                );
+            }
+        } catch (ClaudeBridge.BridgeRefusal e) {
+            log.info("claude bridge refused a request ({}): {}", e.getStatus(), e.getMessage());
+            writeResponse(
+                exchange,
+                e.getStatus(),
+                "text/plain; charset=utf-8",
+                errorMessage(e).getBytes(StandardCharsets.UTF_8)
+            );
+        } catch (Exception e) {
+            log.error("the claude bridge failed unexpectedly", e);
+            writeResponse(exchange, 500, "text/plain; charset=utf-8", errorMessage(e).getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private String sessionId(String suffix, String prefix) {
+        return URLDecoder.decode(suffix.substring(prefix.length()), StandardCharsets.UTF_8);
+    }
+
+    @SneakyThrows
+    private void writeJson(HttpExchange exchange, int status, Object payload) {
+        val json = mapperFactory.create(MapperFormat.JSON).writeValueAsString(payload);
+        writeResponse(exchange, status, "application/json; charset=utf-8", json.getBytes(StandardCharsets.UTF_8));
+    }
+
     @SneakyThrows
     private void handleManifestsListing(HttpExchange exchange, Path workspaceFilePath) {
         if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
@@ -126,11 +246,11 @@ public class EditorHttpServer {
             return;
         }
 
-        val workspaceDir = workspaceFilePath.toAbsolutePath().normalize().getParent();
+        val workspaceDir = workspaceLayout.workspaceDir(workspaceFilePath);
         val entries = new ArrayList<ManifestEntry>();
 
-        for (Path manifestsDir : resolveManifestsDirs(workspaceFilePath, workspaceDir)) {
-            // Unlike ManifestParser.parse, resolveManifestsDirs does not filter out configured paths that don't
+        for (Path manifestsDir : workspaceLayout.manifestsDirs(workspaceFilePath)) {
+            // Unlike ManifestParser.parse, WorkspaceLayout.manifestsDirs does not filter out configured paths that don't
             // exist on disk (e.g. a fresh workspace before its first manifest is authored); skip those here,
             // the same Files.isDirectory guard isWithinConfiguredManifestsDir already applies.
             if (!Files.isDirectory(manifestsDir)) {
@@ -233,13 +353,10 @@ public class EditorHttpServer {
             return;
         }
 
-        val workspaceDir = workspaceFilePath.toAbsolutePath().normalize().getParent();
+        val workspaceDir = workspaceLayout.workspaceDir(workspaceFilePath);
         val target = workspaceDir.resolve(relativePath).normalize();
 
-        if (
-            !isWithinConfiguredManifestsDir(workspaceFilePath, workspaceDir, target) ||
-            MapperFormat.resolve(target).isEmpty()
-        ) {
+        if (!isWithinConfiguredManifestsDir(workspaceFilePath, target) || MapperFormat.resolve(target).isEmpty()) {
             writeResponse(
                 exchange,
                 400,
@@ -303,35 +420,24 @@ public class EditorHttpServer {
      * {@code settings.manifests.paths} — not merely nested under one — mirroring {@code ManifestParser}'s own
      * non-recursive directory listing and closing path traversal (a {@code target} containing {@code ..} will
      * normalize to some other real location, which will not equal any configured manifests dir's real path).
+     * <p>
+     * The directory resolution itself lives in {@link WorkspaceLayout} (run-0007 TDD {@code DEC-8}); the
+     * {@code toRealPath} equality below is unchanged from run-0005.
      */
     @SneakyThrows
-    private boolean isWithinConfiguredManifestsDir(Path workspaceFilePath, Path workspaceDir, Path target) {
+    private boolean isWithinConfiguredManifestsDir(Path workspaceFilePath, Path target) {
         val targetParent = target.getParent();
         if (targetParent == null || !Files.isDirectory(targetParent)) {
             return false;
         }
         val targetRealParent = targetParent.toRealPath();
 
-        for (Path manifestsDir : resolveManifestsDirs(workspaceFilePath, workspaceDir)) {
+        for (Path manifestsDir : workspaceLayout.manifestsDirs(workspaceFilePath)) {
             if (Files.isDirectory(manifestsDir) && manifestsDir.toRealPath().equals(targetRealParent)) {
                 return true;
             }
         }
         return false;
-    }
-
-    /**
-     * Resolve {@code settings.manifests.paths} by parsing only the raw workspace resource — the same first step
-     * {@link WorkspaceFactory#create(Path)} performs before manifest parsing or index building (TDD {@code DEC-3}).
-     */
-    @SneakyThrows
-    private List<Path> resolveManifestsDirs(Path workspaceFilePath, Path workspaceDir) {
-        val rawMapper = mapperFactory.create(workspaceFilePath);
-        val rawWorkspace = rawMapper.readValue(
-            workspaceFilePath.toFile(),
-            io.morin.archicode.resource.workspace.Workspace.class
-        );
-        return rawWorkspace.getSettings().getManifests().getPaths().stream().map(workspaceDir::resolve).toList();
     }
 
     private String contentTypeFor(Path target) {

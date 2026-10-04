@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 002
-status: in-progress
+status: completed
 date: 2026-10-04
 related:
   - docs/wav/wav-002-manifest-web-editor/wbc-002-manifest-web-editor.md
@@ -56,7 +56,7 @@ must be reviewed and accepted before it is treated as final.
 wave_manifest:
   wave: 002
   slug: manifest-web-editor
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P1
@@ -115,7 +115,7 @@ wave_manifest:
       slug: claude-editing-bridge
       phase: P4
       depends_on: [W-2, W-3]
-      run: null
+      run: 7
       delegation: hard_judgment
       delegation_reason: 'touches live capability — gives a local web UI the ability to invoke an autonomous coding agent (`claude`) against the user real working tree; incorrect scoping or a missing review-before-trust step risks destructive or unintended file changes'
       likely_paths:
@@ -152,7 +152,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-4 | — | `claude-editing-bridge` | W-2, W-3 | let a human describe a change and have Claude apply it, reviewably | a new endpoint on W-2's server that accepts a natural-language prompt, invokes the `claude` CLI non-interactively and scoped to the workspace directory only, and a webapp surface (building on W-3) that shows the resulting file diff and requires explicit accept/discard before the change is considered final (discard must actually revert the files, e.g. via a git-backed undo) | a prompted change to a manifest in `.custom` results in a diff shown in the webapp; discarding it leaves the files byte-identical to before the prompt; the bridge cannot be made to write outside the workspace directory |
+| W-4 | 0007 | `claude-editing-bridge` | W-2, W-3 | let a human describe a change and have Claude apply it, reviewably | a new endpoint on W-2's server that accepts a natural-language prompt, invokes the `claude` CLI non-interactively and scoped to the workspace directory only, and a webapp surface (building on W-3) that shows the resulting file diff and requires explicit accept/discard before the change is considered final (discard must actually revert the files, e.g. via a git-backed undo) | a prompted change to a manifest in `.custom` results in a diff shown in the webapp; discarding it leaves the files byte-identical to before the prompt; the bridge cannot be made to write outside the workspace directory |
 
 **Gate:** none — last phase.
 
