@@ -89,6 +89,9 @@ public class ElementIndex {
      * @return the descendants
      */
     public Stream<Map.Entry<String, Element>> streamDescendants(String reference) {
-        return elementByReferenceIndex.entrySet().stream().filter(e -> e.getKey().startsWith(reference));
+        return elementByReferenceIndex
+            .entrySet()
+            .stream()
+            .filter(e -> e.getKey().startsWith(reference));
     }
 }

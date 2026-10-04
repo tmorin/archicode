@@ -80,7 +80,7 @@ public class ElementIndexFactory {
                 application.getElements().add(applicationElement);
             } else if (
                 appCandidate.getElement() instanceof TechnologyElement technologyElement &&
-                (root instanceof Technology technology)
+                root instanceof Technology technology
             ) {
                 technology.getElements().add(technologyElement);
             }
