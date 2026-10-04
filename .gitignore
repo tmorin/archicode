@@ -13,3 +13,8 @@ buildNumber.properties
 .mvn/wrapper/maven-wrapper.jar
 .custom
 node_modules
+
+# Git worktrees created under .claude/worktrees/ — by the manage-worktrees
+# skill or by Claude Code's built-in worktree tool. Local working copies of
+# branches that live in this same repository; never shared, never tracked.
+/.claude/worktrees/
