@@ -99,6 +99,55 @@ class EditorHttpServerTest {
 
     @SneakyThrows
     @Test
+    void shouldServeTheEditorWebappAtRoot() {
+        val response = get("/");
+        assertEquals(200, response.statusCode());
+        assertTrue(
+            response.headers().firstValue("Content-Type").orElse("").contains("text/html"),
+            "expected the root route to serve the HTML webapp, got Content-Type: " +
+                response.headers().firstValue("Content-Type")
+        );
+    }
+
+    @SneakyThrows
+    @Test
+    void shouldListTheConfiguredManifests() {
+        val response = get("/api/manifests");
+        assertEquals(200, response.statusCode());
+
+        val tree = mapperFactory.create(MapperFormat.JSON).readTree(response.body());
+        val manifests = tree.get("manifests");
+        assertTrue(manifests.isArray() && manifests.size() >= 2, "expected both fixture manifests to be listed");
+
+        var foundPerA = false;
+        var foundSolA = false;
+        for (val entry : manifests) {
+            if ("manifests/per_a.yaml".equals(entry.get("path").asText())) {
+                foundPerA = true;
+                assertEquals("per_a", entry.get("reference").asText());
+                // The mapper's NON_EMPTY serialization inclusion (MapperFactory) omits a null parseError entirely
+                // rather than writing a literal JSON null, so its absence is the success signal here.
+                assertTrue(entry.get("parseError") == null || entry.get("parseError").isNull());
+            }
+            if ("manifests/sol_a.yaml".equals(entry.get("path").asText())) {
+                foundSolA = true;
+                assertEquals("sol_a", entry.get("reference").asText());
+                assertTrue(entry.get("parseError") == null || entry.get("parseError").isNull());
+            }
+        }
+        assertTrue(foundPerA, "expected an entry for manifests/per_a.yaml");
+        assertTrue(foundSolA, "expected an entry for manifests/sol_a.yaml");
+    }
+
+    @SneakyThrows
+    @Test
+    void shouldRejectNonGetMethodsOnTheManifestsListing() {
+        val response = put("/api/manifests", "irrelevant".getBytes(StandardCharsets.UTF_8));
+        assertEquals(405, response.statusCode());
+    }
+
+    @SneakyThrows
+    @Test
     void shouldReturnTheResolvedGraph() {
         val response = get("/api/graph");
         assertEquals(200, response.statusCode());

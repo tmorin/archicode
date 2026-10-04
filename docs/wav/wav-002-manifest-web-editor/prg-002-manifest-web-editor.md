@@ -126,6 +126,49 @@ wave: 002
   discharges trivially. No batch self-collision check needed (batch size
   1, same as P1). Advancing to Phase P3.
 
+- 2026-10-04: Batch 3 (Phase P3) computed: W-3 `manifest-editor-webapp`,
+  dependency W-2 `completed`. Allocated run number 0006 — directory
+  `docs/wav/wav-002-manifest-web-editor/run/run-0006-manifest-editor-webapp/`
+  created, status file written, manifest's `W-3.run` filled in. No
+  same-batch overlap (batch size 1). Still in the main worktree, no linked
+  worktree. Briefed the run with W-2's actual API shape (`GET /api/graph`,
+  `GET /api/schemas/{type}`, `GET|PUT /api/manifests/{path}`) and flagged a
+  real gap found while reviewing W-2's code: there is no "list manifest
+  files" endpoint yet (root `/` only returns a placeholder string per
+  W-2's own TDD, deferred on purpose to this run) — W-3 needs tree
+  navigation, so it is in this run's scope to add a listing endpoint
+  and/or static-bundle serving to `EditorHttpServer`, reusing its existing
+  `resolveManifestsDirs` helper rather than re-deriving manifest-directory
+  resolution. Dispatching `run-executor` at the default model (tier:
+  `standard`); largest concurrency this batch: 1.
+
+- 2026-10-04: W-3 (run 0006) hit a mechanical mid-flight stop (not a
+  deliberate blocker) with two of its own dispatched subagents
+  (`ab72c370a4917b237` backend, `aefe4d0eece29d2bc` frontend) not yet
+  confirmed. Resumed the same `run-executor` agent via `SendMessage`
+  rather than re-dispatching from scratch, per `complete-wave`'s own
+  "resuming" guidance applied one level down — it kept the subagents'
+  context and its own TDD/pln state. It returned `completed` on the
+  second pass. pln `execution_manifest.status: done`, 5/5 tasks done, 0
+  human review gates.
+- 2026-10-04: Verified W-3 independently (never trusted either its first
+  or second report): `./mvnw -q test` (97/97, exit 0); grepped
+  `src/main/resources/editor-webapp/index.html` for any external
+  `http(s)://` reference — only the SVG XML namespace URI, not a network
+  call, confirming the no-CDN requirement. Packaged the real jar, ran
+  `editor serve` against a scratch copy of `.custom/` (deleted after;
+  `.custom/` itself untouched), and personally exercised every Phase P3
+  gate criterion over HTTP: `GET /` serves the real webapp (tree-nav/graph
+  markup present, not the old placeholder); `GET /api/manifests` lists all
+  25 real files; `GET /api/graph` contains a genuine cross-manifest edge
+  (`primarysys -> platform.fhirvault.backend`); edited
+  `app.collaborator.yaml`'s content via `PUT`, reloaded via `GET`, saw the
+  edit persisted; a payload missing `content.id` was rejected 400 with the
+  file's md5 unchanged before/after. All three P3 criteria hold.
+  Canonical discharge: declared-none-with-reason, same as W-1/W-2.
+- 2026-10-04: Phase P3 gate verified — holds. Advancing to Phase P4 (final
+  phase, no further gate).
+
 ## Findings
 
 - No `docs/CLAUDE.md` register declaration and no `docs/bkg/`/`docs/ana/`
@@ -142,3 +185,9 @@ wave: 002
   `editor_manifests/`. Future runs adding a new fixture directory under
   `src/test/workspaces/` should avoid the `case_` prefix unless it really
   is a `views generate` output-comparison fixture.
+- A dispatched run-executor that hits a mechanical mid-flight stop with its
+  own live subagents still unconfirmed should be resumed via `SendMessage`
+  to that same agent, not replaced with a fresh dispatch — it keeps the
+  subagents' results and its own TDD/pln state, and its own hand-back
+  already states exactly what's left to verify. Worked cleanly for W-3's
+  run 0006.

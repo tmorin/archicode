@@ -58,6 +58,10 @@ reachable from this machine only. The container itself must still listen on
 `0.0.0.0` internally for Docker's `-p` to forward traffic at all — mapping
 to `-p 8080:8080` instead would expose it to the whole LAN.
 
+Opening `http://127.0.0.1:8080/` in a browser serves the manifest editor
+webapp itself: browse the manifest tree, view the resolved dependency
+graph, and edit and save a manifest with validation errors shown inline.
+
 ## Maintenance
 
 **Dependencies upgrade**

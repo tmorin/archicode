@@ -106,7 +106,7 @@ wave_manifest:
       slug: manifest-editor-webapp
       phase: P3
       depends_on: [W-2]
-      run: null
+      run: 6
       delegation: standard
       likely_paths:
         - 'tools/manifest-editor/webapp/**'
@@ -144,7 +144,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-3 | — | `manifest-editor-webapp` | W-2 | the screen a human actually looks at | a single-page app served by W-2: tree navigation of the manifest hierarchy, a dependency-graph view of resolved relationships, a manifest detail/edit view backed by the JSON Schema from `query schemas`, and a save action against W-2's write endpoint with validation errors surfaced inline | a manual walkthrough against `.custom` and a running server: browse the tree, see a cross-manifest edge rendered, edit a field, save, reload and see the change persisted; an invalid edit is blocked with a visible error before save |
+| W-3 | 0006 | `manifest-editor-webapp` | W-2 | the screen a human actually looks at | a single-page app served by W-2: tree navigation of the manifest hierarchy, a dependency-graph view of resolved relationships, a manifest detail/edit view backed by the JSON Schema from `query schemas`, and a save action against W-2's write endpoint with validation errors surfaced inline | a manual walkthrough against `.custom` and a running server: browse the tree, see a cross-manifest edge rendered, edit a field, save, reload and see the change persisted; an invalid edit is blocked with a visible error before save |
 
 **Gate:** the P3 criterion holds, checked by that manual walkthrough (no visual-regression tooling exists in this repository to automate it).
 
