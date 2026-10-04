@@ -132,8 +132,7 @@ class ItemRenderer {
 
             // render children
             ItemRenderer itemRenderer = ItemRenderer.builder().build();
-            item
-                .getChildren()
+            item.getChildren()
                 .stream()
                 .sorted()
                 .toList()

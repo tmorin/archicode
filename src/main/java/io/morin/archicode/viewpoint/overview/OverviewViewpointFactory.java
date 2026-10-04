@@ -101,14 +101,15 @@ public class OverviewViewpointFactory extends AbstractViewpointFactory implement
                     // resolve the synthetic label
                     val defaultLabel = workspace.getSettings().getRelationships().getDefaultSyntheticLabel();
                     // if there is only one synthetic relationship, use its label
-                    val label = syntheticRelationships.size() == 1
-                        ? syntheticRelationships
-                            .stream()
-                            .findFirst()
-                            .map(Relationship::getLabel)
-                            .filter(v -> !v.isBlank())
-                            .orElse(defaultLabel)
-                        : defaultLabel;
+                    val label =
+                        syntheticRelationships.size() == 1
+                            ? syntheticRelationships
+                                  .stream()
+                                  .findFirst()
+                                  .map(Relationship::getLabel)
+                                  .filter(v -> !v.isBlank())
+                                  .orElse(defaultLabel)
+                            : defaultLabel;
                     // create a single link for all synthetic relationships
                     return Stream.of(
                         Link.builder()

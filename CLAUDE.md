@@ -18,9 +18,9 @@ Format Java sources (no npm script is wired up, so call Prettier directly):
 npx prettier --write "src/**/*.java"
 ```
 
-## JDK version gotcha
+## JDK version
 
-`.sdkmanrc` pins Java 17.0.8-tem, but `pom.xml` requires `maven.compiler.release=21`. The 17 pin is stale — use JDK 21 to build. Don't "fix" the JDK down to 17 to match `.sdkmanrc`.
+This project builds and runs on Java 25 — `.sdkmanrc`, `pom.xml` (`maven.compiler.release`), and CI (`.github/workflows/ci-build.yaml`) all pin or target Java 25 consistently. There is no version drift between them to work around.
 
 ## Architecture
 

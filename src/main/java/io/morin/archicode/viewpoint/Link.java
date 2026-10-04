@@ -38,7 +38,7 @@ public class Link implements Comparable<Link> {
     @Override
     public int compareTo(Link o) {
         return (this.from.getReference() + this.to.getReference() + this.label).compareTo(
-                o.from.getReference() + o.to.getReference() + o.label
-            );
+            o.from.getReference() + o.to.getReference() + o.label
+        );
     }
 }

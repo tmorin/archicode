@@ -128,16 +128,14 @@ public class GenerateViewsCommand implements Runnable {
         );
 
         for (String viewId : viewIds) {
-            workspace.viewIndex
-                .searchView(viewId)
-                .ifPresent(view -> {
-                    log.info("render {}", viewId);
-                    val viewpoint = viewpointServiceRepository
-                        .get(view.getViewpoint())
-                        .createViewpointFactory()
-                        .create(workspace, view);
-                    renderer.render(viewpoint, rendererName, outputDirPath);
-                });
+            workspace.viewIndex.searchView(viewId).ifPresent(view -> {
+                log.info("render {}", viewId);
+                val viewpoint = viewpointServiceRepository
+                    .get(view.getViewpoint())
+                    .createViewpointFactory()
+                    .create(workspace, view);
+                renderer.render(viewpoint, rendererName, outputDirPath);
+            });
         }
 
         renderBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION, outputDirPath, viewIds);

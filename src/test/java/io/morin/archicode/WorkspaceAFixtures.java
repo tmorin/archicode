@@ -64,7 +64,11 @@ public class WorkspaceAFixtures {
 
     public Workspace createWorkspace() {
         return Workspace.builder()
-            .application(Application.builder().elements(Set.of(solution_a, solution_b, solution_c)).build())
+            .application(
+                Application.builder()
+                    .elements(Set.of(solution_a, solution_b, solution_c))
+                    .build()
+            )
             .view(view_solution_a_overview)
             .view(view_solution_a_detailed)
             .build();

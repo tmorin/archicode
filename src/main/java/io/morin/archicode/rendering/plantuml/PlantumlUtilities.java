@@ -92,7 +92,10 @@ class PlantumlUtilities {
         stereotypes.addAll(List.of(types));
         return String.join(
             " ",
-            stereotypes.stream().map(value -> String.format("<<%s>>", value)).collect(Collectors.toSet())
+            stereotypes
+                .stream()
+                .map(value -> String.format("<<%s>>", value))
+                .collect(Collectors.toSet())
         );
     }
 
