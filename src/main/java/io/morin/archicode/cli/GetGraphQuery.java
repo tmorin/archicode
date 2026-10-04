@@ -54,16 +54,29 @@ public class GetGraphQuery implements Runnable {
     public void run() {
         val workspace = workspaceFactory.create(queryGroup.archiCode.workspaceFilePath.toAbsolutePath());
 
+        val graph = buildGraph(workspace);
+
+        val jsonMapper = mapperFactory.create(MapperFormat.JSON);
+        queryOutputWriter.write(jsonMapper.writeValueAsString(graph));
+    }
+
+    /**
+     * Build the resolved element/relationship {@link Graph} for the given, already-indexed workspace.
+     * <p>
+     * Reused by {@link EditorHttpServer}'s {@code GET /api/graph} endpoint so the HTTP surface and the
+     * {@code query graph} CLI command share the exact same graph-building logic.
+     *
+     * @param workspace the already-indexed workspace ({@link io.morin.archicode.workspace.WorkspaceFactory}'s output)
+     * @return the resolved graph
+     */
+    public Graph buildGraph(@NonNull io.morin.archicode.workspace.Workspace workspace) {
         val elements = new ArrayList<ElementEntry>();
         val relationships = new ArrayList<RelationshipEntry>();
 
         collect(workspace.appIndex, View.Layer.APPLICATION, elements, relationships);
         collect(workspace.techIndex, View.Layer.TECHNOLOGY, elements, relationships);
 
-        val graph = Graph.builder().elements(elements).relationships(relationships).build();
-
-        val jsonMapper = mapperFactory.create(MapperFormat.JSON);
-        queryOutputWriter.write(jsonMapper.writeValueAsString(graph));
+        return Graph.builder().elements(elements).relationships(relationships).build();
     }
 
     /**

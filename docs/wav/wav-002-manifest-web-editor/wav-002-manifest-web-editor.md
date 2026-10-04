@@ -96,7 +96,7 @@ wave_manifest:
       slug: manifest-editor-server
       phase: P2
       depends_on: [W-1]
-      run: null
+      run: 5
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/editor/**'
@@ -136,7 +136,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-2 | — | `manifest-editor-server` | W-1 | the one local process that reads and writes manifest YAML outside the render path | a new `editor serve` command (implementation TBD in its own TDD), invoked the same way as the README's existing `docker run ... archicode <command>` examples (e.g. `docker run -u "$(id -u):$(id -g)" -v "$(pwd):/workdir" -w /workdir -p 8080:8080 --rm ghcr.io/tmorin/archicode editor serve`), that serves a static bundle plus a REST API: the resolved graph (shelling out to W-1), `query schemas` passthrough, raw manifest read, and manifest write with schema validation before persisting | a GET for the graph and for a manifest's raw content both work; a schema-valid write is persisted to the correct file; a schema-invalid write is rejected with nothing written; `README.md`'s documented example maps the port to `127.0.0.1` by default — verifiable with `curl` or an integration test, no UI required |
+| W-2 | 0005 | `manifest-editor-server` | W-1 | the one local process that reads and writes manifest YAML outside the render path | a new `editor serve` command (implementation TBD in its own TDD), invoked the same way as the README's existing `docker run ... archicode <command>` examples (e.g. `docker run -u "$(id -u):$(id -g)" -v "$(pwd):/workdir" -w /workdir -p 8080:8080 --rm ghcr.io/tmorin/archicode editor serve`), that serves a static bundle plus a REST API: the resolved graph (shelling out to W-1), `query schemas` passthrough, raw manifest read, and manifest write with schema validation before persisting | a GET for the graph and for a manifest's raw content both work; a schema-valid write is persisted to the correct file; a schema-invalid write is rejected with nothing written; `README.md`'s documented example maps the port to `127.0.0.1` by default — verifiable with `curl` or an integration test, no UI required |
 
 **Gate:** all three P2 criteria hold against a locally running instance of the server over `.custom`.
 

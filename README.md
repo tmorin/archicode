@@ -42,6 +42,22 @@ docker run \
   --rm ghcr.io/tmorin/archicode query schemas manifest
 ```
 
+**Serve the manifest editor**
+
+```shell
+docker run \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/workdir" -w "/workdir" \
+  -p 127.0.0.1:8080:8080 \
+  --rm ghcr.io/tmorin/archicode editor serve
+```
+
+`editor serve` has no authentication, so the host-side port mapping above is
+the only guard against exposure: `-p 127.0.0.1:8080:8080` keeps the server
+reachable from this machine only. The container itself must still listen on
+`0.0.0.0` internally for Docker's `-p` to forward traffic at all — mapping
+to `-p 8080:8080` instead would expose it to the whole LAN.
+
 ## Maintenance
 
 **Dependencies upgrade**

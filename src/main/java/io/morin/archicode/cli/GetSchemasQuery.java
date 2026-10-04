@@ -48,12 +48,27 @@ public class GetSchemasQuery implements Runnable {
     @Override
     public void run() {
         val mapper = mapperFactory.create(MapperFormat.JSON).writerWithDefaultPrettyPrinter();
+        val schema = generateSchema(type);
+        val schemaAsJson = mapper.writeValueAsString(schema);
+        queryOutputWriter.write(schemaAsJson);
+    }
+
+    /**
+     * Generate the JSON Schema for the given {@link SchemaType}.
+     * <p>
+     * Reused by {@link EditorHttpServer}'s {@code GET /api/schemas/{type}} endpoint so the HTTP surface and the
+     * {@code query schemas} CLI command share the exact same schema-generation logic.
+     *
+     * @param type the type of schema to generate
+     * @return the generated schema
+     */
+    @SneakyThrows
+    public com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchema generateSchema(SchemaType type) {
+        val mapper = mapperFactory.create(MapperFormat.JSON).writerWithDefaultPrettyPrinter();
         val schemaGen = new JsonSchemaGenerator(mapper);
-        val schema = switch (type) {
+        return switch (type) {
             case WORKSPACE -> schemaGen.generateSchema(Workspace.class);
             case MANIFEST -> schemaGen.generateSchema(Manifest.class);
         };
-        val schemaAsJson = mapper.writeValueAsString(schema);
-        queryOutputWriter.write(schemaAsJson);
     }
 }

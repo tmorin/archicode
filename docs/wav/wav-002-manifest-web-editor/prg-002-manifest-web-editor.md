@@ -86,6 +86,46 @@ wave: 002
   memory note `feedback-wave-execution-worktree` for the standing rule this
   sets for future waves/runs in this repository.
 
+- 2026-10-04: Batch 2 (Phase P2) computed: W-2 `manifest-editor-server`,
+  dependency W-1 `completed`. Allocated run number 0005 — directory
+  `docs/wav/wav-002-manifest-web-editor/run/run-0005-manifest-editor-server/`
+  created, status file written (`status: proposed`), manifest's `W-2.run`
+  filled in. No same-batch overlap (batch size 1). Execution now happens
+  directly in the main worktree (`/home/tibo/git-perso/archicode`, on
+  branch `feat/manifest-web-editor`) per the worktree-consolidation
+  decision above — no new worktree created for this run. Dispatching
+  `run-executor` at the default model (tier: `standard`); largest
+  concurrency this batch: 1.
+
+- 2026-10-04: W-2 (run 0005) returned `completed` (status file, pln
+  `execution_manifest.status: done`, 0 blocked tasks, 0 human review
+  gates — one task flagged `review_before` by the default autonomy policy
+  for new unauthenticated network-facing + filesystem-write code, executed
+  autonomously under `complete-run`'s explicit override since its TDD
+  decisions (`DEC-4`/`DEC-5`) were mechanically verifiable). Verified
+  independently: `./mvnw -q test` (94/94, exit 0) and
+  `./mvnw -q -DskipTests package`, then ran the real server
+  (`editor serve -w <scratch-copy-of-.custom>/workspace.yaml -p 8099`) and
+  checked all three P2 gate criteria by hand with `curl` against a scratch
+  copy of `.custom/` (never written to directly): `GET /api/graph` → 200,
+  54 elements/55 relationships, matching W-1's own count; `GET
+  /api/manifests/manifests/app.collaborator.yaml` → 200, byte-identical to
+  the file on disk; a valid `PUT` of that same content → 200, file
+  unchanged (md5 stable); an invalid `PUT` (missing `content.id`) → 400
+  with a clear Jackson validation message, file untouched (md5 confirmed
+  unchanged before/after). Confirmed via `git diff README.md` that the
+  documented Docker invocation maps to `-p 127.0.0.1:8080:8080` by default,
+  per the wave's Non-Goals/Risks requirement. `git status` confirms nothing
+  outside this run's footprint changed and `.custom/` itself is clean.
+  Deviation (declared and accepted, same reasoning as W-1): flat
+  `cli/*.java` instead of `cli/editor/**`, and no `tools/manifest-editor/
+  server/**` directory at all — pure CLI-embedded implementation.
+- 2026-10-04: Phase P2 gate verified against real evidence (all three
+  criteria checked above) — holds. Canonical discharge: TDD declares
+  "not applicable — no canonical registers", a declared-none-with-reason,
+  discharges trivially. No batch self-collision check needed (batch size
+  1, same as P1). Advancing to Phase P3.
+
 ## Findings
 
 - No `docs/CLAUDE.md` register declaration and no `docs/bkg/`/`docs/ana/`
@@ -94,3 +134,11 @@ wave: 002
 
 ## Lessons Learnt
 
+- A new `src/test/workspaces/<name>/` fixture directory named `case_*`
+  silently matches an existing `.gitignore` rule written for generated
+  `views generate` output comparison dirs (`case_a_yaml/`-style), so
+  `git status` shows nothing for it even though it's a real, intended
+  fixture. W-2/run-0005 hit this with `case_editor/` and renamed it to
+  `editor_manifests/`. Future runs adding a new fixture directory under
+  `src/test/workspaces/` should avoid the `case_` prefix unless it really
+  is a `views generate` output-comparison fixture.
