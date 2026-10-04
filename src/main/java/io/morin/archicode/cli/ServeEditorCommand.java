@@ -12,7 +12,9 @@ import picocli.CommandLine;
  * Start the local, unauthenticated HTTP server backing the manifest editor.
  * <p>
  * Binds to {@link #host} (default {@code 0.0.0.0}, required for a Docker {@code -p} mapping to forward traffic
- * at all) on {@link #port} (default {@code 8080}) and blocks until the process is terminated. See
+ * at all) on {@link #port} (default {@code 48080}, chosen over the more conventional {@code 8080} precisely
+ * because that one is so commonly already taken by something else) and blocks until the process is
+ * terminated. See
  * {@link EditorHttpServer} for the actual routes served.
  * <p>
  * The {@code --claude*} options configure the Claude editing bridge (run-0007). Every one of them is fixed here,
@@ -36,7 +38,7 @@ public class ServeEditorCommand implements Runnable {
     @CommandLine.Option(
         names = { "-p", "--port" },
         description = "The TCP port to listen on.",
-        defaultValue = "8080",
+        defaultValue = "48080",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
         paramLabel = "<port>"
     )
@@ -48,7 +50,7 @@ public class ServeEditorCommand implements Runnable {
             "The address to bind to.",
             "Must stay 0.0.0.0 (the default) for a Docker -p mapping to forward traffic at all.",
             "This server has no authentication: control exposure via the host-side port mapping" +
-                " (e.g. `-p 127.0.0.1:8080:8080`), not by changing this option, unless running directly" +
+                " (e.g. `-p 127.0.0.1:48080:48080`), not by changing this option, unless running directly" +
                 " outside a container."
         },
         defaultValue = "0.0.0.0",
@@ -115,13 +117,19 @@ public class ServeEditorCommand implements Runnable {
             .build();
         val server = editorHttpServer.start(host, port, workspaceFilePath, claudeSettings);
 
-        log.info(
-            "editor serve listening on {}:{} (workspace: {}, claude bridge: {})",
+        // Printed to System.out, not only through the logger, for the same reason the shutdown warning
+        // in warnAboutPendingChange() is: application.properties sets quarkus.log.level=ERROR, so a
+        // log.info call here never reaches any handler and the operator gets no confirmation at all that
+        // the server is actually up.
+        val readyMessage = String.format(
+            "editor serve is up and running on %s:%d (workspace: %s, claude bridge: %s)",
             host,
             server.getAddress().getPort(),
             workspaceFilePath,
             claudeEnabled ? "enabled" : "disabled"
         );
+        System.out.println(readyMessage);
+        log.info(readyMessage);
 
         val shutdownLatch = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(

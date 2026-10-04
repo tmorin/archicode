@@ -95,7 +95,7 @@
     min-height: 0;
   }
 
-  aside#sidebar {
+  aside#right-panel {
     width: 300px;
     flex-shrink: 0;
     background: var(--color-panel);
@@ -104,12 +104,48 @@
     padding: 14px 12px;
   }
 
-  aside#sidebar h2 {
-    font-size: 12px;
+  .subtabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .tree-group-title {
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--color-muted);
-    margin: 0 0 10px 2px;
+    font-weight: 600;
+    margin: 16px 2px 6px 2px;
+  }
+
+  .tree-group-title:first-of-type {
+    margin-top: 2px;
+  }
+
+  .subtabs button {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .subtabs button.active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+  }
+
+  .subview {
+    display: none;
+  }
+
+  .subview.active {
+    display: block;
   }
 
   .tree-dir {
@@ -147,7 +183,16 @@
     color: #fff;
   }
 
-  main#content {
+  .tree-item.tree-item-group {
+    cursor: default;
+    color: var(--color-muted);
+  }
+
+  .tree-item.tree-item-group:hover {
+    background: transparent;
+  }
+
+  main#center-panel {
     flex: 1;
     overflow-y: auto;
     padding: 18px 22px;
@@ -188,7 +233,7 @@
     display: none !important;
   }
 
-  #graph-view h2, #editor-view h2, #assist-view h2 {
+  #diagram-view h2, #assist-view h2 {
     font-size: 15px;
     margin: 0 0 12px 0;
   }
@@ -359,7 +404,7 @@
     line-height: 1.45;
   }
 
-  #tree.tree-locked {
+  #right-subviews.tree-locked {
     opacity: 0.55;
     pointer-events: none;
   }
@@ -670,50 +715,71 @@
   <header>
     <h1>ArchiCode Manifest Editor</h1>
     <nav id="tabs">
-      <button type="button" class="tab active" data-tab="graph">Graph</button>
-      <button type="button" class="tab" data-tab="editor">Editor</button>
+      <button type="button" class="tab active" data-tab="editor">Editor</button>
       <button type="button" class="tab" data-tab="assist">Assist</button>
     </nav>
   </header>
 
   <div id="layout">
-    <aside id="sidebar">
-      <h2>Manifests</h2>
+    <aside id="right-panel">
+      <nav class="subtabs" id="right-tabs">
+        <button type="button" class="subtab active" data-subtab="model">Model</button>
+        <button type="button" class="subtab" data-subtab="files">Files</button>
+      </nav>
+
       <div id="tree-lock-note" class="lock-note hidden">Editing is paused: a Claude change is pending review on
         the Assist tab. Accept or discard it first — a discard would revert any hand edit made now.</div>
-      <div id="tree"><div id="tree-loading" class="tree-dir-title">Loading…</div></div>
+
+      <div id="right-subviews">
+        <section id="model-view" class="subview active">
+          <div class="tree-group-title">Applications</div>
+          <div id="model-tree-applications"><div class="tree-dir-title">Loading…</div></div>
+          <div class="tree-group-title">Environments</div>
+          <div id="model-tree-environments"><div class="tree-dir-title">Loading…</div></div>
+        </section>
+
+        <section id="files-view" class="subview">
+          <div id="files-list"><div id="files-list-loading" class="tree-dir-title">Loading…</div></div>
+        </section>
+      </div>
     </aside>
 
-    <main id="content">
-      <section id="graph-view" class="view active">
-        <h2>Dependency graph</h2>
-        <div class="legend">
-          <span><span class="legend-swatch" style="background: var(--color-accent);"></span>node (click to open its manifest)</span>
-        </div>
-        <div id="graph-error" class="error-box hidden"></div>
-        <svg id="graph-svg" viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg"></svg>
-      </section>
+    <main id="center-panel">
+      <section id="editor-view" class="view active">
+        <nav class="subtabs" id="center-tabs">
+          <button type="button" class="subtab active" data-subtab="diagram">Diagram</button>
+          <button type="button" class="subtab" data-subtab="file">File</button>
+        </nav>
 
-      <section id="editor-view" class="view">
-        <h2>Editor</h2>
-        <div id="editor-lock-note" class="lock-note hidden">Saving is disabled while a Claude change is pending
-          review on the Assist tab: discarding that change restores the whole workspace from the snapshot taken
-          before it ran, which would also revert anything you save here now.</div>
-        <div id="editor-empty">Select a manifest from the tree or the graph to begin editing.</div>
-        <div id="editor-main" class="hidden">
-          <div class="editor-toolbar">
-            <span id="editor-path"></span>
-            <button type="button" id="save-btn">Save</button>
-            <span id="save-success" class="success-indicator hidden">Saved</span>
+        <section id="diagram-view" class="subview active">
+          <h2>Dependency graph</h2>
+          <div class="legend">
+            <span><span class="legend-swatch" style="background: var(--color-accent);"></span>node (click to open its manifest)</span>
           </div>
-          <div id="save-error" class="error-box hidden"></div>
-          <textarea id="editor-textarea" spellcheck="false" wrap="off"></textarea>
+          <div id="graph-error" class="error-box hidden"></div>
+          <svg id="graph-svg" viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg"></svg>
+        </section>
 
-          <div id="schema-panel">
-            <button type="button" id="schema-toggle">Show manifest schema reference &#9656;</button>
-            <div id="schema-content" class="hidden">Loading schema…</div>
+        <section id="file-view" class="subview">
+          <div id="editor-lock-note" class="lock-note hidden">Saving is disabled while a Claude change is pending
+            review on the Assist tab: discarding that change restores the whole workspace from the snapshot taken
+            before it ran, which would also revert anything you save here now.</div>
+          <div id="editor-empty">Select a manifest from the Model/Files panel or the diagram to begin editing.</div>
+          <div id="editor-main" class="hidden">
+            <div class="editor-toolbar">
+              <span id="editor-path"></span>
+              <button type="button" id="save-btn">Save</button>
+              <span id="save-success" class="success-indicator hidden">Saved</span>
+            </div>
+            <div id="save-error" class="error-box hidden"></div>
+            <textarea id="editor-textarea" spellcheck="false" wrap="off"></textarea>
+
+            <div id="schema-panel">
+              <button type="button" id="schema-toggle">Show manifest schema reference &#9656;</button>
+              <div id="schema-content" class="hidden">Loading schema…</div>
+            </div>
           </div>
-        </div>
+        </section>
       </section>
 
       <section id="assist-view" class="view">
@@ -746,6 +812,7 @@
   var state = {
     manifests: [],
     referenceToPath: new Map(),
+    graph: null,
     schema: null,
     schemaLoaded: false,
     currentPath: null,
@@ -754,7 +821,9 @@
     assistBusy: false
   };
 
-  var VIEW_IDS = { graph: "graph-view", editor: "editor-view", assist: "assist-view" };
+  var VIEW_IDS = { editor: "editor-view", assist: "assist-view" };
+  var CENTER_SUBVIEW_IDS = { diagram: "diagram-view", file: "file-view" };
+  var RIGHT_SUBVIEW_IDS = { model: "model-view", files: "files-view" };
 
   function qs(id) { return document.getElementById(id); }
 
@@ -780,6 +849,29 @@
     });
   });
 
+  // ---------- Sub-tabs (center panel: Diagram/File; right panel: Model/Files) ----------
+
+  function switchSubtab(navId, subviewIds, name) {
+    document.querySelectorAll("#" + navId + " .subtab").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-subtab") === name);
+    });
+    Object.keys(subviewIds).forEach(function (key) {
+      qs(subviewIds[key]).classList.toggle("active", key === name);
+    });
+  }
+
+  document.querySelectorAll("#center-tabs .subtab").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      switchSubtab("center-tabs", CENTER_SUBVIEW_IDS, btn.getAttribute("data-subtab"));
+    });
+  });
+
+  document.querySelectorAll("#right-tabs .subtab").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      switchSubtab("right-tabs", RIGHT_SUBVIEW_IDS, btn.getAttribute("data-subtab"));
+    });
+  });
+
   // ---------- Tree (GET /api/manifests) ----------
 
   function loadManifests() {
@@ -800,16 +892,21 @@
             state.referenceToPath.set(entry.reference, entry.path);
           }
         });
-        renderTree();
+        renderModelTree();
+        renderFilesList();
       })
       .catch(function (err) {
-        qs("tree").innerHTML = "";
-        var box = document.createElement("div");
-        box.className = "error-box";
-        box.textContent = "Failed to load manifest list: " + escapeForText(err.message);
-        qs("tree").appendChild(box);
+        ["model-tree-applications", "model-tree-environments", "files-list"].forEach(function (id) {
+          qs(id).innerHTML = "";
+          var box = document.createElement("div");
+          box.className = "error-box";
+          box.textContent = "Failed to load manifest list: " + escapeForText(err.message);
+          qs(id).appendChild(box);
+        });
       });
   }
+
+  // ---------- Files (flat, grouped by directory, the raw file listing) ----------
 
   function splitDirAndFile(path) {
     var parts = String(path).split("/");
@@ -818,8 +915,8 @@
     return { dir: dir, file: file };
   }
 
-  function renderTree() {
-    var container = qs("tree");
+  function renderFilesList() {
+    var container = qs("files-list");
     container.innerHTML = "";
 
     if (state.manifests.length === 0) {
@@ -872,6 +969,151 @@
     });
   }
 
+  // The tree is keyed by element reference (dotted id), not by manifest file path: each dot-separated
+  // segment of a reference is one tree level, so "platform.auditslogs.frontend" nests under "platform" >
+  // "auditslogs" > "frontend" the same way the resolved graph (GET /api/graph) groups elements, even
+  // though "frontend" has no manifest file of its own (it is declared inside auditslogs's manifest).
+  function treeNode() {
+    return { children: new Map(), path: null, parseError: null, hasOwnManifest: false };
+  }
+
+  function treeNodeAt(root, reference) {
+    var node = root;
+    String(reference).split(".").forEach(function (segment) {
+      if (!node.children.has(segment)) {
+        node.children.set(segment, treeNode());
+      }
+      node = node.children.get(segment);
+    });
+    return node;
+  }
+
+  // Environments vs Applications is decided by the manifest's own declared kind, not by where it sits
+  // in the hierarchy: "archicode.morin.io/environment" (and "archicode.morin.io/node", nested under it)
+  // is Environments; every other kind is Applications. Two ids can collide across that split — e.g.
+  // ".custom" has both an application solution "epr" and an unrelated technology environment "epr" — so
+  // the two groups must be built as two separate trees, never merged into one keyed only by reference.
+  var TECHNOLOGY_MANIFEST_KINDS = ["archicode.morin.io/environment", "archicode.morin.io/node"];
+
+  function isTechnologyManifestKind(kind) {
+    return TECHNOLOGY_MANIFEST_KINDS.indexOf(kind) !== -1;
+  }
+
+  function buildManifestTree(wantTechnology, collectUnplaced) {
+    var root = treeNode();
+    var unplaced = [];
+
+    state.manifests.forEach(function (entry) {
+      if (!entry.reference) {
+        // A manifest that failed to parse before its id (or kind) was even known cannot be placed in
+        // either reference-keyed hierarchy; collected once, under the Applications group, rather than
+        // being silently dropped.
+        if (collectUnplaced) {
+          unplaced.push(entry);
+        }
+        return;
+      }
+      if (isTechnologyManifestKind(entry.kind) !== wantTechnology) {
+        return;
+      }
+      var node = treeNodeAt(root, entry.reference);
+      node.path = entry.path;
+      node.parseError = entry.parseError;
+      node.hasOwnManifest = true;
+    });
+
+    if (state.graph) {
+      (state.graph.elements || []).forEach(function (el) {
+        if (!el.reference) {
+          return;
+        }
+        var elIsTechnology = String(el.layer || "").toLowerCase() === "technology";
+        if (elIsTechnology !== wantTechnology) {
+          return;
+        }
+        treeNodeAt(root, el.reference);
+      });
+    }
+
+    return { root: root, unplaced: unplaced };
+  }
+
+  function treeRowEl(label, path, parseError, depth) {
+    var el = document.createElement("div");
+    el.className = "tree-item" + (parseError ? " tree-item-error" : "") + (path ? "" : " tree-item-group");
+    el.style.paddingLeft = (8 + depth * 14) + "px";
+    el.textContent = (parseError ? "⚠ " : "") + label;
+    el.title = parseError ? ("Parse error: " + parseError) : (path || label);
+    if (path) {
+      el.dataset.path = path;
+      el.addEventListener("click", function () {
+        openManifest(path);
+      });
+    }
+    return el;
+  }
+
+  function renderTreeChildren(container, node, depth, inheritedPath) {
+    Array.from(node.children.keys()).sort().forEach(function (key) {
+      var child = node.children.get(key);
+      // A sub-element with no manifest file of its own (e.g. "frontend" inside "auditslogs") is still
+      // clickable: it opens the nearest ancestor's manifest, since that is the file that actually
+      // declares it.
+      var path = child.hasOwnManifest ? child.path : inheritedPath;
+      container.appendChild(treeRowEl(key, path, child.parseError, depth));
+      if (child.children.size > 0) {
+        renderTreeChildren(container, child, depth + 1, path);
+      }
+    });
+  }
+
+  function renderManifestTreeGroup(containerId, built, emptyMessage) {
+    var container = qs(containerId);
+    container.innerHTML = "";
+
+    if (built.root.children.size === 0 && built.unplaced.length === 0) {
+      var empty = document.createElement("div");
+      empty.className = "tree-dir-title";
+      empty.textContent = emptyMessage;
+      container.appendChild(empty);
+      return;
+    }
+
+    renderTreeChildren(container, built.root, 0, null);
+
+    if (built.unplaced.length > 0) {
+      var dirEl = document.createElement("div");
+      dirEl.className = "tree-dir";
+
+      var title = document.createElement("div");
+      title.className = "tree-dir-title";
+      title.textContent = "Files with parse errors";
+      dirEl.appendChild(title);
+
+      built.unplaced
+        .slice()
+        .sort(function (a, b) { return String(a.path).localeCompare(String(b.path)); })
+        .forEach(function (entry) {
+          dirEl.appendChild(treeRowEl(entry.path, entry.path, entry.parseError, 1));
+        });
+
+      container.appendChild(dirEl);
+    }
+  }
+
+  function renderModelTree() {
+    renderManifestTreeGroup(
+      "model-tree-applications",
+      buildManifestTree(false, true),
+      "No application manifests found."
+    );
+    renderManifestTreeGroup(
+      "model-tree-environments",
+      buildManifestTree(true, false),
+      "No environment manifests found."
+    );
+  }
+
   function markTreeSelection(path) {
     document.querySelectorAll(".tree-item").forEach(function (el) {
       el.classList.toggle("selected", el.dataset.path === path);
@@ -907,7 +1149,11 @@
         });
       })
       .then(function (data) {
+        state.graph = data;
         renderGraph(data);
+        // The Model tree's deeper levels (sub-elements with no manifest file of their own) come from
+        // the graph, which loads independently of the manifest listing — re-render once it is in.
+        renderModelTree();
       })
       .catch(function (err) {
         qs("graph-svg").innerHTML = "";
@@ -1140,6 +1386,7 @@
       });
 
     switchTab("editor");
+    switchSubtab("center-tabs", CENTER_SUBVIEW_IDS, "file");
   }
 
   qs("save-btn").addEventListener("click", function () {
@@ -1312,7 +1559,7 @@
     qs("save-btn").disabled = locked;
     qs("editor-lock-note").classList.toggle("hidden", !locked);
     qs("tree-lock-note").classList.toggle("hidden", !locked);
-    qs("tree").classList.toggle("tree-locked", locked);
+    qs("right-subviews").classList.toggle("tree-locked", locked);
   }
 
   function submitPrompt() {
