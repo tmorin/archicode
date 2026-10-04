@@ -19,12 +19,6 @@ jobs:
           fetch-depth: 0
       - name: "Install apt dependencies"
         run: "sudo apt-get install -y graphviz wget curl"
-      - name: Cache SonarQube packages
-        uses: actions/cache@v6
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
       - name: Cache Maven packages
         uses: actions/cache@v6
         with:
@@ -40,15 +34,10 @@ jobs:
       - name: "Build artifacts"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           ./mvnw verify \
-            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             --batch-mode \
-            --update-snapshots \
-            -Dsonar.projectKey=tmorin_archicode \
-            -Dsonar.java.coveragePlugin=jacoco \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco-report/jacoco.xml
+            --update-snapshots
       - name: "Publish snapshot artifacts"
         if: ${{ github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore(release)') }}
         run: |

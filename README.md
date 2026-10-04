@@ -1,7 +1,5 @@
 # ArchiCode
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=tmorin_archicode&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=tmorin_archicode)
-
 > Streamline architectural design and visualization with an as-code approach. Integrates C4 Model and ArchiMate for efficient workflow.
 
 ## Run
