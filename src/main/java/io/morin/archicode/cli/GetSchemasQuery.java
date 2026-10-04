@@ -49,11 +49,10 @@ public class GetSchemasQuery implements Runnable {
     public void run() {
         val mapper = mapperFactory.create(MapperFormat.JSON).writerWithDefaultPrettyPrinter();
         val schemaGen = new JsonSchemaGenerator(mapper);
-        val schema =
-            switch (type) {
-                case WORKSPACE -> schemaGen.generateSchema(Workspace.class);
-                case MANIFEST -> schemaGen.generateSchema(Manifest.class);
-            };
+        val schema = switch (type) {
+            case WORKSPACE -> schemaGen.generateSchema(Workspace.class);
+            case MANIFEST -> schemaGen.generateSchema(Manifest.class);
+        };
         val schemaAsJson = mapper.writeValueAsString(schema);
         queryOutputWriter.write(schemaAsJson);
     }

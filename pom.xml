@@ -38,17 +38,17 @@
         </repository>
     </distributionManagement>
     <properties>
-        <compiler-plugin.version>3.14.0</compiler-plugin.version>
-        <maven.compiler.release>21</maven.compiler.release>
+        <compiler-plugin.version>3.15.0</compiler-plugin.version>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.21.1</quarkus.platform.version>
+        <quarkus.platform.version>3.40.1</quarkus.platform.version>
         <skipITs>true</skipITs>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>tmorin</sonar.organization>
-        <surefire-plugin.version>3.5.2</surefire-plugin.version>
+        <surefire-plugin.version>3.6.0</surefire-plugin.version>
         <plugin.asciidoctor.skip>false</plugin.asciidoctor.skip>
     </properties>
     <dependencyManagement>
@@ -96,7 +96,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.34</version>
+            <version>1.18.48</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -110,12 +110,12 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5</artifactId>
+            <artifactId>quarkus-junit</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5-mockito</artifactId>
+            <artifactId>quarkus-junit-mockito</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -157,12 +157,22 @@
                 <version>${compiler-plugin.version}</version>
                 <configuration>
                     <parameters>true</parameters>
+                    <proc>full</proc>
                 </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <configuration>
+                    <!--
+                        JDK 25 blocks a Java agent that self-attaches at runtime
+                        (rather than being loaded via -javaagent) unless this flag
+                        is set; Mockito's inline mock maker (Byte Buddy) self-attaches
+                        this way to get an Instrumentation instance, and fails
+                        ("Could not initialize plugin: interface org.mockito.plugins.MockMaker")
+                        without it.
+                    -->
+                    <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
@@ -181,6 +191,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
                     <systemPropertyVariables>
                         <native.image.path>${project.build.directory}/${project.build.finalName}-runner
                         </native.image.path>
@@ -191,7 +202,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>3.0.1</version>
+                <version>3.3.1</version>
                 <configuration>
                     <scmCommentPrefix>chore:</scmCommentPrefix>
                     <scmReleaseCommitComment>chore(release): @{releaseLabel}</scmReleaseCommitComment>
@@ -200,12 +211,12 @@
             <plugin>
                 <groupId>org.asciidoctor</groupId>
                 <artifactId>asciidoctor-maven-plugin</artifactId>
-                <version>2.2.4</version>
+                <version>3.2.0</version>
                 <dependencies>
                     <dependency>
                         <groupId>org.asciidoctor</groupId>
                         <artifactId>asciidoctorj-diagram</artifactId>
-                        <version>2.3.0</version>
+                        <version>3.2.1</version>
                     </dependency>
                 </dependencies>
                 <configuration>

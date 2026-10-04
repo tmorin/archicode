@@ -22,7 +22,9 @@ public class Level {
 
     public static Level from(@NonNull String reference) {
         val parts = reference.split("\\.");
-        return Level.builder().value(parts.length - 1).build();
+        return Level.builder()
+            .value(parts.length - 1)
+            .build();
     }
 
     public static String downReferenceTo(@NonNull String reference, @NonNull Level level) {
@@ -39,7 +41,9 @@ public class Level {
     }
 
     public static Level down(@NonNull Level targetFromLevel) {
-        return Level.builder().value(Math.max(targetFromLevel.value - 1, 0)).build();
+        return Level.builder()
+            .value(Math.max(targetFromLevel.value - 1, 0))
+            .build();
     }
 
     public static Level max(@NonNull Level a, @NonNull Level b) {

@@ -41,6 +41,8 @@ public enum ManifestKind {
     }
 
     public String getSubTypeName() {
-        return this.name().toLowerCase().substring(Math.max(this.name().indexOf("_"), 0));
+        return this.name()
+            .toLowerCase()
+            .substring(Math.max(this.name().indexOf("_"), 0));
     }
 }

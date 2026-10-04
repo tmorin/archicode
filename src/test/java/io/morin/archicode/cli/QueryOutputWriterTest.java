@@ -25,10 +25,9 @@ class QueryOutputWriterTest {
         val jsonMapper = mapperFactory.create(MapperFormat.JSON).writerWithDefaultPrettyPrinter();
         val system_a_aAsString = jsonMapper.writeValueAsString(WorkspaceAFixtures.system_a_a);
         log.info("system_a_aAsString {}", system_a_aAsString);
-        val template =
-            """
-            $d.e("$.relationships[*].destination")
-            """;
+        val template = """
+        $d.e("$.relationships[*].destination")
+        """;
         val result = QueryOutputWriter.TemplateUtilities.render(template, system_a_aAsString);
         log.info("result {}", result);
         Assertions.assertTrue(result.contains("solution_b"));
@@ -41,10 +40,9 @@ class QueryOutputWriterTest {
         val jsonMapper = mapperFactory.create(MapperFormat.JSON).writerWithDefaultPrettyPrinter();
         val workspaceAsString = jsonMapper.writeValueAsString(WorkspaceAFixtures.createWorkspace());
         log.info("workspaceAsString {}", workspaceAsString);
-        val template =
-            """
-            $d.e("$.application.elements[*].elements[*].['kind', 'id']")
-            """;
+        val template = """
+        $d.e("$.application.elements[*].elements[*].['kind', 'id']")
+        """;
         val result = QueryOutputWriter.TemplateUtilities.render(template, workspaceAsString);
         log.info("result {}", result);
         Assertions.assertTrue(result.contains("\"kind\":\"system\",\"id\":\"system_a_a\""));
