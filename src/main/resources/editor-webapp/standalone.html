@@ -1,0 +1,3063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArchiCode Standalone Editor</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #666666;
+    --border: #d0d0d0;
+    --accent: #2b6cb0;
+    --danger: #b00020;
+    --panel-bg: #f7f7f8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  #app { min-height: 100vh; display: flex; flex-direction: column; }
+  h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+  h2 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+  button { font: inherit; padding: 0.4rem 0.9rem; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--fg); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  .picker-screen { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; padding: 3rem 2rem; max-width: 640px; }
+  .warn { color: var(--danger); }
+  .diagnostics { padding: 1rem; }
+  .diagnostics ul { line-height: 1.6; }
+  .error-panel { margin: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+  .error-panel ul { margin: 0.5rem 0 0; }
+  code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+  /* ---- Three-panel shell (run-0008, task-002) ---- */
+  html, body { height: 100%; }
+  #app { height: 100vh; }
+  .app-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+
+  .top-panel { display: flex; align-items: center; gap: 1rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); flex: 0 0 auto; }
+  .folder-name { font-weight: 600; cursor: default; }
+  .folder-root-slash { color: var(--muted); margin-left: 0.1rem; }
+
+  .main-area { flex: 1 1 auto; display: flex; min-height: 0; overflow: hidden; }
+
+  .left-panel { width: 300px; flex: 0 0 300px; overflow-y: auto; border-right: 1px solid var(--border); background: var(--panel-bg); padding-bottom: 1rem; }
+  .nav-section { border-bottom: 1px solid var(--border); padding: 0.4rem 0; }
+  .nav-section:last-child { border-bottom: none; }
+  .nav-section-title { padding: 0.3rem 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .nav-row { padding: 0.35rem 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; }
+  .nav-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .nav-row.active { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
+  .settings-row { font-weight: 500; }
+  .file-row { justify-content: space-between; }
+  .file-relpath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-row.has-error .file-relpath { color: var(--danger); }
+  .error-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: #fff; background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
+
+  .tree-branch-header { padding: 0.35rem 1rem; cursor: pointer; font-weight: 600; user-select: none; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .tree-branch-header:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .tree-branch-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree-branch-add-btn { padding: 0.1rem 0.5rem; font-size: 0.75rem; flex-shrink: 0; }
+  .tree-branch-body { padding-bottom: 0.25rem; }
+  .tree-empty { padding: 0.25rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
+  .tree-node-children { margin-left: 1rem; }
+  .tree-node-row { display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 1rem; cursor: pointer; }
+  .tree-node-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .tree-node-row.active { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
+  .tree-toggle { width: 1rem; flex-shrink: 0; text-align: center; color: var(--muted); user-select: none; }
+  .tree-toggle-empty { visibility: hidden; }
+  .tree-node-kind { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 0.3rem; flex-shrink: 0; }
+  .tree-node-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .center-panel { flex: 1 1 auto; overflow-y: auto; padding: 1.25rem 1.75rem; }
+  .center-placeholder { color: var(--muted); }
+  .shell-error-panel { margin: 1rem; }
+
+  .settings-view h2, .file-view h2, .element-header h2, .create-element-form h2 { margin-top: 0; }
+  .settings-group { margin-bottom: 1.25rem; }
+  .settings-group h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 0 0 0.4rem; }
+  .settings-row { display: flex; gap: 0.75rem; padding: 0.2rem 0; align-items: baseline; }
+  .settings-label { min-width: 220px; color: var(--muted); flex-shrink: 0; }
+  .settings-value { word-break: break-word; }
+
+  .file-view .raw-yaml { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; overflow: auto; white-space: pre; max-height: calc(100vh - 14rem); width: 100%; min-height: calc(100vh - 20rem); }
+
+  .diagram-placeholder { border: 1px dashed var(--border); border-radius: 6px; min-height: 140px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-style: italic; margin-bottom: 1.25rem; background: var(--panel-bg); }
+  .element-header { display: flex; align-items: center; gap: 0.75rem; }
+  .element-kind-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0.1rem 0.4rem; }
+  .element-qualitative { margin-top: 0.5rem; }
+  .field-row { display: flex; gap: 0.75rem; padding: 0.35rem 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); align-items: flex-start; }
+  .field-row:last-child { border-bottom: none; }
+  .field-label { min-width: 140px; color: var(--muted); flex-shrink: 0; }
+  .field-value { flex: 1; }
+  .muted { color: var(--muted); }
+  .pill { display: inline-block; border: 1px solid var(--border); border-radius: 999px; padding: 0.05rem 0.55rem; margin: 0 0.3rem 0.3rem 0; font-size: 0.8rem; background: var(--panel-bg); }
+  .tag-list { margin: 0; padding-left: 1.1rem; }
+  .tag-key { color: var(--muted); }
+  .relationship-list { margin: 0; padding-left: 1.1rem; list-style: none; }
+  .relationship-list li { margin-bottom: 0.3rem; }
+  .relationship-link { display: inline; background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+  .relationship-link:hover { border-color: transparent; }
+  .relationship-dangling { color: var(--muted); }
+  .dangling-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: #fff; background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; margin-left: 0.3rem; }
+  .element-quantitative { display: flex; gap: 1.5rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+  .stat { display: flex; flex-direction: column; align-items: center; }
+  .stat-value { font-size: 1.3rem; font-weight: 700; }
+  .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  /* ---- Element edition form (run-0009, task-003) ---- */
+  .element-edition-form input[type="text"], .element-edition-form textarea,
+  .settings-view input[type="text"], .settings-view textarea { font: inherit; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--fg); }
+  .element-edition-form textarea, .settings-view textarea { width: 100%; min-height: 4rem; vertical-align: top; }
+  .edition-section { margin-bottom: 1.25rem; }
+  .edition-section h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 0 0 0.4rem; }
+  .edition-add-row { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.5rem; }
+  .pill-remove { border: none; background: none; cursor: pointer; color: var(--muted); padding: 0 0.2rem; font-size: 0.9rem; }
+  .pill-remove:hover { color: var(--danger); }
+  .inline-error { color: var(--danger); font-size: 0.8rem; margin-left: 0.5rem; }
+  .relationship-edit-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; }
+  .relationship-edit-row-new { border-style: dashed; }
+
+  /* ---- Delete confirmation overlay (run-0010, task-003) ---- */
+  .delete-confirmation { border: 1px solid var(--danger); border-radius: 4px; padding: 0.75rem; }
+  .delete-confirmation h3 { color: var(--danger); margin-top: 0; }
+
+  /* ---- Save status (run-0010, task-004) ---- */
+  .save-status { font-size: 0.85rem; }
+  .save-status-error { color: var(--danger); }
+  .save-status-success { color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+'use strict';
+
+/*
+ * ArchiCode standalone editor — data engine (run-0008, task-001).
+ *
+ * This file implements the "data engine" half of PRD-0008 / TDD-0008:
+ * the hand-written YAML parser (DEC-2/CON-5), the folder-pick + IndexedDB
+ * persistence flow (DEC-3/DEC-4/CON-3/CON-4/CTR-2), workspace+manifest
+ * loading (FR-4/FR-5), and the header.kind prefix mapping + recursive
+ * element indexing + relationship resolution (DEC-5/ASM-3/ASM-4/FR-6/FR-7).
+ *
+ * The rendering here is a TEMPORARY diagnostic view only — task-002 (a
+ * later, separate dispatch) replaces it with the real three-panel
+ * read-only shell (DEC-1/DEC-6/DEC-7/DEC-8). Everything below is
+ * organized so that later task can reuse AppState, parseYaml, buildIndex,
+ * resolveRelationships, loadWorkspace, openFolder/reopenFolder/closeFolder
+ * directly.
+ */
+
+// =====================================================================
+// YAML-subset parser (TDD DEC-2, CON-5; PRD TC-2)
+//
+// Hand-written recursive-descent parser over the exact subset CON-5
+// enumerates: indentation-based block mappings, block sequences
+// (including sequences of maps), double/single-quoted and plain
+// scalars, `#` comments, and YAML 1.1-style boolean literals. No
+// anchors/aliases, flow collections, multi-doc streams, or block
+// scalars (DEF-1) — none of .custom's real fixtures use them.
+// =====================================================================
+
+/**
+ * Strip a trailing `#` comment from a single raw line, respecting
+ * single/double-quoted strings (a `#` inside quotes is not a comment).
+ * Per YAML, a comment marker must be at the start of the line or
+ * preceded by whitespace.
+ */
+function stripYamlComment(line) {
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"' && !inSingle) {
+      inDouble = !inDouble;
+    } else if (c === "'" && !inDouble) {
+      inSingle = !inSingle;
+    } else if (c === '#' && !inSingle && !inDouble) {
+      if (i === 0 || /\s/.test(line[i - 1])) {
+        return line.slice(0, i);
+      }
+    }
+  }
+  return line;
+}
+
+/** True if a (trimmed) line of text is a block-sequence item (`-` or `- ...`). */
+function isYamlSeqItem(text) {
+  return text === '-' || text.indexOf('- ') === 0;
+}
+
+/**
+ * Find the index of the `:` that separates a mapping key from its value,
+ * ignoring colons inside quoted strings. A valid split point is a `:`
+ * followed by a space or end-of-string (YAML's own rule).
+ */
+function findYamlColonSplit(text) {
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"' && !inSingle) {
+      inDouble = !inDouble;
+    } else if (c === "'" && !inDouble) {
+      inSingle = !inSingle;
+    } else if (c === ':' && !inSingle && !inDouble) {
+      const next = text[i + 1];
+      if (next === undefined || next === ' ') {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+/** Split a `key: value` (or `key:`) line into {key, rawValue (possibly '')}. */
+function splitYamlKeyValue(text) {
+  const idx = findYamlColonSplit(text);
+  if (idx === -1) {
+    return { key: text.trim(), rawValue: '' };
+  }
+  const key = text.slice(0, idx).trim();
+  const rawValue = text.slice(idx + 1).trim();
+  return { key, rawValue };
+}
+
+/** Unescape a double-quoted scalar's body (minimal set actually used by fixtures). */
+function unescapeYamlDoubleQuoted(body) {
+  return body.replace(/\\(.)/g, (m, ch) => {
+    switch (ch) {
+      case 'n': return '\n';
+      case 't': return '\t';
+      case '"': return '"';
+      case '\\': return '\\';
+      default: return ch;
+    }
+  });
+}
+
+/**
+ * Parse a raw scalar token into its coerced JS value: quoted string,
+ * boolean (true/false/yes/no/on/off), number, null (null/~/empty), or
+ * plain string (CON-5's exact coercion rules).
+ */
+function parseYamlScalar(raw) {
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  if (trimmed.length >= 2 && trimmed[0] === '"' && trimmed[trimmed.length - 1] === '"') {
+    return unescapeYamlDoubleQuoted(trimmed.slice(1, -1));
+  }
+  if (trimmed.length >= 2 && trimmed[0] === "'" && trimmed[trimmed.length - 1] === "'") {
+    return trimmed.slice(1, -1).replace(/''/g, "'");
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower === 'null' || trimmed === '~') return null;
+  if (lower === 'true' || lower === 'yes' || lower === 'on') return true;
+  if (lower === 'false' || lower === 'no' || lower === 'off') return false;
+  if (/^-?\d+$/.test(trimmed)) return parseInt(trimmed, 10);
+  if (/^-?\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed);
+  return trimmed;
+}
+
+/**
+ * Parse one mapping entry starting at lines[pos.i] (assumed to be a
+ * `key: value` line at the given indent, not a sequence item). Advances
+ * pos.i past this entry and any nested block value. Returns [key, value].
+ */
+function parseYamlMappingEntry(lines, pos, indent) {
+  const line = lines[pos.i];
+  const { key, rawValue } = splitYamlKeyValue(line.text);
+  pos.i++;
+  let value;
+  if (rawValue === '') {
+    if (pos.i < lines.length && lines[pos.i].indent > indent) {
+      value = parseYamlBlock(lines, pos);
+    } else {
+      value = null;
+    }
+  } else {
+    value = parseYamlScalar(rawValue);
+  }
+  return [key, value];
+}
+
+/** Parse a contiguous run of mapping entries at exactly `indent`. */
+function parseYamlMapping(lines, pos, indent) {
+  const map = {};
+  while (pos.i < lines.length && lines[pos.i].indent === indent && !isYamlSeqItem(lines[pos.i].text)) {
+    const [k, v] = parseYamlMappingEntry(lines, pos, indent);
+    map[k] = v;
+  }
+  return map;
+}
+
+/** Parse a contiguous run of sequence items (`- ...`) at exactly `indent`. */
+function parseYamlSequence(lines, pos, indent) {
+  const arr = [];
+  while (pos.i < lines.length && lines[pos.i].indent === indent && isYamlSeqItem(lines[pos.i].text)) {
+    const line = lines[pos.i];
+    const text = line.text;
+    const afterDash = text.length > 1 ? text.slice(1) : '';
+    const trimmedRest = afterDash.replace(/^ +/, '');
+    const spacesAfterDash = afterDash.length - trimmedRest.length;
+    // Column where this item's own content starts; continuation lines of a
+    // sequence-of-maps item align here (matches real-world fixtures, e.g.
+    // `- kind: "container"` followed by indented `id:`, `name:`, ...).
+    const restCol = indent + 1 + spacesAfterDash;
+    pos.i++;
+    if (trimmedRest === '') {
+      if (pos.i < lines.length && lines[pos.i].indent > indent) {
+        arr.push(parseYamlBlock(lines, pos));
+      } else {
+        arr.push(null);
+      }
+      continue;
+    }
+    if (isYamlSeqItem(trimmedRest)) {
+      // Nested sequence inline after the dash — not used by any real
+      // fixture (DEF-1); fall back to treating it as a scalar rather
+      // than crashing.
+      arr.push(parseYamlScalar(trimmedRest));
+      continue;
+    }
+    if (findYamlColonSplit(trimmedRest) !== -1) {
+      // This item is a map: first key/value comes from the dash line
+      // itself, further keys are continuation lines at `restCol`.
+      const map = {};
+      const { key, rawValue } = splitYamlKeyValue(trimmedRest);
+      if (rawValue === '') {
+        if (pos.i < lines.length && lines[pos.i].indent > restCol) {
+          map[key] = parseYamlBlock(lines, pos);
+        } else {
+          map[key] = null;
+        }
+      } else {
+        map[key] = parseYamlScalar(rawValue);
+      }
+      while (pos.i < lines.length && lines[pos.i].indent === restCol && !isYamlSeqItem(lines[pos.i].text)) {
+        const [k2, v2] = parseYamlMappingEntry(lines, pos, restCol);
+        map[k2] = v2;
+      }
+      arr.push(map);
+    } else {
+      arr.push(parseYamlScalar(trimmedRest));
+    }
+  }
+  return arr;
+}
+
+/** Dispatch to mapping or sequence parsing based on the next line's shape. */
+function parseYamlBlock(lines, pos) {
+  if (pos.i >= lines.length) return null;
+  const indent = lines[pos.i].indent;
+  if (isYamlSeqItem(lines[pos.i].text)) {
+    return parseYamlSequence(lines, pos, indent);
+  }
+  return parseYamlMapping(lines, pos, indent);
+}
+
+/**
+ * Parse a YAML-subset document (CON-5) into a plain JS value (object,
+ * array, or null for an empty document).
+ */
+function parseYaml(text) {
+  const rawLines = String(text).split('\n');
+  const lines = [];
+  for (const rl of rawLines) {
+    const noCr = rl.replace(/\r$/, '');
+    const stripped = stripYamlComment(noCr);
+    if (stripped.trim() === '') continue; // skip blank / comment-only lines
+    const indent = stripped.length - stripped.replace(/^ +/, '').length;
+    lines.push({ indent, text: stripped.trim() });
+  }
+  if (lines.length === 0) return null;
+  const pos = { i: 0 };
+  return parseYamlBlock(lines, pos);
+}
+
+// =====================================================================
+// YAML-subset serializer — the parser's inverse (TDD-0009 DEC-7, CTR-3).
+//
+// Hand-written, mirroring the parser's own small-function style: given a
+// plain JS value (built by parseYaml, then possibly edited in place by a
+// form commit), regenerate YAML-subset text that `parseYaml` reproduces
+// losslessly (ASM-2: relies on JS object key insertion order; ASM-3: only
+// *newly* ambiguous strings are quoted).
+// =====================================================================
+
+/** True if `value` would need its own nested block (non-empty object/array). */
+function isYamlComplexValue(value) {
+  if (value === null || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return Object.keys(value).length > 0;
+}
+
+/** True if a plain string would be mis-coerced (or corrupt a line) if emitted unquoted. */
+function yamlStringNeedsQuoting(str) {
+  if (str === '') return true;
+  if (/^\s/.test(str) || /\s$/.test(str)) return true;
+  if (str.indexOf(': ') !== -1) return true;
+  if (str.indexOf('# ') !== -1) return true;
+  if (str.indexOf('\n') !== -1) return true;
+  const lower = str.toLowerCase();
+  if (lower === 'true' || lower === 'false' || lower === 'yes' || lower === 'no' ||
+      lower === 'on' || lower === 'off' || lower === 'null' || str === '~') return true;
+  if (/^-?\d+$/.test(str)) return true;
+  if (/^-?\d+\.\d+$/.test(str)) return true;
+  // Found during this run's own task-004 verification (TDD-0010): a plain
+  // string whose own first AND last characters are both '"' (or both "'")
+  // is exactly the shape parseYamlScalar's own quoted-string detection
+  // (`trimmed.length >= 2 && trimmed[0] === '"'/... && trimmed[last] ===
+  // '"'/...`) would misinterpret on re-parse, silently stripping one layer
+  // of quote characters from the *value* (not just formatting) — e.g. the
+  // real workspace.yaml's own `formatters.*.qualifiers: "\"\"%s\"\""`
+  // (in-memory value `""%s""`) would otherwise round-trip to `"%s"`. This
+  // is a real value-corruption bug, not the already-accepted comment/
+  // formatting-loss tradeoff (TDD-0010 FR-18/Non-Goals) — fixed here since
+  // this run is the first to ever write such a value back to a real file.
+  if (str.length >= 2 && ((str[0] === '"' && str[str.length - 1] === '"') || (str[0] === "'" && str[str.length - 1] === "'"))) return true;
+  return false;
+}
+
+/** Escape a string's body for double-quoted emission (exact inverse of unescapeYamlDoubleQuoted). */
+function escapeYamlDoubleQuoted(str) {
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\t/g, '\\t');
+}
+
+/** Serialize one scalar JS value into its inline YAML token (DEC-7's scalar rules). */
+function serializeYamlScalarToken(value) {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return String(value);
+  const str = String(value);
+  if (yamlStringNeedsQuoting(str)) {
+    return '"' + escapeYamlDoubleQuoted(str) + '"';
+  }
+  return str;
+}
+
+/**
+ * Recursively serialize a plain JS value (object/array/scalar) into the
+ * YAML-subset text `parseYaml` can re-parse (DEC-7). `indent` is the
+ * column at which this value's own lines (for an object/array) start;
+ * for a scalar, `indent` is unused (the result is the inline token the
+ * caller places after its own `key: ` or `- `).
+ */
+function serializeYamlValue(value, indent) {
+  const ind = ' '.repeat(indent);
+
+  if (Array.isArray(value)) {
+    const lines = [];
+    for (const item of value) {
+      if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
+        const keys = Object.keys(item);
+        if (keys.length === 0) {
+          lines.push(ind + '-');
+          continue;
+        }
+        // restCol: the column sequence-of-maps continuation keys align to
+        // (matches parseYamlSequence's own restCol = indent + 1 + spacesAfterDash,
+        // with exactly one space after the dash, as emitted below).
+        const restCol = indent + 2;
+        for (let k = 0; k < keys.length; k++) {
+          const key = keys[k];
+          const val = item[key];
+          const prefix = (k === 0) ? (ind + '- ') : ' '.repeat(restCol);
+          if (isYamlComplexValue(val)) {
+            lines.push(prefix + key + ':');
+            lines.push(serializeYamlValue(val, restCol + 2));
+          } else if (Array.isArray(val) && val.length === 0) {
+            lines.push(prefix + key + ':');
+          } else {
+            lines.push(prefix + key + ': ' + serializeYamlScalarToken(val));
+          }
+        }
+      } else if (Array.isArray(item)) {
+        // Nested sequence-of-sequences — not produced by any real fixture
+        // (DEF-3); fall back to a block under a bare dash rather than crashing.
+        lines.push(ind + '-');
+        if (item.length > 0) lines.push(serializeYamlValue(item, indent + 2));
+      } else {
+        lines.push(ind + '- ' + serializeYamlScalarToken(item));
+      }
+    }
+    return lines.join('\n');
+  }
+
+  if (value !== null && typeof value === 'object') {
+    const lines = [];
+    for (const key of Object.keys(value)) {
+      const val = value[key];
+      if (isYamlComplexValue(val)) {
+        lines.push(ind + key + ':');
+        lines.push(serializeYamlValue(val, indent + 2));
+      } else if (Array.isArray(val) && val.length === 0) {
+        // Empty array -> `key:` with no block, reparsed as null (DEC-7) —
+        // every array field this run touches defaults via Array.isArray(x) ? x : [].
+        lines.push(ind + key + ':');
+      } else {
+        lines.push(ind + key + ': ' + serializeYamlScalarToken(val));
+      }
+    }
+    return lines.join('\n');
+  }
+
+  return serializeYamlScalarToken(value);
+}
+
+/**
+ * Serialize a manifest file's full text from its parsed `header`/`content`
+ * nodes (DEC-7, CTR-3) — the shape every real `.custom` manifest has:
+ * top-level `header:` then `content:` blocks.
+ */
+function serializeManifestFile(header, content) {
+  return serializeYamlValue({ header: header, content: content }, 0);
+}
+
+// =====================================================================
+// IndexedDB handle persistence (TDD DEC-3, CTR-2; PRD TC-3/FR-1)
+//
+// One database, one object store, no keyPath, a single record at key
+// 'workspace' holding {handle}. Never JSON.stringify the handle — it is
+// structured-clone-native and IndexedDB's `put` handles it directly.
+// =====================================================================
+
+const ARCHICODE_DB_NAME = 'archicode-standalone-editor';
+const ARCHICODE_DB_VERSION = 1;
+const ARCHICODE_STORE_NAME = 'handles';
+const ARCHICODE_HANDLE_KEY = 'workspace';
+
+function openArchicodeDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(ARCHICODE_DB_NAME, ARCHICODE_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(ARCHICODE_STORE_NAME)) {
+        db.createObjectStore(ARCHICODE_STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getStoredHandleRecord() {
+  const db = await openArchicodeDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(ARCHICODE_STORE_NAME, 'readonly');
+    const store = tx.objectStore(ARCHICODE_STORE_NAME);
+    const req = store.get(ARCHICODE_HANDLE_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function putStoredHandleRecord(handle) {
+  const db = await openArchicodeDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(ARCHICODE_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(ARCHICODE_STORE_NAME);
+    const req = store.put({ handle }, ARCHICODE_HANDLE_KEY); // CON-4: structured-clone put, never JSON.stringify
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteStoredHandleRecord() {
+  const db = await openArchicodeDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(ARCHICODE_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(ARCHICODE_STORE_NAME);
+    const req = store.delete(ARCHICODE_HANDLE_KEY);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// =====================================================================
+// AppState (TDD CTR-1) — the single in-memory source of truth.
+// =====================================================================
+
+function createInitialAppState() {
+  return {
+    folder: null, // { handle: FileSystemDirectoryHandle, name: string } | null
+    permissionState: 'none', // 'granted' | 'needs-click' | 'none'
+    workspace: null, // { application: {elements}, technology: {elements}, settings, styles, formatters, settingsDirty, settingsLastKnownDiskModified } | null
+    manifestFiles: [], // Array<{ relPath, rawText, header, content, error, dirty, existedOnDisk, lastKnownDiskModified }>
+    index: { application: new Map(), technology: new Map() },
+    relationshipStats: { total: 0, dangling: 0 },
+    selection: { kind: 'none', key: null, mode: 'view' },
+    expanded: new Set(),
+    fatalError: null,
+    // TDD-0010 DEC-6/DEC-9: relPaths pending a removeEntry at next save, and
+    // (since the removed mf object itself leaves AppState.manifestFiles
+    // immediately) the baseline lastKnownDiskModified a save's stale-check
+    // still needs for each one.
+    pendingFileRemovals: [],
+    removedFileBaselines: new Map()
+  };
+}
+
+let AppState = createInitialAppState();
+
+// =====================================================================
+// Settings parsing with documented defaults + camelCase/kebab-case
+// aliasing (PRD FR-4, task spec item 4 — mirrors the real Java
+// @JsonAlias-annotated settings fields).
+// =====================================================================
+
+function readAliased(obj, camelKey, kebabKey, fallback) {
+  if (!obj || typeof obj !== 'object') return fallback;
+  if (Object.prototype.hasOwnProperty.call(obj, camelKey)) return obj[camelKey];
+  if (Object.prototype.hasOwnProperty.call(obj, kebabKey)) return obj[kebabKey];
+  return fallback;
+}
+
+function parseSettings(rawSettings) {
+  const raw = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
+  const manifestsRaw = raw.manifests && typeof raw.manifests === 'object' ? raw.manifests : {};
+  const relationshipsRaw = raw.relationships && typeof raw.relationships === 'object' ? raw.relationships : {};
+  const viewsRaw = raw.views && typeof raw.views === 'object' ? raw.views : {};
+  const facetsRaw = raw.facets && typeof raw.facets === 'object' ? raw.facets : {};
+
+  const customsRaw = readAliased(facetsRaw, 'customs', 'customs', []);
+  const customs = (Array.isArray(customsRaw) ? customsRaw : []).map((c) => {
+    const custom = c && typeof c === 'object' ? c : {};
+    return Object.assign({}, custom, {
+      jsonPath: readAliased(custom, 'jsonPath', 'json-path', custom.jsonPath)
+    });
+  });
+
+  return {
+    manifests: {
+      paths: Array.isArray(manifestsRaw.paths) ? manifestsRaw.paths : ['manifests']
+    },
+    relationships: {
+      defaultSyntheticLabel: readAliased(relationshipsRaw, 'defaultSyntheticLabel', 'default-synthetic-label', 'uses')
+    },
+    views: {
+      path: readAliased(viewsRaw, 'path', 'path', 'views'),
+      labels: readAliased(viewsRaw, 'labels', 'labels', {}) || {},
+      properties: readAliased(viewsRaw, 'properties', 'properties', {}) || {}
+    },
+    facets: {
+      globalEnabled: readAliased(facetsRaw, 'globalEnabled', 'global-enabled', true),
+      directoryNameTemplate: readAliased(facetsRaw, 'directoryNameTemplate', 'directory-name-template', '%s-%s'),
+      customs
+    }
+  };
+}
+
+// =====================================================================
+// header.kind prefix mapping + recursive element indexing +
+// relationship resolution (TDD DEC-5, ASM-3, ASM-4; PRD FR-6/FR-7).
+// =====================================================================
+
+const ARCHICODE_KIND_PREFIX = 'archicode.morin.io/';
+
+// Mirrors ManifestKind's ten constants (ASM-3a's fully-qualified
+// vocabulary). The JS mirror follows the marker-interface nesting rule
+// (ASM-4), not ManifestKind.java's mispaired SYSTEM_GROUP type field —
+// that distinction only matters for DEC-8's tree nesting, which this
+// task does not implement; the category/rootKind mapping itself is
+// exactly this static table.
+const ARCHICODE_KIND_MAP = {
+  'component': { category: 'application', rootKind: 'component' },
+  'container': { category: 'application', rootKind: 'container' },
+  'container-group': { category: 'application', rootKind: 'group' },
+  'person': { category: 'application', rootKind: 'person' },
+  'solution': { category: 'application', rootKind: 'solution' },
+  'solution-group': { category: 'application', rootKind: 'group' },
+  'system': { category: 'application', rootKind: 'system' },
+  'system-group': { category: 'application', rootKind: 'group' },
+  'environment': { category: 'technology', rootKind: 'environment' },
+  'node': { category: 'technology', rootKind: 'node' }
+};
+
+function stripArchicodeKindPrefix(fullKind) {
+  if (typeof fullKind === 'string' && fullKind.indexOf(ARCHICODE_KIND_PREFIX) === 0) {
+    return fullKind.slice(ARCHICODE_KIND_PREFIX.length);
+  }
+  return fullKind;
+}
+
+/**
+ * Recursively index one element node (manifest-root or nested) and its
+ * descendants (content.elements, at any depth) into `index[category]`.
+ * Returns the ElementRecord (CTR-1 shape) for this node.
+ *
+ * `level` (TDD-0010 DEC-3) is the nesting-rule level this node sits at —
+ * one of 'solution'|'system'|'container'|'component'|'person'|
+ * 'environment'|'node'. A `group`-kinded node has no level of its own and
+ * always inherits its caller's `level`; every other kind's level is
+ * simply its own bare `kind` string. The caller (`buildIndex`) computes
+ * the manifest root's own `level` once, from its un-generalized
+ * `bareKind`, before ever calling this function for that root.
+ */
+function indexElementRecursive(node, kind, reference, sourceFile, category, index, settings, level) {
+  const rawRelationships = Array.isArray(node.relationships) ? node.relationships : [];
+  const relationships = rawRelationships.map((r) => {
+    const rel = r && typeof r === 'object' ? r : {};
+    return {
+      destination: rel.destination,
+      label: (rel.label !== undefined && rel.label !== null) ? rel.label : settings.relationships.defaultSyntheticLabel,
+      qualifiers: Array.isArray(rel.qualifiers) ? rel.qualifiers : [],
+      tags: rel.tags && typeof rel.tags === 'object' ? rel.tags : {},
+      resolved: false // filled in by resolveRelationships (FLOW-4)
+    };
+  });
+
+  const record = {
+    reference,
+    kind,
+    level,
+    id: node.id,
+    name: node.name !== undefined ? node.name : null,
+    description: node.description !== undefined ? node.description : null,
+    qualifiers: Array.isArray(node.qualifiers) ? node.qualifiers : [],
+    tags: node.tags && typeof node.tags === 'object' ? node.tags : {},
+    applications: Array.isArray(node.applications) ? node.applications : [],
+    relationships,
+    children: [],
+    sourceFile
+  };
+
+  index[category].set(reference, record);
+
+  const childNodes = Array.isArray(node.elements) ? node.elements : [];
+  for (const childNode of childNodes) {
+    if (!childNode || typeof childNode !== 'object' || !childNode.id) continue;
+    // ASM-3b: a nested element carries its own *bare* kind discriminator
+    // directly (no prefix stripping, unlike header.kind).
+    const childKind = childNode.kind;
+    const childReference = reference + '.' + childNode.id;
+    // DEC-3: a 'group' has no level of its own — it always inherits its
+    // caller's level; every other kind's level is simply its own kind.
+    const childLevel = (childKind === 'group') ? level : childKind;
+    const childRecord = indexElementRecursive(childNode, childKind, childReference, sourceFile, category, index, settings, childLevel);
+    record.children.push(childRecord);
+  }
+
+  return record;
+}
+
+/**
+ * The child-kind nesting-rule table (TDD DEC-3, TG-4) — mirrors `W-1`'s
+ * TDD `DEC-8` tree nesting rules as one small, shared, table-driven
+ * helper. Returns the list of bare kinds a node at `level` may contain as
+ * a new child (always including `'group'` where any non-leaf nesting is
+ * allowed); an empty array means `level` is a leaf (`'component'`/
+ * `'person'`, or any unrecognized level).
+ */
+function childKindOptionsForLevel(level) {
+  switch (level) {
+    case 'solution': return ['system', 'group'];
+    case 'system': return ['container', 'group'];
+    case 'container': return ['component', 'group'];
+    case 'environment': return ['node'];
+    case 'node': return ['node'];
+    default: return [];
+  }
+}
+
+/** `childKindOptionsForLevel`, keyed off an `ElementRecord`'s own `level` (DEC-3). */
+function childKindOptionsFor(record) {
+  return childKindOptionsForLevel(record.level);
+}
+
+/**
+ * A top-level manifest kind's own "reduced level" (TDD-0010 DEC-3/step 8):
+ * strip a trailing `-group` suffix to recover the base level a group
+ * flavor sits at (`'system-group'` -> `'system'`), else the kind itself is
+ * already a valid level name (`'person'`/`'component'`/`'environment'`/
+ * `'node'`/`'system'`/`'container'`/`'solution'`). Mirrors `buildIndex`'s
+ * own `groupLevelMatch` computation for a manifest root, generalized for
+ * reuse by the top-level create form's attach-under validation so the
+ * same regex is not re-inlined at every call site.
+ */
+function reducedLevelForKind(kind) {
+  const m = /^(.+)-group$/.exec(kind);
+  return m ? m[1] : kind;
+}
+
+/**
+ * Build the application/technology element indexes from every
+ * successfully-parsed manifest file (DEC-5/FR-6). Mutates manifestFiles'
+ * entries in place to record a per-file error for an unrecognized
+ * header.kind (DEC-10), without aborting the rest of the load.
+ *
+ * DEC-5b: a manifest's root element is only a *candidate* top-level root.
+ * After every manifest is indexed, a second pass looks up each root's own
+ * `header.parent` (if any) in the same-layer index and, when found,
+ * attaches that root under the found parent's `children` instead of
+ * leaving it at the top level — mirroring the real
+ * `ElementIndexFactory.create()`'s cross-manifest attachment loop. In
+ * `.custom`, this is how `authx`/`iam`/`portal`/etc. end up nested under
+ * `platform` even though `app.platform.yaml` itself declares no
+ * `content.elements` — the nesting is entirely cross-file.
+ */
+function buildIndex(manifestFiles, settings) {
+  const index = { application: new Map(), technology: new Map() };
+  const candidateRoots = { application: [], technology: [] }; // { record, parentReference }
+
+  for (const mf of manifestFiles) {
+    if (mf.error) continue;
+    if (!mf.header || !mf.header.kind || !mf.content || mf.content.id === undefined) {
+      mf.error = mf.error || 'Missing header.kind or content.id';
+      continue;
+    }
+    const bareKind = stripArchicodeKindPrefix(mf.header.kind);
+    const mapping = ARCHICODE_KIND_MAP[bareKind];
+    if (!mapping) {
+      mf.error = 'Unrecognized header.kind "' + mf.header.kind + '"';
+      continue;
+    }
+    const { category, rootKind } = mapping;
+    // DEC-3: the root's own nesting-rule level, computed from the
+    // un-generalized `bareKind` (e.g. 'system-group') *before*
+    // ARCHICODE_KIND_MAP's own reduction to the generic 'group' rootKind
+    // erases that distinction — strip a trailing '-group' suffix to get
+    // the base level; else rootKind itself is already a valid level name
+    // ('person'/'component'/'environment'/'node'/'system'/'container'/
+    // 'solution').
+    const groupLevelMatch = /^(.+)-group$/.exec(bareKind);
+    const rootLevel = groupLevelMatch ? groupLevelMatch[1] : rootKind;
+    const rootReference = mf.header.parent
+      ? (mf.header.parent + '.' + mf.content.id)
+      : String(mf.content.id);
+    const rootRecord = indexElementRecursive(mf.content, rootKind, rootReference, mf.relPath, category, index, settings, rootLevel);
+    candidateRoots[category].push({ record: rootRecord, parentReference: mf.header.parent || null });
+  }
+
+  // DEC-5b: attach each candidate root under its resolved parent (if any);
+  // only unattached candidates remain top-level.
+  const rootsByCategory = { application: [], technology: [] };
+  for (const category of ['application', 'technology']) {
+    for (const candidate of candidateRoots[category]) {
+      const parentRecord = candidate.parentReference ? index[category].get(candidate.parentReference) : null;
+      if (parentRecord) {
+        parentRecord.children.push(candidate.record);
+      } else {
+        rootsByCategory[category].push(candidate.record);
+      }
+    }
+  }
+
+  return { index, rootsByCategory };
+}
+
+/**
+ * Walk every indexed element's relationships and mark each `resolved`
+ * per DEC-5: application relationships resolve only against the
+ * application index, technology only against technology, never
+ * cross-layer (FR-7, FLOW-4).
+ */
+function resolveRelationships(index) {
+  let total = 0;
+  let dangling = 0;
+  for (const category of ['application', 'technology']) {
+    for (const record of index[category].values()) {
+      for (const rel of record.relationships) {
+        total++;
+        rel.resolved = index[category].has(rel.destination);
+        if (!rel.resolved) dangling++;
+      }
+    }
+  }
+  return { total, dangling };
+}
+
+// =====================================================================
+// Workspace + manifest loading (TDD FLOW-1; PRD FR-4/FR-5/FR-16/DEC-10).
+// =====================================================================
+
+/** Resolve a (possibly multi-segment) relative directory path from a root handle. */
+async function getDirectoryHandleByRelativePath(rootHandle, relPath) {
+  const segments = String(relPath).split('/').filter(Boolean);
+  let current = rootHandle;
+  for (const seg of segments) {
+    current = await current.getDirectoryHandle(seg);
+  }
+  return current;
+}
+
+async function loadWorkspace(dirHandle) {
+  AppState.fatalError = null;
+  AppState.workspace = null;
+  AppState.manifestFiles = [];
+  AppState.index = { application: new Map(), technology: new Map() };
+  AppState.relationshipStats = { total: 0, dangling: 0 };
+
+  // FR-4 / DEC-10: workspace.yaml is fatal to the open attempt if missing/unparseable.
+  let workspaceRaw;
+  let workspaceLastKnownDiskModified = null; // TDD-0010 DEC-8
+  try {
+    const fileHandle = await dirHandle.getFileHandle('workspace.yaml');
+    const file = await fileHandle.getFile();
+    workspaceLastKnownDiskModified = file.lastModified;
+    const text = await file.text();
+    workspaceRaw = parseYaml(text) || {};
+  } catch (e) {
+    AppState.fatalError = 'Could not read/parse workspace.yaml: ' + (e && e.message ? e.message : String(e));
+    AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    render();
+    return;
+  }
+
+  const settings = parseSettings(workspaceRaw.settings);
+
+  // FR-5: direct (non-recursive) children of each settings.manifests.paths dir.
+  const manifestFiles = [];
+  for (const relDirPath of settings.manifests.paths) {
+    let manifestsDirHandle;
+    try {
+      manifestsDirHandle = await getDirectoryHandleByRelativePath(dirHandle, relDirPath);
+    } catch (e) {
+      console.warn('ArchiCode: manifests path "' + relDirPath + '" not found/readable:', e);
+      continue;
+    }
+    for await (const [name, entryHandle] of manifestsDirHandle.entries()) {
+      if (entryHandle.kind !== 'file') continue;
+      if (!/\.(ya?ml)$/i.test(name)) continue;
+      const relPath = relDirPath.replace(/\/$/, '') + '/' + name;
+      let rawText = '';
+      let header = null;
+      let content = null;
+      let error = null;
+      let lastKnownDiskModified = null; // TDD-0010 DEC-8
+      try {
+        const file = await entryHandle.getFile();
+        lastKnownDiskModified = file.lastModified;
+        rawText = await file.text();
+        const parsed = parseYaml(rawText) || {};
+        header = (parsed.header && typeof parsed.header === 'object') ? parsed.header : null;
+        content = (parsed.content && typeof parsed.content === 'object') ? parsed.content : null;
+        if (!header || !header.kind) {
+          error = 'Missing header.kind';
+        } else if (!content || content.id === undefined) {
+          error = 'Missing content.id';
+        }
+      } catch (e) {
+        error = e && e.message ? e.message : String(e);
+      }
+      manifestFiles.push({
+        relPath, rawText, header, content, error,
+        dirty: false, existedOnDisk: true, lastKnownDiskModified
+      });
+    }
+  }
+  manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath));
+  AppState.manifestFiles = manifestFiles;
+
+  // DEC-5 / FR-6 / FR-7: index + resolve (per-file parse errors do not abort this).
+  const { index, rootsByCategory } = buildIndex(manifestFiles, settings);
+  const relationshipStats = resolveRelationships(index);
+  AppState.index = index;
+  AppState.relationshipStats = relationshipStats;
+
+  AppState.workspace = {
+    application: { elements: rootsByCategory.application },
+    technology: { elements: rootsByCategory.technology },
+    settings,
+    styles: (workspaceRaw.styles && typeof workspaceRaw.styles === 'object') ? workspaceRaw.styles : {},
+    formatters: (workspaceRaw.formatters && typeof workspaceRaw.formatters === 'object') ? workspaceRaw.formatters : {},
+    settingsDirty: false, // TDD-0010 DEC-8
+    settingsLastKnownDiskModified: workspaceLastKnownDiskModified
+  };
+  AppState.selection = { kind: 'none', key: null, mode: 'view' }; // DEC-9: navigation state never persists
+  render();
+
+  // eslint-disable-next-line no-console
+  console.log('ArchiCode standalone editor — AppState after load:', AppState);
+}
+
+// =====================================================================
+// Folder pick / persist / reopen / close flows
+// (TDD DEC-3/DEC-4, CON-3/CON-4, CTR-2; PRD FR-1/FR-2/FR-3; FLOW-1..3).
+// =====================================================================
+
+function isFileSystemAccessSupported() {
+  return typeof window.showDirectoryPicker === 'function' && 'indexedDB' in window;
+}
+
+/** Click handler for the initial "pick a folder" button (FR-1). */
+async function openFolder() {
+  try {
+    const handle = await window.showDirectoryPicker();
+    await putStoredHandleRecord(handle);
+    AppState.folder = { handle, name: handle.name };
+    AppState.permissionState = 'granted';
+    await loadWorkspace(handle);
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // user dismissed the picker
+    console.error('ArchiCode: openFolder failed', e);
+    AppState.fatalError = 'Failed to open folder: ' + (e && e.message ? e.message : String(e));
+    render();
+  }
+}
+
+/**
+ * Click handler for the "click to reopen <name>" button (FR-2/DEC-4).
+ * requestPermission() must only ever be called from inside a user
+ * gesture handler like this one (CON-3) — never automatically on load.
+ */
+async function reopenFolder() {
+  if (!AppState.folder || !AppState.folder.handle) return;
+  try {
+    const permission = await AppState.folder.handle.requestPermission({ mode: 'read' });
+    if (permission === 'granted') {
+      AppState.permissionState = 'granted';
+      await loadWorkspace(AppState.folder.handle);
+      return;
+    }
+  } catch (e) {
+    console.error('ArchiCode: reopenFolder requestPermission failed', e);
+  }
+  // Failure (denied, dismissed, or thrown) falls back to the initial picker state.
+  try { await deleteStoredHandleRecord(); } catch (e) { /* best effort */ }
+  AppState = createInitialAppState();
+  render();
+}
+
+/** Click handler for the top panel's close action (FR-3/FLOW-3). */
+async function closeFolder() {
+  try {
+    await deleteStoredHandleRecord();
+  } catch (e) {
+    console.error('ArchiCode: closeFolder failed to clear stored handle', e);
+  }
+  AppState = createInitialAppState();
+  render();
+}
+
+/** On every page load: try to silently reopen a stored handle (FLOW-2). */
+async function tryAutoReopen() {
+  let record;
+  try {
+    record = await getStoredHandleRecord();
+  } catch (e) {
+    console.error('ArchiCode: failed to read stored handle', e);
+    record = null;
+  }
+  if (!record || !record.handle) {
+    AppState.permissionState = 'none';
+    render();
+    return;
+  }
+  const handle = record.handle;
+  let permission;
+  try {
+    // No user gesture needed for queryPermission (FR-2/Q-1).
+    permission = await handle.queryPermission({ mode: 'read' });
+  } catch (e) {
+    permission = 'denied';
+  }
+  AppState.folder = { handle, name: handle.name };
+  if (permission === 'granted') {
+    AppState.permissionState = 'granted';
+    await loadWorkspace(handle);
+  } else {
+    AppState.permissionState = 'needs-click';
+    render();
+  }
+}
+
+// =====================================================================
+// Real three-panel read-only UI (run-0008, task-002; PRD FR-8..FR-16,
+// NFR-2/NFR-4; TDD DEC-1/DEC-6/DEC-7/DEC-8/DEC-9/DEC-10/DEC-11,
+// IF-1..IF-3, FLOW-5). Replaces the former temporary diagnostic view.
+// =====================================================================
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// Top-level Applications/Environments branch expand state (IF-2). Kept
+// outside AppState (deliberately not part of CTR-1's `expanded` Set,
+// which is reserved for per-element tree-node expand state) — simple
+// module-level booleans, defaulting to expanded for a useful first view.
+let treeExpandedApplications = true;
+let treeExpandedEnvironments = true;
+
+// Raw-YAML editor's one pending draft (run-0009, task-005; TDD-0009
+// DEC-6/DEC-10, CTR-2) — holds { relPath, text, error } for the single
+// file currently showing an unsaved/rejected edit, or null. Deliberately
+// module-level, not part of AppState (same rationale as the two booleans
+// above): transient UI state, not model state.
+let rawYamlEditDraft = null;
+
+/**
+ * Delete confirmation state (TDD-0010 DEC-4, CTR-2) — holds
+ * { reference, category, affected } for the element currently showing an
+ * inline delete-impact-scan confirmation (overlaid on its own, already-
+ * rendering edition view), or null. Deliberately module-level, not part
+ * of AppState — same rationale as `rawYamlEditDraft` above: transient UI
+ * state, not model state. Canceling never touches AppState (AC-11);
+ * confirming is the only path that mutates anything.
+ */
+let pendingDeleteConfirmation = null;
+
+/**
+ * Save status (TDD-0010 DEC-11, CTR-2) — the module-level result of the
+ * most recent `saveAllChanges` attempt, or `{state: 'idle'}` before any
+ * attempt this session. Deliberately not part of `AppState` — same
+ * rationale as `pendingDeleteConfirmation`/`rawYamlEditDraft` above:
+ * transient UI state, not model state. Reset to `'idle'` at every
+ * mutation chokepoint that creates a *new* unsaved change, so a stale
+ * conflict/error message from a prior save attempt does not linger past
+ * the edit that would resolve it.
+ */
+let saveStatus = { state: 'idle' };
+
+/** Add every ancestor reference of `reference` (itself included) to AppState.expanded (FR-14/FLOW-5). */
+function expandAncestorsOf(reference) {
+  if (!reference) return;
+  const segments = String(reference).split('.');
+  let acc = '';
+  for (const segment of segments) {
+    acc = acc ? acc + '.' + segment : segment;
+    AppState.expanded.add(acc);
+  }
+}
+
+function toggleExpandedKey(key) {
+  if (AppState.expanded.has(key)) {
+    AppState.expanded.delete(key);
+  } else {
+    AppState.expanded.add(key);
+  }
+}
+
+/** Look up an ElementRecord by reference in whichever layer's index has it (DEC-6). */
+function findElementRecord(reference) {
+  return AppState.index.application.get(reference) || AppState.index.technology.get(reference) || null;
+}
+
+/**
+ * Locate the live, mutable `content` node a `reference` denotes (TDD-0009
+ * DEC-4) — never a disposable `ElementRecord` copy from `index`, since
+ * `indexElementRecursive` builds a fresh `record` object on every
+ * `buildIndex` call. Returns `{ mf, node, parentArray, indexInParent }`,
+ * or `null` if `reference` does not resolve (should not happen for a
+ * reference `findElementRecord` itself returned — see DEC-4's rationale).
+ */
+function locateContentNode(reference) {
+  const record = findElementRecord(reference);
+  if (!record) return null;
+  const mf = AppState.manifestFiles.find((f) => f.relPath === record.sourceFile);
+  if (!mf) return null;
+
+  const rootRef = mf.header.parent ? (mf.header.parent + '.' + mf.content.id) : String(mf.content.id);
+  if (reference === rootRef) {
+    return { mf, node: mf.content, parentArray: null, indexInParent: null };
+  }
+
+  // ASM-1: ids never contain '.', so splitting the suffix on '.' is safe.
+  const suffix = reference.slice(rootRef.length + 1);
+  const segments = suffix.split('.');
+  let searchArray = Array.isArray(mf.content.elements) ? mf.content.elements : [];
+  let matchedNode = null;
+  let parentArray = null;
+  let indexInParent = null;
+  for (const segment of segments) {
+    let foundIndex = -1;
+    for (let i = 0; i < searchArray.length; i++) {
+      if (searchArray[i] && searchArray[i].id === segment) {
+        foundIndex = i;
+        break;
+      }
+    }
+    if (foundIndex === -1) return null; // contract violation (DEC-4) — should not happen
+    parentArray = searchArray;
+    indexInParent = foundIndex;
+    matchedNode = searchArray[foundIndex];
+    searchArray = Array.isArray(matchedNode.elements) ? matchedNode.elements : [];
+  }
+  return { mf, node: matchedNode, parentArray, indexInParent };
+}
+
+// =====================================================================
+// Commit-and-rebuild pipeline (TDD-0009 DEC-5) — the single reconciliation
+// mechanism every editing surface (element form, settings form, raw-YAML
+// editor) funnels through: mutate the one canonical source (a content
+// node via commitElementEdit, or AppState.workspace.settings via
+// commitSettingsEdit), then fully re-derive index/tree/relationships from
+// the live AppState.manifestFiles/settings and re-render — never a
+// bespoke per-field patch (TG-1/TC-3). A later task's UI click handlers
+// call these; this task only adds the plumbing.
+// =====================================================================
+
+/**
+ * Re-run buildIndex + resolveRelationships over the live
+ * AppState.manifestFiles/AppState.workspace.settings (exactly mirroring
+ * loadWorkspace's own pipeline) and re-render (DEC-5). Called at the tail
+ * of every commit path below.
+ */
+function rebuildIndexAndRender() {
+  const { index, rootsByCategory } = buildIndex(AppState.manifestFiles, AppState.workspace.settings);
+  AppState.index = index;
+  AppState.workspace.application.elements = rootsByCategory.application;
+  AppState.workspace.technology.elements = rootsByCategory.technology;
+  AppState.relationshipStats = resolveRelationships(index);
+  render();
+}
+
+/**
+ * Commit an element-level edit (DEC-5): locate the live content node for
+ * `reference` (DEC-4), apply `mutatorFn` to it (and, when relevant, to
+ * its containing array/index), regenerate that node's manifest file's
+ * `rawText` from the now-mutated `content` (DEC-7), then rebuild+render.
+ *
+ * `mutatorFn(node, parentArray, indexInParent)` may return a value — e.g.
+ * `{ renamedTo: { from, to } }` for an id-rename (DEC-8) — which is passed
+ * through as this function's own return value for a later task to act on.
+ * A caller must run DEC-9 validation *before* calling this function: a
+ * rejected action never reaches here, so no validation happens inside.
+ */
+function commitElementEdit(reference, mutatorFn) {
+  const { mf, node, parentArray, indexInParent } = locateContentNode(reference);
+  const result = mutatorFn(node, parentArray, indexInParent);
+  mf.rawText = serializeManifestFile(mf.header, mf.content);
+  mf.dirty = true; // TDD-0010 DEC-8 — every structural edit marks its file dirty for the next save
+  saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
+  rebuildIndexAndRender();
+  return result;
+}
+
+/**
+ * Commit a settings edit (DEC-5): mutate `AppState.workspace.settings` in
+ * place via `mutatorFn`, then rebuild+render. Like `commitElementEdit`,
+ * a caller must run DEC-9 validation before calling this function.
+ */
+function commitSettingsEdit(mutatorFn) {
+  mutatorFn(AppState.workspace.settings);
+  AppState.workspace.settingsDirty = true; // TDD-0010 DEC-8
+  saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
+  rebuildIndexAndRender();
+}
+
+// =====================================================================
+// Create (TDD-0010 DEC-1/DEC-2/DEC-3/DEC-5) — new element entry points,
+// shared create form, and the one new commit function the top-level
+// path needs (a same-file child reuses commitElementEdit as-is, above).
+// =====================================================================
+
+/** PRD FR-4's fixed per-category top-level kind list (the full header.kind flavors, not the nested-child vocabulary childKindOptionsForLevel returns). */
+const TOP_LEVEL_KIND_OPTIONS = {
+  application: ['person', 'system', 'solution', 'container', 'component', 'container-group', 'solution-group', 'system-group'],
+  technology: ['environment', 'node']
+};
+
+/** PRD FR-6(b)'s fixed per-category list of kinds the real domain model allows as a genuinely unparented root (attach-under left blank). */
+const TOP_LEVEL_BLANK_ATTACH_ALLOWED = {
+  application: ['solution', 'system', 'person', 'container-group', 'solution-group', 'system-group'],
+  technology: ['environment']
+};
+
+/**
+ * Commit a brand-new top-level manifest file (TDD-0010 DEC-5 — the
+ * Stage-5-corrected version, with the manifests-directory prefix). A
+ * caller must run FR-6/FR-7's validation before calling this function —
+ * a rejected submission never reaches it (same discipline W-3's DEC-9
+ * already established for every other commit path).
+ */
+function commitCreateTopLevelElement({ category, headerKind, attachUnderReference, id, name, description }) {
+  const reference = attachUnderReference ? (attachUnderReference + '.' + id) : id;
+  const header = { kind: ARCHICODE_KIND_PREFIX + headerKind, version: '1' };
+  if (attachUnderReference) header.parent = attachUnderReference;
+  const content = { id };
+  if (name) content.name = name;
+  if (description) content.description = description;
+  const manifestsDir = (AppState.workspace.settings.manifests.paths[0] || 'manifests').replace(/\/$/, '');
+  const relPath = manifestsDir + '/' + (category === 'application' ? 'app.' : 'env.') + reference + '.yaml'; // matches loadWorkspace's own relDirPath + '/' + name join
+  const mf = {
+    relPath, header, content, error: null,
+    rawText: serializeManifestFile(header, content), // W-3's serializer, reused as-is
+    dirty: true, existedOnDisk: false, lastKnownDiskModified: null
+  };
+  AppState.manifestFiles.push(mf);
+  AppState.manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath)); // matches loadWorkspace's own ordering
+  saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
+  rebuildIndexAndRender();
+  return { createdReference: reference };
+}
+
+// =====================================================================
+// Delete (TDD-0010 DEC-4/DEC-6) — the whole-model impact scan, its
+// transient confirm/cancel overlay (pendingDeleteConfirmation, declared
+// above alongside rawYamlEditDraft), and the one new commit function the
+// removal needs — a removal can touch more than one manifest file in one
+// commit, which no existing mutator does today.
+// =====================================================================
+
+/**
+ * The deleted element's own reference plus every reference in the same
+ * category's current index that is a former descendant of it (including
+ * a cross-file-attached one) — TDD-0010 DEC-4.
+ */
+function computeDeletedReferenceSet(reference, category) {
+  const set = new Set([reference]);
+  for (const ref of AppState.index[category].keys()) {
+    if (ref === reference || ref.indexOf(reference + '.') === 0) set.add(ref);
+  }
+  return set;
+}
+
+/**
+ * Every relationship elsewhere in `category`'s index whose `destination`
+ * names a reference in `deletedRefs` (TDD-0010 DEC-4). "Elsewhere"
+ * excludes the deleted subtree itself — a relationship owned by an
+ * element being deleted anyway is not itself a dangling reference left
+ * behind.
+ */
+function scanDanglingRelationshipsFor(deletedRefs, category) {
+  const affected = [];
+  for (const record of AppState.index[category].values()) {
+    if (deletedRefs.has(record.reference)) continue; // DEC-4: "elsewhere" excludes the deleted subtree itself
+    for (const rel of record.relationships) {
+      if (deletedRefs.has(rel.destination)) {
+        affected.push({ ownerReference: record.reference, ownerSourceFile: record.sourceFile, label: rel.label, destination: rel.destination });
+      }
+    }
+  }
+  return affected;
+}
+
+/**
+ * Commit a delete (TDD-0010 DEC-6, resolves FR-10): remove the element
+ * (splice from its parent's `content.elements` if nested, or remove its
+ * whole manifest file's entry if it was a manifest root) and every
+ * relationship `affected` named, together, in one commit. A caller (the
+ * `confirm-delete-element` handler) must have already run DEC-4's scan —
+ * `affected` is trusted as-is here, never re-scanned.
+ *
+ * Every "elsewhere" relationship is pruned by re-deriving the removal
+ * condition directly against each owner's *live* raw node (via
+ * `locateContentNode`) — never by index/array-position identity against
+ * the disposable `ElementRecord` copies DEC-4's scan read from, since
+ * those are rebuilt fresh on every `buildIndex` call (the same reasoning
+ * TDD-0009's DEC-4/`locateContentNode` already established).
+ */
+function commitDeleteElement(reference, category, affected) {
+  const located = locateContentNode(reference);
+  const touchedRelPaths = new Set(); // relPath strings, not mf object references (see below)
+
+  // Prune every "elsewhere" relationship DEC-4's scan found, against each
+  // owner's live node.
+  const deletedRefs = computeDeletedReferenceSet(reference, category);
+  const ownerRefs = new Set(affected.map((a) => a.ownerReference));
+  for (const ownerRef of ownerRefs) {
+    const ownerLocated = locateContentNode(ownerRef);
+    const relationships = Array.isArray(ownerLocated.node.relationships) ? ownerLocated.node.relationships : [];
+    ownerLocated.node.relationships = relationships.filter((r) => !deletedRefs.has(r && r.destination));
+    touchedRelPaths.add(ownerLocated.mf.relPath);
+  }
+
+  // Remove the element itself: splice from its parent array (nested), or
+  // remove the whole manifest file's entry (a manifest root).
+  if (located.parentArray === null) {
+    if (located.mf.existedOnDisk) {
+      AppState.pendingFileRemovals.push(located.mf.relPath);
+      AppState.removedFileBaselines.set(located.mf.relPath, located.mf.lastKnownDiskModified); // DEC-9's stale-check needs this baseline
+    }
+    AppState.manifestFiles = AppState.manifestFiles.filter((f) => f !== located.mf);
+    touchedRelPaths.delete(located.mf.relPath); // that file no longer exists; nothing to regenerate for it
+  } else {
+    located.parentArray.splice(located.indexInParent, 1);
+    touchedRelPaths.add(located.mf.relPath);
+  }
+
+  // Regenerate raw YAML exactly once per still-existing touched file.
+  // touchedRelPaths is deliberately a plain Set of relPath strings, not
+  // of `mf` object references — AppState.manifestFiles is reassigned by
+  // `.filter()` above, which would silently invalidate a stale `mf`
+  // reference held from before that reassignment.
+  for (const mf of AppState.manifestFiles) {
+    if (touchedRelPaths.has(mf.relPath)) {
+      mf.rawText = serializeManifestFile(mf.header, mf.content);
+      mf.dirty = true;
+    }
+  }
+
+  // If the deleted element (or one of its former descendants) was the
+  // active selection, fall back to the workspace-wide default view — it
+  // no longer exists.
+  if (AppState.selection.kind === 'element' &&
+      (AppState.selection.key === reference || (AppState.selection.key && AppState.selection.key.indexOf(reference + '.') === 0))) {
+    AppState.selection = { kind: 'none', key: null, mode: 'view' };
+  }
+
+  pendingDeleteConfirmation = null;
+  saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
+  rebuildIndexAndRender();
+}
+
+// =====================================================================
+// Save (TDD-0010 DEC-7/DEC-9/DEC-10/DEC-11) — the first functions in the
+// whole wave that write to or remove from the real granted directory.
+// Every disk-touching call (`createWritable`/`removeEntry`/
+// `getFileHandle(..., {create: true})`) lives only in the small set of
+// functions below (CON-1/NFR-2/TG-2) — no create/delete/commit function
+// above performs disk I/O itself. `ensureWritePermission` elevates the
+// granted handle from `read` (every prior grant in this file, per
+// `openFolder`/`reopenFolder`/`tryAutoReopen`) to `readwrite`; it must
+// only ever be reached from `saveAllChanges`, itself only ever called
+// from the save button's own click handler (a user gesture — ASM-2).
+// =====================================================================
+
+/**
+ * Elevate the granted folder handle's permission from `read` to
+ * `readwrite` (TDD-0010 DEC-7, resolves FR-13). `requestPermission` must
+ * only be called from inside a user-gesture handler's own synchronous
+ * call chain (ASM-2) — the save button's click handler calls
+ * `saveAllChanges()` directly, and this is the first `await` reached by
+ * it, so the gesture is still active (mirrors CON-3/DEC-4's existing
+ * discipline for `reopenFolder`'s `read`-mode request).
+ */
+async function ensureWritePermission() {
+  if (!AppState.folder || !AppState.folder.handle) return false;
+  try {
+    let permission = await AppState.folder.handle.queryPermission({ mode: 'readwrite' });
+    if (permission !== 'granted') {
+      permission = await AppState.folder.handle.requestPermission({ mode: 'readwrite' });
+    }
+    return permission === 'granted';
+  } catch (e) {
+    console.error('ArchiCode: ensureWritePermission failed', e);
+    return false;
+  }
+}
+
+/**
+ * Stat a manifest file (relative to the granted folder) for its current
+ * on-disk `lastModified`, without reading its content — the cheap
+ * staleness-check primitive FR-16/DEC-9/Q-1 needs. Returns `null` if the
+ * file does not exist (e.g. removed externally since this session loaded
+ * or last saved it).
+ */
+async function statManifestFile(relPath) {
+  const segments = String(relPath).split('/').filter(Boolean);
+  const name = segments.pop();
+  try {
+    const dir = await getDirectoryHandleByRelativePath(AppState.folder.handle, segments.join('/'));
+    const fileHandle = await dir.getFileHandle(name);
+    const file = await fileHandle.getFile();
+    return file.lastModified;
+  } catch (e) {
+    if (e && e.name === 'NotFoundError') return null;
+    throw e;
+  }
+}
+
+/**
+ * Write a manifest file's current `rawText` to disk (TDD-0010 DEC-9).
+ * `getFileHandle(name, {create: !mf.existedOnDisk})` creates the file
+ * only for a brand-new one (DEC-5) — an existing file is never created
+ * out from under a missing-parent-directory assumption. `createWritable()`
+ * truncates-then-writes with no separate truncate call needed (ASM-3).
+ */
+async function writeManifestFile(mf) {
+  const segments = String(mf.relPath).split('/').filter(Boolean);
+  const name = segments.pop();
+  const dir = await getDirectoryHandleByRelativePath(AppState.folder.handle, segments.join('/'));
+  const fileHandle = await dir.getFileHandle(name, { create: !mf.existedOnDisk });
+  const writable = await fileHandle.createWritable();
+  await writable.write(mf.rawText);
+  await writable.close();
+}
+
+/** Remove a manifest file from disk (TDD-0010 DEC-9, resolves FR-14's removal half) via `removeEntry`. */
+async function removeManifestFile(relPath) {
+  const segments = String(relPath).split('/').filter(Boolean);
+  const name = segments.pop();
+  const dir = await getDirectoryHandleByRelativePath(AppState.folder.handle, segments.join('/'));
+  await dir.removeEntry(name);
+}
+
+/** `statManifestFile`'s own counterpart for `workspace.yaml`, which lives at the folder root rather than under a manifests subpath (TDD-0010 DEC-9). */
+async function statWorkspaceYaml() {
+  try {
+    const fileHandle = await AppState.folder.handle.getFileHandle('workspace.yaml');
+    const file = await fileHandle.getFile();
+    return file.lastModified;
+  } catch (e) {
+    if (e && e.name === 'NotFoundError') return null;
+    throw e;
+  }
+}
+
+/**
+ * The kebab-case inverse of `parseSettings` (TDD-0010 DEC-10, resolves
+ * FR-18's `TC-3` extension): every top-level settings field round-trips
+ * to the same kebab-case key `.custom`'s real files already use, and
+ * every `facets.customs[]` entry's own `jsonPath` maps back to
+ * `json-path` — the one *nested* alias `parseSettings` applies below the
+ * top level, found during this run's own Stage 2 review. Every key is
+ * always emitted (including any `parseSettings` only ever defaulted
+ * because the real file never set it) — a stated, not silent, consequence
+ * (TDD-0010 DEC-10).
+ */
+function serializeSettingsToRaw(settings) {
+  return {
+    manifests: { paths: settings.manifests.paths },
+    relationships: { 'default-synthetic-label': settings.relationships.defaultSyntheticLabel },
+    views: { path: settings.views.path, labels: settings.views.labels, properties: settings.views.properties },
+    facets: {
+      'global-enabled': settings.facets.globalEnabled,
+      'directory-name-template': settings.facets.directoryNameTemplate,
+      customs: settings.facets.customs.map((c) => {
+        const rest = Object.assign({}, c);
+        if (Object.prototype.hasOwnProperty.call(rest, 'jsonPath')) {
+          const jsonPath = rest.jsonPath;
+          delete rest.jsonPath;
+          rest['json-path'] = jsonPath;
+        }
+        return rest;
+      })
+    }
+  };
+}
+
+/**
+ * Write `workspace.yaml` (TDD-0010 DEC-9/DEC-10): `styles`/`formatters`
+ * carried through verbatim from `AppState.workspace` (no editing surface
+ * in this wave ever touches them), `settings` serialized via
+ * `serializeSettingsToRaw`, the whole raw object serialized via `W-3`'s
+ * existing `serializeYamlValue` (reused as-is — no second serializer).
+ */
+async function writeWorkspaceYaml() {
+  const raw = {
+    styles: AppState.workspace.styles,
+    formatters: AppState.workspace.formatters,
+    settings: serializeSettingsToRaw(AppState.workspace.settings)
+  };
+  const text = serializeYamlValue(raw, 0);
+  const fileHandle = await AppState.folder.handle.getFileHandle('workspace.yaml');
+  const writable = await fileHandle.createWritable();
+  await writable.write(text);
+  await writable.close();
+}
+
+/**
+ * `AppState.removedFileBaselines`'s own lookup helper (TDD-0010 DEC-9) —
+ * a removed file's own `lastKnownDiskModified` is otherwise unreachable
+ * for the stale-check once its `mf` object has left
+ * `AppState.manifestFiles` (`commitDeleteElement` populates this map at
+ * the moment it pushes to `pendingFileRemovals`).
+ */
+function removedFileBaseline(relPath) {
+  return AppState.removedFileBaselines.has(relPath) ? AppState.removedFileBaselines.get(relPath) : null;
+}
+
+/** True when at least one change this session has not yet been saved (TDD-0010 DEC-11, resolves AC-14's visibility rule). */
+function hasUnsavedChanges() {
+  return AppState.manifestFiles.some((f) => f.dirty) ||
+    AppState.pendingFileRemovals.length > 0 ||
+    !!(AppState.workspace && AppState.workspace.settingsDirty);
+}
+
+/**
+ * The full save pipeline (TDD-0010 DEC-9, resolves FR-13 through FR-17 and
+ * `Q-1`): acquire `readwrite` permission first (DEC-7); if denied, stop
+ * writing nothing. Otherwise stale-check *every* dirty file, pending
+ * removal, and (if settings changed) `workspace.yaml` — all before any
+ * write starts (FR-16/NFR-3) — and refuse the whole attempt, writing
+ * nothing at all, if any target has changed on disk since it was loaded
+ * or last saved. Only once every target is confirmed fresh does the write
+ * phase begin: dirty files, then pending removals, then `workspace.yaml`
+ * if its settings changed, each step able to stop-and-report its own
+ * failure (FR-17) without rolling back whatever already succeeded.
+ */
+async function saveAllChanges() {
+  if (!(await ensureWritePermission())) {
+    saveStatus = { state: 'denied', message: 'Write permission was not granted; nothing was saved.' };
+    render();
+    return;
+  }
+
+  const dirtyFiles = AppState.manifestFiles.filter((f) => f.dirty);
+  const removals = AppState.pendingFileRemovals.slice();
+  const settingsDirty = AppState.workspace.settingsDirty;
+  if (dirtyFiles.length === 0 && removals.length === 0 && !settingsDirty) {
+    saveStatus = { state: 'success', message: 'Nothing to save.' };
+    render();
+    return;
+  }
+
+  // FR-16/Q-1: stale-check every target this attempt would touch, before
+  // any write starts (NFR-3 — never a partial write for a refused save).
+  const conflicts = [];
+  for (const f of dirtyFiles) {
+    if (!f.existedOnDisk) continue; // brand-new file: nothing on disk to conflict with
+    const current = await statManifestFile(f.relPath);
+    if (current === null || current !== f.lastKnownDiskModified) conflicts.push(f.relPath);
+  }
+  for (const relPath of removals) {
+    const current = await statManifestFile(relPath);
+    const baseline = removedFileBaseline(relPath);
+    if (current !== null && current !== baseline) conflicts.push(relPath);
+  }
+  if (settingsDirty) {
+    const current = await statWorkspaceYaml();
+    if (current !== AppState.workspace.settingsLastKnownDiskModified) conflicts.push('workspace.yaml');
+  }
+  if (conflicts.length > 0) {
+    saveStatus = { state: 'conflict', conflicts };
+    render();
+    return;
+  }
+
+  // Write phase (FR-14/FR-17/FR-19): stop at the first failure, name it,
+  // leave everything already written in this attempt as written.
+  for (const f of dirtyFiles) {
+    try {
+      await writeManifestFile(f);
+      f.dirty = false;
+      f.existedOnDisk = true;
+      f.lastKnownDiskModified = await statManifestFile(f.relPath); // FR-19 — this file's own new baseline
+    } catch (e) {
+      saveStatus = { state: 'error', failedFile: f.relPath, message: e && e.message ? e.message : String(e) };
+      render();
+      return;
+    }
+  }
+  for (const relPath of removals) {
+    try {
+      await removeManifestFile(relPath);
+      AppState.pendingFileRemovals = AppState.pendingFileRemovals.filter((p) => p !== relPath);
+      AppState.removedFileBaselines.delete(relPath);
+    } catch (e) {
+      saveStatus = { state: 'error', failedFile: relPath, message: e && e.message ? e.message : String(e) };
+      render();
+      return;
+    }
+  }
+  if (settingsDirty) {
+    try {
+      await writeWorkspaceYaml();
+      AppState.workspace.settingsDirty = false;
+      AppState.workspace.settingsLastKnownDiskModified = await statWorkspaceYaml(); // FR-19
+    } catch (e) {
+      saveStatus = { state: 'error', failedFile: 'workspace.yaml', message: e && e.message ? e.message : String(e) };
+      render();
+      return;
+    }
+  }
+
+  saveStatus = { state: 'success', message: 'Saved.' };
+  render();
+}
+
+/**
+ * Commit a raw-YAML edit (TDD-0009 DEC-6): scratch-validate, never
+ * mutate-then-rollback. Parses `newText` the same way `loadWorkspace`
+ * parses a manifest file at load time; if that succeeds, re-derives the
+ * index against a *scratch* copy of `AppState.manifestFiles` (reusing
+ * `buildIndex` as-is, including its own header.kind/content.id and
+ * ARCHICODE_KIND_MAP checks) before ever touching live state. Only a
+ * fully-valid edit is swapped into `AppState.manifestFiles`; an invalid
+ * edit leaves `AppState` completely untouched and records the rejected
+ * draft (with its error) in `rawYamlEditDraft` for `renderFileViewHtml`
+ * to show (NFR-3 — "never corrupt the model").
+ */
+function commitFileEdit(relPath, newText) {
+  // Step 1: parse — loadWorkspace's own per-file inline logic, copied
+  // verbatim (DEC-6 step 1).
+  let header = null;
+  let content = null;
+  let error = null;
+  try {
+    const parsed = parseYaml(newText) || {};
+    header = (parsed.header && typeof parsed.header === 'object') ? parsed.header : null;
+    content = (parsed.content && typeof parsed.content === 'object') ? parsed.content : null;
+    if (!header || !header.kind) {
+      error = 'Missing header.kind';
+    } else if (!content || content.id === undefined) {
+      error = 'Missing content.id';
+    }
+  } catch (e) {
+    error = (e && e.message) ? e.message : String(e);
+  }
+
+  // Step 3 (only reached if step 1 didn't already set `error`): scratch
+  // copy + buildIndex, reusing its own header.kind/content.id and
+  // ARCHICODE_KIND_MAP checks to complete the validation for free.
+  let scratchFiles = null;
+  if (!error) {
+    scratchFiles = AppState.manifestFiles.map((f) =>
+      f.relPath === relPath ? { ...f, rawText: newText, header, content, error: null, dirty: true } : f // TDD-0010 DEC-8
+    );
+    buildIndex(scratchFiles, AppState.workspace.settings);
+    const scratchMf = scratchFiles.find((f) => f.relPath === relPath);
+    error = scratchMf ? scratchMf.error : null;
+  }
+
+  // Step 4: invalid — do not touch AppState.manifestFiles/AppState.index
+  // at all; record the draft (with its error) and re-render.
+  if (error) {
+    rawYamlEditDraft = { relPath, text: newText, error };
+    render();
+    return;
+  }
+
+  // Step 5: valid — swap the scratch array in (the one file's entry
+  // replaced, every other entry the same object reference), clear the
+  // draft, and rebuild+render via the single shared pipeline.
+  AppState.manifestFiles = scratchFiles;
+  rawYamlEditDraft = null;
+  saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
+  rebuildIndexAndRender();
+}
+
+/**
+ * DEC-8 — after an `id` rename's `commitElementEdit` call returns
+ * `{ renamedTo: { from, to } }`, rewrite every reference under the old
+ * prefix (`AppState.selection.key` and every `AppState.expanded` entry)
+ * to the new prefix, so a rename of the currently-selected/expanded
+ * element (or one of its ancestors) does not leave the tree pointing at
+ * a reference that no longer exists after the rebuild `commitElementEdit`
+ * already ran. Re-renders once more at the end (the rebuild inside
+ * `commitElementEdit` already rendered once, with the *stale* key).
+ */
+function rewriteReferencePrefix(oldPrefix, newPrefix) {
+  if (AppState.selection.kind === 'element') {
+    if (AppState.selection.key === oldPrefix) {
+      AppState.selection.key = newPrefix;
+    } else if (AppState.selection.key && AppState.selection.key.indexOf(oldPrefix + '.') === 0) {
+      AppState.selection.key = newPrefix + AppState.selection.key.slice(oldPrefix.length);
+    }
+  }
+  const rewritten = new Set();
+  for (const key of AppState.expanded) {
+    if (key === oldPrefix) {
+      rewritten.add(newPrefix);
+    } else if (key.indexOf(oldPrefix + '.') === 0) {
+      rewritten.add(newPrefix + key.slice(oldPrefix.length));
+    } else {
+      rewritten.add(key);
+    }
+  }
+  AppState.expanded = rewritten;
+  render();
+}
+
+// =====================================================================
+// Structured-form validation rules (TDD-0009 DEC-9, resolves FR-20) —
+// one small, independently-callable function per rule. Every function
+// here is pure (reads AppState only where a rule needs it, e.g. the id-
+// collision check; never mutates AppState) and returns either
+// `{ valid: true, ... }` (with whatever normalized value(s) the caller
+// needs to proceed) or `{ valid: false, error: string }`. A later task's
+// click handlers call these *before* commitElementEdit/commitSettingsEdit
+// — a rejection must never call either commit function, so AppState is
+// never touched on a rejected action.
+// =====================================================================
+
+/**
+ * `name`/`description` normalization (not a rejection): empty-after-trim
+ * normalizes to `null`, matching indexElementRecursive's own
+ * null-means-absent convention and the read-only view's "none" display.
+ */
+function normalizeOptionalText(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return trimmed === '' ? null : trimmed;
+}
+
+/** DEC-8's own reference-prefix-rewrite formula, reused here so the id-rename collision check validates against the *actual* new reference. */
+function computeRenamedReference(currentReference, newId) {
+  const dotIdx = currentReference.lastIndexOf('.');
+  return dotIdx === -1 ? newId : currentReference.slice(0, dotIdx + 1) + newId;
+}
+
+/**
+ * `id` rename validation: non-empty after trim; the resulting new
+ * reference must not collide with any other existing element's current
+ * reference in the same category index (DEC-9's first rule) — this is
+ * checked against the live `AppState.index[category]`, i.e. before any
+ * rebuild the eventual commit would trigger.
+ */
+function validateElementIdRename(newId, currentReference, category) {
+  const trimmed = typeof newId === 'string' ? newId.trim() : '';
+  if (trimmed === '') {
+    return { valid: false, error: 'Id is required.' };
+  }
+  const newReference = computeRenamedReference(currentReference, trimmed);
+  const categoryIndex = AppState.index && AppState.index[category];
+  if (categoryIndex) {
+    for (const ref of categoryIndex.keys()) {
+      if (ref !== currentReference && ref === newReference) {
+        return { valid: false, error: 'Another element already uses reference "' + newReference + '".' };
+      }
+    }
+  }
+  return { valid: true, newId: trimmed, newReference };
+}
+
+/**
+ * `qualifiers`/`applications` add validation: the new entry must be
+ * non-empty after trim (shared by both fields — DEC-9 states the same
+ * rule for each).
+ */
+function validateNewListEntry(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (trimmed === '') {
+    return { valid: false, error: 'Value is required.' };
+  }
+  return { valid: true, value: trimmed };
+}
+
+/**
+ * `tags` add validation: the key must be non-empty after trim AND must
+ * not already exist in the element's current tags (reject rather than
+ * silently overwrite). The value has no format requirement.
+ */
+function validateNewTagKey(key, existingTags) {
+  const trimmed = typeof key === 'string' ? key.trim() : '';
+  if (trimmed === '') {
+    return { valid: false, error: 'Tag key is required.' };
+  }
+  if (existingTags && Object.prototype.hasOwnProperty.call(existingTags, trimmed)) {
+    return { valid: false, error: 'Tag key "' + trimmed + '" already exists — edit it instead.' };
+  }
+  return { valid: true, key: trimmed };
+}
+
+/**
+ * `relationships` add/save validation: `destination` must be non-empty
+ * after trim; `label` empty-after-trim normalizes to `undefined` (not
+ * stored as a literal empty string, so indexElementRecursive's existing
+ * fallback-to-defaultSyntheticLabel logic still applies, exactly as it
+ * does for a relationship with no explicit label in a manifest file).
+ */
+function validateRelationshipDraft(destination, label) {
+  const trimmedDestination = typeof destination === 'string' ? destination.trim() : '';
+  if (trimmedDestination === '') {
+    return { valid: false, error: 'Destination is required.' };
+  }
+  const trimmedLabel = typeof label === 'string' ? label.trim() : '';
+  return { valid: true, destination: trimmedDestination, label: trimmedLabel === '' ? undefined : trimmedLabel };
+}
+
+/**
+ * Settings `manifests.paths` validation: the textarea's raw text (one
+ * path per line) splits/trims into `paths`; at least one non-empty path
+ * is required, else reject (keep the previous value).
+ */
+function validateManifestsPaths(rawPathsText) {
+  const paths = String(rawPathsText == null ? '' : rawPathsText)
+    .split('\n')
+    .map((p) => p.trim())
+    .filter((p) => p !== '');
+  if (paths.length === 0) {
+    return { valid: false, error: 'At least one manifests path is required.' };
+  }
+  return { valid: true, paths };
+}
+
+/**
+ * Settings `views.path` validation: non-empty after trim required. The
+ * documented default (`'views'`) is deliberately not applied here — that
+ * is `parseSettings`' behavior for an *absent* key at load time, not a
+ * rule for an explicit, empty form submission.
+ */
+function validateViewsPath(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (trimmed === '') {
+    return { valid: false, error: 'Views path is required.' };
+  }
+  return { valid: true, path: trimmed };
+}
+
+/**
+ * Settings `views.labels`/`views.properties`/`facets.customs` validation
+ * (each is a JSON textarea): a `JSON.parse` failure rejects, keeping the
+ * previous value.
+ */
+function validateJsonSettingsField(rawText) {
+  try {
+    const parsed = JSON.parse(rawText);
+    return { valid: true, value: parsed };
+  } catch (e) {
+    return { valid: false, error: 'Invalid JSON: ' + (e && e.message ? e.message : String(e)) };
+  }
+}
+
+/** Settings `facets.directoryNameTemplate` validation: non-empty after trim required. */
+function validateDirectoryNameTemplate(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (trimmed === '') {
+    return { valid: false, error: 'Directory name template is required.' };
+  }
+  return { valid: true, value: trimmed };
+}
+
+// ---- Top panel (DEC-11, FR-1..3, AC-1/AC-11/AC-12) ----
+
+/**
+ * Render `saveStatus`'s current state as a short status line (TDD-0010
+ * DEC-11, resolves AC-16/AC-17's visibility requirements) — empty while
+ * `'idle'` (no save attempt has happened yet this session, or the status
+ * was reset by a later edit).
+ */
+function renderSaveStatusHtml() {
+  if (!saveStatus || saveStatus.state === 'idle') return '';
+  if (saveStatus.state === 'success') {
+    return '<span class="save-status save-status-success">' + escapeHtml(saveStatus.message) + '</span>';
+  }
+  if (saveStatus.state === 'denied') {
+    return '<span class="save-status save-status-error">' + escapeHtml(saveStatus.message) + '</span>';
+  }
+  if (saveStatus.state === 'conflict') {
+    return '<span class="save-status save-status-error">Save refused — changed on disk since loaded: ' +
+      saveStatus.conflicts.map((c) => escapeHtml(c)).join(', ') +
+      '. Reopen the folder before retrying.</span>';
+  }
+  if (saveStatus.state === 'error') {
+    return '<span class="save-status save-status-error">Save failed on "' + escapeHtml(saveStatus.failedFile) + '": ' +
+      escapeHtml(saveStatus.message) + '</span>';
+  }
+  return '';
+}
+
+function renderTopPanelHtml() {
+  if (!AppState.folder) return '';
+  let html = '<div class="top-panel">' +
+      '<span class="folder-name" title="Browsers do not expose an absolute filesystem path for a picked folder (ASM-1/DEC-11) — this shows the folder\'s own name and its position as the browsing root instead.">' +
+        escapeHtml(AppState.folder.name) + '<span class="folder-root-slash">/</span>' +
+      '</span>' +
+      '<button type="button" data-action="close-folder">Close</button>';
+  if (hasUnsavedChanges()) {
+    html += '<button type="button" data-action="save-all-changes">Save all changes</button>';
+  }
+  html += renderSaveStatusHtml();
+  html += '</div>';
+  return html;
+}
+
+// ---- Left panel — pure navigation (FR-8/FR-9/FR-10, AC-2/AC-3/AC-4) ----
+
+function renderTreeNodeHtml(record) {
+  const hasChildren = Array.isArray(record.children) && record.children.length > 0;
+  const isExpanded = AppState.expanded.has(record.reference);
+  const isActive = AppState.selection.kind === 'element' && AppState.selection.key === record.reference;
+  const label = (record.name !== undefined && record.name !== null && record.name !== '') ? record.name : record.id;
+
+  let html = '<div class="tree-node">';
+  html += '<div class="tree-node-row' + (isActive ? ' active' : '') + '" data-action="select-element" data-ref="' + escapeHtml(record.reference) + '">';
+  if (hasChildren) {
+    html += '<span class="tree-toggle" data-action="toggle-element" data-ref="' + escapeHtml(record.reference) + '">' + (isExpanded ? '▾' : '▸') + '</span>';
+  } else {
+    html += '<span class="tree-toggle tree-toggle-empty">▸</span>';
+  }
+  html += '<span class="tree-node-kind">' + escapeHtml(record.kind) + '</span>';
+  html += '<span class="tree-node-label">' + escapeHtml(label) + '</span>';
+  html += '</div>';
+  if (hasChildren && isExpanded) {
+    html += '<div class="tree-node-children">';
+    for (const child of record.children) {
+      html += renderTreeNodeHtml(child);
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderTreeBranchHtml(branchKey, title, category, elements, isExpanded) {
+  let html = '<div class="nav-section">';
+  html += '<div class="tree-branch-header" data-action="toggle-branch" data-branch="' + escapeHtml(branchKey) + '">' +
+            '<span class="tree-branch-title">' + (isExpanded ? '▾' : '▸') + ' ' + escapeHtml(title) + '</span>' +
+            '<button type="button" class="tree-branch-add-btn" data-action="open-create-top-level-form" data-category="' + escapeHtml(category) + '">+ Add</button>' +
+          '</div>';
+  if (isExpanded) {
+    html += '<div class="tree-branch-body">';
+    if (!elements || elements.length === 0) {
+      html += '<div class="tree-empty">No elements</div>';
+    } else {
+      for (const el of elements) {
+        html += renderTreeNodeHtml(el);
+      }
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderLeftPanelHtml() {
+  const settingsActive = AppState.selection.kind === 'settings' ? ' active' : '';
+  const appElements = (AppState.workspace && AppState.workspace.application && AppState.workspace.application.elements) || [];
+  const techElements = (AppState.workspace && AppState.workspace.technology && AppState.workspace.technology.elements) || [];
+
+  let html = '<div class="left-panel">';
+  html += '<div class="nav-section">';
+  html += '<div class="nav-row settings-row' + settingsActive + '" data-action="select-settings">Settings</div>';
+  html += '</div>';
+
+  html += renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications);
+  html += renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments);
+
+  html += '<div class="nav-section">';
+  html += '<div class="nav-section-title">Files</div>';
+  for (const mf of AppState.manifestFiles) {
+    const active = (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) ? ' active' : '';
+    const errorClass = mf.error ? ' has-error' : '';
+    html += '<div class="nav-row file-row' + active + errorClass + '" data-action="select-file" data-relpath="' + escapeHtml(mf.relPath) + '">' +
+              '<span class="file-relpath">' + escapeHtml(mf.relPath) + '</span>' +
+              (mf.error ? '<span class="error-badge" title="' + escapeHtml(mf.error) + '">error</span>' : '') +
+            '</div>';
+  }
+  html += '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+// ---- Center panel (FR-11..16, AC-5..10, DEC-6/DEC-7/DEC-10) ----
+
+/**
+ * The settings view, directly editable (run-0009, task-004; TDD DEC-3) —
+ * unlike the element view, there is no separate view/edit mode: this
+ * function always renders the form, seeded from the live
+ * `AppState.workspace.settings` (CTR-4 — same shape `parseSettings`
+ * already produces). One `data-action="save-settings"` button commits
+ * every field together (FLOW-2); each field with a DEC-9 validator gets
+ * its own inline-error span, shown next to its own control.
+ */
+function renderSettingsViewHtml() {
+  const settings = AppState.workspace && AppState.workspace.settings;
+  if (!settings) return '<div class="center-placeholder">No settings available.</div>';
+  return (
+    '<div class="settings-view">' +
+      '<h2>Settings</h2>' +
+      '<div class="settings-group"><h3>Manifests</h3>' +
+        '<div class="settings-row"><span class="settings-label">Paths</span><span class="settings-value">' +
+          '<textarea id="settings-manifests-paths-input">' + escapeHtml(settings.manifests.paths.join('\n')) + '</textarea>' +
+          '<span class="inline-error" id="settings-manifests-paths-error"></span>' +
+        '</span></div>' +
+      '</div>' +
+      '<div class="settings-group"><h3>Relationships</h3>' +
+        '<div class="settings-row"><span class="settings-label">Default synthetic label</span><span class="settings-value">' +
+          '<input type="text" id="settings-default-label-input" value="' + escapeHtml(settings.relationships.defaultSyntheticLabel) + '">' +
+        '</span></div>' +
+      '</div>' +
+      '<div class="settings-group"><h3>Views</h3>' +
+        '<div class="settings-row"><span class="settings-label">Path</span><span class="settings-value">' +
+          '<input type="text" id="settings-views-path-input" value="' + escapeHtml(settings.views.path) + '">' +
+          '<span class="inline-error" id="settings-views-path-error"></span>' +
+        '</span></div>' +
+        '<div class="settings-row"><span class="settings-label">Labels</span><span class="settings-value">' +
+          '<textarea id="settings-views-labels-input">' + escapeHtml(JSON.stringify(settings.views.labels, null, 2)) + '</textarea>' +
+          '<span class="inline-error" id="settings-views-labels-error"></span>' +
+        '</span></div>' +
+        '<div class="settings-row"><span class="settings-label">Properties</span><span class="settings-value">' +
+          '<textarea id="settings-views-properties-input">' + escapeHtml(JSON.stringify(settings.views.properties, null, 2)) + '</textarea>' +
+          '<span class="inline-error" id="settings-views-properties-error"></span>' +
+        '</span></div>' +
+      '</div>' +
+      '<div class="settings-group"><h3>Facets</h3>' +
+        '<div class="settings-row"><span class="settings-label">Global enabled</span><span class="settings-value">' +
+          '<input type="checkbox" id="settings-facets-global-enabled-input"' + (settings.facets.globalEnabled ? ' checked' : '') + '>' +
+        '</span></div>' +
+        '<div class="settings-row"><span class="settings-label">Directory name template</span><span class="settings-value">' +
+          '<input type="text" id="settings-facets-directory-template-input" value="' + escapeHtml(settings.facets.directoryNameTemplate) + '">' +
+          '<span class="inline-error" id="settings-facets-directory-template-error"></span>' +
+        '</span></div>' +
+        '<div class="settings-row"><span class="settings-label">Customs</span><span class="settings-value">' +
+          '<textarea id="settings-facets-customs-input">' + escapeHtml(JSON.stringify(settings.facets.customs, null, 2)) + '</textarea>' +
+          '<span class="inline-error" id="settings-facets-customs-error"></span>' +
+        '</span></div>' +
+      '</div>' +
+      '<div class="settings-row"><span class="settings-label"></span><span class="settings-value">' +
+        '<button type="button" data-action="save-settings">Save</button>' +
+      '</span></div>' +
+    '</div>'
+  );
+}
+
+/**
+ * Raw-YAML editing surface (run-0009, task-005; TDD-0009 DEC-6/DEC-10).
+ * Seeded from `rawYamlEditDraft` when it holds a pending/rejected draft
+ * for this exact file, else from the file's own live `mf.rawText`. A
+ * draft's `error` (set only on a rejected commit) is shown in the same
+ * `.error-panel` style the file's own load-time parse error already
+ * uses, so an invalid edit's feedback looks consistent with that
+ * existing display.
+ */
+function renderFileViewHtml(relPath) {
+  const mf = AppState.manifestFiles.find((f) => f.relPath === relPath);
+  if (!mf) return '<div class="center-placeholder">File not found: ' + escapeHtml(relPath) + '</div>';
+  const hasDraft = rawYamlEditDraft && rawYamlEditDraft.relPath === relPath;
+  const textareaValue = hasDraft ? rawYamlEditDraft.text : mf.rawText;
+  const draftError = hasDraft ? rawYamlEditDraft.error : null;
+  let html = '<div class="file-view">';
+  html += '<h2>' + escapeHtml(mf.relPath) + '</h2>';
+  if (draftError) {
+    html += '<div class="error-panel"><strong>Parse error:</strong> ' + escapeHtml(draftError) + '</div>';
+  } else if (mf.error) {
+    html += '<div class="error-panel"><strong>Parse error:</strong> ' + escapeHtml(mf.error) + '</div>';
+  }
+  html += '<textarea id="file-edit-textarea" class="raw-yaml" data-relpath="' + escapeHtml(relPath) + '">' + escapeHtml(textareaValue) + '</textarea>';
+  html += '<div class="field-row"><span class="field-label"></span><span class="field-value">' +
+            '<button type="button" data-action="commit-file-edit" data-relpath="' + escapeHtml(relPath) + '">Save</button>' +
+          '</span></div>';
+  html += '</div>';
+  return html;
+}
+
+function renderElementViewHtml(reference) {
+  const record = findElementRecord(reference);
+  if (!record) return '<div class="center-placeholder">Element not found: ' + escapeHtml(reference) + '</div>';
+
+  let html = '<div class="element-view">';
+
+  // (a) placeholder diagram area — never populated with real content (whole-wave non-goal).
+  html += '<div class="diagram-placeholder">Diagram view is not available in this phase.</div>';
+
+  html += '<div class="element-header"><h2>' + escapeHtml(record.name || record.id) + '</h2>' +
+            '<span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>' +
+            '<button type="button" data-action="toggle-element-edit">Edit</button></div>';
+
+  // (b) qualitative info.
+  html += '<div class="element-qualitative">';
+  html += '<div class="field-row"><span class="field-label">Id</span><span class="field-value">' + escapeHtml(record.id) + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Reference</span><span class="field-value">' + escapeHtml(record.reference) + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' + (record.name != null ? escapeHtml(record.name) : '<span class="muted">none</span>') + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' + (record.description != null ? escapeHtml(record.description) : '<span class="muted">none</span>') + '</span></div>';
+
+  html += '<div class="field-row"><span class="field-label">Qualifiers</span><span class="field-value">';
+  if (record.qualifiers && record.qualifiers.length) {
+    html += record.qualifiers.map((q) => '<span class="pill">' + escapeHtml(q) + '</span>').join('');
+  } else {
+    html += '<span class="muted">none</span>';
+  }
+  html += '</span></div>';
+
+  html += '<div class="field-row"><span class="field-label">Tags</span><span class="field-value">';
+  const tagKeys = record.tags ? Object.keys(record.tags) : [];
+  if (tagKeys.length) {
+    html += '<ul class="tag-list">' + tagKeys.map((k) =>
+      '<li><span class="tag-key">' + escapeHtml(k) + '</span>: <span class="tag-value">' + escapeHtml(String(record.tags[k])) + '</span></li>'
+    ).join('') + '</ul>';
+  } else {
+    html += '<span class="muted">none</span>';
+  }
+  html += '</span></div>';
+
+  html += '<div class="field-row"><span class="field-label">Relationships</span><span class="field-value">';
+  if (record.relationships && record.relationships.length) {
+    html += '<ul class="relationship-list">';
+    for (const rel of record.relationships) {
+      const qualifiersText = (rel.qualifiers && rel.qualifiers.length) ? ' (' + rel.qualifiers.map((q) => escapeHtml(q)).join(', ') + ')' : '';
+      if (rel.resolved) {
+        html += '<li><button type="button" class="relationship-link" data-action="goto-element" data-ref="' + escapeHtml(rel.destination) + '">' +
+                  escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + escapeHtml(rel.destination) +
+                '</button></li>';
+      } else {
+        html += '<li><span class="relationship-dangling">' +
+                  escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + escapeHtml(rel.destination) +
+                  '<span class="dangling-badge">dangling</span>' +
+                '</span></li>';
+      }
+    }
+    html += '</ul>';
+  } else {
+    html += '<span class="muted">none</span>';
+  }
+  html += '</span></div>';
+  html += '</div>'; // .element-qualitative
+
+  // (c) quantitative info — always shown; children.length naturally covers the
+  // "only for a parent kind" distinction since every record has a children array.
+  html += '<div class="element-quantitative">';
+  html += '<div class="stat"><span class="stat-value">' + record.relationships.length + '</span><span class="stat-label">relationships</span></div>';
+  html += '<div class="stat"><span class="stat-value">' + record.children.length + '</span><span class="stat-label">children</span></div>';
+  html += '</div>';
+
+  html += '</div>'; // .element-view
+  return html;
+}
+
+// ---- Element edition form (run-0009, task-003; TDD DEC-1/DEC-2/DEC-8) ----
+
+/** Join a string[] for a relationship's comma-separated qualifiers text input. */
+function formatCommaList(arr) {
+  return Array.isArray(arr) ? arr.join(', ') : '';
+}
+
+/** Join a {k: v} map for a relationship's comma-separated `k=v` tags text input. */
+function formatCommaKvList(obj) {
+  if (!obj || typeof obj !== 'object') return '';
+  return Object.keys(obj).map((k) => k + '=' + obj[k]).join(', ');
+}
+
+/** Parse a comma-separated text input into a trimmed, non-empty-entries string[]. */
+function parseCommaList(text) {
+  return String(text == null ? '' : text)
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s !== '');
+}
+
+/**
+ * Parse a comma-separated `k=v` text input into a {k: v} map (DEC-9: a
+ * malformed pair with no `=` is dropped, not rejected).
+ */
+function parseCommaKvList(text) {
+  const tags = {};
+  for (const pair of parseCommaList(text)) {
+    const eqIdx = pair.indexOf('=');
+    if (eqIdx === -1) continue;
+    const key = pair.slice(0, eqIdx).trim();
+    const value = pair.slice(eqIdx + 1).trim();
+    if (key === '') continue;
+    tags[key] = value;
+  }
+  return tags;
+}
+
+/** Set (or clear) an inline-error span's text by its element id, without a full render. */
+function setInlineErrorText(elementId, text) {
+  const el = document.getElementById(elementId);
+  if (el) el.textContent = text || '';
+}
+
+/** Set (or clear) a relationship sub-form row's own inline-error span, without a full render. */
+function setRowInlineErrorText(row, text) {
+  if (!row) return;
+  const el = row.querySelector('.inline-error');
+  if (el) el.textContent = text || '';
+}
+
+/**
+ * Read a relationship sub-form row's four inputs and validate them
+ * (DEC-9's `validateRelationshipDraft`), returning the parsed
+ * `qualifiers`/`tags` alongside on success.
+ */
+function readRelationshipDraftFromRow(row) {
+  if (!row) return { valid: false, error: 'Relationship row not found.' };
+  const destinationInput = row.querySelector('.rel-destination-input');
+  const labelInput = row.querySelector('.rel-label-input');
+  const qualifiersInput = row.querySelector('.rel-qualifiers-input');
+  const tagsInput = row.querySelector('.rel-tags-input');
+  const draft = validateRelationshipDraft(
+    destinationInput ? destinationInput.value : '',
+    labelInput ? labelInput.value : ''
+  );
+  if (!draft.valid) return draft;
+  return {
+    valid: true,
+    destination: draft.destination,
+    label: draft.label,
+    qualifiers: parseCommaList(qualifiersInput ? qualifiersInput.value : ''),
+    tags: parseCommaKvList(tagsInput ? tagsInput.value : '')
+  };
+}
+
+/** One relationship sub-form row — used both for an existing relationship and the blank "add new" one. */
+function renderRelationshipEditRowHtml(reference, rel, index) {
+  const refAttr = escapeHtml(reference);
+  const isNew = index === null;
+  const destination = rel ? rel.destination : '';
+  const label = rel ? rel.label : '';
+  const qualifiersText = rel ? formatCommaList(rel.qualifiers) : '';
+  const tagsText = rel ? formatCommaKvList(rel.tags) : '';
+  let html = '<div class="relationship-edit-row' + (isNew ? ' relationship-edit-row-new' : '') + '"' +
+               (isNew ? '' : ' data-index="' + index + '"') + '>';
+  html += '<input type="text" class="rel-destination-input" placeholder="destination" value="' + escapeHtml(destination) + '">';
+  html += '<input type="text" class="rel-label-input" placeholder="label" value="' + escapeHtml(label || '') + '">';
+  html += '<input type="text" class="rel-qualifiers-input" placeholder="qualifiers (comma-separated)" value="' + escapeHtml(qualifiersText) + '">';
+  html += '<input type="text" class="rel-tags-input" placeholder="tags (k=v, comma-separated)" value="' + escapeHtml(tagsText) + '">';
+  if (isNew) {
+    html += '<button type="button" data-action="add-relationship" data-ref="' + refAttr + '">Add</button>';
+  } else {
+    html += '<button type="button" data-action="save-relationship" data-ref="' + refAttr + '" data-index="' + index + '">Save</button>';
+    html += '<button type="button" data-action="remove-relationship" data-ref="' + refAttr + '" data-index="' + index + '">Remove</button>';
+  }
+  html += '<span class="inline-error"></span>';
+  html += '</div>';
+  return html;
+}
+
+/**
+ * The edit-mode sibling of `renderElementViewHtml` (DEC-1/DEC-2): one
+ * shared template covering every kind's id/name/description/qualifiers/
+ * tags/relationships, plus a `node`-only `applications` block (DEC-2a).
+ * Every list-mutation control commits immediately via `commitElementEdit`
+ * (DEC-5); only id/name/description batch into one `save-element-basics`
+ * commit.
+ */
+function renderElementEditionFormHtml(reference) {
+  const record = findElementRecord(reference);
+  if (!record) return '<div class="center-placeholder">Element not found: ' + escapeHtml(reference) + '</div>';
+
+  const refAttr = escapeHtml(reference);
+  let html = '<div class="element-edition-form">';
+
+  html += '<div class="element-header"><h2>' + escapeHtml(record.name || record.id) + '</h2>' +
+            '<span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>' +
+            '<button type="button" data-action="toggle-element-edit">Back to view</button>' +
+            (childKindOptionsFor(record).length > 0
+              ? '<button type="button" data-action="open-create-child-form" data-ref="' + refAttr + '">Add child</button>'
+              : '') +
+            // TDD-0010 DEC-4: always present — even a leaf can be the
+            // destination of a relationship elsewhere.
+            '<button type="button" data-action="request-delete-element" data-ref="' + refAttr + '">Delete</button>' +
+          '</div>';
+
+  // TDD-0010 DEC-4: a pending delete confirmation for this exact element
+  // overlays the already-rendering edition view below — it never changes
+  // AppState.selection (mirrors TDD-0009's rawYamlEditDraft pattern).
+  if (pendingDeleteConfirmation && pendingDeleteConfirmation.reference === reference) {
+    const affected = pendingDeleteConfirmation.affected;
+    html += '<div class="edition-section delete-confirmation">';
+    html += '<h3>Confirm delete</h3>';
+    if (affected.length === 0) {
+      html += '<p class="muted">No other relationship is affected.</p>';
+    } else {
+      html += '<ul class="relationship-list">';
+      for (const a of affected) {
+        html += '<li>' + escapeHtml(a.ownerSourceFile) + ': ' + escapeHtml(a.label) + ' &rarr; ' + escapeHtml(a.destination) + '</li>';
+      }
+      html += '</ul>';
+    }
+    html += '<button type="button" data-action="confirm-delete-element">Confirm delete</button> ' +
+            '<button type="button" data-action="cancel-delete-element">Cancel</button>';
+    html += '</div>';
+  }
+
+  // id / name / description — batched into one save-element-basics commit.
+  html += '<div class="edition-section">';
+  html += '<div class="field-row"><span class="field-label">Id</span><span class="field-value">' +
+            '<input type="text" id="edit-id-input" value="' + escapeHtml(record.id) + '">' +
+            '<span class="inline-error" id="edit-id-error"></span>' +
+          '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' +
+            '<input type="text" id="edit-name-input" value="' + escapeHtml(record.name != null ? record.name : '') + '">' +
+          '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' +
+            '<textarea id="edit-description-input">' + escapeHtml(record.description != null ? record.description : '') + '</textarea>' +
+          '</span></div>';
+  html += '<div class="field-row"><span class="field-label"></span><span class="field-value">' +
+            '<button type="button" data-action="save-element-basics" data-ref="' + refAttr + '">Save</button>' +
+          '</span></div>';
+  html += '</div>';
+
+  // qualifiers
+  html += '<div class="edition-section"><h3>Qualifiers</h3>';
+  if (record.qualifiers && record.qualifiers.length) {
+    html += record.qualifiers.map((q, i) =>
+      '<span class="pill">' + escapeHtml(q) +
+        ' <button type="button" class="pill-remove" data-action="remove-qualifier" data-ref="' + refAttr + '" data-index="' + i + '">&times;</button>' +
+      '</span>'
+    ).join('');
+  }
+  html += '<div class="edition-add-row">' +
+            '<input type="text" id="add-qualifier-input" placeholder="new qualifier">' +
+            '<button type="button" data-action="add-qualifier" data-ref="' + refAttr + '">Add</button>' +
+            '<span class="inline-error" id="add-qualifier-error"></span>' +
+          '</div>';
+  html += '</div>';
+
+  // tags
+  html += '<div class="edition-section"><h3>Tags</h3>';
+  const tagKeys = record.tags ? Object.keys(record.tags) : [];
+  if (tagKeys.length) {
+    html += '<ul class="tag-list">' + tagKeys.map((k) =>
+      '<li><span class="tag-key">' + escapeHtml(k) + '</span>: <span class="tag-value">' + escapeHtml(String(record.tags[k])) + '</span> ' +
+        '<button type="button" class="pill-remove" data-action="remove-tag" data-ref="' + refAttr + '" data-key="' + escapeHtml(k) + '">&times;</button></li>'
+    ).join('') + '</ul>';
+  }
+  html += '<div class="edition-add-row">' +
+            '<input type="text" id="add-tag-key-input" placeholder="key">' +
+            '<input type="text" id="add-tag-value-input" placeholder="value">' +
+            '<button type="button" data-action="add-tag" data-ref="' + refAttr + '">Add</button>' +
+            '<span class="inline-error" id="add-tag-error"></span>' +
+          '</div>';
+  html += '</div>';
+
+  // relationships
+  html += '<div class="edition-section"><h3>Relationships</h3>';
+  if (record.relationships && record.relationships.length) {
+    for (let i = 0; i < record.relationships.length; i++) {
+      html += renderRelationshipEditRowHtml(reference, record.relationships[i], i);
+    }
+  }
+  html += renderRelationshipEditRowHtml(reference, null, null);
+  html += '</div>';
+
+  // applications (node only — DEC-2a)
+  if (record.kind === 'node') {
+    html += '<div class="edition-section"><h3>Applications</h3>';
+    if (record.applications && record.applications.length) {
+      html += record.applications.map((a, i) =>
+        '<span class="pill">' + escapeHtml(a) +
+          ' <button type="button" class="pill-remove" data-action="remove-application" data-ref="' + refAttr + '" data-index="' + i + '">&times;</button>' +
+        '</span>'
+      ).join('');
+    }
+    html += '<div class="edition-add-row">' +
+              '<input type="text" id="add-application-input" placeholder="new application">' +
+              '<button type="button" data-action="add-application" data-ref="' + refAttr + '">Add</button>' +
+              '<span class="inline-error" id="add-application-error"></span>' +
+            '</div>';
+    html += '</div>';
+  }
+
+  html += '</div>'; // .element-edition-form
+  return html;
+}
+
+/**
+ * The create form (TDD-0010 DEC-1/DEC-2) — one shared template for both
+ * `createMode`s. `sel` is `AppState.selection` itself (`{kind:'create',
+ * createMode, category, parentReference}`); the kind `<select>`'s own
+ * options come from `childKindOptionsFor` (child mode) or the fixed
+ * per-category `TOP_LEVEL_KIND_OPTIONS` list (top-level mode). The
+ * "attach under" input only appears in top-level mode (FR-4).
+ */
+function renderCreateElementFormHtml(sel) {
+  let kindOptions;
+  if (sel.createMode === 'child') {
+    const parentRecord = findElementRecord(sel.parentReference);
+    kindOptions = parentRecord ? childKindOptionsFor(parentRecord) : [];
+  } else {
+    kindOptions = TOP_LEVEL_KIND_OPTIONS[sel.category] || [];
+  }
+
+  let html = '<div class="create-element-form">';
+  html += '<h2>' + (sel.createMode === 'child' ? 'Add child element' : 'Add top-level element') + '</h2>';
+  if (sel.createMode === 'child') {
+    html += '<div class="field-row"><span class="field-label">Parent</span><span class="field-value">' + escapeHtml(sel.parentReference) + '</span></div>';
+  }
+  html += '<div class="field-row"><span class="field-label">Kind</span><span class="field-value">' +
+            '<select id="create-kind-select">' +
+              kindOptions.map((k) => '<option value="' + escapeHtml(k) + '">' + escapeHtml(k) + '</option>').join('') +
+            '</select>' +
+          '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Id</span><span class="field-value">' +
+            '<input type="text" id="create-id-input">' +
+            '<span class="inline-error" id="create-id-error"></span>' +
+          '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' +
+            '<input type="text" id="create-name-input">' +
+          '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' +
+            '<textarea id="create-description-input"></textarea>' +
+          '</span></div>';
+  if (sel.createMode === 'top-level') {
+    html += '<div class="field-row"><span class="field-label">Attach under</span><span class="field-value">' +
+              '<input type="text" id="create-attach-under-input" placeholder="(optional) existing element reference">' +
+              '<span class="inline-error" id="create-attach-under-error"></span>' +
+            '</span></div>';
+  }
+  html += '<div class="field-row"><span class="field-label"></span><span class="field-value">' +
+            '<button type="button" data-action="' + (sel.createMode === 'child' ? 'submit-create-child' : 'submit-create-top-level') + '">Create</button> ' +
+            '<button type="button" data-action="cancel-create">Cancel</button>' +
+            '<span class="inline-error" id="create-form-error"></span>' +
+          '</span></div>';
+  html += '</div>';
+  return html;
+}
+
+function renderCenterPanelHtml() {
+  const sel = AppState.selection;
+  if (sel.kind === 'settings') return renderSettingsViewHtml();
+  if (sel.kind === 'file') return renderFileViewHtml(sel.key);
+  if (sel.kind === 'create') return renderCreateElementFormHtml(sel);
+  if (sel.kind === 'element') {
+    return sel.mode === 'edit' ? renderElementEditionFormHtml(sel.key) : renderElementViewHtml(sel.key);
+  }
+  return '<div class="center-placeholder">Select an item on the left.</div>';
+}
+
+// ---- Shell assembly + delegated event handling ----
+
+function renderShellHtml() {
+  let html = '<div class="app-shell">';
+  html += renderTopPanelHtml();
+  if (AppState.fatalError) {
+    html += '<div class="main-area"><div class="error-panel shell-error-panel"><strong>Error:</strong> ' + escapeHtml(AppState.fatalError) + '</div></div>';
+  } else if (!AppState.workspace) {
+    html += '<div class="main-area"><div class="center-placeholder">Loading…</div></div>';
+  } else {
+    html += '<div class="main-area">' + renderLeftPanelHtml() + '<div class="center-panel">' + renderCenterPanelHtml() + '</div></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/**
+ * Single delegated click handler for the whole #app subtree — every
+ * interactive element declares `data-action` (and the data it needs),
+ * so one listener (added idempotently each render(), see below) covers
+ * every panel without per-node addEventListener calls (DEC-1's
+ * innerHTML-template approach).
+ */
+function handleAppClick(e) {
+  const target = e.target.closest('[data-action]');
+  if (!target) return;
+  const action = target.getAttribute('data-action');
+  switch (action) {
+    case 'open-folder':
+      openFolder();
+      break;
+    case 'reopen-folder':
+      reopenFolder();
+      break;
+    case 'close-folder':
+      closeFolder();
+      break;
+    case 'select-settings':
+      // DEC-10/FLOW-4: discard a pending raw-YAML draft when navigating
+      // away from the file it belongs to (settings is never that file).
+      if (rawYamlEditDraft) rawYamlEditDraft = null;
+      // TDD-0010 DEC-4 (same FR-19-style philosophy): discard a pending
+      // delete confirmation the same way — settings is never the element
+      // it belongs to either.
+      if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
+      AppState.selection = { kind: 'settings', key: null, mode: 'view' };
+      render();
+      break;
+    case 'select-file': {
+      const relPath = target.getAttribute('data-relpath');
+      // DEC-10/FLOW-4: keep the draft when re-selecting the very file it
+      // belongs to; discard it for any other navigation.
+      if (rawYamlEditDraft && rawYamlEditDraft.relPath !== relPath) rawYamlEditDraft = null;
+      // TDD-0010 DEC-4: a file view is never the element a pending delete
+      // confirmation belongs to — discard unconditionally.
+      if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
+      AppState.selection = { kind: 'file', key: relPath, mode: 'view' };
+      render();
+      break;
+    }
+    case 'select-element': {
+      const reference = target.getAttribute('data-ref');
+      if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4 — an element is never the draft's file
+      if (pendingDeleteConfirmation) pendingDeleteConfirmation = null; // TDD-0010 DEC-4 — same discard-on-navigate philosophy
+      AppState.selection = { kind: 'element', key: reference, mode: 'view' };
+      render();
+      break;
+    }
+    case 'goto-element': {
+      const destinationRef = target.getAttribute('data-ref');
+      if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4 — an element is never the draft's file
+      if (pendingDeleteConfirmation) pendingDeleteConfirmation = null; // TDD-0010 DEC-4 — same discard-on-navigate philosophy
+      AppState.selection = { kind: 'element', key: destinationRef, mode: 'view' };
+      expandAncestorsOf(destinationRef); // FR-14/FLOW-5
+      render();
+      break;
+    }
+    case 'toggle-element-edit':
+      if (AppState.selection.kind === 'element') {
+        AppState.selection.mode = AppState.selection.mode === 'edit' ? 'view' : 'edit';
+      }
+      render();
+      break;
+    case 'toggle-branch': {
+      const branch = target.getAttribute('data-branch');
+      if (branch === 'applications') {
+        treeExpandedApplications = !treeExpandedApplications;
+      } else if (branch === 'environments') {
+        treeExpandedEnvironments = !treeExpandedEnvironments;
+      }
+      render();
+      break;
+    }
+    case 'toggle-element':
+      toggleExpandedKey(target.getAttribute('data-ref'));
+      render();
+      break;
+    case 'save-element-basics': {
+      const reference = target.getAttribute('data-ref');
+      const category = AppState.index.application.has(reference) ? 'application' : 'technology';
+      const idInput = document.getElementById('edit-id-input');
+      const nameInput = document.getElementById('edit-name-input');
+      const descriptionInput = document.getElementById('edit-description-input');
+      const idResult = validateElementIdRename(idInput ? idInput.value : '', reference, category);
+      if (!idResult.valid) {
+        setInlineErrorText('edit-id-error', idResult.error);
+        break;
+      }
+      setInlineErrorText('edit-id-error', '');
+      const normalizedName = normalizeOptionalText(nameInput ? nameInput.value : '');
+      const normalizedDescription = normalizeOptionalText(descriptionInput ? descriptionInput.value : '');
+      const newId = idResult.newId;
+      const newReference = idResult.newReference;
+      const result = commitElementEdit(reference, (node) => {
+        const oldId = node.id;
+        node.id = newId;
+        node.name = normalizedName;
+        node.description = normalizedDescription;
+        if (newId !== oldId) {
+          return { renamedTo: { from: reference, to: newReference } };
+        }
+        return undefined;
+      });
+      if (result && result.renamedTo) {
+        rewriteReferencePrefix(result.renamedTo.from, result.renamedTo.to); // DEC-8 — renders again itself
+      }
+      break;
+    }
+    case 'add-qualifier': {
+      const reference = target.getAttribute('data-ref');
+      const input = document.getElementById('add-qualifier-input');
+      const result = validateNewListEntry(input ? input.value : '');
+      if (!result.valid) {
+        setInlineErrorText('add-qualifier-error', result.error);
+        break;
+      }
+      commitElementEdit(reference, (node) => {
+        const qualifiers = Array.isArray(node.qualifiers) ? node.qualifiers.slice() : [];
+        qualifiers.push(result.value);
+        node.qualifiers = qualifiers;
+      });
+      break;
+    }
+    case 'remove-qualifier': {
+      const reference = target.getAttribute('data-ref');
+      const index = parseInt(target.getAttribute('data-index'), 10);
+      commitElementEdit(reference, (node) => {
+        const qualifiers = Array.isArray(node.qualifiers) ? node.qualifiers.slice() : [];
+        qualifiers.splice(index, 1);
+        node.qualifiers = qualifiers;
+      });
+      break;
+    }
+    case 'add-application': {
+      const reference = target.getAttribute('data-ref');
+      const input = document.getElementById('add-application-input');
+      const result = validateNewListEntry(input ? input.value : '');
+      if (!result.valid) {
+        setInlineErrorText('add-application-error', result.error);
+        break;
+      }
+      commitElementEdit(reference, (node) => {
+        const applications = Array.isArray(node.applications) ? node.applications.slice() : [];
+        applications.push(result.value);
+        node.applications = applications;
+      });
+      break;
+    }
+    case 'remove-application': {
+      const reference = target.getAttribute('data-ref');
+      const index = parseInt(target.getAttribute('data-index'), 10);
+      commitElementEdit(reference, (node) => {
+        const applications = Array.isArray(node.applications) ? node.applications.slice() : [];
+        applications.splice(index, 1);
+        node.applications = applications;
+      });
+      break;
+    }
+    case 'add-tag': {
+      const reference = target.getAttribute('data-ref');
+      const record = findElementRecord(reference);
+      const keyInput = document.getElementById('add-tag-key-input');
+      const valueInput = document.getElementById('add-tag-value-input');
+      const result = validateNewTagKey(keyInput ? keyInput.value : '', record ? record.tags : {});
+      if (!result.valid) {
+        setInlineErrorText('add-tag-error', result.error);
+        break;
+      }
+      const value = valueInput ? valueInput.value : '';
+      commitElementEdit(reference, (node) => {
+        const tags = (node.tags && typeof node.tags === 'object') ? Object.assign({}, node.tags) : {};
+        tags[result.key] = value;
+        node.tags = tags;
+      });
+      break;
+    }
+    case 'remove-tag': {
+      const reference = target.getAttribute('data-ref');
+      const key = target.getAttribute('data-key');
+      commitElementEdit(reference, (node) => {
+        const tags = (node.tags && typeof node.tags === 'object') ? Object.assign({}, node.tags) : {};
+        delete tags[key];
+        node.tags = tags;
+      });
+      break;
+    }
+    case 'add-relationship': {
+      const reference = target.getAttribute('data-ref');
+      const row = target.closest('.relationship-edit-row');
+      const draft = readRelationshipDraftFromRow(row);
+      if (!draft.valid) {
+        setRowInlineErrorText(row, draft.error);
+        break;
+      }
+      commitElementEdit(reference, (node) => {
+        const relationships = Array.isArray(node.relationships) ? node.relationships.slice() : [];
+        relationships.push({
+          destination: draft.destination,
+          label: draft.label,
+          qualifiers: draft.qualifiers,
+          tags: draft.tags
+        });
+        node.relationships = relationships;
+      });
+      break;
+    }
+    case 'save-relationship': {
+      const reference = target.getAttribute('data-ref');
+      const index = parseInt(target.getAttribute('data-index'), 10);
+      const row = target.closest('.relationship-edit-row');
+      const draft = readRelationshipDraftFromRow(row);
+      if (!draft.valid) {
+        setRowInlineErrorText(row, draft.error);
+        break;
+      }
+      commitElementEdit(reference, (node) => {
+        const relationships = Array.isArray(node.relationships) ? node.relationships.slice() : [];
+        relationships[index] = {
+          destination: draft.destination,
+          label: draft.label,
+          qualifiers: draft.qualifiers,
+          tags: draft.tags
+        };
+        node.relationships = relationships;
+      });
+      break;
+    }
+    case 'remove-relationship': {
+      const reference = target.getAttribute('data-ref');
+      const index = parseInt(target.getAttribute('data-index'), 10);
+      commitElementEdit(reference, (node) => {
+        const relationships = Array.isArray(node.relationships) ? node.relationships.slice() : [];
+        relationships.splice(index, 1);
+        node.relationships = relationships;
+      });
+      break;
+    }
+    case 'save-settings': {
+      // DEC-9/FLOW-2: all-or-nothing — validate every field first, clearing
+      // every previous inline error, and only call commitSettingsEdit once
+      // every field has passed; a single failing field rejects the whole
+      // submission with no partial apply.
+      const pathsInput = document.getElementById('settings-manifests-paths-input');
+      const defaultLabelInput = document.getElementById('settings-default-label-input');
+      const viewsPathInput = document.getElementById('settings-views-path-input');
+      const viewsLabelsInput = document.getElementById('settings-views-labels-input');
+      const viewsPropertiesInput = document.getElementById('settings-views-properties-input');
+      const customsInput = document.getElementById('settings-facets-customs-input');
+      const globalEnabledInput = document.getElementById('settings-facets-global-enabled-input');
+      const directoryTemplateInput = document.getElementById('settings-facets-directory-template-input');
+
+      setInlineErrorText('settings-manifests-paths-error', '');
+      setInlineErrorText('settings-views-path-error', '');
+      setInlineErrorText('settings-views-labels-error', '');
+      setInlineErrorText('settings-views-properties-error', '');
+      setInlineErrorText('settings-facets-customs-error', '');
+      setInlineErrorText('settings-facets-directory-template-error', '');
+
+      const pathsResult = validateManifestsPaths(pathsInput ? pathsInput.value : '');
+      const viewsPathResult = validateViewsPath(viewsPathInput ? viewsPathInput.value : '');
+      const viewsLabelsResult = validateJsonSettingsField(viewsLabelsInput ? viewsLabelsInput.value : '');
+      const viewsPropertiesResult = validateJsonSettingsField(viewsPropertiesInput ? viewsPropertiesInput.value : '');
+      const customsResult = validateJsonSettingsField(customsInput ? customsInput.value : '');
+      const directoryTemplateResult = validateDirectoryNameTemplate(directoryTemplateInput ? directoryTemplateInput.value : '');
+
+      let hasError = false;
+      if (!pathsResult.valid) { setInlineErrorText('settings-manifests-paths-error', pathsResult.error); hasError = true; }
+      if (!viewsPathResult.valid) { setInlineErrorText('settings-views-path-error', viewsPathResult.error); hasError = true; }
+      if (!viewsLabelsResult.valid) { setInlineErrorText('settings-views-labels-error', viewsLabelsResult.error); hasError = true; }
+      if (!viewsPropertiesResult.valid) { setInlineErrorText('settings-views-properties-error', viewsPropertiesResult.error); hasError = true; }
+      if (!customsResult.valid) { setInlineErrorText('settings-facets-customs-error', customsResult.error); hasError = true; }
+      if (!directoryTemplateResult.valid) { setInlineErrorText('settings-facets-directory-template-error', directoryTemplateResult.error); hasError = true; }
+      if (hasError) break;
+
+      // No stated DEC-9 rejection rule for these two — read as-is (free text / boolean).
+      const defaultSyntheticLabel = defaultLabelInput ? defaultLabelInput.value : '';
+      const globalEnabled = globalEnabledInput ? globalEnabledInput.checked : false;
+
+      commitSettingsEdit((settings) => {
+        settings.manifests.paths = pathsResult.paths;
+        settings.relationships.defaultSyntheticLabel = defaultSyntheticLabel;
+        settings.views.path = viewsPathResult.path;
+        settings.views.labels = viewsLabelsResult.value;
+        settings.views.properties = viewsPropertiesResult.value;
+        settings.facets.globalEnabled = globalEnabled;
+        settings.facets.directoryNameTemplate = directoryTemplateResult.value;
+        settings.facets.customs = customsResult.value;
+      });
+      break;
+    }
+    case 'commit-file-edit': {
+      const relPath = target.getAttribute('data-relpath');
+      const textarea = document.getElementById('file-edit-textarea');
+      const newText = textarea ? textarea.value : '';
+      commitFileEdit(relPath, newText);
+      break;
+    }
+    case 'open-create-child-form': {
+      // TDD-0010 DEC-1: category is determined the same way
+      // save-element-basics already does — whichever index Map holds it.
+      const reference = target.getAttribute('data-ref');
+      const category = AppState.index.application.has(reference) ? 'application' : 'technology';
+      if (rawYamlEditDraft) rawYamlEditDraft = null;
+      AppState.selection = { kind: 'create', createMode: 'child', category, parentReference: reference };
+      render();
+      break;
+    }
+    case 'open-create-top-level-form': {
+      const category = target.getAttribute('data-category');
+      if (rawYamlEditDraft) rawYamlEditDraft = null;
+      AppState.selection = { kind: 'create', createMode: 'top-level', category, parentReference: null };
+      render();
+      break;
+    }
+    case 'cancel-create': {
+      // TDD-0010 DEC-1: no AppState mutation beyond resetting selection —
+      // a create form backed out of leaves nothing behind.
+      const sel = AppState.selection;
+      if (sel.kind === 'create' && sel.createMode === 'child') {
+        AppState.selection = { kind: 'element', key: sel.parentReference, mode: 'edit' };
+      } else {
+        AppState.selection = { kind: 'none', key: null, mode: 'view' };
+      }
+      render();
+      break;
+    }
+    case 'submit-create-child': {
+      const sel = AppState.selection;
+      const parentReference = sel.parentReference;
+      const category = sel.category;
+      const parentRecord = findElementRecord(parentReference);
+      const kindSelect = document.getElementById('create-kind-select');
+      const idInput = document.getElementById('create-id-input');
+      const nameInput = document.getElementById('create-name-input');
+      const descriptionInput = document.getElementById('create-description-input');
+
+      setInlineErrorText('create-id-error', '');
+      setInlineErrorText('create-form-error', '');
+
+      // DEC-3's own kind-membership check, re-validated here per DEC-9's
+      // "never trust the DOM alone" discipline (defensive — the <select>
+      // should already only offer a valid option).
+      const chosenKind = kindSelect ? kindSelect.value : '';
+      const allowedKinds = parentRecord ? childKindOptionsFor(parentRecord) : [];
+      if (allowedKinds.indexOf(chosenKind) === -1) {
+        setInlineErrorText('create-form-error', 'Invalid kind for this parent.');
+        break;
+      }
+
+      const id = idInput ? idInput.value.trim() : '';
+      if (id === '') {
+        setInlineErrorText('create-id-error', 'Id is required.');
+        break;
+      }
+      // FR-7: id-collision check against the same category's live index.
+      const newReference = parentReference + '.' + id;
+      if (AppState.index[category] && AppState.index[category].has(newReference)) {
+        setInlineErrorText('create-id-error', 'Another element already uses reference "' + newReference + '".');
+        break;
+      }
+
+      const name = normalizeOptionalText(nameInput ? nameInput.value : '');
+      const description = normalizeOptionalText(descriptionInput ? descriptionInput.value : '');
+
+      const result = commitElementEdit(parentReference, (node) => {
+        node.elements = Array.isArray(node.elements) ? node.elements.slice() : [];
+        const child = { kind: chosenKind, id };
+        if (name) child.name = name;
+        if (description) child.description = description;
+        node.elements.push(child);
+        return { createdReference: parentReference + '.' + id };
+      });
+
+      // FR-3: one extra render after commitElementEdit's own rebuild
+      // render, which still carried the stale (create-form) selection.
+      AppState.selection = { kind: 'element', key: result.createdReference, mode: 'edit' };
+      render();
+      break;
+    }
+    case 'submit-create-top-level': {
+      const sel = AppState.selection;
+      const category = sel.category;
+      const kindSelect = document.getElementById('create-kind-select');
+      const idInput = document.getElementById('create-id-input');
+      const nameInput = document.getElementById('create-name-input');
+      const descriptionInput = document.getElementById('create-description-input');
+      const attachUnderInput = document.getElementById('create-attach-under-input');
+
+      setInlineErrorText('create-id-error', '');
+      setInlineErrorText('create-attach-under-error', '');
+      setInlineErrorText('create-form-error', '');
+
+      const chosenKind = kindSelect ? kindSelect.value : '';
+      const allowedTopLevelKinds = TOP_LEVEL_KIND_OPTIONS[category] || [];
+      if (allowedTopLevelKinds.indexOf(chosenKind) === -1) {
+        setInlineErrorText('create-form-error', 'Invalid kind for this category.');
+        break;
+      }
+
+      const attachUnderRaw = attachUnderInput ? attachUnderInput.value.trim() : '';
+      const attachUnder = attachUnderRaw === '' ? null : attachUnderRaw;
+      const mapping = ARCHICODE_KIND_MAP[chosenKind];
+      const rootKind = mapping ? mapping.rootKind : null;
+
+      // FR-6(a): attach-under filled — must resolve, and the parent's own
+      // kind must be able to contain the chosen kind.
+      if (attachUnder) {
+        const parentRecord = AppState.index[category] ? AppState.index[category].get(attachUnder) : null;
+        if (!parentRecord) {
+          setInlineErrorText('create-attach-under-error', 'No element "' + attachUnder + '" exists in this category.');
+          break;
+        }
+        const attachOk = (rootKind === 'group')
+          ? reducedLevelForKind(chosenKind) === parentRecord.level
+          : childKindOptionsForLevel(parentRecord.level).indexOf(rootKind) !== -1;
+        if (!attachOk) {
+          setInlineErrorText('create-attach-under-error', 'Element "' + attachUnder + '" cannot contain a "' + chosenKind + '".');
+          break;
+        }
+      } else {
+        // FR-6(b): attach-under left blank — the chosen kind must be one
+        // the real domain model allows as a genuinely unparented root.
+        const blankAllowed = TOP_LEVEL_BLANK_ATTACH_ALLOWED[category] || [];
+        if (blankAllowed.indexOf(chosenKind) === -1) {
+          setInlineErrorText('create-form-error', 'A "' + chosenKind + '" must have "Attach under" filled in — it is never a top-level root.');
+          break;
+        }
+      }
+
+      const id = idInput ? idInput.value.trim() : '';
+      if (id === '') {
+        setInlineErrorText('create-id-error', 'Id is required.');
+        break;
+      }
+      // FR-7: id-collision check against the resulting full reference.
+      const newReference = attachUnder ? (attachUnder + '.' + id) : id;
+      if (AppState.index[category] && AppState.index[category].has(newReference)) {
+        setInlineErrorText('create-id-error', 'Another element already uses reference "' + newReference + '".');
+        break;
+      }
+
+      const name = normalizeOptionalText(nameInput ? nameInput.value : '');
+      const description = normalizeOptionalText(descriptionInput ? descriptionInput.value : '');
+
+      const result = commitCreateTopLevelElement({
+        category, headerKind: chosenKind, attachUnderReference: attachUnder, id, name, description
+      });
+
+      // FR-3: one extra render after commitCreateTopLevelElement's own
+      // rebuild render, which still carried the stale (create-form) selection.
+      AppState.selection = { kind: 'element', key: result.createdReference, mode: 'edit' };
+      render();
+      break;
+    }
+    case 'request-delete-element': {
+      // TDD-0010 DEC-4: compute the impact scan and render it inline,
+      // overlaid on the already-rendering edition view — no AppState
+      // mutation happens here.
+      const reference = target.getAttribute('data-ref');
+      const category = AppState.index.application.has(reference) ? 'application' : 'technology';
+      const deletedRefs = computeDeletedReferenceSet(reference, category);
+      const affected = scanDanglingRelationshipsFor(deletedRefs, category);
+      pendingDeleteConfirmation = { reference, category, affected };
+      render();
+      break;
+    }
+    case 'confirm-delete-element': {
+      // TDD-0010 DEC-6: commitDeleteElement itself clears
+      // pendingDeleteConfirmation and calls rebuildIndexAndRender.
+      if (pendingDeleteConfirmation) {
+        commitDeleteElement(pendingDeleteConfirmation.reference, pendingDeleteConfirmation.category, pendingDeleteConfirmation.affected);
+      }
+      break;
+    }
+    case 'cancel-delete-element':
+      // TDD-0010 DEC-4, AC-11: no AppState mutation — only the transient
+      // confirmation overlay is discarded.
+      pendingDeleteConfirmation = null;
+      render();
+      break;
+    case 'save-all-changes':
+      // TDD-0010 DEC-7/ASM-2: saveAllChanges() is called directly and
+      // synchronously from this click handler so its first await
+      // (inside ensureWritePermission) is still reached within the
+      // triggering user gesture.
+      saveAllChanges();
+      break;
+    default:
+      break;
+  }
+}
+
+function render() {
+  const app = document.getElementById('app');
+
+  if (!isFileSystemAccessSupported()) {
+    app.innerHTML = (
+      '<div class="picker-screen">' +
+        '<h1>ArchiCode Standalone Editor</h1>' +
+        '<p class="warn">This browser does not support the File System Access API and/or IndexedDB (CON-2/NFR-3). ' +
+        'Please use a recent Chromium-based browser (Chrome/Edge).</p>' +
+      '</div>'
+    );
+    return;
+  }
+
+  if (AppState.fatalError && !AppState.folder) {
+    // No folder was ever successfully opened (e.g. openFolder() itself failed) —
+    // still leave a picker action reachable (DEC-10/FR-16).
+    app.innerHTML = (
+      '<div class="picker-screen">' +
+        '<h1>ArchiCode Standalone Editor</h1>' +
+        '<div class="error-panel"><strong>Error:</strong> ' + escapeHtml(AppState.fatalError) + '</div>' +
+        '<button type="button" data-action="open-folder">Pick a folder</button>' +
+      '</div>'
+    );
+    app.addEventListener('click', handleAppClick);
+    return;
+  }
+
+  if (!AppState.folder) {
+    app.innerHTML = (
+      '<div class="picker-screen">' +
+        '<h1>ArchiCode Standalone Editor</h1>' +
+        '<p>Pick a workspace folder to begin.</p>' +
+        '<button type="button" data-action="open-folder">Pick a folder</button>' +
+      '</div>'
+    );
+    app.addEventListener('click', handleAppClick);
+    return;
+  }
+
+  if (AppState.permissionState === 'needs-click') {
+    app.innerHTML = (
+      '<div class="picker-screen">' +
+        '<h1>ArchiCode Standalone Editor</h1>' +
+        '<button type="button" data-action="reopen-folder">Click to reopen "' + escapeHtml(AppState.folder.name) + '"</button>' +
+      '</div>'
+    );
+    app.addEventListener('click', handleAppClick);
+    return;
+  }
+
+  app.innerHTML = renderShellHtml();
+  app.addEventListener('click', handleAppClick);
+}
+
+// =====================================================================
+// Bootstrap
+// =====================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!isFileSystemAccessSupported()) {
+    render();
+    return;
+  }
+  tryAutoReopen();
+});
+</script>
+</body>
+</html>
