@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ArchiCode Standalone Editor</title>
+<!--
+  Tailwind CSS (MIT, https://tailwindcss.com) — the browser/JIT build, no
+  build step: it scans the DOM at runtime and injects the utility CSS it
+  needs. Used only for the shell/grid/resize-handle layout below; every
+  existing component (tree, forms, pills...) keeps its own hand-written
+  CSS in the <style> block that follows. Requires network access to style;
+  opening fully offline still works, just unstyled (same tradeoff as any
+  CDN-hosted stylesheet).
+-->
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root {
     color-scheme: light dark;
@@ -14,14 +24,32 @@
     --accent: #2b6cb0;
     --danger: #b00020;
     --panel-bg: #f7f7f8;
+    --modified: #b7791f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1e;
+      --fg: #e8e8e8;
+      --muted: #999999;
+      --border: #3a3a3a;
+      --accent: #6cb0f0;
+      --danger: #ff6b6b;
+      --panel-bg: #262626;
+      --modified: #f0c674;
+    }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   #app { min-height: 100vh; display: flex; flex-direction: column; }
   h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
   h2 { font-size: 1rem; margin: 1rem 0 0.5rem; }
-  button { font: inherit; padding: 0.4rem 0.9rem; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-bg); color: var(--fg); cursor: pointer; }
-  button:hover { border-color: var(--accent); }
+  /* !important: Tailwind's Play CDN injects its own Preflight-reset <style>
+     tag at runtime, after this one, at equal (type-selector) specificity —
+     it would otherwise silently strip every button/input's border,
+     padding and background regardless of source order in this file. */
+  button { font: inherit; padding: 0.4rem 0.9rem !important; border: 1px solid var(--border) !important; border-radius: 4px !important; background: var(--panel-bg) !important; color: var(--fg); cursor: pointer; }
+  button:hover { border-color: var(--accent) !important; }
+  input[type="text"], textarea, select { font: inherit; padding: 0.3rem 0.5rem !important; border: 1px solid var(--border) !important; border-radius: 4px !important; background: var(--bg) !important; color: var(--fg); }
   .picker-screen { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; padding: 3rem 2rem; max-width: 640px; }
   .warn { color: var(--danger); }
   .diagnostics { padding: 1rem; }
@@ -30,18 +58,32 @@
   .error-panel ul { margin: 0.5rem 0 0; }
   code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; }
 
-  /* ---- Three-panel shell (run-0008, task-002) ---- */
+  /* ---- Resizable grid shell (layout adapted from archi-edtior.html reference) ----
+     Grid structure and panel sizing/resizing live as Tailwind utility
+     classes + inline styles directly in the markup (renderShellHtml); the
+     rules below are the content-level concerns Tailwind doesn't own:
+     panel backgrounds/borders and the resize handles' own appearance. */
   html, body { height: 100%; }
   #app { height: 100vh; }
-  .app-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .app-shell { height: 100%; }
 
-  .top-panel { display: flex; align-items: center; gap: 1rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); flex: 0 0 auto; }
+  .top-panel { border-bottom: 1px solid var(--border); background: var(--panel-bg); }
   .folder-name { font-weight: 600; cursor: default; }
   .folder-root-slash { color: var(--muted); margin-left: 0.1rem; }
 
-  .main-area { flex: 1 1 auto; display: flex; min-height: 0; overflow: hidden; }
+  .perspective-tabs { display: flex; gap: 0.25rem; }
+  .perspective-tab { padding: 0.15rem 0.7rem !important; border-radius: 999px !important; font-size: 0.8rem; }
+  .perspective-tab.active { background: var(--accent) !important; color: #fff; border-color: var(--accent) !important; }
 
-  .left-panel { width: 300px; flex: 0 0 300px; overflow-y: auto; border-right: 1px solid var(--border); background: var(--panel-bg); padding-bottom: 1rem; }
+  .left-panel { overflow-y: auto; border-right: 1px solid var(--border); background: var(--panel-bg); padding-bottom: 1rem; }
+  .right-panel, .bottom-panel { overflow: auto; background: var(--panel-bg); padding: 1rem; }
+  .right-panel h3, .bottom-panel h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 0 0 0.5rem; }
+  .right-panel { border-left: 1px solid var(--border); }
+  .bottom-panel { border-top: 1px solid var(--border); }
+
+  [data-resize] { background: var(--border); flex-shrink: 0; }
+  [data-resize]:hover, [data-resize][data-active] { background: var(--accent); }
+
   .nav-section { border-bottom: 1px solid var(--border); padding: 0.4rem 0; }
   .nav-section:last-child { border-bottom: none; }
   .nav-section-title { padding: 0.3rem 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
@@ -53,11 +95,12 @@
   .file-relpath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-row.has-error .file-relpath { color: var(--danger); }
   .error-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: #fff; background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
+  .modified-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: #fff; background: var(--modified); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
 
   .tree-branch-header { padding: 0.35rem 1rem; cursor: pointer; font-weight: 600; user-select: none; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
   .tree-branch-header:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
   .tree-branch-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tree-branch-add-btn { padding: 0.1rem 0.5rem; font-size: 0.75rem; flex-shrink: 0; }
+  .tree-branch-add-btn { padding: 0.1rem 0.5rem !important; font-size: 0.75rem; flex-shrink: 0; }
   .tree-branch-body { padding-bottom: 0.25rem; }
   .tree-empty { padding: 0.25rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
   .tree-node-children { margin-left: 1rem; }
@@ -69,21 +112,80 @@
   .tree-node-kind { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 0.3rem; flex-shrink: 0; }
   .tree-node-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .center-panel { flex: 1 1 auto; overflow-y: auto; padding: 1.25rem 1.75rem; }
+  /* No vertical padding here on purpose — every view supplies its own top
+     and bottom inset instead (see each below). A view with a sticky
+     .element-header needs nothing to cancel at the top; and *any* child
+     whose own height/margin tricks are meant to reach this panel's real
+     bottom edge (.file-view) must do so against a parent with zero
+     padding of its own, or the two fights (the child's reach-the-bottom
+     math and the parent's own padding) double up into a second,
+     unwanted scrollbar on .center-panel itself, on top of the child's. */
+  .center-panel { overflow-y: auto; padding: 0 1.75rem; }
+  .center-panel > .center-placeholder { padding: 1.25rem 0; }
   .center-placeholder { color: var(--muted); }
   .shell-error-panel { margin: 1rem; }
 
   .settings-view h2, .file-view h2, .element-header h2, .create-element-form h2 { margin-top: 0; }
+  /* These two have no sticky header of their own (unlike element/file
+     views below), so — unlike those — they still need their own top and
+     bottom inset now that .center-panel itself provides neither. */
+  .settings-view, .create-element-form { padding: 1.25rem 0; }
+  /* Element view/edit have a sticky header supplying their own top inset
+     already; only the bottom is still needed. */
+  .element-view, .element-edition-form { padding-bottom: 1.25rem; }
   .settings-group { margin-bottom: 1.25rem; }
   .settings-group h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 0 0 0.4rem; }
   .settings-row { display: flex; gap: 0.75rem; padding: 0.2rem 0; align-items: baseline; }
   .settings-label { min-width: 220px; color: var(--muted); flex-shrink: 0; }
   .settings-value { word-break: break-word; }
 
-  .file-view .raw-yaml { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; overflow: auto; white-space: pre; max-height: calc(100vh - 14rem); width: 100%; min-height: calc(100vh - 20rem); }
+  /* The edit area fills whatever room the Files perspective's center panel
+     actually has (now that perspective hides right/bottom and gives it
+     the full width) rather than guessing a size from the viewport — a
+     flex column whose textarea grows to fill it. .center-panel has no
+     padding of its own (see above), so height:100% alone already reaches
+     its real bottom edge, with nothing left over to reclaim. */
+  .file-view { display: flex; flex-direction: column; height: 100%; }
+  /* Edge-to-edge: no gap below the header (its shared margin-bottom is for
+     views with content below that wants breathing room; a text editor
+     doesn't), and the edit area bleeds past .center-panel's left/right
+     padding the same way the header's own background already does —
+     borderless on the sides that now coincide with the panel's real edge,
+     since there's nothing left to visually separate there. */
+  .file-view .element-header { margin-bottom: 0; }
+  .file-view .raw-yaml {
+    background: var(--panel-bg);
+    border: 1px solid var(--border); border-left: none; border-right: none; border-radius: 0;
+    padding: 1rem 1.75rem; overflow: auto; white-space: pre;
+    margin: 0 -1.75rem; flex: 1 1 auto; min-height: 0;
+    resize: none; /* the browser's own drag-to-resize grip makes no sense on a textarea whose size is already driven by the flex layout around it */
+  }
 
   .diagram-placeholder { border: 1px dashed var(--border); border-radius: 6px; min-height: 140px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-style: italic; margin-bottom: 1.25rem; background: var(--panel-bg); }
-  .element-header { display: flex; align-items: center; gap: 0.75rem; }
+  /* Pinned to the top of .center-panel's own scroll, not the page's — the
+     negative margin cancels .center-panel's padding so the header sits
+     flush with the panel's real top edge once stuck, and the background +
+     border + shadow read as a distinct, detached strip above whatever
+     scrolls underneath it. */
+  /* Sits flush at the top of .center-panel (which has no top padding of
+     its own — see above) — only the left/right padding needs canceling
+     here, for a full-bleed background. A negative top margin would do the
+     same for the vertical side in principle, but collapses with
+     .element-view/.element-edition-form's own margin (its parent, which
+     has none of its own) and ends up shifting that whole parent instead
+     of just this header — exactly the bug this comment is here to warn
+     against reintroducing. */
+  .element-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    position: sticky; top: 0; z-index: 1;
+    margin: 0 -1.75rem 1rem; padding: 0.85rem 1.75rem;
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  }
+  .element-header-label { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+  .element-header-label h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .element-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
   .element-kind-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0.1rem 0.4rem; }
   .element-qualitative { margin-top: 0.5rem; }
   .field-row { display: flex; gap: 0.75rem; padding: 0.35rem 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); align-items: flex-start; }
@@ -96,7 +198,7 @@
   .tag-key { color: var(--muted); }
   .relationship-list { margin: 0; padding-left: 1.1rem; list-style: none; }
   .relationship-list li { margin-bottom: 0.3rem; }
-  .relationship-link { display: inline; background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+  .relationship-link { display: inline; background: none !important; border: none !important; padding: 0 !important; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
   .relationship-link:hover { border-color: transparent; }
   .relationship-dangling { color: var(--muted); }
   .dangling-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: #fff; background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; margin-left: 0.3rem; }
@@ -106,13 +208,11 @@
   .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
 
   /* ---- Element edition form (run-0009, task-003) ---- */
-  .element-edition-form input[type="text"], .element-edition-form textarea,
-  .settings-view input[type="text"], .settings-view textarea { font: inherit; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--fg); }
   .element-edition-form textarea, .settings-view textarea { width: 100%; min-height: 4rem; vertical-align: top; }
   .edition-section { margin-bottom: 1.25rem; }
   .edition-section h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 0 0 0.4rem; }
   .edition-add-row { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.5rem; }
-  .pill-remove { border: none; background: none; cursor: pointer; color: var(--muted); padding: 0 0.2rem; font-size: 0.9rem; }
+  .pill-remove { border: none !important; background: none !important; cursor: pointer; color: var(--muted); padding: 0 0.2rem !important; font-size: 0.9rem; }
   .pill-remove:hover { color: var(--danger); }
   .inline-error { color: var(--danger); font-size: 0.8rem; margin-left: 0.5rem; }
   .relationship-edit-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; }
@@ -601,7 +701,10 @@ function createInitialAppState() {
     // immediately) the baseline lastKnownDiskModified a save's stale-check
     // still needs for each one.
     pendingFileRemovals: [],
-    removedFileBaselines: new Map()
+    removedFileBaselines: new Map(),
+    // UX review follow-up: element-level (not file-level) modified tracking
+    // for the tree's "modified" badge — see dirtyReferences usage below.
+    dirtyReferences: new Set()
   };
 }
 
@@ -894,6 +997,7 @@ async function loadWorkspace(dirHandle) {
   AppState.manifestFiles = [];
   AppState.index = { application: new Map(), technology: new Map() };
   AppState.relationshipStats = { total: 0, dangling: 0 };
+  AppState.dirtyReferences = new Set();
 
   // FR-4 / DEC-10: workspace.yaml is fatal to the open attempt if missing/unparseable.
   let workspaceRaw;
@@ -971,7 +1075,7 @@ async function loadWorkspace(dirHandle) {
     settingsDirty: false, // TDD-0010 DEC-8
     settingsLastKnownDiskModified: workspaceLastKnownDiskModified
   };
-  AppState.selection = { kind: 'none', key: null, mode: 'view' }; // DEC-9: navigation state never persists
+  applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   render();
 
   // eslint-disable-next-line no-console
@@ -1028,6 +1132,9 @@ async function reopenFolder() {
 
 /** Click handler for the top panel's close action (FR-3/FLOW-3). */
 async function closeFolder() {
+  if (hasUnsavedChanges() && !confirm('You have unsaved changes that will be lost. Close the folder anyway?')) {
+    return;
+  }
   try {
     await deleteStoredHandleRecord();
   } catch (e) {
@@ -1087,6 +1194,131 @@ function escapeHtml(value) {
 // module-level booleans, defaulting to expanded for a useful first view.
 let treeExpandedApplications = true;
 let treeExpandedEnvironments = true;
+
+// =====================================================================
+// Perspectives (Eclipse-style named panel arrangements) — three now, so
+// this is a real per-region dispatch (see renderShellHtml), not just a
+// label. Hash-routed (file:// pages don't reload on a hash change, so
+// this is a free, build-step-free router): the hash is the one source of
+// truth for which perspective is showing, kept in sync with
+// `currentPerspective` in both directions (setPerspective writes the
+// hash; the 'hashchange' listener below reads it back, which also covers
+// back/forward and a hand-edited URL).
+// =====================================================================
+const PERSPECTIVES = {
+  diagram: { label: 'Diagram' },
+  elements: { label: 'Elements' },
+  files: { label: 'Files' },
+  settings: { label: 'Settings' }
+};
+const DEFAULT_PERSPECTIVE = 'elements';
+let currentPerspective = DEFAULT_PERSPECTIVE;
+
+/** Parse `location.hash` ("#/diagram?ref=...") into a known perspective id, defaulting for an empty/unrecognized hash. */
+function perspectiveIdFromHash() {
+  const path = location.hash.split('?')[0];
+  const id = path.replace(/^#\/?/, '');
+  return Object.prototype.hasOwnProperty.call(PERSPECTIVES, id) ? id : DEFAULT_PERSPECTIVE;
+}
+
+/** The hash's `ref=` query param (an element reference or a manifest file's relPath), or null. */
+function refFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  if (queryIdx === -1) return null;
+  return new URLSearchParams(location.hash.slice(queryIdx + 1)).get('ref');
+}
+
+/**
+ * Resolve the hash's `ref=` (if any) against the now-loaded workspace into
+ * `AppState.selection` — an element reference or a manifest file's relPath,
+ * whichever actually matches (falls back to the default empty selection
+ * otherwise, including when there is no `ref` at all). Shared by the
+ * initial load (`loadWorkspace`, once there's an index/manifestFiles list
+ * to resolve against) and any later 'hashchange' while already loaded
+ * (`syncPerspectiveFromHash`, below).
+ */
+function applySelectionFromHashRef() {
+  const ref = refFromHash();
+  if (ref) {
+    if (AppState.index.application.has(ref) || AppState.index.technology.has(ref)) {
+      AppState.selection = { kind: 'element', key: ref, mode: 'view' };
+      expandAncestorsOf(ref);
+      return;
+    }
+    if (AppState.manifestFiles.some((f) => f.relPath === ref)) {
+      AppState.selection = { kind: 'file', key: ref, mode: 'view' };
+      return;
+    }
+  }
+  AppState.selection = { kind: 'none', key: null, mode: 'view' };
+}
+
+/** Re-sync `currentPerspective` (and, once a workspace is loaded, the selection) from the URL — bootstrap and every 'hashchange' (back/forward, a hand-edited URL). */
+function syncPerspectiveFromHash() {
+  currentPerspective = perspectiveIdFromHash();
+  if (AppState.workspace) applySelectionFromHashRef();
+}
+
+/** The "#/perspective?ref=..." hash for the current perspective + selection — what the URL should read right now (UX review follow-up: the URL mirrors what's on screen). */
+function currentRouteHash() {
+  const sel = AppState.selection;
+  const ref = (sel.kind === 'element' || sel.kind === 'file') ? sel.key : null;
+  return '/' + currentPerspective + (ref ? ('?ref=' + encodeURIComponent(ref)) : '');
+}
+
+/**
+ * Keep the URL in sync with whatever just rendered, without spamming
+ * browser history or re-triggering 'hashchange' (replaceState does
+ * neither) — called at the end of every render() that shows the shell.
+ * A plain `location.hash = ...` per click would instead push a new
+ * history entry and fire 'hashchange' asynchronously, double-rendering.
+ */
+function syncHashFromState() {
+  const hash = '#' + currentRouteHash();
+  if (location.hash !== hash) history.replaceState(null, '', hash);
+}
+
+/**
+ * Switch perspective from inside the app itself (the tab click handler) —
+ * updates the hash (so the URL stays the source of truth, and a genuine
+ * perspective switch — unlike an in-perspective selection change — is
+ * worth its own back/forward history entry) and renders directly, rather
+ * than relying solely on the async 'hashchange' event. Discards the two
+ * transient, file/element-scoped drafts the same way every other
+ * cross-navigation already does (DEC-10/FLOW-4 philosophy) — a
+ * perspective switch is a bigger navigation jump than any of those.
+ */
+function setPerspective(id) {
+  if (!Object.prototype.hasOwnProperty.call(PERSPECTIVES, id)) return;
+  currentPerspective = id;
+  if (rawYamlEditDraft) rawYamlEditDraft = null;
+  if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
+  location.hash = currentRouteHash();
+  render();
+}
+
+// =====================================================================
+// Resizable shell panels (layout adapted from archi-edtior.html) — sizes
+// persist in localStorage, keyed per panel id, read back into the
+// template on every render() (never set imperatively once at boot: a
+// render() replaces #app's whole innerHTML on every click/edit, which
+// would otherwise wipe out an imperatively-set inline style the very
+// next time anything is clicked).
+// =====================================================================
+const PANEL_SIZE_STORAGE_PREFIX = 'archicode-standalone-editor:panel-size:';
+
+const panelSizeStorage = {
+  get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage unavailable */ } },
+  remove(key) { try { localStorage.removeItem(key); } catch (e) { /* storage unavailable */ } }
+};
+
+/** The inline `style="..."` attribute content for a resizable panel, from its persisted size (or '' if none saved). */
+function savedPanelSizeStyle(panelId, property) {
+  const raw = panelSizeStorage.get(PANEL_SIZE_STORAGE_PREFIX + panelId + ':' + property);
+  const size = Number(raw);
+  return size > 0 ? (property + ': ' + size + 'px;') : '';
+}
 
 // Raw-YAML editor's one pending draft (run-0009, task-005; TDD-0009
 // DEC-6/DEC-10, CTR-2) — holds { relPath, text, error } for the single
@@ -1228,6 +1460,7 @@ function commitElementEdit(reference, mutatorFn) {
   const result = mutatorFn(node, parentArray, indexInParent);
   mf.rawText = serializeManifestFile(mf.header, mf.content);
   mf.dirty = true; // TDD-0010 DEC-8 — every structural edit marks its file dirty for the next save
+  AppState.dirtyReferences.add(reference); // UX review follow-up — element-level "modified" tracking
   saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
   rebuildIndexAndRender();
   return result;
@@ -1286,6 +1519,7 @@ function commitCreateTopLevelElement({ category, headerKind, attachUnderReferenc
   };
   AppState.manifestFiles.push(mf);
   AppState.manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath)); // matches loadWorkspace's own ordering
+  AppState.dirtyReferences.add(reference); // UX review follow-up — element-level "modified" tracking
   saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
   rebuildIndexAndRender();
   return { createdReference: reference };
@@ -1360,6 +1594,12 @@ function commitDeleteElement(reference, category, affected) {
     const relationships = Array.isArray(ownerLocated.node.relationships) ? ownerLocated.node.relationships : [];
     ownerLocated.node.relationships = relationships.filter((r) => !deletedRefs.has(r && r.destination));
     touchedRelPaths.add(ownerLocated.mf.relPath);
+    AppState.dirtyReferences.add(ownerRef); // UX review follow-up — this owner's own relationships changed
+  }
+  // The deleted element (and any former descendant) no longer exists — drop
+  // any stale "modified" entry it may have held.
+  for (const deletedRef of deletedRefs) {
+    AppState.dirtyReferences.delete(deletedRef);
   }
 
   // Remove the element itself: splice from its parent array (nested), or
@@ -1566,6 +1806,20 @@ function hasUnsavedChanges() {
 }
 
 /**
+ * Drop every `dirtyReferences` entry whose element currently lives in
+ * `relPath` (UX review follow-up) — called once a file's write actually
+ * succeeds, mirroring that file's own `f.dirty = false` reset so a save
+ * that fails partway through still only clears what really saved.
+ */
+function clearDirtyReferencesForFile(relPath) {
+  for (const category of ['application', 'technology']) {
+    for (const record of AppState.index[category].values()) {
+      if (record.sourceFile === relPath) AppState.dirtyReferences.delete(record.reference);
+    }
+  }
+}
+
+/**
  * The full save pipeline (TDD-0010 DEC-9, resolves FR-13 through FR-17 and
  * `Q-1`): acquire `readwrite` permission first (DEC-7); if denied, stop
  * writing nothing. Otherwise stale-check *every* dirty file, pending
@@ -1624,6 +1878,7 @@ async function saveAllChanges() {
       f.dirty = false;
       f.existedOnDisk = true;
       f.lastKnownDiskModified = await statManifestFile(f.relPath); // FR-19 — this file's own new baseline
+      clearDirtyReferencesForFile(f.relPath); // UX review follow-up
     } catch (e) {
       saveStatus = { state: 'error', failedFile: f.relPath, message: e && e.message ? e.message : String(e) };
       render();
@@ -1747,6 +2002,22 @@ function rewriteReferencePrefix(oldPrefix, newPrefix) {
     }
   }
   AppState.expanded = rewritten;
+
+  // UX review follow-up: dirtyReferences holds the *old* reference (added
+  // by commitElementEdit before this rename-aware rewrite runs) — carry it
+  // over to the new one, same prefix-rewrite as AppState.expanded above.
+  const rewrittenDirty = new Set();
+  for (const key of AppState.dirtyReferences) {
+    if (key === oldPrefix) {
+      rewrittenDirty.add(newPrefix);
+    } else if (key.indexOf(oldPrefix + '.') === 0) {
+      rewrittenDirty.add(newPrefix + key.slice(oldPrefix.length));
+    } else {
+      rewrittenDirty.add(key);
+    }
+  }
+  AppState.dirtyReferences = rewrittenDirty;
+
   render();
 }
 
@@ -1928,18 +2199,33 @@ function renderSaveStatusHtml() {
   return '';
 }
 
+/** The three perspective tabs (header, left of the folder actions) — active one marked, UX review follow-up. */
+function renderPerspectiveTabsHtml() {
+  let html = '<span class="perspective-tabs">';
+  for (const id of Object.keys(PERSPECTIVES)) {
+    const active = id === currentPerspective ? ' active' : '';
+    html += '<button type="button" class="perspective-tab' + active + '" data-action="set-perspective" data-perspective="' + id + '">' +
+              escapeHtml(PERSPECTIVES[id].label) +
+            '</button>';
+  }
+  html += '</span>';
+  return html;
+}
+
 function renderTopPanelHtml() {
   if (!AppState.folder) return '';
-  let html = '<div class="top-panel">' +
+  let html = '<header class="top-panel col-span-3 flex items-center gap-4 px-4 min-h-10 h-12 overflow-hidden">' +
       '<span class="folder-name" title="Browsers do not expose an absolute filesystem path for a picked folder (ASM-1/DEC-11) — this shows the folder\'s own name and its position as the browsing root instead.">' +
         escapeHtml(AppState.folder.name) + '<span class="folder-root-slash">/</span>' +
       '</span>' +
+      renderPerspectiveTabsHtml() +
+      '<span class="flex-1"></span>' +
       '<button type="button" data-action="close-folder">Close</button>';
   if (hasUnsavedChanges()) {
     html += '<button type="button" data-action="save-all-changes">Save all changes</button>';
   }
   html += renderSaveStatusHtml();
-  html += '</div>';
+  html += '</header>';
   return html;
 }
 
@@ -1960,6 +2246,9 @@ function renderTreeNodeHtml(record) {
   }
   html += '<span class="tree-node-kind">' + escapeHtml(record.kind) + '</span>';
   html += '<span class="tree-node-label">' + escapeHtml(label) + '</span>';
+  if (AppState.dirtyReferences.has(record.reference)) {
+    html += '<span class="modified-badge" title="This element has unsaved changes">modified</span>';
+  }
   html += '</div>';
   if (hasChildren && isExpanded) {
     html += '<div class="tree-node-children">';
@@ -1972,16 +2261,16 @@ function renderTreeNodeHtml(record) {
   return html;
 }
 
-function renderTreeBranchHtml(branchKey, title, category, elements, isExpanded) {
+function renderTreeBranchHtml(branchKey, title, category, elements, isExpanded, showAddButton) {
   let html = '<div class="nav-section">';
   html += '<div class="tree-branch-header" data-action="toggle-branch" data-branch="' + escapeHtml(branchKey) + '">' +
             '<span class="tree-branch-title">' + (isExpanded ? '▾' : '▸') + ' ' + escapeHtml(title) + '</span>' +
-            '<button type="button" class="tree-branch-add-btn" data-action="open-create-top-level-form" data-category="' + escapeHtml(category) + '">+ Add</button>' +
+            (showAddButton ? ('<button type="button" class="tree-branch-add-btn" data-action="open-create-top-level-form" data-category="' + escapeHtml(category) + '">+ Add</button>') : '') +
           '</div>';
   if (isExpanded) {
     html += '<div class="tree-branch-body">';
     if (!elements || elements.length === 0) {
-      html += '<div class="tree-empty">No elements</div>';
+      html += '<div class="tree-empty">' + (showAddButton ? 'No elements yet — use "+ Add" above to create one.' : 'No elements.') + '</div>';
     } else {
       for (const el of elements) {
         html += renderTreeNodeHtml(el);
@@ -1993,33 +2282,39 @@ function renderTreeBranchHtml(branchKey, title, category, elements, isExpanded) 
   return html;
 }
 
-function renderLeftPanelHtml() {
-  const settingsActive = AppState.selection.kind === 'settings' ? ' active' : '';
+/**
+ * The Applications/Environments element tree, no wrapper — shared by the
+ * Elements and Diagram perspectives' left panel. `showAddButton` is false
+ * for Diagram: its left panel is pure navigation (DEC — Diagram has no
+ * center surface to land a newly-created element on, only Elements does).
+ */
+function renderElementsNavHtml(showAddButton) {
   const appElements = (AppState.workspace && AppState.workspace.application && AppState.workspace.application.elements) || [];
   const techElements = (AppState.workspace && AppState.workspace.technology && AppState.workspace.technology.elements) || [];
+  return renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
+         renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments, showAddButton);
+}
 
-  let html = '<div class="left-panel">';
-  html += '<div class="nav-section">';
-  html += '<div class="nav-row settings-row' + settingsActive + '" data-action="select-settings">Settings</div>';
-  html += '</div>';
-
-  html += renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications);
-  html += renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments);
-
-  html += '<div class="nav-section">';
+/** The manifest files list, no wrapper — the Files perspective's left panel. */
+function renderFilesNavHtml() {
+  let html = '<div class="nav-section">';
   html += '<div class="nav-section-title">Files</div>';
   for (const mf of AppState.manifestFiles) {
     const active = (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) ? ' active' : '';
     const errorClass = mf.error ? ' has-error' : '';
     html += '<div class="nav-row file-row' + active + errorClass + '" data-action="select-file" data-relpath="' + escapeHtml(mf.relPath) + '">' +
               '<span class="file-relpath">' + escapeHtml(mf.relPath) + '</span>' +
+              (mf.dirty ? '<span class="modified-badge" title="Unsaved changes">modified</span>' : '') +
               (mf.error ? '<span class="error-badge" title="' + escapeHtml(mf.error) + '">error</span>' : '') +
             '</div>';
   }
   html += '</div>';
-
-  html += '</div>';
   return html;
+}
+
+/** The left panel's `<nav>` shell — one resizable panel id shared by every perspective that uses it. */
+function renderLeftPanelWrapperHtml(innerHtml) {
+  return '<nav id="panel-left" class="left-panel min-w-48 w-64 max-w-[40vw]" style="' + savedPanelSizeStyle('panel-left', 'width') + '">' + innerHtml + '</nav>';
 }
 
 // ---- Center panel (FR-11..16, AC-5..10, DEC-6/DEC-7/DEC-10) ----
@@ -2040,39 +2335,39 @@ function renderSettingsViewHtml() {
     '<div class="settings-view">' +
       '<h2>Settings</h2>' +
       '<div class="settings-group"><h3>Manifests</h3>' +
-        '<div class="settings-row"><span class="settings-label">Paths</span><span class="settings-value">' +
+        '<div class="settings-row"><label class="settings-label" for="settings-manifests-paths-input">Paths</label><span class="settings-value">' +
           '<textarea id="settings-manifests-paths-input">' + escapeHtml(settings.manifests.paths.join('\n')) + '</textarea>' +
           '<span class="inline-error" id="settings-manifests-paths-error"></span>' +
         '</span></div>' +
       '</div>' +
       '<div class="settings-group"><h3>Relationships</h3>' +
-        '<div class="settings-row"><span class="settings-label">Default synthetic label</span><span class="settings-value">' +
+        '<div class="settings-row"><label class="settings-label" for="settings-default-label-input">Default synthetic label</label><span class="settings-value">' +
           '<input type="text" id="settings-default-label-input" value="' + escapeHtml(settings.relationships.defaultSyntheticLabel) + '">' +
         '</span></div>' +
       '</div>' +
       '<div class="settings-group"><h3>Views</h3>' +
-        '<div class="settings-row"><span class="settings-label">Path</span><span class="settings-value">' +
+        '<div class="settings-row"><label class="settings-label" for="settings-views-path-input">Path</label><span class="settings-value">' +
           '<input type="text" id="settings-views-path-input" value="' + escapeHtml(settings.views.path) + '">' +
           '<span class="inline-error" id="settings-views-path-error"></span>' +
         '</span></div>' +
-        '<div class="settings-row"><span class="settings-label">Labels</span><span class="settings-value">' +
+        '<div class="settings-row"><label class="settings-label" for="settings-views-labels-input">Labels (raw JSON)</label><span class="settings-value">' +
           '<textarea id="settings-views-labels-input">' + escapeHtml(JSON.stringify(settings.views.labels, null, 2)) + '</textarea>' +
           '<span class="inline-error" id="settings-views-labels-error"></span>' +
         '</span></div>' +
-        '<div class="settings-row"><span class="settings-label">Properties</span><span class="settings-value">' +
+        '<div class="settings-row"><label class="settings-label" for="settings-views-properties-input">Properties (raw JSON)</label><span class="settings-value">' +
           '<textarea id="settings-views-properties-input">' + escapeHtml(JSON.stringify(settings.views.properties, null, 2)) + '</textarea>' +
           '<span class="inline-error" id="settings-views-properties-error"></span>' +
         '</span></div>' +
       '</div>' +
       '<div class="settings-group"><h3>Facets</h3>' +
-        '<div class="settings-row"><span class="settings-label">Global enabled</span><span class="settings-value">' +
+        '<div class="settings-row"><label class="settings-label" for="settings-facets-global-enabled-input">Global enabled</label><span class="settings-value">' +
           '<input type="checkbox" id="settings-facets-global-enabled-input"' + (settings.facets.globalEnabled ? ' checked' : '') + '>' +
         '</span></div>' +
-        '<div class="settings-row"><span class="settings-label">Directory name template</span><span class="settings-value">' +
+        '<div class="settings-row"><label class="settings-label" for="settings-facets-directory-template-input">Directory name template</label><span class="settings-value">' +
           '<input type="text" id="settings-facets-directory-template-input" value="' + escapeHtml(settings.facets.directoryNameTemplate) + '">' +
           '<span class="inline-error" id="settings-facets-directory-template-error"></span>' +
         '</span></div>' +
-        '<div class="settings-row"><span class="settings-label">Customs</span><span class="settings-value">' +
+        '<div class="settings-row"><label class="settings-label" for="settings-facets-customs-input">Customs (raw JSON)</label><span class="settings-value">' +
           '<textarea id="settings-facets-customs-input">' + escapeHtml(JSON.stringify(settings.facets.customs, null, 2)) + '</textarea>' +
           '<span class="inline-error" id="settings-facets-customs-error"></span>' +
         '</span></div>' +
@@ -2082,6 +2377,20 @@ function renderSettingsViewHtml() {
       '</span></div>' +
     '</div>'
   );
+}
+
+/**
+ * A `.element-header`: a label group (name/kind, left) and an actions
+ * group (buttons, right) — shared by the element view/edit headers, the
+ * file-edition header, and the Diagram perspective's map header (UX
+ * review follow-up: label and tag on the left, actions on the right,
+ * rather than everything packed left-to-right in one row).
+ */
+function renderElementHeaderHtml(labelHtml, actionsHtml) {
+  return '<div class="element-header">' +
+           '<div class="element-header-label">' + labelHtml + '</div>' +
+           '<div class="element-header-actions">' + (actionsHtml || '') + '</div>' +
+         '</div>';
 }
 
 /**
@@ -2100,35 +2409,31 @@ function renderFileViewHtml(relPath) {
   const textareaValue = hasDraft ? rawYamlEditDraft.text : mf.rawText;
   const draftError = hasDraft ? rawYamlEditDraft.error : null;
   let html = '<div class="file-view">';
-  html += '<h2>' + escapeHtml(mf.relPath) + '</h2>';
+  // Header: file name (left), Save/Reload (right) — same .element-header
+  // split every other center-view header uses (UX review follow-up).
+  html += renderElementHeaderHtml(
+    '<h2>' + escapeHtml(mf.relPath) + '</h2>',
+    '<button type="button" data-action="commit-file-edit" data-relpath="' + escapeHtml(relPath) + '">Save</button>' +
+    '<button type="button" data-action="reload-file-edit" data-relpath="' + escapeHtml(relPath) + '">Reload</button>'
+  );
   if (draftError) {
     html += '<div class="error-panel"><strong>Parse error:</strong> ' + escapeHtml(draftError) + '</div>';
   } else if (mf.error) {
     html += '<div class="error-panel"><strong>Parse error:</strong> ' + escapeHtml(mf.error) + '</div>';
   }
-  html += '<textarea id="file-edit-textarea" class="raw-yaml" data-relpath="' + escapeHtml(relPath) + '">' + escapeHtml(textareaValue) + '</textarea>';
-  html += '<div class="field-row"><span class="field-label"></span><span class="field-value">' +
-            '<button type="button" data-action="commit-file-edit" data-relpath="' + escapeHtml(relPath) + '">Save</button>' +
-          '</span></div>';
+  html += '<textarea id="file-edit-textarea" class="raw-yaml" data-relpath="' + escapeHtml(relPath) + '" aria-label="Raw YAML content of ' + escapeHtml(relPath) + '">' + escapeHtml(textareaValue) + '</textarea>';
   html += '</div>';
   return html;
 }
 
-function renderElementViewHtml(reference) {
-  const record = findElementRecord(reference);
-  if (!record) return '<div class="center-placeholder">Element not found: ' + escapeHtml(reference) + '</div>';
-
-  let html = '<div class="element-view">';
-
-  // (a) placeholder diagram area — never populated with real content (whole-wave non-goal).
-  html += '<div class="diagram-placeholder">Diagram view is not available in this phase.</div>';
-
-  html += '<div class="element-header"><h2>' + escapeHtml(record.name || record.id) + '</h2>' +
-            '<span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>' +
-            '<button type="button" data-action="toggle-element-edit">Edit</button></div>';
-
-  // (b) qualitative info.
-  html += '<div class="element-qualitative">';
+/**
+ * Id/Reference/Name/Description/Qualifiers/Tags field-rows for `record` —
+ * factored out (UX review follow-up) so both the read-only element view
+ * below and the Diagram perspective's "Properties" panel render the exact
+ * same fields from the exact same code.
+ */
+function renderElementPropertiesHtml(record) {
+  let html = '';
   html += '<div class="field-row"><span class="field-label">Id</span><span class="field-value">' + escapeHtml(record.id) + '</span></div>';
   html += '<div class="field-row"><span class="field-label">Reference</span><span class="field-value">' + escapeHtml(record.reference) + '</span></div>';
   html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' + (record.name != null ? escapeHtml(record.name) : '<span class="muted">none</span>') + '</span></div>';
@@ -2152,28 +2457,56 @@ function renderElementViewHtml(reference) {
     html += '<span class="muted">none</span>';
   }
   html += '</span></div>';
+  return html;
+}
 
-  html += '<div class="field-row"><span class="field-label">Relationships</span><span class="field-value">';
-  if (record.relationships && record.relationships.length) {
-    html += '<ul class="relationship-list">';
-    for (const rel of record.relationships) {
-      const qualifiersText = (rel.qualifiers && rel.qualifiers.length) ? ' (' + rel.qualifiers.map((q) => escapeHtml(q)).join(', ') + ')' : '';
-      if (rel.resolved) {
-        html += '<li><button type="button" class="relationship-link" data-action="goto-element" data-ref="' + escapeHtml(rel.destination) + '">' +
-                  escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + escapeHtml(rel.destination) +
-                '</button></li>';
-      } else {
-        html += '<li><span class="relationship-dangling">' +
-                  escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + escapeHtml(rel.destination) +
-                  '<span class="dangling-badge">dangling</span>' +
-                '</span></li>';
-      }
+/**
+ * The element's egress relationships as a clickable list (resolved ones
+ * jump to their destination's own element view; dangling ones are
+ * flagged, not clickable) — factored out (UX review follow-up) so both
+ * the read-only element view below and the Diagram perspective's
+ * "Relations" panel render the exact same list from the exact same code.
+ */
+function renderElementRelationshipsHtml(record) {
+  if (!(record.relationships && record.relationships.length)) return '<span class="muted">none</span>';
+  let html = '<ul class="relationship-list">';
+  for (const rel of record.relationships) {
+    const qualifiersText = (rel.qualifiers && rel.qualifiers.length) ? ' (' + rel.qualifiers.map((q) => escapeHtml(q)).join(', ') + ')' : '';
+    if (rel.resolved) {
+      html += '<li><button type="button" class="relationship-link" data-action="goto-element" data-ref="' + escapeHtml(rel.destination) + '">' +
+                escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + escapeHtml(rel.destination) +
+              '</button></li>';
+    } else {
+      html += '<li><span class="relationship-dangling">' +
+                escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + escapeHtml(rel.destination) +
+                '<span class="dangling-badge">dangling</span>' +
+              '</span></li>';
     }
-    html += '</ul>';
-  } else {
-    html += '<span class="muted">none</span>';
   }
-  html += '</span></div>';
+  html += '</ul>';
+  return html;
+}
+
+function renderElementViewHtml(reference) {
+  const record = findElementRecord(reference);
+  if (!record) return '<div class="center-placeholder">Element not found: ' + escapeHtml(reference) + '</div>';
+
+  let html = '<div class="element-view">';
+
+  // Header first — it's sticky (stays pinned to the top of .center-panel's
+  // own scroll), so it needs to be the first thing in the scroll order too.
+  html += renderElementHeaderHtml(
+    '<h2>' + escapeHtml(record.name || record.id) + '</h2><span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>',
+    '<button type="button" data-action="toggle-element-edit">Edit</button>'
+  );
+
+  // (a) placeholder diagram area — never populated with real content (whole-wave non-goal).
+  html += '<div class="diagram-placeholder">Diagram view is not available in this phase.</div>';
+
+  // (b) qualitative info.
+  html += '<div class="element-qualitative">';
+  html += renderElementPropertiesHtml(record);
+  html += '<div class="field-row"><span class="field-label">Relationships</span><span class="field-value">' + renderElementRelationshipsHtml(record) + '</span></div>';
   html += '</div>'; // .element-qualitative
 
   // (c) quantitative info — always shown; children.length naturally covers the
@@ -2273,10 +2606,10 @@ function renderRelationshipEditRowHtml(reference, rel, index) {
   const tagsText = rel ? formatCommaKvList(rel.tags) : '';
   let html = '<div class="relationship-edit-row' + (isNew ? ' relationship-edit-row-new' : '') + '"' +
                (isNew ? '' : ' data-index="' + index + '"') + '>';
-  html += '<input type="text" class="rel-destination-input" placeholder="destination" value="' + escapeHtml(destination) + '">';
-  html += '<input type="text" class="rel-label-input" placeholder="label" value="' + escapeHtml(label || '') + '">';
-  html += '<input type="text" class="rel-qualifiers-input" placeholder="qualifiers (comma-separated)" value="' + escapeHtml(qualifiersText) + '">';
-  html += '<input type="text" class="rel-tags-input" placeholder="tags (k=v, comma-separated)" value="' + escapeHtml(tagsText) + '">';
+  html += '<input type="text" class="rel-destination-input" placeholder="destination" aria-label="Relationship destination" list="archicode-all-references" value="' + escapeHtml(destination) + '">';
+  html += '<input type="text" class="rel-label-input" placeholder="label" aria-label="Relationship label" value="' + escapeHtml(label || '') + '">';
+  html += '<input type="text" class="rel-qualifiers-input" placeholder="qualifiers (comma-separated)" aria-label="Relationship qualifiers, comma-separated" value="' + escapeHtml(qualifiersText) + '">';
+  html += '<input type="text" class="rel-tags-input" placeholder="tags (k=v, comma-separated)" aria-label="Relationship tags, comma-separated key=value pairs" value="' + escapeHtml(tagsText) + '">';
   if (isNew) {
     html += '<button type="button" data-action="add-relationship" data-ref="' + refAttr + '">Add</button>';
   } else {
@@ -2303,16 +2636,16 @@ function renderElementEditionFormHtml(reference) {
   const refAttr = escapeHtml(reference);
   let html = '<div class="element-edition-form">';
 
-  html += '<div class="element-header"><h2>' + escapeHtml(record.name || record.id) + '</h2>' +
-            '<span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>' +
-            '<button type="button" data-action="toggle-element-edit">Back to view</button>' +
-            (childKindOptionsFor(record).length > 0
-              ? '<button type="button" data-action="open-create-child-form" data-ref="' + refAttr + '">Add child</button>'
-              : '') +
-            // TDD-0010 DEC-4: always present — even a leaf can be the
-            // destination of a relationship elsewhere.
-            '<button type="button" data-action="request-delete-element" data-ref="' + refAttr + '">Delete</button>' +
-          '</div>';
+  html += renderElementHeaderHtml(
+    '<h2>' + escapeHtml(record.name || record.id) + '</h2><span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>',
+    '<button type="button" data-action="toggle-element-edit">Back to view</button>' +
+    (childKindOptionsFor(record).length > 0
+      ? '<button type="button" data-action="open-create-child-form" data-ref="' + refAttr + '">Add child</button>'
+      : '') +
+    // TDD-0010 DEC-4: always present — even a leaf can be the
+    // destination of a relationship elsewhere.
+    '<button type="button" data-action="request-delete-element" data-ref="' + refAttr + '">Delete</button>'
+  );
 
   // TDD-0010 DEC-4: a pending delete confirmation for this exact element
   // overlays the already-rendering edition view below — it never changes
@@ -2337,14 +2670,14 @@ function renderElementEditionFormHtml(reference) {
 
   // id / name / description — batched into one save-element-basics commit.
   html += '<div class="edition-section">';
-  html += '<div class="field-row"><span class="field-label">Id</span><span class="field-value">' +
+  html += '<div class="field-row"><label class="field-label" for="edit-id-input">Id</label><span class="field-value">' +
             '<input type="text" id="edit-id-input" value="' + escapeHtml(record.id) + '">' +
             '<span class="inline-error" id="edit-id-error"></span>' +
           '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' +
+  html += '<div class="field-row"><label class="field-label" for="edit-name-input">Name</label><span class="field-value">' +
             '<input type="text" id="edit-name-input" value="' + escapeHtml(record.name != null ? record.name : '') + '">' +
           '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' +
+  html += '<div class="field-row"><label class="field-label" for="edit-description-input">Description</label><span class="field-value">' +
             '<textarea id="edit-description-input">' + escapeHtml(record.description != null ? record.description : '') + '</textarea>' +
           '</span></div>';
   html += '<div class="field-row"><span class="field-label"></span><span class="field-value">' +
@@ -2362,7 +2695,7 @@ function renderElementEditionFormHtml(reference) {
     ).join('');
   }
   html += '<div class="edition-add-row">' +
-            '<input type="text" id="add-qualifier-input" placeholder="new qualifier">' +
+            '<input type="text" id="add-qualifier-input" placeholder="new qualifier" aria-label="New qualifier">' +
             '<button type="button" data-action="add-qualifier" data-ref="' + refAttr + '">Add</button>' +
             '<span class="inline-error" id="add-qualifier-error"></span>' +
           '</div>';
@@ -2378,8 +2711,8 @@ function renderElementEditionFormHtml(reference) {
     ).join('') + '</ul>';
   }
   html += '<div class="edition-add-row">' +
-            '<input type="text" id="add-tag-key-input" placeholder="key">' +
-            '<input type="text" id="add-tag-value-input" placeholder="value">' +
+            '<input type="text" id="add-tag-key-input" placeholder="key" aria-label="New tag key">' +
+            '<input type="text" id="add-tag-value-input" placeholder="value" aria-label="New tag value">' +
             '<button type="button" data-action="add-tag" data-ref="' + refAttr + '">Add</button>' +
             '<span class="inline-error" id="add-tag-error"></span>' +
           '</div>';
@@ -2406,7 +2739,7 @@ function renderElementEditionFormHtml(reference) {
       ).join('');
     }
     html += '<div class="edition-add-row">' +
-              '<input type="text" id="add-application-input" placeholder="new application">' +
+              '<input type="text" id="add-application-input" placeholder="new application" aria-label="New application reference" list="archicode-application-references">' +
               '<button type="button" data-action="add-application" data-ref="' + refAttr + '">Add</button>' +
               '<span class="inline-error" id="add-application-error"></span>' +
             '</div>';
@@ -2439,24 +2772,24 @@ function renderCreateElementFormHtml(sel) {
   if (sel.createMode === 'child') {
     html += '<div class="field-row"><span class="field-label">Parent</span><span class="field-value">' + escapeHtml(sel.parentReference) + '</span></div>';
   }
-  html += '<div class="field-row"><span class="field-label">Kind</span><span class="field-value">' +
+  html += '<div class="field-row"><label class="field-label" for="create-kind-select">Kind</label><span class="field-value">' +
             '<select id="create-kind-select">' +
               kindOptions.map((k) => '<option value="' + escapeHtml(k) + '">' + escapeHtml(k) + '</option>').join('') +
             '</select>' +
           '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Id</span><span class="field-value">' +
+  html += '<div class="field-row"><label class="field-label" for="create-id-input">Id</label><span class="field-value">' +
             '<input type="text" id="create-id-input">' +
             '<span class="inline-error" id="create-id-error"></span>' +
           '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' +
+  html += '<div class="field-row"><label class="field-label" for="create-name-input">Name</label><span class="field-value">' +
             '<input type="text" id="create-name-input">' +
           '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' +
+  html += '<div class="field-row"><label class="field-label" for="create-description-input">Description</label><span class="field-value">' +
             '<textarea id="create-description-input"></textarea>' +
           '</span></div>';
   if (sel.createMode === 'top-level') {
-    html += '<div class="field-row"><span class="field-label">Attach under</span><span class="field-value">' +
-              '<input type="text" id="create-attach-under-input" placeholder="(optional) existing element reference">' +
+    html += '<div class="field-row"><label class="field-label" for="create-attach-under-input">Attach under</label><span class="field-value">' +
+              '<input type="text" id="create-attach-under-input" placeholder="(optional) existing element reference" list="archicode-all-references">' +
               '<span class="inline-error" id="create-attach-under-error"></span>' +
             '</span></div>';
   }
@@ -2469,28 +2802,167 @@ function renderCreateElementFormHtml(sel) {
   return html;
 }
 
+/**
+ * `<datalist>`s backing the reference-typing inputs above (UX review
+ * follow-up): one over every known reference (application + technology),
+ * used by "Attach under" and a relationship's "destination"; one over
+ * application references only, used by a node's "applications" field,
+ * since that field only ever points at application elements.
+ */
+function renderReferenceDatalistsHtml() {
+  const appRefs = Array.from(AppState.index.application.keys());
+  const techRefs = Array.from(AppState.index.technology.keys());
+  const optionsHtml = (refs) => refs.map((r) => '<option value="' + escapeHtml(r) + '">').join('');
+  return (
+    '<datalist id="archicode-all-references">' + optionsHtml(appRefs.concat(techRefs)) + '</datalist>' +
+    '<datalist id="archicode-application-references">' + optionsHtml(appRefs) + '</datalist>'
+  );
+}
+
+/** The Elements perspective's center — element view/edit or the create form; everything else (notably a 'file' selection, which belongs to the Files perspective) falls back to the same placeholder as "nothing selected". */
 function renderCenterPanelHtml() {
   const sel = AppState.selection;
-  if (sel.kind === 'settings') return renderSettingsViewHtml();
-  if (sel.kind === 'file') return renderFileViewHtml(sel.key);
   if (sel.kind === 'create') return renderCreateElementFormHtml(sel);
   if (sel.kind === 'element') {
     return sel.mode === 'edit' ? renderElementEditionFormHtml(sel.key) : renderElementViewHtml(sel.key);
   }
-  return '<div class="center-placeholder">Select an item on the left.</div>';
+  return '<div class="center-placeholder">Select an item on the left, or use "+ Add" above the Applications/Environments tree to create your first element.</div>';
 }
 
 // ---- Shell assembly + delegated event handling ----
 
+/**
+ * One resize handle, delegated-`pointerdown`-driven (see
+ * handleAppPointerDown) — markup only mirrors the archi-edtior.html
+ * reference's data-resize/data-axis/data-sign contract.
+ */
+function renderResizeHandleHtml(panelId, axis, sign) {
+  const cursorClass = axis === 'x' ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize';
+  return '<div data-resize="' + panelId + '" data-axis="' + axis + '" data-sign="' + sign + '" class="' + cursorClass + ' touch-none"></div>';
+}
+
+/**
+ * Elements perspective — navigate Elements on the left, view/edit/create
+ * in the center. Right/bottom are unused by this perspective (Diagram
+ * owns the properties/relations side panels) — `null`, not rendered at
+ * all (see renderShellHtml): hidden, not a disabled placeholder.
+ */
+function renderElementsPerspectiveHtml() {
+  return {
+    left: renderLeftPanelWrapperHtml(renderElementsNavHtml(true)),
+    center: renderCenterPanelHtml(),
+    right: null,
+    bottom: null
+  };
+}
+
+/**
+ * Files perspective — navigate manifest files on the left, raw-YAML edit
+ * (its own header: file name, Save, Reload) in the center. Right/bottom
+ * unused/hidden, same as Elements.
+ */
+function renderFilesPerspectiveHtml() {
+  const sel = AppState.selection;
+  return {
+    left: renderLeftPanelWrapperHtml(renderFilesNavHtml()),
+    center: sel.kind === 'file' ? renderFileViewHtml(sel.key) : '<div class="center-placeholder">Select a file on the left.</div>',
+    right: null,
+    bottom: null
+  };
+}
+
+/**
+ * Diagram perspective — the selected element's map (placeholder: real
+ * diagram rendering is out of scope for this wave, same as the inert
+ * diagram area it's relocated from — see wbc-003's Vision), its
+ * properties on the right, its relationships on the bottom. Falls back to
+ * a "select an element" placeholder in all three regions when nothing, or
+ * something other than an element (a file), is selected —
+ * `AppState.selection` is shared across every perspective, not reset on
+ * switch, so this is a real state this perspective can land in. Its left
+ * panel's tree has no "+ Add" (DEC — Diagram has no center surface to
+ * land a newly-created element on; see renderElementsNavHtml).
+ */
+function renderDiagramPerspectiveHtml() {
+  const sel = AppState.selection;
+  const record = sel.kind === 'element' ? findElementRecord(sel.key) : null;
+  const none = '<div class="center-placeholder">Select an element on the left.</div>';
+  return {
+    left: renderLeftPanelWrapperHtml(renderElementsNavHtml(false)),
+    center: record
+      ? (renderElementHeaderHtml('<h2>' + escapeHtml(record.name || record.id) + '</h2><span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>', '') +
+         '<div class="diagram-placeholder">Diagram view is not available in this phase.</div>')
+      : none,
+    right: record ? ('<h3>Properties</h3>' + renderElementPropertiesHtml(record)) : none,
+    bottom: record ? ('<h3>Relations</h3>' + renderElementRelationshipsHtml(record)) : none
+  };
+}
+
+/**
+ * Settings perspective — the workspace settings form, standalone (there
+ * is only one settings page, so unlike every other region it doesn't
+ * depend on `AppState.selection` at all). Left/right/bottom are all
+ * hidden — no sub-navigation exists yet (a natural later addition, not
+ * invented now).
+ */
+function renderSettingsPerspectiveHtml() {
+  return { left: null, center: renderSettingsViewHtml(), right: null, bottom: null };
+}
+
+/** Dispatch to the active perspective's region content. */
+function renderActivePerspectiveHtml() {
+  if (currentPerspective === 'diagram') return renderDiagramPerspectiveHtml();
+  if (currentPerspective === 'files') return renderFilesPerspectiveHtml();
+  if (currentPerspective === 'settings') return renderSettingsPerspectiveHtml();
+  return renderElementsPerspectiveHtml();
+}
+
+/**
+ * The resizable grid shell (layout adapted from archi-edtior.html):
+ * header spans the top, then whichever of the active perspective's
+ * left/center/right/bottom regions it actually uses — a `null` region is
+ * not rendered at all (no panel, no resize handle, no reserved space),
+ * per-perspective, rather than shown disabled. The content area always
+ * lands in the grid's 3rd (1fr) column via `col-start-3`, whether or not
+ * the left nav (columns 1-2) is present — an empty, item-less `auto`
+ * column collapses to zero width on its own, so this needs no conditional
+ * grid-template-columns.
+ */
 function renderShellHtml() {
-  let html = '<div class="app-shell">';
+  let html = '<div class="app-shell grid grid-cols-[auto_auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">';
   html += renderTopPanelHtml();
   if (AppState.fatalError) {
-    html += '<div class="main-area"><div class="error-panel shell-error-panel"><strong>Error:</strong> ' + escapeHtml(AppState.fatalError) + '</div></div>';
+    html += '<div class="col-span-3 min-h-0"><div class="error-panel shell-error-panel"><strong>Error:</strong> ' + escapeHtml(AppState.fatalError) + '</div></div>';
   } else if (!AppState.workspace) {
-    html += '<div class="main-area"><div class="center-placeholder">Loading…</div></div>';
+    html += '<div class="col-span-3 min-h-0"><div class="center-placeholder">Loading…</div></div>';
   } else {
-    html += '<div class="main-area">' + renderLeftPanelHtml() + '<div class="center-panel">' + renderCenterPanelHtml() + '</div></div>';
+    const p = renderActivePerspectiveHtml();
+
+    if (p.left) {
+      html += p.left;
+      html += renderResizeHandleHtml('panel-left', 'x', '1');
+    }
+
+    if (!p.right && !p.bottom) {
+      html += '<main id="panel-center" class="center-panel col-start-3 min-h-0 min-w-0">' + p.center + '</main>';
+    } else {
+      html += '<div class="grid min-h-0 min-w-0 col-start-3 grid-rows-[minmax(0,1fr)_auto_auto]">';
+      if (p.right) {
+        html += '<div class="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_auto_auto]">';
+        html += '<main id="panel-center" class="center-panel min-h-0 min-w-0">' + p.center + '</main>';
+        html += renderResizeHandleHtml('panel-right', 'x', '-1');
+        html += '<aside id="panel-right" class="right-panel min-w-56 w-72 max-w-[40vw]" style="' + savedPanelSizeStyle('panel-right', 'width') + '">' + p.right + '</aside>';
+        html += '</div>';
+      } else {
+        html += '<main id="panel-center" class="center-panel min-h-0 min-w-0">' + p.center + '</main>';
+      }
+      if (p.bottom) {
+        html += renderResizeHandleHtml('panel-bottom', 'y', '-1');
+        html += '<section id="panel-bottom" class="bottom-panel min-h-32 h-48 max-h-[60vh]" style="' + savedPanelSizeStyle('panel-bottom', 'height') + '">' + p.bottom + '</section>';
+      }
+      html += '</div>';
+    }
+    html += renderReferenceDatalistsHtml();
   }
   html += '</div>';
   return html;
@@ -2517,16 +2989,8 @@ function handleAppClick(e) {
     case 'close-folder':
       closeFolder();
       break;
-    case 'select-settings':
-      // DEC-10/FLOW-4: discard a pending raw-YAML draft when navigating
-      // away from the file it belongs to (settings is never that file).
-      if (rawYamlEditDraft) rawYamlEditDraft = null;
-      // TDD-0010 DEC-4 (same FR-19-style philosophy): discard a pending
-      // delete confirmation the same way — settings is never the element
-      // it belongs to either.
-      if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
-      AppState.selection = { kind: 'settings', key: null, mode: 'view' };
-      render();
+    case 'set-perspective':
+      setPerspective(target.getAttribute('data-perspective'));
       break;
     case 'select-file': {
       const relPath = target.getAttribute('data-relpath');
@@ -2624,6 +3088,7 @@ function handleAppClick(e) {
       break;
     }
     case 'remove-qualifier': {
+      if (!confirm('Remove this qualifier?')) break;
       const reference = target.getAttribute('data-ref');
       const index = parseInt(target.getAttribute('data-index'), 10);
       commitElementEdit(reference, (node) => {
@@ -2649,6 +3114,7 @@ function handleAppClick(e) {
       break;
     }
     case 'remove-application': {
+      if (!confirm('Remove this application reference?')) break;
       const reference = target.getAttribute('data-ref');
       const index = parseInt(target.getAttribute('data-index'), 10);
       commitElementEdit(reference, (node) => {
@@ -2677,6 +3143,7 @@ function handleAppClick(e) {
       break;
     }
     case 'remove-tag': {
+      if (!confirm('Remove this tag?')) break;
       const reference = target.getAttribute('data-ref');
       const key = target.getAttribute('data-key');
       commitElementEdit(reference, (node) => {
@@ -2728,6 +3195,7 @@ function handleAppClick(e) {
       break;
     }
     case 'remove-relationship': {
+      if (!confirm('Remove this relationship?')) break;
       const reference = target.getAttribute('data-ref');
       const index = parseInt(target.getAttribute('data-index'), 10);
       commitElementEdit(reference, (node) => {
@@ -2795,6 +3263,15 @@ function handleAppClick(e) {
       const textarea = document.getElementById('file-edit-textarea');
       const newText = textarea ? textarea.value : '';
       commitFileEdit(relPath, newText);
+      break;
+    }
+    case 'reload-file-edit': {
+      // Discard any pending/rejected raw-YAML draft for this file, falling
+      // back to its live mf.rawText (not a disk re-read — the file was
+      // already loaded whole at open time, same as every other surface).
+      const relPath = target.getAttribute('data-relpath');
+      if (rawYamlEditDraft && rawYamlEditDraft.relPath === relPath) rawYamlEditDraft = null;
+      render();
       break;
     }
     case 'open-create-child-form': {
@@ -2872,6 +3349,10 @@ function handleAppClick(e) {
         node.elements.push(child);
         return { createdReference: parentReference + '.' + id };
       });
+      // UX review follow-up: the new child is wholly unsaved on its own,
+      // independent of the parent's own dirty state (already added inside
+      // commitElementEdit above).
+      AppState.dirtyReferences.add(result.createdReference);
 
       // FR-3: one extra render after commitElementEdit's own rebuild
       // render, which still carried the stale (create-form) selection.
@@ -2992,6 +3473,66 @@ function handleAppClick(e) {
   }
 }
 
+/**
+ * Drag-to-resize for the shell's panels (layout adapted from
+ * archi-edtior.html) — delegated on #app the same way handleAppClick is,
+ * rather than attached per-handle at mount time: render() replaces #app's
+ * entire innerHTML on every click/edit, which would silently detach a
+ * directly-attached listener the next time anything elsewhere is clicked.
+ * A drag gesture itself never touches AppState (only the panel's own
+ * inline style), so no render() ever fires mid-drag to invalidate the
+ * `panel`/`handle` references captured below.
+ */
+function handleAppPointerDown(e) {
+  const handle = e.target.closest('[data-resize]');
+  if (!handle) return;
+  const panel = document.getElementById(handle.dataset.resize);
+  if (!panel) return;
+
+  e.preventDefault();
+  const horizontal = handle.dataset.axis === 'x';
+  const sign = Number(handle.dataset.sign);
+  const property = horizontal ? 'width' : 'height';
+  const storageKey = PANEL_SIZE_STORAGE_PREFIX + handle.dataset.resize + ':' + property;
+
+  const start = horizontal ? e.clientX : e.clientY;
+  const rect = panel.getBoundingClientRect();
+  const startSize = horizontal ? rect.width : rect.height;
+
+  handle.setPointerCapture(e.pointerId);
+  handle.dataset.active = '';
+  document.body.classList.add('select-none');
+
+  const onMove = (moveEvent) => {
+    const delta = (horizontal ? moveEvent.clientX : moveEvent.clientY) - start;
+    panel.style[property] = (startSize + sign * delta) + 'px';
+  };
+  const onUp = () => {
+    handle.removeEventListener('pointermove', onMove);
+    delete handle.dataset.active;
+    document.body.classList.remove('select-none');
+
+    // Store the rendered size, already bounded by the panel's min-/max-*
+    // classes, so it reopens within range next time.
+    const size = horizontal ? panel.getBoundingClientRect().width : panel.getBoundingClientRect().height;
+    panelSizeStorage.set(storageKey, String(Math.round(size)));
+  };
+
+  handle.addEventListener('pointermove', onMove);
+  handle.addEventListener('pointerup', onUp, { once: true });
+  handle.addEventListener('pointercancel', onUp, { once: true });
+}
+
+/** Double-click a resize handle to forget its persisted size and fall back to the panel's default (its min-/max-/base-width Tailwind classes). */
+function handleAppDblClick(e) {
+  const handle = e.target.closest('[data-resize]');
+  if (!handle) return;
+  const horizontal = handle.dataset.axis === 'x';
+  const property = horizontal ? 'width' : 'height';
+  panelSizeStorage.remove(PANEL_SIZE_STORAGE_PREFIX + handle.dataset.resize + ':' + property);
+  render();
+}
+
 function render() {
   const app = document.getElementById('app');
 
@@ -3045,6 +3586,9 @@ function render() {
 
   app.innerHTML = renderShellHtml();
   app.addEventListener('click', handleAppClick);
+  app.addEventListener('pointerdown', handleAppPointerDown);
+  app.addEventListener('dblclick', handleAppDblClick);
+  syncHashFromState();
 }
 
 // =====================================================================
@@ -3052,11 +3596,29 @@ function render() {
 // =====================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+  syncPerspectiveFromHash(); // a bookmarked/shared "#/settings" etc. lands directly there
   if (!isFileSystemAccessSupported()) {
     render();
     return;
   }
   tryAutoReopen();
+});
+
+// Covers back/forward and a hand-edited URL — setPerspective() (the
+// in-app tab click) already renders directly, so this mostly re-confirms
+// what's already true, except for navigation setPerspective never sees.
+window.addEventListener('hashchange', () => {
+  syncPerspectiveFromHash();
+  render();
+});
+
+// A tab/window close or reload otherwise discards any edit not yet
+// written to disk with no warning at all (UX review follow-up).
+window.addEventListener('beforeunload', (e) => {
+  if (hasUnsavedChanges()) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
 });
 </script>
 </body>
