@@ -1,0 +1,7 @@
+header:
+  kind: "archicode.morin.io/solution"
+  version: "1"
+content:
+  id: "sol_a"
+  name: "Solution A"
+  description: "A fixture solution manifest used to exercise the editor server's manifest read/write endpoints."

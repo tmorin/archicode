@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ArchiCode Manifest Editor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --color-bg: #f5f6f8;
+    --color-panel: #ffffff;
+    --color-border: #d7dce2;
+    --color-text: #1d2430;
+    --color-muted: #5b6472;
+    --color-accent: #2f6fed;
+    --color-accent-dark: #1d4fb8;
+    --color-warning: #b35900;
+    --color-warning-bg: #fff3e0;
+    --color-error: #9a1c1c;
+    --color-error-bg: #fdecec;
+    --color-success: #1a7a3c;
+    --color-success-bg: #e8f7ee;
+    --color-app-layer: #2f6fed;
+    --color-tech-layer: #c0392b;
+    --color-diff-add: #15602f;
+    --color-diff-add-bg: #e4f6ea;
+    --color-diff-del: #8a1818;
+    --color-diff-del-bg: #fce9e9;
+    --color-diff-hunk: #4a3fae;
+    --color-diff-hunk-bg: #eeecfa;
+    --color-diff-context: #3b4252;
+    --color-badge-bg: #eef1f6;
+    --color-disabled-bg: #e4e7ec;
+    --color-disabled-text: #8a93a3;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px;
+    background: var(--color-panel);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  nav#tabs {
+    display: flex;
+    gap: 6px;
+  }
+
+  nav#tabs button {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text);
+    padding: 7px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  nav#tabs button.active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+  }
+
+  #layout {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  aside#right-panel {
+    width: 300px;
+    flex-shrink: 0;
+    background: var(--color-panel);
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
+    padding: 14px 12px;
+  }
+
+  .subtabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .tree-group-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-muted);
+    font-weight: 600;
+    margin: 16px 2px 6px 2px;
+  }
+
+  .tree-group-title:first-of-type {
+    margin-top: 2px;
+  }
+
+  .subtabs button {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .subtabs button.active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+  }
+
+  .subview {
+    display: none;
+  }
+
+  .subview.active {
+    display: block;
+  }
+
+  .tree-dir {
+    margin-bottom: 10px;
+  }
+
+  .tree-dir-title {
+    font-size: 11px;
+    color: var(--color-muted);
+    font-family: monospace;
+    padding: 2px 6px;
+    word-break: break-all;
+  }
+
+  .tree-item {
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: monospace;
+    word-break: break-all;
+  }
+
+  .tree-item:hover {
+    background: var(--color-bg);
+  }
+
+  .tree-item.tree-item-error {
+    color: var(--color-warning);
+    background: var(--color-warning-bg);
+  }
+
+  .tree-item.selected {
+    background: var(--color-accent);
+    color: #fff;
+  }
+
+  .tree-item.tree-item-group {
+    cursor: default;
+    color: var(--color-muted);
+  }
+
+  .tree-item.tree-item-group:hover {
+    background: transparent;
+  }
+
+  main#center-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 22px;
+    min-width: 0;
+  }
+
+  .view {
+    display: none;
+  }
+
+  .view.active {
+    display: block;
+  }
+
+  .error-box {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+    border: 1px solid var(--color-error);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .success-indicator {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+    border: 1px solid var(--color-success);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  #diagram-view h2, #assist-view h2 {
+    font-size: 15px;
+    margin: 0 0 12px 0;
+  }
+
+  #graph-svg {
+    width: 100%;
+    height: 560px;
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+  }
+
+  .graph-node circle {
+    fill: var(--color-panel);
+    stroke: var(--color-accent);
+    stroke-width: 2px;
+  }
+
+  .graph-node.clickable {
+    cursor: pointer;
+  }
+
+  .graph-node.clickable circle {
+    stroke: var(--color-accent-dark);
+  }
+
+  .graph-node.clickable:hover circle {
+    fill: var(--color-accent);
+  }
+
+  .graph-node text {
+    font-size: 11px;
+    fill: var(--color-text);
+    font-family: monospace;
+    pointer-events: none;
+  }
+
+  .rel-line {
+    stroke: #8a93a3;
+    stroke-width: 1.5px;
+    fill: none;
+  }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+
+  .legend-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+
+  #editor-path {
+    font-family: monospace;
+    font-size: 13px;
+    color: var(--color-muted);
+    flex: 1;
+    word-break: break-all;
+  }
+
+  #save-btn {
+    background: var(--color-accent);
+    border: none;
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  #save-btn:hover {
+    background: var(--color-accent-dark);
+  }
+
+  #save-btn:disabled,
+  #save-btn:disabled:hover {
+    background: var(--color-disabled-bg);
+    color: var(--color-disabled-text);
+    cursor: not-allowed;
+  }
+
+  #editor-textarea {
+    width: 100%;
+    height: 560px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    resize: vertical;
+    background: var(--color-panel);
+    color: var(--color-text);
+  }
+
+  #editor-empty {
+    color: var(--color-muted);
+    font-size: 13px;
+    padding: 20px 4px;
+  }
+
+  #schema-panel {
+    margin-top: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-panel);
+  }
+
+  #schema-toggle {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--color-text);
+  }
+
+  #schema-content {
+    padding: 4px 16px 14px 16px;
+    font-size: 13px;
+  }
+
+  #schema-content ul {
+    margin: 0 0 10px 0;
+    padding-left: 18px;
+  }
+
+  #schema-content li {
+    margin-bottom: 4px;
+    font-family: monospace;
+  }
+
+  .schema-note {
+    color: var(--color-muted);
+    font-style: italic;
+    margin: 0;
+  }
+
+  /* ---------- Assist tab ---------- */
+
+  .lock-note {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  #right-subviews.tree-locked {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .assist-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .assist-meta {
+    font-size: 12px;
+    color: var(--color-muted);
+    margin: 0 0 12px 0;
+  }
+
+  #assist-prompt {
+    width: 100%;
+    height: 130px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    resize: vertical;
+    background: var(--color-panel);
+    color: var(--color-text);
+  }
+
+  #assist-prompt:disabled {
+    background: var(--color-disabled-bg);
+    color: var(--color-disabled-text);
+    cursor: not-allowed;
+  }
+
+  .assist-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 10px 0 14px 0;
+  }
+
+  .assist-btn {
+    border: none;
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--color-accent);
+  }
+
+  .assist-btn:hover {
+    background: var(--color-accent-dark);
+  }
+
+  .assist-btn.assist-btn-accept {
+    background: var(--color-success);
+  }
+
+  .assist-btn.assist-btn-discard {
+    background: var(--color-error);
+  }
+
+  .assist-btn:disabled,
+  .assist-btn:disabled:hover {
+    background: var(--color-disabled-bg);
+    color: var(--color-disabled-text);
+    cursor: not-allowed;
+  }
+
+  .assist-progress {
+    font-size: 13px;
+    color: var(--color-warning);
+    font-weight: 600;
+  }
+
+  .assist-banner {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+    border: 2px solid var(--color-warning);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .assist-banner h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+  }
+
+  .assist-banner ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  .assist-banner li {
+    margin-bottom: 5px;
+  }
+
+  .assist-section {
+    margin-bottom: 14px;
+  }
+
+  .assist-section h3 {
+    font-size: 13px;
+    margin: 0 0 8px 0;
+  }
+
+  .assist-outcome {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: var(--color-badge-bg);
+    color: var(--color-text);
+  }
+
+  .assist-outcome.outcome-completed {
+    background: var(--color-success-bg);
+    border-color: var(--color-success);
+    color: var(--color-success);
+  }
+
+  .assist-outcome.outcome-failed,
+  .assist-outcome.outcome-timeout {
+    background: var(--color-error-bg);
+    border-color: var(--color-error);
+    color: var(--color-error);
+  }
+
+  .assist-summary {
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 10px 0;
+  }
+
+  .denials {
+    border: 1px solid var(--color-error);
+    background: var(--color-error-bg);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+
+  .denials h3 {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    color: var(--color-error);
+  }
+
+  .denials p.denials-intro {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    color: var(--color-error);
+  }
+
+  .denial {
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .denial-tool {
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  .denial-path {
+    font-family: monospace;
+    word-break: break-all;
+    color: var(--color-muted);
+  }
+
+  .denial summary {
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 6px;
+    color: var(--color-accent-dark);
+  }
+
+  .denial-detail {
+    max-height: 180px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: monospace;
+    font-size: 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 8px;
+    margin-top: 6px;
+  }
+
+  .change-block {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-panel);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .change-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .change-path {
+    flex: 1;
+    font-family: monospace;
+    font-size: 13px;
+    word-break: break-all;
+  }
+
+  .change-badge {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 9px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: var(--color-badge-bg);
+    color: var(--color-muted);
+  }
+
+  .change-badge.change-created {
+    background: var(--color-success-bg);
+    border-color: var(--color-success);
+    color: var(--color-success);
+  }
+
+  .change-badge.change-modified {
+    background: var(--color-warning-bg);
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+  }
+
+  .change-badge.change-deleted {
+    background: var(--color-error-bg);
+    border-color: var(--color-error);
+    color: var(--color-error);
+  }
+
+  .change-note {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--color-muted);
+  }
+
+  .diff {
+    margin: 0;
+    padding: 8px 0;
+    overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .diff-line {
+    padding: 0 12px;
+    white-space: pre;
+  }
+
+  .diff-add {
+    background: var(--color-diff-add-bg);
+    color: var(--color-diff-add);
+  }
+
+  .diff-del {
+    background: var(--color-diff-del-bg);
+    color: var(--color-diff-del);
+  }
+
+  .diff-hunk {
+    background: var(--color-diff-hunk-bg);
+    color: var(--color-diff-hunk);
+    font-weight: 600;
+  }
+
+  .diff-context {
+    color: var(--color-diff-context);
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>ArchiCode Manifest Editor</h1>
+    <nav id="tabs">
+      <button type="button" class="tab active" data-tab="editor">Editor</button>
+      <button type="button" class="tab" data-tab="assist">Assist</button>
+    </nav>
+  </header>
+
+  <div id="layout">
+    <aside id="right-panel">
+      <nav class="subtabs" id="right-tabs">
+        <button type="button" class="subtab active" data-subtab="model">Model</button>
+        <button type="button" class="subtab" data-subtab="files">Files</button>
+      </nav>
+
+      <div id="tree-lock-note" class="lock-note hidden">Editing is paused: a Claude change is pending review on
+        the Assist tab. Accept or discard it first — a discard would revert any hand edit made now.</div>
+
+      <div id="right-subviews">
+        <section id="model-view" class="subview active">
+          <div class="tree-group-title">Applications</div>
+          <div id="model-tree-applications"><div class="tree-dir-title">Loading…</div></div>
+          <div class="tree-group-title">Environments</div>
+          <div id="model-tree-environments"><div class="tree-dir-title">Loading…</div></div>
+        </section>
+
+        <section id="files-view" class="subview">
+          <div id="files-list"><div id="files-list-loading" class="tree-dir-title">Loading…</div></div>
+        </section>
+      </div>
+    </aside>
+
+    <main id="center-panel">
+      <section id="editor-view" class="view active">
+        <nav class="subtabs" id="center-tabs">
+          <button type="button" class="subtab active" data-subtab="diagram">Diagram</button>
+          <button type="button" class="subtab" data-subtab="file">File</button>
+        </nav>
+
+        <section id="diagram-view" class="subview active">
+          <h2>Dependency graph</h2>
+          <div class="legend">
+            <span><span class="legend-swatch" style="background: var(--color-accent);"></span>node (click to open its manifest)</span>
+          </div>
+          <div id="graph-error" class="error-box hidden"></div>
+          <svg id="graph-svg" viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg"></svg>
+        </section>
+
+        <section id="file-view" class="subview">
+          <div id="editor-lock-note" class="lock-note hidden">Saving is disabled while a Claude change is pending
+            review on the Assist tab: discarding that change restores the whole workspace from the snapshot taken
+            before it ran, which would also revert anything you save here now.</div>
+          <div id="editor-empty">Select a manifest from the Model/Files panel or the diagram to begin editing.</div>
+          <div id="editor-main" class="hidden">
+            <div class="editor-toolbar">
+              <span id="editor-path"></span>
+              <button type="button" id="save-btn">Save</button>
+              <span id="save-success" class="success-indicator hidden">Saved</span>
+            </div>
+            <div id="save-error" class="error-box hidden"></div>
+            <textarea id="editor-textarea" spellcheck="false" wrap="off"></textarea>
+
+            <div id="schema-panel">
+              <button type="button" id="schema-toggle">Show manifest schema reference &#9656;</button>
+              <div id="schema-content" class="hidden">Loading schema…</div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="assist-view" class="view">
+        <h2>Assist</h2>
+
+        <div id="assist-unavailable" class="error-box hidden"></div>
+        <p id="assist-meta" class="assist-meta hidden"></p>
+
+        <div id="assist-prompt-block">
+          <label class="assist-label" for="assist-prompt">Describe the change you want made to this workspace</label>
+          <textarea id="assist-prompt" spellcheck="false"
+            placeholder="e.g. add a new application component named &quot;billing&quot; to manifests/sol_a.yaml"></textarea>
+          <div class="assist-actions">
+            <button type="button" id="assist-submit" class="assist-btn">Submit</button>
+            <span id="assist-progress" class="assist-progress hidden"></span>
+          </div>
+        </div>
+
+        <div id="assist-error" class="error-box hidden"></div>
+        <div id="assist-result"></div>
+        <div id="assist-pending"></div>
+      </section>
+    </main>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var state = {
+    manifests: [],
+    referenceToPath: new Map(),
+    graph: null,
+    schema: null,
+    schemaLoaded: false,
+    currentPath: null,
+    claudeStatus: null,
+    pendingChange: null,
+    assistBusy: false
+  };
+
+  var VIEW_IDS = { editor: "editor-view", assist: "assist-view" };
+  var CENTER_SUBVIEW_IDS = { diagram: "diagram-view", file: "file-view" };
+  var RIGHT_SUBVIEW_IDS = { model: "model-view", files: "files-view" };
+
+  function qs(id) { return document.getElementById(id); }
+
+  function escapeForText(value) {
+    // textContent already escapes; this helper just normalizes null/undefined.
+    return value === null || value === undefined ? "" : String(value);
+  }
+
+  // ---------- Tabs ----------
+
+  function switchTab(tab) {
+    document.querySelectorAll("#tabs .tab").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-tab") === tab);
+    });
+    Object.keys(VIEW_IDS).forEach(function (name) {
+      qs(VIEW_IDS[name]).classList.toggle("active", name === tab);
+    });
+  }
+
+  document.querySelectorAll("#tabs .tab").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      switchTab(btn.getAttribute("data-tab"));
+    });
+  });
+
+  // ---------- Sub-tabs (center panel: Diagram/File; right panel: Model/Files) ----------
+
+  function switchSubtab(navId, subviewIds, name) {
+    document.querySelectorAll("#" + navId + " .subtab").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-subtab") === name);
+    });
+    Object.keys(subviewIds).forEach(function (key) {
+      qs(subviewIds[key]).classList.toggle("active", key === name);
+    });
+  }
+
+  document.querySelectorAll("#center-tabs .subtab").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      switchSubtab("center-tabs", CENTER_SUBVIEW_IDS, btn.getAttribute("data-subtab"));
+    });
+  });
+
+  document.querySelectorAll("#right-tabs .subtab").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      switchSubtab("right-tabs", RIGHT_SUBVIEW_IDS, btn.getAttribute("data-subtab"));
+    });
+  });
+
+  // ---------- Tree (GET /api/manifests) ----------
+
+  function loadManifests() {
+    fetch("/api/manifests")
+      .then(function (res) {
+        if (!res.ok) {
+          return res.text().then(function (body) {
+            throw new Error(body || ("HTTP " + res.status));
+          });
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        state.manifests = data.manifests || [];
+        state.referenceToPath.clear();
+        state.manifests.forEach(function (entry) {
+          if (entry.reference) {
+            state.referenceToPath.set(entry.reference, entry.path);
+          }
+        });
+        renderModelTree();
+        renderFilesList();
+      })
+      .catch(function (err) {
+        ["model-tree-applications", "model-tree-environments", "files-list"].forEach(function (id) {
+          qs(id).innerHTML = "";
+          var box = document.createElement("div");
+          box.className = "error-box";
+          box.textContent = "Failed to load manifest list: " + escapeForText(err.message);
+          qs(id).appendChild(box);
+        });
+      });
+  }
+
+  // ---------- Files (flat, grouped by directory, the raw file listing) ----------
+
+  function splitDirAndFile(path) {
+    var parts = String(path).split("/");
+    var file = parts.pop();
+    var dir = parts.length > 0 ? parts.join("/") : "(root)";
+    return { dir: dir, file: file };
+  }
+
+  function renderFilesList() {
+    var container = qs("files-list");
+    container.innerHTML = "";
+
+    if (state.manifests.length === 0) {
+      var empty = document.createElement("div");
+      empty.className = "tree-dir-title";
+      empty.textContent = "No manifests found.";
+      container.appendChild(empty);
+      return;
+    }
+
+    var groups = new Map();
+    state.manifests.forEach(function (entry) {
+      var split = splitDirAndFile(entry.path);
+      if (!groups.has(split.dir)) {
+        groups.set(split.dir, []);
+      }
+      groups.get(split.dir).push({ entry: entry, file: split.file });
+    });
+
+    var dirNames = Array.from(groups.keys()).sort();
+    dirNames.forEach(function (dir) {
+      var dirEl = document.createElement("div");
+      dirEl.className = "tree-dir";
+
+      var title = document.createElement("div");
+      title.className = "tree-dir-title";
+      title.textContent = dir + "/";
+      dirEl.appendChild(title);
+
+      var items = groups.get(dir).slice().sort(function (a, b) {
+        return a.file.localeCompare(b.file);
+      });
+
+      items.forEach(function (item) {
+        var el = document.createElement("div");
+        el.className = "tree-item" + (item.entry.parseError ? " tree-item-error" : "");
+        el.dataset.path = item.entry.path;
+        var label = (item.entry.parseError ? "⚠ " : "") + item.file;
+        el.textContent = label;
+        el.title = item.entry.parseError
+          ? ("Parse error: " + item.entry.parseError)
+          : item.entry.path + (item.entry.reference ? (" (" + item.entry.reference + ")") : "");
+        el.addEventListener("click", function () {
+          openManifest(item.entry.path);
+        });
+        dirEl.appendChild(el);
+      });
+
+      container.appendChild(dirEl);
+    });
+  }
+
+  // The tree is keyed by element reference (dotted id), not by manifest file path: each dot-separated
+  // segment of a reference is one tree level, so "platform.auditslogs.frontend" nests under "platform" >
+  // "auditslogs" > "frontend" the same way the resolved graph (GET /api/graph) groups elements, even
+  // though "frontend" has no manifest file of its own (it is declared inside auditslogs's manifest).
+  function treeNode() {
+    return { children: new Map(), path: null, parseError: null, hasOwnManifest: false };
+  }
+
+  function treeNodeAt(root, reference) {
+    var node = root;
+    String(reference).split(".").forEach(function (segment) {
+      if (!node.children.has(segment)) {
+        node.children.set(segment, treeNode());
+      }
+      node = node.children.get(segment);
+    });
+    return node;
+  }
+
+  // Environments vs Applications is decided by the manifest's own declared kind, not by where it sits
+  // in the hierarchy: "archicode.morin.io/environment" (and "archicode.morin.io/node", nested under it)
+  // is Environments; every other kind is Applications. Two ids can collide across that split — e.g.
+  // ".custom" has both an application solution "epr" and an unrelated technology environment "epr" — so
+  // the two groups must be built as two separate trees, never merged into one keyed only by reference.
+  var TECHNOLOGY_MANIFEST_KINDS = ["archicode.morin.io/environment", "archicode.morin.io/node"];
+
+  function isTechnologyManifestKind(kind) {
+    return TECHNOLOGY_MANIFEST_KINDS.indexOf(kind) !== -1;
+  }
+
+  function buildManifestTree(wantTechnology, collectUnplaced) {
+    var root = treeNode();
+    var unplaced = [];
+
+    state.manifests.forEach(function (entry) {
+      if (!entry.reference) {
+        // A manifest that failed to parse before its id (or kind) was even known cannot be placed in
+        // either reference-keyed hierarchy; collected once, under the Applications group, rather than
+        // being silently dropped.
+        if (collectUnplaced) {
+          unplaced.push(entry);
+        }
+        return;
+      }
+      if (isTechnologyManifestKind(entry.kind) !== wantTechnology) {
+        return;
+      }
+      var node = treeNodeAt(root, entry.reference);
+      node.path = entry.path;
+      node.parseError = entry.parseError;
+      node.hasOwnManifest = true;
+    });
+
+    if (state.graph) {
+      (state.graph.elements || []).forEach(function (el) {
+        if (!el.reference) {
+          return;
+        }
+        var elIsTechnology = String(el.layer || "").toLowerCase() === "technology";
+        if (elIsTechnology !== wantTechnology) {
+          return;
+        }
+        treeNodeAt(root, el.reference);
+      });
+    }
+
+    return { root: root, unplaced: unplaced };
+  }
+
+  function treeRowEl(label, path, parseError, depth) {
+    var el = document.createElement("div");
+    el.className = "tree-item" + (parseError ? " tree-item-error" : "") + (path ? "" : " tree-item-group");
+    el.style.paddingLeft = (8 + depth * 14) + "px";
+    el.textContent = (parseError ? "⚠ " : "") + label;
+    el.title = parseError ? ("Parse error: " + parseError) : (path || label);
+    if (path) {
+      el.dataset.path = path;
+      el.addEventListener("click", function () {
+        openManifest(path);
+      });
+    }
+    return el;
+  }
+
+  function renderTreeChildren(container, node, depth, inheritedPath) {
+    Array.from(node.children.keys()).sort().forEach(function (key) {
+      var child = node.children.get(key);
+      // A sub-element with no manifest file of its own (e.g. "frontend" inside "auditslogs") is still
+      // clickable: it opens the nearest ancestor's manifest, since that is the file that actually
+      // declares it.
+      var path = child.hasOwnManifest ? child.path : inheritedPath;
+      container.appendChild(treeRowEl(key, path, child.parseError, depth));
+      if (child.children.size > 0) {
+        renderTreeChildren(container, child, depth + 1, path);
+      }
+    });
+  }
+
+  function renderManifestTreeGroup(containerId, built, emptyMessage) {
+    var container = qs(containerId);
+    container.innerHTML = "";
+
+    if (built.root.children.size === 0 && built.unplaced.length === 0) {
+      var empty = document.createElement("div");
+      empty.className = "tree-dir-title";
+      empty.textContent = emptyMessage;
+      container.appendChild(empty);
+      return;
+    }
+
+    renderTreeChildren(container, built.root, 0, null);
+
+    if (built.unplaced.length > 0) {
+      var dirEl = document.createElement("div");
+      dirEl.className = "tree-dir";
+
+      var title = document.createElement("div");
+      title.className = "tree-dir-title";
+      title.textContent = "Files with parse errors";
+      dirEl.appendChild(title);
+
+      built.unplaced
+        .slice()
+        .sort(function (a, b) { return String(a.path).localeCompare(String(b.path)); })
+        .forEach(function (entry) {
+          dirEl.appendChild(treeRowEl(entry.path, entry.path, entry.parseError, 1));
+        });
+
+      container.appendChild(dirEl);
+    }
+  }
+
+  function renderModelTree() {
+    renderManifestTreeGroup(
+      "model-tree-applications",
+      buildManifestTree(false, true),
+      "No application manifests found."
+    );
+    renderManifestTreeGroup(
+      "model-tree-environments",
+      buildManifestTree(true, false),
+      "No environment manifests found."
+    );
+  }
+
+  function markTreeSelection(path) {
+    document.querySelectorAll(".tree-item").forEach(function (el) {
+      el.classList.toggle("selected", el.dataset.path === path);
+    });
+  }
+
+  // ---------- Graph (GET /api/graph) ----------
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
+  function svgEl(tag, attrs) {
+    var el = document.createElementNS(SVG_NS, tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (key) {
+        el.setAttribute(key, attrs[key]);
+      });
+    }
+    return el;
+  }
+
+  function loadGraph() {
+    var errBox = qs("graph-error");
+    errBox.classList.add("hidden");
+    errBox.textContent = "";
+
+    fetch("/api/graph")
+      .then(function (res) {
+        return res.text().then(function (body) {
+          if (!res.ok) {
+            throw new Error(body || ("HTTP " + res.status));
+          }
+          return JSON.parse(body);
+        });
+      })
+      .then(function (data) {
+        state.graph = data;
+        renderGraph(data);
+        // The Model tree's deeper levels (sub-elements with no manifest file of their own) come from
+        // the graph, which loads independently of the manifest listing — re-render once it is in.
+        renderModelTree();
+      })
+      .catch(function (err) {
+        qs("graph-svg").innerHTML = "";
+        errBox.textContent = "Failed to load graph: " + escapeForText(err.message);
+        errBox.classList.remove("hidden");
+      });
+  }
+
+  function renderGraph(data) {
+    var elements = data.elements || [];
+    var relationships = data.relationships || [];
+
+    var svg = qs("graph-svg");
+    svg.innerHTML = "";
+
+    var width = 1000;
+    var rowHeight = 220;
+    var topPad = 60;
+    var sidePad = 80;
+
+    var layerBuckets = new Map(); // lowercased layer -> elements
+    elements.forEach(function (el) {
+      var layer = (el.layer || "").toLowerCase();
+      if (!layerBuckets.has(layer)) {
+        layerBuckets.set(layer, []);
+      }
+      layerBuckets.get(layer).push(el);
+    });
+
+    var layerNames = Array.from(layerBuckets.keys()).sort();
+    var height = Math.max(300, topPad * 2 + Math.max(1, layerNames.length) * rowHeight);
+    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+
+    var positions = new Map(); // reference -> {x, y, label}
+
+    layerNames.forEach(function (layerName, rowIndex) {
+      var nodes = layerBuckets.get(layerName).slice().sort(function (a, b) {
+        return String(a.reference || "").localeCompare(String(b.reference || ""));
+      });
+      var y = topPad + rowIndex * rowHeight + 40;
+      var n = nodes.length;
+      nodes.forEach(function (node, i) {
+        var x = n <= 1 ? width / 2 : sidePad + i * ((width - 2 * sidePad) / (n - 1));
+        var el = node.element || {};
+        var label = el.name || el.id || node.reference || "?";
+        positions.set(node.reference, { x: x, y: y, label: label, reference: node.reference, layer: layerName });
+      });
+    });
+
+    if (positions.size === 0) {
+      var msg = svgEl("text", { x: "20", y: "30" });
+      msg.textContent = "No elements in graph.";
+      svg.appendChild(msg);
+      return;
+    }
+
+    var defs = svgEl("defs");
+    var marker = svgEl("marker", {
+      id: "arrowhead",
+      viewBox: "0 0 10 10",
+      refX: "9",
+      refY: "5",
+      markerWidth: "7",
+      markerHeight: "7",
+      orient: "auto-start-reverse"
+    });
+    marker.appendChild(svgEl("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#8a93a3" }));
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
+    var edgeLayer = svgEl("g", { class: "edges" });
+    relationships.forEach(function (rel) {
+      var src = positions.get(rel.source);
+      var destRef = rel.relationship && rel.relationship.destination;
+      var dst = destRef ? positions.get(destRef) : null;
+      if (!src || !dst) {
+        return;
+      }
+      var line = svgEl("line", {
+        class: "rel-line",
+        x1: String(src.x),
+        y1: String(src.y),
+        x2: String(dst.x),
+        y2: String(dst.y),
+        "marker-end": "url(#arrowhead)"
+      });
+      var label = rel.relationship && rel.relationship.label;
+      if (label) {
+        var titleEl = svgEl("title");
+        titleEl.textContent = label;
+        line.appendChild(titleEl);
+      }
+      edgeLayer.appendChild(line);
+    });
+    svg.appendChild(edgeLayer);
+
+    var nodeLayer = svgEl("g", { class: "nodes" });
+    positions.forEach(function (pos, reference) {
+      var clickable = state.referenceToPath.has(reference);
+      var g = svgEl("g", {
+        class: "graph-node" + (clickable ? " clickable" : ""),
+        transform: "translate(" + pos.x + "," + pos.y + ")"
+      });
+
+      var titleEl = svgEl("title");
+      titleEl.textContent = reference;
+      g.appendChild(titleEl);
+
+      g.appendChild(svgEl("circle", { r: "20" }));
+
+      var text = svgEl("text", { y: "36", "text-anchor": "middle" });
+      text.textContent = pos.label;
+      g.appendChild(text);
+
+      if (clickable) {
+        g.addEventListener("click", function () {
+          openManifest(state.referenceToPath.get(reference));
+        });
+      }
+
+      nodeLayer.appendChild(g);
+    });
+    svg.appendChild(nodeLayer);
+  }
+
+  // ---------- Schema reference panel (GET /api/schemas/manifest) ----------
+
+  function loadSchemaOnce() {
+    if (state.schemaLoaded) {
+      return;
+    }
+    state.schemaLoaded = true;
+
+    fetch("/api/schemas/manifest")
+      .then(function (res) {
+        return res.text().then(function (body) {
+          if (!res.ok) {
+            throw new Error(body || ("HTTP " + res.status));
+          }
+          return JSON.parse(body);
+        });
+      })
+      .then(function (schema) {
+        state.schema = schema;
+        renderSchemaPanel();
+      })
+      .catch(function (err) {
+        qs("schema-content").textContent = "Failed to load schema: " + escapeForText(err.message);
+      });
+  }
+
+  function renderSchemaPanel() {
+    var container = qs("schema-content");
+    container.innerHTML = "";
+
+    if (!state.schema) {
+      container.textContent = "No schema available.";
+      return;
+    }
+
+    var headerSchema = (state.schema.properties && state.schema.properties.header) || {};
+    var headerProps = headerSchema.properties || {};
+
+    var ul = document.createElement("ul");
+    ["kind", "version", "parent"].forEach(function (key) {
+      var prop = headerProps[key];
+      if (!prop) {
+        return;
+      }
+      var li = document.createElement("li");
+      var required = prop.required === true;
+      var typeLabel = prop.type ? (" (" + prop.type + ")") : "";
+      li.textContent = "header." + key + " — " + (required ? "required" : "optional") + typeLabel;
+      ul.appendChild(li);
+    });
+    container.appendChild(ul);
+
+    var note = document.createElement("p");
+    note.className = "schema-note";
+    note.textContent = "content's shape depends on header.kind and is not validated client-side " +
+      "(the schema reports it as {\"type\":\"any\"}).";
+    container.appendChild(note);
+  }
+
+  qs("schema-toggle").addEventListener("click", function () {
+    var content = qs("schema-content");
+    var collapsed = content.classList.contains("hidden");
+    content.classList.toggle("hidden");
+    qs("schema-toggle").innerHTML = collapsed
+      ? "Hide manifest schema reference &#9662;"
+      : "Show manifest schema reference &#9656;";
+  });
+
+  // ---------- Editor (GET/PUT /api/manifests/{path}) ----------
+
+  function openManifest(path) {
+    state.currentPath = path;
+    markTreeSelection(path);
+
+    var textarea = qs("editor-textarea");
+    var emptyMsg = qs("editor-empty");
+    var mainBox = qs("editor-main");
+    var pathLabel = qs("editor-path");
+    var saveError = qs("save-error");
+    var saveSuccess = qs("save-success");
+
+    saveError.classList.add("hidden");
+    saveError.textContent = "";
+    saveSuccess.classList.add("hidden");
+
+    fetch("/api/manifests/" + path)
+      .then(function (res) {
+        return res.text().then(function (body) {
+          if (!res.ok) {
+            throw new Error(body || ("HTTP " + res.status));
+          }
+          return body;
+        });
+      })
+      .then(function (body) {
+        textarea.value = body;
+        pathLabel.textContent = path;
+        emptyMsg.classList.add("hidden");
+        mainBox.classList.remove("hidden");
+      })
+      .catch(function (err) {
+        mainBox.classList.add("hidden");
+        emptyMsg.classList.remove("hidden");
+        emptyMsg.textContent = "Failed to load \"" + path + "\": " + escapeForText(err.message);
+      });
+
+    switchTab("editor");
+    switchSubtab("center-tabs", CENTER_SUBVIEW_IDS, "file");
+  }
+
+  qs("save-btn").addEventListener("click", function () {
+    if (!state.currentPath) {
+      return;
+    }
+    // Saving is paused while a Claude change is pending review: a discard would revert this save too.
+    if (state.pendingChange) {
+      return;
+    }
+
+    var textarea = qs("editor-textarea");
+    var saveError = qs("save-error");
+    var saveSuccess = qs("save-success");
+    var path = state.currentPath;
+    var body = textarea.value;
+
+    saveError.classList.add("hidden");
+    saveError.textContent = "";
+    saveSuccess.classList.add("hidden");
+
+    fetch("/api/manifests/" + path, { method: "PUT", body: body })
+      .then(function (res) {
+        return res.text().then(function (respBody) {
+          return { ok: res.ok, status: res.status, body: respBody };
+        });
+      })
+      .then(function (result) {
+        if (result.ok) {
+          saveSuccess.classList.remove("hidden");
+          // Re-fetch to refresh the on-disk baseline (never trust the client's own copy).
+          return fetch("/api/manifests/" + path)
+            .then(function (res) {
+              if (res.ok) {
+                return res.text().then(function (freshBody) {
+                  textarea.value = freshBody;
+                });
+              }
+            })
+            .catch(function () {
+              // Refresh failure does not undo the already-shown success indicator;
+              // the save itself already succeeded against the server.
+            });
+        }
+        saveError.textContent = result.body || ("HTTP " + result.status);
+        saveError.classList.remove("hidden");
+        // Textarea content is deliberately left untouched on failure.
+      })
+      .catch(function (err) {
+        saveError.textContent = "Request failed: " + escapeForText(err.message);
+        saveError.classList.remove("hidden");
+      });
+  });
+
+  // ---------- Assist (GET /api/claude/status, POST /api/claude/{invoke,accept,discard}) ----------
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) {
+      node.className = className;
+    }
+    if (text !== null && text !== undefined) {
+      // Always textContent: every string below comes from the server and may contain the operator's own
+      // file content, which must never be interpreted as markup.
+      node.textContent = String(text);
+    }
+    return node;
+  }
+
+  function cssToken(value) {
+    return String(value === null || value === undefined ? "" : value).replace(/[^a-z]/gi, "").toLowerCase();
+  }
+
+  // Every non-2xx answer from /api/claude/* carries a plain-text, operator-readable message.
+  function readErrorBody(res) {
+    return res.text().then(function (body) {
+      throw new Error(body && body.trim() ? body.trim() : ("HTTP " + res.status));
+    });
+  }
+
+  function showAssistError(message) {
+    var box = qs("assist-error");
+    box.textContent = escapeForText(message);
+    box.classList.remove("hidden");
+  }
+
+  function clearAssistError() {
+    var box = qs("assist-error");
+    box.textContent = "";
+    box.classList.add("hidden");
+  }
+
+  function setAssistControlsEnabled(enabled) {
+    var usable = enabled && !!(state.claudeStatus && state.claudeStatus.available);
+    qs("assist-prompt").disabled = !usable;
+    qs("assist-submit").disabled = !usable;
+  }
+
+  function disableAssistControls(reason) {
+    qs("assist-prompt").disabled = true;
+    qs("assist-submit").disabled = true;
+    qs("assist-meta").classList.add("hidden");
+    var box = qs("assist-unavailable");
+    box.textContent = escapeForText(reason);
+    box.classList.remove("hidden");
+  }
+
+  // AC-17: unavailability is discovered on load, not on submission.
+  function loadClaudeStatus() {
+    fetch("/api/claude/status")
+      .then(function (res) {
+        if (!res.ok) {
+          return readErrorBody(res);
+        }
+        return res.json();
+      })
+      .then(function (status) {
+        state.claudeStatus = status;
+        applyClaudeAvailability();
+        if (status.pending) {
+          renderPendingChange(status.pending, true);
+        }
+      })
+      .catch(function (err) {
+        state.claudeStatus = null;
+        disableAssistControls(
+          "Could not read the Claude editing bridge status, so this tab is disabled: " + escapeForText(err.message)
+        );
+      });
+  }
+
+  function applyClaudeAvailability() {
+    var status = state.claudeStatus;
+    if (!status) {
+      return;
+    }
+
+    if (!status.available) {
+      disableAssistControls(
+        status.reason
+          ? status.reason
+          : "The Claude editing bridge is not available on this server, so no change can be requested here."
+      );
+      return;
+    }
+
+    var box = qs("assist-unavailable");
+    box.textContent = "";
+    box.classList.add("hidden");
+
+    var meta = qs("assist-meta");
+    var parts = ["Model: " + escapeForText(status.model || "(server default)")];
+    if (status.timeoutSeconds) {
+      parts.push("the server gives up after " + status.timeoutSeconds + "s");
+    }
+    parts.push(
+      status.workspaceContainsVcsDirectory
+        ? "this workspace contains a version-control directory"
+        : "no version-control directory in this workspace"
+    );
+    meta.textContent = parts.join(" · ");
+    meta.classList.remove("hidden");
+
+    setAssistControlsEnabled(!state.pendingChange && !state.assistBusy);
+  }
+
+  // Requirement 10: client-side-only mitigation. A hand save made during the review window would be
+  // reverted by a discard, so saving and tree-driven editing are paused until the change is decided.
+  function setEditorLocked(locked) {
+    qs("save-btn").disabled = locked;
+    qs("editor-lock-note").classList.toggle("hidden", !locked);
+    qs("tree-lock-note").classList.toggle("hidden", !locked);
+    qs("right-subviews").classList.toggle("tree-locked", locked);
+  }
+
+  function submitPrompt() {
+    if (state.assistBusy || state.pendingChange) {
+      return;
+    }
+    var prompt = qs("assist-prompt").value;
+    if (!prompt.trim()) {
+      showAssistError("Describe the change you want made before submitting.");
+      return;
+    }
+
+    clearAssistError();
+    qs("assist-result").innerHTML = "";
+    state.assistBusy = true;
+    setAssistControlsEnabled(false);
+
+    var progress = qs("assist-progress");
+    var seconds = state.claudeStatus ? state.claudeStatus.timeoutSeconds : null;
+    progress.textContent =
+      "Running the Claude CLI against this workspace. This can take minutes" +
+      (seconds ? (" — the server gives up after " + seconds + "s") : "") +
+      ". Leave this page open; the files are not changed until the invocation finishes.";
+    progress.classList.remove("hidden");
+
+    fetch("/api/claude/invoke", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: prompt
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          return readErrorBody(res);
+        }
+        return res.json();
+      })
+      .then(function (result) {
+        state.assistBusy = false;
+        progress.classList.add("hidden");
+        renderInvokeResult(result);
+      })
+      .catch(function (err) {
+        state.assistBusy = false;
+        progress.classList.add("hidden");
+        // The prompt text is deliberately left in the textarea so it can be edited and retried.
+        showAssistError(err.message);
+        setAssistControlsEnabled(true);
+      });
+  }
+
+  function renderInvokeResult(result) {
+    var container = qs("assist-result");
+    container.innerHTML = "";
+
+    var section = el("div", "assist-section");
+    var outcome = escapeForText(result.outcome) || "unknown";
+    section.appendChild(el("span", "assist-outcome outcome-" + cssToken(outcome), "Outcome: " + outcome));
+
+    if (result.agentSummary) {
+      section.appendChild(el("div", "assist-summary", result.agentSummary));
+    }
+
+    var stats = [];
+    if (result.numTurns !== null && result.numTurns !== undefined) {
+      stats.push(result.numTurns + " turn(s)");
+    }
+    if (result.costUsd !== null && result.costUsd !== undefined) {
+      stats.push("$" + Number(result.costUsd).toFixed(4));
+    }
+    if (result.durationMs !== null && result.durationMs !== undefined) {
+      stats.push((Number(result.durationMs) / 1000).toFixed(1) + "s");
+    }
+    if (stats.length > 0) {
+      section.appendChild(el("p", "assist-meta", stats.join(" · ")));
+    }
+    container.appendChild(section);
+
+    if (result.changed && result.pending) {
+      renderPendingChange(result.pending, false);
+      return;
+    }
+
+    // AC-4: nothing changed, so no Accept control is offered at all.
+    container.appendChild(
+      el(
+        "div",
+        "change-note",
+        "No file in the workspace was changed, so there is nothing to accept or discard and the workspace is " +
+          "exactly as it was."
+      )
+    );
+
+    // FR-11/AC-12: an invocation that tried to leave the workspace and was stopped usually changes nothing, so
+    // the denial record has to be shown on this branch too — it is the one place the containment guarantee is
+    // observable, and it would otherwise be the one place it is hidden.
+    var topLevelDenials = result.permissionDenials || [];
+    if (topLevelDenials.length > 0) {
+      container.appendChild(denialsSection(topLevelDenials));
+    }
+
+    setAssistControlsEnabled(true);
+  }
+
+  // The single render path for a pending change, used by both the status response (page load) and the
+  // invoke response — which is what stops a refresh orphaning a change under review.
+  function renderPendingChange(pending, recovered) {
+    state.pendingChange = pending;
+    setAssistControlsEnabled(false);
+    setEditorLocked(true);
+
+    var container = qs("assist-pending");
+    container.innerHTML = "";
+    container.appendChild(pendingBanner(pending, recovered));
+
+    // Rendered alongside the diff and the controls, never instead of them: a failed or timed-out
+    // invocation that changed files still needs a decision.
+    if (pending.message) {
+      container.appendChild(el("div", "error-box", pending.message));
+    }
+
+    container.appendChild(
+      el(
+        "p",
+        "assist-meta",
+        [
+          "Change id: " + escapeForText(pending.sessionId),
+          "invocation outcome: " + (escapeForText(pending.outcome) || "unknown"),
+          pending.filesCaptured + " file(s) in the restore snapshot"
+        ].join(" · ")
+      )
+    );
+
+    var denials = pending.permissionDenials || [];
+    if (denials.length > 0) {
+      container.appendChild(denialsSection(denials));
+    }
+
+    container.appendChild(changesSection(pending.changes || []));
+    container.appendChild(decisionControls(pending.sessionId));
+  }
+
+  // AC-5 / FR-7: the most important text on the page.
+  function pendingBanner(pending, recovered) {
+    var banner = el("div", "assist-banner");
+    banner.appendChild(
+      el(
+        "h3",
+        null,
+        recovered
+          ? "A change is already pending review — the files on disk are changed right now"
+          : "This change is already on disk — it needs your decision"
+      )
+    );
+
+    var list = document.createElement("ul");
+    [
+      "The files listed below have ALREADY been written to the workspace. What is on disk right now is the " +
+        "changed state, not the state from before the invocation.",
+      "Discard is the action that puts them back, byte for byte, from the snapshot taken before the invocation " +
+        "ran. Accept keeps what is on disk and releases that snapshot.",
+      "Stopping the server while this change is pending leaves the files changed: nothing is reverted on " +
+        "shutdown, and the snapshot is lost, so the change can no longer be undone from here."
+    ].forEach(function (line) {
+      list.appendChild(el("li", null, line));
+    });
+
+    if (pending.workspaceContainsVcsDirectory) {
+      list.appendChild(
+        el(
+          "li",
+          null,
+          "This workspace contains a version-control directory, and a discard restores the WHOLE workspace " +
+            "directory including that version-control directory — so any commit you make while this change is " +
+            "under review would be reverted too."
+        )
+      );
+    }
+
+    banner.appendChild(list);
+    return banner;
+  }
+
+  function denialsSection(denials) {
+    var box = el("div", "denials");
+    box.appendChild(el("h3", null, "Blocked actions — the invocation attempted these and was denied"));
+    box.appendChild(
+      el(
+        "p",
+        "denials-intro",
+        "None of these were carried out. They are listed so the containment is visible: this is what the agent " +
+          "tried to reach and was refused."
+      )
+    );
+
+    denials.forEach(function (denial) {
+      var item = el("div", "denial");
+      item.appendChild(el("div", "denial-tool", "Tool: " + (escapeForText(denial.toolName) || "(not reported)")));
+      item.appendChild(el("div", "denial-path", "Path: " + (escapeForText(denial.filePath) || "(not reported)")));
+      if (denial.detail) {
+        var details = document.createElement("details");
+        details.appendChild(el("summary", null, "Show what it attempted"));
+        details.appendChild(el("div", "denial-detail", denial.detail));
+        item.appendChild(details);
+      }
+      box.appendChild(item);
+    });
+    return box;
+  }
+
+  function changesSection(changes) {
+    var section = el("div", "assist-section");
+    section.appendChild(el("h3", null, "Changed files (" + changes.length + ")"));
+
+    if (changes.length === 0) {
+      // Explicitly NOT "nothing happened": the change is on disk, it just could not be diffed.
+      section.appendChild(
+        el(
+          "div",
+          "error-box",
+          "No per-file diff could be computed for this change. That does not mean nothing happened: whatever the " +
+            "invocation wrote is on disk, and Discard below is still the only way to put the workspace back. The " +
+            "message above says why the diff is missing."
+        )
+      );
+      return section;
+    }
+
+    changes.forEach(function (change) {
+      var block = el("div", "change-block");
+
+      var head = el("div", "change-head");
+      head.appendChild(el("span", "change-path", change.path));
+      var changeType = escapeForText(change.changeType) || "unknown";
+      head.appendChild(el("span", "change-badge change-" + cssToken(changeType), changeType));
+      block.appendChild(head);
+
+      if (change.binary) {
+        block.appendChild(
+          el("div", "change-note", "Binary file — this change is real, but no diff can be shown for it.")
+        );
+      } else if (change.truncated) {
+        block.appendChild(
+          el(
+            "div",
+            "change-note",
+            "Too large to diff here — this change is real, but no diff can be shown for it."
+          )
+        );
+      } else if (change.diff) {
+        block.appendChild(renderDiff(change.diff));
+      } else {
+        block.appendChild(el("div", "change-note", "No diff text was supplied for this file."));
+      }
+
+      section.appendChild(block);
+    });
+    return section;
+  }
+
+  function renderDiff(diffText) {
+    var wrapper = el("div", "diff");
+    String(diffText).split("\n").forEach(function (line) {
+      var cls = "diff-line diff-context";
+      if (line.indexOf("@@") === 0) {
+        cls = "diff-line diff-hunk";
+      } else if (line.charAt(0) === "+") {
+        cls = "diff-line diff-add";
+      } else if (line.charAt(0) === "-") {
+        cls = "diff-line diff-del";
+      }
+      wrapper.appendChild(el("div", cls, line.length === 0 ? " " : line));
+    });
+    return wrapper;
+  }
+
+  function decisionControls(sessionId) {
+    var row = el("div", "assist-actions");
+
+    var accept = el("button", "assist-btn assist-btn-accept", "Accept — keep these changes");
+    accept.type = "button";
+    accept.id = "assist-accept";
+    accept.addEventListener("click", function () {
+      decide("accept", sessionId);
+    });
+
+    var discard = el("button", "assist-btn assist-btn-discard", "Discard — put the files back");
+    discard.type = "button";
+    discard.id = "assist-discard";
+    discard.addEventListener("click", function () {
+      decide("discard", sessionId);
+    });
+
+    var progress = el("span", "assist-progress hidden");
+    progress.id = "assist-decision-progress";
+
+    row.appendChild(accept);
+    row.appendChild(discard);
+    row.appendChild(progress);
+    return row;
+  }
+
+  function decide(action, sessionId) {
+    var accept = qs("assist-accept");
+    var discard = qs("assist-discard");
+    if (!accept || !discard || accept.disabled || discard.disabled) {
+      return;
+    }
+
+    // Both are disabled while either request is in flight.
+    accept.disabled = true;
+    discard.disabled = true;
+    clearAssistError();
+
+    var progress = qs("assist-decision-progress");
+    progress.textContent = action === "accept"
+      ? "Accepting and releasing the snapshot…"
+      : "Discarding and restoring the workspace from the snapshot…";
+    progress.classList.remove("hidden");
+
+    fetch("/api/claude/" + action + "/" + encodeURIComponent(sessionId), { method: "POST" })
+      .then(function (res) {
+        if (!res.ok) {
+          return readErrorBody(res);
+        }
+        return res.json();
+      })
+      .then(function (result) {
+        // AC-11: the pending block (and with it both buttons) is removed for good.
+        clearPendingChange();
+        qs("assist-result").appendChild(
+          el(
+            "div",
+            "success-indicator",
+            action === "accept"
+              ? "Accepted. " + result.files + " changed file(s) were kept, and the restore snapshot has been " +
+                "released — this change can no longer be discarded from here."
+              : "Discarded. " + result.filesRestored + " file(s) restored, " + result.filesDeleted +
+                " deleted, " + result.directoriesRemoved + " directory/ies removed. The workspace is back to " +
+                "its state from before the invocation."
+          )
+        );
+        // Re-read the rest of the page from disk so it reflects reality.
+        loadManifests();
+        loadGraph();
+        loadClaudeStatus();
+      })
+      .catch(function (err) {
+        showAssistError(err.message);
+        // A refused decision (for example a failed restore) deliberately keeps the change pending
+        // server-side, so the two buttons come back and the operator can retry.
+        if (qs("assist-accept")) {
+          qs("assist-accept").disabled = false;
+        }
+        if (qs("assist-discard")) {
+          qs("assist-discard").disabled = false;
+        }
+        if (qs("assist-decision-progress")) {
+          qs("assist-decision-progress").classList.add("hidden");
+        }
+      });
+  }
+
+  function clearPendingChange() {
+    state.pendingChange = null;
+    qs("assist-pending").innerHTML = "";
+    setEditorLocked(false);
+    setAssistControlsEnabled(true);
+  }
+
+  qs("assist-submit").addEventListener("click", submitPrompt);
+
+  // ---------- Init ----------
+
+  function init() {
+    loadManifests();
+    loadGraph();
+    loadSchemaOnce();
+    loadClaudeStatus();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

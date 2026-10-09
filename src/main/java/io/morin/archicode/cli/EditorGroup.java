@@ -5,11 +5,11 @@ import picocli.CommandLine;
 
 @Slf4j
 @CommandLine.Command(
-    name = "query",
-    description = "Query the ArchiCode data model.",
-    subcommands = { GetSchemasQuery.class, GetViewsQuery.class, GetGraphQuery.class }
+    name = "editor",
+    description = "Manage the local manifest editor server.",
+    subcommands = { ServeEditorCommand.class }
 )
-public class QueryGroup {
+public class EditorGroup {
 
     @CommandLine.ParentCommand
     ArchiCode archiCode;
