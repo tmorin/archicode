@@ -118,3 +118,38 @@ test('the kernel the CLI runs is the one the editor embeds', () => {
   const file = fs.readFileSync(path.join(FIXTURE, '../../../../main/wasm/viewpoint_kernel.wasm'));
   assert.equal(Buffer.from(embedded, 'base64').equals(file), true, 'run src/main/rust/viewpoint-kernel/embed.sh');
 });
+
+test('the map, pinned on one element with nothing open, draws the overview the CLI generates; with everything open, its deep links', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  const sets = [{ dir: 'views', facet: null }].concat(
+    state.workspace.settings.facets.customs.map((facet) => ({ dir: 'views-' + facet.name, facet }))
+  );
+  const everything = Array.from(state.index.application.keys());
+  const problems = [];
+  let checked = 0;
+  for (const set of sets) {
+    const dir = path.join(FIXTURE, set.dir, 'plantuml', 'application');
+    for (const ref of state.index.application.keys()) {
+      for (const viewpoint of ['overview', 'deep']) {
+        const file = path.join(dir, ref.replace(/\./g, '_') + '-' + viewpoint + '.puml');
+        if (!fs.existsSync(file)) continue;
+        const gold = parsePuml(fs.readFileSync(file, 'utf8'));
+        const { input } = sandbox.buildKernelInput('map', null, { facet: set.facet, pinned: [ref], opened: viewpoint === 'deep' ? everything : [] });
+        const out = kernel.compute(input);
+        const where = set.dir + ' ' + ref + ' ' + viewpoint;
+        if (out.error) { problems.push(where + ': ' + out.error); continue; }
+        const mine = new Set(out.links.filter((l) => !l.secondary).map(linkKey));
+        const diff = (a, b) => [...a].filter((v) => !b.has(v));
+        const bad = diff(mine, gold.links).concat(diff(gold.links, mine));
+        if (viewpoint === 'overview') {
+          const ids = new Set(out.items.map((i) => i.id));
+          bad.push(...diff(ids, gold.items), ...diff(gold.items, ids)); // the deep view draws only the boxes links reach; the map also draws the children it opens
+        }
+        if (bad.length) problems.push(where + ' ' + JSON.stringify(bad));
+        checked++;
+      }
+    }
+  }
+  assert.deepEqual(problems, []);
+  assert.ok(checked >= 100, 'only ' + checked + ' views were compared');
+});
