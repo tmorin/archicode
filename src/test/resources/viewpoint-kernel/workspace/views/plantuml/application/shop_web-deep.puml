@@ -1,0 +1,112 @@
+@startuml shop_web-deep
+title System - Web Shop - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+person customer <<atomic>> <<person>> [
+**Customer**
+""[person]""
+
+Someone who buys things.
+]
+rectangle mailer <<system>> <<external>> <<atomic>> [
+**Mail Provider**
+""[system]""
+
+Sends the e-mails.
+]
+rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
+rectangle shop.catalog as "**Catalog**\n""[system]""" <<composite>> {
+rectangle shop.catalog.service <<Quarkus>> <<container>> <<atomic>> [
+**Catalog Service**
+""[container: Quarkus]""
+]
+}
+rectangle shop.payments <<system>> <<external>> <<atomic>> [
+**Payment Provider**
+""[system]""
+
+Takes the money.
+]
+rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
+rectangle shop.web.api <<container>> <<atomic>> <<Spring Boot>> [
+**API**
+""[container: Spring Boot]""
+]
+rectangle shop.web.edge as "**Edge**\n""[group]""" <<composite>> {
+rectangle shop.web.edge.gateway <<Envoy>> <<container>> <<atomic>> [
+**Gateway**
+""[container: Envoy]""
+]
+}
+rectangle shop.web.frontend <<Angular>> <<container>> <<atomic>> [
+**Frontend**
+""[container: Angular]""
+]
+rectangle shop.web.session <<Redis>> <<container>> <<atomic>> [
+**Session Store**
+""[container: Redis]""
+]
+}
+}
+customer --> shop.web.edge.gateway : ""[HTTPS]""
+customer --> shop.web.frontend : browses with\n""[HTTPS]""
+shop.web.api --> mailer : notifies through\n""[SMTP]""
+shop.web.api --> shop.catalog.service : queries\n""[gRPC]""
+shop.web.api --> shop.payments : charges with\n""[HTTPS]""
+shop.web.api --> shop.web.session
+shop.web.edge.gateway --> shop.web.api : routes to\n""[HTTP]""
+shop.web.frontend --> shop.web.api : calls\n""[REST]""
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml

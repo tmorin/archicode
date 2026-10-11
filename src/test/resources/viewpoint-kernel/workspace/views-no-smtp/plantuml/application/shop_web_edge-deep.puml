@@ -1,0 +1,80 @@
+@startuml shop_web_edge-deep
+title Group - Edge - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+person customer <<atomic>> <<person>> [
+**Customer**
+""[person]""
+
+Someone who buys things.
+]
+rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
+rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
+rectangle shop.web.api <<container>> <<atomic>> <<Spring Boot>> [
+**API**
+""[container: Spring Boot]""
+]
+rectangle shop.web.edge as "**Edge**\n""[group]""" <<composite>> {
+rectangle shop.web.edge.gateway <<Envoy>> <<container>> <<atomic>> [
+**Gateway**
+""[container: Envoy]""
+]
+}
+}
+}
+customer --> shop.web.edge.gateway : ""[HTTPS]""
+shop.web.edge.gateway --> shop.web.api : routes to\n""[HTTP]""
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml

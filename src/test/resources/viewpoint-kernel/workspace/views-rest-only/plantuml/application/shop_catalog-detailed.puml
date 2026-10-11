@@ -1,0 +1,70 @@
+@startuml shop_catalog-detailed
+title System - Catalog - Detailed View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
+rectangle shop.catalog as "**Catalog**\n""[system]""" <<composite>> {
+rectangle shop.catalog.db <<container>> <<PostgreSQL>> <<atomic>> [
+**Catalog Database**
+""[container: PostgreSQL]""
+]
+rectangle shop.catalog.service <<Quarkus>> <<container>> <<atomic>> [
+**Catalog Service**
+""[container: Quarkus]""
+]
+}
+}
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml

@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "mailer"
+  name: "Mail Provider"
+  description: "Sends the e-mails."
+  tags:
+    rendering-stereotypes: "external"
+  relationships:
+    - destination: "customer"
+      label: "sends e-mails to"
+      qualifiers:
+        - "SMTP"

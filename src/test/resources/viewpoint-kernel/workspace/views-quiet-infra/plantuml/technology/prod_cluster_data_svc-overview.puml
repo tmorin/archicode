@@ -1,0 +1,73 @@
+@startuml prod_cluster_data_svc-overview
+title Node - catalog pod - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle prod as "**Production**\n""[environment]""" <<composite>> {
+rectangle prod.cluster as "**Kubernetes Cluster**\n""[node: K8s]""" <<composite>> <<K8s>> {
+rectangle prod.cluster.data as "**data namespace**\n""[node]""" <<composite>> {
+rectangle prod.cluster.data.pg <<atomic>> <<node>> [
+**database pod**
+""[node]""
+]
+rectangle prod.cluster.data.svc <<atomic>> <<node>> [
+**catalog pod**
+""[node]""
+]
+}
+}
+}
+prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml

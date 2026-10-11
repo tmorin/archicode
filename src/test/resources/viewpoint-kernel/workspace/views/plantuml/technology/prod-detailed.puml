@@ -1,0 +1,69 @@
+@startuml prod-detailed
+title Environment - Production - Detailed View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle prod as "**Production**\n""[environment]""" <<composite>> {
+rectangle prod.cluster <<K8s>> <<atomic>> <<node>> [
+**Kubernetes Cluster**
+""[node: K8s]""
+]
+}
+rectangle psp <<environment>> <<atomic>> [
+**Payment Provider Cloud**
+""[environment]""
+]
+prod.cluster --> psp : pays through\n""[HTTPS]""
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml

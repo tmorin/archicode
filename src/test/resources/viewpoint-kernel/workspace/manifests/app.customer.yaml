@@ -1,0 +1,15 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "customer"
+  name: "Customer"
+  description: "Someone who buys things."
+  relationships:
+    - destination: "shop.web.frontend"
+      label: "browses with"
+      qualifiers:
+        - "HTTPS"
+    - destination: "shop.web.edge.gateway"
+      qualifiers:
+        - "HTTPS"
