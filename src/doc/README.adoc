@@ -78,6 +78,7 @@ The ArchiCode domain serves as the foundational framework for your architectural
 
 As we delve into each facet of the ArchiCode domain, you'll gain a comprehensive understanding of how each element contributes to your architectural prowess. Let's embark on a guided exploration through the diverse dimensions of the ArchiCode domain.
 
+[[workspace]]
 === Workspace
 
 In ArchiCode, a workspace is a fundamental construct that orchestrates the foundation of your architectural endeavors. It acts as a cohesive hub, streamlining the definition and configuration of your architecture work. Key aspects of the workspace include:
@@ -324,6 +325,7 @@ Relationship o--> "1" Element
 
 As you traverse the ArchiCode landscape, you'll discover that relationships are more than mere connections; they embody the intricate tapestry of your architecture. These relationships intertwine Elements, forging a harmonious narrative that elucidates dependencies, interactions, and the synergy that fuels your architectural vision. In this realm, relationships are not just links; they're the vital conduits that breathe life into your architectural masterpiece.
 
+[[viewpoints]]
 === Viewpoints and Views
 
 // - The purpose of ArchiCode is to finally generate views of the Application and Technology layers.
@@ -403,6 +405,7 @@ ArchiCode introduces a systematic approach to rendering views, enriching archite
 
 By introducing a robust rendering mechanism, employing opinionated rules for artifact generation, and facilitating the pluggable Renderer Service, ArchiCode enhances architectural communication by transforming abstract architectural concepts into tangible representations.
 
+[[technical-configuration]]
 === Technical Configuration
 
 // - ArchiCode is shipped with an opinionated set of configuration.
@@ -441,6 +444,64 @@ include::examples/domain_configuration/default_formatters.yaml[]
 
 By affording you the capability to tailor the configuration of ArchiCode, the tool seamlessly integrates with your architectural process, providing a personalized and adaptable framework.
 
+[[editor]]
+== Editor
+
+ArchiCode comes with an editor to browse, edit and draw a workspace without leaving the browser. It is a single page, `standalone.html`, that reads and writes the files of a workspace folder: nothing is uploaded anywhere, the page and the files stay on your machine.
+
+[[editor-open]]
+=== Opening the editor
+
+There are two ways to open it:
+
+- *Served by the command line.* `archicode editor serve` serves the editor and opens the folder of the `workspace.yaml` in it, with nothing to pick. It works in any browser. See <<serve-the-editor>>.
+- *From the published page.* The page published with this documentation, at `editor/` next to it, asks for a folder. That needs the File System Access API, which Chrome, Edge, Brave and Opera have and Firefox and Safari do not: with one of those, use the command above instead.
+
+The editor loads `elkjs` (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.
+
+[[editor-elements]]
+=== Elements
+
+The *Elements* perspective is the tree of the workspace on the left, and the selected element in the center. The center has four tabs:
+
+- *Details*: the fields, qualifiers, tags and relationships of the element, with *Edit* to change them, and *Delete* (the relationships of other elements that pointed at it are listed first, so that none is left dangling by surprise).
+- *Overview*, *Detailed* and *Deep*: the viewpoints of the same names, drawn live from the model, as the command line generates them. *Detailed* is for an element that can contain others. Clicking a box in a diagram selects that element.
+
+Changes stay in memory, with a mark on the tree for each modified element, until *Save all changes* writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one.
+
+[[editor-map]]
+=== Map
+
+The *Map* perspective draws the whole application layer, with no element selected. It opens folded: only the systems and solutions show, and a link is drawn between the boxes its two ends land on, so opening a box splits the links that reached it among its children.
+
+In the tree on the left, each row has two buttons, which appear when the pointer is over the row or the row has the focus:
+
+- *Pin* (the pin) keeps only what touches the element. Pin several to keep what touches any of them. With nothing pinned, the whole layer is drawn.
+- *Hide* (the eye) leaves the element, what is inside it and their relationships out of the map.
+
+The pinned and hidden elements are also shown as chips over the map, each removable, with *Clear all* once there are several. In the tree, rows of the elements the map does not draw are greyed. Folding the tree does not change the boxes of the map: use *Fold all* and *Unfold all* in the toolbar of the map, or the buttons of the boxes. *Hide unlinked* leaves out the boxes that no link reaches.
+
+*Center* puts the selected box in the middle at a readable size, *Fit* shows the whole diagram, and *SVG* downloads it.
+
+[[editor-facets]]
+=== Facets
+
+The facets of the workspace (see <<facets>>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out. In the tree, the elements the facet leaves with nothing to draw are greyed. The facets themselves are edited in the *Settings* perspective, along with the other settings of the workspace (see <<technical-configuration>>).
+
+[[editor-keyboard]]
+=== Keyboard
+
+.In a tree
+- Up and Down move, Home and End jump to the first and last row.
+- Right unfolds a branch or goes to its first child, Left folds it or goes to its parent.
+- Enter and Space select the element (in the Map, they fold or unfold the branch).
+- In the Map, `P` pins or unpins the element, and `H` hides it or shows it again.
+
+.In a diagram
+- The arrow keys move between boxes, and Enter opens the one that has the focus.
+- `+`, `-` and `0` zoom in, out and back to the actual size. `F` fits the whole diagram and `C` goes back to how it opened.
+- `M` maximizes the diagram, `Esc` brings the tree back.
+
 == Commands
 
 // - ArchiCode provides commands to generate views located in a workspace.
@@ -453,6 +514,23 @@ Within the realm of ArchiCode, an array of meticulously designed commands empowe
 - Data Model Querying Commands: ArchiCode equips you with specialized commands designed to query the intricate data model of your workspace. These commands serve as a window into your architecture's foundational elements, facilitating insightful exploration and analysis.
 
 As you delve deeper into the Command section of ArchiCode's documentation, you'll uncover the diverse set of commands at your disposal, each contributing to a more intuitive, efficient, and informed architectural workflow. Let's embark on this journey through the realm of ArchiCode's commands, discovering how they enhance your ability to shape, explore, and communicate architectural concepts.
+
+[[serve-the-editor]]
+=== Serve the editor
+
+.Serve the editor - The command line
+[source,shell]
+----
+archicode editor serve
+----
+
+Serves the editor (see <<editor>>) and opens in it the folder of the workspace file, which must be named `workspace.yaml`. Open `http://127.0.0.1:48080/` in a browser.
+
+- `--port` (`-p`): the port to listen on, `48080` by default.
+- `--host`: the address to bind to, `0.0.0.0` by default, which a Docker `-p` mapping needs.
+- `--allowed-host`: a host name, besides `localhost`, `127.0.0.1` and `[::1]`, that a request may be addressed to. Repeat it for several.
+
+The server writes to the folder, so it does not trust the network: every call carries a token that only the page it serves holds, a request must be addressed to one of the allowed host names, a page of another origin is refused, and only the `.yaml`, `.yml` and `.json` files below the folder of the workspace can be reached. With Docker, keep the host side of the port mapping on `127.0.0.1` (`-p 127.0.0.1:48080:48080`).
 
 === Generate views
 
@@ -952,6 +1030,7 @@ The final stages of the iterative process may encompass the design of the techno
 
 In essence, ArchiCode empowers architects to iteratively design, refine, and communicate complex architectures. By customizing the iterative process and adapting it to the evolving project requirements, architects can create architecture models that effectively guide development decisions, facilitate communication, and lead to the successful realization of sophisticated systems. The collaborative and adaptable nature of ArchiCode empowers architects to navigate the complexities of modern software and system design with confidence.
 
+[[facets]]
 ==== Tackling view clutter
 
 ===== Introduction

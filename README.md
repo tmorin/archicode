@@ -55,9 +55,10 @@ docker run \
 Opening `http://127.0.0.1:48080/` in a browser serves the editor and opens the
 folder of `workspace.yaml` in it, with nothing to pick: browse the elements,
 edit them, see their diagrams and the map of the workspace, and save. It works
-in any browser. (`standalone.html` is the same editor as a single file: opened
-from a file, or from the project's site, it asks for a folder instead, which
-needs the File System Access API — Chrome, Edge, Brave, Opera.)
+in any browser. The same editor is published with the manual, at
+https://tmorin.github.io/archicode/editor/, and is a single file
+(`standalone.html`): opened from there, or from a file, it asks for a folder
+instead, which needs the File System Access API (Chrome, Edge, Brave, Opera).
 
 The server writes to the folder, so it does not trust the network: every call
 carries a token that only the page it serves holds, a request must be addressed

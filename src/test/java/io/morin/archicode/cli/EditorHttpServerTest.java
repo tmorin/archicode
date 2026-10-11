@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.val;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,9 @@ class EditorHttpServerTest {
 
     @Inject
     EditorHttpServer editorHttpServer;
+
+    @ConfigProperty(name = "quarkus.application.version", defaultValue = "dev")
+    String version;
 
     EditorHttpServer.Running running;
     Path folder;
@@ -89,6 +93,10 @@ class EditorHttpServerTest {
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("<meta name=\"archicode-server\" content=\"" + running.token() + "\">"));
         assertTrue(response.body().contains("viewpoint-kernel-wasm"), "it is the standalone editor");
+        assertTrue(
+            response.body().contains("<meta name=\"archicode-version\" content=\"" + version + "\">"),
+            "the page says which ArchiCode serves it"
+        );
         assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""));
         assertEquals(404, call("GET", "/other", null, null, null).statusCode());
     }
