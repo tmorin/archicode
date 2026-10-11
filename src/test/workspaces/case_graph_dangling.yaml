@@ -1,0 +1,12 @@
+application:
+  elements:
+    - kind: "solution"
+      id: "sol"
+      elements:
+        - kind: "system"
+          id: "sys_a"
+        - kind: "system"
+          id: "sys_b"
+          relationships:
+            - destination: "sol.sys_missing"
+              label: "calls"
