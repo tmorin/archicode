@@ -12,6 +12,16 @@ CLI tool (Quarkus + Picocli) for architecture-as-code: reads a `workspace.yaml` 
 
 Integration tests (Failsafe) are skipped by default (`skipITs=true` in pom.xml) unless run with `-Dnative` or on the `native` profile.
 
+Viewpoint kernel (Rust compiled to WebAssembly, shared by the CLI and the standalone editor — see `src/main/rust/viewpoint-kernel/README.md`):
+
+```bash
+cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml
+src/main/rust/viewpoint-kernel/embed.sh                  # after changing the Rust: rebuilds and re-embeds the .wasm
+node --test "src/test/javascript/**/*.test.js"           # kernel and standalone editor vs. the views the CLI generates
+```
+
+Maven needs no Rust: `src/main/wasm/viewpoint_kernel.wasm` is committed.
+
 Format Java sources (no npm script is wired up, so call Prettier directly):
 
 ```bash
@@ -29,7 +39,7 @@ Entry point is a Picocli `@TopCommand` (`cli/ArchiCode.java`) with two subcomman
 ```
 workspace.yaml --> workspace/WorkspaceFactory --> manifest/ManifestParser
                  --> resource/element/{application,technology}, resource/view
-                 --> viewpoint/{deep,detailed,overview} (view assembly)
+                 --> viewpoint/ (view assembly: an adapter around the viewpoint kernel, Rust compiled to WebAssembly)
                  --> rendering/plantuml (PlantUML output)
 ```
 

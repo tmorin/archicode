@@ -8,16 +8,13 @@ import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.*;
-import io.morin.archicode.viewpoint.overview.OverviewViewpointFactory;
+import io.morin.archicode.viewpoint.kernel.KernelViewpointFactory;
 import java.util.Optional;
 import lombok.NonNull;
 import lombok.val;
 
 public class DetailedViewpointService implements ViewpointService {
 
-    private static final MetaLinkFinderForEgress metaLinkFinderForEgress = MetaLinkFinderForEgress.builder().build();
-    private static final MetaLinkFinderForIngress metaLinkFinderForIngress = MetaLinkFinderForIngress.builder().build();
-    private static final MetaLinkGroomer metaLinkGroomer = MetaLinkGroomer.builder().build();
     private static final String NAME = "detailed";
 
     MapperFactory mapperFactory;
@@ -71,16 +68,6 @@ public class DetailedViewpointService implements ViewpointService {
 
     @Override
     public ViewpointFactory createViewpointFactory() {
-        return DetailedViewpointFactory.builder()
-            .objectMapper(mapperFactory.createLazy(MapperFormat.JSON))
-            .overviewViewpointFactory(
-                OverviewViewpointFactory.builder()
-                    .objectMapper(mapperFactory.create(MapperFormat.JSON))
-                    .metaLinkFinderForEgress(metaLinkFinderForEgress)
-                    .metaLinkFinderForIngress(metaLinkFinderForIngress)
-                    .metaLinkGroomer(metaLinkGroomer)
-                    .build()
-            )
-            .build();
+        return new KernelViewpointFactory(NAME, mapperFactory.createLazy(MapperFormat.JSON));
     }
 }

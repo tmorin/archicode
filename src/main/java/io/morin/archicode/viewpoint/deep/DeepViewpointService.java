@@ -7,14 +7,13 @@ import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.*;
+import io.morin.archicode.viewpoint.kernel.KernelViewpointFactory;
 import java.util.Optional;
 import lombok.NonNull;
 import lombok.val;
 
 public class DeepViewpointService implements ViewpointService {
 
-    private static final MetaLinkFinderForEgress metaLinkFinderForEgress = MetaLinkFinderForEgress.builder().build();
-    private static final MetaLinkFinderForIngress metaLinkFinderForIngress = MetaLinkFinderForIngress.builder().build();
     private static final String NAME = "deep";
 
     MapperFactory mapperFactory;
@@ -61,10 +60,6 @@ public class DeepViewpointService implements ViewpointService {
 
     @Override
     public ViewpointFactory createViewpointFactory() {
-        return DeepViewpointFactory.builder()
-            .objectMapper(mapperFactory.createLazy(MapperFormat.JSON))
-            .metaLinkFinderForEgress(metaLinkFinderForEgress)
-            .metaLinkFinderForIngress(metaLinkFinderForIngress)
-            .build();
+        return new KernelViewpointFactory(NAME, mapperFactory.createLazy(MapperFormat.JSON));
     }
 }

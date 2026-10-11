@@ -1,0 +1,71 @@
+@startuml mailer-overview
+title System - Mail Provider - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle mailer <<system>> <<external>> <<atomic>> [
+**Mail Provider**
+""[system]""
+
+Sends the e-mails.
+]
+rectangle shop <<solution>> <<atomic>> [
+**Online Shop**
+""[solution]""
+
+Sells things on the web.
+]
+shop --> mailer : reports to
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml

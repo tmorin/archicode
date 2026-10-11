@@ -7,7 +7,6 @@ import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.resource.element.technology.TechnologyElement;
 import io.morin.archicode.resource.view.View;
-import io.morin.archicode.viewpoint.Level;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
@@ -71,6 +70,12 @@ public class Workspace {
             return true;
         }
 
+        /** The reference without its last part (the reference itself when it has a single part). */
+        private static String parentOf(String reference) {
+            val lastIndex = reference.lastIndexOf('.');
+            return lastIndex > -1 ? reference.substring(0, lastIndex) : reference;
+        }
+
         /**
          * Check if the candidate is a sibling of the reference.
          *
@@ -80,7 +85,7 @@ public class Workspace {
          */
         public static boolean isSiblingOf(@NonNull String candidate, @NonNull String reference) {
             val candidateParts = splitReference(candidate);
-            val referenceParts = splitReference(Level.downReference(reference));
+            val referenceParts = splitReference(parentOf(reference));
             // leave early if the candidate cannot be an ancestor
             if (candidateParts.length <= referenceParts.length) {
                 return false;
