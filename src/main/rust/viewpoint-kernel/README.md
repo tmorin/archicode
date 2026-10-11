@@ -4,6 +4,12 @@ The algorithms behind the three viewpoints (overview, detailed, deep), the facet
 pure function: a graph of references and relationships goes in as JSON, the items and links of a view come out as
 JSON. It knows nothing about YAML, files or rendering.
 
+A fourth viewpoint, the **map**, is used by the editor only: it has no focal element, every element of the layer is in
+play, and a relationship is drawn between the boxes its two ends land on, so opening a box (`opened`) splits the links
+that reached it among its children. `pinned` keeps the relationships that touch given elements, `hidden` leaves
+elements out. Pinned on one element with nothing open it draws that element's overview, which the tests check against
+the views the CLI generates.
+
 It is written once and runs in both places that draw views, so they cannot disagree:
 
 | Where | How |
