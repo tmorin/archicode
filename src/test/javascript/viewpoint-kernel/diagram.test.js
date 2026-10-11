@@ -250,12 +250,12 @@ test('maximizing the diagram hides the tree, and only on a diagram', async () =>
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'; diagramMaximized = false;");
   const normal = sandbox.renderElementsPerspectiveHtml();
   assert.ok(normal.left);
-  assert.match(normal.center, /data-action="toggle-maximize"[^>]*>Maximize</);
+  assert.match(normal.center, /data-action="toggle-maximize"[^>]*>.*<span class="maximize-label">Maximize<\/span>/);
 
   run(sandbox, 'diagramMaximized = true;');
   const maximized = sandbox.renderElementsPerspectiveHtml();
   assert.equal(maximized.left, null);
-  assert.match(maximized.center, /data-action="toggle-maximize"[^>]*>Restore</);
+  assert.match(maximized.center, /data-action="toggle-maximize"[^>]*>.*<span class="maximize-label">Restore<\/span>/);
 
   run(sandbox, "elementTab = 'details';");
   assert.ok(sandbox.renderElementsPerspectiveHtml().left, 'the page of an element always has its tree');
@@ -354,10 +354,10 @@ test('Center and Fit are lit while the diagram is framed that way, and only then
   const { sandbox } = await openFixture();
   const record = sandbox.findElementRecord('shop.web.api');
   const html = () => sandbox.renderDiagramCanvasHtml(record, false);
-  assert.match(html(), /id="diagram-center-button"[^>]*aria-pressed="true"/, 'a diagram opens framed on its element');
+  assert.match(html(), /id="diagram-center-button"[^>]*data-lit="true"/, 'a diagram opens framed on its element');
   assert.match(html(), /id="diagram-fit-button"[^>]*aria-pressed="false"/);
   sandbox.eval ? sandbox.eval("diagramScale = 'fit'") : require('node:vm').runInContext("diagramScale = 'fit'", sandbox);
-  assert.match(html(), /id="diagram-center-button"[^>]*aria-pressed="false"/);
+  assert.match(html(), /id="diagram-center-button"[^>]*data-lit="false"/);
   assert.match(html(), /id="diagram-fit-button"[^>]*aria-pressed="true"/);
 });
 
@@ -393,33 +393,225 @@ test('the Map perspective draws the workspace without any element selected, with
   assert.ok(picked.right === null && picked.bottom === null && html.right === null && html.bottom === null, 'the map has the room to itself: no panel on the right or at the bottom');
 });
 
-test('the tree of the Map says what each element is for the map, and picking one finds it there', async () => {
+test('the tree of the Map only folds and unfolds, and says what each element is for the map', async () => {
   const { sandbox, state } = await openFixture();
   run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = ['shop.catalog']; mapHidden = ['mailer'];");
-  state.selection = { kind: 'none', key: null, mode: 'view' };
+  state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
   assert.ok(sandbox.renderMapScopeHtml().includes('data-ref="shop.catalog"') === false, 'closed branches are not drawn');
   state.expanded.add('shop');
   const html = sandbox.renderMapScopeHtml();
-  assert.match(html, /map-scope-row pinned[^>]*data-action="map-select" data-ref="shop.catalog"/);
-  assert.match(html, /map-scope-row left-out[^>]*data-ref="mailer"/);
-  assert.match(html, /data-action="map-hide" data-ref="shop"[^>]*disabled/, 'what encloses a pinned element cannot be hidden');
+  assert.ok(!html.includes('map-select'), 'a row selects nothing');
+  assert.ok(!/tree-node-row[^"]*\bactive\b/.test(html), 'and the tree does not show a selection');
+  assert.match(html, /map-scope-row pinned foldable"[^>]*data-action="toggle-element" data-ref="shop.catalog"/, 'a row with children folds or unfolds it');
+  assert.match(html, /<div class="tree-node-row map-scope-row left-out"[^>]*data-node="mailer"[^>]*><span class="tree-toggle tree-toggle-empty"/, 'a row with none does nothing');
+  assert.doesNotMatch(html, /data-action="map-hide" data-ref="shop"/, 'what encloses a pinned element has no Hide button, rather than a disabled one');
+  assert.doesNotMatch(html, /data-action="map-hide" data-ref="shop.catalog"/, 'nor has a pinned element');
+  assert.doesNotMatch(html, /map-scope-btn[^>]*disabled/, 'no button is drawn disabled');
+  const actionsOf = (ref) => html.match(new RegExp('data-ref="' + ref.replace(/\./g, '\\.') + '" aria-pressed="[a-z]+" aria-label="[^"]*"', 'g')).map((m) => m.includes('Pin') || m.includes('pin') ? 'pin' : 'hide');
+  assert.deepEqual(actionsOf('mailer'), ['hide', 'pin'], 'Pin comes last, at the same place whether Hide is there or not');
+  assert.deepEqual(actionsOf('shop.catalog'), ['pin']);
   assert.match(html, /data-action="map-pin" data-ref="mailer" aria-pressed="false" aria-label="Pin Mail Provider"/);
   assert.ok(html.includes('class="tree-node-label" title="Mail Provider"') && html.includes('class="tree-node-kind" title="system">SYS<'), 'a long name can be read in full, the kind is short');
   assert.ok(!/>\s*(Pin|Hide)\s*</.test(html), 'the buttons are icons, they leave the room to the name');
   assert.ok(html.includes('class="map-scope-mark"') && html.includes('title="Pinned"'), 'a pinned element is marked without hovering');
+  // each toggle draws the state it is in
+  assert.match(html, /aria-label="Unpin Catalog"[^>]*><svg[^>]*><path[^>]*fill="currentColor"\/><\/svg>/, 'pinned: the pin is filled');
+  assert.match(html, /aria-label="Pin Mail Provider"[^>]*><svg[^>]*><path[^>]*fill="none"/, 'not pinned: the pin is an outline');
+  assert.match(html, /aria-label="Show Mail Provider"[^>]*><svg[^>]*>.*?M2\.5 13\.5l11-11/, 'hidden: the eye is crossed');
 
   const click = (action, attrs) => {
     const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
     sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
   };
-  run(sandbox, 'mapPinned = []; mapHidden = [];');
-  click('map-select', { 'data-ref': 'shop.web.edge.gateway' });
-  assert.equal(state.selection.key, 'shop.web.edge.gateway');
-  assert.equal(run(sandbox, 'JSON.stringify(Array.from(currentMapOpened()).sort())'), JSON.stringify(['shop', 'shop.web', 'shop.web.edge']), 'the boxes around it are opened');
-  assert.equal(run(sandbox, 'mapRevealRef'), 'shop.web.edge.gateway');
-  click('map-hide', { 'data-ref': 'mailer' });
+  click('toggle-element', { 'data-ref': 'shop.catalog' });
+  assert.equal(state.selection.key, 'shop.catalog', 'folding does not change the selection');
+  assert.equal(state.expanded.has('shop.catalog'), true);
   click('map-hide', { 'data-ref': 'mailer' });
   assert.equal(run(sandbox, 'mapHidden.length'), 0, 'Hide on a hidden element brings it back');
+});
+
+test('the tree of the Map is a tree for the keyboard and the screen reader, with one tab stop', async () => {
+  const { sandbox, state } = await openFixture();
+  run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = ['shop.catalog']; mapHidden = ['mailer']; navActiveRef = null;");
+  state.expanded.add('shop');
+  const html = sandbox.renderMapScopeHtml();
+  assert.match(html, /role="tree" aria-label="[^"]+"/);
+  assert.equal((html.match(/role="treeitem"/g) || []).length, (html.match(/class="tree-node-row map-scope-row/g) || []).length, 'every row is an item');
+  assert.match(html, /data-node="shop"[^>]*>/);
+  assert.match(html, /map-scope-row foldable" role="treeitem" style="--level:1" aria-level="1" aria-expanded="true" aria-owns="map-scope-group-shop"/, 'a branch says it is open and what it holds');
+  assert.match(html, /role="treeitem" style="--level:2" aria-level="2" aria-expanded="false"/, 'a closed branch says so, one level down');
+  assert.match(html, /role="group" id="map-scope-group-shop"/);
+  assert.equal((html.match(/class="tree-node-row[^"]*" role="treeitem"[^>]*tabindex="0"/g) || []).length, 1, 'one tab stop for the whole tree');
+  assert.match(html, /data-node="customer"[^>]*>/);
+  assert.match(html.match(/<div class="tree-node-row[^>]*data-node="customer"[^>]*>/)[0], /tabindex="0"/, 'the first row by default');
+  assert.match(html, /aria-label="Mail Provider, hidden"/, 'the state is read, not only drawn');
+  assert.match(html, /aria-label="Catalog, pinned"/);
+  assert.ok((html.match(/<button type="button" tabindex="-1" class="map-scope-btn"/g) || []).length >= 3, 'the buttons are out of the tab order: the keyboard has the row');
+  run(sandbox, "navActiveRef = 'shop.web';");
+  assert.match(sandbox.renderMapScopeHtml().match(/<div class="tree-node-row[^>]*data-node="shop\.web"[^>]*>/)[0], /tabindex="0"/, 'the row the user was on keeps the tab stop');
+  run(sandbox, "navActiveRef = 'shop.gone';");
+  assert.equal((sandbox.renderMapScopeHtml().match(/tabindex="0"/g) || []).length, 1, 'a row that is gone gives the stop back to the first one');
+});
+
+test('the tree of the Map greys the elements the drawn map leaves out, and unfolds the way to a pinned element', async () => {
+  const { sandbox, state } = await openFixture();
+  run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = []; mapHidden = ['mailer'];");
+  state.expanded.add('shop');
+  const row = (html, ref) => html.match(new RegExp('<div class="tree-node-row[^>]*data-node="' + ref.replace(/\./g, '\\.') + '"[^>]*>'))[0];
+  // nothing drawn yet, or the drawing of an element: no row is said to be off the map
+  run(sandbox, "diagramScene = { viewKey: 'shop|overview||', boxes: { shop: {} } };");
+  assert.doesNotMatch(sandbox.renderMapScopeHtml(), /off-map/);
+  // the drawing of the map: the boxes it has, and what is inside them is on it too
+  run(sandbox, "diagramScene = { viewKey: 'map|overview||shop.catalog', boxes: { 'shop': {}, 'customer': {} }, expandable: ['shop'] };");
+  let html = sandbox.renderMapScopeHtml();
+  assert.doesNotMatch(row(html, 'customer'), /off-map/);
+  assert.doesNotMatch(row(html, 'shop.payments'), /off-map/, 'inside a box that is folded');
+  assert.doesNotMatch(row(html, 'mailer'), /off-map/, 'a hidden element is struck through, not greyed twice');
+  run(sandbox, "diagramScene = { viewKey: 'map|overview||', boxes: { 'shop': {}, 'shop.catalog': {} }, expandable: [] };");
+  assert.match(row(sandbox.renderMapScopeHtml(), 'shop.web'), /off-map/, 'an open box shows some of what is inside it: the rest is out');
+  run(sandbox, "diagramScene = { viewKey: 'map|overview||shop.catalog', boxes: { 'shop.catalog': {} }, expandable: [] };");
+  html = sandbox.renderMapScopeHtml();
+  assert.match(row(html, 'customer'), /off-map[^>]*title="Not on the map right now"/);
+  assert.match(row(html, 'customer'), /aria-label="Customer, not on the map"/);
+  assert.doesNotMatch(row(html, 'shop.catalog'), /off-map/);
+  assert.match(html, /Greyed rows are not on the map/, 'the hint says what grey means');
+
+  // pinning (or opening a pinned link) shows the row of the element
+  state.expanded.clear();
+  const click = (action, attrs) => {
+    const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
+    sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
+  };
+  click('map-pin', { 'data-ref': 'shop.catalog' });
+  assert.equal(state.expanded.has('shop'), true, 'the branch above a pinned element is unfolded');
+  assert.equal(state.expanded.has('shop.catalog'), false, 'the element itself is left as it was');
+  state.expanded.clear();
+  run(sandbox, 'mapPinned = [];');
+  sandbox.location.hash = '#/map?pin=shop.web';
+  sandbox.syncPerspectiveFromHash();
+  assert.equal(state.expanded.has('shop'), true, 'also when the pin comes from the URL');
+});
+
+test('the tree of Elements is a tree too: short kinds with their title, a dot for what is modified, one tab stop, the selection announced', async () => {
+  const { sandbox, state } = await openFixture();
+  run(sandbox, "currentPerspective = 'elements'; navActiveRef = null; diagramFacet = null; elementTab = 'details';");
+  state.expanded.clear();
+  state.expanded.add('shop');
+  state.expanded.add('shop.web');
+  state.selection = { kind: 'element', key: 'shop.web', mode: 'view' };
+  state.dirtyReferences.add('shop.payments');
+  const html = sandbox.renderElementsNavHtml(true);
+  const row = (ref) => html.match(new RegExp('<div class="tree-node-row[^>]*data-node="' + ref.replace(/\./g, '\\.') + '"[^>]*>'))[0];
+  assert.equal((html.match(/role="tree"/g) || []).length, 2, 'Applications and Environments are two trees');
+  assert.match(row('shop.web'), /aria-selected="true"/);
+  assert.match(row('shop.payments'), /aria-selected="false"/);
+  assert.match(row('shop.web'), /aria-expanded="true"/);
+  assert.match(row('shop.web.frontend'), /style="--level:3" aria-level="3"/, 'the depth is the padding of the row, not a margin around the branch');
+  assert.doesNotMatch(row('customer'), /aria-expanded/, 'a leaf has nothing to expand');
+  assert.match(row('shop.payments'), /aria-label="Payment Provider, modified"/);
+  assert.match(html, /<span class="tree-node-kind" title="person">PRS<\/span>/, 'the kind is short, its title says it in full');
+  assert.match(html, /class="tree-node-label" title="Payment Provider"/, 'a name that is cut can still be read');
+  assert.match(html, /class="modified-dot"[^>]*title="This element has unsaved changes"/);
+  assert.doesNotMatch(html, />modified</, 'a dot, not a word that takes the room of the name');
+  assert.equal((html.match(/tabindex="0"/g) || []).length, 1, 'one tab stop for both trees');
+  assert.match(row('shop.web'), /tabindex="0"/, 'on the selected row, when the user was on none');
+  assert.match(html, /aria-label="Add an element to Applications"/);
+  assert.equal(sandbox.kindAbbreviation('container-group'), 'GRP');
+  assert.equal(sandbox.kindAbbreviation('environment'), 'ENV');
+  assert.equal(sandbox.kindAbbreviation('node'), 'NOD');
+  // a facet greys rows: the tree says why, and how to get rid of it
+  run(sandbox, "elementTab = 'overview'; diagramFacet = 'no-smtp';");
+  assert.match(sandbox.renderElementsNavHtml(true), /Greyed: nothing to draw through “no-smtp”\. <button type="button" data-action="clear-facet">Clear facet<\/button>/);
+  run(sandbox, "diagramFacet = null;");
+  assert.doesNotMatch(sandbox.renderElementsNavHtml(true), /nav-facet-note/);
+  // a selection that does not come from the tree is brought into view in it
+  const click = (action, attrs) => {
+    const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
+    sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
+  };
+  run(sandbox, 'scrollNavToSelection = false;');
+  click('select-element', { 'data-ref': 'shop.catalog' });
+  assert.equal(run(sandbox, 'scrollNavToSelection'), false, 'a click in the tree does not move it under the pointer');
+  click('goto-element', { 'data-ref': 'shop.web' });
+  assert.equal(run(sandbox, 'scrollNavToSelection'), true, 'a click on a box of a diagram does');
+});
+
+test('the toolbars of Elements say what their controls are, keep the focus across a redraw and find their words', async () => {
+  const { sandbox, state } = await openFixture();
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'; diagramMaximized = false; diagramFacet = null;");
+  state.selection = { kind: 'element', key: 'shop', mode: 'view' };
+  const page = sandbox.renderElementsPerspectiveHtml().center;
+  assert.match(page, /role="group" aria-label="View of this element"/, 'the tabs are a group of views, said honestly');
+  assert.match(page, /data-action="toggle-maximize" aria-label="Maximize"/);
+  assert.doesNotMatch(page.match(/<button[^>]*toggle-maximize[^>]*>/)[0], /aria-pressed/, 'the label says the state, the button is not also pressed');
+  assert.doesNotMatch(page.match(/<button[^>]*diagram-center-button[^>]*>/)[0], /aria-pressed/, 'Center is an action, lit while its framing holds');
+  assert.match(page, /id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size"/);
+  assert.match(page, /diagram-tools-sep[^]*data-action="diagram-export"/, 'the export is set apart from the zoom and the framing');
+  assert.match(page, />Show on map</);
+  // the map leads back to the diagram of the element, and the element is not dressed as a kind
+  run(sandbox, "currentPerspective = 'map';");
+  const map = sandbox.renderMapPerspectiveHtml().center;
+  assert.match(map, />Open in Elements</);
+  assert.match(map, /class="element-header-subject"/);
+  assert.doesNotMatch(map, /element-kind-badge/);
+  // the control that had the focus is found again once the page is rebuilt
+  const control = (attrs, id) => ({ id: id || '', closest: () => ({ id: id || '', disabled: false, getAttribute: (name) => attrs[name] || null }) });
+  assert.equal(sandbox.headerControlSelector(control({ 'data-action': 'set-element-tab', 'data-tab': 'deep' })), '[data-action="set-element-tab"][data-tab="deep"]');
+  assert.equal(sandbox.headerControlSelector(control({}, 'diagram-facet-select')), '#diagram-facet-select');
+  assert.equal(sandbox.headerControlSelector(control({ 'data-action': 'diagram-zoom', 'data-dir': 'fit' })), '[data-action="diagram-zoom"][data-dir="fit"]');
+  assert.equal(sandbox.headerControlSelector({ closest: () => null }), null, 'a control outside the headers keeps nothing');
+  // a person has nothing inside it: no hint to look inside, and the URL says the tab that is shown
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'detailed';");
+  state.selection = { kind: 'element', key: 'customer', mode: 'view' };
+  assert.match(sandbox.currentRouteHash(), /tab=overview/, 'a leaf asked for Detailed shows its Overview, and the link says so');
+  state.selection = { kind: 'element', key: 'shop', mode: 'view' };
+  assert.match(sandbox.currentRouteHash(), /tab=detailed/);
+});
+
+test('each tree of the navigations can unfold and fold all its branches, and nothing else', async () => {
+  const { sandbox, state } = await openFixture();
+  const click = (action, attrs) => {
+    const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
+    sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
+  };
+  run(sandbox, "mapOpened = null; mapPinned = [];");
+
+  // Elements: one pair of buttons in the header of each tree
+  run(sandbox, "currentPerspective = 'elements';");
+  const nav = sandbox.renderElementsNavHtml(false);
+  assert.equal((nav.match(/data-action="nav-unfold-all"/g) || []).length, 2, 'Applications and Environments each have Unfold all');
+  assert.equal((nav.match(/data-action="nav-fold-all"/g) || []).length, 2, 'and Fold all');
+  assert.match(nav, /data-action="nav-fold-all" data-layer="technology" data-branch="environments"/);
+  assert.match(nav, /aria-label="Fold every branch of Environments"/, 'the two pairs are told apart');
+  state.expanded.clear();
+  click('nav-unfold-all', { 'data-layer': 'application', 'data-branch': 'applications' });
+  assert.equal(state.expanded.has('shop'), true, 'every parent of the tree is unfolded');
+  assert.equal(state.expanded.has('shop.web'), true, 'at every depth');
+  assert.equal(state.expanded.has('customer'), false, 'a leaf has nothing to unfold');
+  assert.equal(state.expanded.has('production'), false, 'the other tree is left as it was');
+  assert.equal(run(sandbox, 'treeExpandedApplications'), true);
+  assert.equal(run(sandbox, 'mapOpened === null || mapOpened.size === 0'), true, 'the boxes of the map are not touched');
+  click('nav-fold-all', { 'data-layer': 'application', 'data-branch': 'applications' });
+  assert.equal(state.expanded.has('shop'), false);
+  assert.equal(state.expanded.has('shop.web'), false);
+  assert.equal(run(sandbox, 'treeExpandedApplications'), false, 'the tree itself folds, down to its header');
+  assert.equal(run(sandbox, 'treeExpandedEnvironments'), true, 'the other one stays open');
+  click('nav-unfold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
+  assert.equal(run(sandbox, 'treeExpandedEnvironments'), true);
+  assert.ok(Array.from(state.expanded).some((reference) => state.index.technology.has(reference)), 'the environments are unfolded');
+  click('nav-fold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
+  assert.equal(run(sandbox, 'treeExpandedEnvironments'), false);
+
+  // Map: one pair, for its one tree
+  run(sandbox, "currentPerspective = 'map'; treeExpandedApplications = true;");
+  state.expanded.clear();
+  const map = sandbox.renderMapScopeHtml();
+  assert.equal((map.match(/data-action="nav-unfold-all"/g) || []).length, 1);
+  click('nav-unfold-all', { 'data-layer': 'application' });
+  assert.equal(state.expanded.has('shop.web'), true);
+  click('nav-fold-all', { 'data-layer': 'application' });
+  assert.equal(state.expanded.has('shop'), false);
+  assert.equal(run(sandbox, 'treeExpandedApplications'), true, 'the Map has no header of its tree to fold');
 });
 
 test('Elements and Map lead to each other, and the URL of the map carries the facet and the pinned elements', async () => {
@@ -533,4 +725,22 @@ test('the map leaves the captions out of the layout unless asked, and knows wher
   const drawing = sandbox.renderDiagramSvg(fakeLayout(without), result, '');
   assert.ok(drawing.boxes['shop.web'] && drawing.boxes['shop.web'].w > 0, 'the box of every element is known');
   assert.equal(drawing.focal, null, 'the map has no focal element of its own: the selection is the one');
+});
+
+test('the pinned and hidden chips float over the map, with Clear all once there are more than two', async () => {
+  const { sandbox, state } = await openFixture();
+  run(sandbox, "currentPerspective = 'map'; mapPinned = ['shop.web']; mapHidden = ['mailer'];");
+  state.selection = { kind: 'none', key: null, mode: 'view' };
+  const center = sandbox.renderMapPerspectiveHtml().center;
+  const stage = center.slice(center.indexOf('<div class="diagram-stage">'));
+  assert.ok(stage.indexOf('class="map-chips"') > -1 && stage.indexOf('class="map-chips"') < stage.indexOf('id="diagram-canvas"'), 'inside the stage, over the canvas');
+  assert.ok(!center.slice(0, center.indexOf('<div class="diagram-stage">')).includes('map-chips'), 'no band between the header and the map');
+  assert.ok(!center.includes('map-chips-clear'), 'two chips: no Clear all');
+
+  run(sandbox, "mapHidden = ['mailer', 'customer'];");
+  assert.ok(sandbox.renderMapPerspectiveHtml().center.includes('data-action="map-clear"'));
+  const target = { getAttribute: (name) => (name === 'data-action' ? 'map-clear' : null) };
+  sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
+  assert.equal(run(sandbox, 'mapPinned.length + mapHidden.length'), 0);
+  assert.ok(!sandbox.renderMapPerspectiveHtml().center.includes('map-chips'));
 });
