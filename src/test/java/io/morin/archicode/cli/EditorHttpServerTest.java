@@ -1,24 +1,22 @@
 package io.morin.archicode.cli;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.sun.net.httpserver.HttpServer;
-import io.morin.archicode.MapperFactory;
-import io.morin.archicode.MapperFormat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.net.Socket;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.Comparator;
+import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.AfterEach;
@@ -26,8 +24,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Exercises {@link EditorHttpServer} over real HTTP (JDK {@link HttpClient}), against a temp-directory copy of
- * {@code src/test/workspaces/editor_manifests/} so write assertions never touch the committed fixture.
+ * Exercises {@link EditorHttpServer} over real HTTP against a temporary workspace: it serves the editor with its
+ * token, gives the folder to the editor, and refuses what could turn a local server into a way to write elsewhere.
  */
 @QuarkusTest
 class EditorHttpServerTest {
@@ -35,221 +33,182 @@ class EditorHttpServerTest {
     @Inject
     EditorHttpServer editorHttpServer;
 
-    @Inject
-    MapperFactory mapperFactory;
-
-    HttpServer server;
-    Path workspaceFilePath;
+    EditorHttpServer.Running running;
+    Path folder;
+    Path outside;
     HttpClient client = HttpClient.newHttpClient();
 
     @SneakyThrows
     @BeforeEach
-    void startServer() {
-        val tempDir = Files.createTempDirectory("editor_manifests");
-        copyDirectory(Path.of("src/test/workspaces/editor_manifests"), tempDir);
-        workspaceFilePath = tempDir.resolve("workspace.yaml");
-
-        server = editorHttpServer.start("127.0.0.1", 0, workspaceFilePath);
+    void start() {
+        val base = Files.createTempDirectory("editor_server");
+        folder = Files.createDirectories(base.resolve("architecture"));
+        outside = Files.createDirectories(base.resolve("outside"));
+        Files.writeString(folder.resolve("workspace.yaml"), "application: {}\n");
+        Files.createDirectories(folder.resolve("manifests"));
+        Files.writeString(folder.resolve("manifests/app.yaml"), "header: {kind: person}\n");
+        Files.writeString(folder.resolve("notes.txt"), "not a manifest");
+        Files.writeString(outside.resolve("secret.yaml"), "secret: true\n");
+        running = editorHttpServer.start("127.0.0.1", 0, folder.resolve("workspace.yaml"), Set.of());
     }
 
     @AfterEach
-    void stopServer() {
-        editorHttpServer.stop(server);
+    void stop() {
+        editorHttpServer.stop(running);
     }
 
-    private String baseUrl() {
-        return "http://127.0.0.1:" + server.getAddress().getPort();
-    }
-
-    @SneakyThrows
-    private HttpResponse<String> get(String path) {
-        val request = HttpRequest.newBuilder(URI.create(baseUrl() + path))
-            .GET()
-            .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    private String base() {
+        return "http://127.0.0.1:" + running.server().getAddress().getPort();
     }
 
     @SneakyThrows
-    private HttpResponse<String> put(String path, byte[] body) {
-        val request = HttpRequest.newBuilder(URI.create(baseUrl() + path))
-            .PUT(HttpRequest.BodyPublishers.ofByteArray(body))
-            .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    private HttpResponse<String> call(String method, String path, String body, String token, String origin) {
+        val builder = HttpRequest.newBuilder(URI.create(base() + path));
+        if (token != null) builder.header(EditorHttpServer.TOKEN_HEADER, token);
+        if (origin != null) builder.header("Origin", origin);
+        builder.method(
+            method,
+            body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body)
+        );
+        return client.send(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
     }
 
-    @SneakyThrows
-    private static void copyDirectory(Path source, Path target) {
-        try (val stream = Files.walk(source)) {
-            for (Path path : stream.sorted().toList()) {
-                val destination = target.resolve(source.relativize(path));
-                if (Files.isDirectory(path)) {
-                    Files.createDirectories(destination);
-                } else {
-                    Files.copy(path, destination, StandardCopyOption.REPLACE_EXISTING);
-                }
-            }
-        }
-    }
-
-    @Test
-    void shouldReturnThePlaceholderRoot() {
-        val response = get("/");
-        assertEquals(200, response.statusCode());
-    }
-
-    @SneakyThrows
-    @Test
-    void shouldServeTheEditorWebappAtRoot() {
-        val response = get("/");
-        assertEquals(200, response.statusCode());
-        assertTrue(
-            response.headers().firstValue("Content-Type").orElse("").contains("text/html"),
-            "expected the root route to serve the HTML webapp, got Content-Type: " +
-                response.headers().firstValue("Content-Type")
+    private HttpResponse<String> api(String method, String route, String path, String body) {
+        return call(
+            method,
+            "/api/fs/" + route + "?path=" + URLEncoder.encode(path, StandardCharsets.UTF_8),
+            body,
+            running.token(),
+            null
         );
     }
 
-    @SneakyThrows
     @Test
-    void shouldListTheConfiguredManifests() {
-        val response = get("/api/manifests");
+    void servesTheEditorWithTheTokenOfTheServer() {
+        val response = call("GET", "/", null, null, null);
         assertEquals(200, response.statusCode());
-
-        val tree = mapperFactory.create(MapperFormat.JSON).readTree(response.body());
-        val manifests = tree.get("manifests");
-        assertTrue(manifests.isArray() && manifests.size() >= 2, "expected both fixture manifests to be listed");
-
-        var foundPerA = false;
-        var foundSolA = false;
-        for (val entry : manifests) {
-            if ("manifests/per_a.yaml".equals(entry.get("path").asText())) {
-                foundPerA = true;
-                assertEquals("per_a", entry.get("reference").asText());
-                // The mapper's NON_EMPTY serialization inclusion (MapperFactory) omits a null parseError entirely
-                // rather than writing a literal JSON null, so its absence is the success signal here.
-                assertTrue(entry.get("parseError") == null || entry.get("parseError").isNull());
-            }
-            if ("manifests/sol_a.yaml".equals(entry.get("path").asText())) {
-                foundSolA = true;
-                assertEquals("sol_a", entry.get("reference").asText());
-                assertTrue(entry.get("parseError") == null || entry.get("parseError").isNull());
-            }
-        }
-        assertTrue(foundPerA, "expected an entry for manifests/per_a.yaml");
-        assertTrue(foundSolA, "expected an entry for manifests/sol_a.yaml");
+        assertTrue(response.body().contains("<meta name=\"archicode-server\" content=\"" + running.token() + "\">"));
+        assertTrue(response.body().contains("viewpoint-kernel-wasm"), "it is the standalone editor");
+        assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""));
+        assertEquals(404, call("GET", "/other", null, null, null).statusCode());
     }
 
-    @SneakyThrows
     @Test
-    void shouldRejectNonGetMethodsOnTheManifestsListing() {
-        val response = put("/api/manifests", "irrelevant".getBytes(StandardCharsets.UTF_8));
-        assertEquals(405, response.statusCode());
+    void tellsWhichFolderIsServed() {
+        val response = call("GET", "/api/fs/info", null, running.token(), null);
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("\"folder\":\"architecture\""));
     }
 
-    @SneakyThrows
     @Test
-    void shouldReturnTheResolvedGraph() {
-        val response = get("/api/graph");
-        assertEquals(200, response.statusCode());
+    void listsTheEntriesOfADirectoryWithoutTheHiddenOnes() throws Exception {
+        Files.createDirectories(folder.resolve(".git"));
+        val root = api("GET", "list", "", null);
+        assertEquals(200, root.statusCode());
+        assertTrue(root.body().contains("\"name\":\"workspace.yaml\",\"kind\":\"file\""));
+        assertTrue(root.body().contains("\"name\":\"manifests\",\"kind\":\"directory\""));
+        assertFalse(root.body().contains(".git"));
+        assertTrue(api("GET", "list", "manifests", null).body().contains("app.yaml"));
+        assertEquals(404, api("GET", "list", "nowhere", null).statusCode());
+    }
 
-        val tree = mapperFactory.create(MapperFormat.JSON).readTree(response.body());
-        val elements = tree.get("elements");
-        val relationships = tree.get("relationships");
-        assertTrue(elements.isArray() && elements.size() >= 2, "expected both fixture elements to be indexed");
-        assertTrue(
-            relationships.isArray() && relationships.size() == 1,
-            "expected the single per_a -> sol_a relationship declared in the fixture"
+    @Test
+    void readsWritesAndDeletesAFile() throws Exception {
+        val read = api("GET", "file", "manifests/app.yaml", null);
+        assertEquals("header: {kind: person}\n", read.body());
+        assertEquals(
+            String.valueOf(Files.getLastModifiedTime(folder.resolve("manifests/app.yaml")).toMillis()),
+            read.headers().firstValue(EditorHttpServer.MODIFIED_HEADER).orElse(""),
+            "the editor tells a file changed on disk by this time"
         );
+
+        val created = api("PUT", "file", "manifests/new/app.platform.yaml", "header: {kind: system}\n");
+        assertEquals(201, created.statusCode(), "a new file, in a directory that did not exist");
+        assertEquals("header: {kind: system}\n", Files.readString(folder.resolve("manifests/new/app.platform.yaml")));
+
+        assertEquals(200, api("PUT", "file", "manifests/app.yaml", "header: {kind: container}\n").statusCode());
+        assertEquals("header: {kind: container}\n", Files.readString(folder.resolve("manifests/app.yaml")));
+
+        assertEquals(200, api("DELETE", "file", "manifests/new/app.platform.yaml", null).statusCode());
+        assertFalse(Files.exists(folder.resolve("manifests/new/app.platform.yaml")));
+        assertEquals(404, api("DELETE", "file", "manifests/new/app.platform.yaml", null).statusCode());
+        assertEquals(404, api("GET", "file", "manifests/missing.yaml", null).statusCode());
+    }
+
+    @Test
+    void refusesACallWithoutTheTokenOrFromAnotherOrigin() {
+        assertEquals(401, call("GET", "/api/fs/info", null, null, null).statusCode());
+        assertEquals(401, call("GET", "/api/fs/info", null, "wrong", null).statusCode());
+        assertEquals(403, call("GET", "/api/fs/info", null, running.token(), "https://evil.example").statusCode());
+        assertEquals(200, call("GET", "/api/fs/info", null, running.token(), base()).statusCode());
+        assertEquals(401, call("PUT", "/api/fs/file?path=manifests/app.yaml", "x: 1", null, null).statusCode());
+        assertEquals("header: {kind: person}\n", readQuietly("manifests/app.yaml"), "nothing was written");
+    }
+
+    @Test
+    void refusesAHostNameThatIsNotLoopbackUnlessAllowed() {
+        assertEquals(403, status(rawGet("/", "attacker.example:48080")));
+        assertEquals(403, status(rawGet("/api/fs/info", "attacker.example")));
+        assertEquals(200, status(rawGet("/", "localhost:48080")));
+        assertEquals(200, status(rawGet("/", "127.0.0.1")));
+        editorHttpServer.stop(running);
+        running = editorHttpServer.start("127.0.0.1", 0, folder.resolve("workspace.yaml"), Set.of("Editor.Example"));
+        assertEquals(200, status(rawGet("/", "editor.example:80")), "a host given with --allowed-host");
+    }
+
+    @Test
+    void refusesWhatLeavesTheFolderOrIsNotAManifest() throws Exception {
+        assertEquals(400, api("GET", "file", "../outside/secret.yaml", null).statusCode());
+        assertEquals(400, api("PUT", "file", "manifests/../../outside/new.yaml", "x: 1").statusCode());
+        assertFalse(Files.exists(outside.resolve("new.yaml")));
+        assertEquals(400, api("GET", "file", "/etc/passwd.yaml", null).statusCode());
+        assertEquals(400, api("GET", "file", ".git/config.yaml", null).statusCode(), "a hidden segment");
+        assertEquals(400, api("GET", "file", "notes.txt", null).statusCode(), "only the files the editor edits");
+        assertEquals(400, api("PUT", "file", "run.sh", "x").statusCode());
+        assertEquals(400, api("GET", "file", "", null).statusCode());
+        assertEquals(400, api("GET", "list", "../outside", null).statusCode());
+    }
+
+    @Test
+    void doesNotFollowALinkOutOfTheFolder() throws Exception {
+        try {
+            Files.createSymbolicLink(folder.resolve("manifests/link"), outside);
+            Files.createSymbolicLink(folder.resolve("manifests/leak.yaml"), outside.resolve("secret.yaml"));
+        } catch (UnsupportedOperationException | java.io.IOException e) {
+            return; // no symbolic links here
+        }
+        assertEquals(403, api("GET", "file", "manifests/leak.yaml", null).statusCode());
+        assertEquals(403, api("PUT", "file", "manifests/link/new.yaml", "x: 1").statusCode());
+        assertFalse(Files.exists(outside.resolve("new.yaml")));
+        assertEquals(403, api("PUT", "file", "manifests/link/deeper/new.yaml", "x: 1").statusCode());
+        assertFalse(Files.exists(outside.resolve("deeper")), "nothing is created through the link");
+        assertFalse(api("GET", "list", "manifests", null).body().contains("link"), "a link out is not listed");
     }
 
     @SneakyThrows
-    @Test
-    void shouldReturnTheWorkspaceAndManifestSchemas() {
-        assertEquals(200, get("/api/schemas/workspace").statusCode());
-        assertEquals(200, get("/api/schemas/manifest").statusCode());
-        assertEquals(400, get("/api/schemas/unknown").statusCode());
+    private String readQuietly(String relative) {
+        return Files.readString(folder.resolve(relative));
     }
 
+    /** A request with the Host header of our choice, which the JDK client does not allow. */
     @SneakyThrows
-    @Test
-    void shouldReturnTheRawManifestContent() {
-        val response = get("/api/manifests/manifests/per_a.yaml");
-        assertEquals(200, response.statusCode());
-
-        val onDisk = Files.readString(workspaceFilePath.getParent().resolve("manifests/per_a.yaml"));
-        assertEquals(onDisk, response.body());
+    private String rawGet(String path, String host) {
+        try (val socket = new Socket("127.0.0.1", running.server().getAddress().getPort())) {
+            socket
+                .getOutputStream()
+                .write(
+                    ("GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n").getBytes(
+                        StandardCharsets.UTF_8
+                    )
+                );
+            socket.getOutputStream().flush();
+            val buffer = new ByteArrayOutputStream();
+            socket.getInputStream().transferTo(buffer);
+            return buffer.toString(StandardCharsets.UTF_8);
+        }
     }
 
-    @SneakyThrows
-    @Test
-    void shouldReturn404ForAMissingManifest() {
-        assertEquals(404, get("/api/manifests/manifests/does_not_exist.yaml").statusCode());
-    }
-
-    @SneakyThrows
-    @Test
-    void shouldRejectAPathOutsideTheConfiguredManifestsDirectory() {
-        assertEquals(400, get("/api/manifests/../workspace.yaml").statusCode());
-        assertEquals(400, get("/api/manifests/../../etc/passwd").statusCode());
-    }
-
-    @SneakyThrows
-    @Test
-    void shouldPersistASchemaValidManifestWrite() {
-        val target = workspaceFilePath.getParent().resolve("manifests/sol_a.yaml");
-        val validPayload = """
-        header:
-          kind: "archicode.morin.io/solution"
-          version: "1"
-        content:
-          id: "sol_a"
-          name: "Solution A (updated)"
-        """.getBytes(StandardCharsets.UTF_8);
-
-        val response = put("/api/manifests/manifests/sol_a.yaml", validPayload);
-
-        assertTrue(response.statusCode() >= 200 && response.statusCode() < 300, "expected a 2xx response");
-        assertArrayEquals(validPayload, Files.readAllBytes(target));
-    }
-
-    @SneakyThrows
-    @Test
-    void shouldRejectASchemaInvalidManifestWriteAndWriteNothing() {
-        val target = workspaceFilePath.getParent().resolve("manifests/sol_a.yaml");
-        val before = Files.readAllBytes(target);
-
-        // Missing the required content.id field (AbstractElement.id is @NonNull @JsonProperty(required = true)).
-        val invalidPayload = """
-        header:
-          kind: "archicode.morin.io/solution"
-          version: "1"
-        content:
-          name: "no id"
-        """.getBytes(StandardCharsets.UTF_8);
-
-        val response = put("/api/manifests/manifests/sol_a.yaml", invalidPayload);
-
-        assertTrue(response.statusCode() >= 400 && response.statusCode() < 500, "expected a 4xx response");
-        assertArrayEquals(before, Files.readAllBytes(target), "the file must be byte-identical to before the request");
-    }
-
-    @SneakyThrows
-    @Test
-    void shouldRejectAWriteOutsideTheConfiguredManifestsDirectory() throws IOException {
-        // "/api/manifests/../escaped.yaml" resolves (relative to the workspace directory) to a sibling of the
-        // workspace directory itself, not inside it — matching the server's own resolution of `..`.
-        val outsideTarget = workspaceFilePath.getParent().getParent().resolve("escaped.yaml");
-        val payload = """
-        header:
-          kind: "archicode.morin.io/solution"
-          version: "1"
-        content:
-          id: "escaped"
-        """.getBytes(StandardCharsets.UTF_8);
-
-        val response = put("/api/manifests/../escaped.yaml", payload);
-
-        assertTrue(response.statusCode() >= 400 && response.statusCode() < 500, "expected a 4xx response");
-        assertTrue(Files.notExists(outsideTarget), "nothing must be written outside a configured manifests dir");
+    private int status(String rawResponse) {
+        return Integer.parseInt(rawResponse.split(" ")[1]);
     }
 }

@@ -1,7 +1,8 @@
 package io.morin.archicode.cli;
 
 import jakarta.inject.Inject;
-import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -9,20 +10,14 @@ import lombok.val;
 import picocli.CommandLine;
 
 /**
- * Start the local, unauthenticated HTTP server backing the manifest editor.
+ * Serve the standalone editor, with the folder of the workspace already opened in it.
  * <p>
- * Binds to {@link #host} (default {@code 0.0.0.0}, required for a Docker {@code -p} mapping to forward traffic
- * at all) on {@link #port} (default {@code 48080}, chosen over the more conventional {@code 8080} precisely
- * because that one is so commonly already taken by something else) and blocks until the process is
- * terminated. See
- * {@link EditorHttpServer} for the actual routes served.
- * <p>
- * The {@code --claude*} options configure the Claude editing bridge (run-0007). Every one of them is fixed here,
- * at startup, and none can be influenced by a client: the bridge's HTTP surface accepts a prompt and nothing
- * else, so no request can widen the blast radius of an invocation.
+ * Binds to {@link #host} (default {@code 0.0.0.0}, required for a Docker {@code -p} mapping to forward traffic at
+ * all) on {@link #port} (default {@code 48080}) and blocks until the process is terminated. See
+ * {@link EditorHttpServer} for the routes and for how a request is checked.
  */
 @Slf4j
-@CommandLine.Command(name = "serve", description = "Start the local manifest editor HTTP server.")
+@CommandLine.Command(name = "serve", description = "Serve the editor, with the workspace folder opened in it.")
 @SuppressWarnings("java:S6813")
 public class ServeEditorCommand implements Runnable {
 
@@ -31,9 +26,6 @@ public class ServeEditorCommand implements Runnable {
 
     @Inject
     EditorHttpServer editorHttpServer;
-
-    @Inject
-    ClaudeBridge claudeBridge;
 
     @CommandLine.Option(
         names = { "-p", "--port" },
@@ -49,9 +41,9 @@ public class ServeEditorCommand implements Runnable {
         description = {
             "The address to bind to.",
             "Must stay 0.0.0.0 (the default) for a Docker -p mapping to forward traffic at all.",
-            "This server has no authentication: control exposure via the host-side port mapping" +
-                " (e.g. `-p 127.0.0.1:48080:48080`), not by changing this option, unless running directly" +
-                " outside a container."
+            "Requests are only accepted when addressed to localhost, 127.0.0.1 or [::1] (see --allowed-host)" +
+                " and when they carry the token of this server: control exposure with the host-side port mapping" +
+                " (e.g. `-p 127.0.0.1:48080:48080`)."
         },
         defaultValue = "0.0.0.0",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
@@ -60,73 +52,33 @@ public class ServeEditorCommand implements Runnable {
     String host;
 
     @CommandLine.Option(
-        names = { "--claude" },
-        negatable = true,
+        names = { "--allowed-host" },
         description = {
-            "Enable the Claude editing bridge, which lets the webapp apply a described change to the" +
-                " workspace's files and review it as a diff.",
-            "Use --no-claude to serve the editor without it."
+            "A host name, besides localhost, 127.0.0.1 and [::1], that a request may be addressed to.",
+            "Repeat it for several. Only for a server reached by name from another machine."
         },
-        defaultValue = "true",
-        showDefaultValue = CommandLine.Help.Visibility.ALWAYS
+        paramLabel = "<name>"
     )
-    boolean claudeEnabled;
-
-    @CommandLine.Option(
-        names = { "--claude-executable" },
-        description = {
-            "The Claude Code CLI to invoke.",
-            "Must be present on the host running this server; the published container image does not include it."
-        },
-        defaultValue = "claude",
-        showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
-        paramLabel = "<executable>"
-    )
-    String claudeExecutable;
-
-    @CommandLine.Option(
-        names = { "--claude-model" },
-        description = "The model the Claude editing bridge invokes.",
-        defaultValue = "sonnet",
-        showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
-        paramLabel = "<model>"
-    )
-    String claudeModel;
-
-    @CommandLine.Option(
-        names = { "--claude-timeout" },
-        description = {
-            "How long, in seconds, one invocation may run before it is terminated.",
-            "A terminated invocation's partial change is still shown as a diff and can still be discarded."
-        },
-        defaultValue = "300",
-        showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
-        paramLabel = "<seconds>"
-    )
-    int claudeTimeoutSeconds;
+    List<String> allowedHosts = List.of();
 
     @SneakyThrows
     @Override
     public void run() {
         val workspaceFilePath = editorGroup.archiCode.workspaceFilePath.toAbsolutePath();
-        val claudeSettings = ClaudeBridge.Settings.builder()
-            .enabled(claudeEnabled)
-            .executable(claudeExecutable)
-            .model(claudeModel)
-            .timeout(Duration.ofSeconds(claudeTimeoutSeconds))
-            .build();
-        val server = editorHttpServer.start(host, port, workspaceFilePath, claudeSettings);
+        if (!"workspace.yaml".equals(String.valueOf(workspaceFilePath.getFileName()))) {
+            throw new CommandLine.ParameterException(
+                new CommandLine(this),
+                "the editor opens a folder with a workspace.yaml: " + workspaceFilePath + " is not named so."
+            );
+        }
+        val running = editorHttpServer.start(host, port, workspaceFilePath, new HashSet<>(allowedHosts));
 
-        // Printed to System.out, not only through the logger, for the same reason the shutdown warning
-        // in warnAboutPendingChange() is: application.properties sets quarkus.log.level=ERROR, so a
-        // log.info call here never reaches any handler and the operator gets no confirmation at all that
-        // the server is actually up.
+        // Printed to System.out, not only through the logger: application.properties sets quarkus.log.level=ERROR,
+        // so a log.info call never reaches a handler and the operator would get no sign that the server is up.
         val readyMessage = String.format(
-            "editor serve is up and running on %s:%d (workspace: %s, claude bridge: %s)",
-            host,
-            server.getAddress().getPort(),
-            workspaceFilePath,
-            claudeEnabled ? "enabled" : "disabled"
+            "editor serve is up and running: http://127.0.0.1:%d/ (workspace: %s)",
+            running.server().getAddress().getPort(),
+            workspaceFilePath
         );
         System.out.println(readyMessage);
         log.info(readyMessage);
@@ -135,51 +87,11 @@ public class ServeEditorCommand implements Runnable {
         Runtime.getRuntime().addShutdownHook(
             new Thread(() -> {
                 log.info("stopping the editor server");
-                warnAboutPendingChange();
-                editorHttpServer.stop(server);
+                editorHttpServer.stop(running);
                 shutdownLatch.countDown();
             })
         );
-        // Block forever: the server runs until the process receives a termination signal
-        // (Ctrl+C, `docker stop`), handled by the shutdown hook above.
+        // Block until the process receives a termination signal (Ctrl+C, `docker stop`).
         shutdownLatch.await();
-    }
-
-    /**
-     * Tell the operator, by path, that a change left under review stays on disk.
-     * <p>
-     * There is deliberately no auto-discard here (run-0007 TDD {@code DEC-6}): a {@code docker stop} arriving a
-     * second after the operator decided to keep a change would silently destroy work they had already judged
-     * good, and that is not recoverable — whereas files left in their changed state are. This list is the only
-     * thing an operator can hand-revert from, since the capture dies with the process.
-     * <p>
-     * It is written to {@code System.err} and <em>not</em> only through the logger, on purpose. This
-     * application sets {@code quarkus.log.level=ERROR} in {@code application.properties}, so a
-     * {@code log.warn} here is discarded before it reaches any handler — which is how the first version of
-     * this method shipped a recovery list that was documented in {@code README.md} and invisible in practice.
-     * An operator-facing safety notice must not depend on log configuration. The logger call is kept alongside
-     * it so a deployment that does raise the level gets the message structured as well.
-     */
-    private void warnAboutPendingChange() {
-        claudeBridge.pendingChange().ifPresent(pending -> {
-            val header = String.format(
-                "WARNING: the change %s was still awaiting review and is NOT being reverted. %d file(s)" +
-                    " remain in their changed state:",
-                pending.getSessionId(),
-                pending.getChanges().size()
-            );
-            System.err.println(header);
-            log.warn(header);
-            pending.getChanges().forEach(change -> {
-                val line = String.format("  still changed: %s (%s)", change.getPath(), change.getChangeType());
-                System.err.println(line);
-                log.warn(line);
-            });
-            System.err.println(
-                "  Restart `editor serve` and re-review, or restore these files yourself; the snapshot" +
-                    " this change could have been discarded from does not survive this process."
-            );
-            System.err.flush();
-        });
     }
 }

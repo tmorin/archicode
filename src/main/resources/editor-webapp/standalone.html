@@ -1333,6 +1333,129 @@ function isFileSystemAccessSupported() {
   return typeof window.showDirectoryPicker === 'function' && 'indexedDB' in window;
 }
 
+// ---- Served by `archicode editor serve`: the folder comes from the server, in any browser ----
+//
+// The server puts a token in a <meta name="archicode-server"> of the page it serves. When it is there the editor does
+// not ask for a folder: it opens the one the server serves, through the small API of the server (/api/fs/…), by way
+// of objects that answer the calls of the File System Access API the rest of the editor already makes. Opened from
+// a file, or from GitHub Pages, there is no such tag, and the editor asks for a folder as it always did.
+
+function serverToken() {
+  const meta = typeof document !== 'undefined' && document.querySelector ? document.querySelector('meta[name="archicode-server"]') : null;
+  return meta ? meta.getAttribute('content') : null;
+}
+
+/** Is this page served by `archicode editor serve`? */
+function isServedByArchiCode() {
+  return !!serverToken();
+}
+
+/** Whether the editor can get hold of a folder here: from the server that serves it, or by picking one. */
+function isFolderAccessAvailable() {
+  return isServedByArchiCode() || isFileSystemAccessSupported();
+}
+
+async function serverFetch(method, route, params, body) {
+  const query = params ? '?' + new URLSearchParams(params).toString() : '';
+  return fetch('/api/fs/' + route + query, { method, headers: { 'X-ArchiCode-Token': serverToken() }, body });
+}
+
+async function serverFailure(response, what) {
+  if (response.status === 404) {
+    const e = new Error('NotFoundError: ' + what);
+    e.name = 'NotFoundError';
+    return e;
+  }
+  return new Error((await response.text()) || ('the server answered ' + response.status + ' for ' + what));
+}
+
+/** A directory of the served folder, as a File System Access directory handle (what the editor uses of it). */
+function serverDirectoryHandle(path, name) {
+  const child = (entry) => (path ? path + '/' : '') + entry;
+  const list = async () => {
+    const response = await serverFetch('GET', 'list', { path });
+    if (!response.ok) throw await serverFailure(response, path || '/');
+    return response.json();
+  };
+  const find = async (entry, kind) => {
+    if (!(await list()).some((e) => e.name === entry && e.kind === kind)) {
+      const e = new Error('NotFoundError: ' + child(entry));
+      e.name = 'NotFoundError';
+      throw e;
+    }
+  };
+  return {
+    kind: 'directory',
+    name,
+    async queryPermission() { return 'granted'; },
+    async requestPermission() { return 'granted'; },
+    async *entries() {
+      for (const e of await list()) {
+        yield [e.name, e.kind === 'directory' ? serverDirectoryHandle(child(e.name), e.name) : serverFileHandle(child(e.name), e.name)];
+      }
+    },
+    async getDirectoryHandle(entry, options) {
+      if (!(options && options.create)) await find(entry, 'directory');
+      return serverDirectoryHandle(child(entry), entry);
+    },
+    async getFileHandle(entry, options) {
+      if (!(options && options.create)) await find(entry, 'file');
+      return serverFileHandle(child(entry), entry);
+    },
+    async removeEntry(entry) {
+      const response = await serverFetch('DELETE', 'file', { path: child(entry) });
+      if (!response.ok) throw await serverFailure(response, child(entry));
+    }
+  };
+}
+
+/** A file of the served folder, as a File System Access file handle. */
+function serverFileHandle(path, name) {
+  return {
+    kind: 'file',
+    name,
+    async queryPermission() { return 'granted'; },
+    async requestPermission() { return 'granted'; },
+    async getFile() {
+      const response = await serverFetch('GET', 'file', { path });
+      if (!response.ok) throw await serverFailure(response, path);
+      // the editor tells that a file changed on disk since it read it by this time
+      const modified = Number(response.headers && response.headers.get ? response.headers.get('X-ArchiCode-Modified') : NaN);
+      return new File([await response.text()], name, Number.isFinite(modified) ? { type: 'text/plain', lastModified: modified } : { type: 'text/plain' });
+    },
+    async createWritable() {
+      const parts = [];
+      return {
+        async write(data) { parts.push(data && typeof data === 'object' && 'data' in data && !(data instanceof Blob) ? data.data : data); },
+        async close() {
+          const response = await serverFetch('PUT', 'file', { path }, new Blob(parts));
+          if (!response.ok) throw await serverFailure(response, path);
+        }
+      };
+    }
+  };
+}
+
+/** Open the folder the server serves: no picker, no stored handle, no permission to ask for. */
+async function openServedFolder() {
+  try {
+    const response = await serverFetch('GET', 'info');
+    if (!response.ok) throw await serverFailure(response, 'the server');
+    const info = await response.json();
+    const handle = serverDirectoryHandle('', info.folder);
+    landingBusy = 'Opening “' + info.folder + '”…';
+    AppState.folder = { handle, name: info.folder };
+    AppState.permissionState = 'granted';
+    render();
+    await loadWorkspace(handle);
+  } catch (e) {
+    landingBusy = null;
+    console.error('ArchiCode: opening the served folder failed', e);
+    AppState.fatalError = 'The editor server could not be reached: ' + (e && e.message ? e.message : String(e)) + '. Reload the page, or restart `archicode editor serve`.';
+    render();
+  }
+}
+
 /** Click handler for the initial "pick a folder" button (FR-1). */
 async function openFolder() {
   try {
@@ -2764,7 +2887,8 @@ function renderTopPanelHtml() {
       '<span class="folder-name" title="Browsers do not expose an absolute filesystem path for a picked folder (ASM-1/DEC-11) — this shows the folder\'s own name and its position as the browsing root instead.">' +
         escapeHtml(AppState.folder.name) + '<span class="folder-root-slash">/</span>' +
       '</span>' +
-      '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and return to the folder picker.">Close folder</button>' +
+      // the folder of `archicode editor serve` is the one the server was started on: there is no other to pick
+      (isServedByArchiCode() ? '' : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and return to the folder picker.">Close folder</button>') +
       renderPerspectiveTabsHtml() +
       '<span class="flex-1"></span>' +
       renderSaveStatusHtml() +
@@ -6009,12 +6133,13 @@ const LANDING_SAVE_NOTE = 'Nothing is written to disk until you click “Save al
  * be rendered and checked without a browser.
  */
 function landingScreenConfig() {
-  if (!isFileSystemAccessSupported()) {
+  if (!isFolderAccessAvailable()) {
     return {
       kind: 'unsupported',
       title: 'This browser isn’t supported',
       text: 'The editor reads and writes your workspace files directly, which needs the File System Access API. ' +
-        'Use a recent Chrome, Edge, Brave or Opera. Firefox and Safari don’t support it.'
+        'Use a recent Chrome, Edge, Brave or Opera — Firefox and Safari don’t support it — or run `archicode editor serve` ' +
+        'in your workspace folder and open the page it serves: that works in any browser.'
     };
   }
   if (AppState.workspace) return null;
@@ -6169,6 +6294,12 @@ function render() {
 
 document.addEventListener('DOMContentLoaded', () => {
   syncPerspectiveFromHash(); // a bookmarked/shared "#/settings" etc. lands directly there
+  if (isServedByArchiCode()) {
+    landingBusy = 'Opening the workspace…';
+    render();
+    openServedFolder();
+    return;
+  }
   if (!isFileSystemAccessSupported()) {
     render();
     return;

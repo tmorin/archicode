@@ -1,6 +1,0 @@
-settings:
-  manifests:
-    paths:
-      - "manifests"
-  views:
-    path: "views_case_editor"
