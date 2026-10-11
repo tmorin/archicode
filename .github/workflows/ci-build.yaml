@@ -37,8 +37,12 @@ jobs:
           node-version: "22"
       - name: "Test the viewpoint kernel"
         run: |
-          cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml
+          (cd src/main/rust/viewpoint-kernel && cargo test)
           node --test "src/test/javascript/**/*.test.js"
+      - name: "Check the committed WebAssembly is the one the Rust builds"
+        # the same build as embed.sh, into a scratch directory, with the compiler of rust-toolchain.toml: a change to the
+        # Rust whose .wasm was not re-embedded (in src/main/wasm and in standalone.html) fails
+        run: src/main/rust/viewpoint-kernel/embed.sh --check
       - name: "Build artifacts"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

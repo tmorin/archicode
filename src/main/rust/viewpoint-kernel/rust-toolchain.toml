@@ -1,0 +1,6 @@
+# The .wasm is committed and CI rebuilds it to compare: the same compiler must build it everywhere.
+# To move to another Rust, change the channel, run embed.sh and commit the new .wasm with it.
+[toolchain]
+channel = "1.97.1"
+profile = "minimal"
+targets = ["wasm32-unknown-unknown"]

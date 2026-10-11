@@ -6,10 +6,13 @@ import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Relationship;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.workspace.ElementIndex;
+import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -34,7 +37,6 @@ import picocli.CommandLine;
     name = "graph",
     description = "Print the resolved element/relationship graph of the workspace as JSON."
 )
-@SuppressWarnings("java:S6813")
 public class GetGraphQuery implements Runnable {
 
     @CommandLine.ParentCommand
@@ -68,7 +70,7 @@ public class GetGraphQuery implements Runnable {
      * @param workspace the already-indexed workspace ({@link io.morin.archicode.workspace.WorkspaceFactory}'s output)
      * @return the resolved graph
      */
-    public Graph buildGraph(@NonNull io.morin.archicode.workspace.Workspace workspace) {
+    public Graph buildGraph(@NonNull Workspace workspace) {
         val elements = new ArrayList<ElementEntry>();
         val relationships = new ArrayList<RelationshipEntry>();
 
@@ -96,7 +98,7 @@ public class GetGraphQuery implements Runnable {
             val element = index.getElementByReference(reference);
             elements.add(ElementEntry.builder().reference(reference).layer(layer).element(element).build());
 
-            for (Relationship relationship : element.getRelationships()) {
+            for (Relationship relationship : Optional.ofNullable(element.getRelationships()).orElseGet(Set::of)) {
                 // Force resolution the same way MetaLinkFinderForEgress/MetaLinkFinderForIngress already do:
                 // this throws ArchiCodeException, uncaught, if the destination is dangling.
                 index.getElementByReference(relationship.getDestination());

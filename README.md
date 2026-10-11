@@ -52,16 +52,18 @@ docker run \
   --rm ghcr.io/tmorin/archicode editor serve
 ```
 
-Opening `http://127.0.0.1:48080/` in a browser serves the editor and opens the
-folder of `workspace.yaml` in it, with nothing to pick: browse the elements,
+The command prints a URL, `http://127.0.0.1:48080/?token=...`: opening it in a
+browser serves the editor and opens the folder of `workspace.yaml` in it, with
+nothing to pick (the page is refused without the token; the editor removes it
+from the address bar, and a session cookie lets a reload in): browse the elements,
 edit them, see their diagrams and the map of the workspace, and save. It works
 in any browser. The same editor is published with the manual, at
 https://tmorin.github.io/archicode/editor/, and is a single file
 (`standalone.html`): opened from there, or from a file, it asks for a folder
 instead, which needs the File System Access API (Chrome, Edge, Brave, Opera).
 
-The server writes to the folder, so it does not trust the network: every call
-carries a token that only the page it serves holds, a request must be addressed
+The server writes to the folder, so it does not trust the network: the page
+and every call carry a token that only the printed URL gives, a request must be addressed
 to `localhost`, `127.0.0.1` or `[::1]` (`--allowed-host <name>` adds one, for a
 server reached by name), a page of another origin is refused, and the editor
 can only reach the `.yaml`, `.yml` and `.json` files below the folder of

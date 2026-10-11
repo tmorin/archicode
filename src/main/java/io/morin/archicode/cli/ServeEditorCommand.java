@@ -18,7 +18,6 @@ import picocli.CommandLine;
  */
 @Slf4j
 @CommandLine.Command(name = "serve", description = "Serve the editor, with the workspace folder opened in it.")
-@SuppressWarnings("java:S6813")
 public class ServeEditorCommand implements Runnable {
 
     @CommandLine.ParentCommand
@@ -42,7 +41,7 @@ public class ServeEditorCommand implements Runnable {
             "The address to bind to.",
             "Must stay 0.0.0.0 (the default) for a Docker -p mapping to forward traffic at all.",
             "Requests are only accepted when addressed to localhost, 127.0.0.1 or [::1] (see --allowed-host)" +
-                " and when they carry the token of this server: control exposure with the host-side port mapping" +
+                " and when they carry the token of this server (printed in the URL to open): control exposure with the host-side port mapping" +
                 " (e.g. `-p 127.0.0.1:48080:48080`)."
         },
         defaultValue = "0.0.0.0",
@@ -75,9 +74,11 @@ public class ServeEditorCommand implements Runnable {
 
         // Printed to System.out, not only through the logger: application.properties sets quarkus.log.level=ERROR,
         // so a log.info call never reaches a handler and the operator would get no sign that the server is up.
+        // The URL carries the token: the page is refused without it.
         val readyMessage = String.format(
-            "editor serve is up and running: http://127.0.0.1:%d/ (workspace: %s)",
+            "editor serve is up and running: http://127.0.0.1:%d/?token=%s (workspace: %s)",
             running.server().getAddress().getPort(),
+            running.token(),
             workspaceFilePath
         );
         System.out.println(readyMessage);
