@@ -3,17 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Which ArchiCode this page belongs to: "dev" here, the release in the copies that are published and served. -->
+<meta name="archicode-version" content="dev">
 <title>ArchiCode Standalone Editor</title>
-<!--
-  Tailwind CSS (MIT, https://tailwindcss.com) — the browser/JIT build, no
-  build step: it scans the DOM at runtime and injects the utility CSS it
-  needs. Used only for the shell/grid/resize-handle layout below; every
-  existing component (tree, forms, pills...) keeps its own hand-written
-  CSS in the <style> block that follows. Requires network access to style;
-  opening fully offline still works, just unstyled (same tradeoff as any
-  CDN-hosted stylesheet).
--->
-<script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root {
     color-scheme: light dark;
@@ -41,15 +33,12 @@
       --modified: #f0c674;
     }
   }
-  * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   #app { min-height: 100vh; display: flex; flex-direction: column; }
   h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
   h2 { font-size: 1rem; margin: 1rem 0 0.5rem; }
-  /* !important: Tailwind's Play CDN injects its own Preflight-reset <style>
-     tag at runtime, after this one, at equal (type-selector) specificity —
-     it would otherwise silently strip every button/input's border,
-     padding and background regardless of source order in this file. */
+  /* !important: it keeps these controls the same whatever a more specific reset or a later rule says about a
+     button's or an input's border, padding and background. */
   button { font: inherit; padding: 0.4rem 0.9rem !important; border: 1px solid var(--border) !important; border-radius: 4px !important; background: var(--panel-bg) !important; color: var(--fg); cursor: pointer; }
   button:hover { border-color: var(--accent) !important; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -97,10 +86,10 @@
   code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; }
 
   /* ---- Resizable grid shell (layout adapted from archi-edtior.html reference) ----
-     Grid structure and panel sizing/resizing live as Tailwind utility
-     classes + inline styles directly in the markup (renderShellHtml); the
-     rules below are the content-level concerns Tailwind doesn't own:
-     panel backgrounds/borders and the resize handles' own appearance. */
+     Grid structure and panel sizing/resizing live as the layout helpers above
+     + inline styles directly in the markup (renderShellHtml); the rules below
+     are the content-level concerns: panel backgrounds/borders and the resize
+     handles' own appearance. */
   html, body { height: 100%; }
   #app { height: 100vh; }
   .app-shell { height: 100%; }
@@ -115,6 +104,15 @@
   .top-panel .perspective-tab { padding: 0 0.8rem !important; border-radius: 999px !important; font-size: 0.8rem; }
   .top-panel .perspective-tab.active { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .top-panel > .folder-name, .top-panel > button, .top-panel .perspective-tabs { flex-shrink: 0; }
+  .top-panel .help-button { width: 2rem; padding: 0 !important; border-radius: 50% !important; flex-shrink: 0; font-weight: 600; }
+  .top-panel .help-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .help-menu { position: fixed; top: 3.25rem; right: 0.75rem; z-index: 30; width: min(21rem, calc(100vw - 1.5rem)); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+  .help-menu ul { padding: 0.1rem 0; }
+  .help-menu li a { display: block; padding: 0.35rem 1rem; color: var(--accent); }
+  .help-menu li a:hover, .help-menu li a:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); text-decoration: underline; outline: none; }
+  .help-note { margin: 0; padding: 0.4rem 1rem 0; font-size: 0.8rem; line-height: 1.4; color: var(--muted); border-top: 1px solid var(--border); }
+  .help-note + .help-note { border-top: none; padding-top: 0.2rem; padding-bottom: 0.2rem; }
+  .settings-help a, .landing-note a { color: var(--accent); text-decoration: underline; }
   .top-panel .save-status { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .left-panel { overflow-y: auto; border-right: 1px solid var(--border); background: var(--panel-bg); padding-bottom: 1rem; }
@@ -412,6 +410,64 @@
   .save-status { font-size: 0.85rem; }
   .save-status-error { color: var(--danger); }
   .save-status-success { color: var(--muted); }
+  /* Last on purpose: the reset sits after the rules of the page, at the same specificity, so it settles headings and form controls as it always did here. */
+  /* ---- Reset and layout helpers ----
+     The editor used to load Tailwind from a CDN for these, and so needed the network to be laid out at all. They are
+     written here instead: the reset is the part of Tailwind's "preflight" that the rest of this file relies on, and the
+     helpers are the few layout rules the shell uses (named as they were in the markup, with the arbitrary values
+     spelled out). */
+  *, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb; }
+  html { line-height: 1.5; -webkit-text-size-adjust: 100%; tab-size: 4; }
+  body { margin: 0; line-height: inherit; }
+  h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }
+  blockquote, dl, dd, h1, h2, h3, h4, h5, h6, hr, figure, p, pre { margin: 0; }
+  ol, ul, menu { list-style: none; margin: 0; padding: 0; }
+  a { color: inherit; text-decoration: inherit; }
+  b, strong { font-weight: bolder; }
+  small { font-size: 80%; }
+  table { text-indent: 0; border-color: inherit; border-collapse: collapse; }
+  button, input, optgroup, select, textarea { font-family: inherit; font-size: 100%; font-weight: inherit; line-height: inherit; color: inherit; margin: 0; padding: 0; }
+  button, select { text-transform: none; }
+  button, [type="button"], [type="reset"], [type="submit"] { -webkit-appearance: button; background-color: transparent; background-image: none; }
+  fieldset { margin: 0; padding: 0; }
+  legend { padding: 0; }
+  textarea { resize: vertical; }
+  input::placeholder, textarea::placeholder { opacity: 1; color: #9ca3af; }
+  button, [role="button"] { cursor: pointer; }
+  :disabled { cursor: default; }
+  img, svg, video, canvas, audio, iframe, embed, object { display: block; vertical-align: middle; }
+  img, video { max-width: 100%; height: auto; }
+  [hidden] { display: none; }
+  .grid { display: grid; }
+  .flex { display: flex; }
+  .flex-1 { flex: 1 1 0%; }
+  .items-center { align-items: center; }
+  .gap-4 { gap: 1rem; }
+  .px-4 { padding-left: 1rem; padding-right: 1rem; }
+  .overflow-hidden { overflow: hidden; }
+  .touch-none { touch-action: none; }
+  .col-span-3 { grid-column: span 3 / span 3; }
+  .col-start-3 { grid-column-start: 3; }
+  .min-h-0 { min-height: 0; }
+  .min-w-0 { min-width: 0; }
+  .min-h-10 { min-height: 2.5rem; }
+  .min-h-32 { min-height: 8rem; }
+  .min-w-48 { min-width: 12rem; }
+  .min-w-56 { min-width: 14rem; }
+  .h-12 { height: 3rem; }
+  .h-48 { height: 12rem; }
+  .w-1 { width: 0.25rem; }
+  .h-1 { height: 0.25rem; }
+  .w-64 { width: 16rem; }
+  .w-72 { width: 18rem; }
+  .max-w-\[40vw\] { max-width: 40vw; }
+  .max-h-\[60vh\] { max-height: 60vh; }
+  .grid-cols-\[auto_auto_minmax\(0\,1fr\)\] { grid-template-columns: auto auto minmax(0, 1fr); }
+  .grid-cols-\[minmax\(0\,1fr\)_auto_auto\] { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .grid-rows-\[auto_minmax\(0\,1fr\)\] { grid-template-rows: auto minmax(0, 1fr); }
+  .grid-rows-\[minmax\(0\,1fr\)_auto_auto\] { grid-template-rows: minmax(0, 1fr) auto auto; }
+  .cursor-col-resize { cursor: col-resize; }
+  .cursor-row-resize { cursor: row-resize; }
 </style>
 </head>
 <body>
@@ -2893,6 +2949,7 @@ function renderTopPanelHtml() {
       '<span class="flex-1"></span>' +
       renderSaveStatusHtml() +
       saveAll +
+      renderHelpButtonHtml() +
     '</header>';
 }
 
@@ -3048,9 +3105,79 @@ const SETTINGS_HELP = {
 /** The default view title per viewpoint (Overview/Detailed/DeepViewpointService), shown as the empty-label placeholder. */
 const VIEWPOINT_DEFAULT_LABELS = { overview: 'Overview', detailed: 'Detailed View', deep: 'Deep View' };
 
+
+// ---- Help: the manual, published with the editor ----
+//
+// The manual is not copied into the editor (it would drift, and weigh on a file that already carries a kernel): the editor
+// links to the published one, at the anchors of the sections that explain what is on screen. The anchors are written
+// explicitly in src/doc/README.adoc, and a test checks that every one used here is there.
+
+const DOCS_URL = 'https://tmorin.github.io/archicode/';
+const DOC_LINKS = {
+  manual: '',
+  editor: '#editor',
+  elements: '#editor-elements',
+  map: '#editor-map',
+  facets: '#editor-facets',
+  keyboard: '#editor-keyboard',
+  serve: '#serve-the-editor',
+  workspace: '#workspace',
+  viewpoints: '#viewpoints',
+  settings: '#technical-configuration',
+  facetsConcept: '#facets'
+};
+
+function docUrl(key) {
+  return DOCS_URL + DOC_LINKS[key];
+}
+
+/** The settings texts that are explained further in the manual, and where. */
+const SETTINGS_HELP_DOCS = {
+  manifestsPaths: 'settings',
+  defaultLabel: 'settings',
+  viewsPath: 'settings',
+  facetsIntro: 'facetsConcept'
+};
+
+/** The release this page is (or "dev" when it is the file of the repository). */
+function editorVersion() {
+  const meta = typeof document !== 'undefined' && document.querySelector ? document.querySelector('meta[name="archicode-version"]') : null;
+  return meta && meta.getAttribute('content') ? meta.getAttribute('content') : 'dev';
+}
+
+let helpOpen = false;
+
+function renderHelpButtonHtml() {
+  return '<button type="button" class="help-button" data-action="toggle-help" aria-haspopup="dialog" aria-expanded="' + helpOpen + '" aria-label="Help" title="Help and the manual">?</button>';
+}
+
+function renderHelpMenuHtml() {
+  if (!helpOpen) return '';
+  const link = (key, text) => '<li><a href="' + docUrl(key) + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a></li>';
+  const where = isServedByArchiCode()
+    ? 'The editor reads and writes the folder served by <code>archicode editor serve</code> on this machine.'
+    : 'Files are read and written in your browser, in the folder you picked.';
+  return '<div class="help-menu" role="dialog" aria-label="Help">' +
+    '<ul>' + link('manual', 'Manual') + link('editor', 'Using the editor') + link('map', 'The Map') + link('facets', 'Facets') + link('keyboard', 'Keyboard shortcuts') + '</ul>' +
+    '<p class="help-note">' + where + ' Nothing is uploaded. The diagram layout and the file editor are loaded from a CDN when the page opens.</p>' +
+    '<p class="help-note help-version">ArchiCode ' + escapeHtml(editorVersion()) + ' · kernel contract ' + KERNEL_CONTRACT_VERSION + '</p>' +
+    '</div>';
+}
+
+/** Escape closes the help; a click anywhere else is handled in handleAppClick. */
+function handleHelpKeydown(e) {
+  if (helpOpen && e.key === 'Escape') {
+    helpOpen = false;
+    render();
+    const button = document.querySelector('.help-button');
+    if (button) button.focus();
+  }
+}
+
 /** One help paragraph; `describedBy(key)` is the matching aria-describedby attribute for the field it explains. */
 function renderHelpHtml(key, extraClass) {
-  const html = escapeHtml(SETTINGS_HELP[key]).replace(/`([^`]+)`/g, '<code>$1</code>');
+  let html = escapeHtml(SETTINGS_HELP[key]).replace(/`([^`]+)`/g, '<code>$1</code>');
+  if (SETTINGS_HELP_DOCS[key]) html += ' <a href="' + docUrl(SETTINGS_HELP_DOCS[key]) + '" target="_blank" rel="noopener">Manual</a>';
   return '<div class="settings-help' + (extraClass ? ' ' + extraClass : '') + '" id="settings-help-' + key + '">' + html + '</div>';
 }
 function describedBy(key) {
@@ -3499,10 +3626,9 @@ let autoGrowObserver = null;
 /**
  * Re-run autosizeTextarea on every `.auto-grow-textarea` currently in the DOM
  * — called after each render(). A textarea is also re-measured whenever its
- * width changes: the first render after a page load runs before Tailwind's
- * CDN script has applied the grid classes, so the textarea is measured while
- * far narrower than it ends up, its text wrapped over many lines, and would
- * otherwise keep that inflated height forever.
+ * width changes: a textarea measured while the grid is still narrower than it
+ * ends up (the first render, a panel being resized) wraps its text over many
+ * lines, and would otherwise keep that inflated height forever.
  */
 function autosizeAllTextareas() {
   const textareas = document.querySelectorAll('.auto-grow-textarea');
@@ -5449,6 +5575,7 @@ function renderShellHtml() {
     html += renderReferenceDatalistsHtml();
   }
   html += '</div>';
+  html += renderHelpMenuHtml();
   return html;
 }
 
@@ -5462,9 +5589,17 @@ function renderShellHtml() {
 function handleAppClick(e) {
   if (diagramPanned) { diagramPanned = false; return; } // the mouse button went up after dragging the diagram
   const target = e.target.closest('[data-action]');
+  const action = target ? target.getAttribute('data-action') : null;
+  if (helpOpen && action !== 'toggle-help' && !(e.target.closest && e.target.closest('.help-menu'))) {
+    helpOpen = false; // a click anywhere else closes the help
+    render();
+  }
   if (!target) return;
-  const action = target.getAttribute('data-action');
   switch (action) {
+    case 'toggle-help':
+      helpOpen = !helpOpen;
+      render();
+      break;
     case 'open-folder':
       openFolder();
       break;
@@ -6109,7 +6244,7 @@ function handleAppPointerDown(e) {
   handle.addEventListener('pointercancel', onUp, { once: true });
 }
 
-/** Double-click a resize handle to forget its persisted size and fall back to the panel's default (its min-/max-/base-width Tailwind classes). */
+/** Double-click a resize handle to forget its persisted size and fall back to the panel's default (its min-/max-/base-width classes). */
 function handleAppDblClick(e) {
   const handle = e.target.closest('[data-resize]');
   if (!handle) return;
@@ -6199,6 +6334,7 @@ function renderLandingHtml(cfg) {
       ).join('') + '</div>';
     }
     if (cfg.note) body += '<p class="landing-note">' + escapeHtml(cfg.note) + '</p>';
+    body += '<p class="landing-note"><a href="' + docUrl('editor') + '" target="_blank" rel="noopener">Documentation</a> · nothing leaves your browser: files are read and written locally.</p>';
   }
   return '<main class="landing"><section class="landing-card" data-landing="' + cfg.kind + '">' + brand + body + '</section></main>';
 }
@@ -6264,6 +6400,7 @@ function render() {
   app.addEventListener('input', handleAppInput);
   app.addEventListener('keydown', handleDiagramKeydown);
   app.addEventListener('keydown', handleNavKeydown);
+  app.addEventListener('keydown', handleHelpKeydown);
   app.addEventListener('pointerover', handleDiagramPointerOver);
   app.addEventListener('focusin', handleDiagramFocus);
   app.addEventListener('focusout', handleDiagramFocus);

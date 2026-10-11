@@ -28,6 +28,7 @@ import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * The local HTTP server behind {@code editor serve}: it serves the standalone editor ({@code standalone.html}) and
@@ -61,12 +62,17 @@ public class EditorHttpServer {
     private static final String API_PREFIX = "/api/fs/";
     private static final String WEBAPP_RESOURCE = "/editor-webapp/standalone.html";
     private static final String TOKEN_MARKER = "<head>";
+    private static final String VERSION_MARKER = "<meta name=\"archicode-version\" content=\"dev\">";
     private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "[::1]");
     private static final Set<String> EDITABLE_EXTENSIONS = Set.of("yaml", "yml", "json");
     private static final int HANDLER_THREADS = 4;
 
     @Inject
     MapperFactory mapperFactory;
+
+    /** The release of this ArchiCode, which the editor shows in its help. */
+    @ConfigProperty(name = "quarkus.application.version", defaultValue = "dev")
+    String version;
 
     /**
      * Start the server.
@@ -138,7 +144,10 @@ public class EditorHttpServer {
                 text(exchange, 500, "the editor is missing from the classpath: " + WEBAPP_RESOURCE);
                 return;
             }
-            val html = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            val html = new String(stream.readAllBytes(), StandardCharsets.UTF_8).replace(
+                VERSION_MARKER,
+                "<meta name=\"archicode-version\" content=\"" + version + "\">"
+            );
             val meta = TOKEN_MARKER + "<meta name=\"archicode-server\" content=\"" + token + "\">";
             val index = html.indexOf(TOKEN_MARKER);
             val served =
