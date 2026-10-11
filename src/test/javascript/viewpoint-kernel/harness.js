@@ -51,7 +51,7 @@ function makeDirHandle(absPath) {
   };
 }
 
-function createApp() {
+function createApp(options = {}) {
   const html = fs.readFileSync(HTML, 'utf8');
   const script = html.match(/<script>([\s\S]*?)<\/script>/);
   const wasm = html.match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
@@ -71,8 +71,15 @@ function createApp() {
         return null;
       },
       querySelectorAll() { return []; },
+      querySelector(selector) {
+        // the page served by `editor serve` carries the token of the server in a <meta>
+        return options.serverToken && selector === 'meta[name="archicode-server"]' ? { getAttribute: () => options.serverToken } : null;
+      },
       addEventListener() {}
     },
+    fetch: options.fetch,
+    File: options.serverToken ? class { constructor(parts, name, options = {}) { this.parts = parts; this.name = name; this.lastModified = options.lastModified; } async text() { return this.parts.join(''); } } : undefined,
+    Blob,
     indexedDB: {},
     setTimeout,
     atob, TextEncoder, TextDecoder, URLSearchParams

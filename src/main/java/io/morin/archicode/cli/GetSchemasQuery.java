@@ -56,8 +56,7 @@ public class GetSchemasQuery implements Runnable {
     /**
      * Generate the JSON Schema for the given {@link SchemaType}.
      * <p>
-     * Reused by {@link EditorHttpServer}'s {@code GET /api/schemas/{type}} endpoint so the HTTP surface and the
-     * {@code query schemas} CLI command share the exact same schema-generation logic.
+     * Kept apart from the command so that a schema can be generated without writing it out.
      *
      * @param type the type of schema to generate
      * @return the generated schema
