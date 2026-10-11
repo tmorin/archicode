@@ -24,39 +24,48 @@ function fakeLayout(graph) {
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 
-test('the URL carries the viewpoint and the facet of a diagram, and restores them', async () => {
+test('the URL carries the tab and the facet of a diagram, and restores them; an old Diagram link still opens', async () => {
   const { sandbox, state } = await openFixture();
-  run(sandbox, "currentPerspective = 'diagram'; diagramViewpoint = 'deep'; diagramFacet = 'no-smtp';");
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'deep'; diagramFacet = 'no-smtp';");
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
-  assert.equal(sandbox.currentRouteHash(), '/diagram?ref=shop.web.api&vp=deep&facet=no-smtp');
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=deep&facet=no-smtp');
 
-  run(sandbox, "diagramViewpoint = 'overview'; diagramFacet = null;");
-  assert.equal(sandbox.currentRouteHash(), '/diagram?ref=shop.web.api', 'the defaults stay out of the URL');
+  run(sandbox, "elementTab = 'details';");
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api', 'Details stays out of the URL, and so does the facet it ignores');
 
-  sandbox.location.hash = '#/diagram?ref=shop.web.api&vp=detailed&facet=rest-only';
+  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=detailed&facet=rest-only';
   sandbox.syncPerspectiveFromHash();
-  assert.equal(run(sandbox, 'diagramViewpoint'), 'detailed');
+  assert.equal(run(sandbox, 'elementTab'), 'detailed');
   assert.equal(run(sandbox, 'diagramFacet'), 'rest-only');
 
-  sandbox.location.hash = '#/diagram?ref=shop.web.api&vp=sideways&facet=nope';
+  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=sideways&facet=nope';
   sandbox.syncPerspectiveFromHash();
-  assert.equal(run(sandbox, 'diagramViewpoint'), 'overview', 'an unknown viewpoint falls back');
+  assert.equal(run(sandbox, 'elementTab'), 'details', 'an unknown tab falls back');
   assert.equal(run(sandbox, 'diagramFacet'), null, 'an unknown facet falls back');
 
-  run(sandbox, "diagramViewpoint = 'deep';");
-  sandbox.location.hash = '#/elements?ref=shop.web.api';
+  // the links of the Diagram perspective, which is gone, open the matching tab
+  sandbox.location.hash = '#/diagram?ref=shop.web.api&vp=deep&facet=no-smtp';
   sandbox.syncPerspectiveFromHash();
-  assert.equal(run(sandbox, 'diagramViewpoint'), 'deep', 'other perspectives leave the diagram choices alone');
+  assert.equal(run(sandbox, 'currentPerspective'), 'elements');
+  assert.equal(run(sandbox, 'elementTab'), 'deep');
+  assert.equal(run(sandbox, 'diagramFacet'), 'no-smtp');
+  sandbox.location.hash = '#/diagram?ref=shop.web.api';
+  sandbox.syncPerspectiveFromHash();
+  assert.equal(run(sandbox, 'elementTab'), 'overview', 'a Diagram link with no viewpoint was the overview');
 });
 
-test('the header offers the viewpoints and the facets of the workspace', async () => {
+test('the header of Elements offers Details and the three viewpoints, and the facets of the workspace', async () => {
   const { sandbox, state } = await openFixture();
   const leaf = state.index.application.get('shop.catalog.service.search');
   const parent = state.index.application.get('shop.catalog');
-  assert.match(sandbox.renderViewpointSwitchHtml(leaf), /data-viewpoint="detailed"[^>]*disabled/);
-  assert.doesNotMatch(sandbox.renderViewpointSwitchHtml(parent), /data-viewpoint="detailed"[^>]*disabled/);
-  run(sandbox, "diagramViewpoint = 'detailed';");
+  const tabs = sandbox.renderElementTabsHtml(parent);
+  assert.deepEqual(Array.from(tabs.matchAll(/data-tab="(\w+)"/g), (m) => m[1]), ['details', 'overview', 'detailed', 'deep']);
+  assert.match(tabs, /data-tab="details" aria-pressed="true"/, 'an element opens on its Details');
+  assert.match(sandbox.renderElementTabsHtml(leaf), /data-tab="detailed"[^>]*disabled/);
+  assert.doesNotMatch(tabs, /data-tab="detailed"[^>]*disabled/);
+  run(sandbox, "elementTab = 'detailed';");
   assert.equal(sandbox.effectiveDiagramViewpoint(leaf), 'overview');
+  assert.match(sandbox.renderElementTabsHtml(leaf), /data-tab="overview" aria-pressed="true"/);
 
   const select = sandbox.renderFacetSelectHtml();
   for (const name of ['rest-only', 'no-smtp', 'quiet-infra', 'keep-untyped']) assert.ok(select.includes('value="' + name + '"'), name);
@@ -72,26 +81,25 @@ test('boxes and links reach the layout engine one for one', async () => {
   assert.equal(graph.edges.length, result.links.filter((l) => !l.secondary).length);
 });
 
-test('the SVG: clickable boxes, the focal one marked, fold buttons, grouped links explain themselves', async () => {
+test('the SVG: clickable boxes, the focal one marked, grouped links explain themselves, no fold button outside the map', async () => {
   const { sandbox, kernel } = await openFixture();
   const result = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api').input);
   const drawing = sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, 'shop.web.api');
   const svg = drawing.html;
   assert.ok(svg.startsWith('<svg'));
   assert.ok(svg.includes('data-action="goto-element"') && svg.includes('dg-focal'));
-  assert.ok(svg.includes('data-action="toggle-fold"'), 'a box that contains others can be folded');
+  assert.ok(!svg.includes('toggle-fold'), 'an overview is drawn as the CLI draws it: no fold button');
   assert.equal((svg.match(/<g class="dg-link"/g) || []).length, result.links.length);
   assert.ok(svg.includes('relationships are grouped here') || svg.includes('relationship is grouped here'), 'a grouped link lists what it stands for');
   assert.ok(drawing.focal && drawing.focal.x > 0, 'the focal box is located, to center on it');
   assert.doesNotMatch(svg, /<script|onclick=/i);
 });
 
-test('a folded box is drawn as a box that says how much it hides, with a button to unfold it', async () => {
+test('a folded box is drawn as a box that says how much it hides', async () => {
   const { sandbox, kernel } = await openFixture();
   const result = kernel.compute(sandbox.buildKernelInput('deep', 'shop.catalog', { collapsed: ['shop.catalog.service'] }).input);
   const svg = sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, 'shop.catalog').html;
   assert.match(svg, /2 hidden/);
-  assert.match(svg, /aria-label="Unfold Catalog Service"/);
 });
 
 test('folded ids given as a Set (what the UI keeps) reach the kernel', async () => {
@@ -168,107 +176,89 @@ test('the tag values of YAML are given to the kernel as text, as Jackson reads t
   assert.ok(input);
 });
 
-test('overview: a box that hides children can be opened, the boxes around the focal one have no fold button', async () => {
+test('on the map, a box that hides children can be opened and an open one closed; the focal-less map has no box to protect', async () => {
   const { sandbox, kernel } = await openFixture();
-  const draw = (expanded) => {
-    const result = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api', { expanded }).input);
-    return { result, svg: sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, 'shop.web.api').html };
+  run(sandbox, "currentPerspective = 'map';");
+  const draw = (opened) => {
+    const result = kernel.compute(sandbox.buildKernelInput('map', null, { opened }).input);
+    return { result, svg: sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, '').html };
   };
-
   const closed = draw([]);
-  const catalog = closed.result.items.find((i) => i.id === 'shop.catalog');
-  assert.equal(catalog.expandable, true, 'the catalog has components the view does not show');
-  assert.match(closed.svg, /data-mode="expand" data-id="shop.catalog"/);
-  assert.doesNotMatch(closed.svg, /data-id="shop"[^>]*role="button"|data-mode="fold" data-id="shop(\.web)?"/, 'a box around the focal one is not foldable');
-
-  const opened = draw(['shop.catalog']);
-  assert.ok(opened.result.items.some((i) => i.parent === 'shop.catalog'), 'its children are shown');
-  assert.ok(opened.result.links.every((l) => l.to !== 'shop.catalog'), 'the links now end on the children');
-  assert.ok(opened.result.items.find((i) => i.id === 'shop.catalog').expandable === false);
+  assert.match(closed.svg, /data-mode="expand" data-id="shop"/);
+  const opened = draw(['shop']);
+  assert.match(opened.svg, /data-mode="close" data-id="shop"/);
+  assert.match(opened.svg, /data-mode="expand" data-id="shop.catalog"/);
 });
 
-test('the fold button opens, closes, folds and unfolds', async () => {
-  const { sandbox } = await openFixture();
-  const click = (id, mode) => {
-    const target = { getAttribute: (name) => ({ 'data-action': 'toggle-fold', 'data-id': id, 'data-mode': mode })[name] };
-    sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
-  };
-  const state = () => JSON.parse(vm.runInContext('JSON.stringify([Array.from(diagramExpanded), Array.from(diagramCollapsed)])', sandbox));
-  click('shop.catalog', 'expand');
-  click('shop.catalog.service', 'expand');
-  assert.deepEqual(state(), [['shop.catalog', 'shop.catalog.service'], []]);
-  click('shop.catalog', 'close');
-  assert.deepEqual(state(), [[], []], 'closing a box closes what was opened in it');
-  click('shop.web', 'fold');
-  assert.deepEqual(state(), [[], ['shop.web']]);
-  click('shop.web', 'unfold');
-  assert.deepEqual(state(), [[], []]);
-});
-
-test('the Elements perspective shows the overview of the element, whatever the Diagram perspective is set to', async () => {
-  const { sandbox } = await openFixture();
-  run(sandbox, "diagramViewpoint = 'deep'; diagramFacet = 'no-smtp';");
-  const html = sandbox.renderElementViewHtml('shop.web.api');
-  assert.match(html, /<div class="element-diagram">/);
-  assert.match(html, /id="diagram-canvas" data-viewpoint="overview"/);
-  assert.match(html, /data-perspective="diagram"[^>]*>Open in Diagram</, 'the other viewpoints are one click away');
-  assert.doesNotMatch(html, /diagram-facet-select/, 'no facet picker next to a diagram that ignores facets');
-  // and the Diagram perspective's own canvas is not pinned to the overview
-  assert.doesNotMatch(sandbox.renderDiagramCanvasHtml({ name: 'API', id: 'api', reference: 'shop.web.api' }), /data-viewpoint/);
-});
-
-test('the toolbar folds everything that can be folded and unfolds it again, one level at a time', async () => {
+test('the viewpoints of an element have no fold button, no Fold all / Unfold all and no Hide unlinked: those belong to the map', async () => {
   const { sandbox, kernel } = await openFixture();
-  const sets = () => JSON.parse(vm.runInContext('JSON.stringify([Array.from(diagramExpanded), Array.from(diagramCollapsed)])', sandbox));
-  const click = (action) => {
-    const target = { getAttribute: (name) => (name === 'data-action' ? action : null) };
+  const record = sandbox.findElementRecord('shop.web.api');
+  const elementTools = sandbox.renderDiagramCanvasHtml(record);
+  for (const gone of ['fold-all', 'unfold-all', 'toggle-hide-unlinked']) assert.ok(!elementTools.includes(gone), gone);
+  for (const kept of ['data-dir="out"', 'data-dir="in"', 'diagram-center-button', 'diagram-fit-button', 'diagram-export']) assert.ok(elementTools.includes(kept), kept);
+  const mapTools = sandbox.renderDiagramCanvasHtml(null);
+  for (const there of ['fold-all', 'unfold-all', 'toggle-hide-unlinked']) assert.ok(mapTools.includes(there), there);
+
+  // a click that would fold on a diagram of an element does nothing: there is nothing to fold
+  run(sandbox, "currentPerspective = 'elements';");
+  const click = (action, attrs) => {
+    const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
     sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
   };
-  const open = (focal) => {
-    const result = kernel.compute(sandbox.buildKernelInput('overview', focal, {
-      expanded: vm.runInContext('Array.from(diagramExpanded)', sandbox), collapsed: vm.runInContext('Array.from(diagramCollapsed)', sandbox)
-    }).input);
-    vm.runInContext('diagramScene = ' + JSON.stringify(sandbox.diagramFoldTargets(result, focal)), sandbox);
-    return result;
-  };
-
-  open('shop.catalog.service');
-  const targets = JSON.parse(vm.runInContext('JSON.stringify(diagramScene)', sandbox));
-  assert.ok(!targets.foldable.includes('shop.catalog') && !targets.foldable.includes('shop'), 'the boxes around the focal one are left alone');
-
-  open('shop.web.api');
-  click('unfold-all');
-  assert.deepEqual(sets()[0], ['shop.catalog', 'shop.web.edge'], 'every box that hides children is opened');
-  open('shop.web.api');
-  click('fold-all');
-  assert.deepEqual(sets()[0], [], 'what was opened is closed');
-  click('unfold-all');
-  assert.deepEqual(sets()[1], [], 'nothing stays folded');
-
-  // in a deep diagram the boxes inside the focal one can be folded, and folding them hides what they contain
-  const deep = kernel.compute(sandbox.buildKernelInput('deep', 'shop').input);
-  vm.runInContext('diagramScene = ' + JSON.stringify(sandbox.diagramFoldTargets(deep, 'shop')), sandbox);
-  click('fold-all');
-  const folded = sets()[1];
-  assert.ok(folded.includes('shop.catalog') && !folded.includes('shop'), 'the focal box itself stays unfolded');
-  const after = kernel.compute(sandbox.buildKernelInput('deep', 'shop', { collapsed: folded }).input);
-  assert.ok(after.items.length < deep.items.length);
+  click('toggle-hide-unlinked');
+  assert.equal(run(sandbox, 'diagramHideUnlinked'), false);
+  const out = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api', {}).input);
+  assert.ok(out.items.some((i) => i.expandable), 'the kernel still says what could be opened; the editor does not offer it');
 });
 
-test('maximizing the diagram hides the panels around it, and only then', async () => {
+test('Elements shows the page of the element on Details and its diagram on the other tabs, with no panel but the tree', async () => {
   const { sandbox, state } = await openFixture();
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
-  run(sandbox, "currentPerspective = 'diagram'; diagramMaximized = false;");
-  const normal = sandbox.renderDiagramPerspectiveHtml();
-  assert.ok(normal.left && normal.right && normal.bottom);
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'details'; diagramMaximized = false;");
+  const details = sandbox.renderElementsPerspectiveHtml();
+  assert.ok(details.left && details.right === null && details.bottom === null);
+  assert.ok(!details.center.includes('diagram-canvas'), 'no diagram on the page of the element');
+  assert.ok(details.center.includes('data-action="toggle-element-edit"') && details.center.includes('data-action="set-element-tab"'));
+  assert.ok(!details.center.includes('Open in Diagram'));
+  assert.ok(details.center.includes('Relationships') && details.center.includes('field-label'), 'the properties and relationships stay on the page');
+  assert.ok(details.center.includes('data-action="show-on-map" data-ref="shop.web.api"'));
+
+  run(sandbox, "elementTab = 'deep';");
+  const deep = sandbox.renderElementsPerspectiveHtml();
+  assert.ok(deep.center.includes('id="diagram-canvas"') && deep.center.includes('diagram-facet-select'));
+  assert.match(deep.center, /data-tab="deep" aria-pressed="true"/);
+  assert.ok(deep.right === null && deep.bottom === null);
+
+  // editing is done on the Details, whatever tab was open
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'edit' };
+  const edit = sandbox.renderElementsPerspectiveHtml();
+  assert.ok(!edit.center.includes('id="diagram-canvas"'));
+  assert.equal(run(sandbox, 'elementTab'), 'details');
+
+  // nothing, or something that is not an element, is selected: the placeholder, whatever the tab
+  run(sandbox, "elementTab = 'overview';");
+  state.selection = { kind: 'none', key: null, mode: 'view' };
+  assert.ok(!sandbox.renderElementsPerspectiveHtml().center.includes('id="diagram-canvas"'));
+  assert.equal(run(sandbox, 'diagramTabShown()'), false);
+});
+
+
+
+test('maximizing the diagram hides the tree, and only on a diagram', async () => {
+  const { sandbox, state } = await openFixture();
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'; diagramMaximized = false;");
+  const normal = sandbox.renderElementsPerspectiveHtml();
+  assert.ok(normal.left);
   assert.match(normal.center, /data-action="toggle-maximize"[^>]*>Maximize</);
 
   run(sandbox, 'diagramMaximized = true;');
-  const maximized = sandbox.renderDiagramPerspectiveHtml();
+  const maximized = sandbox.renderElementsPerspectiveHtml();
   assert.equal(maximized.left, null);
-  assert.equal(maximized.right, null);
-  assert.equal(maximized.bottom, null);
   assert.match(maximized.center, /data-action="toggle-maximize"[^>]*>Restore</);
+
+  run(sandbox, "elementTab = 'details';");
+  assert.ok(sandbox.renderElementsPerspectiveHtml().left, 'the page of an element always has its tree');
 });
 
 test('framing: a diagram that fits is centered whole, one that does not keeps the element in view without empty margins', async () => {
@@ -300,4 +290,247 @@ test('overviews are laid out top to bottom', async () => {
   const { sandbox, kernel } = await openFixture();
   const result = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api').input);
   assert.equal(sandbox.buildElkGraph(result).layoutOptions['elk.direction'], 'DOWN');
+});
+
+test('through a facet, an element left with nothing says so and offers the diagram without the facet', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  const facet = state.workspace.settings.facets.customs.find((f) => f.name === 'rest-only');
+  const quiet = sandbox.quietReferencesThroughFacet(kernel, facet);
+  const reference = Array.from(quiet).find((ref) => state.index.application.has(ref) &&
+    kernel.compute(sandbox.buildKernelInput('overview', ref).input).links.some((l) => !l.secondary));
+  assert.ok(reference, 'the facet empties at least one element that has links of its own');
+
+  const html = sandbox.diagramEmptyHtml(kernel, 'overview', reference, facet, '');
+  assert.match(html, /facet “rest-only” removes the/);
+  assert.ok(html.includes('data-action="clear-facet"'));
+  assert.ok(!sandbox.diagramEmptyHtml(kernel, 'overview', reference, null, '').includes('clear-facet'), 'no facet, no such offer');
+});
+
+test('the tree can tell which elements a facet leaves with nothing to draw', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  const facet = (name) => state.workspace.settings.facets.customs.find((f) => f.name === name);
+  const refs = Array.from(state.index.application.keys());
+  const quiet = sandbox.quietReferencesThroughFacet(kernel, facet('rest-only'));
+  assert.ok(quiet.size > 0 && quiet.size < refs.length + state.index.technology.size);
+  for (const ref of refs) {
+    const out = kernel.compute(sandbox.buildKernelInput('overview', ref, { facet: facet('rest-only') }).input);
+    assert.equal(quiet.has(ref), !out.links.some((l) => !l.secondary), ref);
+  }
+  assert.ok(sandbox.quietReferencesThroughFacet(kernel, facet('no-smtp')) !== quiet, 'another facet, another answer');
+});
+
+test('"Hide unlinked" leaves out the boxes no link reaches, keeps the focal one and what encloses the others', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  const facet = state.workspace.settings.facets.customs.find((f) => f.name === 'rest-only');
+  // detailed through a facet that empties some children: they are drawn, linked to nothing
+  const parent = Array.from(state.index.application.keys()).find((ref) => {
+    const rec = state.index.application.get(ref);
+    if (["person", "component"].includes(rec.kind) || !(rec.children || []).length) return false;
+    const out = kernel.compute(sandbox.buildKernelInput('detailed', ref, { facet }).input);
+    const linked = new Set(out.links.flatMap((l) => [l.from, l.to]));
+    return out.links.length && out.items.some((i) => !linked.has(i.id) && i.id !== ref && !ref.startsWith(i.id + '.'));
+  });
+  assert.ok(parent, 'a parent whose children the facet leaves partly unlinked');
+  const out = kernel.compute(sandbox.buildKernelInput('detailed', parent, { facet }).input);
+  const kept = sandbox.hideUnlinkedItems(out.items, out.links, parent);
+  assert.ok(kept.hidden > 0 && kept.items.length === out.items.length - kept.hidden);
+  assert.equal(kept.links.length, out.links.length, 'no link is lost');
+  const ids = new Set(kept.items.map((i) => i.id));
+  assert.ok(ids.has(parent), 'the focal box stays');
+  for (const item of kept.items) assert.ok(!item.parent || ids.has(item.parent), 'what encloses a kept box stays: ' + item.id);
+  for (const link of out.links) assert.ok(ids.has(link.from) && ids.has(link.to));
+
+  const alone = sandbox.hideUnlinkedItems([{ id: 'a', parent: null }], [], 'a');
+  assert.deepEqual(JSON.parse(JSON.stringify(alone.items)), [{ id: 'a', parent: null }], 'the focal box of an empty view stays');
+});
+
+test('the toolbar of the map offers "Hide unlinked", pressed when it is on', async () => {
+  const { sandbox, state } = await openFixture();
+  assert.match(sandbox.renderDiagramCanvasHtml(null), /data-action="toggle-hide-unlinked" aria-pressed="false"/);
+  assert.equal(run(sandbox, 'diagramHideUnlinked'), false);
+});
+
+test('Center and Fit are lit while the diagram is framed that way, and only then', async () => {
+  const { sandbox } = await openFixture();
+  const record = sandbox.findElementRecord('shop.web.api');
+  const html = () => sandbox.renderDiagramCanvasHtml(record, false);
+  assert.match(html(), /id="diagram-center-button"[^>]*aria-pressed="true"/, 'a diagram opens framed on its element');
+  assert.match(html(), /id="diagram-fit-button"[^>]*aria-pressed="false"/);
+  sandbox.eval ? sandbox.eval("diagramScale = 'fit'") : require('node:vm').runInContext("diagramScale = 'fit'", sandbox);
+  assert.match(html(), /id="diagram-center-button"[^>]*aria-pressed="false"/);
+  assert.match(html(), /id="diagram-fit-button"[^>]*aria-pressed="true"/);
+});
+
+test('the map opens folded: nothing is open, not even the solutions', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  assert.equal(run(sandbox, 'defaultMapOpened().size'), 0);
+  const { input } = sandbox.buildKernelInput('map', null, { opened: [] });
+  assert.equal(input.viewpoint, 'map');
+  assert.equal(input.focal, '');
+  assert.equal(input.layer, 'application');
+  const out = kernel.compute(input);
+  const ids = Array.from(out.items, (i) => i.id).sort();
+  assert.deepEqual(ids, ['customer', 'mailer', 'shop'], 'the solution is one box');
+  assert.ok(out.items.find((i) => i.id === 'shop').expandable, 'a closed solution can be opened');
+  assert.ok(out.links.length > 0 && out.links.every((l) => ids.includes(l.from) && ids.includes(l.to)));
+  assert.ok(state.index.application.size > ids.length);
+});
+
+test('the Map perspective draws the workspace without any element selected, with the pinned and hidden ones as chips', async () => {
+  const { sandbox, state } = await openFixture();
+  run(sandbox, "currentPerspective = 'map'; mapPinned = ['shop.web']; mapHidden = ['mailer'];");
+  state.selection = { kind: 'none', key: null, mode: 'view' };
+  const html = sandbox.renderMapPerspectiveHtml();
+  assert.ok(html.center.includes('data-map="true"') && html.center.includes('<h2>Map</h2>'));
+  assert.ok(html.center.includes('Pinned: Web') && html.center.includes('Hidden: Mail'), 'the pinned and the hidden elements are chips');
+  assert.ok(html.center.includes('data-action="map-unpin"') && html.center.includes('data-action="map-unhide"'));
+  assert.ok(!html.center.includes('viewpoint-switch'), 'the viewpoints are the Diagram perspective\'s');
+  assert.ok(!html.center.includes('open-as-diagram'), 'nothing selected, nothing to open');
+
+  state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
+  const picked = sandbox.renderMapPerspectiveHtml();
+  assert.ok(picked.center.includes('data-action="open-as-diagram" data-ref="shop.catalog"'));
+  assert.ok(picked.right === null && picked.bottom === null && html.right === null && html.bottom === null, 'the map has the room to itself: no panel on the right or at the bottom');
+});
+
+test('the tree of the Map says what each element is for the map, and picking one finds it there', async () => {
+  const { sandbox, state } = await openFixture();
+  run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = ['shop.catalog']; mapHidden = ['mailer'];");
+  state.selection = { kind: 'none', key: null, mode: 'view' };
+  assert.ok(sandbox.renderMapScopeHtml().includes('data-ref="shop.catalog"') === false, 'closed branches are not drawn');
+  state.expanded.add('shop');
+  const html = sandbox.renderMapScopeHtml();
+  assert.match(html, /map-scope-row pinned[^>]*data-action="map-select" data-ref="shop.catalog"/);
+  assert.match(html, /map-scope-row left-out[^>]*data-ref="mailer"/);
+  assert.match(html, /data-action="map-hide" data-ref="shop"[^>]*disabled/, 'what encloses a pinned element cannot be hidden');
+  assert.match(html, /data-action="map-pin" data-ref="mailer" aria-pressed="false" aria-label="Pin Mail Provider"/);
+  assert.ok(html.includes('class="tree-node-label" title="Mail Provider"') && html.includes('class="tree-node-kind" title="system">SYS<'), 'a long name can be read in full, the kind is short');
+  assert.ok(!/>\s*(Pin|Hide)\s*</.test(html), 'the buttons are icons, they leave the room to the name');
+  assert.ok(html.includes('class="map-scope-mark"') && html.includes('title="Pinned"'), 'a pinned element is marked without hovering');
+
+  const click = (action, attrs) => {
+    const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
+    sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
+  };
+  run(sandbox, 'mapPinned = []; mapHidden = [];');
+  click('map-select', { 'data-ref': 'shop.web.edge.gateway' });
+  assert.equal(state.selection.key, 'shop.web.edge.gateway');
+  assert.equal(run(sandbox, 'JSON.stringify(Array.from(currentMapOpened()).sort())'), JSON.stringify(['shop', 'shop.web', 'shop.web.edge']), 'the boxes around it are opened');
+  assert.equal(run(sandbox, 'mapRevealRef'), 'shop.web.edge.gateway');
+  click('map-hide', { 'data-ref': 'mailer' });
+  click('map-hide', { 'data-ref': 'mailer' });
+  assert.equal(run(sandbox, 'mapHidden.length'), 0, 'Hide on a hidden element brings it back');
+});
+
+test('Elements and Map lead to each other, and the URL of the map carries the facet and the pinned elements', async () => {
+  const { sandbox, state } = await openFixture();
+  const click = (action, attrs) => {
+    const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
+    sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
+  };
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'deep'; mapPinned = ['shop.payments']; diagramFacet = 'no-smtp';");
+  state.selection = { kind: 'element', key: 'shop.web', mode: 'view' };
+  assert.ok(sandbox.renderElementsPerspectiveHtml().center.includes('data-action="show-on-map" data-ref="shop.web"'));
+  click('show-on-map', { 'data-ref': 'shop.web' });
+  assert.equal(run(sandbox, 'currentPerspective'), 'map');
+  assert.equal(run(sandbox, 'JSON.stringify(mapPinned)'), JSON.stringify(['shop.web']), 'the element replaces what was pinned');
+  assert.equal(sandbox.currentRouteHash(), '/map?ref=shop.web&facet=no-smtp&pin=shop.web');
+
+  click('open-as-diagram', { 'data-ref': 'shop.web' });
+  assert.equal(run(sandbox, 'currentPerspective'), 'elements');
+  assert.equal(run(sandbox, 'elementTab'), 'deep', 'a diagram that was open stays the one shown');
+  run(sandbox, "elementTab = 'details';");
+  click('show-on-map', { 'data-ref': 'shop.web' });
+  click('open-as-diagram', { 'data-ref': 'shop.web' });
+  assert.equal(run(sandbox, 'elementTab'), 'overview', 'from Details, the diagram is the overview');
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web&tab=overview&facet=no-smtp');
+
+  run(sandbox, 'mapPinned = []; diagramFacet = null;');
+  sandbox.location.hash = '#/map?pin=shop.web,nope&facet=rest-only';
+  sandbox.syncPerspectiveFromHash();
+  assert.equal(run(sandbox, 'currentPerspective'), 'map');
+  assert.equal(run(sandbox, 'JSON.stringify(mapPinned)'), JSON.stringify(['shop.web']), 'an element that does not exist is dropped');
+  assert.equal(run(sandbox, 'diagramFacet'), 'rest-only');
+});
+
+test('a box that contains others is not given a minimum height that leaves it mostly empty', async () => {
+  const { sandbox, kernel } = await openFixture();
+  const result = kernel.compute(sandbox.buildKernelInput('deep', 'shop').input);
+  const graph = sandbox.buildElkGraph(result);
+  const composite = (n) => (n.children || []).flatMap((k) => (k.children && k.children.length ? [k] : []).concat(composite(k)));
+  const boxes = composite(graph);
+  assert.ok(boxes.length > 0);
+  for (const box of boxes) {
+    // ELK reads this minimum as (height, width) for a diagram laid out top to bottom
+    assert.match(box.layoutOptions['elk.nodeSize.minimum'], /^\(0, \d+\)$/, box.id);
+  }
+});
+
+test('pin, hide, open and close act on the map, and unfold-all goes one level down', async () => {
+  const { sandbox, kernel } = await openFixture();
+  run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = []; mapHidden = [];");
+  const click = (action, attrs) => {
+    const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
+    sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
+  };
+  const state = () => JSON.parse(vm.runInContext('JSON.stringify({ opened: Array.from(currentMapOpened()).sort(), pinned: mapPinned, hidden: mapHidden })', sandbox));
+  const scene = () => {
+    const s = JSON.parse(run(sandbox, 'JSON.stringify(currentMapState())'));
+    const out = kernel.compute(sandbox.buildKernelInput('map', null, s).input);
+    vm.runInContext('diagramScene = ' + JSON.stringify(sandbox.diagramFoldTargets(out, '')), sandbox);
+    return out;
+  };
+
+  click('toggle-fold', { 'data-id': 'shop.web', 'data-mode': 'expand' });
+  assert.deepEqual(state().opened, ['shop.web']);
+  click('toggle-fold', { 'data-id': 'shop', 'data-mode': 'expand' });
+  click('toggle-fold', { 'data-id': 'shop', 'data-mode': 'close' });
+  assert.deepEqual(state().opened, [], 'closing a box closes what was opened inside it');
+
+  click('map-pin', { 'data-ref': 'shop.catalog' });
+  assert.deepEqual(state().pinned, ['shop.catalog']);
+  click('map-hide', { 'data-ref': 'mailer' });
+  assert.deepEqual(state().hidden, ['mailer']);
+  click('map-pin', { 'data-ref': 'shop.catalog' });
+  click('map-unhide', { 'data-ref': 'mailer' });
+  assert.deepEqual([state().pinned, state().hidden], [[], []]);
+
+  const closed = scene().items.length;
+  click('unfold-all');
+  const oneLevel = scene().items.length;
+  assert.ok(oneLevel > closed, 'every closed box that has children is opened');
+  click('fold-all');
+  assert.deepEqual(state().opened, [], 'fold-all folds everything');
+  assert.equal(scene().items.length, closed);
+});
+
+test('the map opens whole: with no element to put in the middle, auto framing is the fit', async () => {
+  const { sandbox } = await openFixture();
+  const canvas = { parentElement: null, clientWidth: 1000, clientHeight: 600 };
+  run(sandbox, "diagramScale = 'auto'");
+  vm.runInContext("diagramScene = { hasSvg: true, width: 3000, height: 1800, focal: null }", sandbox);
+  const scale = sandbox.resolveDiagramScale(canvas);
+  assert.ok(scale < 0.8, 'the readable floor does not apply: ' + scale);
+  vm.runInContext("diagramScene = { hasSvg: true, width: 3000, height: 1800, focal: { x: 1500, y: 900, w: 100, h: 50 } }", sandbox);
+  assert.equal(sandbox.resolveDiagramScale(canvas), 0.8, 'an element in the middle keeps the floor');
+});
+
+test('the status line of the map speaks of the workspace', async () => {
+  const { sandbox, kernel } = await openFixture();
+  const result = kernel.compute(sandbox.buildKernelInput('map', null, { opened: [] }).input);
+  const ghosts = sandbox.buildDiagramGhosts(result, null, 'application');
+  assert.match(sandbox.diagramStatusText('map', '', null, result, ghosts), /^Map of the workspace — 3 items, \d+ links?/);
+});
+
+test('the map leaves the captions out of the layout unless asked, and knows where each box is for Center', async () => {
+  const { sandbox, kernel } = await openFixture();
+  const result = kernel.compute(sandbox.buildKernelInput('map', null, { opened: ['shop'] }).input);
+  const withCaptions = sandbox.buildElkGraph(result);
+  const without = sandbox.buildElkGraph(result, { captions: false });
+  assert.ok(withCaptions.edges.some((e) => e.labels && e.labels.length), 'by default the captions are laid out');
+  assert.ok(without.edges.length > 0 && without.edges.every((e) => !e.labels), 'without captions the edges carry none');
+
+  const drawing = sandbox.renderDiagramSvg(fakeLayout(without), result, '');
+  assert.ok(drawing.boxes['shop.web'] && drawing.boxes['shop.web'].w > 0, 'the box of every element is known');
+  assert.equal(drawing.focal, null, 'the map has no focal element of its own: the selection is the one');
 });

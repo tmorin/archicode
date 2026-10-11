@@ -1,4 +1,4 @@
-//! The ArchiCode viewpoints (overview, detailed, deep) as one pure function: a graph of references and relationships
+//! The ArchiCode viewpoints (overview, detailed, deep, and the focal-less map) as one pure function: a graph of references and relationships
 //! goes in as JSON, the items and links of the view come out as JSON. It never sees YAML, files or the CLI.
 //!
 //! It mirrors io.morin.archicode.viewpoint (OverviewViewpointFactory, DetailedViewpointFactory,
@@ -6,7 +6,7 @@
 //! is checked against what the Java code generates (see src/test/javascript/viewpoint-kernel).
 //!
 //! Contract (version 1)
-//!   input : { viewpoint: "overview"|"detailed"|"deep", layer: "application"|"technology", focal,
+//!   input : { viewpoint: "overview"|"detailed"|"deep"|"map", layer: "application"|"technology", focal,
 //!             default_synthetic_label, elements: [{reference, parent, applications, relationships}],
 //!             app_elements (technology deep only), collapsed: [item id], expanded: [item id],
 //!             facet: {name, actions: [{operator: "REMOVE", json_path}]} }
@@ -17,6 +17,11 @@
 //! items hide everything inside them, their links being re-attached to the collapsed item. In the overview and the
 //! detailed viewpoints, an item flagged `expandable` has children the view does not show; listing it in `expanded`
 //! shows them and the grouped links end on them (`expandable` and `expanded` were added to version 1: both optional).
+//! The `map` viewpoint has no focal element: every element of the layer is in play, what is `opened` shows its
+//! children, and a relationship is drawn between the boxes its two ends land on (a link per pair of boxes, grouped
+//! when it stands for several). `pinned` keeps the relationships that touch one of those elements (or what is inside
+//! it); `hidden` leaves out an element, what is inside it, and every relationship that reaches it. All three are
+//! optional lists of references, added to version 1.
 //! A `facet` is applied to the elements first (it removes relationships), as the CLI does before it generates the views
 //! of a facet. Only the documented kind of JSONPath is understood — see `facet` below; anything else is an error.
 use serde::{Deserialize, Serialize};
@@ -113,6 +118,8 @@ struct Elem {
 #[derive(Deserialize)]
 struct Input {
     viewpoint: String,
+    /// every viewpoint but the map is about one element
+    #[serde(default)]
     focal: String,
     #[serde(default = "default_label")]
     default_synthetic_label: String,
@@ -132,6 +139,15 @@ struct Input {
     /// a facet of the workspace's settings, applied before the viewpoint
     #[serde(default)]
     facet: Option<Facet>,
+    /// map: references of the elements that are open (their children are shown)
+    #[serde(default)]
+    opened: Vec<String>,
+    /// map: references of the elements the view is about (none: the whole layer)
+    #[serde(default)]
+    pinned: Vec<String>,
+    /// map: references of the elements left out, with what is inside them
+    #[serde(default)]
+    hidden: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -532,18 +548,11 @@ fn to_items(refs: &BTreeSet<String>) -> BTreeSet<OutItem> {
         .collect()
 }
 
-/// OverviewViewpointFactory
-fn overview(input: &Input, known: &Known, focal: &str) -> Result<Content, String> {
-    require(known, focal)?;
-    let egress = find_egress(&input.elements, known, focal)?;
-    let ingress = find_ingress(&input.elements, known, focal)?;
-    let focal_level = level_from(focal);
-    let mut groomed = groom(&egress, Direction::Egress, focal_level, 0, &input.expanded, focal);
-    groomed.extend(groom(&ingress, Direction::Ingress, 0, focal_level, &input.expanded, focal));
-
-    let mut refs = vec![focal.to_string()];
+/// The links of a set of groomed ends: a grouped (synthetic) pair is one link, a natural pair is one link per distinct
+/// relationship. Every end is added to `refs`.
+fn emit_links(groomed: &[Groomed], default_label: &str, refs: &mut Vec<String>) -> BTreeSet<OutLink> {
     let mut links: BTreeSet<OutLink> = BTreeSet::new();
-    for g in &groomed {
+    for g in groomed {
         refs.push(g.from.clone());
         refs.push(g.to.clone());
         if !g.synthetic.is_empty() {
@@ -554,9 +563,9 @@ fn overview(input: &Input, known: &Known, focal: &str) -> Result<Content, String
                     .next()
                     .and_then(|r| r.label.clone())
                     .filter(|l| !l.trim().is_empty())
-                    .unwrap_or_else(|| input.default_synthetic_label.clone())
+                    .unwrap_or_else(|| default_label.to_string())
             } else {
-                input.default_synthetic_label.clone()
+                default_label.to_string()
             };
             links.insert(OutLink { from: g.from.clone(), to: g.to.clone(), label: Some(label), synthetic: true, qualifiers, secondary: false, relationships: g.synthetic_src.clone() });
         } else {
@@ -573,7 +582,91 @@ fn overview(input: &Input, known: &Known, focal: &str) -> Result<Content, String
             }
         }
     }
+    links
+}
+
+/// OverviewViewpointFactory
+fn overview(input: &Input, known: &Known, focal: &str) -> Result<Content, String> {
+    require(known, focal)?;
+    let egress = find_egress(&input.elements, known, focal)?;
+    let ingress = find_ingress(&input.elements, known, focal)?;
+    let focal_level = level_from(focal);
+    let mut groomed = groom(&egress, Direction::Egress, focal_level, 0, &input.expanded, focal);
+    groomed.extend(groom(&ingress, Direction::Ingress, 0, focal_level, &input.expanded, focal));
+
+    let mut refs = vec![focal.to_string()];
+    let links = emit_links(&groomed, &input.default_synthetic_label, &mut refs);
     let item_refs = with_ancestors(refs);
+    for r in &item_refs {
+        require(known, r)?;
+    }
+    Ok((to_items(&item_refs), links))
+}
+
+/// The map: no focal element, every element of the layer is in play. An element is open when `opened` lists it (or it
+/// encloses a pinned element); a relationship ends on the first closed element met going down from the root, so
+/// opening an element splits the links that reached it among its children.
+fn map(input: &Input, known: &Known) -> Result<Content, String> {
+    for reference in input.pinned.iter().chain(input.opened.iter()).chain(input.hidden.iter()) {
+        require(known, reference)?;
+    }
+    let opened: HashSet<&str> = input.opened.iter().map(String::as_str).collect();
+    let within = |x: &str, roots: &[String]| roots.iter().any(|r| x == r || is_descendant_of(x, r));
+    let is_hidden = |x: &str| within(x, &input.hidden);
+    let in_pinned = |x: &str| within(x, &input.pinned);
+    let open = |node: &str| opened.contains(node) || input.pinned.iter().any(|p| is_ancestor_of(node, p));
+    let visible = |e: &str| -> bool {
+        let p = parts(e);
+        !is_hidden(e) && (1..p.len()).all(|i| open(&p[..i].join(".")))
+    };
+    let project = |e: &str| -> String {
+        let p = parts(e);
+        let mut cur = p[0].to_string();
+        for i in 1..p.len() {
+            if !open(&cur) {
+                break;
+            }
+            cur = p[..=i].join(".");
+        }
+        cur
+    };
+
+    let mut by_key: BTreeMap<String, Groomed> = BTreeMap::new();
+    for e in &input.elements {
+        for r in e.relationships.iter().collect::<BTreeSet<_>>() {
+            if is_hidden(&e.reference) || is_hidden(&r.destination) {
+                continue;
+            }
+            if !input.pinned.is_empty() && !(in_pinned(&e.reference) || in_pinned(&r.destination)) {
+                continue;
+            }
+            require(known, &r.destination)?;
+            let (from, to) = (project(&e.reference), project(&r.destination));
+            if from == to {
+                continue; // inside a closed element
+            }
+            let grouped = from != e.reference || to != r.destination;
+            let g = by_key.entry(format!("{} -> {}", from, to)).or_insert_with(|| Groomed { from: from.clone(), to: to.clone(), ..Default::default() });
+            if grouped {
+                g.synthetic.insert(r.clone());
+                g.synthetic_src.insert(OutRel::of(&e.reference, r));
+            } else {
+                g.natural.insert(r.clone());
+                g.natural_src.insert(OutRel::of(&e.reference, r));
+            }
+        }
+    }
+    let groomed: Vec<Groomed> = by_key.into_values().collect();
+    let mut refs: Vec<String> = Vec::new();
+    let links = emit_links(&groomed, &input.default_synthetic_label, &mut refs);
+    if input.pinned.is_empty() {
+        refs.extend(input.elements.iter().filter(|e| visible(&e.reference)).map(|e| e.reference.clone()));
+    } else {
+        refs.extend(input.pinned.iter().cloned());
+        // the children of what is open inside a pinned element are all shown, linked or not
+        refs.extend(input.elements.iter().filter(|e| in_pinned(&e.reference) && visible(&e.reference)).map(|e| e.reference.clone()));
+    }
+    let item_refs: BTreeSet<String> = with_ancestors(refs).into_iter().filter(|r| !is_hidden(r)).collect();
     for r in &item_refs {
         require(known, r)?;
     }
@@ -793,6 +886,7 @@ pub fn compute_json(input: &str) -> String {
             let known: Known = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
             let content = match input.viewpoint.as_str() {
                 "overview" => overview(&input, &known, &input.focal),
+                "map" => map(&input, &known),
                 "detailed" => detailed(&input, &known),
                 "deep" if input.layer == "technology" => deep_technology(&input, &known),
                 "deep" => deep(&input, &known).map(|(c, _)| c),
@@ -1072,5 +1166,91 @@ mod tests {
     fn detailed_combines_the_overview_of_each_child() {
         let out = run("detailed", "sys", &[]);
         assert!(link(&out, "sys.a", "other").is_some() && link(&out, "sys.b", "other").is_some() && link(&out, "ext", "sys.b").is_some());
+    }
+
+    /// The same elements as `run`, through the map.
+    fn map_of(opened: &[&str], pinned: &[&str], hidden: &[&str]) -> Value {
+        let rel = |dest: &str, label: &str| json!({ "destination": dest, "label": label });
+        let input = json!({
+            "viewpoint": "map", "layer": "application", "opened": opened, "pinned": pinned, "hidden": hidden,
+            "elements": [
+                { "reference": "sys", "parent": true },
+                { "reference": "sys.a", "relationships": [rel("other.b.c", "calls"), rel("sys.b", "feeds")] },
+                { "reference": "sys.b", "relationships": [rel("other.b.c", "calls")] },
+                { "reference": "other", "parent": true },
+                { "reference": "other.b", "parent": true },
+                { "reference": "other.b.c" },
+                { "reference": "ext", "relationships": [rel("sys.b", "pushes")] }
+            ]
+        });
+        serde_json::from_str(&compute_json(&input.to_string())).unwrap()
+    }
+
+    fn represented(out: &Value) -> usize {
+        out["links"].as_array().unwrap().iter().map(|l| l["relationships"].as_array().unwrap().len()).sum()
+    }
+
+    #[test]
+    fn the_map_starts_closed_and_groups_what_is_inside() {
+        let out = map_of(&[], &[], &[]);
+        assert_eq!(ids(&out), ["ext", "other", "sys"]);
+        assert_eq!(link(&out, "sys", "other").expect("what sys sends to other")["synthetic"], true);
+        assert!(link(&out, "ext", "sys").is_some());
+        assert_eq!(out["links"].as_array().unwrap().len(), 2, "what stays inside sys is not drawn");
+        let sys = out["items"].as_array().unwrap().iter().find(|i| i["id"] == "sys").unwrap();
+        assert_eq!(sys["expandable"], true, "a closed element with children can be opened");
+    }
+
+    #[test]
+    fn opening_an_element_shows_its_children_and_splits_the_links() {
+        let out = map_of(&["sys"], &[], &[]);
+        assert_eq!(ids(&out), ["ext", "other", "sys", "sys.a", "sys.b"]);
+        assert_eq!(link(&out, "sys.a", "sys.b").unwrap()["synthetic"], false);
+        assert!(link(&out, "sys.a", "other").is_some() && link(&out, "sys.b", "other").is_some() && link(&out, "ext", "sys.b").is_some());
+        assert!(link(&out, "sys", "other").is_none());
+        let deeper = map_of(&["sys", "other", "other.b"], &[], &[]);
+        assert_eq!(link(&deeper, "sys.a", "other.b.c").unwrap()["synthetic"], false, "opened all the way down, nothing is grouped");
+    }
+
+    #[test]
+    fn opening_never_loses_a_relationship_it_only_moves_it() {
+        // 4 declared relationships, one of them (sys.a -> sys.b) inside sys: drawn only once sys is open
+        assert_eq!(represented(&map_of(&[], &[], &[])), 3);
+        assert_eq!(represented(&map_of(&["sys"], &[], &[])), 4);
+        assert_eq!(represented(&map_of(&["sys", "other", "other.b"], &[], &[])), 4);
+    }
+
+    #[test]
+    fn pinning_keeps_what_touches_the_pinned_element_and_opens_what_encloses_it() {
+        let out = map_of(&[], &["sys.a"], &[]);
+        assert_eq!(ids(&out), ["other", "sys", "sys.a", "sys.b"]);
+        assert!(link(&out, "sys.a", "other").is_some() && link(&out, "sys.a", "sys.b").is_some());
+        assert!(link(&out, "ext", "sys.b").is_none(), "ext does not touch sys.a");
+    }
+
+    #[test]
+    fn pinning_one_element_with_nothing_open_is_its_overview() {
+        let key = |out: &Value| {
+            let mut v: Vec<String> = out["links"].as_array().unwrap().iter()
+                .map(|l| format!("{}|{}|{}|{}", l["from"], l["to"], l["label"], l["synthetic"])).collect();
+            v.sort();
+            (ids(out), v)
+        };
+        for focal in ["sys.a", "sys.b", "other.b.c", "ext"] {
+            assert_eq!(key(&map_of(&[], &[focal], &[])), key(&run("overview", focal, &[])), "{focal}");
+        }
+    }
+
+    #[test]
+    fn a_hidden_element_takes_its_relationships_with_it() {
+        let out = map_of(&["sys"], &[], &["other"]);
+        assert_eq!(ids(&out), ["ext", "sys", "sys.a", "sys.b"]);
+        assert_eq!(out["links"].as_array().unwrap().len(), 2);
+        assert_eq!(ids(&map_of(&["sys"], &[], &["sys.a"])), ["ext", "other", "sys", "sys.b"]);
+    }
+
+    #[test]
+    fn the_map_refuses_a_reference_it_does_not_know() {
+        assert!(map_of(&[], &["nope"], &[])["error"].as_str().unwrap().contains("nope"));
     }
 }
