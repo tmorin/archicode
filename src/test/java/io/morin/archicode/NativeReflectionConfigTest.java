@@ -3,9 +3,13 @@ package io.morin.archicode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -31,6 +35,33 @@ class NativeReflectionConfigTest {
         "archicode",
         "reflect-config.json"
     );
+
+    @Test
+    void theResourcesLoadedAtRunTimeAreIncludedInTheNativeImage() throws IOException {
+        val properties = new Properties();
+        try (val reader = Files.newBufferedReader(Path.of("src", "main", "resources", "application.properties"))) {
+            properties.load(reader);
+        }
+        val matchers = Arrays.stream(properties.getProperty("quarkus.native.resources.includes").split(","))
+            .map(pattern -> FileSystems.getDefault().getPathMatcher("glob:" + pattern.trim()))
+            .toList();
+
+        final List<String> resources;
+        try (var files = Files.walk(CLASSES)) {
+            resources = files
+                .map(path -> CLASSES.relativize(path).toString().replace('\\', '/'))
+                .filter(name -> name.endsWith("ViewpointKernelModule.meta") || name.startsWith("editor-webapp/"))
+                .toList();
+        }
+        Assertions.assertTrue(resources.stream().anyMatch(n -> n.endsWith(".meta")), "the kernel's metadata is built");
+        Assertions.assertTrue(resources.contains("editor-webapp/standalone.html"), "the editor is built");
+        for (val resource : resources) {
+            Assertions.assertTrue(
+                matchers.stream().anyMatch(m -> m.matches(Path.of(resource))),
+                resource + " must be in quarkus.native.resources.includes"
+            );
+        }
+    }
 
     @Test
     void everyClassOfTheModelIsRegisteredForReflection() throws IOException {

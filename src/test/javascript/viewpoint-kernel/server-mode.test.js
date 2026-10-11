@@ -120,3 +120,24 @@ test('a wrong token, or a server that is gone, is said on the landing page', asy
   assert.match(config.text, /could not be reached/);
   assert.match(config.text, /archicode editor serve/);
 });
+
+test('the token the server asked for in the address is taken out of it at startup (the hash stays), and is not needed again', async () => {
+  const server = fakeServer();
+  const sandbox = createApp({ serverToken: TOKEN, fetch: server.fetch, search: '?token=' + TOKEN + '&x=1', pathname: '/editor.html' });
+  sandbox.location.hash = '#/map?pin=shop.web';
+  assert.match(sandbox.location.search, /token=/);
+  const started = sandbox.__documentListeners.DOMContentLoaded;
+  assert.equal(started.length, 1);
+  started[0]();
+  assert.equal(sandbox.location.search, '?x=1', 'only the token goes');
+  assert.equal(sandbox.location.hash, '#/map?pin=shop.web', 'the place in the editor stays');
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.ok(sandbox.__state().workspace, 'the page opened the folder with the token of its <meta>, not of the address');
+
+  const alone = createApp({ serverToken: TOKEN, fetch: server.fetch, search: '?token=' + TOKEN });
+  alone.stripServerTokenFromUrl();
+  assert.equal(alone.location.search, '', 'no empty "?" left');
+  const none = createApp({ serverToken: TOKEN, fetch: server.fetch, search: '?other=1' });
+  none.stripServerTokenFromUrl();
+  assert.equal(none.location.search, '?other=1', 'another parameter is left alone');
+});

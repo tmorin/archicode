@@ -8,12 +8,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
+import io.morin.archicode.resource.element.application.Application;
+import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.Test;
@@ -26,6 +30,9 @@ class GetGraphQueryTest {
 
     @Inject
     MapperFactory mapperFactory;
+
+    @Inject
+    WorkspaceFactory workspaceFactory;
 
     private ArchiCode archiCodeFor(String workspacePath) {
         val archiCode = new ArchiCode();
@@ -65,6 +72,30 @@ class GetGraphQueryTest {
         assertTrue(
             relationships.isArray() && relationships.size() == 2,
             "expected exactly the 2 relationships declared in the fixture (one per layer)"
+        );
+    }
+
+    @Test
+    void shouldAcceptAnElementWithoutRelationships() {
+        val sys = io.morin.archicode.resource.element.application.System.builder()
+            .id("sys")
+            .relationships(null)
+            .build();
+        val workspace = workspaceFactory.create(
+            io.morin.archicode.resource.workspace.Workspace.builder()
+                .application(Application.builder().elements(Set.of(sys)).build())
+                .build(),
+            Map.of()
+        );
+
+        val graph = getGraphQuery.buildGraph(workspace);
+
+        assertTrue(graph.getRelationships().isEmpty());
+        assertTrue(
+            graph
+                .getElements()
+                .stream()
+                .anyMatch(e -> e.getReference().equals("sys"))
         );
     }
 

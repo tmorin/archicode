@@ -1,5 +1,7 @@
 package io.morin.archicode.cli;
 
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchemaGenerator;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
@@ -13,7 +15,6 @@ import picocli.CommandLine;
 
 @Slf4j
 @CommandLine.Command(name = "schemas", description = "Get JSON schemas related to the ArchiCode data model.")
-@SuppressWarnings("java:S6813")
 public class GetSchemasQuery implements Runnable {
 
     @Inject
@@ -48,7 +49,7 @@ public class GetSchemasQuery implements Runnable {
     @Override
     public void run() {
         val mapper = mapperFactory.create(MapperFormat.JSON).writerWithDefaultPrettyPrinter();
-        val schema = generateSchema(type);
+        val schema = generateSchema(type, mapper);
         val schemaAsJson = mapper.writeValueAsString(schema);
         queryOutputWriter.write(schemaAsJson);
     }
@@ -58,12 +59,12 @@ public class GetSchemasQuery implements Runnable {
      * <p>
      * Kept apart from the command so that a schema can be generated without writing it out.
      *
-     * @param type the type of schema to generate
+     * @param type   the type of schema to generate
+     * @param mapper the JSON writer the schema is generated with
      * @return the generated schema
      */
     @SneakyThrows
-    public com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchema generateSchema(SchemaType type) {
-        val mapper = mapperFactory.create(MapperFormat.JSON).writerWithDefaultPrettyPrinter();
+    public JsonSchema generateSchema(SchemaType type, ObjectWriter mapper) {
         val schemaGen = new JsonSchemaGenerator(mapper);
         return switch (type) {
             case WORKSPACE -> schemaGen.generateSchema(Workspace.class);

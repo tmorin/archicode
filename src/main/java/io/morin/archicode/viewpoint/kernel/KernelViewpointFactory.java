@@ -9,6 +9,7 @@ import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.application.Relationship;
 import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.view.View;
+import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
@@ -27,6 +28,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.WeakHashMap;
 import lombok.AccessLevel;
 import lombok.NonNull;
@@ -73,7 +75,9 @@ public class KernelViewpointFactory implements ViewpointFactory {
             node.put("parent", element instanceof Parent<?>);
             if (element instanceof Node technologyNode) {
                 val applications = node.putArray("applications");
-                new java.util.TreeSet<>(technologyNode.getApplications()).forEach(applications::add);
+                new TreeSet<>(Optional.ofNullable(technologyNode.getApplications()).orElseGet(Set::of)).forEach(
+                    applications::add
+                );
             }
             val relationships = node.putArray("relationships");
             for (val relationship : Optional.ofNullable(element.getRelationships()).orElseGet(Set::of)) {
@@ -106,7 +110,13 @@ public class KernelViewpointFactory implements ViewpointFactory {
         input.put("viewpoint", viewpoint);
         input.put("layer", technology ? "technology" : "application");
         input.put("focal", focal);
-        input.put("default_synthetic_label", workspace.getSettings().getRelationships().getDefaultSyntheticLabel());
+        // `default-synthetic-label: ~` is a null in the settings: the kernel is given the built-in label then
+        input.put(
+            "default_synthetic_label",
+            Optional.ofNullable(workspace.getSettings().getRelationships().getDefaultSyntheticLabel()).orElse(
+                Settings.Relationships.builder().build().getDefaultSyntheticLabel()
+            )
+        );
         input.set("elements", graphOf(mainIndex, objectMapper));
         if (technology) {
             input.set("app_elements", graphOf(workspace.appIndex, objectMapper));
@@ -128,23 +138,20 @@ public class KernelViewpointFactory implements ViewpointFactory {
 
         val itemById = createItems(workspace, mainIndex, output.get("items"));
         val links = createLinks(workspace, mainIndex, output.get("links"), itemById);
+        val childIds = new HashSet<String>();
+        for (val item : output.get("items")) {
+            if (!item.get("parent").isNull()) {
+                childIds.add(item.get("id").asText());
+            }
+        }
         val roots = new HashSet<Item>();
         itemById.forEach((id, item) -> {
-            if (isRoot(output.get("items"), id)) {
+            if (!childIds.contains(id)) {
                 roots.add(item);
             }
         });
 
         return Viewpoint.builder().workspace(workspace).view(view).items(roots).links(links).build();
-    }
-
-    private static boolean isRoot(JsonNode items, String id) {
-        for (val item : items) {
-            if (item.get("id").asText().equals(id)) {
-                return item.get("parent").isNull();
-            }
-        }
-        return false;
     }
 
     /**
@@ -163,15 +170,21 @@ public class KernelViewpointFactory implements ViewpointFactory {
             val element = deployedApplication
                 ? workspace.appIndex.getElementByReference(reference)
                 : mainIndex.getElementByReference(reference);
-            itemById.put(
-                id,
-                Item.builder()
-                    .itemId(id)
-                    .reference(deployedApplication ? "app:" + reference.replace(".", "_") : reference)
-                    .element(element)
-                    .kind(Item.Kind.from(element))
-                    .build()
-            );
+            val item = Item.builder()
+                .itemId(id)
+                .reference(deployedApplication ? "app:" + reference.replace(".", "_") : reference)
+                .element(element)
+                .kind(Item.Kind.from(element))
+                .build();
+            val previous = itemById.putIfAbsent(id, item);
+            if (previous != null) {
+                throw new ArchiCodeException(
+                    "the viewpoint kernel gave the same id %s to %s and to %s",
+                    id,
+                    previous.getReference(),
+                    item.getReference()
+                );
+            }
             if (!node.get("parent").isNull()) {
                 parentById.put(id, node.get("parent").asText());
             }
@@ -215,7 +228,10 @@ public class KernelViewpointFactory implements ViewpointFactory {
 
             val relationships = new LinkedHashSet<Relationship>();
             for (val rel : node.get("relationships")) {
-                relationships.add(findRelationship(workspace, mainIndex, rel));
+                // the owner of a secondary link is a deployed application: it is in the application layer
+                relationships.add(
+                    findRelationship(node.get("secondary").asBoolean() ? workspace.appIndex : mainIndex, rel)
+                );
             }
 
             result.add(
@@ -238,20 +254,24 @@ public class KernelViewpointFactory implements ViewpointFactory {
     }
 
     /** The relationship, as declared, that a link of the kernel stands for. */
-    private Relationship findRelationship(Workspace workspace, ElementIndex mainIndex, JsonNode rel) {
-        val owner = mainIndex
+    private Relationship findRelationship(ElementIndex ownerIndex, JsonNode rel) {
+        val owner = ownerIndex
             .searchElement(rel.get("from").asText())
-            .or(() -> workspace.appIndex.searchElement(rel.get("from").asText()))
             .orElseThrow(() -> new ArchiCodeException("unable to find the element %s", rel.get("from").asText()));
         val destination = rel.get("destination").asText();
         val label = rel.get("label").isNull() ? null : rel.get("label").asText();
         val qualifiers = new HashSet<String>();
         rel.get("qualifiers").forEach(q -> qualifiers.add(q.asText()));
+        val tags = new HashMap<String, String>();
+        rel.path("tags")
+            .fields()
+            .forEachRemaining(tag -> tags.put(tag.getKey(), tag.getValue().asText()));
         for (val candidate : Optional.ofNullable(owner.getRelationships()).orElseGet(Set::of)) {
             if (
                 candidate.getDestination().equals(destination) &&
                 Objects.equals(candidate.getLabel(), label) &&
-                new HashSet<>(Optional.ofNullable(candidate.getQualifiers()).orElseGet(Set::of)).equals(qualifiers)
+                new HashSet<>(Optional.ofNullable(candidate.getQualifiers()).orElseGet(Set::of)).equals(qualifiers) &&
+                new HashMap<>(Optional.ofNullable(candidate.getTags()).orElseGet(Map::of)).equals(tags)
             ) {
                 return candidate;
             }

@@ -10,18 +10,28 @@ import jakarta.inject.Inject;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import lombok.NonNull;
@@ -37,18 +47,22 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  * <p>
  * Routes:
  * <ul>
- *   <li>{@code GET /} — the editor, with the token of this server in a {@code <meta name="archicode-server">}.</li>
+ *   <li>{@code GET /?token=} — the editor, with the token of this server in a {@code <meta name="archicode-server">};
+ *       refused (403) without the right {@code token}, which {@code editor serve} prints in the URL to open. The page
+ *       is also given in a {@code archicode-session} cookie, which lets a reload in (the page removes the token from
+ *       the address bar); the cookie opens {@code GET /} only, never the API.</li>
  *   <li>{@code GET /api/fs/info} — the name of the folder served.</li>
  *   <li>{@code GET /api/fs/list?path=} — the entries of a directory of the folder ({@code name}, {@code kind}).</li>
  *   <li>{@code GET|PUT|DELETE /api/fs/file?path=} — read (with its last modification time in
  *       {@code X-ArchiCode-Modified}), write (parents are created) or delete a {@code .yaml}, {@code .yml} or
- *       {@code .json} file of the folder.</li>
+ *       {@code .json} file of the folder. A file is UTF-8, as GET declares it; PUT refuses (400) a body that is not
+ *       valid UTF-8, caps it at {@value #MAX_BODY_BYTES} bytes (413), and replaces the file atomically.</li>
  * </ul>
  * The API writes to the disk, and this server may listen on every address (that is what a Docker {@code -p} mapping
- * needs), so it does not trust the network: every {@code /api} call must carry the token (a page of another origin
- * cannot read it), the {@code Host} must be a loopback name or one given with {@code --allowed-host} (DNS rebinding),
+ * needs), so it does not trust the network: the page and every {@code /api} call must carry the token (a page of
+ * another origin cannot read it), the {@code Host} must be a loopback name or one given with {@code --allowed-host} (DNS rebinding),
  * a {@code Origin}, when present, must be the server itself, and a path can neither leave the folder, nor reach a
- * hidden entry, nor go through a symbolic link that leaves it.
+ * hidden entry, nor go through a symbolic link that leaves it (a file that is itself a link is never reached).
  */
 @Slf4j
 @ApplicationScoped
@@ -59,6 +73,8 @@ public class EditorHttpServer {
     /** The time a file was last modified on disk, in milliseconds: how the editor notices a file changed under it. */
     static final String MODIFIED_HEADER = "X-ArchiCode-Modified";
 
+    static final String SESSION_COOKIE = "archicode-session";
+
     private static final String API_PREFIX = "/api/fs/";
     private static final String WEBAPP_RESOURCE = "/editor-webapp/standalone.html";
     private static final String TOKEN_MARKER = "<head>";
@@ -66,6 +82,10 @@ public class EditorHttpServer {
     private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "[::1]");
     private static final Set<String> EDITABLE_EXTENSIONS = Set.of("yaml", "yml", "json");
     private static final int HANDLER_THREADS = 4;
+    static final int MAX_BODY_BYTES = 10 * 1024 * 1024;
+
+    /** One write at a time: a PUT or a DELETE never interleaves with another. */
+    private final Object writeLock = new Object();
 
     @Inject
     MapperFactory mapperFactory;
@@ -83,25 +103,32 @@ public class EditorHttpServer {
      * @param allowedHosts      host names, besides the loopback ones, a request may be addressed to
      * @return the started, already-bound {@link Running} server
      */
-    @SneakyThrows
     public Running start(
         @NonNull String host,
         int port,
         @NonNull Path workspaceFilePath,
         @NonNull Set<String> allowedHosts
     ) {
+        return start(host, port, workspaceFilePath, allowedHosts, MAX_BODY_BYTES);
+    }
+
+    @SneakyThrows
+    Running start(
+        @NonNull String host,
+        int port,
+        @NonNull Path workspaceFilePath,
+        @NonNull Set<String> allowedHosts,
+        int maxBodyBytes
+    ) {
         val root = workspaceFilePath.toAbsolutePath().getParent().toRealPath();
         val token = newToken();
-        val hosts = new java.util.HashSet<>(LOOPBACK_HOSTS);
-        allowedHosts
-            .stream()
-            .map(h -> h.toLowerCase(Locale.ROOT))
-            .forEach(hosts::add);
+        val hosts = new HashSet<>(LOOPBACK_HOSTS);
+        allowedHosts.stream().map(EditorHttpServer::normalizeHost).forEach(hosts::add);
 
         val server = HttpServer.create(new InetSocketAddress(host, port), 0);
         server.setExecutor(Executors.newFixedThreadPool(HANDLER_THREADS));
         server.createContext("/", exchange -> handleRoot(exchange, token, hosts));
-        server.createContext(API_PREFIX, exchange -> handleApi(exchange, root, token, hosts));
+        server.createContext(API_PREFIX, exchange -> handleApi(exchange, root, token, hosts, maxBodyBytes));
         server.start();
         log.info("editor http server listening on {}:{}", host, server.getAddress().getPort());
         return new Running(server, token);
@@ -126,42 +153,87 @@ public class EditorHttpServer {
 
     @SneakyThrows
     private void handleRoot(HttpExchange exchange, String token, Set<String> hosts) {
-        if (!hostAllowed(exchange, hosts)) {
-            text(exchange, 403, "this host name is not allowed: start the server with --allowed-host to serve it");
-            return;
-        }
-        val path = exchange.getRequestURI().getPath();
-        if (!"/".equals(path) && !"/index.html".equals(path)) {
-            text(exchange, 404, "not found");
-            return;
-        }
-        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-            text(exchange, 405, "method not allowed");
-            return;
-        }
-        try (val stream = getClass().getResourceAsStream(WEBAPP_RESOURCE)) {
-            if (stream == null) {
-                text(exchange, 500, "the editor is missing from the classpath: " + WEBAPP_RESOURCE);
+        try {
+            if (!hostAllowed(exchange, hosts)) {
+                text(exchange, 403, "this host name is not allowed: start the server with --allowed-host to serve it");
                 return;
             }
-            val html = new String(stream.readAllBytes(), StandardCharsets.UTF_8).replace(
-                VERSION_MARKER,
-                "<meta name=\"archicode-version\" content=\"" + version + "\">"
-            );
-            val meta = TOKEN_MARKER + "<meta name=\"archicode-server\" content=\"" + token + "\">";
-            val index = html.indexOf(TOKEN_MARKER);
-            val served =
-                index < 0 ? html : html.substring(0, index) + meta + html.substring(index + TOKEN_MARKER.length());
-            val headers = exchange.getResponseHeaders();
-            headers.set("Cache-Control", "no-store");
-            headers.set("Referrer-Policy", "no-referrer");
-            headers.set("X-Content-Type-Options", "nosniff");
-            write(exchange, 200, "text/html; charset=utf-8", served.getBytes(StandardCharsets.UTF_8));
+            val path = exchange.getRequestURI().getPath();
+            if (!"/".equals(path) && !"/index.html".equals(path)) {
+                text(exchange, 404, "not found");
+                return;
+            }
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                text(exchange, 405, "method not allowed");
+                return;
+            }
+            val fromQuery = tokenEquals(query(exchange).get("token"), token);
+            if (!fromQuery && !tokenEquals(sessionCookie(exchange), token)) {
+                text(exchange, 403, "open the URL printed by archicode editor serve");
+                return;
+            }
+            try (val stream = getClass().getResourceAsStream(WEBAPP_RESOURCE)) {
+                if (stream == null) {
+                    text(exchange, 500, "the editor is missing from the classpath: " + WEBAPP_RESOURCE);
+                    return;
+                }
+                val html = new String(stream.readAllBytes(), StandardCharsets.UTF_8).replace(
+                    VERSION_MARKER,
+                    "<meta name=\"archicode-version\" content=\"" + version + "\">"
+                );
+                val meta = TOKEN_MARKER + "<meta name=\"archicode-server\" content=\"" + token + "\">";
+                val index = html.indexOf(TOKEN_MARKER);
+                val served =
+                    index < 0 ? html : html.substring(0, index) + meta + html.substring(index + TOKEN_MARKER.length());
+                val headers = exchange.getResponseHeaders();
+                headers.set("Cache-Control", "no-store");
+                headers.set("Referrer-Policy", "no-referrer");
+                headers.set("X-Content-Type-Options", "nosniff");
+                // the page drops the token from the address bar: a reload or a bookmark is let in by this cookie
+                if (fromQuery) {
+                    headers.set("Set-Cookie", SESSION_COOKIE + "=" + token + "; HttpOnly; SameSite=Strict; Path=/");
+                }
+                write(exchange, 200, "text/html; charset=utf-8", served.getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (Exception e) {
+            fail(exchange, e);
         }
     }
 
+    /** The value of the session cookie, if the request has one. */
+    private static String sessionCookie(HttpExchange exchange) {
+        val headers = exchange.getRequestHeaders().get("Cookie");
+        if (headers == null) return null;
+        for (val header : headers) {
+            for (val cookie : header.split(";")) {
+                val pair = cookie.trim();
+                if (pair.startsWith(SESSION_COOKIE + "=")) return pair.substring(SESSION_COOKIE.length() + 1);
+            }
+        }
+        return null;
+    }
+
+    private static boolean tokenEquals(String given, String token) {
+        return (
+            given != null &&
+            MessageDigest.isEqual(given.getBytes(StandardCharsets.UTF_8), token.getBytes(StandardCharsets.UTF_8))
+        );
+    }
+
+    /** Answer an error, unless the response is already started: the connection is then all that is left to close. */
     @SneakyThrows
-    private void handleApi(HttpExchange exchange, Path root, String token, Set<String> hosts) {
+    private void fail(HttpExchange exchange, Exception e) {
+        val started = exchange.getResponseCode() != -1;
+        if (e instanceof Refusal refusal) {
+            if (!started) text(exchange, refusal.status, refusal.getMessage());
+            return;
+        }
+        log.warn("the editor server failed on {}", exchange.getRequestURI().getRawPath(), e);
+        if (!started) text(exchange, 500, "the editor server failed, see its log");
+    }
+
+    @SneakyThrows
+    private void handleApi(HttpExchange exchange, Path root, String token, Set<String> hosts, int maxBodyBytes) {
         try {
             if (!hostAllowed(exchange, hosts)) {
                 text(exchange, 403, "this host name is not allowed: start the server with --allowed-host to serve it");
@@ -171,11 +243,7 @@ public class EditorHttpServer {
                 text(exchange, 403, "cross-origin requests are not accepted");
                 return;
             }
-            val given = exchange.getRequestHeaders().getFirst(TOKEN_HEADER);
-            if (
-                given == null ||
-                !MessageDigest.isEqual(given.getBytes(StandardCharsets.UTF_8), token.getBytes(StandardCharsets.UTF_8))
-            ) {
+            if (!tokenEquals(exchange.getRequestHeaders().getFirst(TOKEN_HEADER), token)) {
                 text(exchange, 401, "missing or wrong token: reload the page served by this server");
                 return;
             }
@@ -191,14 +259,11 @@ public class EditorHttpServer {
                     if (!"GET".equals(method)) text(exchange, 405, "method not allowed");
                     else json(exchange, 200, list(root, query.getOrDefault("path", "")));
                 }
-                case "file" -> file(exchange, root, method, query.getOrDefault("path", ""));
+                case "file" -> file(exchange, root, method, query.getOrDefault("path", ""), maxBodyBytes);
                 default -> text(exchange, 404, "unknown route: " + route);
             }
-        } catch (Refusal e) {
-            text(exchange, e.status, e.getMessage());
         } catch (Exception e) {
-            log.warn("the editor server failed on {}", exchange.getRequestURI(), e);
-            text(exchange, 500, String.valueOf(e.getMessage()));
+            fail(exchange, e);
         }
     }
 
@@ -231,7 +296,7 @@ public class EditorHttpServer {
     }
 
     @SneakyThrows
-    private void file(HttpExchange exchange, Path root, String method, String relative) {
+    private void file(HttpExchange exchange, Path root, String method, String relative, int maxBodyBytes) {
         val target = resolve(root, relative, true);
         switch (method) {
             case "GET" -> {
@@ -242,22 +307,65 @@ public class EditorHttpServer {
                 write(exchange, 200, "text/plain; charset=utf-8", Files.readAllBytes(target));
             }
             case "PUT" -> {
-                val bytes = exchange.getRequestBody().readAllBytes();
-                val existed = Files.exists(target);
-                Files.createDirectories(target.getParent());
-                // the parent now exists: check again that it, and the file if any, are still inside the folder
-                if (!stayInside(root, target.getParent()) || (existed && !stayInside(root, target))) {
-                    throw new Refusal(403, "path leaves the folder: " + relative);
+                val bytes = body(exchange, maxBodyBytes);
+                synchronized (writeLock) {
+                    val existed = Files.exists(target);
+                    if (Files.isDirectory(target)) throw new Refusal(409, "a directory is in the way: " + relative);
+                    try {
+                        Files.createDirectories(target.getParent());
+                        // the parent now exists: check again that it is still inside the folder
+                        if (!stayInside(root, target.getParent())) {
+                            throw new Refusal(403, "path leaves the folder: " + relative);
+                        }
+                        replace(target, bytes);
+                    } catch (FileAlreadyExistsException | NotDirectoryException e) {
+                        throw new Refusal(409, "a file is in the way: " + relative);
+                    }
+                    text(exchange, existed ? 200 : 201, "ok");
                 }
-                Files.write(target, bytes);
-                text(exchange, existed ? 200 : 201, "ok");
             }
             case "DELETE" -> {
-                if (!Files.isRegularFile(target)) throw new Refusal(404, "not found: " + relative);
-                Files.delete(target);
+                synchronized (writeLock) {
+                    if (!Files.isRegularFile(target)) throw new Refusal(404, "not found: " + relative);
+                    Files.delete(target);
+                }
                 text(exchange, 200, "ok");
             }
             default -> text(exchange, 405, "method not allowed");
+        }
+    }
+
+    /** The body of a PUT: at most {@code maxBodyBytes} bytes, and valid UTF-8, which is what GET declares. */
+    @SneakyThrows
+    private byte[] body(HttpExchange exchange, int maxBodyBytes) {
+        val declared = exchange.getRequestHeaders().getFirst("Content-Length");
+        if (declared != null && declared.trim().matches("\\d+") && Long.parseLong(declared.trim()) > maxBodyBytes) {
+            throw new Refusal(413, "the file is larger than " + maxBodyBytes + " bytes");
+        }
+        val bytes = exchange.getRequestBody().readNBytes(maxBodyBytes + 1);
+        if (bytes.length > maxBodyBytes) {
+            throw new Refusal(413, "the file is larger than " + maxBodyBytes + " bytes");
+        }
+        try {
+            StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(bytes));
+        } catch (CharacterCodingException e) {
+            throw new Refusal(400, "the file is not valid UTF-8");
+        }
+        return bytes;
+    }
+
+    /** Write next to the target, then move over it: a reader, or a crash, never sees half a file. */
+    @SneakyThrows
+    private void replace(Path target, byte[] bytes) {
+        val temporary = target.resolveSibling(".archicode-" + UUID.randomUUID() + ".tmp");
+        try {
+            Files.write(temporary, bytes, StandardOpenOption.CREATE_NEW);
+            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(temporary);
         }
     }
 
@@ -287,28 +395,43 @@ public class EditorHttpServer {
             }
         }
         val target = root.resolve(String.join("/", segments)).normalize();
-        // the closest part of the path that exists decides where a link would take it: check it before anything is created
+        // the closest part of the path that exists (a dangling link does) decides where a link would take it: check it
+        // before anything is created
         var existing = target;
-        while (!Files.exists(existing) && existing.getParent() != null) existing = existing.getParent();
+        while (!Files.exists(existing, LinkOption.NOFOLLOW_LINKS) && existing.getParent() != null) {
+            existing = existing.getParent();
+        }
         if (!target.startsWith(root) || !stayInside(root, existing)) {
             throw new Refusal(403, "path leaves the folder: " + relative);
+        }
+        if (isFile && Files.isSymbolicLink(target)) {
+            throw new Refusal(403, "a link is not a file of the folder: " + relative);
+        }
+        if (!existing.equals(target) && !Files.isDirectory(existing)) {
+            throw new Refusal(409, "a file is in the way: " + relative);
         }
         return target;
     }
 
     @SneakyThrows
     private boolean stayInside(Path root, Path path) {
-        return !Files.exists(path) || path.toRealPath().startsWith(root);
+        if (!Files.exists(path)) return !Files.isSymbolicLink(path); // a dangling link may be written through
+        return path.toRealPath().startsWith(root);
     }
 
     private boolean hostAllowed(HttpExchange exchange, Set<String> hosts) {
         val header = exchange.getRequestHeaders().getFirst("Host");
         if (header == null) return false;
-        val lower = header.toLowerCase(Locale.ROOT);
+        return hosts.contains(normalizeHost(header));
+    }
+
+    /** A host name as compared: lower-case, without its port nor its trailing dot, an IPv6 address in brackets. */
+    private static String normalizeHost(String host) {
+        val lower = host.trim().toLowerCase(Locale.ROOT);
         val name = lower.startsWith("[")
             ? lower.substring(0, lower.indexOf(']') + 1)
             : lower.replaceFirst(":\\d+$", "");
-        return hosts.contains(name);
+        return name.endsWith(".") ? name.substring(0, name.length() - 1) : name;
     }
 
     private boolean originAllowed(HttpExchange exchange) {
@@ -324,9 +447,13 @@ public class EditorHttpServer {
         if (raw == null) return result;
         for (String pair : raw.split("&")) {
             val eq = pair.indexOf('=');
-            val key = URLDecoder.decode(eq < 0 ? pair : pair.substring(0, eq), StandardCharsets.UTF_8);
-            val value = eq < 0 ? "" : URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
-            result.put(key, value);
+            try {
+                val key = URLDecoder.decode(eq < 0 ? pair : pair.substring(0, eq), StandardCharsets.UTF_8);
+                val value = eq < 0 ? "" : URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
+                result.put(key, value);
+            } catch (IllegalArgumentException e) {
+                throw new Refusal(400, "malformed query");
+            }
         }
         return result;
     }

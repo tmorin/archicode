@@ -524,13 +524,13 @@ As you delve deeper into the Command section of ArchiCode's documentation, you'l
 archicode editor serve
 ----
 
-Serves the editor (see <<editor>>) and opens in it the folder of the workspace file, which must be named `workspace.yaml`. Open `http://127.0.0.1:48080/` in a browser.
+Serves the editor (see <<editor>>) and opens in it the folder of the workspace file, which must be named `workspace.yaml`. The command prints a URL, `http://127.0.0.1:48080/?token=...`: open it in a browser (the page is refused without the token; the editor removes it from the address bar, and a session cookie, which opens the page only and never the API, lets a reload in).
 
 - `--port` (`-p`): the port to listen on, `48080` by default.
 - `--host`: the address to bind to, `0.0.0.0` by default, which a Docker `-p` mapping needs.
 - `--allowed-host`: a host name, besides `localhost`, `127.0.0.1` and `[::1]`, that a request may be addressed to. Repeat it for several.
 
-The server writes to the folder, so it does not trust the network: every call carries a token that only the page it serves holds, a request must be addressed to one of the allowed host names, a page of another origin is refused, and only the `.yaml`, `.yml` and `.json` files below the folder of the workspace can be reached. With Docker, keep the host side of the port mapping on `127.0.0.1` (`-p 127.0.0.1:48080:48080`).
+The server writes to the folder, so it does not trust the network: the page and every call carry a token that only the printed URL gives, a request must be addressed to one of the allowed host names, a page of another origin is refused, and only the `.yaml`, `.yml` and `.json` files below the folder of the workspace can be reached. With Docker, keep the host side of the port mapping on `127.0.0.1` (`-p 127.0.0.1:48080:48080`).
 
 === Generate views
 
