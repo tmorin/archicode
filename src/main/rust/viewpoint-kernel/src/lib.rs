@@ -11,12 +11,18 @@
 //!             app_elements (technology deep only), collapsed: [item id], expanded: [item id],
 //!             facet: {name, actions: [{operator: "REMOVE", json_path}]} }
 //!   output: { version, items: [{id, reference, parent, collapsed, hidden, expandable}],
-//!             links: [{from, to, label, synthetic, qualifiers, secondary, relationships}] }
+//!             links: [{from, to, label, synthetic, qualifiers, tags, secondary,
+//!                      relationships: [{from, destination, label, qualifiers, tags}]}] }
 //!         | { error }
+//! A JSON `null` is read as "not given" wherever a field is optional (an absent `default_synthetic_label` is "uses").
+//! Two relationships that differ only by their tags are two relationships: a natural link carries the tags of its
+//! relationship (a grouped one has none), and links that differ by tags are never merged.
+//! The deep viewpoint follows the references as paths: the deep view of `sys` covers `sys` and `sys.…`, not `sys2`.
 //! Qualifiers keep the order they were declared in. `relationships` lists the declared relationships a link stands for (several when a link groups some); `collapsed`
 //! items hide everything inside them, their links being re-attached to the collapsed item. In the overview and the
 //! detailed viewpoints, an item flagged `expandable` has children the view does not show; listing it in `expanded`
 //! shows them and the grouped links end on them (`expandable` and `expanded` were added to version 1: both optional).
+//! An item is flagged only when listing it does change the view (in the map: listing it in `opened`).
 //! The `map` viewpoint has no focal element: every element of the layer is in play, what is `opened` shows its
 //! children, and a relationship is drawn between the boxes its two ends land on (a link per pair of boxes, grouped
 //! when it stands for several). `pinned` keeps the relationships that touch one of those elements (or what is inside
@@ -91,14 +97,23 @@ impl Ord for QSet {
     }
 }
 
+/// A field that is `null` is a field that is not given.
+fn null_as_default<'de, D: serde::Deserializer<'de>, T: Deserialize<'de> + Default>(d: D) -> Result<T, D::Error> {
+    Ok(Option::<T>::deserialize(d)?.unwrap_or_default())
+}
+
+fn null_as_default_label<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    Ok(Option::<String>::deserialize(d)?.unwrap_or_else(default_label))
+}
+
 #[derive(Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Rel {
     destination: String,
     #[serde(default)]
     label: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     qualifiers: QSet,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     tags: BTreeMap<String, String>,
 }
 
@@ -106,12 +121,12 @@ struct Rel {
 struct Elem {
     reference: String,
     /// true for elements that can contain children (Parent<?> in Java)
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     parent: bool,
     /// technology nodes: references of the application elements deployed on them
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     applications: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     relationships: Vec<Rel>,
 }
 
@@ -119,40 +134,40 @@ struct Elem {
 struct Input {
     viewpoint: String,
     /// every viewpoint but the map is about one element
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     focal: String,
-    #[serde(default = "default_label")]
+    #[serde(default = "default_label", deserialize_with = "null_as_default_label")]
     default_synthetic_label: String,
     elements: Vec<Elem>,
     /// application layer, only needed by the deep viewpoint on the technology layer
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     app_elements: Vec<Elem>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     layer: String,
     /// ids of the items to fold: everything inside them is hidden (a strict ancestor of the focal item is ignored)
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     collapsed: Vec<String>,
     /// overview and detailed: ids of the items to open, so that their children are shown and the grouped links
     /// regroup under them (an item that is the focal one, or encloses it, is ignored)
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     expanded: Vec<String>,
     /// a facet of the workspace's settings, applied before the viewpoint
     #[serde(default)]
     facet: Option<Facet>,
     /// map: references of the elements that are open (their children are shown)
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     opened: Vec<String>,
     /// map: references of the elements the view is about (none: the whole layer)
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     pinned: Vec<String>,
     /// map: references of the elements left out, with what is inside them
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     hidden: Vec<String>,
 }
 
 #[derive(Deserialize)]
 struct Facet {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     actions: Vec<FacetAction>,
 }
 
@@ -173,11 +188,18 @@ struct OutRel {
     destination: String,
     label: Option<String>,
     qualifiers: QSet,
+    tags: BTreeMap<String, String>,
 }
 
 impl OutRel {
     fn of(from: &str, rel: &Rel) -> OutRel {
-        OutRel { from: from.to_string(), destination: rel.destination.clone(), label: rel.label.clone(), qualifiers: rel.qualifiers.clone() }
+        OutRel {
+            from: from.to_string(),
+            destination: rel.destination.clone(),
+            label: rel.label.clone(),
+            qualifiers: rel.qualifiers.clone(),
+            tags: rel.tags.clone(),
+        }
     }
 }
 
@@ -188,6 +210,8 @@ struct OutLink {
     label: Option<String>,
     synthetic: bool,
     qualifiers: QSet,
+    /// the tags of the relationship of a natural link (a grouped link has none)
+    tags: BTreeMap<String, String>,
     /// "rendering-secondary" tag: application links drawn between deployed applications
     secondary: bool,
     relationships: BTreeSet<OutRel>,
@@ -385,14 +409,34 @@ struct Selector {
     test: Test,
 }
 
+/// A quoted literal, and nothing else: a quote inside the body means the text is not one literal (`'a' || @.x == 'b'`).
 fn unquote(s: &str) -> Option<String> {
     let s = s.trim();
     let b = s.as_bytes();
     if b.len() >= 2 && (b[0] == b'\'' || b[0] == b'"') && b[b.len() - 1] == b[0] {
-        Some(s[1..s.len() - 1].to_string())
-    } else {
-        None
+        let body = &s[1..s.len() - 1];
+        if !body.contains(['\'', '"']) {
+            return Some(body.to_string());
+        }
     }
+    None
+}
+
+/// `&&` or `||` outside the quotes: a compound filter, which is not supported.
+fn is_compound(filter: &str) -> bool {
+    let mut quote: Option<char> = None;
+    let mut previous = ' ';
+    for c in filter.chars() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == '\'' || c == '"' => quote = Some(c),
+            None if c == previous && (c == '&' || c == '|') => return true,
+            None => {}
+        }
+        previous = c;
+    }
+    false
 }
 
 fn parse_list(s: &str) -> Option<Vec<String>> {
@@ -428,6 +472,7 @@ fn parse_facet_action(action: &FacetAction) -> Result<Selector, String> {
         .strip_prefix("..relationships[?(")
         .and_then(|r| r.strip_suffix(")]"))
         .and_then(|r| r.trim().strip_prefix("@."))
+        .filter(|f| !is_compound(f))
         .ok_or_else(unsupported)?;
     let (field_name, after) = filter.split_once(char::is_whitespace).ok_or_else(unsupported)?;
     let field = match field_name {
@@ -567,7 +612,16 @@ fn emit_links(groomed: &[Groomed], default_label: &str, refs: &mut Vec<String>) 
             } else {
                 default_label.to_string()
             };
-            links.insert(OutLink { from: g.from.clone(), to: g.to.clone(), label: Some(label), synthetic: true, qualifiers, secondary: false, relationships: g.synthetic_src.clone() });
+            links.insert(OutLink {
+                from: g.from.clone(),
+                to: g.to.clone(),
+                label: Some(label),
+                synthetic: true,
+                qualifiers,
+                tags: BTreeMap::new(),
+                secondary: false,
+                relationships: g.synthetic_src.clone(),
+            });
         } else {
             for r in &g.natural {
                 links.insert(OutLink {
@@ -576,8 +630,14 @@ fn emit_links(groomed: &[Groomed], default_label: &str, refs: &mut Vec<String>) 
                     label: r.label.clone(),
                     synthetic: false,
                     qualifiers: r.qualifiers.clone(),
+                    tags: r.tags.clone(),
                     secondary: false,
-                    relationships: g.natural_src.iter().filter(|o| o.destination == r.destination && o.label == r.label && o.qualifiers == r.qualifiers).cloned().collect(),
+                    relationships: g
+                        .natural_src
+                        .iter()
+                        .filter(|o| o.destination == r.destination && o.label == r.label && o.qualifiers == r.qualifiers && o.tags == r.tags)
+                        .cloned()
+                        .collect(),
                 });
             }
         }
@@ -714,11 +774,15 @@ fn deep(input: &Input, known: &Known) -> Result<(Content, Vec<String>), String> 
             label: m.rel.label.clone(),
             synthetic: false,
             qualifiers: m.rel.qualifiers.clone(),
+            tags: m.rel.tags.clone(),
             secondary: false,
             relationships: BTreeSet::from([OutRel::of(&m.from, &m.rel)]),
         });
     }
     let item_refs = with_ancestors(refs);
+    for r in &item_refs {
+        require(known, r)?;
+    }
     let node_refs: Vec<String> = item_refs.iter().cloned().collect();
     Ok(((to_items(&item_refs), links), node_refs))
 }
@@ -728,22 +792,40 @@ fn deep(input: &Input, known: &Known) -> Result<(Content, Vec<String>), String> 
 fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
     let ((mut items, mut links), tech_refs) = deep(input, known)?;
     let app_known: Known = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
-    // application reference -> ids of the items created for it (one per hosting node)
-    let mut by_app: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    // (node, application, id) of the application items to create, one per hosting node and deployed application. The id
+    // is the last segment of the node and the application, unless that reads the same for several of them (or for a
+    // node of the view): they are then all named after the whole path of their node.
+    let mut deployed: Vec<(&String, &String, String)> = Vec::new();
     for r in &tech_refs {
-        let node = known[r.as_str()];
-        let node_id = parts(r).last().copied().unwrap_or("").to_string();
+        let node = known.get(r.as_str()).ok_or_else(|| format!("dangling reference: {r}"))?;
+        let node_id = parts(r).last().copied().unwrap_or("");
         for app in node.applications.iter().collect::<BTreeSet<_>>() {
             if !app_known.contains_key(app.as_str()) {
                 return Err(format!("dangling application reference: {app}"));
             }
-            let item_id = format!("{}_{}", node_id, app.replace('.', "_"));
-            items.insert(OutItem::new(&item_id, app, Some(r.clone())));
-            by_app.entry(app.clone()).or_default().push(item_id);
+            deployed.push((r, app, format!("{}_{}", node_id, app.replace('.', "_"))));
         }
     }
+    let mut taken: HashSet<String> = items.iter().map(|i| i.id.clone()).collect();
+    let uses = |id: &str| deployed.iter().filter(|(_, _, short)| short == id).count();
+    // application reference -> ids of the items created for it (one per hosting node)
+    let mut by_app: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for (r, app, short) in &deployed {
+        let mut item_id = short.clone();
+        if uses(short) > 1 || taken.contains(short) {
+            item_id = format!("{}_{}", r.replace('.', "_"), app.replace('.', "_"));
+        }
+        let base = item_id.clone();
+        let mut n = 1;
+        while !taken.insert(item_id.clone()) {
+            n += 1;
+            item_id = format!("{base}_{n}");
+        }
+        items.insert(OutItem::new(&item_id, app, Some((*r).clone())));
+        by_app.entry((*app).clone()).or_default().push(item_id);
+    }
     for (app, from_ids) in &by_app {
-        let app_elem = app_known[app.as_str()];
+        let app_elem = app_known.get(app.as_str()).ok_or_else(|| format!("dangling application reference: {app}"))?;
         for from_id in from_ids {
             for rel in app_elem.relationships.iter().collect::<BTreeSet<_>>() {
                 if let Some(to_ids) = by_app.get(&rel.destination) {
@@ -754,6 +836,7 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
                             label: None,
                             synthetic: false,
                             qualifiers: QSet::default(),
+                            tags: rel.tags.clone(),
                             secondary: true,
                             relationships: BTreeSet::from([OutRel::of(app, rel)]),
                         });
@@ -767,10 +850,10 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
 
 /// Two links that look the same (same ends, caption and kind) are one link standing for all their relationships.
 fn merge_links(links: impl IntoIterator<Item = OutLink>) -> Vec<OutLink> {
-    type Key = (String, String, Option<String>, bool, QSet, bool);
+    type Key = (String, String, Option<String>, bool, QSet, BTreeMap<String, String>, bool);
     let mut merged: BTreeMap<Key, OutLink> = BTreeMap::new();
     for l in links {
-        let key = (l.from.clone(), l.to.clone(), l.label.clone(), l.synthetic, l.qualifiers.clone(), l.secondary);
+        let key = (l.from.clone(), l.to.clone(), l.label.clone(), l.synthetic, l.qualifiers.clone(), l.tags.clone(), l.secondary);
         match merged.get_mut(&key) {
             Some(existing) => existing.relationships.extend(l.relationships),
             None => {
@@ -843,8 +926,8 @@ fn collapse(items: BTreeSet<OutItem>, links: Vec<OutLink>, input: &Input) -> (Ve
         let relationships: BTreeSet<OutRel> = group.iter().flat_map(|(l, _)| l.relationships.iter().cloned()).collect();
         let qualifiers: QSet = group.iter().flat_map(|(l, _)| l.qualifiers.iter().cloned()).collect();
         // like the overview: relationships that read the same (whoever declares them) count once
-        let distinct: BTreeSet<(&String, &Option<String>, &QSet)> =
-            relationships.iter().map(|r| (&r.destination, &r.label, &r.qualifiers)).collect();
+        let distinct: BTreeSet<(&String, &Option<String>, &QSet, &BTreeMap<String, String>)> =
+            relationships.iter().map(|r| (&r.destination, &r.label, &r.qualifiers, &r.tags)).collect();
         let label = if distinct.len() == 1 {
             relationships.iter().next().and_then(|r| r.label.clone()).filter(|l| !l.trim().is_empty())
         } else {
@@ -857,6 +940,7 @@ fn collapse(items: BTreeSet<OutItem>, links: Vec<OutLink>, input: &Input) -> (Ve
             label: Some(label),
             synthetic: true,
             qualifiers,
+            tags: BTreeMap::new(),
             secondary: group.iter().all(|(l, _)| l.secondary),
             relationships,
         });
@@ -864,17 +948,38 @@ fn collapse(items: BTreeSet<OutItem>, links: Vec<OutLink>, input: &Input) -> (Ve
     (kept, merge_links(out))
 }
 
-/// Flags the items that hide children of the model: a leaf of the view whose element has children, other than the
-/// focal item (its own links are the subject of the view) and the items that are folded.
-fn mark_expandable(items: &mut [OutItem], input: &Input) {
+/// The view of the input: the viewpoint, then the folds.
+fn build(input: &Input) -> Result<(Vec<OutItem>, Vec<OutLink>), String> {
+    let known: Known = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+    let (items, links) = match input.viewpoint.as_str() {
+        "overview" => overview(input, &known, &input.focal),
+        "map" => map(input, &known),
+        "detailed" => detailed(input, &known),
+        "deep" if input.layer == "technology" => deep_technology(input, &known),
+        "deep" => deep(input, &known).map(|(c, _)| c),
+        other => Err(format!("unsupported viewpoint: {other}")),
+    }?;
+    Ok(collapse(items, merge_links(links), input))
+}
+
+/// Flags the items that hide children of the model, and whose opening changes the view: a leaf of the view whose element
+/// has children, that is not folded. Whether opening it (`expanded`, or `opened` in the map) changes anything is asked
+/// to the view itself, so that a box is never offered when the focal element, a fold or the links make it a no-op.
+fn mark_expandable(items: &mut [OutItem], links: &[OutLink], input: &mut Input) {
     let with_children: HashSet<String> = input.elements.iter().filter(|e| e.reference.contains('.')).map(|e| down_reference(&e.reference)).collect();
     let shown_parents: HashSet<String> = items.iter().filter_map(|i| i.parent.clone()).collect();
+    let map = input.viewpoint == "map";
+    let shown: Vec<OutItem> = items.to_vec();
     for item in items.iter_mut() {
-        item.expandable = !item.collapsed
-            && item.id == item.reference
-            && item.id != input.focal
-            && with_children.contains(&item.id)
-            && !shown_parents.contains(&item.id);
+        if item.collapsed || item.id != item.reference || !with_children.contains(&item.id) || shown_parents.contains(&item.id) {
+            continue;
+        }
+        let opened = if map { &mut input.opened } else { &mut input.expanded };
+        opened.push(item.id.clone());
+        let opens = build(input);
+        let opened = if map { &mut input.opened } else { &mut input.expanded };
+        opened.pop();
+        item.expandable = matches!(opens, Ok((i, l)) if i != shown || l != links);
     }
 }
 
@@ -883,27 +988,14 @@ pub fn compute_json(input: &str) -> String {
         .map_err(|e| format!("invalid input: {e}"))
         .and_then(|mut input| {
             apply_facet(&mut input)?;
-            let known: Known = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
-            let content = match input.viewpoint.as_str() {
-                "overview" => overview(&input, &known, &input.focal),
-                "map" => map(&input, &known),
-                "detailed" => detailed(&input, &known),
-                "deep" if input.layer == "technology" => deep_technology(&input, &known),
-                "deep" => deep(&input, &known).map(|(c, _)| c),
-                other => Err(format!("unsupported viewpoint: {other}")),
-            };
-            content.map(|(items, links)| {
-                let (mut items, links) = collapse(items, merge_links(links), &input);
-                if input.viewpoint != "deep" {
-                    mark_expandable(&mut items, &input);
-                }
-                Output { version: CONTRACT_VERSION, items, links }
-            })
-        });
-    match result {
-        Ok(out) => serde_json::to_string(&out).unwrap(),
-        Err(e) => serde_json::json!({ "error": e }).to_string(),
-    }
+            let (mut items, links) = build(&input)?;
+            if input.viewpoint != "deep" {
+                mark_expandable(&mut items, &links, &mut input);
+            }
+            Ok(Output { version: CONTRACT_VERSION, items, links })
+        })
+        .and_then(|out| serde_json::to_string(&out).map_err(|e| format!("cannot write the view: {e}")));
+    result.unwrap_or_else(|e| serde_json::json!({ "error": e }).to_string())
 }
 
 // ---- tiny C ABI, usable from any host (browser, Node, Chicory) without glue code ----
@@ -1252,5 +1344,319 @@ mod tests {
     #[test]
     fn the_map_refuses_a_reference_it_does_not_know() {
         assert!(map_of(&[], &["nope"], &[])["error"].as_str().unwrap().contains("nope"));
+    }
+
+    fn compute(input: Value) -> Value {
+        serde_json::from_str(&compute_json(&input.to_string())).unwrap()
+    }
+
+    fn item<'a>(out: &'a Value, id: &str) -> &'a Value {
+        out["items"].as_array().unwrap().iter().find(|i| i["id"] == id).unwrap_or_else(|| panic!("no item {id} in {out}"))
+    }
+
+    fn error(out: &Value) -> &str {
+        out["error"].as_str().unwrap_or_else(|| panic!("expected an error, got {out}"))
+    }
+
+    // ---- compound facet filters ----
+
+    #[test]
+    fn a_compound_facet_filter_is_refused_not_misread_as_one_literal() {
+        for path in [
+            "$..relationships[?(@.label == 'reads' || @.label == 'writes')]",
+            "$..relationships[?(@.label == 'reads' && @.label == 'writes')]",
+            "$..relationships[?(@.label == 'reads' && @.qualifiers == null)]",
+            "$..relationships[?(@.label == null || @.label == 'writes')]",
+            "$..relationships[?(@.qualifiers anyof ['REST'] || @.qualifiers anyof ['JDBC'])]",
+            "$..relationships[?(@.qualifiers anyof ['REST', 'a'' || @.x == ''b'])]",
+            "$..relationships[?(@.label == \"it's\")]",
+        ] {
+            let out = with_facet("deep", "a", "application", remove(path));
+            assert!(error(&out).contains("unsupported facet action"), "{path}: {out}");
+        }
+    }
+
+    #[test]
+    fn an_operator_inside_a_quoted_literal_is_part_of_the_literal() {
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.label == 'reads || writes')]"));
+        assert_eq!(out["links"].as_array().unwrap().len(), 3, "nothing is called like that: nothing is removed");
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.label == \"reads\")]"));
+        assert_eq!(labels(&out), [None, Some("writes".to_string())]);
+    }
+
+    // ---- hostile or inconsistent input ----
+
+    #[test]
+    fn the_deep_viewpoint_of_the_technology_layer_reports_a_missing_ancestor() {
+        let out = compute(json!({
+            "viewpoint": "deep", "layer": "technology", "focal": "n.m",
+            "elements": [{ "reference": "n.m" }], "app_elements": []
+        }));
+        assert_eq!(error(&out), "dangling reference: n");
+        // the same for the application layer, and for a node that hosts an application nobody declared
+        let out = compute(json!({ "viewpoint": "deep", "layer": "application", "focal": "n.m", "elements": [{ "reference": "n.m" }] }));
+        assert_eq!(error(&out), "dangling reference: n");
+        let out = compute(json!({
+            "viewpoint": "deep", "layer": "technology", "focal": "n",
+            "elements": [{ "reference": "n", "applications": ["ghost"] }], "app_elements": []
+        }));
+        assert_eq!(error(&out), "dangling application reference: ghost");
+    }
+
+    #[test]
+    fn inconsistent_references_are_errors_whatever_the_viewpoint() {
+        let elements = json!([{ "reference": "a.b", "relationships": [{ "destination": "z" }] }, { "reference": "a" }]);
+        for viewpoint in ["overview", "detailed", "deep", "map"] {
+            for layer in ["application", "technology"] {
+                for focal in ["a", "a.b", "z", "", "a.b.c", ".", "a..b"] {
+                    let out = compute(json!({
+                        "viewpoint": viewpoint, "layer": layer, "focal": focal, "elements": elements, "app_elements": elements,
+                        "expanded": ["a", "z", "a.b"], "collapsed": ["a", "a.b"], "opened": ["a"], "pinned": [focal], "hidden": ["a.b"]
+                    }));
+                    assert!(out.get("error").is_some() || out.get("items").is_some(), "{viewpoint} {layer} {focal}: {out}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_null_field_is_a_field_that_is_not_given() {
+        let out = compute(json!({
+            "viewpoint": "overview", "layer": null, "focal": "sys", "default_synthetic_label": null, "collapsed": null,
+            "expanded": null, "facet": null, "opened": null, "pinned": null, "hidden": null, "app_elements": null,
+            "elements": [
+                { "reference": "sys", "parent": null, "applications": null, "relationships": null },
+                { "reference": "sys.a", "parent": null, "applications": null, "relationships": [
+                    { "destination": "o.p", "label": null, "qualifiers": null, "tags": null },
+                    { "destination": "o.q", "label": "", "qualifiers": ["x"], "tags": null }
+                ] },
+                { "reference": "o", "parent": true }, { "reference": "o.p" }, { "reference": "o.q" }
+            ]
+        }));
+        let l = link(&out, "sys", "o").unwrap_or_else(|| panic!("{out}"));
+        assert_eq!((l["label"].clone(), l["synthetic"].clone()), (json!("uses"), json!(true)), "the default label");
+        assert_eq!(l["qualifiers"], json!(["x"]));
+        let out = compute(json!({
+            "viewpoint": "facet", "layer": "application", "focal": "a", "facet": { "actions": null },
+            "elements": [{ "reference": "a" }]
+        }));
+        assert!(error(&out).contains("unsupported viewpoint"), "a facet without actions is read, then the viewpoint is refused");
+        let out = compute(json!({
+            "viewpoint": "deep", "layer": "application", "focal": "a", "facet": { "actions": null },
+            "elements": [{ "reference": "a" }]
+        }));
+        assert_eq!(ids(&out), ["a"]);
+    }
+
+    // ---- the references are paths ----
+
+    #[test]
+    fn a_sibling_whose_name_starts_like_the_focal_one_is_not_inside_it() {
+        // the former Java used String.startsWith, and pulled `sys2` in the deep view of `sys`: the kernel compares paths
+        let elements = json!([
+            { "reference": "sys", "parent": true },
+            { "reference": "sys.a", "relationships": [{ "destination": "ext" }] },
+            { "reference": "sys2", "parent": true },
+            { "reference": "sys2.b", "relationships": [{ "destination": "sys2.c" }] },
+            { "reference": "sys2.c" },
+            { "reference": "ext" }
+        ]);
+        let deep = compute(json!({ "viewpoint": "deep", "layer": "application", "focal": "sys", "elements": elements }));
+        assert_eq!(ids(&deep), ["ext", "sys", "sys.a"]);
+        assert_eq!(deep["links"].as_array().unwrap().len(), 1);
+        let overview = compute(json!({ "viewpoint": "overview", "layer": "application", "focal": "sys", "elements": elements }));
+        assert_eq!(ids(&overview), ["ext", "sys"]);
+        let detailed = compute(json!({ "viewpoint": "detailed", "layer": "application", "focal": "sys", "elements": elements }));
+        assert_eq!(ids(&detailed), ["ext", "sys", "sys.a"]);
+    }
+
+    // ---- expandable ----
+
+    #[test]
+    fn an_overview_box_is_expandable_only_when_opening_it_changes_the_view() {
+        // a -calls-> other, and other has a child that no relationship touches
+        let input = |expanded: Value| {
+            compute(json!({
+                "viewpoint": "overview", "layer": "application", "focal": "a", "expanded": expanded,
+                "elements": [
+                    { "reference": "a", "relationships": [{ "destination": "other", "label": "calls" }, { "destination": "big.x", "label": "reads" }] },
+                    { "reference": "other", "parent": true }, { "reference": "other.c" },
+                    { "reference": "big", "parent": true }, { "reference": "big.x" }, { "reference": "big.y" }
+                ]
+            }))
+        };
+        let out = input(json!([]));
+        assert_eq!(item(&out, "other")["expandable"], false);
+        let opened = input(json!(["other"]));
+        assert_eq!((ids(&opened), &opened["links"]), (ids(&out), &out["links"]), "and indeed opening it changes nothing");
+        assert_eq!(item(&out, "big")["expandable"], true, "big hides big.x, where a reads");
+        assert_ne!(input(json!(["big"]))["links"], out["links"]);
+    }
+
+    #[test]
+    fn a_detailed_box_that_is_the_focal_one_of_its_own_overview_is_not_expandable() {
+        let input = |expanded: Value| {
+            compute(json!({
+                "viewpoint": "detailed", "layer": "application", "focal": "sys", "expanded": expanded,
+                "elements": [
+                    { "reference": "sys", "parent": true },
+                    { "reference": "sys.a", "parent": true, "relationships": [{ "destination": "other" }] },
+                    { "reference": "sys.a.x" },
+                    { "reference": "other", "parent": true }, { "reference": "other.y" }
+                ]
+            }))
+        };
+        let out = input(json!([]));
+        assert_eq!(item(&out, "sys.a")["expandable"], false);
+        assert_eq!(item(&out, "other")["expandable"], false, "no relationship reaches other.y");
+        assert_eq!(input(json!(["sys.a", "other"]))["links"], out["links"]);
+    }
+
+    #[test]
+    fn a_detailed_box_is_expandable_when_it_is_the_end_of_a_link_of_a_sibling() {
+        let input = |expanded: Value| {
+            compute(json!({
+                "viewpoint": "detailed", "layer": "application", "focal": "sys", "expanded": expanded,
+                "elements": [
+                    { "reference": "sys", "parent": true },
+                    { "reference": "sys.a", "relationships": [{ "destination": "other.y" }] },
+                    { "reference": "sys.b", "parent": true, "relationships": [{ "destination": "sys.c.z" }] },
+                    { "reference": "sys.b.x" },
+                    { "reference": "sys.c", "parent": true }, { "reference": "sys.c.z" },
+                    { "reference": "other", "parent": true }, { "reference": "other.y" }
+                ]
+            }))
+        };
+        let out = input(json!([]));
+        assert_eq!(item(&out, "other")["expandable"], true);
+        assert_eq!(item(&out, "sys.b")["expandable"], false, "it is the focal of its own overview, and no one reaches into it");
+        assert_ne!(input(json!(["other"]))["links"], out["links"]);
+    }
+
+    #[test]
+    fn a_map_box_whose_children_are_all_hidden_is_not_expandable() {
+        let out = compute(json!({
+            "viewpoint": "map", "layer": "application", "hidden": ["p.c"],
+            "elements": [{ "reference": "p", "parent": true }, { "reference": "p.c" }, { "reference": "q", "parent": true }, { "reference": "q.d" }]
+        }));
+        assert_eq!(item(&out, "p")["expandable"], false);
+        assert_eq!(item(&out, "q")["expandable"], true);
+    }
+
+    // ---- tags ----
+
+    #[test]
+    fn relationships_that_differ_only_by_their_tags_stay_apart() {
+        let elements = json!([
+            { "reference": "a", "relationships": [
+                { "destination": "b", "label": "x", "tags": { "k": "1" } },
+                { "destination": "b", "label": "x", "tags": { "k": "2" } },
+                { "destination": "b", "label": "x" }
+            ] },
+            { "reference": "b" }
+        ]);
+        for viewpoint in ["overview", "deep"] {
+            let out = compute(json!({ "viewpoint": viewpoint, "layer": "application", "focal": "a", "elements": elements }));
+            let links = out["links"].as_array().unwrap();
+            assert_eq!(links.len(), 3, "{viewpoint}: {out}");
+            for l in links {
+                assert_eq!(l["relationships"].as_array().unwrap().len(), 1, "{viewpoint}: each link stands for its own relationship");
+                assert_eq!(l["tags"], l["relationships"][0]["tags"]);
+            }
+            let mut tags: Vec<String> = links.iter().map(|l| l["tags"].to_string()).collect();
+            tags.sort();
+            assert_eq!(tags, ["{\"k\":\"1\"}", "{\"k\":\"2\"}", "{}"]);
+        }
+    }
+
+    #[test]
+    fn a_grouped_link_lists_the_tags_of_its_relationships_and_reads_them_as_different() {
+        let elements = json!([
+            { "reference": "s", "parent": true },
+            { "reference": "s.a", "relationships": [{ "destination": "o", "label": "x", "tags": { "k": "1" } }] },
+            { "reference": "s.b", "relationships": [{ "destination": "o", "label": "x", "tags": { "k": "2" } }] },
+            { "reference": "o" }
+        ]);
+        let out = compute(json!({ "viewpoint": "overview", "layer": "application", "focal": "s", "elements": elements }));
+        let l = link(&out, "s", "o").unwrap();
+        assert_eq!(l["label"], "uses", "two relationships that differ by their tags do not read the same");
+        let tags: Vec<String> = l["relationships"].as_array().unwrap().iter().map(|r| r["tags"].to_string()).collect();
+        assert_eq!(tags, ["{\"k\":\"1\"}", "{\"k\":\"2\"}"]);
+        // folding regroups them in the same way
+        let out = compute(json!({ "viewpoint": "deep", "layer": "application", "focal": "s", "collapsed": ["s"], "elements": elements }));
+        assert_eq!(link(&out, "s", "o").unwrap()["label"], "uses");
+        // and with the same tags they read the same
+        let same = json!([
+            { "reference": "s", "parent": true },
+            { "reference": "s.a", "relationships": [{ "destination": "o", "label": "x", "tags": { "k": "1" } }] },
+            { "reference": "s.b", "relationships": [{ "destination": "o", "label": "x", "tags": { "k": "1" } }] },
+            { "reference": "o" }
+        ]);
+        let out = compute(json!({ "viewpoint": "deep", "layer": "application", "focal": "s", "collapsed": ["s"], "elements": same }));
+        assert_eq!(link(&out, "s", "o").unwrap()["label"], "x");
+    }
+
+    // ---- deployed applications ----
+
+    fn deployment(nodes: Value, collapsed: Value) -> Value {
+        compute(json!({
+            "viewpoint": "deep", "layer": "technology", "focal": "prod", "collapsed": collapsed,
+            "elements": nodes,
+            "app_elements": [
+                { "reference": "shop", "parent": true },
+                { "reference": "shop.api", "relationships": [{ "destination": "shop.db" }] },
+                { "reference": "shop.db" }
+            ]
+        }))
+    }
+
+    #[test]
+    fn a_deployed_application_item_is_named_after_its_node_and_the_application() {
+        let out = deployment(json!([
+            { "reference": "prod", "parent": true },
+            { "reference": "prod.pod", "applications": ["shop.api"], "relationships": [{ "destination": "prod.vm" }] },
+            { "reference": "prod.vm", "applications": ["shop.db"] }
+        ]), json!([]));
+        assert_eq!(ids(&out), ["pod_shop_api", "prod", "prod.pod", "prod.vm", "vm_shop_db"]);
+        assert_eq!(item(&out, "pod_shop_api")["parent"], "prod.pod");
+        assert!(link(&out, "pod_shop_api", "vm_shop_db").unwrap()["secondary"].as_bool().unwrap());
+    }
+
+    #[test]
+    fn nodes_of_the_same_name_hosting_the_same_application_get_distinct_items() {
+        let out = deployment(json!([
+            { "reference": "prod", "parent": true },
+            { "reference": "prod.a", "parent": true },
+            { "reference": "prod.a.pod", "applications": ["shop.api"], "relationships": [{ "destination": "prod.c.pod" }] },
+            { "reference": "prod.b", "parent": true },
+            { "reference": "prod.b.pod", "applications": ["shop.api"], "relationships": [{ "destination": "prod.c.pod" }] },
+            { "reference": "prod.c", "parent": true },
+            { "reference": "prod.c.pod", "applications": ["shop.db"] }
+        ]), json!([]));
+        let items = out["items"].as_array().unwrap();
+        let app_items: Vec<(&str, &str)> = items.iter().filter(|i| i["reference"] != i["id"]).map(|i| (i["id"].as_str().unwrap(), i["parent"].as_str().unwrap())).collect();
+        assert_eq!(app_items, [
+            ("pod_shop_db", "prod.c.pod"),
+            ("prod_a_pod_shop_api", "prod.a.pod"),
+            ("prod_b_pod_shop_api", "prod.b.pod"),
+        ], "the unique id is kept, the colliding ones carry the path of their node");
+        let all: HashSet<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
+        assert_eq!(all.len(), items.len(), "an id is one box");
+        // both instances are linked to the database
+        assert!(link(&out, "prod_a_pod_shop_api", "pod_shop_db").is_some() && link(&out, "prod_b_pod_shop_api", "pod_shop_db").is_some());
+    }
+
+    #[test]
+    fn a_deployed_application_item_never_takes_the_id_of_another_item() {
+        // `pod_shop_api` is also the reference of a node of the view
+        let out = deployment(json!([
+            { "reference": "prod", "parent": true },
+            { "reference": "prod.pod", "applications": ["shop.api"], "relationships": [{ "destination": "pod_shop_api" }] },
+            { "reference": "pod_shop_api" }
+        ]), json!([]));
+        let items = out["items"].as_array().unwrap();
+        let all: HashSet<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
+        assert_eq!(all.len(), items.len());
+        assert_eq!(item(&out, "prod_pod_shop_api")["reference"], "shop.api");
     }
 }

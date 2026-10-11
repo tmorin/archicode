@@ -59,11 +59,30 @@ function createApp(options = {}) {
 
   const appEl = { id: 'app', innerHTML: '', addEventListener() {} };
   let hash = '';
+  let search = options.search || '';
+  const pathname = options.pathname || '/';
+  const windowListeners = {};
+  const documentListeners = {};
   const sandbox = {
     console: { log() {}, info() {}, debug() {}, warn: console.warn, error: console.error }, // the editor logs its state
-    window: { addEventListener() {} },
-    location: { get hash() { return hash; }, set hash(v) { hash = v.startsWith('#') ? v : '#' + v; } },
-    history: { replaceState(state, title, url) { const i = url.indexOf('#'); hash = i === -1 ? '' : url.slice(i); }, pushState() {} },
+    window: { addEventListener(type, fn) { (windowListeners[type] = windowListeners[type] || []).push(fn); } },
+    location: {
+      get hash() { return hash; },
+      set hash(v) { hash = v.startsWith('#') ? v : '#' + v; },
+      get search() { return search; },
+      get pathname() { return pathname; }
+    },
+    history: {
+      // like a browser: the url replaces the query and the hash of the address bar
+      replaceState(state, title, url) {
+        const i = url.indexOf('#');
+        hash = i === -1 ? '' : url.slice(i);
+        const before = i === -1 ? url : url.slice(0, i);
+        const q = before.indexOf('?');
+        search = q === -1 ? '' : before.slice(q);
+      },
+      pushState() {}
+    },
     document: {
       getElementById(id) {
         if (id === 'app') return appEl;
@@ -75,7 +94,7 @@ function createApp(options = {}) {
         // the page served by `editor serve` carries the token of the server in a <meta>
         return options.serverToken && selector === 'meta[name="archicode-server"]' ? { getAttribute: () => options.serverToken } : null;
       },
-      addEventListener() {}
+      addEventListener(type, fn) { (documentListeners[type] = documentListeners[type] || []).push(fn); }
     },
     fetch: options.fetch,
     File: options.serverToken ? class { constructor(parts, name, options = {}) { this.parts = parts; this.name = name; this.lastModified = options.lastModified; } async text() { return this.parts.join(''); } } : undefined,
@@ -86,6 +105,8 @@ function createApp(options = {}) {
   };
   sandbox.window.indexedDB = sandbox.indexedDB;
   sandbox.globalThis = sandbox;
+  sandbox.__windowListeners = windowListeners; // what the page registered, to fire by hand
+  sandbox.__documentListeners = documentListeners;
   vm.createContext(sandbox);
   vm.runInContext(script[1], sandbox, { filename: 'standalone.html-script.js' });
   vm.runInContext('globalThis.__state = () => AppState;', sandbox);

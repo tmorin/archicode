@@ -141,26 +141,26 @@
             </plugins>
         </pluginManagement>
         <plugins>
-                <plugin>
-                    <!-- Translates the viewpoint kernel (Rust, compiled to WebAssembly) to JVM bytecode: no interpreter
-                         and no code generation at run time, and it works in a native image.
-                         The .wasm is built by src/main/rust/viewpoint-kernel/embed.sh. -->
-                    <groupId>com.dylibso.chicory</groupId>
-                    <artifactId>chicory-compiler-maven-plugin</artifactId>
-                    <version>${chicory.version}</version>
-                    <executions>
-                        <execution>
-                            <id>viewpoint-kernel</id>
-                            <goals>
-                                <goal>compile</goal>
-                            </goals>
-                            <configuration>
-                                <name>io.morin.archicode.viewpoint.kernel.ViewpointKernelModule</name>
-                                <wasmFile>${project.basedir}/src/main/wasm/viewpoint_kernel.wasm</wasmFile>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
+            <plugin>
+                <!-- Translates the viewpoint kernel (Rust, compiled to WebAssembly) to JVM bytecode: no interpreter
+                     and no code generation at run time, and it works in a native image.
+                     The .wasm is built by src/main/rust/viewpoint-kernel/embed.sh. -->
+                <groupId>com.dylibso.chicory</groupId>
+                <artifactId>chicory-compiler-maven-plugin</artifactId>
+                <version>${chicory.version}</version>
+                <executions>
+                    <execution>
+                        <id>viewpoint-kernel</id>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <name>io.morin.archicode.viewpoint.kernel.ViewpointKernelModule</name>
+                            <wasmFile>${project.basedir}/src/main/wasm/viewpoint_kernel.wasm</wasmFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>

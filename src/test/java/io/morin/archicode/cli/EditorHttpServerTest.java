@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.Socket;
 import java.net.URI;
@@ -89,7 +90,7 @@ class EditorHttpServerTest {
 
     @Test
     void servesTheEditorWithTheTokenOfTheServer() {
-        val response = call("GET", "/", null, null, null);
+        val response = call("GET", "/?token=" + running.token(), null, null, null);
         assertEquals(200, response.statusCode());
         assertTrue(response.body().contains("<meta name=\"archicode-server\" content=\"" + running.token() + "\">"));
         assertTrue(response.body().contains("viewpoint-kernel-wasm"), "it is the standalone editor");
@@ -99,6 +100,53 @@ class EditorHttpServerTest {
         );
         assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""));
         assertEquals(404, call("GET", "/other", null, null, null).statusCode());
+    }
+
+    @Test
+    void doesNotReleaseTheEditorWithoutTheTokenOfTheServer() {
+        for (val path : new String[] { "/", "/?token=", "/?token=wrong", "/index.html?other=1" }) {
+            val response = call("GET", path, null, null, null);
+            assertEquals(403, response.statusCode(), path);
+            assertFalse(response.body().contains(running.token()));
+            assertFalse(response.body().contains("viewpoint-kernel-wasm"));
+        }
+        assertEquals(400, status(rawGet("/?token=%zz", "127.0.0.1")), "malformed escape");
+        assertTrue(call("GET", "/", null, null, null).body().contains("archicode editor serve"));
+        assertEquals(200, call("GET", "/index.html?token=" + running.token(), null, null, null).statusCode());
+    }
+
+    @Test
+    void letsAReloadInWithTheSessionCookieOnly() {
+        val page = "/?token=" + running.token();
+        val first = rawGet(page, "127.0.0.1");
+        val cookie = first
+            .lines()
+            .filter(l -> l.toLowerCase().startsWith("set-cookie:"))
+            .findFirst()
+            .orElseThrow()
+            .substring("set-cookie:".length())
+            .trim();
+        assertEquals(
+            EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "; HttpOnly; SameSite=Strict; Path=/",
+            cookie
+        );
+
+        val session = "Cookie: other=1; " + EditorHttpServer.SESSION_COOKIE + "=" + running.token() + "\r\n";
+        val reload = rawGet("/", "127.0.0.1", session);
+        assertEquals(200, status(reload), "the cookie alone opens the page");
+        assertTrue(reload.contains("viewpoint-kernel-wasm"));
+        assertFalse(reload.toLowerCase().contains("set-cookie"), "only the token in the address sets it");
+
+        assertEquals(403, status(rawGet("/", "127.0.0.1")), "no token, no cookie");
+        assertEquals(
+            403,
+            status(rawGet("/", "127.0.0.1", "Cookie: " + EditorHttpServer.SESSION_COOKIE + "=wrong\r\n"))
+        );
+        assertEquals(403, status(rawGet("/", "127.0.0.1", "Cookie: other=" + running.token() + "\r\n")));
+        assertEquals(403, status(rawGet("/", "attacker.example", session)), "the host is still checked");
+        assertEquals(401, status(rawGet("/api/fs/info", "127.0.0.1", session)), "the cookie does not open the API");
+        assertFalse(first.toLowerCase().contains("set-cookie: wrong"));
+        assertFalse(rawGet("/", "127.0.0.1").toLowerCase().contains("set-cookie"), "refusals set none");
     }
 
     @Test
@@ -157,11 +205,24 @@ class EditorHttpServerTest {
     void refusesAHostNameThatIsNotLoopbackUnlessAllowed() {
         assertEquals(403, status(rawGet("/", "attacker.example:48080")));
         assertEquals(403, status(rawGet("/api/fs/info", "attacker.example")));
-        assertEquals(200, status(rawGet("/", "localhost:48080")));
-        assertEquals(200, status(rawGet("/", "127.0.0.1")));
+        val page = "/?token=" + running.token();
+        assertEquals(403, status(rawGet(page, "attacker.example:48080")), "the token does not open every host");
+        assertEquals(200, status(rawGet(page, "localhost:48080")));
+        assertEquals(200, status(rawGet(page, "127.0.0.1")));
+        assertEquals(200, status(rawGet(page, "LOCALHOST.:48080")), "a trailing dot is the same name");
+        assertEquals(200, status(rawGet(page, "[::1]:48080")));
         editorHttpServer.stop(running);
-        running = editorHttpServer.start("127.0.0.1", 0, folder.resolve("workspace.yaml"), Set.of("Editor.Example"));
-        assertEquals(200, status(rawGet("/", "editor.example:80")), "a host given with --allowed-host");
+        running = editorHttpServer.start(
+            "127.0.0.1",
+            0,
+            folder.resolve("workspace.yaml"),
+            Set.of("Editor.Example", "other.example:8080", "dotted.example.")
+        );
+        val allowedPage = "/?token=" + running.token();
+        assertEquals(200, status(rawGet(allowedPage, "editor.example:80")), "a host given with --allowed-host");
+        assertEquals(200, status(rawGet(allowedPage, "other.example")), "the port of a configured host is ignored");
+        assertEquals(200, status(rawGet(allowedPage, "dotted.example:8080")), "so is its trailing dot");
+        assertEquals(403, status(rawGet(allowedPage, "attacker.example")));
     }
 
     @Test
@@ -193,6 +254,82 @@ class EditorHttpServerTest {
         assertFalse(api("GET", "list", "manifests", null).body().contains("link"), "a link out is not listed");
     }
 
+    @Test
+    void refusesALinkAsAFileEvenWhenItDangles() throws Exception {
+        try {
+            Files.createSymbolicLink(folder.resolve("manifests/dangling.yaml"), outside.resolve("created.yaml"));
+            Files.createSymbolicLink(folder.resolve("manifests/inside.yaml"), folder.resolve("manifests/app.yaml"));
+            Files.createSymbolicLink(folder.resolve("manifests/dangling-dir"), outside.resolve("nowhere"));
+        } catch (UnsupportedOperationException | java.io.IOException e) {
+            return; // no symbolic links here
+        }
+        assertEquals(403, api("PUT", "file", "manifests/dangling.yaml", "x: 1").statusCode());
+        assertFalse(Files.exists(outside.resolve("created.yaml")), "nothing is written through the dangling link");
+        assertEquals(403, api("GET", "file", "manifests/dangling.yaml", null).statusCode());
+        assertEquals(403, api("DELETE", "file", "manifests/dangling.yaml", null).statusCode());
+        assertTrue(Files.isSymbolicLink(folder.resolve("manifests/dangling.yaml")), "the link is left alone");
+        assertEquals(403, api("PUT", "file", "manifests/inside.yaml", "x: 1").statusCode(), "even inside the folder");
+        assertEquals("header: {kind: person}\n", readQuietly("manifests/app.yaml"));
+        assertEquals(403, api("PUT", "file", "manifests/dangling-dir/new.yaml", "x: 1").statusCode());
+        assertFalse(Files.exists(outside.resolve("nowhere")), "no directory is created through a dangling link");
+    }
+
+    @Test
+    void writesAtomicallyAndLeavesNoTemporaryFile() throws Exception {
+        assertEquals(200, api("PUT", "file", "manifests/app.yaml", "a: 1\n").statusCode());
+        assertEquals(201, api("PUT", "file", "manifests/other.yaml", "b: 2\n").statusCode());
+        try (val stream = Files.list(folder.resolve("manifests"))) {
+            assertEquals(2, stream.count(), "app.yaml and other.yaml only");
+        }
+    }
+
+    @Test
+    void refusesABodyThatIsTooLargeOrNotUtf8() throws Exception {
+        editorHttpServer.stop(running);
+        running = editorHttpServer.start("127.0.0.1", 0, folder.resolve("workspace.yaml"), Set.of(), 16);
+        assertEquals(201, api("PUT", "file", "manifests/small.yaml", "a".repeat(16)).statusCode(), "at the limit");
+        assertEquals(413, api("PUT", "file", "manifests/big.yaml", "a".repeat(17)).statusCode(), "by its length");
+        val chunked = HttpRequest.newBuilder(URI.create(base() + "/api/fs/file?path=manifests/big.yaml"))
+            .header(EditorHttpServer.TOKEN_HEADER, running.token())
+            .PUT(HttpRequest.BodyPublishers.ofInputStream(() -> new ByteArrayInputStream(new byte[17])))
+            .build();
+        assertEquals(413, client.send(chunked, HttpResponse.BodyHandlers.ofString()).statusCode(), "without a length");
+        assertFalse(Files.exists(folder.resolve("manifests/big.yaml")));
+
+        val request = HttpRequest.newBuilder(URI.create(base() + "/api/fs/file?path=manifests/app.yaml"))
+            .header(EditorHttpServer.TOKEN_HEADER, running.token())
+            .PUT(HttpRequest.BodyPublishers.ofByteArray(new byte[] { 'a', ':', ' ', (byte) 0xE9, '\n' })) // latin-1 é
+            .build();
+        assertEquals(400, client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
+        assertEquals("header: {kind: person}\n", readQuietly("manifests/app.yaml"), "nothing was written");
+        assertEquals(200, api("PUT", "file", "manifests/app.yaml", "name: é\n").statusCode());
+        assertEquals("name: é\n", readQuietly("manifests/app.yaml"));
+        assertTrue(
+            api("GET", "file", "manifests/app.yaml", null)
+                .headers()
+                .firstValue("Content-Type")
+                .orElse("")
+                .contains("utf-8")
+        );
+    }
+
+    @Test
+    void answersABadRequestWithoutLeakingThePathOfTheServer() throws Exception {
+        val token = EditorHttpServer.TOKEN_HEADER + ": " + running.token() + "\r\n";
+        assertEquals(400, status(rawGet("/api/fs/file?path=%zz", "127.0.0.1", token)), "malformed escape");
+        assertEquals(400, status(rawGet("/api/fs/list?path=%", "127.0.0.1", token)));
+
+        Files.createDirectories(folder.resolve("manifests/dir.yaml"));
+        val directory = api("PUT", "file", "manifests/dir.yaml", "x: 1");
+        assertEquals(409, directory.statusCode(), "a directory is in the way");
+        val parent = api("PUT", "file", "manifests/app.yaml/deeper/new.yaml", "x: 1");
+        assertEquals(409, parent.statusCode(), "a file is where a directory should be");
+        assertEquals(409, api("PUT", "file", "manifests/app.yaml/new.yaml", "x: 1").statusCode());
+        for (val response : new HttpResponse<?>[] { directory, parent }) {
+            assertFalse(String.valueOf(response.body()).contains(folder.toString()), "no absolute path");
+        }
+    }
+
     @SneakyThrows
     private String readQuietly(String relative) {
         return Files.readString(folder.resolve(relative));
@@ -201,13 +338,24 @@ class EditorHttpServerTest {
     /** A request with the Host header of our choice, which the JDK client does not allow. */
     @SneakyThrows
     private String rawGet(String path, String host) {
+        return rawGet(path, host, "");
+    }
+
+    @SneakyThrows
+    private String rawGet(String path, String host, String extraHeaders) {
         try (val socket = new Socket("127.0.0.1", running.server().getAddress().getPort())) {
             socket
                 .getOutputStream()
                 .write(
-                    ("GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n").getBytes(
-                        StandardCharsets.UTF_8
-                    )
+                    (
+                        "GET " +
+                        path +
+                        " HTTP/1.1\r\nHost: " +
+                        host +
+                        "\r\n" +
+                        extraHeaders +
+                        "Connection: close\r\n\r\n"
+                    ).getBytes(StandardCharsets.UTF_8)
                 );
             socket.getOutputStream().flush();
             val buffer = new ByteArrayOutputStream();

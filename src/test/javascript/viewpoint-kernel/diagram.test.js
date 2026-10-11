@@ -181,7 +181,7 @@ test('on the map, a box that hides children can be opened and an open one closed
   run(sandbox, "currentPerspective = 'map';");
   const draw = (opened) => {
     const result = kernel.compute(sandbox.buildKernelInput('map', null, { opened }).input);
-    return { result, svg: sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, '').html };
+    return { result, svg: sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, '', { map: true, opened, pinned: [] }).html };
   };
   const closed = draw([]);
   assert.match(closed.svg, /data-mode="expand" data-id="shop"/);
@@ -438,9 +438,9 @@ test('the tree of the Map is a tree for the keyboard and the screen reader, with
   assert.match(html, /role="tree" aria-label="[^"]+"/);
   assert.equal((html.match(/role="treeitem"/g) || []).length, (html.match(/class="tree-node-row map-scope-row/g) || []).length, 'every row is an item');
   assert.match(html, /data-node="shop"[^>]*>/);
-  assert.match(html, /map-scope-row foldable" role="treeitem" style="--level:1" aria-level="1" aria-expanded="true" aria-owns="map-scope-group-shop"/, 'a branch says it is open and what it holds');
+  assert.match(html, /map-scope-row foldable" role="treeitem" style="--level:1" aria-level="1" aria-expanded="true" aria-owns="map-scope-group-application-shop"/, 'a branch says it is open and what it holds');
   assert.match(html, /role="treeitem" style="--level:2" aria-level="2" aria-expanded="false"/, 'a closed branch says so, one level down');
-  assert.match(html, /role="group" id="map-scope-group-shop"/);
+  assert.match(html, /role="group" id="map-scope-group-application-shop"/);
   assert.equal((html.match(/class="tree-node-row[^"]*" role="treeitem"[^>]*tabindex="0"/g) || []).length, 1, 'one tab stop for the whole tree');
   assert.match(html, /data-node="customer"[^>]*>/);
   assert.match(html.match(/<div class="tree-node-row[^>]*data-node="customer"[^>]*>/)[0], /tabindex="0"/, 'the first row by default');
@@ -513,7 +513,7 @@ test('the tree of Elements is a tree too: short kinds with their title, a dot fo
   assert.match(html, /class="tree-node-label" title="Payment Provider"/, 'a name that is cut can still be read');
   assert.match(html, /class="modified-dot"[^>]*title="This element has unsaved changes"/);
   assert.doesNotMatch(html, />modified</, 'a dot, not a word that takes the room of the name');
-  assert.equal((html.match(/tabindex="0"/g) || []).length, 1, 'one tab stop for both trees');
+  assert.equal((html.match(/role="treeitem"[^>]*tabindex="0"/g) || []).length, 1, 'one tab stop for both trees');
   assert.match(row('shop.web'), /tabindex="0"/, 'on the selected row, when the user was on none');
   assert.match(html, /aria-label="Add an element to Applications"/);
   assert.equal(sandbox.kindAbbreviation('container-group'), 'GRP');

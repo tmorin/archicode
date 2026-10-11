@@ -22,8 +22,7 @@ Maven does not need Rust: the `.wasm` is committed. Rust is only needed to chang
 ## Changing it
 
 ```bash
-rustup target add wasm32-unknown-unknown                  # once
-cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml
+(cd src/main/rust/viewpoint-kernel && cargo test)         # rustup installs the compiler of rust-toolchain.toml
 src/main/rust/viewpoint-kernel/embed.sh                   # rebuilds the .wasm and re-embeds it in standalone.html
 node --test "src/test/javascript/**/*.test.js"            # the kernel vs. the views the CLI generated
 ./mvnw test                                               # the CLI vs. the same committed views
@@ -31,6 +30,11 @@ node --test "src/test/javascript/**/*.test.js"            # the kernel vs. the v
 
 `embed.sh` writes the same build to `src/main/wasm/viewpoint_kernel.wasm` (the CLI) and to `standalone.html` (the
 editor); a test fails when the two differ. Commit both.
+
+The compiler is pinned in `rust-toolchain.toml` and the paths of the machine are remapped, so the same sources give the
+same bytes everywhere: CI runs `embed.sh --check`, which rebuilds in a scratch directory and fails when the committed
+`.wasm`, or the one in `standalone.html`, is not that build. To move to another Rust, change the channel, run `embed.sh`
+and commit the new `.wasm` with it.
 
 ## The reference
 
@@ -48,6 +52,16 @@ Two things worth knowing before touching the code:
 
 - It mirrors the Java algorithms it replaces (`MetaLinkGroomer`, `Level`, …), including their quirks — for example a
   grouped link's caption is the default label unless the grouped relationships all read the same.
+- The deep viewpoint follows references as paths, on purpose: the deep view of `sys` covers `sys` and `sys.…`, and
+  does not pull in a sibling that merely starts with the same letters (`sys2`). The deep viewpoint of the Java it
+  replaces compared references with `String.startsWith`, which did. This is an intentional divergence (the old behaviour
+  was a bug); the overview, detailed and map viewpoints always compared paths.
+- `expandable` is not a structural guess: an item is flagged only if listing it in `expanded` (in `opened` for the map)
+  changes the view, which is checked by computing the view again.
+- Relationships that differ only by their tags are different relationships: the tags travel in the links
+  (`tags`, and `relationships[].tags`) and are part of what makes two links, or two captions, the same.
+- A JSON `null` is read as "not given" (`default_synthetic_label: null` is "uses"). A dangling reference, in any
+  viewpoint, is an `error`, never a trap.
 - Facets are Jayway JSONPath in the CLI. The kernel understands only the shape every documented facet has (removing
   relationships that match a filter on `qualifiers` or `label`) and answers `unsupported facet action: …` for anything
-  else instead of guessing. The CLI itself still applies facets with Jayway before the kernel sees the workspace.
+  else instead of guessing, compound filters (`&&`, `||`) included. The CLI itself still applies facets with Jayway before the kernel sees the workspace.

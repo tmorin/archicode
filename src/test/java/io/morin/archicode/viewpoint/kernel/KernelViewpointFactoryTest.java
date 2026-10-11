@@ -1,0 +1,136 @@
+package io.morin.archicode.viewpoint.kernel;
+
+import io.morin.archicode.ResourceFixtures;
+import io.morin.archicode.resource.element.application.Application;
+import io.morin.archicode.resource.element.application.Container;
+import io.morin.archicode.resource.element.application.Relationship;
+import io.morin.archicode.resource.element.application.System;
+import io.morin.archicode.resource.element.technology.Environment;
+import io.morin.archicode.resource.element.technology.Node;
+import io.morin.archicode.resource.element.technology.Technology;
+import io.morin.archicode.resource.view.View;
+import io.morin.archicode.resource.workspace.Settings;
+import io.morin.archicode.resource.workspace.Workspace;
+import io.morin.archicode.viewpoint.Item;
+import io.morin.archicode.viewpoint.Link;
+import io.morin.archicode.viewpoint.Viewpoint;
+import io.morin.archicode.viewpoint.ViewpointServiceRepository;
+import io.morin.archicode.workspace.WorkspaceFactory;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import lombok.val;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
+/** What {@link KernelViewpointFactory} makes of the workspaces the kernel's contract is easy to get wrong with. */
+@QuarkusTest
+class KernelViewpointFactoryTest {
+
+    @Inject
+    WorkspaceFactory workspaceFactory;
+
+    @Inject
+    ViewpointServiceRepository viewpointServiceRepository;
+
+    private Viewpoint create(String viewpoint, Workspace rawWorkspace, View.Layer layer, String reference) {
+        val workspace = workspaceFactory.create(rawWorkspace, Map.of());
+        val view = ResourceFixtures.createDeepViewBuilder("view", reference).layer(layer).build();
+        return viewpointServiceRepository.get(viewpoint).createViewpointFactory().create(workspace, view);
+    }
+
+    @Test
+    void shouldFindTheRelationshipOfASecondaryLinkInTheApplicationLayer() {
+        val tags = Map.of("port", "8080");
+        val toB = Relationship.builder().destination("sys_b.con_bb").label("calls").tags(tags).build();
+        val con_aa = Container.builder().id("con_aa").relationships(Set.of(toB)).build();
+        val con_bb = Container.builder().id("con_bb").build();
+        val app = Application.builder()
+            .elements(
+                Set.of(
+                    System.builder().id("sys_a").elements(Set.of(con_aa)).build(),
+                    System.builder().id("sys_b").elements(Set.of(con_bb)).build()
+                )
+            )
+            .build();
+        // the node has the very reference of the application it hosts: each index has to be searched on its own
+        val node = Node.builder().id("con_aa").applications(Set.of("sys_a.con_aa", "sys_b.con_bb")).build();
+        val dep = Technology.builder()
+            .elements(Set.of(Environment.builder().id("sys_a").elements(Set.of(node)).build()))
+            .build();
+
+        val viewpoint = create(
+            "deep",
+            Workspace.builder().application(app).technology(dep).build(),
+            View.Layer.TECHNOLOGY,
+            "sys_a.con_aa"
+        );
+
+        Assertions.assertEquals(1, viewpoint.getLinks().size());
+        val link = viewpoint.getLinks().iterator().next();
+        Assertions.assertEquals("no", link.getTags().get("rendering-secondary"));
+        Assertions.assertEquals(Set.of(toB), link.getRelationships());
+    }
+
+    @Test
+    void shouldTellTwoRelationshipsThatDifferByTheirTagsApart() {
+        val toB1 = Relationship.builder().destination("sys_b").tags(Map.of("port", "80")).build();
+        val toB2 = Relationship.builder().destination("sys_b").tags(Map.of("port", "443")).build();
+        val app = Application.builder()
+            .elements(
+                Set.of(
+                    System.builder().id("sys_a").relationships(Set.of(toB1, toB2)).build(),
+                    System.builder().id("sys_b").build()
+                )
+            )
+            .build();
+
+        val viewpoint = create(
+            "overview",
+            Workspace.builder().application(app).build(),
+            View.Layer.APPLICATION,
+            "sys_a"
+        );
+
+        Assertions.assertEquals(2, viewpoint.getLinks().size());
+        val ports = new HashSet<String>();
+        for (Link link : viewpoint.getLinks()) {
+            Assertions.assertEquals(1, link.getRelationships().size(), "a link per relationship");
+            ports.add(link.getRelationships().iterator().next().getTags().get("port"));
+        }
+        Assertions.assertEquals(Set.of("80", "443"), ports);
+    }
+
+    @Test
+    void shouldToleratePropertiesThatAreNull() {
+        val node = Node.builder().id("node_a").applications(null).relationships(null).build();
+        val dep = Technology.builder()
+            .elements(Set.of(Environment.builder().id("ref").elements(Set.of(node)).build()))
+            .build();
+        val sys_a = System.builder().id("sys_a").relationships(null).build();
+        val sys_b = System.builder()
+            .id("sys_b")
+            .relationships(Set.of(Relationship.builder().destination("sys_a").build()))
+            .build();
+        val app = Application.builder().elements(Set.of(sys_a, sys_b)).build();
+        val settings = Settings.builder()
+            .relationships(Settings.Relationships.builder().defaultSyntheticLabel(null).build())
+            .build();
+        val raw = Workspace.builder().application(app).technology(dep).settings(settings).build();
+
+        val application = create("overview", raw, View.Layer.APPLICATION, "sys_b");
+        Assertions.assertEquals(1, application.getLinks().size());
+        val technology = create("deep", raw, View.Layer.TECHNOLOGY, "ref");
+        Assertions.assertEquals(
+            1,
+            technology
+                .getItems()
+                .stream()
+                .flatMap(Item::stream)
+                .filter(i -> i.getReference().equals("ref"))
+                .count()
+        );
+    }
+}
