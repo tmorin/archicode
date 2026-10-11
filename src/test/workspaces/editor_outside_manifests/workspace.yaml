@@ -1,0 +1,10 @@
+# A fixture whose configured manifests directory deliberately resolves OUTSIDE its own workspace directory.
+# The Claude editing bridge must refuse a change request against such a workspace before invoking anything
+# (run-0007 PRD AC-14): it can neither reach that directory nor restore it. Every other editor endpoint keeps
+# serving this workspace normally.
+settings:
+  manifests:
+    paths:
+      - "../outside_manifests"
+  views:
+    path: "views_case_outside"
