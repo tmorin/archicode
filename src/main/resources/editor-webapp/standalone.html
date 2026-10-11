@@ -138,21 +138,25 @@
   .error-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: #fff; background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
   .modified-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: #fff; background: var(--modified); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
 
-  .tree-branch-header { padding: 0.35rem 1rem; cursor: pointer; font-weight: 600; user-select: none; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .tree-branch-header { padding: 0.35rem 0.5rem 0.35rem 1rem; cursor: pointer; font-weight: 600; user-select: none; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
   .tree-branch-header:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
   .tree-branch-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tree-branch-add-btn { padding: 0.1rem 0.5rem !important; font-size: 0.75rem; flex-shrink: 0; }
   .tree-branch-body { padding-bottom: 0.25rem; }
   .tree-empty { padding: 0.25rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
-  .tree-node-children { margin-left: 1rem; }
-  .tree-node-row { display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 1rem; cursor: pointer; }
+  .tree-node-children { margin-left: 0; } /* indentation is the padding of each row, so that a hover or selection bar reaches the edge */
+  .tree-node-row { display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 1rem 0.25rem calc(1rem + (var(--level, 1) - 1) * 1rem); cursor: pointer; }
+  .tree-node-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .modified-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--modified); flex-shrink: 0; }
+  .nav-facet-note { padding: 0.2rem 1rem 0.4rem; font-size: 0.8rem; color: var(--muted); }
+  .nav-facet-note button { padding: 0 !important; border: none !important; background: none !important; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
   .tree-node-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
   .tree-node-row.active { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
   .tree-node-row.quiet .tree-node-label, .tree-node-row.quiet .tree-node-kind { opacity: 0.45; }
   .tree-toggle { width: 1rem; flex-shrink: 0; text-align: center; color: var(--muted); user-select: none; }
   .tree-toggle-empty { visibility: hidden; }
   .tree-node-kind { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 0.3rem; flex-shrink: 0; }
-  .tree-node-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree-node-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* No vertical padding here on purpose — every view supplies its own top
      and bottom inset instead (see each below). A view with a sticky
@@ -223,42 +227,58 @@
   .diagram-canvas > .muted, .diagram-canvas > .error-panel { position: absolute; left: 0.75rem; top: 0.75rem; right: 0.75rem; }
   .diagram-empty button { margin-left: 0.25rem; }
   .map-scope-hint { color: var(--muted); font-size: 0.8rem; padding: 0 1rem 0.5rem; }
-  .map-scope-row { position: relative; padding-left: 0.5rem; padding-right: 0.5rem; }
+  .map-scope-row { position: relative; padding-left: calc(0.5rem + (var(--level, 1) - 1) * 0.75rem); padding-right: 0.5rem; }
+  .nav-tools { display: inline-flex; gap: 0.1rem; }
+  .tree-branch-actions { display: inline-flex; align-items: center; gap: 0.15rem; flex-shrink: 0; }
+  .tree-branch-actions .map-scope-btn { width: 1.4rem; height: 1.4rem; }
+  .nav-title-with-tools { display: flex; align-items: center; justify-content: space-between; }
+  .map-scope-row.off-map .tree-node-label, .map-scope-row.off-map .tree-node-kind { opacity: 0.45; }
   .map-scope-row .tree-node-kind { font-size: 0.6rem; padding: 0 0.2rem; }
   .map-scope-row .tree-node-label { flex: 1 1 auto; min-width: 0; }
   /* Pin and Hide float over the end of the row when they are wanted: they take no room from the name the rest of the time.
      (The page-wide button rule sets padding, border and background with !important: these must say it too.) */
   .map-scope-row { --row-bg: var(--panel-bg); }
+  .map-scope-row.pinned { --row-bg: color-mix(in srgb, var(--accent) 9%, var(--panel-bg)); background: var(--row-bg); }
   .map-scope-row:hover { --row-bg: color-mix(in srgb, var(--accent) 10%, var(--panel-bg)); }
-  .map-scope-row.active { --row-bg: color-mix(in srgb, var(--accent) 18%, var(--panel-bg)); }
   .map-scope-row .map-scope-actions { position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 0.1rem;
     padding-left: 1.25rem; background: linear-gradient(to right, transparent, var(--row-bg) 1.25rem); opacity: 0; pointer-events: none; }
-  .map-scope-row:hover .map-scope-actions, .map-scope-row:focus-within .map-scope-actions, .map-scope-row.active .map-scope-actions { opacity: 1; pointer-events: auto; }
+  .map-scope-row:hover .map-scope-actions, .map-scope-row:focus-within .map-scope-actions { opacity: 1; pointer-events: auto; }
+  .map-scope-row { cursor: default; }
+  .map-scope-row.foldable { cursor: pointer; }
   .map-scope-btn { display: inline-flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; padding: 0 !important; border: 1px solid transparent !important; border-radius: 5px !important;
     background: transparent !important; color: var(--muted); cursor: pointer; }
   .map-scope-btn svg { display: block; width: 15px; height: 15px; flex: none; }
   .map-scope-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 16%, transparent) !important; color: var(--fg); border-color: transparent !important; }
   .map-scope-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .map-scope-btn[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); }
+  .map-scope-btn[aria-pressed="true"] { color: var(--accent); }
   .map-scope-btn:disabled { cursor: not-allowed; opacity: 0.3; }
-  .map-scope-mark { color: var(--accent); font-size: 0.6rem; flex-shrink: 0; }
-  .map-scope-row.pinned { box-shadow: inset 3px 0 var(--accent); }
+  /* a pinned element: tinted row, accent kind, bold name and the pin itself — readable at a glance, without hovering */
+  .map-scope-mark { display: inline-flex; color: var(--accent); flex-shrink: 0; margin-right: 0.15rem; }
+  .map-scope-mark svg { width: 13px; height: 13px; }
+  .map-scope-row.pinned .tree-node-kind { color: var(--accent); border-color: var(--accent); }
+  .map-scope-row.pinned .tree-node-label { font-weight: 600; }
   .map-scope-row.left-out .tree-node-label, .map-scope-row.left-out .tree-node-kind { opacity: 0.4; text-decoration: line-through; }
   /* no hover on a touch screen: the buttons stay, after the name */
   @media (hover: none) { .map-scope-row .map-scope-actions { position: static; transform: none; background: none; opacity: 1; pointer-events: auto; padding-left: 0; } }
-  .map-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.4rem 0; }
-  .map-chip { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.2rem 0.1rem 0.6rem; font-size: 0.85rem; }
-  .map-chip-pin { border-color: var(--accent); }
-  .map-chip button { border: 0; background: transparent; color: var(--muted); border-radius: 999px; padding: 0 0.4rem; cursor: pointer; font-size: 1rem; line-height: 1.2; }
-  .map-chip button:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--fg); }
+  /* floats over the top left of the map, as the tools float over its bottom: no band, no height taken from the drawing */
+  .map-chips { position: absolute; top: 0.6rem; left: 0.75rem; right: 0.75rem; z-index: 2; display: flex; flex-wrap: wrap; gap: 0.4rem; pointer-events: none; }
+  .map-chips > * { pointer-events: auto; }
+  .map-chips-clear { height: 1.7rem; padding: 0 0.7rem !important; border-radius: 999px !important; font-size: 0.82rem; color: var(--muted); background: color-mix(in srgb, var(--panel-bg) 92%, transparent) !important; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
+  .map-chip { display: inline-flex; align-items: center; gap: 0.1rem; border: 1px solid var(--border); border-radius: 999px; padding: 0 0.15rem 0 0.7rem; height: 1.7rem; font-size: 0.82rem; background: color-mix(in srgb, var(--panel-bg) 92%, transparent); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
+  .map-chip-pin { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg)); }
+  /* (the page-wide button rule uses !important for padding, border and background: the chip's cross has to as well) */
+  .map-chip button { display: inline-flex; align-items: center; justify-content: center; width: 1.3rem; height: 1.3rem; padding: 0 !important; border: 0 !important; border-radius: 999px !important;
+    background: transparent !important; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; }
+  .map-chip button:hover { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; color: var(--fg); }
   .diagram-canvas > .dg-list { position: absolute; inset: 0; overflow: auto; padding: 0.75rem; cursor: auto; }
   .diagram-tools { position: absolute; right: 1.5rem; bottom: 1.5rem; display: flex; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 2rem); gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
   .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
   .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
-  .diagram-tools button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
-  .diagram-status { flex: none; flex-wrap: wrap; color: var(--muted); font-size: 0.85rem; padding: 0.5rem 0; display: flex; gap: 0.75rem; align-items: center; }
+  .diagram-tools button[aria-pressed="true"], .diagram-tools button[data-lit="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
+    color: var(--muted); font-size: 0.8rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
   #diagram-hint { flex: none; color: var(--accent); }
-  .diagram-status > span:first-child { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .diagram-status > span:first-child { flex: 1 1 8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dg-legend { flex: none; display: inline-flex; gap: 0.35rem; align-items: center; }
   .dg-legend svg { overflow: visible; }
   .diagram-note { margin: 0 0 0.5rem; color: var(--muted); }
@@ -266,8 +286,19 @@
   .viewpoint-switch { display: inline-flex; gap: 0.25rem; }
   .viewpoint-switch button { padding: 0 0.6rem !important; }
   .viewpoint-switch button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
-  .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 0; }
-  .diagram-view .element-header-actions { min-width: 0; flex-shrink: 1; }
+  .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
+  /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
+  .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .maximize-button { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .maximize-button svg { flex: none; }
+  @media (max-width: 1250px) { .maximize-label { display: none; } }
+  /* in a header too narrow for all of them, the controls scroll inside it rather than push the page sideways, and tighten up first */
+  .diagram-view .element-header-actions { min-width: 0; flex-shrink: 1; overflow-x: auto; scrollbar-width: none; }
+  @media (max-width: 1000px) {
+    .element-header-actions { gap: 0.25rem; }
+    .element-header button { padding: 0 0.5rem !important; }
+    .element-header select { min-width: 5.5rem; max-width: 8rem; }
+  }
   /* the drawing paints itself with the theme's tokens */
   .dg-box { fill: var(--bg); stroke: var(--border); stroke-width: 1.25; }
   .dg-stack { fill: var(--panel-bg); }
@@ -1479,6 +1510,7 @@ function applyDiagramParamsFromHash() {
   } else {
     const pin = params.get('pin');
     mapPinned = pin ? pin.split(',').filter((reference) => AppState.index.application.has(reference)) : [];
+    mapPinned.forEach(expandParentsOf);
   }
   const facet = params.get('facet');
   diagramFacet = facet && AppState.workspace.settings.facets.customs.some((f) => f.name === facet) ? facet : null;
@@ -1491,6 +1523,7 @@ function applySelectionFromHashRef() {
     if (AppState.index.application.has(ref) || AppState.index.technology.has(ref)) {
       AppState.selection = { kind: 'element', key: ref, mode: 'view' };
       expandAncestorsOf(ref);
+      scrollNavToSelection = true;
       return;
     }
     if (AppState.manifestFiles.some((f) => f.relPath === ref)) {
@@ -1515,7 +1548,7 @@ function currentRouteHash() {
   if (ref) params.push('ref=' + encodeURIComponent(ref));
   // the diagram's own choices travel in the URL too, so a link (or Back) restores them
   if (currentPerspective === 'elements' && ref && sel.kind === 'element' && sel.mode !== 'edit' && elementTab !== 'details') {
-    params.push('tab=' + elementTab);
+    params.push('tab=' + (findElementRecord(ref) ? effectiveDiagramViewpoint(findElementRecord(ref)) : elementTab)); // what the tabs show, not what a leaf was asked
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
   }
   if (currentPerspective === 'map') {
@@ -2741,29 +2774,36 @@ function renderTopPanelHtml() {
 
 // ---- Left panel — pure navigation (FR-8/FR-9/FR-10, AC-2/AC-3/AC-4) ----
 
-function renderTreeNodeHtml(record) {
+function renderTreeNodeHtml(record, level) {
   const hasChildren = Array.isArray(record.children) && record.children.length > 0;
   const isExpanded = AppState.expanded.has(record.reference);
   const isActive = AppState.selection.kind === 'element' && AppState.selection.key === record.reference;
   const label = (record.name !== undefined && record.name !== null && record.name !== '') ? record.name : record.id;
+  const modified = AppState.dirtyReferences.has(record.reference);
+  const ref = escapeHtml(record.reference);
+  const groupId = 'tree-group-' + record.reference.replace(/[^A-Za-z0-9_-]/g, '_');
+  const spoken = label + (modified ? ', modified' : '');
 
   let html = '<div class="tree-node">';
-  html += '<div class="tree-node-row' + (isActive ? ' active' : '') + '" data-action="select-element" data-ref="' + escapeHtml(record.reference) + '">';
+  html += '<div class="tree-node-row' + (isActive ? ' active' : '') + '" role="treeitem" style="--level:' + level + '" aria-level="' + level + '" aria-selected="' + isActive + '"' +
+          (hasChildren ? ' aria-expanded="' + isExpanded + '"' + (isExpanded ? ' aria-owns="' + groupId + '"' : '') : '') +
+          ' tabindex="' + (record.reference === navActiveRef ? '0' : '-1') + '" data-node="' + ref + '" data-aria="' + escapeHtml(spoken) + '" aria-label="' + escapeHtml(spoken) + '"' +
+          ' data-action="select-element" data-ref="' + ref + '">';
   if (hasChildren) {
-    html += '<span class="tree-toggle" data-action="toggle-element" data-ref="' + escapeHtml(record.reference) + '">' + (isExpanded ? '▾' : '▸') + '</span>';
+    html += '<span class="tree-toggle" aria-hidden="true" data-action="toggle-element" data-ref="' + ref + '">' + (isExpanded ? '▾' : '▸') + '</span>';
   } else {
-    html += '<span class="tree-toggle tree-toggle-empty">▸</span>';
+    html += '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
   }
-  html += '<span class="tree-node-kind">' + escapeHtml(record.kind) + '</span>';
-  html += '<span class="tree-node-label">' + escapeHtml(label) + '</span>';
-  if (AppState.dirtyReferences.has(record.reference)) {
-    html += '<span class="modified-badge" title="This element has unsaved changes">modified</span>';
+  html += '<span class="tree-node-kind" title="' + escapeHtml(record.kind) + '">' + escapeHtml(kindAbbreviation(record.kind)) + '</span>';
+  html += '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
+  if (modified) {
+    html += '<span class="modified-dot" aria-hidden="true" title="This element has unsaved changes"></span>';
   }
   html += '</div>';
   if (hasChildren && isExpanded) {
-    html += '<div class="tree-node-children">';
+    html += '<div class="tree-node-children" role="group" id="' + groupId + '">';
     for (const child of record.children) {
-      html += renderTreeNodeHtml(child);
+      html += renderTreeNodeHtml(child, level + 1);
     }
     html += '</div>';
   }
@@ -2775,15 +2815,16 @@ function renderTreeBranchHtml(branchKey, title, category, elements, isExpanded, 
   let html = '<div class="nav-section">';
   html += '<div class="tree-branch-header" data-action="toggle-branch" data-branch="' + escapeHtml(branchKey) + '">' +
             '<span class="tree-branch-title">' + (isExpanded ? '▾' : '▸') + ' ' + escapeHtml(title) + '</span>' +
-            (showAddButton ? ('<button type="button" class="tree-branch-add-btn" data-action="open-create-top-level-form" data-category="' + escapeHtml(category) + '">+ Add</button>') : '') +
+            '<span class="tree-branch-actions">' + renderNavToolsHtml(category, branchKey, title) + (showAddButton ? ('<button type="button" class="tree-branch-add-btn" data-action="open-create-top-level-form" data-category="' + escapeHtml(category) + '" aria-label="Add an element to ' + escapeHtml(title) + '">+ Add</button>') : '') +
+            '</span>' +
           '</div>';
   if (isExpanded) {
-    html += '<div class="tree-branch-body">';
+    html += '<div class="tree-branch-body"' + (elements && elements.length ? ' role="tree" aria-label="' + escapeHtml(title) + '"' : '') + '>';
     if (!elements || elements.length === 0) {
       html += '<div class="tree-empty">' + (showAddButton ? 'No elements yet — use "+ Add" above to create one.' : 'No elements.') + '</div>';
     } else {
       for (const el of elements) {
-        html += renderTreeNodeHtml(el);
+        html += renderTreeNodeHtml(el, 1);
       }
     }
     html += '</div>';
@@ -2801,8 +2842,41 @@ function renderTreeBranchHtml(branchKey, title, category, elements, isExpanded, 
 function renderElementsNavHtml(showAddButton) {
   const appElements = (AppState.workspace && AppState.workspace.application && AppState.workspace.application.elements) || [];
   const techElements = (AppState.workspace && AppState.workspace.technology && AppState.workspace.technology.elements) || [];
-  return renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
+  // one tab stop for both trees: the row the user was on, else the selected one, else the first
+  const visible = [];
+  const collect = (record) => { visible.push(record.reference); if (AppState.expanded.has(record.reference)) (record.children || []).forEach(collect); };
+  if (treeExpandedApplications) appElements.forEach(collect);
+  if (treeExpandedEnvironments) techElements.forEach(collect);
+  resolveNavActive(visible, AppState.selection.kind === 'element' ? AppState.selection.key : null);
+  const facet = anyDiagramShown() ? currentDiagramFacet() : null;
+  const note = facet
+    ? '<div class="nav-facet-note">Greyed: nothing to draw through “' + escapeHtml(facet.name) + '”. <button type="button" data-action="clear-facet">Clear facet</button></div>'
+    : '';
+  return note +
+         renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
          renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments, showAddButton);
+}
+
+/**
+ * Unfold all / Fold all for a tree of a navigation: every branch of one layer's tree, never what the map draws. The Elements
+ * navigation has one pair in the header of each of its two trees (`branch` says which header folds with it); the Map one, a single pair.
+ */
+function renderNavToolsHtml(layer, branch, name) {
+  const icon = (d) => '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const scope = ' data-layer="' + layer + '"' + (branch ? ' data-branch="' + branch + '"' : '');
+  return '<span class="nav-tools">' +
+    '<button type="button" class="map-scope-btn" data-action="nav-unfold-all"' + scope + ' title="Unfold every branch of the tree" aria-label="Unfold every branch of ' + (name || 'the tree') + '">' + icon('M4 3.5l4 3 4-3M4 9.5l4 3 4-3') + '</button>' +
+    '<button type="button" class="map-scope-btn" data-action="nav-fold-all"' + scope + ' title="Fold every branch of the tree" aria-label="Fold every branch of ' + (name || 'the tree') + '">' + icon('M4 6.5l4-3 4 3M4 12.5l4-3 4 3') + '</button>' +
+    '</span>';
+}
+
+/** Every element of a layer that has children: what "Unfold all" opens. */
+function referencesWithChildren(layer) {
+  const found = [];
+  for (const record of AppState.index[layer].values()) {
+    if (Array.isArray(record.children) && record.children.length) found.push(record.reference);
+  }
+  return found;
 }
 
 /** The manifest files list, no wrapper — the Files perspective's left panel. */
@@ -3787,6 +3861,40 @@ let mapOpened = null;
 /** The elements the map is about (none: all of them), and the ones it leaves out. */
 let mapPinned = [];
 let mapHidden = [];
+/** The row of the tree of the map that takes the focus when the user tabs into it (one tab stop for the whole tree). */
+let navActiveRef = null;
+
+/**
+ * How to find a control of the header again once render() has rebuilt the page: its id, or its action with what tells
+ * the twins apart (the tab, the zoom direction, the perspective). Null for anything else, which keeps no focus.
+ */
+function headerControlSelector(el) {
+  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button') : null;
+  if (!control) return null;
+  if (control.id) return '#' + control.id;
+  const action = control.getAttribute('data-action');
+  if (!action) return null;
+  let selector = '[data-action="' + action + '"]';
+  for (const attribute of ['data-tab', 'data-dir', 'data-perspective']) {
+    const value = control.getAttribute(attribute);
+    if (value) selector += '[' + attribute + '="' + value + '"]';
+  }
+  return selector;
+}
+
+/** Give the one tab stop of the navigation to a row that is on screen: the one the user was on, else `preferred` (the selection), else the first. */
+function resolveNavActive(visible, preferred) {
+  if (visible.includes(navActiveRef)) return;
+  navActiveRef = visible.includes(preferred) ? preferred : (visible[0] || null);
+}
+
+/** The next render brings the selected row of the tree into view (set when the selection changes without a click in the tree). */
+let scrollNavToSelection = false;
+
+/** Unfold the branches above an element, so that its row in the tree of the map can be seen (the element itself stays as it is). */
+function expandParentsOf(reference) {
+  expandAncestorsOf(String(reference).split('.').slice(0, -1).join('.'));
+}
 /** Past this many boxes, "Unfold all" asks before drawing them. */
 const MAP_UNFOLD_CONFIRM_BOXES = 150;
 
@@ -3805,8 +3913,6 @@ function mapIsShown() {
   return currentPerspective === 'map';
 }
 
-/** The element the Map should bring into view once it is drawn (picked in the tree). */
-let mapRevealRef = null;
 
 /** What the kernel is given: only references that still exist (an element can be deleted while the map is on). */
 function currentMapState() {
@@ -3979,9 +4085,12 @@ function anyDiagramShown() {
 
 /** Hides (or brings back) the panels around the diagram. */
 function renderMaximizeButtonHtml() {
-  return '<button type="button" class="maximize-button" data-action="toggle-maximize" aria-pressed="' + diagramMaximized + '" title="' +
+  // the label says the state, so the button is not also "pressed"; in a narrow header the icon stays and the word goes (the title has it)
+  const icon = (d) => '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const label = diagramMaximized ? 'Restore' : 'Maximize';
+  return '<button type="button" class="maximize-button" data-action="toggle-maximize" aria-label="' + label + '" title="' +
     (diagramMaximized ? 'Bring back the element tree (Esc)' : 'Hide the element tree to give the diagram all the room (M)') + '">' +
-    (diagramMaximized ? 'Restore' : 'Maximize') + '</button>';
+    icon(diagramMaximized ? 'M6 3v3H3M10 3v3h3M6 13v-3H3M10 13v-3h3' : 'M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3') + '<span class="maximize-label">' + label + '</span></button>';
 }
 
 function toggleDiagramMaximized() {
@@ -3994,7 +4103,7 @@ function toggleDiagramMaximized() {
 /** Details | Overview | Detailed | Deep — in the header of the center of Elements, for the element that is selected. */
 function renderElementTabsHtml(record) {
   const current = elementTab === 'details' ? 'details' : effectiveDiagramViewpoint(record);
-  let html = '<span class="viewpoint-switch" role="group" aria-label="What to show for this element">';
+  let html = '<span class="viewpoint-switch" role="group" aria-label="View of this element">';
   for (const id of Object.keys(ELEMENT_TABS)) {
     const disabled = id === 'detailed' && LEAF_KINDS.includes(record.kind);
     html += '<button type="button" data-action="set-element-tab" data-tab="' + id + '" aria-pressed="' + (id === current) + '"' +
@@ -4405,11 +4514,11 @@ function applyDiagramScale() {
   }
   applyDiagramPan(canvas);
   const label = document.getElementById('diagram-zoom-label');
-  if (label) label.textContent = Math.round(scale * 100) + '%';
+  if (label) { label.textContent = Math.round(scale * 100) + '%'; label.setAttribute('aria-label', 'Actual size (now ' + Math.round(scale * 100) + '%)'); }
   const fit = document.getElementById('diagram-fit-button');
   if (fit) fit.setAttribute('aria-pressed', String(diagramScale === 'fit'));
   const center = document.getElementById('diagram-center-button');
-  if (center) center.setAttribute('aria-pressed', String(diagramScale === 'auto'));
+  if (center) center.setAttribute('data-lit', String(diagramScale === 'auto')); // an action that is lit while its framing holds, not a toggle
   // the opening view stops at a readable size: say what is left out, and how to see it
   const hint = document.getElementById('diagram-hint');
   if (hint) {
@@ -4519,6 +4628,7 @@ function showDiagramScene(scene) {
   applyDiagramScale();
   diagramShownView = scene.viewKey;
   markMapSelection();
+  markMapScope();
   if (diagramResizeObserver) diagramResizeObserver.disconnect();
   if (typeof ResizeObserver === 'function') {
     diagramResizeObserver = new ResizeObserver(() => applyDiagramScale());
@@ -4526,18 +4636,15 @@ function showDiagramScene(scene) {
   }
 }
 
-/** On the map, the element selected in the tree (or by a click on a box) is outlined, and brought into view when it was just picked. */
+/** On the map, the element selected by a click on a box is outlined. (The tree of the map selects nothing: it only folds and unfolds.) */
 function markMapSelection() {
   const canvas = document.getElementById('diagram-canvas');
   if (!canvas || !canvas.hasAttribute('data-map')) return;
   canvas.querySelectorAll('.dg-selected').forEach((el) => el.classList.remove('dg-selected'));
   const sel = AppState.selection;
-  if (sel.kind !== 'element') { mapRevealRef = null; return; }
+  if (sel.kind !== 'element') return;
   const node = Array.from(canvas.querySelectorAll('.dg-node')).find((el) => el.getAttribute('data-id') === sel.key);
-  if (!node) return;
-  node.classList.add('dg-selected');
-  if (mapRevealRef === sel.key) revealDiagramNode(node);
-  mapRevealRef = null;
+  if (node) node.classList.add('dg-selected');
 }
 
 /** Dim everything but a box (or a link) and what it is linked to — for pointer hover and keyboard focus. */
@@ -4743,10 +4850,10 @@ function pushDiagramHistory() {
 // ---- Diagram: the perspective's markup and the computation behind it ----
 
 /** The canvas, its tools and the status line; `mountDiagramIfNeeded` fills the canvas once render() has put it in the page. */
-function renderDiagramCanvasHtml(record) {
+function renderDiagramCanvasHtml(record, overlayHtml) {
   // no record: the map of the whole workspace
   const subject = record ? escapeHtml(record.name || record.id) : 'the workspace';
-  return '<div class="diagram-stage"><div class="diagram-canvas" id="diagram-canvas"' + (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
+  return '<div class="diagram-stage">' + (overlayHtml || '') + '<div class="diagram-canvas" id="diagram-canvas"' + (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
     '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' + (record ? escapeHtml(record.reference) : '') + '"><span class="muted">Computing the diagram…</span></div>' +
     '<div class="diagram-tools" role="toolbar" aria-label="Diagram tools">' +
       // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
@@ -4755,12 +4862,14 @@ function renderDiagramCanvasHtml(record) {
         '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + diagramHideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
         '<span class="diagram-tools-sep" aria-hidden="true"></span>') +
       '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
-      '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" title="Actual size (0)">100%</button>' +
+      '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
       '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button>' +
-      '<button type="button" id="diagram-center-button" data-action="diagram-recenter" aria-pressed="' + (diagramScale === 'auto') + '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
+      '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' + (diagramScale === 'auto') + '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
       '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' + (diagramScale === 'fit') + '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
+      '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
       '<button type="button" data-action="diagram-export" title="Download the diagram as an SVG file">SVG</button>' +
     '</div></div>' +
+    // under the drawing: what it is (its status), the hint, and the key to the lines
     '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>';
 }
 
@@ -4900,9 +5009,9 @@ function mountDiagramIfNeeded() {
       if (!elk) {
         scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn), status, '', { width: 0, height: 0 }, null);
       } else if (isMap && !drawn.items.length) {
-        scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no application element' + (mapState.hidden.length ? ' left once the hidden ones are out.' : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
+        scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no application element' + (mapState.hidden.length ? ' left once the hidden ones are out: show some again with their eye, or with the chips above the map.' : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
       } else if (!isMap && !drawn.links.some((link) => !link.secondary) && drawn.items.length <= 1) {
-        const hint = viewpoint === 'overview' ? ' (try Deep to include what is inside it)' : '';
+        const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? ' (try Deep to include what is inside it)' : '';
         scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint), status, '', { width: 0, height: 0 }, null);
       } else {
         // a map has no captions on its links (they take most of its room): the tooltip says what a link stands for
@@ -4934,7 +5043,7 @@ function renderElementDiagramHtml(record) {
 /** Elements → Map: the same element, in the whole workspace. */
 function renderShowOnMapButtonHtml(record) {
   if (!AppState.index.application.has(record.reference)) return '';
-  return '<button type="button" data-action="show-on-map" data-ref="' + escapeHtml(record.reference) + '" title="Draw the map of the workspace keeping only what touches this element">Show on the map</button>';
+  return '<button type="button" data-action="show-on-map" data-ref="' + escapeHtml(record.reference) + '" title="Draw the map of the workspace keeping only what touches this element">Show on map</button>';
 }
 
 /**
@@ -4949,9 +5058,9 @@ function renderMapPerspectiveHtml() {
   return {
     left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml()),
     center: '<div class="diagram-view">' +
-      renderElementHeaderHtml('<h2>Map</h2>' + (record ? '<span class="element-kind-badge">' + escapeHtml(record.name || record.id) + '</span>' : ''),
+      renderElementHeaderHtml('<h2>Map</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
         renderOpenAsDiagramButtonHtml(record) + renderFacetSelectHtml() + renderMaximizeButtonHtml()) +
-      renderMapChipsHtml() + renderDiagramCanvasHtml(null) + '</div>',
+      renderDiagramCanvasHtml(null, renderMapChipsHtml()) + '</div>',
     right: null,
     bottom: null
   };
@@ -4960,55 +5069,178 @@ function renderMapPerspectiveHtml() {
 /** Map → Diagram: the selected element, on its own. */
 function renderOpenAsDiagramButtonHtml(record) {
   if (!record) return '';
-  return '<button type="button" data-action="open-as-diagram" data-ref="' + escapeHtml(record.reference) + '" title="Open the diagram of this element: its relationships, on their own">Open as diagram</button>';
+  return '<button type="button" data-action="open-as-diagram" data-ref="' + escapeHtml(record.reference) + '" title="Open this element in Elements, on its diagram: its relationships, on their own">Open in Elements</button>';
 }
 
 /** The application elements, each with what the map does with it: Pin keeps only what touches it, Hide leaves it out. */
 function renderMapScopeHtml() {
   const roots = (AppState.workspace && AppState.workspace.application && AppState.workspace.application.elements) || [];
-  let html = '<div class="nav-section"><div class="nav-section-title">Applications</div>' +
-             '<div class="map-scope-hint">Pick an element to find it on the map. The pin keeps only what touches it; the crossed eye leaves it out.</div>';
-  html += roots.length ? roots.map(renderMapScopeNodeHtml).join('') : '<div class="tree-empty">No elements.</div>';
+  const visible = [];
+  const collect = (record) => { visible.push(record.reference); if (AppState.expanded.has(record.reference)) (record.children || []).forEach(collect); };
+  roots.forEach(collect);
+  // one tab stop for the whole tree: the row the user was on, or the first one
+  resolveNavActive(visible);
+  let html = '<div class="nav-section map-scope"><div class="nav-section-title nav-title-with-tools">Applications' + renderNavToolsHtml('application') + '</div>' +
+             '<div class="map-scope-hint" id="map-scope-hint">Pin (P) keeps only what touches an element. The eye (H) leaves it out. Greyed rows are not on the map.</div>';
+  html += roots.length
+    ? '<div role="tree" aria-label="Application elements of the map" aria-describedby="map-scope-hint">' + roots.map((r) => renderMapScopeNodeHtml(r, 1)).join('') + '</div>'
+    : '<div class="tree-empty">No elements.</div>';
   return html + '</div>';
 }
 
+/** Is the element on the map as it is drawn now: as a box, or inside a box that is folded? Null while no drawing says (computing, fallback). */
+function mapElementIsOnMap(reference) {
+  const boxes = diagramScene && diagramScene.boxes;
+  if (!boxes || !String(diagramScene.viewKey).startsWith('map|')) return null; // a drawing of the map only
+  const folded = diagramScene.expandable || [];
+  if (Object.prototype.hasOwnProperty.call(boxes, reference)) return true;
+  for (let ref = String(reference); ref.includes('.');) {
+    ref = ref.slice(0, ref.lastIndexOf('.'));
+    if (Object.prototype.hasOwnProperty.call(boxes, ref)) return folded.includes(ref); // an open box draws what it shows: the rest is out
+  }
+  return false;
+}
+
+/** What a screen reader hears for a row of the tree of the map: the name, then the state the colours and the icons show. */
+function mapScopeRowLabel(name, pinned, hidden, offMap) {
+  return name + (pinned ? ', pinned' : '') + (hidden ? ', hidden' : '') + (offMap && !hidden ? ', not on the map' : '');
+}
+
+/** Grey the rows of the elements the map does not draw (a pin, a hidden element or "Hide unlinked" left them out); applied after each drawing. */
+function markMapScope() {
+  document.querySelectorAll('.map-scope-row').forEach((row) => {
+    const onMap = mapElementIsOnMap(row.getAttribute('data-node'));
+    const offMap = onMap === false;
+    const pinned = row.classList.contains('pinned');
+    const hidden = row.classList.contains('left-out');
+    row.classList.toggle('off-map', offMap && !hidden);
+    if (offMap && !hidden) row.title = 'Not on the map right now'; else row.removeAttribute('title');
+    row.setAttribute('aria-label', mapScopeRowLabel(row.getAttribute('data-name'), pinned, hidden, offMap));
+  });
+}
+
 /** A short form of the kind for the tree of the map, where every pixel of the row is wanted by the name. */
-const MAP_KIND_ABBREVIATIONS = { person: 'PRS', system: 'SYS', solution: 'SOL', container: 'CTN', component: 'CMP', group: 'GRP' };
+const MAP_KIND_ABBREVIATIONS = { person: 'PRS', system: 'SYS', solution: 'SOL', container: 'CTN', component: 'CMP', group: 'GRP', environment: 'ENV', node: 'NOD' };
 
-/** Pin and Hide, as drawn on the rows of the tree of the map: two small icons, 14px. */
-const MAP_PIN_ICON = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M9.5 1.5l5 5-1.6.6-2.3 2.3.2 3-1.3 1.3-2.5-2.5L3 14.2 1.8 13l3.7-3.9L3 6.6 4.3 5.3l3 .2L9.6 3.2z" fill="currentColor"/></svg>';
-const MAP_HIDE_ICON = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="1.9" fill="currentColor"/><path d="M2.5 13.5l11-11" stroke="currentColor" stroke-width="1.6"/></svg>';
+/** The short form of a kind for the rows of both trees ("container-group" reads GRP; the full kind is in the tooltip). */
+function kindAbbreviation(kind) {
+  const k = String(kind);
+  return MAP_KIND_ABBREVIATIONS[k] || MAP_KIND_ABBREVIATIONS[k.replace(/^.*-/, '')] || k.slice(0, 3).toUpperCase();
+}
 
-function renderMapScopeNodeHtml(record) {
+/** Pin and Hide on the rows of the tree of the map: two small icons, 14px, each drawing the state the element is in (outline: not, filled / crossed: yes). */
+const MAP_PIN_PATH = 'M9.5 1.5l5 5-1.6.6-2.3 2.3.2 3-1.3 1.3-2.5-2.5L3 14.2 1.8 13l3.7-3.9L3 6.6 4.3 5.3l3 .2L9.6 3.2z';
+const MAP_ICON_OPEN = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">';
+const MAP_PIN_ICON = MAP_ICON_OPEN + '<path d="' + MAP_PIN_PATH + '" fill="currentColor"/></svg>'; // pinned
+const MAP_UNPINNED_ICON = MAP_ICON_OPEN + '<path d="' + MAP_PIN_PATH + '" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+const MAP_EYE = '<path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="1.9" fill="currentColor"/>';
+const MAP_VISIBLE_ICON = MAP_ICON_OPEN + MAP_EYE + '</svg>';
+const MAP_HIDE_ICON = MAP_ICON_OPEN + MAP_EYE + '<path d="M2.5 13.5l11-11" stroke="currentColor" stroke-width="1.6"/></svg>'; // hidden
+
+function renderMapScopeNodeHtml(record, level) {
   const reference = record.reference;
   const hasChildren = Array.isArray(record.children) && record.children.length > 0;
   const isExpanded = AppState.expanded.has(reference);
-  const isActive = AppState.selection.kind === 'element' && AppState.selection.key === reference;
   const pinned = mapPinned.includes(reference);
   const hidden = mapHidden.some((h) => reference === h || reference.startsWith(h + '.'));
   const hiddenItself = mapHidden.includes(reference);
   const encloses = mapPinned.some((p) => p === reference || p.startsWith(reference + '.'));
+  const offMap = mapElementIsOnMap(reference) === false && !hidden;
   const label = (record.name !== undefined && record.name !== null && record.name !== '') ? record.name : record.id;
   const ref = escapeHtml(reference);
   const kind = String(record.kind);
-  const abbreviation = MAP_KIND_ABBREVIATIONS[kind] || MAP_KIND_ABBREVIATIONS[kind.replace(/^.*-/, '')] || kind.slice(0, 3).toUpperCase();
-  let html = '<div class="tree-node"><div class="tree-node-row map-scope-row' + (isActive ? ' active' : '') + (pinned ? ' pinned' : '') + (hidden ? ' left-out' : '') +
-             '" data-action="map-select" data-ref="' + ref + '">';
+  const abbreviation = kindAbbreviation(kind);
+  const groupId = 'map-scope-group-' + reference.replace(/[^A-Za-z0-9_-]/g, '_');
+  // a row folds or unfolds its branch, nothing more: the tree of the map selects no element
+  let html = '<div class="tree-node"><div class="tree-node-row map-scope-row' + (pinned ? ' pinned' : '') + (hidden ? ' left-out' : '') + (offMap ? ' off-map' : '') + (hasChildren ? ' foldable' : '') + '"' +
+             ' role="treeitem" style="--level:' + level + '" aria-level="' + level + '"' + (hasChildren ? ' aria-expanded="' + isExpanded + '"' + (isExpanded ? ' aria-owns="' + groupId + '"' : '') : '') +
+             ' tabindex="' + (reference === navActiveRef ? '0' : '-1') + '" data-node="' + ref + '" data-name="' + escapeHtml(label) + '"' +
+             ' aria-label="' + escapeHtml(mapScopeRowLabel(label, pinned, hidden, offMap)) + '"' + (offMap ? ' title="Not on the map right now"' : '') +
+             (hasChildren ? ' data-action="toggle-element" data-ref="' + ref + '"' : '') + '>';
   html += hasChildren
-    ? '<span class="tree-toggle" data-action="toggle-element" data-ref="' + ref + '">' + (isExpanded ? '▾' : '▸') + '</span>'
-    : '<span class="tree-toggle tree-toggle-empty">▸</span>';
+    ? '<span class="tree-toggle" aria-hidden="true">' + (isExpanded ? '▾' : '▸') + '</span>'
+    : '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
   html += '<span class="tree-node-kind" title="' + escapeHtml(kind) + '">' + escapeHtml(abbreviation) + '</span>' +
           '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
   // what the map does with the element is visible without hovering; the buttons themselves appear on hover, focus and the active row
-  if (pinned) html += '<span class="map-scope-mark" title="Pinned" aria-hidden="true">●</span>';
+  if (pinned) html += '<span class="map-scope-mark" title="Pinned" aria-hidden="true">' + MAP_PIN_ICON + '</span>';
+  // Pin is always the last button, at the same place under the mouse: Hide comes before it, and is not drawn at all when it cannot be used
+  // (a pinned element, or one around a pinned element, is not hidden), so that pinning or unpinning never moves the button to click next.
+  // The buttons are for the pointer and the finger: the keyboard has the row itself (arrows, P and H), so they are not tab stops.
+  const canHide = !pinned && !encloses;
   html += '<span class="map-scope-actions">' +
-    '<button type="button" class="map-scope-btn" data-action="map-pin" data-ref="' + ref + '" aria-pressed="' + pinned + '" aria-label="' + (pinned ? 'Unpin ' : 'Pin ') + escapeHtml(label) +
-      '" title="' + (pinned ? 'Stop keeping only what touches this element' : 'Keep only what touches this element') + '">' + MAP_PIN_ICON + '</button>' +
-    '<button type="button" class="map-scope-btn" data-action="map-hide" data-ref="' + ref + '" aria-pressed="' + hiddenItself + '" aria-label="' + (hiddenItself ? 'Show ' : 'Hide ') + escapeHtml(label) + '"' +
-      (encloses ? ' disabled' : '') + ' title="' + (hiddenItself ? 'Bring this element back on the map' : encloses ? 'A pinned element is inside it' : 'Leave this element and what is inside it out of the map') + '">' + MAP_HIDE_ICON + '</button>' +
+    (canHide || hiddenItself
+      ? '<button type="button" tabindex="-1" class="map-scope-btn" data-action="map-hide" data-ref="' + ref + '" aria-pressed="' + hiddenItself + '" aria-label="' + (hiddenItself ? 'Show ' : 'Hide ') + escapeHtml(label) +
+        '" title="' + (hiddenItself ? 'Bring this element back on the map' : 'Leave this element and what is inside it out of the map') + ' (H)">' + (hiddenItself ? MAP_HIDE_ICON : MAP_VISIBLE_ICON) + '</button>'
+      : '') +
+    '<button type="button" tabindex="-1" class="map-scope-btn" data-action="map-pin" data-ref="' + ref + '" aria-pressed="' + pinned + '" aria-label="' + (pinned ? 'Unpin ' : 'Pin ') + escapeHtml(label) +
+      '" title="' + (pinned ? 'Stop keeping only what touches this element' : hiddenItself ? 'Keep only what touches this element (it comes back on the map)' : 'Keep only what touches this element') + ' (P)">' + (pinned ? MAP_PIN_ICON : MAP_UNPINNED_ICON) + '</button>' +
     '</span></div>';
-  if (hasChildren && isExpanded) html += '<div class="tree-node-children">' + record.children.map(renderMapScopeNodeHtml).join('') + '</div>';
+  if (hasChildren && isExpanded) html += '<div class="tree-node-children" role="group" id="' + groupId + '">' + record.children.map((child) => renderMapScopeNodeHtml(child, level + 1)).join('') + '</div>';
   return html + '</div>';
+}
+
+/** The rows of the tree of the map that can be reached now, top to bottom. */
+function navRows() {
+  return Array.from(document.querySelectorAll('.tree-node-row[role="treeitem"]'));
+}
+
+/** Move the single tab stop of the navigation to a row, and focus it. */
+function focusNavRow(row) {
+  if (!row) return;
+  navRows().forEach((other) => other.setAttribute('tabindex', other === row ? '0' : '-1'));
+  navActiveRef = row.getAttribute('data-node');
+  row.focus();
+}
+
+/**
+ * Keyboard on the tree of the map (the pattern of a tree view): up and down move, right unfolds or goes to the first child,
+ * left folds or goes to the parent, Enter and Space fold or unfold, Home and End jump, P pins and H hides.
+ */
+function handleNavKeydown(e) {
+  const row = e.target.closest && e.target.closest('.tree-node-row[role="treeitem"]');
+  if (!row || e.target !== row || e.ctrlKey || e.metaKey || e.altKey) return;
+  const rows = navRows();
+  const index = rows.indexOf(row);
+  const foldable = row.hasAttribute('aria-expanded');
+  const expanded = row.getAttribute('aria-expanded') === 'true';
+  const toggle = () => { navActiveRef = row.getAttribute('data-node'); toggleExpandedKey(row.getAttribute('data-node')); render(); };
+  switch (e.key) {
+    case 'ArrowDown': focusNavRow(rows[index + 1]); break;
+    case 'ArrowUp': focusNavRow(rows[index - 1]); break;
+    case 'Home': focusNavRow(rows[0]); break;
+    case 'End': focusNavRow(rows[rows.length - 1]); break;
+    case 'ArrowRight':
+      if (foldable && !expanded) toggle();
+      else if (foldable) focusNavRow(rows[index + 1]);
+      break;
+    case 'ArrowLeft':
+      if (foldable && expanded) toggle();
+      else {
+        const parent = row.closest('.tree-node-children');
+        focusNavRow(parent && parent.parentElement.querySelector(':scope > .tree-node-row'));
+      }
+      break;
+    case 'Enter': case ' ':
+      // on the map a row only folds; in Elements it selects the element (the arrows fold)
+      if (row.classList.contains('map-scope-row')) { if (foldable) toggle(); }
+      else { navActiveRef = row.getAttribute('data-node'); row.click(); }
+      break;
+    case 'p': case 'P': {
+      navActiveRef = row.getAttribute('data-node');
+      const button = row.querySelector('[data-action="map-pin"]');
+      if (button) button.click();
+      break;
+    }
+    case 'h': case 'H': {
+      navActiveRef = row.getAttribute('data-node');
+      const button = row.querySelector('[data-action="map-hide"]');
+      if (button) button.click();
+      break;
+    }
+    default: return;
+  }
+  e.preventDefault();
 }
 
 /** The pinned and the hidden elements of the map, each removable. */
@@ -5019,9 +5251,11 @@ function renderMapChipsHtml() {
     if (!record) return '';
     return '<span class="map-chip map-chip-' + kind + '"><span>' + (kind === 'pin' ? 'Pinned' : 'Hidden') + ': ' + escapeHtml(record.name || record.id) + '</span>' +
       '<button type="button" data-action="map-' + (kind === 'pin' ? 'unpin' : 'unhide') + '" data-ref="' + escapeHtml(reference) + '" aria-label="' +
-      (kind === 'pin' ? 'Unpin ' : 'Show again ') + escapeHtml(record.name || record.id) + '">×</button></span>';
+      (kind === 'pin' ? 'Unpin ' : 'Show again ') + escapeHtml(record.name || record.id) + '" title="' + (kind === 'pin' ? 'Unpin' : 'Show again') + '">×</button></span>';
   };
-  return '<div class="map-chips">' + mapPinned.map((r) => chip(r, 'pin')).join('') + mapHidden.map((r) => chip(r, 'hide')).join('') + '</div>';
+  const clear = mapPinned.length + mapHidden.length > 2
+    ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden">Clear all</button>' : '';
+  return '<div class="map-chips">' + mapPinned.map((r) => chip(r, 'pin')).join('') + mapHidden.map((r) => chip(r, 'hide')).join('') + clear + '</div>';
 }
 
 /**
@@ -5171,6 +5405,7 @@ function handleAppClick(e) {
       pushDiagramHistory();
       mapPinned = mapPinned.includes(ref) ? mapPinned.filter((r) => r !== ref) : mapPinned.concat([ref]);
       mapHidden = mapHidden.filter((h) => !(ref === h || ref.startsWith(h + '.')));
+      if (mapPinned.includes(ref)) expandParentsOf(ref);
       render();
       break;
     }
@@ -5185,23 +5420,11 @@ function handleAppClick(e) {
       render();
       break;
     }
-    case 'map-select': {
-      // picking an element finds it on the map: its tree branch and the boxes around it are opened
-      const ref = target.getAttribute('data-ref');
-      if (AppState.selection.key !== ref) pushDiagramHistory();
-      AppState.selection = { kind: 'element', key: ref, mode: 'view' };
-      expandAncestorsOf(ref);
-      const parts = ref.split('.');
-      for (let i = 1; i < parts.length; i++) currentMapOpened().add(parts.slice(0, i).join('.'));
-      mapRevealRef = ref;
-      diagramScale = 'auto'; // find it: the view is framed on the element again
-      render();
-      break;
-    }
     case 'show-on-map': {
       const ref = target.getAttribute('data-ref');
       mapPinned = [ref];
       mapHidden = mapHidden.filter((h) => !(ref === h || ref.startsWith(h + '.')));
+      expandParentsOf(ref);
       setPerspective('map');
       break;
     }
@@ -5209,6 +5432,12 @@ function handleAppClick(e) {
       // the element on its own: its overview, unless a diagram was the last thing it showed
       if (elementTab === 'details') elementTab = 'overview';
       setPerspective('elements');
+      break;
+    case 'map-clear':
+      pushDiagramHistory();
+      mapPinned = [];
+      mapHidden = [];
+      render();
       break;
     case 'map-unhide':
       mapHidden = mapHidden.filter((r) => r !== target.getAttribute('data-ref'));
@@ -5234,6 +5463,7 @@ function handleAppClick(e) {
       const owner = target.getAttribute('data-ref');
       AppState.selection = { kind: 'element', key: owner, mode: 'edit' };
       expandAncestorsOf(owner);
+      scrollNavToSelection = true;
       setPerspective('elements');
       break;
     }
@@ -5265,6 +5495,7 @@ function handleAppClick(e) {
       if (pendingDeleteConfirmation) pendingDeleteConfirmation = null; // TDD-0010 DEC-4 — same discard-on-navigate philosophy
       AppState.selection = { kind: 'element', key: destinationRef, mode: 'view' };
       expandAncestorsOf(destinationRef); // FR-14/FLOW-5
+      scrollNavToSelection = true;
       render();
       break;
     }
@@ -5281,6 +5512,17 @@ function handleAppClick(e) {
       } else if (branch === 'environments') {
         treeExpandedEnvironments = !treeExpandedEnvironments;
       }
+      render();
+      break;
+    }
+    case 'nav-unfold-all':
+    case 'nav-fold-all': {
+      // the tree of one layer: its elements, and — in Elements, where each tree has its own header — the tree itself
+      const unfold = action === 'nav-unfold-all';
+      referencesWithChildren(target.getAttribute('data-layer')).forEach((reference) => (unfold ? AppState.expanded.add(reference) : AppState.expanded.delete(reference)));
+      const branch = target.getAttribute('data-branch');
+      if (branch === 'applications') treeExpandedApplications = unfold;
+      else if (branch === 'environments') treeExpandedEnvironments = unfold;
       render();
       break;
     }
@@ -5874,12 +6116,29 @@ function render() {
   const sameView = viewKey === lastRenderedViewKey;
   lastRenderedViewKey = viewKey;
 
+  // the tree of the map keeps the focus of the row the user was on, whatever redraws it
+  const focusedScopeRow = document.activeElement && document.activeElement.closest ? document.activeElement.closest('.tree-node-row[role="treeitem"]') : null;
+  const focusedScopeRef = focusedScopeRow ? focusedScopeRow.getAttribute('data-node') : null;
+  if (focusedScopeRef) navActiveRef = focusedScopeRef;
+
+  // the controls of the headers and of the diagram keep the focus too: the tabs, the facet, Edit… all redraw the page
+  const focusedControl = focusedScopeRef ? null : headerControlSelector(document.activeElement);
+
   app.innerHTML = renderShellHtml();
+  if (focusedControl) {
+    const control = app.querySelector(focusedControl);
+    if (control && !control.disabled) control.focus({ preventScroll: true });
+  }
+  if (focusedScopeRef) {
+    const row = navRows().find((r) => r.getAttribute('data-node') === focusedScopeRef);
+    if (row) row.focus({ preventScroll: true });
+  }
   app.addEventListener('click', handleAppClick);
   app.addEventListener('pointerdown', handleAppPointerDown);
   app.addEventListener('dblclick', handleAppDblClick);
   app.addEventListener('input', handleAppInput);
   app.addEventListener('keydown', handleDiagramKeydown);
+  app.addEventListener('keydown', handleNavKeydown);
   app.addEventListener('pointerover', handleDiagramPointerOver);
   app.addEventListener('focusin', handleDiagramFocus);
   app.addEventListener('focusout', handleDiagramFocus);
@@ -5894,6 +6153,12 @@ function render() {
     if (id === 'panel-center' && !sameView) continue;
     const el = document.getElementById(id);
     if (el) { el.scrollTop = scrollBefore[id].top; el.scrollLeft = scrollBefore[id].left; }
+  }
+  // a selection that did not come from a click in the tree (a box of a diagram, a link, the URL) is brought into view in it
+  if (scrollNavToSelection) {
+    scrollNavToSelection = false;
+    const activeRow = document.querySelector('.tree-node-row.active');
+    if (activeRow && activeRow.scrollIntoView) activeRow.scrollIntoView({ block: 'nearest' });
   }
   syncHashFromState();
 }
