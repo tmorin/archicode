@@ -1,0 +1,43 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  parent: "shop"
+content:
+  id: "catalog"
+  name: "Catalog"
+  description: "What is for sale."
+  elements:
+    - kind: "container"
+      id: "service"
+      name: "Catalog Service"
+      qualifiers:
+        - "Quarkus"
+      relationships:
+        - destination: "shop.catalog.db"
+          label: "reads and writes"
+          qualifiers:
+            - "JDBC"
+      elements:
+        - kind: "component"
+          id: "search"
+          name: "Search"
+          relationships:
+            - destination: "shop.catalog.db"
+              label: "reads"
+              qualifiers:
+                - "JDBC"
+        - kind: "component"
+          id: "indexer"
+          name: "Indexer"
+          relationships:
+            - destination: "shop.catalog.db"
+              label: "reads"
+              qualifiers:
+                - "JDBC"
+            - destination: "mailer"
+              label: "reports to"
+    - kind: "container"
+      id: "db"
+      name: "Catalog Database"
+      qualifiers:
+        - "PostgreSQL"

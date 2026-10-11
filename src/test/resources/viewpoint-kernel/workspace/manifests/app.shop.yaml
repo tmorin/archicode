@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/solution"
+  version: "1"
+content:
+  id: "shop"
+  name: "Online Shop"
+  description: "Sells things on the web."
+  elements:
+    - kind: "system"
+      id: "payments"
+      name: "Payment Provider"
+      description: "Takes the money."
+      tags:
+        rendering-stereotypes: "external"

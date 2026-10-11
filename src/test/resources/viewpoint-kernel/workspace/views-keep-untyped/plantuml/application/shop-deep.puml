@@ -1,0 +1,91 @@
+@startuml shop-deep
+title Solution - Online Shop - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle mailer <<system>> <<external>> <<atomic>> [
+**Mail Provider**
+""[system]""
+
+Sends the e-mails.
+]
+rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
+rectangle shop.catalog as "**Catalog**\n""[system]""" <<composite>> {
+rectangle shop.catalog.service as "**Catalog Service**\n""[container: Quarkus]""" <<composite>> <<Quarkus>> {
+rectangle shop.catalog.service.indexer <<component>> <<atomic>> [
+**Indexer**
+""[component]""
+]
+}
+}
+rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
+rectangle shop.web.api <<container>> <<atomic>> <<Spring Boot>> [
+**API**
+""[container: Spring Boot]""
+]
+rectangle shop.web.frontend <<Angular>> <<container>> <<atomic>> [
+**Frontend**
+""[container: Angular]""
+]
+rectangle shop.web.session <<Redis>> <<container>> <<atomic>> [
+**Session Store**
+""[container: Redis]""
+]
+}
+}
+shop.catalog.service.indexer --> mailer : reports to
+shop.web.api --> shop.web.session
+shop.web.frontend --> shop.web.api : calls\n""[REST]""
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml

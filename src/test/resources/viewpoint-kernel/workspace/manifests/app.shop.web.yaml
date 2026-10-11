@@ -1,0 +1,57 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  parent: "shop"
+content:
+  id: "web"
+  name: "Web Shop"
+  description: "What customers see."
+  elements:
+    - kind: "container"
+      id: "frontend"
+      name: "Frontend"
+      qualifiers:
+        - "Angular"
+      relationships:
+        - destination: "shop.web.api"
+          label: "calls"
+          qualifiers:
+            - "REST"
+    - kind: "group"
+      id: "edge"
+      name: "Edge"
+      elements:
+        - kind: "container"
+          id: "gateway"
+          name: "Gateway"
+          qualifiers:
+            - "Envoy"
+          relationships:
+            - destination: "shop.web.api"
+              label: "routes to"
+              qualifiers:
+                - "HTTP"
+    - kind: "container"
+      id: "api"
+      name: "API"
+      qualifiers:
+        - "Spring Boot"
+      relationships:
+        - destination: "shop.web.session"
+        - destination: "shop.catalog.service"
+          label: "queries"
+          qualifiers:
+            - "gRPC"
+        - destination: "shop.payments"
+          label: "charges with"
+          qualifiers:
+            - "HTTPS"
+        - destination: "mailer"
+          label: "notifies through"
+          qualifiers:
+            - "SMTP"
+    - kind: "container"
+      id: "session"
+      name: "Session Store"
+      qualifiers:
+        - "Redis"

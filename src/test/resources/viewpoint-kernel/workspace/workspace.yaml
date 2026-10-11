@@ -1,0 +1,47 @@
+# A small, invented workspace used to check the viewpoint kernel against the code the CLI runs (see ../README.md).
+# It is built to hit every rule of the viewpoints: nested elements at three depths, a group, a person, an external
+# system, links that must be grouped under an enclosing element, links without a label, links between siblings,
+# and a technology layer that hosts applications.
+styles:
+  by-tags:
+    external:
+      background-color: "lightgray"
+formatters:
+  atomic:
+    name: "**%s**"
+    qualifiers: "\"\"%s\"\""
+    description: "\n%s"
+  composite:
+    name: "**%s**"
+    qualifiers: "\"\"%s\"\""
+  link:
+    label: "%s"
+    qualifiers: "\"\"%s\"\""
+settings:
+  facets:
+    customs:
+      # keeps only what is declared with a REST qualifier (same recipe as the documentation's "oidc" facet)
+      - name: "rest-only"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers noneof ['REST'])]"
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers == null)]"
+      # drops the e-mails
+      - name: "no-smtp"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers anyof ['SMTP'])]"
+      # works on the technology layer, and on a label
+      - name: "quiet-infra"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.technology..relationships[?(@.qualifiers anyof ['gRPC'])]"
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.label == 'routes to')]"
+      # removes what has qualifiers but none of REST, and keeps what has no qualifier at all (tells how `noneof`
+      # treats a relationship without qualifiers)
+      - name: "keep-untyped"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.qualifiers noneof ['REST'])]"
