@@ -1,5 +1,6 @@
 package io.morin.archicode.workspace;
 
+import com.fasterxml.jackson.databind.util.RawValue;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
@@ -135,7 +136,8 @@ public class WorkspaceFactory {
         val facetRawWorkspaceAsJson = jsonMapper.writeValueAsString(facetRawWorkspace);
 
         val request = jsonMapper.createObjectNode();
-        request.set("workspace", jsonMapper.readTree(facetRawWorkspaceAsJson));
+        // the workspace goes to the kernel as it is written: it is not parsed just to be written again
+        request.putRawValue("workspace", new RawValue(facetRawWorkspaceAsJson));
         val actions = request.putArray("actions");
         for (val action : facet.getActions()) {
             log.info("process {}", action);

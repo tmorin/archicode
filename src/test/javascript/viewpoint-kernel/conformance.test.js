@@ -123,6 +123,32 @@ test('a facet written for the earlier engine still works, and says it is going a
   assert.ok(old.links.length > 0 && old.links.length < compute("$..relationships[?(@.label == 'none')]").links.length);
 });
 
+test('the facets that filter on tags, qualifiers and labels keep what a plain reading of the manifests says', async () => {
+  // an oracle that is neither the kernel nor the CLI: the relationships of the model, filtered here by hand
+  const { sandbox, state, kernel } = await openFixture();
+  const rels = [];
+  for (const record of state.index.application.values()) {
+    for (const rel of record.relationships) rels.push({ from: record.reference, to: rel.destination, label: rel.rawLabel || '', tags: rel.tags || {}, qualifiers: rel.qualifiers || [] });
+  }
+  assert.ok(rels.some((r) => r.tags.audited === 'yes') && rels.some((r) => r.tags.audited === 'no') && rels.some((r) => r.label === 'routes to'), 'the fixture has what the facets look at');
+  const kept = {
+    unaudited: (r) => r.tags.audited !== 'yes',
+    'audited-only': (r) => r.tags.audited === 'yes',
+    compound: (r) => !(r.label === 'routes to' || r.tags.audited === 'yes'),
+    'rest-only-standard': (r) => r.qualifiers.includes('REST')
+  };
+  const everything = Array.from(state.index.application.keys());
+  for (const [name, keep] of Object.entries(kept)) {
+    const facet = state.workspace.settings.facets.customs.find((f) => f.name === name);
+    const out = kernel.compute(sandbox.buildKernelInput('map', null, { facet, opened: everything }).input);
+    assert.equal(out.error, undefined, name);
+    const mine = Array.from(out.links.flatMap((l) => l.relationships.map((r) => [r.from, r.destination, r.label || ''].join('|')))).sort(); // from another realm: copied
+    const expected = rels.filter(keep).map((r) => [r.from, r.to, r.label].join('|')).sort();
+    assert.deepEqual(mine, expected, name);
+    assert.ok(expected.length > 0 && expected.length < rels.length, name + ' keeps some of the relationships, not all');
+  }
+});
+
 test('the kernel the CLI runs is the one the editor embeds', () => {
   const html = fs.readFileSync(path.join(FIXTURE, '../../../../main/resources/editor-webapp/standalone.html'), 'utf8');
   const embedded = html.match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/)[1];

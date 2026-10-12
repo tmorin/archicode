@@ -1626,4 +1626,23 @@ mod tests {
         let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
         assert_eq!(out["workspace"]["application"]["elements"], json!([{ "id": "c" }]));
     }
+
+    #[test]
+    fn a_legacy_list_may_hold_a_bracket_or_a_comma_inside_its_literals() {
+        let (path, warnings) = facet::translate_legacy("$..relationships[?(@.qualifiers anyof ['a]b', \"c,d\"] && @.label == 'x')]");
+        assert_eq!(path, "$..relationships[?(@.qualifiers[?(@ == 'a]b' || @ == \"c,d\")] && @.label == 'x')]");
+        assert_eq!(warnings.len(), 1);
+        let (path, _) = facet::translate_legacy("$..relationships[?(@.qualifiers anyof ['it\"s'])]");
+        assert_eq!(path, "$..relationships[?(@.qualifiers[?(@ == 'it\"s')])]", "the other quote may be inside a literal");
+    }
+
+    #[test]
+    fn the_workspace_keeps_the_order_of_its_keys() {
+        let request = r#"{"workspace":{"styles":{"by-tags":{"external":{"b":1},"new":{"a":1},"changed":{"c":1}}},"application":{"elements":[{"id":"z","tags":{"tag-y":"1","tag-a":"2"}}]}},"actions":[]}"#;
+        let out = apply_facet_json(request);
+        let at = |needle: &str| out.find(needle).unwrap_or_else(|| panic!("{needle} in {out}"));
+        assert!(at("\"external\"") < at("\"new\"") && at("\"new\"") < at("\"changed\""), "{out}");
+        assert!(at("tag-y") < at("tag-a"), "{out}");
+        assert!(at("\"styles\"") < at("\"application\""), "{out}");
+    }
 }
