@@ -333,6 +333,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.manifest.ManifestParser$Parsed",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.manifest.ManifestParser$Candidate",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
