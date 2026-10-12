@@ -84,6 +84,7 @@ test('boxes and links reach the layout engine one for one', async () => {
 test('the SVG: clickable boxes, the focal one marked, grouped links explain themselves, no fold button outside the map', async () => {
   const { sandbox, kernel } = await openFixture();
   const result = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api').input);
+  run(sandbox, "currentPerspective = 'elements';");
   const drawing = sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, 'shop.web.api');
   const svg = drawing.html;
   assert.ok(svg.startsWith('<svg'));
@@ -1060,4 +1061,14 @@ test('a description is wrapped by the width of its text, not by a count of chara
   const box = svg.match(/data-id="shop\.web\.api"[^]*?<rect class="dg-box" x="(\d+)" y="\d+" width="(\d+)"/);
   assert.equal(Number(lines[0][1]), Number(box[1]) + 10, 'from the left, with a small margin');
   assert.ok(Number(box[2]) >= 240, 'room for a description');
+});
+
+test('the Map is where the editor opens: with no route, or one it does not know', async () => {
+  const { sandbox } = await openFixture();
+  for (const hash of ['', '#', '#/', '#/nowhere?x=1']) {
+    sandbox.location.hash = hash;
+    assert.equal(sandbox.perspectiveIdFromHash(), 'map', JSON.stringify(hash));
+  }
+  sandbox.location.hash = '#/elements?ref=shop';
+  assert.equal(sandbox.perspectiveIdFromHash(), 'elements', 'a route that names a perspective still wins');
 });
