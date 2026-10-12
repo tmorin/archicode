@@ -191,22 +191,37 @@ test('on the map, a box that hides children can be opened and an open one closed
   assert.match(opened.svg, /data-mode="expand" data-id="shop.catalog"/);
 });
 
-test('the viewpoints of an element have no fold button, no Fold all / Unfold all and no Hide unlinked: those belong to the map', async () => {
-  const { sandbox, kernel } = await openFixture();
+test('the viewpoints of an element have no fold button and no Fold all / Unfold all, but they can Hide unlinked like the map', async () => {
+  const { sandbox, state, kernel } = await openFixture();
   const record = sandbox.findElementRecord('shop.web.api');
   const elementTools = sandbox.renderDiagramCanvasHtml(record);
-  for (const gone of ['fold-all', 'unfold-all', 'toggle-hide-unlinked']) assert.ok(!elementTools.includes(gone), gone);
-  for (const kept of ['data-dir="out"', 'data-dir="in"', 'diagram-center-button', 'diagram-fit-button']) assert.ok(elementTools.includes(kept), kept);
+  for (const gone of ['fold-all', 'unfold-all']) assert.ok(!elementTools.includes(gone), gone);
+  for (const kept of ['data-dir="out"', 'data-dir="in"', 'diagram-center-button', 'diagram-fit-button', 'toggle-hide-unlinked']) assert.ok(elementTools.includes(kept), kept);
   assert.ok(!elementTools.includes('diagram-export'), 'the download is in the header, not over the drawing');
   const mapTools = sandbox.renderDiagramCanvasHtml(null);
   for (const there of ['fold-all', 'unfold-all', 'toggle-hide-unlinked']) assert.ok(mapTools.includes(there), there);
 
-  // a click that would fold on a diagram of an element does nothing: there is nothing to fold
-  run(sandbox, "currentPerspective = 'elements';");
   const click = (action, attrs) => {
     const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
     sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
   };
+  // on a diagram of an element the button works, and the choice is in the URL and in a view kept from it
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview';");
+  click('toggle-hide-unlinked');
+  assert.equal(run(sandbox, 'diagramHideUnlinked'), true);
+  assert.match(sandbox.renderDiagramCanvasHtml(record), /data-action="toggle-hide-unlinked" aria-pressed="true"/);
+  assert.match(sandbox.currentRouteHash(), /hide-unlinked=1/);
+  assert.equal(sandbox.currentViewDefinition().properties['hide-unlinked'], true);
+  run(sandbox, "location.hash = '#/elements?ref=shop.web.api&tab=overview'; applyDiagramParamsFromHash();");
+  assert.equal(run(sandbox, 'diagramHideUnlinked'), false, 'a link without it shows every box');
+  run(sandbox, "location.hash = '#/elements?ref=shop.web.api&tab=overview&hide-unlinked=1'; applyDiagramParamsFromHash();");
+  assert.equal(run(sandbox, 'diagramHideUnlinked'), true);
+  run(sandbox, 'diagramHideUnlinked = false');
+  assert.ok(!('hide-unlinked' in sandbox.currentViewDefinition().properties), 'off is the default: not remembered');
+
+  // a click on the details page does nothing: there is no diagram to change
+  run(sandbox, "elementTab = 'details';");
   click('toggle-hide-unlinked');
   assert.equal(run(sandbox, 'diagramHideUnlinked'), false);
   const out = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api', {}).input);
