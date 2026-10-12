@@ -1161,7 +1161,7 @@ test('renaming or deleting an element: the views and the steps that point at it 
   assert.match(bar, /Step 1 cannot be shown/);
   assert.doesNotMatch(bar, /data-action="story-next" disabled/);
   assert.doesNotMatch(bar, /Back to this step/, 'nothing to go back to');
-  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /story-step broken/);
+  assert.match(sandbox.renderLibraryPerspectiveHtml().center, /story-step broken/);
   sandbox.goToStoryStep(story.id, 1);
   assert.equal(ev(sandbox, 'currentPerspective'), 'map', 'the other step is still drawn');
   same(ev(sandbox, 'mapPinned'), ['mailer'], 'what is gone is not pinned any more');
@@ -1186,12 +1186,55 @@ test('a technology view is kept with its layer, and the Stories page offers the 
   assert.equal(state.selection.key, 'prod.cluster');
   assert.equal(state.selection.layer, 'technology');
 
-  ev(sandbox, "currentPerspective = 'stories'");
-  const page = sandbox.renderStoriesPerspectiveHtml();
+  ev(sandbox, "currentPerspective = 'library'");
+  const page = sandbox.renderLibraryPerspectiveHtml();
   assert.match(page.left, /data-action="select-story"/);
-  assert.match(page.center, /Saved views/);
-  assert.match(page.center, /data-action="saved-view-open"/);
-  assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="stories"/);
+  assert.match(page.left, /class="tree-branch-header static"/, 'the heading of the list is the one of the Elements tree');
+  assert.doesNotMatch(page.center, /Saved views/, 'the views are a side of their own, not a list under the story');
+  assert.match(page.center, /data-action="library-tab" data-tab="views" aria-pressed="false"/);
+  assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="library"[^]*Library/);
+  assert.doesNotMatch(sandbox.renderPerspectiveTabsHtml(), /data-perspective="stories"/);
+});
+
+test('the Library has a Stories side and a Views side that lead to one another, and each has its own URL', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  storySandbox(sandbox, ['Tour', 'Run view']);
+  state.selection = { kind: 'element', key: 'prod.cluster', layer: 'technology', mode: 'view' };
+  ev(sandbox, "currentPerspective = 'elements'; elementTab = 'deep'");
+  sandbox.addCurrentViewToStory();
+  sandbox.nameCurrentView();
+  const story = sandbox.storiesList()[0];
+  const viewId = sandbox.savedViews()[0].id;
+  sandbox.addStoryStep(story.id, viewId); // a second step, on the named view
+
+  // Stories side: the step names its view with a link; the views are not listed under the story
+  ev(sandbox, "currentPerspective = 'library'; libraryTab = 'stories'; selectedStoryId = " + JSON.stringify(story.id));
+  let page = sandbox.renderLibraryPerspectiveHtml();
+  assert.match(page.center, new RegExp('data-action="library-go-view" data-view="' + viewId + '"'));
+  assert.equal(sandbox.currentRouteHash().split('?')[0], '/library/stories');
+  assert.match(sandbox.currentRouteHash(), /story=/);
+
+  // the link opens the Views side on that view, which says which steps show it
+  sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (a) => ({ 'data-action': 'library-go-view', 'data-view': viewId })[a], closest: () => null }) } });
+  assert.equal(ev(sandbox, 'libraryTab'), 'views');
+  page = sandbox.renderLibraryPerspectiveHtml();
+  assert.match(page.left, /data-action="select-view"/);
+  assert.match(page.center, /Shown in/);
+  assert.match(page.center, /data-action="library-go-story" data-story="tour" data-step="1"/);
+  assert.match(page.center, /Open on diagram/);
+  assert.equal(sandbox.currentRouteHash().split('?')[0], '/library/views');
+  assert.match(sandbox.currentRouteHash(), new RegExp('view=' + viewId));
+
+  // the routes: the old "#/stories" opens the Library's Stories side, "#/library/views" the Views side
+  ev(sandbox, "location.hash = '#/stories?story=tour'");
+  assert.equal(sandbox.perspectiveIdFromHash(), 'library');
+  assert.equal(sandbox.libraryTabFromHash(), 'stories');
+  ev(sandbox, "location.hash = '#/library/views?view=" + viewId + "'");
+  assert.equal(sandbox.perspectiveIdFromHash(), 'library');
+  assert.equal(sandbox.libraryTabFromHash(), 'views');
+  sandbox.applyDiagramParamsFromHash();
+  assert.equal(ev(sandbox, 'selectedViewId'), viewId);
+  assert.ok(state.workspace);
 });
 
 test('views and stories that older workspaces keep in workspace.yaml are read and edited there, and "Move to manifests" takes them out', async () => {
@@ -1204,7 +1247,7 @@ test('views and stories that older workspaces keep in workspace.yaml are read an
   assert.equal(sandbox.storiesList().length, 1);
   assert.equal(sandbox.savedViews().length, 1);
   assert.equal(sandbox.stepProblem(sandbox.storiesList()[0].steps[0]), null);
-  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /1 view and 1 story are still in workspace\.yaml/);
+  assert.match(sandbox.renderLibraryPerspectiveHtml().center, /1 view and 1 story are still in workspace\.yaml/);
 
   // edited where they are: workspace.yaml is what is written
   sandbox.updateStoryField({ value: 'changed', getAttribute: (a) => ({ 'data-story': 'old_story', 'data-story-field': 'step-text', 'data-step': '0' })[a] });
@@ -1215,7 +1258,7 @@ test('views and stories that older workspaces keep in workspace.yaml are read an
   assert.ok(!('views' in state.workspace.topLevel) && !('stories' in state.workspace.topLevel));
   same(dirtyPaths(state), ['manifests/story.old_story.yaml', 'manifests/view.old_view.yaml']);
   assert.equal(sandbox.storiesList()[0].steps[0].text, 'changed', 'what was typed comes along');
-  assert.doesNotMatch(sandbox.renderStoriesPerspectiveHtml().center, /still in workspace\.yaml/);
+  assert.doesNotMatch(sandbox.renderLibraryPerspectiveHtml().center, /still in workspace\.yaml/);
 
   await sandbox.saveAllChanges();
   assert.equal(ev(sandbox, 'saveStatus').state, 'success');
@@ -1226,7 +1269,7 @@ test('views and stories that older workspaces keep in workspace.yaml are read an
   await again.loadWorkspace(mem.handle);
   assert.equal(again.storiesList().length, 1);
   assert.equal(again.savedViews()[0].id, 'old_view');
-  assert.doesNotMatch(again.renderStoriesPerspectiveHtml().center, /still in workspace\.yaml/);
+  assert.doesNotMatch(again.renderLibraryPerspectiveHtml().center, /still in workspace\.yaml/);
 });
 
 test('a view or a story manifest is a file like the others: listed, edited as text, never an element, never an error', async () => {
@@ -1357,7 +1400,7 @@ test('the Stories page opens on a story, in the order of their names; a view of 
   const labels = sandbox.storiesSorted().map((story) => story.name);
   same(labels, ['Alpha story', 'Zeta story']);
   ev(sandbox, 'selectedStoryId = null');
-  const page = sandbox.renderStoriesPerspectiveHtml();
+  const page = sandbox.renderLibraryPerspectiveHtml();
   assert.equal(ev(sandbox, 'selectedStoryId'), 'alpha_story', 'a story is open when there is one');
   assert.match(page.center, /element-header-subject">Alpha story/, 'its name is in the header');
   assert.ok(page.left.indexOf('Alpha story') < page.left.indexOf('Zeta story'));
@@ -1367,7 +1410,7 @@ test('the Stories page opens on a story, in the order of their names; a view of 
 
   // a step that carries its own view says so, and can keep it as a named view
   const story = sandbox.findStory('alpha_story');
-  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /Own view — only in this step/);
+  assert.match(sandbox.renderLibraryPerspectiveHtml().center, /Own view — only in this step/);
   sandbox.keepStepAsNamedView('alpha_story', 0);
   sandbox.submitAppDialog({ text: 'Named api' });
   assert.equal(story.steps[0].view, 'named_api');
@@ -1379,7 +1422,7 @@ test('the Stories page opens on a story, in the order of their names; a view of 
   assert.match(sandbox.stepProblem(story.steps[0]), /does not exist/);
   state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
   sandbox.nameCurrentView(); // the answer left: Catalog
-  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /data-story-repair[^]*Choose another view…[^]*Catalog/);
+  assert.match(sandbox.renderLibraryPerspectiveHtml().center, /data-story-repair[^]*Choose another view…[^]*Catalog/);
   sandbox.handleAppInput({ target: { id: 'x', matches: (s) => s === '[data-story-repair]', value: 'catalog', getAttribute: (a) => ({ 'data-story': 'alpha_story', 'data-step': '0' })[a], closest: () => null } });
   assert.equal(story.steps[0].view, 'catalog');
   assert.equal(sandbox.stepProblem(story.steps[0]), null);
