@@ -131,7 +131,6 @@
 
   .nav-section { border-bottom: 1px solid var(--border); padding: 0.4rem 0; }
   .nav-section:last-child { border-bottom: none; }
-  .nav-section-title { padding: 0.3rem 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
   .nav-row { padding: 0.35rem 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; }
   .nav-row:focus-visible, .tree-branch-title:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .nav-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -143,6 +142,8 @@
   .modified-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-modified); background: var(--modified); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
 
   .tree-branch-header { padding: 0.35rem 0.5rem 0.35rem 1rem; cursor: pointer; font-weight: 600; user-select: none; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .tree-branch-header.static { cursor: default; }
+  .tree-branch-header.static:hover { background: none; }
   .tree-branch-header:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
   .tree-branch-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tree-branch-add-btn { padding: 0.1rem 0.5rem !important; font-size: 0.75rem; flex-shrink: 0; }
@@ -235,7 +236,6 @@
   .nav-tools { display: inline-flex; gap: 0.1rem; }
   .tree-branch-actions { display: inline-flex; align-items: center; gap: 0.15rem; flex-shrink: 0; }
   .tree-branch-actions .map-scope-btn { width: 1.4rem; height: 1.4rem; }
-  .nav-title-with-tools { display: flex; align-items: center; justify-content: space-between; }
   .map-scope-row.off-map .tree-node-label, .map-scope-row.off-map .tree-node-kind { opacity: 0.45; }
   .map-scope-row .tree-node-kind { font-size: 0.6rem; padding: 0 0.2rem; }
   .map-scope-row .tree-node-label { flex: 1 1 auto; min-width: 0; }
@@ -294,7 +294,6 @@
   .story-body { max-width: 56rem; } /* the header runs the whole width of the center; what is under it is kept to a readable measure */
   .story-body h3 { margin: 1.5rem 0 0.5rem; font-size: 1rem; }
   .story-intro { margin: 1rem 0; }
-  .story-nav-new { padding: 0.25rem 1rem 0.5rem; }
   .story-step.current { border-left: 3px solid var(--accent); padding-left: 0.5rem; }
   .story-current-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-accent); background: var(--accent); border-radius: 3px; padding: 0.05rem 0.35rem; }
   .story-add { align-items: center; flex-wrap: wrap; }
@@ -322,7 +321,6 @@
   .app-dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
   .story-legacy { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.75rem 0; padding: 0.5rem 0.75rem; border: 1px solid var(--modified); border-radius: 6px; }
   .story-count { color: var(--muted); font-size: 0.8rem; flex-shrink: 0; margin-left: auto; padding-left: 0.5rem; }
-  .story-nav-new { padding: 0.5rem 1rem; }
   .story-field { display: grid; grid-template-columns: 5rem 1fr; gap: 0.5rem; align-items: start; margin: 0.6rem 0; }
   .story-field > span { color: var(--muted); padding-top: 0.35rem; }
   .story-field input, .story-field textarea, .story-step textarea { width: 100%; box-sizing: border-box; }
@@ -331,6 +329,12 @@
   .story-step::marker { color: var(--muted); font-weight: 600; }
   .story-step-head, .story-view-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.3rem; }
   .story-step-view, .story-view-name { font-weight: 600; }
+  .link-button { background: none !important; border: 0 !important; padding: 0 !important; color: var(--accent); cursor: pointer; text-decoration: underline; font-family: inherit; font-size: inherit; }
+  .view-facts { display: grid; grid-template-columns: 7rem 1fr; gap: 0.35rem 0.75rem; margin: 1rem 0; }
+  .view-facts dt { color: var(--muted); }
+  .view-facts dd { margin: 0; overflow-wrap: anywhere; }
+  .view-uses { list-style: none; padding: 0; margin: 0; }
+  .view-uses li { padding: 0.2rem 0; }
   .story-step-tools { display: inline-flex; gap: 0.3rem; margin-left: auto; }
   .story-step-tools button { padding: 0.15rem 0.6rem !important; font-size: 0.8rem; }
   .story-step.broken .story-step-view, .story-view-row.broken .story-view-name { color: var(--danger); }
@@ -2155,6 +2159,8 @@ function resetUiState() {
   removedStep = null;
   activeStory = null;
   selectedStoryId = null;
+  selectedViewId = null;
+  libraryTab = 'stories';
   storyNotice = null;
   diagramFacet = null;
   diagramMaximized = false;
@@ -2264,7 +2270,7 @@ let treeExpandedEnvironments = true;
 const PERSPECTIVES = {
   map: { label: 'Map' },
   elements: { label: 'Elements' },
-  stories: { label: 'Stories' },
+  library: { label: 'Library' },
   files: { label: 'Files' },
   settings: { label: 'Settings' }
 };
@@ -2273,10 +2279,16 @@ let currentPerspective = DEFAULT_PERSPECTIVE;
 
 /** Parse `location.hash` ("#/diagram?ref=...") into a known perspective id, defaulting for an empty/unrecognized hash. */
 function perspectiveIdFromHash() {
-  const id = location.hash.split('?')[0].replace(/^#\/?/, '');
+  const id = location.hash.split('?')[0].replace(/^#\/?/, '').split('/')[0];
   // the Diagram perspective is gone: its links open the Elements perspective on the matching tab (see applyDiagramParamsFromHash)
   if (id === 'diagram') return 'elements';
+  if (id === 'stories') return 'library'; // the Stories perspective became the Library: its old links still open
   return Object.prototype.hasOwnProperty.call(PERSPECTIVES, id) ? id : DEFAULT_PERSPECTIVE;
+}
+
+/** The Library has two sides, Stories and Views: "#/library/views" says the second; "#/stories" (the old link) and anything else, the first. */
+function libraryTabFromHash() {
+  return location.hash.split('?')[0].replace(/^#\/?/, '').split('/')[1] === 'views' ? 'views' : 'stories';
 }
 
 /** The hash's `ref=` query param (an element reference or a manifest file's relPath), or null. */
@@ -2297,12 +2309,15 @@ function refFromHash() {
  */
 function applyDiagramParamsFromHash() {
   const id = perspectiveIdFromHash();
-  if (id !== 'elements' && id !== 'map' && id !== 'stories') return;
+  if (id !== 'elements' && id !== 'map' && id !== 'library') return;
   const queryIdx = location.hash.indexOf('?');
   const params = new URLSearchParams(queryIdx === -1 ? '' : location.hash.slice(queryIdx + 1));
   const storyParam = params.get('story');
-  if (id === 'stories') {
+  if (id === 'library') {
+    libraryTab = libraryTabFromHash();
     selectedStoryId = storyParam && findStory(storyParam) ? storyParam : null;
+    const viewParam = params.get('view');
+    selectedViewId = viewParam && findSavedView(viewParam) ? viewParam : null;
     return;
   }
   // the story being walked through travels with the diagram it is showing
@@ -2323,6 +2338,7 @@ function applyDiagramParamsFromHash() {
   for (const name of DIAGRAM_SHOW_NAMES) shown[name] = params.get(name) === '1' ? true : params.get(name) === '0' ? false : null;
   setDiagramShow(shown);
   // Fit or Center, as the link says; a zoom of the user's own is left as it is
+  diagramHideUnlinked = params.get('hide-unlinked') === '1';
   if (params.get('frame') === 'fit') diagramScale = 'fit';
   else if (diagramScale === 'fit') diagramScale = 'auto';
   const facet = params.get('facet');
@@ -2369,10 +2385,10 @@ function diagramFramingChanged() {
   if (AppState.workspace && (currentPerspective === 'elements' || currentPerspective === 'map')) syncHashFromState();
 }
 
-/** The texts the diagram draws otherwise than by default, for the URL. */
+/** What the diagram shows otherwise than by default (its texts, the boxes no link reaches), for the URL. */
 function pushShowParams(params, isMap) {
   const overrides = diagramShowOverrides(isMap);
-  for (const name of DIAGRAM_SHOW_NAMES) if (name in overrides) params.push(name + '=' + (overrides[name] ? '1' : '0'));
+  for (const name of DIAGRAM_SHOW_NAMES) if (name in overrides) params.push(name + '=' + (overrides[name] ? '1' : '0'));  if (diagramHideUnlinked) params.push('hide-unlinked=1');
 }
 
 /** The "#/perspective?ref=..." hash for the current perspective + selection — what the URL should read right now (UX review follow-up: the URL mirrors what's on screen). */
@@ -2396,11 +2412,14 @@ function currentRouteHash() {
     pushShowParams(params, true);
     pushFrameParam(params);
   }
-  if (currentPerspective === 'stories' && selectedStoryId) params.push('story=' + encodeURIComponent(selectedStoryId));
+  if (currentPerspective === 'library') {
+    if (libraryTab === 'stories' && selectedStoryId) params.push('story=' + encodeURIComponent(selectedStoryId));
+    if (libraryTab === 'views' && selectedViewId) params.push('view=' + encodeURIComponent(selectedViewId));
+  }
   if ((currentPerspective === 'elements' || currentPerspective === 'map') && activeStory) {
     params.push('story=' + encodeURIComponent(activeStory.id), 'step=' + activeStory.step);
   }
-  return '/' + currentPerspective + (params.length ? '?' + params.join('&') : '');
+  return '/' + currentPerspective + (currentPerspective === 'library' ? '/' + libraryTab : '') + (params.length ? '?' + params.join('&') : '');
 }
 
 /**
@@ -4190,6 +4209,15 @@ function renderTreeNodeHtml(record, level) {
   return html;
 }
 
+/**
+ * The heading of a list in the left panel that does not fold (the Map, Files, Stories, Views): the look of the headings of
+ * the Elements tree — title on the left, its tools on the right — so that every perspective's panel reads the same.
+ */
+function renderNavHeaderHtml(title, actionsHtml) {
+  return '<div class="tree-branch-header static"><span class="tree-branch-title">' + escapeHtml(title) + '</span>' +
+    (actionsHtml ? '<span class="tree-branch-actions">' + actionsHtml + '</span>' : '') + '</div>';
+}
+
 function renderTreeBranchHtml(branchKey, title, category, elements, isExpanded, showAddButton) {
   let html = '<div class="nav-section">';
   html += '<div class="tree-branch-header" data-action="toggle-branch" data-branch="' + escapeHtml(branchKey) + '">' +
@@ -4263,7 +4291,7 @@ function referencesWithChildren(layer) {
 /** The manifest files list, no wrapper — the Files perspective's left panel. */
 function renderFilesNavHtml() {
   let html = '<div class="nav-section">';
-  html += '<div class="nav-section-title">Files</div>';
+  html += renderNavHeaderHtml('Files');
   for (const mf of AppState.manifestFiles) {
     const active = (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) ? ' active' : '';
     const errorClass = mf.error ? ' has-error' : '';
@@ -6882,9 +6910,9 @@ function renderDiagramCanvasHtml(record, overlayHtml) {
       // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
       (record ? '' : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
           '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
-          '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>' +
-        '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + diagramHideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
-        '<span class="diagram-tools-sep" aria-hidden="true"></span>') +
+          '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>') +
+      '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + diagramHideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
+      '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
       renderDiagramShowGroupHtml(!record) +
       '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
       '<span class="button-group" role="group" aria-label="Zoom">' +
@@ -7032,7 +7060,7 @@ function mountDiagramIfNeeded() {
   const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, opened: mapState.opened, pinned: mapState.pinned } : { facet });
   if (isMap) input.hidden = mapState.hidden;
   const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].join('|');
-  const key = JSON.stringify(input) + '|' + (isMap && diagramHideUnlinked) + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint();
+  const key = JSON.stringify(input) + '|' + diagramHideUnlinked + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint();
   if (diagramCache && diagramCache.key === key) {
     showDiagramScene(Object.assign({}, diagramCache.scene));
     return;
@@ -7053,7 +7081,7 @@ function mountDiagramIfNeeded() {
       let drawn = { items: result.items.concat(ghosts.items), links: result.links.concat(ghosts.links) };
       let shownResult = result;
       let hiddenCount = 0;
-      if (isMap && diagramHideUnlinked) {
+      if (diagramHideUnlinked) {
         const kept = hideUnlinkedItems(drawn.items, drawn.links, isMap ? mapState.pinned : reference);
         hiddenCount = kept.hidden;
         drawn = { items: kept.items, links: kept.links };
@@ -7142,7 +7170,7 @@ function renderMapScopeHtml() {
   // one tab stop for the whole tree: the row the user was on, or the first one
   resolveNavActive(visible);
   navTabStopGiven = false;
-  let html = '<div class="nav-section map-scope"><div class="nav-section-title nav-title-with-tools">Applications' + renderNavToolsHtml('application') + '</div>' +
+  let html = '<div class="nav-section map-scope">' + renderNavHeaderHtml('Applications', renderNavToolsHtml('application')) +
              '<div class="map-scope-hint" id="map-scope-hint">Pin (P) keeps only what touches an element. The eye (H) leaves it out. Greyed rows are not on the map.</div>';
   html += roots.length
     ? '<div role="tree" aria-label="Application elements of the map" aria-describedby="map-scope-hint">' + sortedForNav(roots).map((r) => renderMapScopeNodeHtml(r, 1)).join('') + '</div>'
@@ -7369,6 +7397,8 @@ function renderSettingsPerspectiveHtml() {
 let activeStory = null;
 /** The story the Stories perspective shows, kept in the URL (`story=`). */
 let selectedStoryId = null;
+let selectedViewId = null;
+let libraryTab = 'stories'; // the Library shows 'stories' or 'views'
 /** A line the Stories perspective says once (a step that cannot be shown, a list the editor leaves alone). */
 let storyNotice = null;
 
@@ -7509,7 +7539,7 @@ function currentViewDefinition() {
   if (diagramTabShown()) {
     const sel = AppState.selection;
     const record = findElementRecord(sel.key, sel.layer);
-    return canonicalViewDefinition({ viewpoint: effectiveDiagramViewpoint(record), layer: layerOfReference(sel.key, sel.layer), properties: Object.assign({ element: sel.key, facet: facetName }, diagramShowOverrides(false)) });
+    return canonicalViewDefinition({ viewpoint: effectiveDiagramViewpoint(record), layer: layerOfReference(sel.key, sel.layer), properties: Object.assign({ element: sel.key, facet: facetName, 'hide-unlinked': diagramHideUnlinked }, diagramShowOverrides(false)) });
   }
   return null;
 }
@@ -7561,12 +7591,12 @@ function applySavedView(view) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   diagramFacet = typeof properties.facet === 'string' && AppState.workspace.settings.facets.customs.some((facet) => facet.name === properties.facet) ? properties.facet : null;
   setDiagramShow(properties);
+  diagramHideUnlinked = properties['hide-unlinked'] === true;
   if (view.viewpoint === 'map') {
     const known = (list) => stringList(list).filter((reference) => AppState.index.application.has(reference));
     mapPinned = known(properties.pinned);
     mapHidden = known(properties.hidden);
     mapOpened = new Set(known(properties.opened));
-    diagramHideUnlinked = properties['hide-unlinked'] === true;
     mapPinned.forEach(expandParentsOf);
     mapSelectionCheck = true;
     currentPerspective = 'map';
@@ -8138,8 +8168,7 @@ function renderStoryButtonsHtml() {
 
 function renderStoriesNavHtml() {
   const stories = storiesSorted();
-  let html = '<div class="nav-section"><div class="nav-section-title">Stories</div>' +
-    '<div class="story-nav-new"><button type="button" data-action="story-new">New story…</button></div>';
+  let html = '<div class="nav-section">' + renderNavHeaderHtml('Stories', '<button type="button" class="tree-branch-add-btn" data-action="story-new" title="Create a story" aria-label="New story">+ Add</button>');
   for (const story of stories) {
     const active = story.id === selectedStoryId ? ' active' : '';
     const count = storySteps(story).length;
@@ -8149,7 +8178,7 @@ function renderStoriesNavHtml() {
       (entryIsModified(story) ? '<span class="modified-badge" title="Changed, not saved yet">modified</span>' : '') +
       '<span class="story-count">' + (walked ? 'step ' + (activeStory.step + 1) + ' of ' + count : count + (count === 1 ? ' step' : ' steps')) + '</span></div>';
   }
-  if (!stories.length) html += '<div class="tree-empty">No story yet.</div>';
+  if (!stories.length) html += '<div class="tree-empty">No story yet — use "+ Add" above to create one.</div>';
   return html + '</div>';
 }
 
@@ -8163,7 +8192,8 @@ function renderStoryStepHtml(story, step, index, count) {
   const others = missingNamed ? savedViews() : [];
   return '<li class="story-step' + (problem ? ' broken' : '') + (current ? ' current' : '') + '"' + (current ? ' aria-current="step"' : '') + '>' +
     '<div class="story-step-head">' +
-      '<span class="story-step-view">' + (view ? escapeHtml(viewLabel(view)) : '<em>Missing view</em>') + '</span>' +
+      (view && step.view && !problem ? '<button type="button" class="link-button story-step-view" data-action="library-go-view" data-view="' + escapeHtml(step.view) + '" title="See this view in the Library, and the other steps that use it">' + escapeHtml(viewLabel(view)) + '</button>'
+        : '<span class="story-step-view">' + (view ? escapeHtml(viewLabel(view)) : '<em>Missing view</em>') + '</span>') +
       (current ? '<span class="story-current-badge">Showing now</span>' : '') +
       (view && !step.view ? '<span class="story-count">Own view — only in this step</span>' : '') +
       '<span class="story-step-tools">' +
@@ -8204,28 +8234,61 @@ function renderStoryEditorHtml(story) {
   return html + '</section>';
 }
 
-function renderSavedViewsHtml() {
+/** Where an entry is kept: its manifest, or workspace.yaml for an older one. */
+function entryFileLabel(entry) {
+  const owner = entryOwners.get(entry);
+  return owner ? owner.relPath : 'workspace.yaml';
+}
+
+/** What a view draws, in words: its definition, then the properties that shape it. */
+function renderViewFactsHtml(view) {
+  const definition = canonicalViewDefinition(view);
+  const value = (v) => Array.isArray(v) ? v.join(', ') : String(v);
+  const properties = Object.keys(definition.properties).filter((key) => definition.properties[key] !== undefined && definition.properties[key] !== '' && !(Array.isArray(definition.properties[key]) && !definition.properties[key].length));
+  const row = (name, content) => '<dt>' + name + '</dt><dd>' + content + '</dd>';
+  return '<dl class="view-facts">' +
+    row('Draws', escapeHtml(describeViewDefinition(view))) +
+    row('Viewpoint', escapeHtml(String(definition.viewpoint))) +
+    row('Layer', escapeHtml(String(definition.layer))) +
+    properties.map((key) => row(escapeHtml(key), escapeHtml(value(definition.properties[key])))).join('') +
+    row('Kept in', '<code>' + escapeHtml(entryFileLabel(view)) + '</code>') +
+  '</dl>';
+}
+
+/** The steps that show a view, each a way into its story. */
+function renderViewUsesHtml(view) {
+  const uses = [];
+  for (const story of storiesSorted()) {
+    storySteps(story).forEach((step, index) => { if (step.view === view.id) uses.push({ story, index }); });
+  }
+  if (!uses.length) return '<p class="muted">No story shows this view yet. Add it to one from Stories, with “Add a saved view as the last step”.</p>';
+  return '<ul class="view-uses">' + uses.map(({ story, index }) =>
+    '<li><button type="button" class="link-button" data-action="library-go-story" data-story="' + escapeHtml(story.id) + '" data-step="' + index + '">' + escapeHtml(storyLabel(story)) + '</button>' +
+    ' <span class="muted">— step ' + (index + 1) + '</span></li>').join('') + '</ul>';
+}
+
+function renderViewDetailHtml(view) {
+  const problem = viewProblem(view);
+  return '<section class="story-editor" aria-label="View">' +
+    (problem ? '<div class="story-step-problem" role="status">' + escapeHtml(problem) + '</div>' : '') +
+    renderViewFactsHtml(view) +
+    '<h3>Shown in</h3>' + renderViewUsesHtml(view) +
+  '</section>';
+}
+
+function renderViewsNavHtml() {
   const views = savedViewsSorted();
-  let html = '<section class="story-views" aria-label="Saved views"><h3>Saved views</h3>';
-  if (!views.length) return html + '<p class="muted">None yet. “Name view…” on a diagram keeps it here, to put in several stories; “Add to story…” puts a diagram in a story without one.</p></section>';
-  html += '<ul class="story-view-list">';
+  let html = '<div class="nav-section">' + renderNavHeaderHtml('Views');
   for (const view of views) {
     const used = storiesUsingView(view.id);
-    const problem = viewProblem(view);
-    const id = escapeHtml(view.id);
-    html += '<li class="story-view-row' + (problem ? ' broken' : '') + '">' +
-      '<span class="story-view-name">' + escapeHtml(viewLabel(view)) + '</span>' +
+    html += '<div class="nav-row story-row' + (view.id === selectedViewId ? ' active' : '') + '" role="button" tabindex="0"' + (view.id === selectedViewId ? ' aria-current="true"' : '') + ' data-action="select-view" data-view="' + escapeHtml(view.id) + '">' +
+      '<span class="file-relpath">' + escapeHtml(viewLabel(view)) + '</span>' +
+      (viewProblem(view) ? '<span class="modified-badge" title="This view cannot be drawn">broken</span>' : '') +
       (entryIsModified(view) ? '<span class="modified-badge" title="Changed, not saved yet">modified</span>' : '') +
-      '<span class="story-count">' + escapeHtml(String(view.viewpoint)) + (used ? ' · in ' + used + (used === 1 ? ' step' : ' steps') : '') + '</span>' +
-      '<span class="story-step-tools">' +
-        (problem ? '' : '<button type="button" data-action="saved-view-open" data-view="' + id + '">Open</button>') +
-        '<button type="button" data-action="saved-view-rename" data-view="' + id + '">Rename</button>' +
-        '<button type="button" data-action="saved-view-delete" data-view="' + id + '">Delete</button>' +
-      '</span>' +
-      (problem ? '<div class="story-step-problem" role="status">' + escapeHtml(problem) + '</div>' : '') +
-    '</li>';
+      '<span class="story-count">' + (used ? used + (used === 1 ? ' step' : ' steps') : 'unused') + '</span></div>';
   }
-  return html + '</ul></section>';
+  if (!views.length) html += '<div class="tree-empty">No view yet.</div>';
+  return html + '</div>';
 }
 
 /** Views and stories that an older workspace keeps in workspace.yaml: said once, with the way to move them out. */
@@ -8239,20 +8302,51 @@ function renderLegacyEntriesNoticeHtml() {
     '<button type="button" data-action="legacy-move" title="Write a manifest file for each, and take them out of workspace.yaml">Move to manifests</button></div>';
 }
 
-/** Stories perspective — the stories on the left, the one picked in the center, and the views they are made of. */
-function renderStoriesPerspectiveHtml() {
-  if (!findStory(selectedStoryId)) selectedStoryId = (storiesSorted()[0] || {}).id || null; // a story is always open when there is one
-  const story = selectedStoryId ? findStory(selectedStoryId) : null;
-  const actions = story
-    ? '<button type="button" data-action="story-play" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Walk through the story on the diagrams, from its first step">Play</button>'
-    : '';
+/** The two sides of the Library, as one group of joined buttons. */
+function renderLibraryTabsHtml() {
+  const tab = (id, label, title) => '<button type="button" data-action="library-tab" data-tab="' + id + '" aria-pressed="' + (id === libraryTab) + '" title="' + title + '">' + label + '</button>';
+  return '<span class="viewpoint-switch"><span class="button-group" role="group" aria-label="Library">' +
+    tab('stories', 'Stories', 'Diagrams in order, with a sentence for each') +
+    tab('views', 'Views', 'The named diagrams that stories are made of') + '</span></span>';
+}
+
+/**
+ * Library perspective — what the workspace keeps to tell about itself: Stories (diagrams in order, with words) and
+ * Views (the named diagrams they are made of). Each side has its list on the left and its page in the center, and the
+ * two lead to one another: a step names its view, a view names the steps that show it.
+ */
+function renderLibraryPerspectiveHtml() {
+  const onViews = libraryTab === 'views';
+  let subject = '';
+  let actions = '';
+  let body;
+  if (onViews) {
+    if (!findSavedView(selectedViewId)) selectedViewId = (savedViewsSorted()[0] || {}).id || null; // a view is always open when there is one
+    const view = selectedViewId ? findSavedView(selectedViewId) : null;
+    if (view) {
+      const id = escapeHtml(view.id);
+      subject = '<span class="element-header-subject">' + escapeHtml(viewLabel(view)) + '</span>';
+      actions = (viewProblem(view) ? '' : '<button type="button" data-action="saved-view-open" data-view="' + id + '" title="Draw this view on the Map or in Elements">Open on diagram</button>') +
+        '<button type="button" data-action="saved-view-rename" data-view="' + id + '">Rename</button>' +
+        '<button type="button" data-action="saved-view-delete" data-view="' + id + '">Delete</button>';
+    }
+    body = view ? renderViewDetailHtml(view)
+      : '<p class="muted story-intro">A view is a diagram kept under a name, to be a step in as many stories as you like. To keep one, open a diagram on the Map or in Elements and press “Name view…” in its header.</p>';
+  } else {
+    if (!findStory(selectedStoryId)) selectedStoryId = (storiesSorted()[0] || {}).id || null; // a story is always open when there is one
+    const story = selectedStoryId ? findStory(selectedStoryId) : null;
+    if (story) {
+      subject = '<span class="element-header-subject">' + escapeHtml(storyLabel(story)) + '</span>';
+      actions = '<button type="button" data-action="story-play" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Walk through the story on the diagrams, from its first step">Play</button>';
+    }
+    body = story ? renderStoryEditorHtml(story)
+      : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. To start, open a diagram on the Map or in Elements and press “Add to story…”, or create an empty story with “New story…”.</p>';
+  }
   return {
-    left: renderLeftPanelWrapperHtml(renderStoriesNavHtml()),
-    center: '<div class="story-view">' + renderElementHeaderHtml('<h2>Stories</h2>' + (story ? '<span class="element-header-subject">' + escapeHtml(storyLabel(story)) + '</span>' : ''), actions) + '<div class="story-body">' +
+    left: renderLeftPanelWrapperHtml(onViews ? renderViewsNavHtml() : renderStoriesNavHtml()),
+    center: '<div class="story-view">' + renderElementHeaderHtml('<h2>Library</h2>' + renderLibraryTabsHtml() + subject, actions) + '<div class="story-body">' +
       (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') +
-      renderLegacyEntriesNoticeHtml() +
-      (story ? renderStoryEditorHtml(story) : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. To start, open a diagram on the Map or in Elements and press “Add to story…”, or create an empty story with “New story…”.</p>') +
-      renderSavedViewsHtml() + '</div></div>',
+      renderLegacyEntriesNoticeHtml() + body + '</div></div>',
     right: null,
     bottom: null
   };
@@ -8261,7 +8355,7 @@ function renderStoriesPerspectiveHtml() {
 /** Dispatch to the active perspective's region content. */
 function renderActivePerspectiveHtml() {
   if (currentPerspective === 'map') return renderMapPerspectiveHtml();
-  if (currentPerspective === 'stories') return renderStoriesPerspectiveHtml();
+  if (currentPerspective === 'library') return renderLibraryPerspectiveHtml();
   if (currentPerspective === 'files') return renderFilesPerspectiveHtml();
   if (currentPerspective === 'settings') return renderSettingsPerspectiveHtml();
   return renderElementsPerspectiveHtml();
@@ -8337,7 +8431,8 @@ async function cancelChanges() {
 const ACTIONS_LEAVING_THE_FORM = new Set([
   'set-perspective', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
   'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
-  'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open'
+  'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
+  'library-tab', 'select-view', 'library-go-story', 'library-go-view'
 ]);
 
 /** Asks before throwing away what was typed in a form and not applied. True when the user accepts (the draft is then gone). */
@@ -8493,7 +8588,7 @@ function handleAppClick(e) {
       if (activeStory) goToStoryStep(activeStory.id, activeStory.step);
       break;
     case 'story-edit':
-      if (activeStory) { selectedStoryId = activeStory.id; storyNotice = null; setPerspective('stories'); }
+      if (activeStory) { selectedStoryId = activeStory.id; storyNotice = null; libraryTab = 'stories'; setPerspective('library'); }
       break;
     case 'story-exit':
       activeStory = null;
@@ -8514,6 +8609,30 @@ function handleAppClick(e) {
     }
     case 'saved-view-open':
       openSavedView(target.getAttribute('data-view'));
+      break;
+    case 'library-tab':
+      libraryTab = target.getAttribute('data-tab') === 'views' ? 'views' : 'stories';
+      storyNotice = null;
+      location.hash = currentRouteHash();
+      pendingFocusSelector = '[data-action="library-tab"][data-tab="' + libraryTab + '"]';
+      render();
+      break;
+    case 'select-view':
+      selectedViewId = target.getAttribute('data-view');
+      storyNotice = null;
+      render();
+      break;
+    case 'library-go-view':
+      libraryTab = 'views';
+      selectedViewId = target.getAttribute('data-view');
+      storyNotice = null;
+      setPerspective('library');
+      break;
+    case 'library-go-story':
+      libraryTab = 'stories';
+      selectedStoryId = target.getAttribute('data-story');
+      storyNotice = null;
+      setPerspective('library');
       break;
     case 'dialog-cancel':
       closeAppDialog();
@@ -8586,7 +8705,8 @@ function handleAppClick(e) {
       break;
     }
     case 'toggle-hide-unlinked':
-      if (!mapIsShown()) break;
+      if (!mapIsShown() && !diagramTabShown()) break;
+      pushDiagramHistory();
       diagramHideUnlinked = !diagramHideUnlinked;
       mapSelectionCheck = true;
       render();
