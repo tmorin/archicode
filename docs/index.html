@@ -553,6 +553,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_composition_2">Composition</a></li>
 <li><a href="#_environment">Environment</a></li>
 <li><a href="#_node">Node</a></li>
+<li><a href="#_using_other_environments">Using other environments</a></li>
 </ul>
 </li>
 <li><a href="#_relationships">Relationships</a></li>
@@ -560,6 +561,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <ul class="sectlevel3">
 <li><a href="#_composition_3">Composition</a></li>
 <li><a href="#_views">Views</a></li>
+<li><a href="#stories">Stories</a></li>
 <li><a href="#_rendering">Rendering</a></li>
 </ul>
 </li>
@@ -571,6 +573,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#editor-open">Opening the editor</a></li>
 <li><a href="#editor-elements">Elements</a></li>
 <li><a href="#editor-map">Map</a></li>
+<li><a href="#editor-texts">The texts of a diagram</a></li>
+<li><a href="#editor-stories">Library: stories and views</a></li>
 <li><a href="#editor-facets">Facets</a></li>
 <li><a href="#editor-keyboard">Keyboard</a></li>
 </ul>
@@ -1090,6 +1094,59 @@ Node *--&gt; "*" Node
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_using_other_environments">Using other environments</h4>
+<div class="paragraph">
+<p>An application rarely lives alone in its environment: the development environment of a platform talks to an identity provider, to a mail relay, to the integration environment of a partner. Those are environments too, each with the nodes that host the applications modeled for them. An environment says which ones it depends on with <code>uses</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">The manifest of an environment that uses another one, and a node of a third one</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">header</span>:
+  <span class="key">kind</span>: <span class="string"><span class="content">archicode.morin.io/environment</span></span>
+  <span class="key">version</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span>
+<span class="key">content</span>:
+  <span class="key">id</span>: <span class="string"><span class="content">dev</span></span>
+  <span class="key">name</span>: <span class="string"><span class="content">Development</span></span>
+  <span class="key">uses</span>:
+    - <span class="string"><span class="content">integration</span></span>
+    - <span class="string"><span class="content">idp.production.openid</span></span>
+  <span class="key">elements</span>:
+    - <span class="string"><span class="content">kind: node</span></span>
+      <span class="key">id</span>: <span class="string"><span class="content">cluster</span></span>
+      <span class="key">applications</span>:
+        - <span class="string"><span class="content">shop.api</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>uses</code> is not a relationship and it draws nothing by itself. It tells where to look for what the applications of the environment depend on:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>When an application deployed in the environment has a relationship towards another application, ArchiCode looks where that other application is deployed. If the environment hosts it, nothing leaves the environment.</p>
+</li>
+<li>
+<p>Otherwise, it is looked for in the environments, or the nodes, listed in <code>uses</code>, and nowhere else. An application deployed in several environments is reached in the ones the environment uses. That is how <code>dev</code> reaches the <code>integration</code> instance of an application, and not the <code>production</code> one.</p>
+</li>
+<li>
+<p>The dependency is then drawn, in the deep view of the technology layer, between the two deployed applications, with the label, the qualifiers and the tags of the relationship of the application. It folds with the nodes: when they are collapsed, the dependencies between them are grouped in one link.</p>
+</li>
+<li>
+<p>The overview and the detailed view of an environment, or of a node, show the same dependencies grouped on the nodes that host the applications: an environment is linked to the environments it uses.</p>
+</li>
+<li>
+<p>The view of an environment shows what it depends on, and the view of a used environment shows who depends on it.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>An entry of <code>uses</code> is the reference of an environment, to use all of it, or of one of its nodes, to use a part of it. It has to exist, or the views are not generated.</p>
+</div>
+<div class="paragraph">
+<p>As the dependencies are derived from the relationships of the applications, a facet that removes some of them removes the dependencies that rest on them. Through a facet, the deep view of an environment also draws the relationships between the applications deployed in it, with their label and qualifiers: a facet that keeps one flow (an authentication, the audit events) shows that flow as it is deployed, on the nodes that host the applications. Without a facet these relationships are not drawn, there would be too many. The overview and the detailed view lift them to the nodes the view is made of. A facet that sets <code>hide-unlinked: true</code> also leaves out, in these views, the elements none of its links goes through, the element the view is about staying; in the editor it is a check box of the facet, in the Settings. The entries of <code>uses</code> can also be selected by a facet, as any other part of the workspace.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_relationships">Relationships</h3>
@@ -1220,6 +1277,62 @@ View o--&gt; "1" Layer
 </div>
 <div class="paragraph">
 <p>By embracing dynamic view generation, leveraging pluggable Viewpoint Services, and facilitating ad-hoc view definitions, ArchiCode equips architects with a toolkit for capturing, communicating, and exploring architectural insights in a dynamic and tailored manner. As we navigate deeper into ArchiCode&#8217;s capabilities, you&#8217;ll uncover the rendering of views and how they enhance your architectural workflow.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="stories">Stories</h4>
+<div class="paragraph">
+<p>A story puts views in order, with a sentence for each, to tell how a part of the architecture works. It does not draw anything on its own: each step shows a view, and the editor draws that view live from the model, so a story stays true as the architecture moves.</p>
+</div>
+<div class="paragraph">
+<p>Stories and views are manifests, like the elements: one file each, in the manifests folders, with the kinds <code>archicode.morin.io/story</code> and <code>archicode.morin.io/view</code>. The editor writes them for you (see <a href="#editor-stories">Library: stories and views</a>), but they are plain YAML:</p>
+</div>
+<div class="listingblock">
+<div class="title">manifests/story.order_flow.yaml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">header</span>:
+  <span class="key">kind</span>: <span class="string"><span class="content">archicode.morin.io/story</span></span>
+  <span class="key">version</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span>
+<span class="key">content</span>:
+  <span class="key">id</span>: <span class="string"><span class="content">order_flow</span></span>
+  <span class="key">name</span>: <span class="string"><span class="content">How an order travels</span></span>
+  <span class="key">description</span>: <span class="string"><span class="content">From the shop to the payment provider.</span></span>
+  <span class="key">steps</span>:
+    - <span class="string"><span class="content">view: shop_overview</span></span>          <span class="comment"># a view that has a name: see below</span>
+      <span class="key">text</span>: <span class="string"><span class="content">The shop receives the order.</span></span>
+    - <span class="string"><span class="content">viewpoint: map</span></span>               <span class="comment"># or a view written right in the step</span>
+      <span class="key">layer</span>: <span class="string"><span class="content">application</span></span>
+      <span class="key">properties</span>:
+        <span class="key">pinned</span>: <span class="string"><span class="content">[shop.payments]</span></span>
+        <span class="key">hidden</span>: <span class="string"><span class="content">[mailer]</span></span>
+        <span class="key">opened</span>: <span class="string"><span class="content">[shop]</span></span>
+        <span class="key">hide-unlinked</span>: <span class="string"><span class="content">true</span></span>
+      <span class="key">text</span>: <span class="string"><span class="content">It hands the payment over.</span></span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">manifests/view.shop_overview.yaml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">header</span>:
+  <span class="key">kind</span>: <span class="string"><span class="content">archicode.morin.io/view</span></span>
+  <span class="key">version</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span>
+<span class="key">content</span>:
+  <span class="key">id</span>: <span class="string"><span class="content">shop_overview</span></span>
+  <span class="key">name</span>: <span class="string"><span class="content">Shop — Overview</span></span>
+  <span class="key">viewpoint</span>: <span class="string"><span class="content">overview</span></span>     <span class="comment"># overview, detailed or deep: drawn by the command line as well</span>
+  <span class="key">layer</span>: <span class="string"><span class="content">application</span></span>
+  <span class="key">properties</span>:
+    <span class="key">element</span>: <span class="string"><span class="content">shop</span></span>
+    <span class="key">facet</span>: <span class="string"><span class="content">flow</span></span>           <span class="comment"># optional: the editor draws the view through that facet</span>
+    <span class="key">descriptions</span>: <span class="string"><span class="content">true</span></span>    <span class="comment"># the texts of the diagram, when they differ from its default (see the editor)</span>
+    <span class="key">wrap</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A step either names a view by its <code>id</code>, or carries one: a <code>viewpoint</code>, a <code>layer</code> and <code>properties</code>, as a view has. A named view can be used by several stories and generated by the command line (its <code>id</code> is what <code>--view-ids</code> takes); a view written in a step is only for that step, and has no file of its own. The text is plain text. A step on a view that is not declared is reported as a warning by the command line, and shown as missing by the editor. The command line ignores the stories, skips the views of the <code>map</code> viewpoint (the editor alone draws it), and generates the views of its own viewpoints as it always did.</p>
+</div>
+<div class="paragraph">
+<p>Workspaces written before stories became manifests keep their views in <code>views:</code> of <code>workspace.yaml</code>, and may have a <code>stories:</code> there too: both are still read. The editor offers to move them to manifests, which keeps <code>workspace.yaml</code> small and free of the rewrites an editor save makes to it.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1379,10 +1492,60 @@ View o--&gt; "1" Layer
 </ul>
 </div>
 <div class="paragraph">
-<p>The pinned and hidden elements are also shown as chips over the map, each removable, with <strong>Clear all</strong> once there are several. In the tree, rows of the elements the map does not draw are greyed. Folding the tree does not change the boxes of the map: use <strong>Fold all</strong> and <strong>Unfold all</strong> in the toolbar of the map, or the buttons of the boxes. <strong>Hide unlinked</strong> leaves out the boxes that no link reaches.</p>
+<p>The pinned and hidden elements are also shown as chips over the map, each removable, with <strong>Clear all</strong> once there are several. In the tree, rows of the elements the map does not draw are greyed. Folding the tree does not change the boxes of the map: use <strong>Fold all</strong> and <strong>Unfold all</strong> in the toolbar of the map, or the buttons of the boxes. <strong>Hide unlinked</strong> leaves out the boxes that no link reaches; it is in the toolbar of the diagrams of Elements too, where the element itself always stays. It is in the URL (<code>hide-unlinked=1</code>) and in a saved view.</p>
 </div>
 <div class="paragraph">
-<p><strong>Center</strong> puts the selected box in the middle at a readable size, <strong>Fit</strong> shows the whole diagram, and <strong>SVG</strong> downloads it.</p>
+<p><strong>Center</strong> puts the selected box in the middle at a readable size (with nothing selected on the Map: the top of the map, centered across), never below 80%, and <strong>Fit</strong> shows the whole diagram, however small. Fit is in the URL (<code>frame=fit</code>) and Center, how a diagram opens, is a URL with no <code>frame</code>, so a link opens the diagram framed as you left it; a zoom or a move of your own is not part of the link. <strong>PNG</strong> and <strong>SVG</strong>, in the header, download the diagram.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-texts">The texts of a diagram</h3>
+<div class="paragraph">
+<p>Four buttons in the toolbar of a diagram, in the group <strong>Show</strong>, choose what the boxes and the links say. A lit button is a text that is drawn:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Labels</strong>: the caption of each link, with its qualifiers in brackets.</p>
+</li>
+<li>
+<p><strong>Qualifiers</strong>: the qualifiers of each element, after its kind, as the command line writes them: <code>[container: rest, public]</code>.</p>
+</li>
+<li>
+<p><strong>Descriptions</strong>: the description of each element that does not contain others, under its kind, up to three lines.</p>
+</li>
+<li>
+<p><strong>Wrap</strong>: long names, qualifiers and descriptions are broken over several lines, and the box gets taller, instead of being cut with an ellipsis. A box that contains others cuts the qualifiers of its header at any rate.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The diagram of an element starts with the labels and the qualifiers, as the command line draws them. The Map starts with none of them, to stay readable. Only a choice that differs from that is remembered: it is in the URL (<code>labels=0</code>, <code>qualifiers=1</code>, <code>descriptions=1</code>, <code>wrap=1</code>), and in a saved view (see <a href="#editor-stories">Library: stories and views</a>), so that a link or a step of a story draws the same texts. The tooltip of a box always has the qualifiers and the whole description, and the SVG that is downloaded is the diagram as it is on screen.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-stories">Library: stories and views</h3>
+<div class="paragraph">
+<p>The <strong>Library</strong> perspective keeps what the workspace says about itself, on two sides: <strong>Stories</strong> (see <a href="#stories">Stories</a>) and <strong>Views</strong>, the named diagrams that the stories are made of. Each side has its list on the left and its page in the center, and they lead to one another: the view of a step is a link to that view, and a view lists the steps that show it. The URL says which side is open (<code><mark>/library/stories</code>, <code></mark>/library/views</code>; the former <code>#/stories</code> still opens the first). A diagram on the Map or in Elements has two buttons in its header:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Name view&#8230;&#8203;</strong> keeps the diagram as a view, in a file of its own (<code>view.&lt;id&gt;.yaml</code>): the element and the viewpoint (Elements), or what is pinned, hidden and open (Map), with the facet, <strong>Hide unlinked</strong> and the texts it draws. It keeps the recipe, not a picture: the view is drawn again from the model each time. A named view can be put in several stories, and generated by the command line.</p>
+</li>
+<li>
+<p><strong>Add to story&#8230;&#8203;</strong> puts the diagram in a story, as a step after the one being told, or at the end. A dialog asks which story (a list to pick from, or the name of a new one: a name that is already a story&#8217;s is that story). The step carries its own view (no extra file), unless the diagram is one that was named: then it points at it.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>While a story is being walked through, a bar over the diagram says where you are, with <strong>Previous</strong> and <strong>Next</strong>, and the words of the step, to read; <strong>Edit text</strong> turns them into a box to type in (it opens by itself right after <strong>Add to story&#8230;&#8203;</strong>, so that you can write as you go). <strong>Back to this step</strong> draws the saved view again when you moved away from it, and <strong>Leave story</strong> closes the bar. A step that cannot be drawn (its element was deleted) says why in the bar, which stays: <strong>Next</strong> and <strong>Previous</strong> still work. The story is in the URL, so a link or Back lands on the same step.</p>
+</div>
+<div class="paragraph">
+<p>On the Stories side, a story is open as soon as there is one, and edited in place: its name, its text, the order of its steps (<strong>Up</strong>, <strong>Down</strong>, <strong>Remove</strong>, which can be undone right away) and the words of each step. The step that is showing on the diagrams is marked. <strong>Play</strong> walks through the story from its first step, and <strong>Show on diagram</strong> draws one step. A step that carries its own view says so, and <strong>Keep as named view</strong> gives it a name and a file; a step whose view was deleted offers to point at another one. Renaming an element updates the views and steps that point at it. On the Views side, a view says what it draws (viewpoint, layer, properties), where it is kept and which steps show it; it can be opened on a diagram, renamed and deleted. A change that is not saved yet is marked <strong>modified</strong>.</p>
+</div>
+<div class="paragraph">
+<p>A story is a file (<code>story.&lt;id&gt;.yaml</code>) in the first manifests folder, and so is each named view. They wait in memory, like the other changes, with a mark on the file, for <strong>Save all changes</strong>, and <strong>Cancel</strong> gives them up: only the files that changed are written. When an older workspace still has views or stories in <code>workspace.yaml</code>, the Library says so, on both sides, with <strong>Move to manifests</strong>. The Map of a technology layer does not exist: to tell about environments, use views of Elements on the environments or the nodes.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3876,7 +4039,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-12 08:51:02 UTC
+Last updated 2026-10-12 18:42:24 UTC
 </div>
 </div>
 </body>
