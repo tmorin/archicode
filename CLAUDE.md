@@ -54,4 +54,4 @@ Conventional Commits, no scope except on release commits: `feat: ...`, `fix: ...
 
 ## Release
 
-Cut via `maven-release-plugin`. Commit messages use a `chore:` prefix, release commits are `chore(release): archicode-X.Y.Z`. Tag pushes trigger publishing the Asciidoctor site (`src/doc`, built to `target/generated-docs`) to GitHub Pages.
+Cut via `maven-release-plugin`. Commit messages use a `chore:` prefix, release commits are `chore(release): archicode-X.Y.Z`. Tag pushes trigger publishing the site to GitHub Pages: the presentation page (`src/site/index.html`) at the root, the Asciidoctor manual (`src/doc`, built to `target/generated-docs`) at `/docs/`, and the editor at `/editor/`.
