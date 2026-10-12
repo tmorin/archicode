@@ -487,6 +487,36 @@ test('saving the form without touching it changes nothing in the manifests', asy
   assert.ok(state.manifestFiles.some((f) => f.dirty), 'the commit itself still marks the file to save');
 });
 
+test('there is one Save, "Save all changes", and it applies the form on screen before writing', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  assert.doesNotMatch(sandbox.renderElementEditionFormHtml('shop.web.api'), /data-action="save-element"/);
+  assert.doesNotMatch(sandbox.renderSettingsViewHtml(), /data-action="save-settings"/);
+  assert.doesNotMatch(sandbox.renderFileViewHtml('manifests/app.shop.yaml'), /data-action="commit-file-edit"/);
+
+  // nothing typed, nothing modified: the button is disabled; typing in a form enables it
+  const disabled = () => /^<button[^>]* disabled/.test(sandbox.renderSaveButtonHtml());
+  assert.equal(disabled(), true);
+  ev(sandbox, 'draftTyped = true');
+  assert.equal(disabled(), false);
+  ev(sandbox, 'draftTyped = false');
+
+  // the form being edited is applied by the click, then written
+  state.selection = { kind: 'element', key: 'shop.web.api', layer: 'application', mode: 'edit' };
+  ev(sandbox, 'draftTyped = true');
+  const form = fakeForm(sandbox, 'shop.web.api', { name: 'The API' });
+  assert.equal(sandbox.flushPendingDraft(), true);
+  form.restore();
+  assert.equal(sandbox.locateContentNode('shop.web.api').node.name, 'The API');
+  assert.ok(sandbox.locateContentNode('shop.web.api').mf.dirty);
+
+  // an invalid form stops the save
+  state.selection = { kind: 'element', key: 'shop.web.api', layer: 'application', mode: 'edit' };
+  ev(sandbox, 'draftTyped = true');
+  const bad = fakeForm(sandbox, 'shop.web.api', { id: '' });
+  assert.equal(sandbox.flushPendingDraft(), false);
+  bad.restore();
+});
+
 test('a relationship without a label is shown without one and saved without one', async () => {
   const { sandbox } = await openFixtureMem();
   const record = sandbox.findElementRecord('shop.web.api');
@@ -870,4 +900,36 @@ test('a facet that hides the elements with no link is read, given to the kernel,
   assert.equal('hideUnlinked' in written[0], false, 'the key of the file, not the one of the model');
   assert.equal('hide-unlinked' in written[1], false, 'nothing written for the default');
   assert.equal(written[0].actions[0]['json-path'].startsWith('$.application'), true);
+});
+
+test('Cancel sits with "Save all changes", is enabled by the same things, and gives every unsaved change up', async () => {
+  const { sandbox } = await openFixtureMem();
+  const group = () => sandbox.renderSaveAllButtonHtml();
+  assert.match(group(), /role="group" aria-label="Changes"><button[^>]* data-action="cancel-changes" disabled[^>]*>Cancel<\/button><button[^>]* data-action="save-all-changes" disabled/);
+
+  // a change in memory enables both
+  const before = JSON.stringify(sandbox.locateContentNode('shop.web.api').node);
+  sandbox.commitElementEdit('shop.web.api', (node) => { node.name = 'Changed'; });
+  assert.doesNotMatch(group(), /disabled/);
+  assert.equal(sandbox.locateContentNode('shop.web.api').node.name, 'Changed');
+
+  // refused: nothing happens
+  let answer = false;
+  const asked = [];
+  sandbox.confirm = (m) => { asked.push(m); return answer; };
+  await sandbox.cancelChanges();
+  assert.equal(asked.length, 1);
+  assert.match(asked[0], /1 modified item/);
+  assert.equal(sandbox.locateContentNode('shop.web.api').node.name, 'Changed');
+
+  // accepted: the folder is read again
+  answer = true;
+  await sandbox.cancelChanges();
+  assert.equal(JSON.stringify(sandbox.locateContentNode('shop.web.api').node), before);
+  assert.equal(sandbox.countUnsavedChanges(), 0);
+  assert.match(group(), /data-action="cancel-changes" disabled/);
+
+  // typed text alone enables it too
+  ev(sandbox, 'draftTyped = true');
+  assert.doesNotMatch(group(), /disabled/);
 });
