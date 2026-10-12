@@ -291,8 +291,8 @@
   .viewpoint-switch button { padding: 0 0.6rem !important; }
   /* buttons joined side by side, one border between two of them, the corners rounded at the ends only */
   /* Stories */
-  .story-view { max-width: 56rem; }
-  .story-view h3 { margin: 1.5rem 0 0.5rem; font-size: 1rem; }
+  .story-body { max-width: 56rem; } /* the header runs the whole width of the center; what is under it is kept to a readable measure */
+  .story-body h3 { margin: 1.5rem 0 0.5rem; font-size: 1rem; }
   .story-intro { margin: 1rem 0; }
   .story-legacy { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.75rem 0; padding: 0.5rem 0.75rem; border: 1px solid var(--modified); border-radius: 6px; }
   .story-count { color: var(--muted); font-size: 0.8rem; flex-shrink: 0; margin-left: auto; padding-left: 0.5rem; }
@@ -2238,7 +2238,7 @@ const PERSPECTIVES = {
   files: { label: 'Files' },
   settings: { label: 'Settings' }
 };
-const DEFAULT_PERSPECTIVE = 'elements';
+const DEFAULT_PERSPECTIVE = 'map';
 let currentPerspective = DEFAULT_PERSPECTIVE;
 
 /** Parse `location.hash` ("#/diagram?ref=...") into a known perspective id, defaulting for an empty/unrecognized hash. */
@@ -7953,11 +7953,11 @@ function renderStoriesPerspectiveHtml() {
     : '';
   return {
     left: renderLeftPanelWrapperHtml(renderStoriesNavHtml()),
-    center: '<div class="story-view">' + renderElementHeaderHtml('<h2>Stories</h2>', actions) +
+    center: '<div class="story-view">' + renderElementHeaderHtml('<h2>Stories</h2>', actions) + '<div class="story-body">' +
       (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') +
       renderLegacyEntriesNoticeHtml() +
       (story ? renderStoryEditorHtml(story) : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. Pick one on the left, or start one with “New story…”.</p>') +
-      renderSavedViewsHtml() + '</div>',
+      renderSavedViewsHtml() + '</div></div>',
     right: null,
     bottom: null
   };

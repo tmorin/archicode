@@ -954,6 +954,7 @@ test('a diagram goes in a story as a step of its own; only a view that was named
   const { sandbox, state } = await openFixtureMem();
   storySandbox(sandbox, ['Order flow', 'Api view', '1', '1']);
   const elementsBefore = state.index.application.size;
+  ev(sandbox, "currentPerspective = 'files'");
   assert.equal(sandbox.currentViewDefinition(), null, 'no diagram on screen, nothing to keep');
 
   showApi(sandbox, state);
