@@ -298,6 +298,41 @@ Within the ArchiCode domain, the concept of a "Node" aligns harmoniously with it
 include::examples/domain_technology/manifests/laptop.yaml[]
 ----
 
+==== Using other environments
+
+An application rarely lives alone in its environment: the development environment of a platform talks to an identity provider, to a mail relay, to the integration environment of a partner. Those are environments too, each with the nodes that host the applications modeled for them. An environment says which ones it depends on with `uses`.
+
+.The manifest of an environment that uses another one, and a node of a third one
+[source,yaml]
+----
+header:
+  kind: archicode.morin.io/environment
+  version: "1"
+content:
+  id: dev
+  name: Development
+  uses:
+    - integration
+    - idp.production.openid
+  elements:
+    - kind: node
+      id: cluster
+      applications:
+        - shop.api
+----
+
+`uses` is not a relationship and it draws nothing by itself. It tells where to look for what the applications of the environment depend on:
+
+- When an application deployed in the environment has a relationship towards another application, ArchiCode looks where that other application is deployed. If the environment hosts it, nothing leaves the environment.
+- Otherwise, it is looked for in the environments, or the nodes, listed in `uses`, and nowhere else. An application deployed in several environments is reached in the ones the environment uses. That is how `dev` reaches the `integration` instance of an application, and not the `production` one.
+- The dependency is then drawn, in the deep view of the technology layer, between the two deployed applications, with the label, the qualifiers and the tags of the relationship of the application. It folds with the nodes: when they are collapsed, the dependencies between them are grouped in one link.
+- The overview and the detailed view of an environment, or of a node, show the same dependencies grouped on the nodes that host the applications: an environment is linked to the environments it uses.
+- The view of an environment shows what it depends on, and the view of a used environment shows who depends on it.
+
+An entry of `uses` is the reference of an environment, to use all of it, or of one of its nodes, to use a part of it. It has to exist, or the views are not generated.
+
+As the dependencies are derived from the relationships of the applications, a facet that removes some of them removes the dependencies that rest on them. Through a facet, the deep view of an environment also draws the relationships between the applications deployed in it, with their label and qualifiers: a facet that keeps one flow (an authentication, the audit events) shows that flow as it is deployed, on the nodes that host the applications. Without a facet these relationships are not drawn, there would be too many. The overview and the detailed view lift them to the nodes the view is made of. A facet that sets `hide-unlinked: true` also leaves out, in these views, the elements none of its links goes through, the element the view is about staying; in the editor it is a check box of the facet, in the Settings. The entries of `uses` can also be selected by a facet, as any other part of the workspace.
+
 === Relationships
 
 // - A Relationship links two Elements of the same Layer.

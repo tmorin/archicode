@@ -41,6 +41,8 @@ Takes the money.
 ]
 }
 }
+pod-b_shop_web_api --> gateway_shop_payments : charges with\n""[HTTPS]""
+pod-a_shop_web_frontend --> pod-b_shop_web_api : calls\n""[REST]""
 prod.cluster.web.pod-a --> prod.cluster.web.pod-b : forwards to\n""[HTTP]""
 prod.cluster.web.pod-b --> psp.gateway : pays through\n""[HTTPS]""
 <style>

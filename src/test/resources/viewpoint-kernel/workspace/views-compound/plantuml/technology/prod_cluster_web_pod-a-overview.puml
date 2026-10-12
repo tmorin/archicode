@@ -27,6 +27,7 @@ rectangle prod.cluster.web.pod-b <<atomic>> <<node>> [
 }
 }
 }
+prod.cluster.web.pod-a --> prod.cluster.web.pod-b : calls\n""[REST]""
 prod.cluster.web.pod-a --> prod.cluster.web.pod-b : forwards to\n""[HTTP]""
 <style>
 .external {

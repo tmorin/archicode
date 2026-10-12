@@ -55,6 +55,7 @@ Takes the money.
 ]
 }
 }
+pod-b_shop_web_api --> gateway_shop_payments : charges with\n""[HTTPS]""
 prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
 prod.cluster.web.pod-a --> prod.cluster.web.pod-b : forwards to\n""[HTTP]""
 prod.cluster.web.pod-b --> prod.cluster.data.svc : ""[gRPC]""

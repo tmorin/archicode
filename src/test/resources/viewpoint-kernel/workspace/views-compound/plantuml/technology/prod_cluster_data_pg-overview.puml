@@ -28,6 +28,7 @@ rectangle prod.cluster.data.svc <<atomic>> <<node>> [
 }
 }
 prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
+prod.cluster.data.svc --> prod.cluster.data.pg : reads and writes\n""[JDBC]""
 <style>
 .external {
 actor {

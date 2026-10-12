@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.application.Relationship;
+import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.resource.workspace.Settings;
@@ -45,9 +46,9 @@ import lombok.val;
  * <p>
  * Input of the kernel: {@code viewpoint}, {@code layer}, {@code focal} (the reference of the view's element),
  * {@code default_synthetic_label} and {@code elements}, one entry per element of the layer with its {@code reference},
- * whether it is a {@code parent}, the {@code applications} it hosts (technology nodes) and its egress
- * {@code relationships}. The deep viewpoint of the technology layer also needs the application layer
- * ({@code app_elements}). See {@code src/main/rust/viewpoint-kernel/src/lib.rs} for the whole contract.
+ * whether it is a {@code parent}, the {@code applications} it hosts (technology nodes), the environments it
+ * {@code uses} (technology environments) and its egress {@code relationships}. The deep viewpoint of the technology layer also needs the application layer
+ * ({@code app_elements}), and {@code application_links} and {@code hide_unlinked} for the workspace of a facet. See {@code src/main/rust/viewpoint-kernel/src/lib.rs} for the whole contract.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -78,6 +79,10 @@ public class KernelViewpointFactory implements ViewpointFactory {
                 new TreeSet<>(Optional.ofNullable(technologyNode.getApplications()).orElseGet(Set::of)).forEach(
                     applications::add
                 );
+            }
+            if (element instanceof Environment environment) {
+                val uses = node.putArray("uses");
+                new TreeSet<>(Optional.ofNullable(environment.getUses()).orElseGet(Set::of)).forEach(uses::add);
             }
             val relationships = node.putArray("relationships");
             for (val relationship : Optional.ofNullable(element.getRelationships()).orElseGet(Set::of)) {
@@ -120,6 +125,11 @@ public class KernelViewpointFactory implements ViewpointFactory {
         input.set("elements", graphOf(mainIndex, objectMapper));
         if (technology) {
             input.set("app_elements", graphOf(workspace.appIndex, objectMapper));
+            // the facets are applied to the workspace before the views are asked for: the kernel is told a view is about a flow
+            if (workspace.isFaceted()) {
+                input.put("application_links", true);
+                input.put("hide_unlinked", workspace.isHideUnlinked());
+            }
         }
 
         val output = objectMapper.readTree(
@@ -228,9 +238,15 @@ public class KernelViewpointFactory implements ViewpointFactory {
 
             val relationships = new LinkedHashSet<Relationship>();
             for (val rel : node.get("relationships")) {
-                // the owner of a secondary link is a deployed application: it is in the application layer
+                // the owner of a relationship that an application declares, in a view of the technology layer, is in
+                // the application layer (it is the case of the whole of a secondary link)
                 relationships.add(
-                    findRelationship(node.get("secondary").asBoolean() ? workspace.appIndex : mainIndex, rel)
+                    findRelationship(
+                        node.get("secondary").asBoolean() || rel.path("application").asBoolean()
+                            ? workspace.appIndex
+                            : mainIndex,
+                        rel
+                    )
                 );
             }
 

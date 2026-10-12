@@ -685,3 +685,189 @@ test('only .yaml and .yml are manifests, as the CLI reads them', async () => {
   assert.ok(!state.index.application.has('upper'));
   assert.ok(!state.index.application.has('old'));
 });
+
+// ---- 5. the environments an environment uses ----
+
+const USES = {
+  'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+  'manifests/env.dev.yaml': ENVIRONMENT('dev', '  uses:\n    - "int"\n    - "int.n1"\n  elements:\n    - kind: "node"\n      id: "n"\n'),
+  'manifests/env.int.yaml': ENVIRONMENT('int', '  elements:\n    - kind: "node"\n      id: "n1"\n    - kind: "node"\n      id: "n2"\n'),
+  'manifests/env.prd.yaml': ENVIRONMENT('prd', '  elements:\n    - kind: "node"\n      id: "n1"\n')
+};
+
+test('what an environment uses is read, and is the kernel input of its environment only', async () => {
+  const { sandbox, state } = await openMem(USES);
+  same(state.index.technology.get('dev').uses, ['int', 'int.n1']);
+  same(state.index.technology.get('int').uses, []);
+  const input = sandbox.buildKernelInput('deep', 'dev', 'technology').input;
+  same(input.elements.find((e) => e.reference === 'dev').uses, ['int', 'int.n1']);
+  same(input.elements.find((e) => e.reference === 'prd').uses, []);
+});
+
+test('a new used environment has to be an environment or a node, not already used, and not inside the environment', async () => {
+  const { sandbox } = await openMem(USES);
+  const check = (value) => sandbox.validateNewUse('dev', value);
+  same(check('  prd '), { valid: true, value: 'prd' });
+  same(check('prd.n1'), { valid: true, value: 'prd.n1' });
+  assert.equal(check('').valid, false);
+  assert.match(check('nowhere').error, /No environment or node/);
+  assert.match(check('int').error, /already used/);
+  assert.match(check('dev').error, /itself/);
+  assert.match(check('dev.n').error, /itself or what it contains/);
+});
+
+test('adding and removing a used environment edits the content of the environment', async () => {
+  const { sandbox, state } = await openMem(USES);
+  sandbox.commitElementEdit('dev', (node) => { node.uses = node.uses.concat(['prd']); });
+  same(state.index.technology.get('dev').uses, ['int', 'int.n1', 'prd']);
+  assert.equal(manifest(state, 'manifests/env.dev.yaml').dirty, true);
+  assert.equal(manifest(state, 'manifests/env.prd.yaml').dirty, false);
+  assert.match(sandbox.renderElementEditionFormHtml('dev'), /data-action="remove-use"[^>]*data-index="2"/);
+  assert.doesNotMatch(sandbox.renderElementEditionFormHtml('int.n1'), /add-use-input/, 'only an environment has a Uses section');
+});
+
+test('renaming an environment or a node rewrites the uses that point to it', async () => {
+  const { sandbox, state } = await openMem(USES);
+  sandbox.commitElementEdit('int', (node) => { node.id = 'integration'; return { renamedTo: { from: 'int', to: 'integration' } }; });
+  same(state.index.technology.get('dev').uses, ['integration', 'integration.n1']);
+  assert.equal(manifest(state, 'manifests/env.dev.yaml').dirty, true);
+  assert.equal(sandbox.parseManifestText(manifest(state, 'manifests/env.dev.yaml').rawText).content.uses[0], 'integration', 'the text to save is regenerated');
+  assert.equal(state.relationshipStats.dangling, 0);
+});
+
+test('deleting an environment or a node takes it off the uses, and says so first', async () => {
+  const { sandbox, state } = await openMem(USES);
+  const impact = sandbox.computeDeleteImpact('int.n1', 'technology');
+  assert.ok(impact.affected.some((a) => a.ownerReference === 'dev' && a.label === 'uses' && a.destination === 'int.n1'));
+  sandbox.commitDeleteElement('int.n1', 'technology', impact.affected);
+  same(state.index.technology.get('dev').uses, ['int']);
+
+  sandbox.commitDeleteElement('int', 'technology', []);
+  same(state.index.technology.get('dev').uses, []);
+  assert.equal('uses' in manifest(state, 'manifests/env.dev.yaml').content, false, 'an empty list is not written');
+});
+
+test('the details of an element link to its parent, its children and, for an environment, what it uses', async () => {
+  const { sandbox } = await openMem(USES);
+  const link = (ref, layer) => new RegExp('data-action="goto-element" data-ref="' + ref + '" data-layer="' + layer + '"');
+
+  const environment = sandbox.renderElementViewHtml('dev');
+  assert.match(environment, /field-label">Parent<\/span><span class="field-value"><span class="muted">none<\/span>/, 'a root has no parent, and says so');
+  assert.match(environment, link('dev.n', 'technology'), 'its child');
+  assert.match(environment, link('int', 'technology'), 'what it uses');
+  assert.match(environment, link('int.n1', 'technology'));
+
+  const node = sandbox.renderElementViewHtml('int.n1');
+  assert.match(node, /field-label">Parent<\/span><span class="field-value"><button[^>]*data-ref="int"[^>]*>int<\/button> <span class="element-kind-badge">environment</);
+  assert.match(node, /field-label">Children<\/span><span class="field-value"><span class="muted">none/, 'a leaf has no children, and says so');
+  assert.doesNotMatch(node, /field-label">Uses/, 'only an environment uses');
+});
+
+test('the details of an element of the application layer link to the application layer', async () => {
+  const { sandbox } = await openFixtureMem();
+  const html = sandbox.renderElementViewHtml('shop.web');
+  assert.match(html, /data-ref="shop" data-layer="application"/, 'the parent, which a manifest attached with header.parent lands on');
+  assert.match(html, /data-ref="shop.web.frontend" data-layer="application"/);
+});
+
+test('the title of the page is the editor, then the folder whose workspace is loaded', async () => {
+  const { sandbox, state } = await openMem(USES);
+  ev(sandbox, 'window.showDirectoryPicker = function () {}; window.indexedDB = {};'); // a browser that can open a folder
+  state.folder.name = 'archi';
+  ev(sandbox, 'render()');
+  assert.equal(ev(sandbox, 'document.title'), 'ArchiCode Editor archi');
+
+  state.workspace = null; // nothing loaded and the browser wants a click first: the landing screen, whatever folder is remembered
+  state.permissionState = 'needs-click';
+  ev(sandbox, 'render()');
+  assert.equal(ev(sandbox, 'document.title'), 'ArchiCode Editor');
+});
+
+test('the details of a node link to the applications it hosts, and only to those', async () => {
+  const { sandbox, state } = await openMem(Object.assign({}, TWO_LAYERS, {
+    'manifests/env.big.yaml': ENVIRONMENT('big', '  elements:\n    - kind: "node"\n      id: "a"\n      applications:\n        - "epr.core"\n      elements:\n        - kind: "node"\n          id: "b"\n          applications:\n            - "nowhere"\n')
+  }));
+  const app = (ref) => new RegExp('data-ref="' + ref + '" data-layer="application"');
+
+  state.selection = { kind: 'element', key: 'big.a', layer: 'technology', mode: 'view' };
+  const node = sandbox.renderElementViewHtml('big.a');
+  assert.match(node, /field-label">Applications/);
+  assert.match(node, app('epr.core'), 'what the node hosts');
+  assert.doesNotMatch(node, /nowhere/, 'not what the nodes inside it host');
+
+  state.selection = { kind: 'element', key: 'big.a.b', layer: 'technology', mode: 'view' };
+  assert.match(sandbox.renderElementViewHtml('big.a.b'), /nowhere<span class="dangling-badge">/, 'an application that does not exist is flagged');
+
+  state.selection = { kind: 'element', key: 'big', layer: 'technology', mode: 'view' };
+  assert.doesNotMatch(sandbox.renderElementViewHtml('big'), /field-label">Applications/, 'an environment hosts nothing itself, the row is not for it');
+
+  state.selection = { kind: 'element', key: 'epr', layer: 'application', mode: 'view' };
+  assert.doesNotMatch(sandbox.renderElementViewHtml('epr'), /field-label">Applications/, 'an application element has none');
+});
+
+test('the details of every element follow the same rules: the same rows in the same order, a reference is always a link and its kind', async () => {
+  const { sandbox } = await openMem(Object.assign({}, TWO_LAYERS, {
+    'manifests/env.big.yaml': ENVIRONMENT('big', '  uses:\n    - "epr"\n    - "gone"\n  elements:\n    - kind: "node"\n      id: "a"\n      applications:\n        - "epr.core"\n        - "nowhere"\n')
+  }));
+  const labels = (html) => [...html.matchAll(/field-label">([A-Za-z]+)/g)].map((m) => m[1]);
+  const base = ['Id', 'Reference', 'Name', 'Description', 'Qualifiers', 'Tags', 'Parent', 'Children'];
+
+  assert.deepEqual(labels(sandbox.renderElementViewHtml('big')), base.concat(['Uses', 'Relationships']));
+  assert.deepEqual(labels(sandbox.renderElementViewHtml('big.a')), base.concat(['Applications', 'Relationships']));
+  assert.deepEqual(labels(sandbox.renderElementViewHtml('epr')), base.concat(['Relationships']));
+  assert.doesNotMatch(sandbox.renderElementViewHtml('big'), /element-quantitative|class="stat"/, 'the counts are in the labels');
+
+  const environment = sandbox.renderElementViewHtml('big');
+  assert.match(environment, /field-label">Children <span class="field-count">1</);
+  assert.match(environment, /field-label">Uses <span class="field-count">2</);
+  assert.match(environment, /data-ref="epr"[^>]*>epr<\/button> <span class="element-kind-badge">environment</, 'a link, then the kind of what it points at');
+  assert.match(environment, /gone<span class="dangling-badge">dangling/, 'a reference that leads nowhere says so');
+
+  const node = sandbox.renderElementViewHtml('big.a');
+  assert.match(node, /data-ref="epr.core" data-layer="application">epr.core<\/button> <span class="element-kind-badge">/);
+  assert.match(node, /nowhere<span class="dangling-badge">dangling/);
+});
+
+test('an element without any relationship has no Overview to open, while Detailed and Deep still have its content to show', async () => {
+  const { sandbox, state } = await openMem(USES);
+  state.selection = { kind: 'element', key: 'prd', layer: 'technology', mode: 'view' };
+  ev(sandbox, "currentPerspective = 'elements'; elementTab = 'details'; diagramFacet = null;");
+  const list = ['details', 'overview', 'detailed', 'deep'].map((tab) => ({ tab, disabled: false, title: '', getAttribute: () => tab }));
+  sandbox.document.querySelector = () => ({ querySelectorAll: () => list });
+  await sandbox.markElementTabs();
+  assert.deepEqual(list.filter((b) => b.disabled).map((b) => b.tab), ['overview']);
+});
+
+test('the navigation sorts its rows by kind (solution, system, container, component...) then by name, wherever the manifests put them', async () => {
+  const { sandbox } = await openMem({
+    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+    'manifests/sol.yaml': SOLUTION('zeta', '  elements:\n    - kind: "system"\n      id: "b"\n      name: "Beta"\n    - kind: "person"\n      id: "p"\n      name: "Pat"\n    - kind: "system"\n      id: "a"\n      name: "alpha"\n    - kind: "system"\n      id: "c"\n'),
+    'manifests/sol2.yaml': SOLUTION('alpha'),
+    'manifests/env.yaml': ENVIRONMENT('e2', '  elements:\n    - kind: "node"\n      id: "n2"\n    - kind: "node"\n      id: "n1"\n')
+  });
+  ev(sandbox, "treeExpandedApplications = true; treeExpandedEnvironments = true;");
+  const rows = (html) => [...html.matchAll(/data-node="([^"]+)"/g)].map((m) => m[1]);
+  const kinds = (ref) => ev(sandbox, 'AppState.index.application.get(' + JSON.stringify(ref) + ').kind');
+  // top level: both solutions by name; then, once zeta is open, its children by kind then name
+  ev(sandbox, "AppState.expanded.add('zeta'); AppState.expanded.add('e2');");
+  const nav = sandbox.renderElementsNavHtml(true);
+  assert.deepEqual(rows(nav), ['alpha', 'zeta', 'zeta.a', 'zeta.b', 'zeta.c', 'zeta.p', 'e2', 'e2.n1', 'e2.n2']);
+  assert.equal(kinds('zeta.p'), 'person');
+});
+
+test('a facet that hides the elements with no link is read, given to the kernel, and written back only when it is on', async () => {
+  const { sandbox, state } = await openMem(Object.assign({}, USES, {
+    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n  facets:\n    customs:\n      - name: "flow"\n        hide-unlinked: true\n        actions:\n          - operator: "REMOVE"\n            json-path: "$.application..relationships[?(@.tags.x != \'y\')]"\n      - name: "plain"\n        actions: []\n'
+  }));
+  const [flow, plain] = state.workspace.settings.facets.customs;
+  assert.equal(flow.hideUnlinked, true);
+  assert.equal(plain.hideUnlinked, false);
+  assert.equal(sandbox.buildKernelInput('overview', 'dev', { facet: flow }).input.facet.hide_unlinked, true);
+  assert.equal(sandbox.buildKernelInput('overview', 'dev', { facet: plain }).input.facet.hide_unlinked, false);
+
+  const written = ev(sandbox, 'JSON.parse(JSON.stringify(serializeManagedSettings(AppState.workspace.settings).facets.customs))');
+  assert.equal(written[0]['hide-unlinked'], true);
+  assert.equal('hideUnlinked' in written[0], false, 'the key of the file, not the one of the model');
+  assert.equal('hide-unlinked' in written[1], false, 'nothing written for the default');
+  assert.equal(written[0].actions[0]['json-path'].startsWith('$.application'), true);
+});
