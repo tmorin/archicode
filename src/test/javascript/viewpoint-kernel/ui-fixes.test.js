@@ -69,7 +69,8 @@ test('the help opens and closes without a redraw: what was typed and not committ
   // a click elsewhere closes it, and the action of that click runs after, with the fields as they are
   const seen = [];
   sandbox.readSettingsDraft = () => { seen.push(run(sandbox, 'helpOpen')); return { valid: false }; };
-  click(sandbox, 'save-settings');
+  run(sandbox, "currentPerspective = 'settings'; draftTyped = true;");
+  click(sandbox, 'save-all-changes');
   assert.equal(run(sandbox, 'helpOpen'), false);
   assert.equal(dom.menu, null);
   assert.equal(dom.expanded, 'false');
@@ -438,4 +439,40 @@ test('a reference that is in both layers has one tab stop, not two', async () =>
   const b = sandbox.renderTreeNodeHtml(state.index.technology.get('customer'), 1);
   assert.match(a, /tabindex="0"/);
   assert.match(b, /tabindex="-1"/);
+});
+
+test('leaving a form with text typed and not saved asks first, and staying keeps everything', async () => {
+  const { sandbox } = await openFixture();
+  const renders = countRenders(sandbox);
+  const asked = [];
+  let answer = false;
+  sandbox.confirm = (message) => { asked.push(message); return answer; };
+  const selection = () => JSON.stringify(run(sandbox, 'AppState.selection'));
+
+  // nothing typed: no question
+  click(sandbox, 'select-element', { 'data-ref': 'customer' });
+  assert.equal(asked.length, 0);
+  const before = selection();
+
+  // typed, refused: nothing moves, the draft is still pending
+  run(sandbox, 'draftTyped = true');
+  click(sandbox, 'select-element', { 'data-ref': 'shop' });
+  click(sandbox, 'set-perspective', { 'data-perspective': 'settings' });
+  assert.equal(asked.length, 2);
+  assert.match(asked[0], /Attention/);
+  assert.match(asked[0], /Save all changes/);
+  assert.equal(selection(), before);
+  assert.equal(run(sandbox, 'draftTyped'), true);
+
+  // an action that keeps the form never asks
+  click(sandbox, 'save-all-changes');
+  assert.equal(asked.length, 2);
+
+  // typed, accepted: it leaves, and the draft is gone
+  answer = true;
+  click(sandbox, 'select-element', { 'data-ref': 'shop' });
+  assert.equal(asked.length, 3);
+  assert.notEqual(selection(), before);
+  assert.equal(run(sandbox, 'draftTyped'), false);
+  assert.ok(renders.n > 0);
 });
