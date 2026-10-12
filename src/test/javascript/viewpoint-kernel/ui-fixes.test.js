@@ -250,7 +250,7 @@ test('closing a folder forgets what the page held about it, and a reload of the 
     del: pendingDeleteConfirmation, draft: rawYamlEditDraft, perspective: currentPerspective })`));
   assert.deepEqual(forgotten, {
     saveStatus: { state: 'idle' }, mapPinned: [], mapHidden: [], opened: null, maximized: false, hide: false, elementTab: 'details', facet: null,
-    cache: null, scene: null, apps: true, nav: null, help: false, del: null, draft: null, perspective: 'elements'
+    cache: null, scene: null, apps: true, nav: null, help: false, del: null, draft: null, perspective: 'map'
   });
   assert.ok(run(sandbox, 'diagramSeq') > seq, 'a layout still running is dropped');
   assert.equal(sandbox.location.hash, '', 'the old ref=, pin= and facet= are not left in the address to be applied to the next folder');
