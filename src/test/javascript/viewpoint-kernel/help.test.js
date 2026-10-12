@@ -44,7 +44,7 @@ test('the help opens from the top panel, shows the manual and the version, and c
   const menu = sandbox.renderHelpMenuHtml();
   assert.match(menu, /role="dialog" aria-label="Help"/);
   assert.match(menu, /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#editor-keyboard" target="_blank" rel="noopener">Keyboard shortcuts</);
-  assert.match(menu, /ArchiCode dev · kernel contract 1/, 'the release this page is, here the file of the repository');
+  assert.match(menu, /ArchiCode dev · kernel contract 2/, 'the release this page is, here the file of the repository');
   assert.match(menu, /Nothing is uploaded/);
   assert.match(menu, /in the folder you picked/, 'opened on its own, the editor says where the files are');
   click(null, true);

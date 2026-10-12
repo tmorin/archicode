@@ -1,0 +1,73 @@
+@startuml shop_payments-overview
+title System - Payment Provider - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
+rectangle shop.payments <<system>> <<external>> <<atomic>> [
+**Payment Provider**
+""[system]""
+
+Takes the money.
+]
+rectangle shop.web <<system>> <<atomic>> [
+**Web Shop**
+""[system]""
+
+What customers see.
+]
+}
+shop.web --> shop.payments : charges with\n""[HTTPS]""
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml

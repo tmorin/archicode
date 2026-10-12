@@ -1,0 +1,119 @@
+@startuml shop-deep
+title Solution - Online Shop - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+person customer <<atomic>> <<person>> [
+**Customer**
+""[person]""
+
+Someone who buys things.
+]
+rectangle mailer <<system>> <<external>> <<atomic>> [
+**Mail Provider**
+""[system]""
+
+Sends the e-mails.
+]
+rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
+rectangle shop.catalog as "**Catalog**\n""[system]""" <<composite>> {
+rectangle shop.catalog.db <<container>> <<PostgreSQL>> <<atomic>> [
+**Catalog Database**
+""[container: PostgreSQL]""
+]
+rectangle shop.catalog.service as "**Catalog Service**\n""[container: Quarkus]""" <<composite>> <<Quarkus>> {
+rectangle shop.catalog.service.indexer <<component>> <<atomic>> [
+**Indexer**
+""[component]""
+]
+rectangle shop.catalog.service.search <<component>> <<atomic>> [
+**Search**
+""[component]""
+]
+}
+}
+rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
+rectangle shop.web.api <<container>> <<atomic>> <<Spring Boot>> [
+**API**
+""[container: Spring Boot]""
+]
+rectangle shop.web.edge as "**Edge**\n""[group]""" <<composite>> {
+rectangle shop.web.edge.gateway <<Envoy>> <<container>> <<atomic>> [
+**Gateway**
+""[container: Envoy]""
+]
+}
+rectangle shop.web.frontend <<Angular>> <<container>> <<atomic>> [
+**Frontend**
+""[container: Angular]""
+]
+rectangle shop.web.session <<Redis>> <<container>> <<atomic>> [
+**Session Store**
+""[container: Redis]""
+]
+}
+}
+customer --> shop.web.edge.gateway : ""[HTTPS]""
+customer --> shop.web.frontend : browses with\n""[HTTPS]""
+shop.catalog.service.indexer --> mailer : reports to
+shop.catalog.service.indexer --> shop.catalog.db : reads\n""[JDBC]""
+shop.catalog.service.search --> shop.catalog.db : reads\n""[JDBC]""
+shop.catalog.service --> shop.catalog.db : reads and writes\n""[JDBC]""
+shop.web.api --> mailer : notifies through\n""[SMTP]""
+shop.web.api --> shop.catalog.service : queries\n""[gRPC]""
+shop.web.api --> shop.web.session
+shop.web.edge.gateway --> shop.web.api : routes to\n""[HTTP]""
+shop.web.frontend --> shop.web.api : calls\n""[REST]""
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml

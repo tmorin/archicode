@@ -1,0 +1,87 @@
+@startuml shop_web-overview
+title System - Web Shop - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+person customer <<atomic>> <<person>> [
+**Customer**
+""[person]""
+
+Someone who buys things.
+]
+rectangle mailer <<system>> <<external>> <<atomic>> [
+**Mail Provider**
+""[system]""
+
+Sends the e-mails.
+]
+rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
+rectangle shop.catalog <<system>> <<atomic>> [
+**Catalog**
+""[system]""
+
+What is for sale.
+]
+rectangle shop.web <<system>> <<atomic>> [
+**Web Shop**
+""[system]""
+
+What customers see.
+]
+}
+customer --> shop.web : uses\n""[HTTPS]""
+shop.web --> mailer : notifies through\n""[SMTP]""
+shop.web --> shop.catalog : queries\n""[gRPC]""
+<style>
+.external {
+actor {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+card {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+database {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+node {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+person {
+BackgroundColor: lightgray
+}
+}
+</style>
+<style>
+.external {
+rectangle {
+BackgroundColor: lightgray
+}
+}
+</style>
+@enduml
