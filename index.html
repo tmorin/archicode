@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.18">
+<meta name="generator" content="Asciidoctor 2.0.23">
 <meta name="author" content="Thibault Morin">
 <title>ArchiCode</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
@@ -141,7 +141,7 @@ p a>code:hover{color:rgba(0,0,0,.9)}
 #content::before{content:none}
 #header>h1:first-child{color:rgba(0,0,0,.85);margin-top:2.25rem;margin-bottom:0}
 #header>h1:first-child+#toc{margin-top:8px;border-top:1px solid #dddddf}
-#header>h1:only-child,body.toc2 #header>h1:nth-last-child(2){border-bottom:1px solid #dddddf;padding-bottom:8px}
+#header>h1:only-child{border-bottom:1px solid #dddddf;padding-bottom:8px}
 #header .details{border-bottom:1px solid #dddddf;line-height:1.45;padding-top:.25em;padding-bottom:.25em;padding-left:.25em;color:rgba(0,0,0,.6);display:flex;flex-flow:row wrap}
 #header .details span:first-child{margin-left:-.125em}
 #header .details span.email a{color:rgba(0,0,0,.85)}
@@ -163,6 +163,7 @@ p a>code:hover{color:rgba(0,0,0,.9)}
 #toctitle{color:#7a2518;font-size:1.2em}
 @media screen and (min-width:768px){#toctitle{font-size:1.375em}
 body.toc2{padding-left:15em;padding-right:0}
+body.toc2 #header>h1:nth-last-child(2){border-bottom:1px solid #dddddf;padding-bottom:8px}
 #toc.toc2{margin-top:0!important;background:#f8f8f7;position:fixed;width:15em;left:0;top:0;border-right:1px solid #e7e7e9;border-top-width:0!important;border-bottom-width:0!important;z-index:1000;padding:1.25em 1em;height:100%;overflow:auto}
 #toc.toc2 #toctitle{margin-top:0;margin-bottom:.8rem;font-size:1.2em}
 #toc.toc2>ul{font-size:.9em;margin-bottom:0}
@@ -209,13 +210,10 @@ table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
 .admonitionblock>table td.content{padding-left:1.125em;padding-right:1.25em;border-left:1px solid #dddddf;color:rgba(0,0,0,.6);word-wrap:anywhere}
 .admonitionblock>table td.content>:last-child>:last-child{margin-bottom:0}
 .exampleblock>.content{border:1px solid #e6e6e6;margin-bottom:1.25em;padding:1.25em;background:#fff;border-radius:4px}
-.exampleblock>.content>:first-child{margin-top:0}
-.exampleblock>.content>:last-child{margin-bottom:0}
 .sidebarblock{border:1px solid #dbdbd6;margin-bottom:1.25em;padding:1.25em;background:#f3f3f2;border-radius:4px}
-.sidebarblock>:first-child{margin-top:0}
-.sidebarblock>:last-child{margin-bottom:0}
 .sidebarblock>.content>.title{color:#7a2518;margin-top:0;text-align:center}
-.exampleblock>.content>:last-child>:last-child,.exampleblock>.content .olist>ol>li:last-child>:last-child,.exampleblock>.content .ulist>ul>li:last-child>:last-child,.exampleblock>.content .qlist>ol>li:last-child>:last-child,.sidebarblock>.content>:last-child>:last-child,.sidebarblock>.content .olist>ol>li:last-child>:last-child,.sidebarblock>.content .ulist>ul>li:last-child>:last-child,.sidebarblock>.content .qlist>ol>li:last-child>:last-child{margin-bottom:0}
+.exampleblock>.content>:first-child,.sidebarblock>.content>:first-child{margin-top:0}
+.exampleblock>.content>:last-child,.exampleblock>.content>:last-child>:last-child,.exampleblock>.content .olist>ol>li:last-child>:last-child,.exampleblock>.content .ulist>ul>li:last-child>:last-child,.exampleblock>.content .qlist>ol>li:last-child>:last-child,.sidebarblock>.content>:last-child,.sidebarblock>.content>:last-child>:last-child,.sidebarblock>.content .olist>ol>li:last-child>:last-child,.sidebarblock>.content .ulist>ul>li:last-child>:last-child,.sidebarblock>.content .qlist>ol>li:last-child>:last-child{margin-bottom:0}
 .literalblock pre,.listingblock>.content>pre{border-radius:4px;overflow-x:auto;padding:1em;font-size:.8125em}
 @media screen and (min-width:768px){.literalblock pre,.listingblock>.content>pre{font-size:.90625em}}
 @media screen and (min-width:1280px){.literalblock pre,.listingblock>.content>pre{font-size:1em}}
@@ -331,7 +329,7 @@ a.image{text-decoration:none;display:inline-block}
 a.image object{pointer-events:none}
 sup.footnote,sup.footnoteref{font-size:.875em;position:static;vertical-align:super}
 sup.footnote a,sup.footnoteref a{text-decoration:none}
-sup.footnote a:active,sup.footnoteref a:active{text-decoration:underline}
+sup.footnote a:active,sup.footnoteref a:active,#footnotes .footnote a:first-of-type:active{text-decoration:underline}
 #footnotes{padding-top:.75em;padding-bottom:.75em;margin-bottom:.625em}
 #footnotes hr{width:20%;min-width:6.25em;margin:-.25em 0 .75em;border-width:1px 0 0}
 #footnotes .footnote{padding:0 .375em 0 .225em;line-height:1.3334;font-size:.875em;margin-left:1.2em;margin-bottom:.2em}
@@ -394,7 +392,7 @@ b.conum *{color:inherit!important}
 dt,th.tableblock,td.content,div.footnote{text-rendering:optimizeLegibility}
 h1,h2,p,td.content,span.alt,summary{letter-spacing:-.01em}
 p strong,td.content strong,div.footnote strong{letter-spacing:-.005em}
-p,blockquote,dt,td.content,span.alt,summary{font-size:1.0625rem}
+p,blockquote,dt,td.content,td.hdlist1,span.alt,summary{font-size:1.0625rem}
 p{margin-bottom:1.25rem}
 .sidebarblock p,.sidebarblock dt,.sidebarblock td.content,p.tableblock{font-size:1em}
 .exampleblock>.content{background:#fffef7;border-color:#e0e0dc;box-shadow:0 1px 4px #e0e0dc}
@@ -540,7 +538,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_features">Features</a></li>
 <li><a href="#_domain">Domain</a>
 <ul class="sectlevel2">
-<li><a href="#_workspace">Workspace</a></li>
+<li><a href="#workspace">Workspace</a></li>
 <li><a href="#_application_layer">Application Layer</a>
 <ul class="sectlevel3">
 <li><a href="#_composition">Composition</a></li>
@@ -558,18 +556,28 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </ul>
 </li>
 <li><a href="#_relationships">Relationships</a></li>
-<li><a href="#_viewpoints_and_views">Viewpoints and Views</a>
+<li><a href="#viewpoints">Viewpoints and Views</a>
 <ul class="sectlevel3">
 <li><a href="#_composition_3">Composition</a></li>
 <li><a href="#_views">Views</a></li>
 <li><a href="#_rendering">Rendering</a></li>
 </ul>
 </li>
-<li><a href="#_technical_configuration">Technical Configuration</a></li>
+<li><a href="#technical-configuration">Technical Configuration</a></li>
+</ul>
+</li>
+<li><a href="#editor">Editor</a>
+<ul class="sectlevel2">
+<li><a href="#editor-open">Opening the editor</a></li>
+<li><a href="#editor-elements">Elements</a></li>
+<li><a href="#editor-map">Map</a></li>
+<li><a href="#editor-facets">Facets</a></li>
+<li><a href="#editor-keyboard">Keyboard</a></li>
 </ul>
 </li>
 <li><a href="#_commands">Commands</a>
 <ul class="sectlevel2">
+<li><a href="#serve-the-editor">Serve the editor</a></li>
 <li><a href="#_generate_views">Generate views</a></li>
 <li><a href="#_query_views">Query views</a></li>
 <li><a href="#_generate_json_schemas">Generate JSON Schemas</a></li>
@@ -581,7 +589,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <ul class="sectlevel3">
 <li><a href="#_incremental_and_in_depth_design_approach">Incremental and In-Depth Design Approach</a></li>
 <li><a href="#_example_an_ecommerce_platform">Example: An ecommerce platform</a></li>
-<li><a href="#_tackling_view_clutter">Tackling view clutter</a></li>
+<li><a href="#facets">Tackling view clutter</a></li>
 </ul>
 </li>
 <li><a href="#_source_code_organization">Source Code Organization</a></li>
@@ -731,7 +739,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <p>As we delve into each facet of the ArchiCode domain, you&#8217;ll gain a comprehensive understanding of how each element contributes to your architectural prowess. Let&#8217;s embark on a guided exploration through the diverse dimensions of the ArchiCode domain.</p>
 </div>
 <div class="sect2">
-<h3 id="_workspace">Workspace</h3>
+<h3 id="workspace">Workspace</h3>
 <div class="paragraph">
 <p>In ArchiCode, a workspace is a fundamental construct that orchestrates the foundation of your architectural endeavors. It acts as a cohesive hub, streamlining the definition and configuration of your architecture work. Key aspects of the workspace include:</p>
 </div>
@@ -875,11 +883,26 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 </ul>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Application Layer Composition</div>
 <div class="content">
-<img src="application_layer_composition.png" alt="application layer composition" width="162" height="528">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml
+hide empty members
+rectangle Workspace
+rectangle ApplicationLayer as "Application Layer"
+rectangle Solution
+rectangle System
+rectangle Container
+rectangle Component
+Workspace *--&gt; "1" ApplicationLayer
+ApplicationLayer *--&gt; "*" Solution
+ApplicationLayer *--&gt; "*" System
+Solution *--&gt; "*" System
+System *--&gt; "*" Container
+Container *--&gt; "*" Component
+@enduml</pre>
 </div>
-<div class="title">Figure 1. Application Layer Composition</div>
 </div>
 <div class="paragraph">
 <p>This hierarchical structure empowers you to systematically model and articulate the intricate relationships and dependencies between Solutions, Systems, Containers, and Components within your architectural design.</p>
@@ -1008,11 +1031,22 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 </ul>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Technology Layer Composition</div>
 <div class="content">
-<img src="technology_layer_composition.png" alt="technology layer composition" width="153" height="340">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml
+hide empty members
+rectangle Workspace
+rectangle TechnologyLayer as "Technology Layer"
+rectangle Environment
+rectangle Node
+Workspace *--&gt; "1" TechnologyLayer
+TechnologyLayer *--&gt; "*" Environment
+Environment *--&gt; "*" Node
+Node *--&gt; "*" Node
+@enduml</pre>
 </div>
-<div class="title">Figure 2. Technology Layer Composition</div>
 </div>
 <div class="paragraph">
 <p>Within this framework, you gain the ability to systematically depict and elucidate the complex interactions, dependencies, and relationships that exist among Environments, Nodes, and Sub-Nodes within your technological architecture.</p>
@@ -1075,18 +1109,25 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 </ul>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Relationship Composition</div>
 <div class="content">
-<img src="relationship_composition.png" alt="relationship composition" width="117" height="144">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml
+hide empty members
+rectangle Element
+rectangle Relationship
+Element *--&gt; "*" Relationship
+Relationship o--&gt; "1" Element
+@enduml</pre>
 </div>
-<div class="title">Figure 3. Relationship Composition</div>
 </div>
 <div class="paragraph">
 <p>As you traverse the ArchiCode landscape, you&#8217;ll discover that relationships are more than mere connections; they embody the intricate tapestry of your architecture. These relationships intertwine Elements, forging a harmonious narrative that elucidates dependencies, interactions, and the synergy that fuels your architectural vision. In this realm, relationships are not just links; they&#8217;re the vital conduits that breathe life into your architectural masterpiece.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_viewpoints_and_views">Viewpoints and Views</h3>
+<h3 id="viewpoints">Viewpoints and Views</h3>
 <div class="paragraph">
 <p>ArchiCode serves a fundamental purpose: the generation of comprehensive views that illuminate both the Application and Technology layers of your architectural design. This purpose aligns seamlessly with architectural principles and methodologies. Let&#8217;s delve into the mechanics that facilitate this purpose within ArchiCode:</p>
 </div>
@@ -1115,11 +1156,21 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 </ul>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Viewpoints and Views Composition</div>
 <div class="content">
-<img src="viewpoint_views_composition.png" alt="viewpoint views composition" width="190" height="240">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml
+hide empty members
+rectangle Workspace
+rectangle View
+rectangle Viewpoint
+rectangle Layer
+Workspace *--&gt; "*" View
+View o--&gt; "1" Viewpoint
+View o--&gt; "1" Layer
+@enduml</pre>
 </div>
-<div class="title">Figure 4. Viewpoints and Views Composition</div>
 </div>
 <div class="paragraph">
 <p>By incorporating Views within the ArchiCode workspace and meticulously associating them with relevant Viewpoints and Layers, you harness a powerful tool for effectively communicating architectural insights. As we continue our exploration of ArchiCode, you&#8217;ll delve further into the mechanics of Views and their pivotal role in conveying the depth and breadth of your architectural design.</p>
@@ -1195,7 +1246,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 </div>
 <div class="sect2">
-<h3 id="_technical_configuration">Technical Configuration</h3>
+<h3 id="technical-configuration">Technical Configuration</h3>
 <div class="paragraph">
 <p>ArchiCode embraces configurability as a cornerstone of its design, affording you the ability to tailor the tool to align seamlessly with your architectural needs. Here&#8217;s a comprehensive look at ArchiCode&#8217;s configuration capabilities:</p>
 </div>
@@ -1266,6 +1317,117 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 </div>
 <div class="sect1">
+<h2 id="editor">Editor</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>ArchiCode comes with an editor to browse, edit and draw a workspace without leaving the browser. It is a single page, <code>standalone.html</code>, that reads and writes the files of a workspace folder: nothing is uploaded anywhere, the page and the files stay on your machine.</p>
+</div>
+<div class="sect2">
+<h3 id="editor-open">Opening the editor</h3>
+<div class="paragraph">
+<p>There are two ways to open it:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Served by the command line.</strong> <code>archicode editor serve</code> serves the editor and opens the folder of the <code>workspace.yaml</code> in it, with nothing to pick. It works in any browser. See <a href="#serve-the-editor">Serve the editor</a>.</p>
+</li>
+<li>
+<p><strong>From the published page.</strong> The page published with this documentation, at <code>editor/</code> next to it, asks for a folder. That needs the File System Access API, which Chrome, Edge, Brave and Opera have and Firefox and Safari do not: with one of those, use the command above instead.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The editor loads <code>elkjs</code> (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-elements">Elements</h3>
+<div class="paragraph">
+<p>The <strong>Elements</strong> perspective is the tree of the workspace on the left, and the selected element in the center. The center has four tabs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Details</strong>: the fields, qualifiers, tags and relationships of the element, with <strong>Edit</strong> to change them, and <strong>Delete</strong> (the relationships of other elements that pointed at it are listed first, so that none is left dangling by surprise).</p>
+</li>
+<li>
+<p><strong>Overview</strong>, <strong>Detailed</strong> and <strong>Deep</strong>: the viewpoints of the same names, drawn live from the model, as the command line generates them. <strong>Detailed</strong> is for an element that can contain others. Clicking a box in a diagram selects that element.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Changes stay in memory, with a mark on the tree for each modified element, until <strong>Save all changes</strong> writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-map">Map</h3>
+<div class="paragraph">
+<p>The <strong>Map</strong> perspective draws the whole application layer, with no element selected. It opens folded: only the systems and solutions show, and a link is drawn between the boxes its two ends land on, so opening a box splits the links that reached it among its children.</p>
+</div>
+<div class="paragraph">
+<p>In the tree on the left, each row has two buttons, which appear when the pointer is over the row or the row has the focus:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Pin</strong> (the pin) keeps only what touches the element. Pin several to keep what touches any of them. With nothing pinned, the whole layer is drawn.</p>
+</li>
+<li>
+<p><strong>Hide</strong> (the eye) leaves the element, what is inside it and their relationships out of the map.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The pinned and hidden elements are also shown as chips over the map, each removable, with <strong>Clear all</strong> once there are several. In the tree, rows of the elements the map does not draw are greyed. Folding the tree does not change the boxes of the map: use <strong>Fold all</strong> and <strong>Unfold all</strong> in the toolbar of the map, or the buttons of the boxes. <strong>Hide unlinked</strong> leaves out the boxes that no link reaches.</p>
+</div>
+<div class="paragraph">
+<p><strong>Center</strong> puts the selected box in the middle at a readable size, <strong>Fit</strong> shows the whole diagram, and <strong>SVG</strong> downloads it.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-facets">Facets</h3>
+<div class="paragraph">
+<p>The facets of the workspace (see <a href="#facets">Tackling view clutter</a>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out. In the tree, the elements the facet leaves with nothing to draw are greyed. The facets themselves are edited in the <strong>Settings</strong> perspective, along with the other settings of the workspace (see <a href="#technical-configuration">Technical Configuration</a>).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-keyboard">Keyboard</h3>
+<div class="ulist">
+<div class="title">In a tree</div>
+<ul>
+<li>
+<p>Up and Down move, Home and End jump to the first and last row.</p>
+</li>
+<li>
+<p>Right unfolds a branch or goes to its first child, Left folds it or goes to its parent.</p>
+</li>
+<li>
+<p>Enter and Space select the element (in the Map, they fold or unfold the branch).</p>
+</li>
+<li>
+<p>In the Map, <code>P</code> pins or unpins the element, and <code>H</code> hides it or shows it again.</p>
+</li>
+</ul>
+</div>
+<div class="ulist">
+<div class="title">In a diagram</div>
+<ul>
+<li>
+<p>The arrow keys move between boxes, and Enter opens the one that has the focus.</p>
+</li>
+<li>
+<p><code>+</code>, <code>-</code> and <code>0</code> zoom in, out and back to the actual size. <code>F</code> fits the whole diagram and <code>C</code> goes back to how it opened.</p>
+</li>
+<li>
+<p><code>M</code> maximizes the diagram, <code>Esc</code> brings the tree back.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
 <h2 id="_commands">Commands</h2>
 <div class="sectionbody">
 <div class="paragraph">
@@ -1283,6 +1445,34 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 <div class="paragraph">
 <p>As you delve deeper into the Command section of ArchiCode&#8217;s documentation, you&#8217;ll uncover the diverse set of commands at your disposal, each contributing to a more intuitive, efficient, and informed architectural workflow. Let&#8217;s embark on this journey through the realm of ArchiCode&#8217;s commands, discovering how they enhance your ability to shape, explore, and communicate architectural concepts.</p>
+</div>
+<div class="sect2">
+<h3 id="serve-the-editor">Serve the editor</h3>
+<div class="listingblock">
+<div class="title">Serve the editor - The command line</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode editor serve</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Serves the editor (see <a href="#editor">Editor</a>) and opens in it the folder of the workspace file, which must be named <code>workspace.yaml</code>. The command prints a URL, <code><a href="http://127.0.0.1:48080/?token=&#8230;&#8203" class="bare">http://127.0.0.1:48080/?token=&#8230;&#8203</a>;</code>: open it in a browser (the page is refused without the token; the editor removes it from the address bar, and a session cookie, which opens the page only and never the API, lets a reload in).</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>--port</code> (<code>-p</code>): the port to listen on, <code>48080</code> by default.</p>
+</li>
+<li>
+<p><code>--host</code>: the address to bind to, <code>0.0.0.0</code> by default, which a Docker <code>-p</code> mapping needs.</p>
+</li>
+<li>
+<p><code>--allowed-host</code>: a host name, besides <code>localhost</code>, <code>127.0.0.1</code> and <code>[::1]</code>, that a request may be addressed to. Repeat it for several.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The server writes to the folder, so it does not trust the network: the page and every call carry a token that only the printed URL gives, a request must be addressed to one of the allowed host names, a page of another origin is refused, and only the <code>.yaml</code>, <code>.yml</code> and <code>.json</code> files below the folder of the workspace can be reached. With Docker, keep the host side of the port mapping on <code>127.0.0.1</code> (<code>-p 127.0.0.1:48080:48080</code>).</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_generate_views">Generate views</h3>
@@ -1645,20 +1835,80 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div class="paragraph">
 <p>The view <code>EcommercePlatform_overview.puml</code> is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships where the <code>EcommercePlatform</code> element is involved.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #1 - The overview of the ecommerce platform</div>
 <div class="content">
-<img src="EcommercePlatform_overview.png" alt="EcommercePlatform overview" width="357" height="353">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform-overview
+title Solution - EcommercePlatform - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform &lt;&lt;solution&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+EcommercePlatform
+[solution]
+]
+rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+PaymentGateway
+[system]
+]
+rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+SocialIdentityProvider
+[system]
+]
+person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+User
+[person]
+]
+EcommercePlatform --&gt; PaymentGateway
+EcommercePlatform --&gt; SocialIdentityProvider
+User --&gt; EcommercePlatform
+@enduml</pre>
 </div>
-<div class="title">Figure 5. Step #1 - The overview of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>The view <code>PaymentGateway-overview.puml</code> is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships where the <code>PaymentGateway</code> element is involved.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #1 - The overview of the payment gateway</div>
 <div class="content">
-<img src="PaymentGateway_overview.png" alt="PaymentGateway overview" width="329" height="214">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml PaymentGateway-overview
+title System - PaymentGateway - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform &lt;&lt;solution&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+EcommercePlatform
+[solution]
+]
+rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+PaymentGateway
+[system]
+]
+EcommercePlatform --&gt; PaymentGateway
+@enduml</pre>
 </div>
-<div class="title">Figure 6. Step #1 - The overview of the payment gateway</div>
 </div>
 <div class="paragraph">
 <p>The concept is similar for the others generated views.</p>
@@ -1895,29 +2145,169 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div class="paragraph">
 <p>The view <code>EcommercePlatform-detailed.puml</code> is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships where the children of the <code>EcommercePlatform</code> element are involved.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #2 - The detailed of the ecommerce platform</div>
 <div class="content">
-<img src="EcommercePlatform_detailed.png" alt="EcommercePlatform detailed" width="954" height="490">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform-detailed
+title Solution - EcommercePlatform - Detailed View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserManagement
+[system]
+]
+}
+rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+PaymentGateway
+[system]
+]
+rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+SocialIdentityProvider
+[system]
+]
+person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+User
+[person]
+]
+EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.OrderProcessing --&gt; PaymentGateway
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement
+EcommercePlatform.UserManagement --&gt; SocialIdentityProvider
+User --&gt; EcommercePlatform.UserInterface
+@enduml</pre>
 </div>
-<div class="title">Figure 7. Step #2 - The detailed of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>The view <code>EcommercePlatform.UserInterface-overview.puml</code> is built upon the "Overview" viewpoint and focus on the Ingress and Egress relationships of the <code>UserInterface</code> element.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #2 - The overview of the user interface</div>
 <div class="content">
-<img src="EcommercePlatform.UserInterface_overview.png" alt="EcommercePlatform" width="722" height="377">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform_UserInterface-overview
+title System - UserInterface - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserManagement
+[system]
+]
+}
+person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+User
+[person]
+]
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement
+User --&gt; EcommercePlatform.UserInterface
+@enduml</pre>
 </div>
-<div class="title">Figure 8. Step #2 - The overview of the user interface</div>
 </div>
 <div class="paragraph">
 <p>The view <code>EcommercePlatform-overview.puml</code> is still available but the drawn relationships are now synthetic ones.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #2 - The overview of the ecommerce platform with synthetic relationships</div>
 <div class="content">
-<img src="EcommercePlatform_overview_synthetic.png" alt="EcommercePlatform overview synthetic" width="357" height="387">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform-overview
+title Solution - EcommercePlatform - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform &lt;&lt;solution&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+EcommercePlatform
+[solution]
+]
+rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+PaymentGateway
+[system]
+]
+rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+SocialIdentityProvider
+[system]
+]
+person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+User
+[person]
+]
+EcommercePlatform --&gt; PaymentGateway : uses
+EcommercePlatform --&gt; SocialIdentityProvider : uses
+User --&gt; EcommercePlatform : uses
+@enduml</pre>
 </div>
-<div class="title">Figure 9. Step #2 - The overview of the ecommerce platform with synthetic relationships</div>
 </div>
 <div class="paragraph">
 <p>The second step focused on the intricate composition of systems within the e-commerce platform and the establishment of relationships between them.</p>
@@ -2137,20 +2527,134 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div class="paragraph">
 <p>The view <code>EcommercePlatform-deep.puml</code> is built upon the "Deep" viewpoint and focus on the Ingress and Egress relationships involving the descendants of the <code>EcommercePlatform</code> element.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #3 - The deepness of the ecommerce platform</div>
 <div class="content">
-<img src="EcommercePlatform_deep.png" alt="EcommercePlatform deep" width="895" height="573">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform-deep
+title Solution - EcommercePlatform - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+IdentityAndAccessManagement
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileDatabase
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileService
+[container]
+]
+}
+}
+rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+PaymentGateway
+[system]
+]
+rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+SocialIdentityProvider
+[system]
+]
+person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+User
+[person]
+]
+EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.OrderProcessing --&gt; PaymentGateway
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
+EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
+User --&gt; EcommercePlatform.UserInterface
+@enduml</pre>
 </div>
-<div class="title">Figure 10. Step #3 - The deepness of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>The view <code>EcommercePlatform.UserManagement-detailed</code> is built upon the "Detailed" viewpoint and focus on the Ingress and Egress relationships involving the children of the <code>UserManagement</code> element.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #3 - The detailed of the User Management</div>
 <div class="content">
-<img src="EcommercePlatform.UserManagement_detailed.png" alt="EcommercePlatform" width="635" height="478">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform_UserManagement-detailed
+title System - UserManagement - Detailed View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+IdentityAndAccessManagement
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileDatabase
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileService
+[container]
+]
+}
+}
+rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+SocialIdentityProvider
+[system]
+]
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
+EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
+@enduml</pre>
 </div>
-<div class="title">Figure 11. Step #3 - The detailed of the User Management</div>
 </div>
 <div class="paragraph">
 <p>The third step focused on the composition of containers within the "User Management" system, the establishment of relationships between them as well as the refinement of existing relationships.</p>
@@ -2183,7 +2687,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 </div>
 <div class="sect3">
-<h4 id="_tackling_view_clutter">Tackling view clutter</h4>
+<h4 id="facets">Tackling view clutter</h4>
 <div class="sect4">
 <h5 id="_introduction_3">Introduction</h5>
 <div class="paragraph">
@@ -2261,11 +2765,81 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div class="paragraph">
 <p>This PlantUML diagram represents the deep view of the ecommerce platform in its initial state. At this stage, all elements and relationships are visible, offering a comprehensive, albeit complex, view of the entire system.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #1 - The deep view of the ecommerce platform</div>
 <div class="content">
-<img src="EcommercePlatform_deep_initial.png" alt="EcommercePlatform deep initial" width="895" height="573">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform-deep
+title Solution - EcommercePlatform - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+IdentityAndAccessManagement
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileDatabase
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileService
+[container]
+]
+}
+}
+rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+PaymentGateway
+[system]
+]
+rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+SocialIdentityProvider
+[system]
+]
+person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+User
+[person]
+]
+EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.OrderProcessing --&gt; PaymentGateway
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
+EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
+User --&gt; EcommercePlatform.UserInterface
+@enduml</pre>
 </div>
-<div class="title">Figure 12. Step #1 - The deep view of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>At the conclusion of this step, we have a fully initialized workspace, adorned with the intricate details of the ecommerce platform model. While comprehensive, this view is also complex and can be overwhelming, setting the stage for the introduction of facets to refine and organize these views in the steps to follow.</p>
@@ -2319,7 +2893,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
               <span class="key">relationships</span>:
                 - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileDatabase&quot;</span></span>
                 - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-                  <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+                  <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
             - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
               <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileDatabase</span><span class="delimiter">&quot;</span></span>
         - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
@@ -2328,12 +2902,12 @@ table.CodeRay td.code{padding:0 0 0 .75em}
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
             - <span class="string"><span class="content">destination: &quot;PaymentGateway&quot;</span></span>
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
         - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ContentManagement</span><span class="delimiter">&quot;</span></span>
           <span class="key">relationships</span>:
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
     - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
       <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SocialIdentityProvider</span><span class="delimiter">&quot;</span></span>
     - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
@@ -2352,11 +2926,85 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div class="paragraph">
 <p>With the inclusion of authorization relationships, the PlantUML diagram unveils a more detailed view of the ecommerce platform. The <em>oidc</em> relationships are distinctly highlighted, offering insights into the integration of the authorization concern.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #2 - The deep view of the ecommerce platform</div>
 <div class="content">
-<img src="EcommercePlatform_deep_authorization.png" alt="EcommercePlatform deep authorization" width="699" height="958">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform-deep
+title Solution - EcommercePlatform - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+IdentityAndAccessManagement
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileDatabase
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileService
+[container]
+]
+}
+}
+rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+PaymentGateway
+[system]
+]
+rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+SocialIdentityProvider
+[system]
+]
+person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+User
+[person]
+]
+EcommercePlatform.ContentManagement --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
+EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
+EcommercePlatform.OrderProcessing --&gt; PaymentGateway
+EcommercePlatform.ProductCatalog --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
+EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
+EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
+User --&gt; EcommercePlatform.UserInterface
+@enduml</pre>
 </div>
-<div class="title">Figure 13. Step #2 - The deep view of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>By the end of Step #2, the authorization concern is intricately integrated into the ecommerce platform model. The <em>oidc</em> relationships are now visible, marking the onset of a more detailed, yet complex, visualization. This complexity underscores the need for a mechanism to refine and focus the views for enhanced clarity, leading us to the subsequent steps where the facet feature of Archicode comes into play.</p>
@@ -2396,7 +3044,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ProductCatalog</span><span class="delimiter">&quot;</span></span>
           <span class="key">relationships</span>:
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
         - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserManagement</span><span class="delimiter">&quot;</span></span>
           <span class="key">elements</span>:
@@ -2410,7 +3058,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
               <span class="key">relationships</span>:
                 - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileDatabase&quot;</span></span>
                 - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-                  <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+                  <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
             - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
               <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileDatabase</span><span class="delimiter">&quot;</span></span>
         - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
@@ -2419,12 +3067,12 @@ table.CodeRay td.code{padding:0 0 0 .75em}
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
             - <span class="string"><span class="content">destination: &quot;PaymentGateway&quot;</span></span>
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
         - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ContentManagement</span><span class="delimiter">&quot;</span></span>
           <span class="key">relationships</span>:
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
     - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
       <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SocialIdentityProvider</span><span class="delimiter">&quot;</span></span>
     - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
@@ -2452,11 +3100,55 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div class="paragraph">
 <p>The transformation is visualized in this updated PlantUML diagram. It presents a view where the clutter is minimized, and the spotlight is on the <em>odic</em> relationships, offering a clear perspective of the authorization dynamics within the ecommerce platform.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #3 - The <em>oidc</em> deep view of the ecommerce platform</div>
 <div class="content">
-<img src="EcommercePlatform_deep_facet.png" alt="EcommercePlatform deep facet" width="810" height="382">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform-deep
+title Solution - EcommercePlatform - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+IdentityAndAccessManagement
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileService
+[container]
+]
+}
+}
+EcommercePlatform.ContentManagement --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
+EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
+EcommercePlatform.ProductCatalog --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
+EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.IdentityAndAccessManagement : [oidc]
+@enduml</pre>
 </div>
-<div class="title">Figure 14. Step #3 - The <em>oidc</em> deep view of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>Concluding Step 3, we have successfully integrated the <em>oidc</em> facet, a move that transitions us from a broad, complex view to a refined, focused visualization of the authorization concern. It underscores the facet feature’s utility in Archicode, offering a tool that adeptly navigates the intricate terrains of complex architectural visualizations, ensuring clarity, focus, and comprehensibility.</p>
@@ -2496,7 +3188,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ProductCatalog</span><span class="delimiter">&quot;</span></span>
           <span class="key">relationships</span>:
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
         - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserManagement</span><span class="delimiter">&quot;</span></span>
           <span class="key">elements</span>:
@@ -2510,7 +3202,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
               <span class="key">relationships</span>:
                 - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.UserProfileDatabase&quot;</span></span>
                 - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-                  <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+                  <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
             - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
               <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">UserProfileDatabase</span><span class="delimiter">&quot;</span></span>
         - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
@@ -2519,12 +3211,12 @@ table.CodeRay td.code{padding:0 0 0 .75em}
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.ProductCatalog&quot;</span></span>
             - <span class="string"><span class="content">destination: &quot;PaymentGateway&quot;</span></span>
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
         - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ContentManagement</span><span class="delimiter">&quot;</span></span>
           <span class="key">relationships</span>:
             - <span class="string"><span class="content">destination: &quot;EcommercePlatform.UserManagement.IdentityAndAccessManagement&quot;</span></span>
-              <span class="key">qualifiers</span>: <span class="string"><span class="content">[ &quot;oidc&quot; ]</span></span>
+              <span class="key">qualifiers</span>: <span class="string"><span class="content">[&quot;oidc&quot;]</span></span>
     - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
       <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SocialIdentityProvider</span><span class="delimiter">&quot;</span></span>
     - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
@@ -2557,11 +3249,81 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div class="paragraph">
 <p>This updated PlantUML diagram illustrates the ecommerce platform’s architecture with the <em>main</em> facet applied. It’s a visual representation that offers insights into the primary elements and relationships, free from the specific OIDC authorization elements.</p>
 </div>
-<div class="imageblock">
+<div class="listingblock">
+<div class="title">Step #4 - The <em>main</em> deep view of the ecommerce platform</div>
 <div class="content">
-<img src="EcommercePlatform_deep_main.png" alt="EcommercePlatform deep main" width="895" height="573">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml EcommercePlatform-deep
+title Solution - EcommercePlatform - Deep View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle EcommercePlatform as "EcommercePlatform\n[solution]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.ContentManagement &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ContentManagement
+[system]
+]
+rectangle EcommercePlatform.OrderProcessing &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+OrderProcessing
+[system]
+]
+rectangle EcommercePlatform.ProductCatalog &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+ProductCatalog
+[system]
+]
+rectangle EcommercePlatform.UserInterface &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserInterface
+[system]
+]
+rectangle EcommercePlatform.UserManagement as "UserManagement\n[system]" &lt;&lt;composite&gt;&gt; {
+rectangle EcommercePlatform.UserManagement.IdentityAndAccessManagement &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+IdentityAndAccessManagement
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileDatabase &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileDatabase
+[container]
+]
+rectangle EcommercePlatform.UserManagement.UserProfileService &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+UserProfileService
+[container]
+]
+}
+}
+rectangle PaymentGateway &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+PaymentGateway
+[system]
+]
+rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+SocialIdentityProvider
+[system]
+]
+person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+User
+[person]
+]
+EcommercePlatform.OrderProcessing --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.OrderProcessing --&gt; PaymentGateway
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ContentManagement
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.OrderProcessing
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.ProductCatalog
+EcommercePlatform.UserInterface --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; EcommercePlatform.UserManagement.UserProfileService
+EcommercePlatform.UserManagement.IdentityAndAccessManagement --&gt; SocialIdentityProvider
+EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.UserManagement.UserProfileDatabase
+User --&gt; EcommercePlatform.UserInterface
+@enduml</pre>
 </div>
-<div class="title">Figure 15. Step #4 - The <em>main</em> deep view of the ecommerce platform</div>
 </div>
 <div class="paragraph">
 <p>By the closure of Step 4, we have not only successfully defined but also effectively applied the <em>main</em> facet. It reveals a balanced view, where the specific authorization elements are excluded, ensuring that the primary architectural elements and relationships of the ecommerce platform are the focal point. It’s a testament to the adaptability and precision that the facet feature introduces to Archicode, affirming its role in enhancing the visualization and management of complex architectural designs.</p>
@@ -3067,7 +3829,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-10-23 19:40:07 UTC
+Last updated 2026-10-12 02:06:27 UTC
 </div>
 </div>
 </body>
