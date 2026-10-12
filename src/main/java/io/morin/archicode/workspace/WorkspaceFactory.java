@@ -1,9 +1,6 @@
 package io.morin.archicode.workspace;
 
-import com.jayway.jsonpath.Configuration;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.Option;
-import com.jayway.jsonpath.PathNotFoundException;
+import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.manifest.ManifestParser;
@@ -11,6 +8,7 @@ import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.resource.workspace.Settings.Facets.Facet;
 import io.morin.archicode.resource.workspace.Workspace;
+import io.morin.archicode.viewpoint.kernel.ViewpointKernel;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
 import java.util.Map;
@@ -136,23 +134,33 @@ public class WorkspaceFactory {
             .build();
         val facetRawWorkspaceAsJson = jsonMapper.writeValueAsString(facetRawWorkspace);
 
-        val facetWorkspaceAsJsonPathContext = JsonPath.parse(
-            facetRawWorkspaceAsJson,
-            Configuration.builder().options(Option.DEFAULT_PATH_LEAF_TO_NULL).build()
-        );
-
+        val request = jsonMapper.createObjectNode();
+        request.set("workspace", jsonMapper.readTree(facetRawWorkspaceAsJson));
+        val actions = request.putArray("actions");
         for (val action : facet.getActions()) {
             log.info("process {}", action);
-            if (action.getOperator() == Facet.Action.Operator.REMOVE) {
-                try {
-                    facetWorkspaceAsJsonPathContext.delete(action.getJsonPath());
-                } catch (PathNotFoundException pathNotFoundException) {
-                    log.trace("no elements to remove ;)", pathNotFoundException);
-                }
-            }
+            val node = actions.addObject();
+            node.put("operator", action.getOperator().name());
+            node.put("json_path", action.getJsonPath());
         }
 
-        val facetWorkspace = jsonMapper.readValue(facetWorkspaceAsJsonPathContext.jsonString(), Workspace.class);
+        // the facets are evaluated by the viewpoint kernel, the very code the editor runs
+        val answer = jsonMapper.readTree(
+            ViewpointKernel.getInstance().applyFacet(jsonMapper.writeValueAsString(request))
+        );
+        if (answer.has("error")) {
+            throw new ArchiCodeException("facet %s: %s", facet.getName(), answer.get("error").asText());
+        }
+        if (answer.path("version").asInt() != ViewpointKernel.CONTRACT_VERSION) {
+            throw new ArchiCodeException(
+                "the viewpoint kernel speaks version %s, expected %s",
+                answer.path("version").asText(),
+                ViewpointKernel.CONTRACT_VERSION
+            );
+        }
+        answer.path("warnings").forEach(warning -> log.warn("facet {}: {}", facet.getName(), warning.asText()));
+
+        val facetWorkspace = jsonMapper.treeToValue(answer.get("workspace"), Workspace.class);
 
         return create(facetWorkspace, Map.of());
     }

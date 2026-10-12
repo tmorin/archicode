@@ -9,6 +9,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_json_path = { version = "0.7", default-features = false, features = ["functions"] }
 
 [profile.release]
 opt-level = "z"

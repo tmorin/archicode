@@ -39,7 +39,7 @@ test('the fixture is what the tests below expect it to be', async () => {
   const { state } = await openFixture();
   assert.ok(state.index.application.size >= 15, 'application elements: ' + state.index.application.size);
   assert.ok(state.index.technology.size >= 8, 'technology elements: ' + state.index.technology.size);
-  assert.deepEqual(Array.from(state.workspace.settings.facets.customs, (f) => f.name).sort(), ['keep-untyped', 'no-smtp', 'quiet-infra', 'rest-only']);
+  assert.deepEqual(Array.from(state.workspace.settings.facets.customs, (f) => f.name).sort(), ['audited-only', 'compound', 'keep-untyped', 'no-smtp', 'quiet-infra', 'rest-only', 'rest-only-standard', 'unaudited']);
 });
 
 test('every generated view is reproduced, for the workspace and for each facet', async () => {
@@ -86,7 +86,7 @@ test('every generated view is reproduced, for the workspace and for each facet',
 test('the output states its contract version and says what each link stands for', async () => {
   const { sandbox, kernel } = await openFixture();
   const out = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api').input);
-  assert.equal(out.version, 1);
+  assert.equal(out.version, 2);
   for (const link of out.links) {
     assert.ok(link.relationships.length >= 1, link.from + ' -> ' + link.to + ' stands for no relationship');
   }
@@ -105,11 +105,22 @@ test('a folded box hides what is inside it and the links follow', async () => {
   assert.ok(folded.links.every((l) => !l.from.startsWith('shop.catalog.service.') && !l.to.startsWith('shop.catalog.service.')), 'no link reaches inside any more');
 });
 
-test('a facet the browser cannot evaluate is reported, not ignored', async () => {
+test('a facet that cannot be evaluated is reported, not ignored', async () => {
   const { sandbox, kernel } = await openFixture();
-  const facet = { name: 'odd', actions: [{ operator: 'REMOVE', jsonPath: "$.application.elements[?(@.id == 'x')]" }] };
-  const out = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api', { facet }).input);
-  assert.match(out.error, /unsupported facet action/);
+  const compute = (actions) => kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api', { facet: { name: 'odd', actions } }).input);
+  assert.match(compute([{ operator: 'REMOVE', jsonPath: '$..relationships[?(@.label == ' }]).error, /invalid facet JSONPath/);
+  assert.match(compute([{ operator: 'KEEP', jsonPath: "$..relationships[?(@.label == 'x')]" }]).error, /unsupported facet action: KEEP/);
+});
+
+test('a facet written for the earlier engine still works, and says it is going away', async () => {
+  const { sandbox, kernel } = await openFixture();
+  const compute = (jsonPath) => kernel.compute(sandbox.buildKernelInput('deep', 'shop.web.api', { facet: { name: 'f', actions: [{ operator: 'REMOVE', jsonPath }] } }).input);
+  const old = compute("$.application..relationships[?(@.qualifiers noneof ['REST'])]");
+  const standard = compute("$.application..relationships[?(@.qualifiers && !@.qualifiers[?(@ == 'REST')])]");
+  assert.equal(old.warnings.length, 1);
+  assert.equal(standard.warnings, undefined);
+  assert.deepEqual(old.links, standard.links);
+  assert.ok(old.links.length > 0 && old.links.length < compute("$..relationships[?(@.label == 'none')]").links.length);
 });
 
 test('the kernel the CLI runs is the one the editor embeds', () => {

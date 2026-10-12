@@ -68,7 +68,7 @@ test('the header of Elements offers Details and the three viewpoints, and the fa
   assert.match(sandbox.renderElementTabsHtml(leaf), /data-tab="overview" aria-pressed="true"/);
 
   const select = sandbox.renderFacetSelectHtml();
-  for (const name of ['rest-only', 'no-smtp', 'quiet-infra', 'keep-untyped', 'unaudited', 'audited-only']) assert.ok(select.includes('value="' + name + '"'), name);
+  for (const name of ['rest-only', 'no-smtp', 'quiet-infra', 'keep-untyped', 'unaudited', 'audited-only', 'rest-only-standard', 'compound']) assert.ok(select.includes('value="' + name + '"'), name);
   assert.ok(select.includes('<option value="">Facet: none</option>'));
 });
 
