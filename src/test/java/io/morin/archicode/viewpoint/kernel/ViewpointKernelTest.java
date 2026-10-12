@@ -91,4 +91,16 @@ class ViewpointKernelTest {
         );
         Assertions.assertTrue(refused.get("error").asText().contains("invalid facet JSONPath"));
     }
+
+    @Test
+    void shouldKeepTheOrderOfTheKeysOfTheWorkspace() {
+        val out = ViewpointKernel.getInstance().applyFacet(
+            """
+            {"workspace":{"styles":{"by-tags":{"external":{},"new":{},"changed":{}}},"application":{}},"actions":[]}
+            """
+        );
+        Assertions.assertTrue(out.indexOf("\"external\"") < out.indexOf("\"new\""), out);
+        Assertions.assertTrue(out.indexOf("\"new\"") < out.indexOf("\"changed\""), out);
+        Assertions.assertTrue(out.indexOf("\"styles\"") < out.indexOf("\"application\""), out);
+    }
 }

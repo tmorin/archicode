@@ -745,26 +745,75 @@ test('the pinned and hidden chips float over the map, with Clear all once there 
   assert.ok(!sandbox.renderMapPerspectiveHtml().center.includes('map-chips'));
 });
 
-test('on the map, an element that is no longer drawn is not shown as selected: no name beside the title, no Open in Elements', async () => {
+test('on the map, folding, hiding or pinning away the selected element deselects it; carried over from Elements, it stays', async () => {
   const { sandbox, state } = await openFixture();
   run(sandbox, "currentPerspective = 'map'; mapOpened = null;");
-  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   const removed = [];
   const canvas = { hasAttribute: (name) => name === 'data-map', innerHTML: '', querySelectorAll: () => [], querySelector: () => null, getAttribute: () => null, closest: () => null, clientWidth: 800, clientHeight: 600, scrollTo() {}, style: {}, classList: { add() {}, remove() {}, toggle() {} } };
   const document = sandbox.document;
   const saved = { getElementById: document.getElementById, querySelectorAll: document.querySelectorAll };
   document.getElementById = (id) => (id === 'diagram-canvas' ? canvas : saved.getElementById.call(document, id));
   document.querySelectorAll = (selector) => (selector.includes('element-header-subject') ? [{ remove: () => removed.push('el') }, { remove: () => removed.push('el') }] : []);
+  const scene = (drawn, extra) => Object.assign({ html: '', status: '', legend: '', width: 10, height: 10, viewKey: 'map', drawnIds: new Set(drawn) }, extra);
+  const select = () => { state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' }; };
+  const selected = () => state.selection.kind === 'element' && state.selection.key;
   try {
-    const scene = (boxes) => ({ html: '', status: '', legend: '', width: 10, height: 10, viewKey: 'map', boxes });
-    sandbox.showDiagramScene(scene({ 'shop.web': { x: 1, y: 1, w: 1, h: 1 } }));
-    assert.equal(removed.length, 2, 'folded away: the selection is not on the map');
-    removed.length = 0;
-    sandbox.showDiagramScene(scene({ 'shop.web.api': { x: 1, y: 1, w: 1, h: 1 } }));
-    assert.equal(removed.length, 0, 'drawn: still the selection of the map');
-    sandbox.showDiagramScene(scene(undefined));
-    assert.equal(removed.length, 0, 'an error or an empty map says nothing about the selection');
+    // an element carried over from Elements, which the map does not draw yet: kept, so that Open in Elements leads back to it
+    select();
+    sandbox.showDiagramScene(scene(['shop.web']));
+    assert.equal(selected(), 'shop.web.api');
+    assert.equal(removed.length, 0);
+
+    // after an action of the map that no longer draws it: deselected, and the header loses its name and its button
+    run(sandbox, 'mapSelectionCheck = true;');
+    sandbox.showDiagramScene(scene(['shop.web']));
+    assert.equal(state.selection.kind, 'none');
+    assert.equal(removed.length, 2);
+    assert.equal(run(sandbox, 'mapSelectionCheck'), false, 'the check is for one redraw');
+
+    // still drawn: kept
+    select(); removed.length = 0;
+    run(sandbox, 'mapSelectionCheck = true;');
+    sandbox.showDiagramScene(scene(['shop.web.api']));
+    assert.equal(selected(), 'shop.web.api');
+    assert.equal(removed.length, 0);
+
+    // a scene that only lists what it draws (no ELK, or an empty map) decides too
+    run(sandbox, 'mapSelectionCheck = true;');
+    sandbox.showDiagramScene(scene([]));
+    assert.equal(state.selection.kind, 'none', 'an empty map draws nothing');
+
+    // an error says nothing about what is drawn: the selection and the check wait for the next scene
+    select();
+    run(sandbox, 'mapSelectionCheck = true;');
+    sandbox.showDiagramScene(scene(undefined, { drawnIds: undefined }));
+    assert.equal(selected(), 'shop.web.api');
+    assert.equal(run(sandbox, 'mapSelectionCheck'), true);
   } finally {
     Object.assign(document, saved);
   }
+});
+
+test('the actions of the map ask for the selection to be checked at the next redraw', async () => {
+  const { sandbox } = await openFixture();
+  run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = []; mapHidden = [];");
+  const click = (action, attrs) => {
+    const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
+    sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
+  };
+  const checked = () => run(sandbox, 'mapSelectionCheck');
+  for (const [action, attrs] of [
+    ['toggle-fold', { 'data-id': 'shop', 'data-mode': 'close' }],
+    ['map-hide', { 'data-ref': 'mailer' }],
+    ['map-pin', { 'data-ref': 'shop.catalog' }],
+    ['fold-all', {}],
+    ['toggle-hide-unlinked', {}]
+  ]) {
+    run(sandbox, 'mapSelectionCheck = false;');
+    click(action, attrs);
+    assert.equal(checked(), true, action);
+  }
+  run(sandbox, 'mapSelectionCheck = false;');
+  click('toggle-fold', { 'data-id': 'shop', 'data-mode': 'expand' });
+  assert.equal(checked(), false, 'opening a box only adds to the map');
 });

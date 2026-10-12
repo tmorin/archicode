@@ -114,17 +114,52 @@ fn is_ident(c: char) -> bool {
     c.is_alphanumeric() || c == '_' || c == '-'
 }
 
+/// The text split at the commas that are outside the quotes.
+fn split_outside_quotes(list: &str) -> Vec<&str> {
+    let (mut parts, mut start, mut quote) = (Vec::new(), 0, None);
+    for (i, c) in list.char_indices() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == '\'' || c == '"' => quote = Some(c),
+            None if c == ',' => {
+                parts.push(&list[start..i]);
+                start = i + 1;
+            }
+            None => {}
+        }
+    }
+    parts.push(&list[start..]);
+    parts
+}
+
+/// Where the list that starts with `[` ends: the first `]` that is outside the quotes.
+fn closing_bracket(list: &str) -> Option<usize> {
+    let mut quote = None;
+    for (i, c) in list.char_indices().skip(1) {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == '\'' || c == '"' => quote = Some(c),
+            None if c == ']' => return Some(i),
+            None => {}
+        }
+    }
+    None
+}
+
 /// `'a', "b"` → the literals as written, or None when an item is not one quoted literal.
 fn literals(list: &str) -> Option<Vec<String>> {
     if list.trim().is_empty() {
         return Some(Vec::new());
     }
-    list.split(',')
+    split_outside_quotes(list)
+        .into_iter()
         .map(|item| {
             let item = item.trim();
             let b = item.as_bytes();
             let quoted = b.len() >= 2 && (b[0] == b'\'' || b[0] == b'"') && b[b.len() - 1] == b[0];
-            (quoted && !item[1..item.len() - 1].contains(['\'', '"'])).then(|| item.to_string())
+            (quoted && !item[1..item.len() - 1].contains(b[0] as char)).then(|| item.to_string())
         })
         .collect()
 }
@@ -146,7 +181,7 @@ fn legacy_at(chars: &[char], at: usize) -> Option<(String, usize)> {
     let rest: String = chars[i..].iter().collect();
     for (word, none) in [("anyof", false), ("noneof", true)] {
         if let Some(after) = rest.strip_prefix(word).map(str::trim_start).filter(|a| a.starts_with('[')) {
-            let close = after.find(']')?;
+            let close = closing_bracket(after)?;
             let items = literals(&after[1..close])?;
             let test = items.iter().map(|l| format!("@ == {l}")).collect::<Vec<_>>().join(" || ");
             let used = rest.len() - after.len() + close + 1;
