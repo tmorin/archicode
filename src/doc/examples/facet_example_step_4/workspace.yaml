@@ -58,10 +58,8 @@ settings:
       - name: "main"
         actions:
           - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers anyof ['oidc'])]"
+            json-path: "$.application..relationships[?(@.qualifiers[?(@ == 'oidc')])]"
       - name: "oidc"
         actions:
           - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers noneof ['oidc'])]"
-          - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers == null)]"
+            json-path: "$.application..relationships[?(!@.qualifiers[?(@ == 'oidc')])]"

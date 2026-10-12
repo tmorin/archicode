@@ -62,6 +62,13 @@ Two things worth knowing before touching the code:
   (`tags`, and `relationships[].tags`) and are part of what makes two links, or two captions, the same.
 - A JSON `null` is read as "not given" (`default_synthetic_label: null` is "uses"). A dangling reference, in any
   viewpoint, is an `error`, never a trap.
-- Facets are Jayway JSONPath in the CLI. The kernel understands only the shape every documented facet has (removing
-  relationships that match a filter on `qualifiers` or `label`) and answers `unsupported facet action: …` for anything
-  else instead of guessing, compound filters (`&&`, `||`) included. The CLI itself still applies facets with Jayway before the kernel sees the workspace.
+- Facets are standard JSONPath (RFC 9535, the `serde_json_path` crate), evaluated by the kernel and nowhere else:
+  the CLI gives `apply_facet` the JSON of the workspace, the editor gives `compute` the elements of the view, and
+  both get the same answer. A path selects nodes and the action `REMOVE` deletes them (relationships, but elements
+  too). `functions` such as `length()` and `count()` are there, `match()` and `search()` (regular expressions) are not,
+  to keep the module small: they are refused with an error, as is any path that does not parse or operator other than
+  REMOVE. See `src/facet.rs` for the document a path is evaluated against.
+- The paths written for the previous engine (Jayway) keep working, with a warning: `@.qualifiers anyof ['a']`,
+  `@.qualifiers noneof ['a']` and `@.field == null` / `!= null` are rewritten to
+  `@.qualifiers[?(@ == 'a')]`, `(@.qualifiers && !@.qualifiers[?(@ == 'a')])` and `!@.field` / `@.field`. Anything
+  else Jayway accepted and the standard does not is an error that names the path.

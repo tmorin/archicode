@@ -5,14 +5,17 @@
 //! ApplicationDeepViewpointFactory, TechnologyDeepViewpointFactory, MetaLinkFinderFor*, MetaLinkGroomer, Level), and
 //! is checked against what the Java code generates (see src/test/javascript/viewpoint-kernel).
 //!
-//! Contract (version 1)
+//! Contract (version 2)
 //!   input : { viewpoint: "overview"|"detailed"|"deep"|"map", layer: "application"|"technology", focal,
 //!             default_synthetic_label, elements: [{reference, parent, applications, relationships}],
 //!             app_elements (technology deep only), collapsed: [item id], expanded: [item id],
 //!             facet: {name, actions: [{operator: "REMOVE", json_path}]} }
+//!           an element may carry more than `reference` and the rest above (kind, name, description, qualifiers, tags):
+//!           only a facet reads it, as a JSONPath can select on it
 //!   output: { version, items: [{id, reference, parent, collapsed, hidden, expandable}],
 //!             links: [{from, to, label, synthetic, qualifiers, tags, secondary,
 //!                      relationships: [{from, destination, label, qualifiers, tags}]}] }
+//!                      + warnings: [text] when there is something to say (omitted otherwise) }
 //!         | { error }
 //! A JSON `null` is read as "not given" wherever a field is optional (an absent `default_synthetic_label` is "uses").
 //! Two relationships that differ only by their tags are two relationships: a natural link carries the tags of its
@@ -28,13 +31,22 @@
 //! when it stands for several). `pinned` keeps the relationships that touch one of those elements (or what is inside
 //! it); `hidden` leaves out an element, what is inside it, and every relationship that reaches it. All three are
 //! optional lists of references, added to version 1.
-//! A `facet` is applied to the elements first (it removes relationships), as the CLI does before it generates the views
-//! of a facet. Only the documented kind of JSONPath is understood — see `facet` below; anything else is an error.
+//! A `facet` is applied to the elements first, as the CLI does before it generates the views of a facet. Its paths are
+//! standard JSONPath (RFC 9535), see `facet.rs`; the earlier dialect still works and is reported in `warnings`.
+//!
+//! A second entry point serves the CLI, which filters the JSON of the whole workspace: `apply_facet`,
+//!   input : { workspace, actions: [{operator: "REMOVE", json_path}] }
+//!   output: { version, workspace, warnings } | { error }
+//! Version 2: the paths of a facet are standard JSONPath, `apply_facet` exists, and `warnings` may be in the output.
+mod facet;
+
+pub use facet::apply_facet_json;
+
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Bumped when the shape of the input or output changes in a way a caller must know about.
-pub const CONTRACT_VERSION: u32 = 1;
+pub const CONTRACT_VERSION: u32 = 2;
 
 /// Qualifiers: a set — two of them are equal whatever the order — that remembers the order they were declared in,
 /// because that is the order the CLI draws them in.
@@ -128,6 +140,9 @@ struct Elem {
     applications: Vec<String>,
     #[serde(default, deserialize_with = "null_as_default")]
     relationships: Vec<Rel>,
+    /// whatever else the caller knows of the element (kind, name, description, qualifiers, tags): only a facet reads it
+    #[serde(flatten)]
+    other: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -153,7 +168,7 @@ struct Input {
     expanded: Vec<String>,
     /// a facet of the workspace's settings, applied before the viewpoint
     #[serde(default)]
-    facet: Option<Facet>,
+    facet: Option<facet::Facet>,
     /// map: references of the elements that are open (their children are shown)
     #[serde(default, deserialize_with = "null_as_default")]
     opened: Vec<String>,
@@ -163,18 +178,6 @@ struct Input {
     /// map: references of the elements left out, with what is inside them
     #[serde(default, deserialize_with = "null_as_default")]
     hidden: Vec<String>,
-}
-
-#[derive(Deserialize)]
-struct Facet {
-    #[serde(default, deserialize_with = "null_as_default")]
-    actions: Vec<FacetAction>,
-}
-
-#[derive(Deserialize)]
-struct FacetAction {
-    operator: String,
-    json_path: String,
 }
 
 fn default_label() -> String {
@@ -242,6 +245,9 @@ struct Output {
     version: u32,
     items: Vec<OutItem>,
     links: Vec<OutLink>,
+    /// what the caller should know without it being an error (a facet written in a syntax that is going away)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    warnings: Vec<String>,
 }
 
 // ---- Level / reference helpers (Level.java, Workspace.Utilities) ----
@@ -373,166 +379,6 @@ fn groom(metas: &[MetaLink], dir: Direction, from_t: usize, to_t: usize, expande
         }
     }
     by_key.into_values().collect()
-}
-
-// ---- facets ----
-//
-// In the CLI a facet is the workspace JSON with some JSONPath expressions deleted (Jayway JsonPath), and the views of
-// that smaller workspace are generated in their own directory. Jayway's dialect is far larger than what is useful
-// here, so this handles the shape every documented facet has — it removes relationships that match a filter:
-//
-//   $.application..relationships[?(@.qualifiers anyof ['a', 'b'])]      (or $.technology…, or $..relationships…)
-//   $.application..relationships[?(@.qualifiers noneof ['a'])]
-//   $.application..relationships[?(@.qualifiers == null)]              (also != null)
-//   $.application..relationships[?(@.label == 'text')]                 (also !=, == null, != null)
-//
-// `anyof` / `noneof` never match a relationship that has no qualifier, as in Jayway (that is what `== null` is for).
-// Any other expression is refused with an error naming it, never silently ignored.
-
-#[derive(PartialEq)]
-enum Field {
-    Qualifiers,
-    Label,
-}
-
-enum Test {
-    AnyOf(Vec<String>),
-    NoneOf(Vec<String>),
-    Eq(Option<String>),
-    Ne(Option<String>),
-}
-
-struct Selector {
-    application: bool,
-    technology: bool,
-    field: Field,
-    test: Test,
-}
-
-/// A quoted literal, and nothing else: a quote inside the body means the text is not one literal (`'a' || @.x == 'b'`).
-fn unquote(s: &str) -> Option<String> {
-    let s = s.trim();
-    let b = s.as_bytes();
-    if b.len() >= 2 && (b[0] == b'\'' || b[0] == b'"') && b[b.len() - 1] == b[0] {
-        let body = &s[1..s.len() - 1];
-        if !body.contains(['\'', '"']) {
-            return Some(body.to_string());
-        }
-    }
-    None
-}
-
-/// `&&` or `||` outside the quotes: a compound filter, which is not supported.
-fn is_compound(filter: &str) -> bool {
-    let mut quote: Option<char> = None;
-    let mut previous = ' ';
-    for c in filter.chars() {
-        match quote {
-            Some(q) if c == q => quote = None,
-            Some(_) => {}
-            None if c == '\'' || c == '"' => quote = Some(c),
-            None if c == previous && (c == '&' || c == '|') => return true,
-            None => {}
-        }
-        previous = c;
-    }
-    false
-}
-
-fn parse_list(s: &str) -> Option<Vec<String>> {
-    let inner = s.trim().strip_prefix('[')?.strip_suffix(']')?;
-    if inner.trim().is_empty() {
-        return Some(Vec::new());
-    }
-    inner.split(',').map(unquote).collect()
-}
-
-fn parse_scalar(s: &str) -> Option<Option<String>> {
-    if s.trim() == "null" {
-        Some(None)
-    } else {
-        unquote(s).map(Some)
-    }
-}
-
-fn parse_facet_action(action: &FacetAction) -> Result<Selector, String> {
-    let unsupported = || format!("unsupported facet action: {} {}", action.operator, action.json_path);
-    if action.operator != "REMOVE" {
-        return Err(unsupported());
-    }
-    let path = action.json_path.trim().strip_prefix('$').ok_or_else(unsupported)?;
-    let (application, technology, rest) = if let Some(r) = path.strip_prefix(".application") {
-        (true, false, r)
-    } else if let Some(r) = path.strip_prefix(".technology") {
-        (false, true, r)
-    } else {
-        (true, true, path)
-    };
-    let filter = rest
-        .strip_prefix("..relationships[?(")
-        .and_then(|r| r.strip_suffix(")]"))
-        .and_then(|r| r.trim().strip_prefix("@."))
-        .filter(|f| !is_compound(f))
-        .ok_or_else(unsupported)?;
-    let (field_name, after) = filter.split_once(char::is_whitespace).ok_or_else(unsupported)?;
-    let field = match field_name {
-        "qualifiers" => Field::Qualifiers,
-        "label" => Field::Label,
-        _ => return Err(unsupported()),
-    };
-    let after = after.trim();
-    let (op, rhs) = after.split_once(char::is_whitespace).ok_or_else(unsupported)?;
-    let test = match op {
-        "anyof" if field == Field::Qualifiers => Test::AnyOf(parse_list(rhs).ok_or_else(unsupported)?),
-        "noneof" if field == Field::Qualifiers => Test::NoneOf(parse_list(rhs).ok_or_else(unsupported)?),
-        "==" => Test::Eq(parse_scalar(rhs).ok_or_else(unsupported)?),
-        "!=" => Test::Ne(parse_scalar(rhs).ok_or_else(unsupported)?),
-        _ => return Err(unsupported()),
-    };
-    if field == Field::Qualifiers && matches!(&test, Test::Eq(Some(_)) | Test::Ne(Some(_))) {
-        return Err(unsupported());
-    }
-    Ok(Selector { application, technology, field, test })
-}
-
-impl Selector {
-    fn matches(&self, rel: &Rel) -> bool {
-        match (&self.field, &self.test) {
-            (Field::Qualifiers, Test::AnyOf(list)) => rel.qualifiers.iter().any(|q| list.contains(q)),
-            (Field::Qualifiers, Test::NoneOf(list)) => !rel.qualifiers.is_empty() && !rel.qualifiers.iter().any(|q| list.contains(q)),
-            (Field::Qualifiers, Test::Eq(_)) => rel.qualifiers.is_empty(),
-            (Field::Qualifiers, Test::Ne(_)) => !rel.qualifiers.is_empty(),
-            (Field::Label, Test::Eq(v)) => &rel.label == v,
-            (Field::Label, Test::Ne(v)) => &rel.label != v,
-            (Field::Label, _) => false,
-        }
-    }
-}
-
-/// Removes from the elements what the facet's actions remove. `elements` is the layer being viewed, `app_elements` the
-/// application layer that a technology view also reads.
-fn apply_facet(input: &mut Input) -> Result<(), String> {
-    let Some(facet) = input.facet.take() else { return Ok(()) };
-    let technology_view = input.layer == "technology";
-    for action in &facet.actions {
-        let selector = parse_facet_action(action)?;
-        let strip = |elems: &mut Vec<Elem>| {
-            for e in elems.iter_mut() {
-                e.relationships.retain(|r| !selector.matches(r));
-            }
-        };
-        if technology_view {
-            if selector.technology {
-                strip(&mut input.elements);
-            }
-            if selector.application {
-                strip(&mut input.app_elements);
-            }
-        } else if selector.application {
-            strip(&mut input.elements);
-        }
-    }
-    Ok(())
 }
 
 type Known<'a> = HashMap<&'a str, &'a Elem>;
@@ -987,12 +833,15 @@ pub fn compute_json(input: &str) -> String {
     let result = serde_json::from_str::<Input>(input)
         .map_err(|e| format!("invalid input: {e}"))
         .and_then(|mut input| {
-            apply_facet(&mut input)?;
+            let warnings = match input.facet.take() {
+                Some(facet) => facet::apply_to_input(&mut input, &facet)?,
+                None => Vec::new(),
+            };
             let (mut items, links) = build(&input)?;
             if input.viewpoint != "deep" {
                 mark_expandable(&mut items, &links, &mut input);
             }
-            Ok(Output { version: CONTRACT_VERSION, items, links })
+            Ok(Output { version: CONTRACT_VERSION, items, links, warnings })
         })
         .and_then(|out| serde_json::to_string(&out).map_err(|e| format!("cannot write the view: {e}")));
     result.unwrap_or_else(|e| serde_json::json!({ "error": e }).to_string())
@@ -1015,12 +864,11 @@ pub unsafe extern "C" fn dealloc(ptr: *mut u8, len: usize) {
     drop(Vec::from_raw_parts(ptr, 0, len));
 }
 
-/// Runs the kernel on `len` bytes of UTF-8 JSON at `ptr`; the result is read back with `result_ptr`/`result_len`.
-#[no_mangle]
-pub unsafe extern "C" fn compute(ptr: *const u8, len: usize) -> usize {
+/// Runs `f` on `len` bytes of UTF-8 JSON at `ptr`; the result is read back with `result_ptr` and the length returned.
+unsafe fn respond(ptr: *const u8, len: usize, f: fn(&str) -> String) -> usize {
     let bytes = std::slice::from_raw_parts(ptr, len);
     let out = match std::str::from_utf8(bytes) {
-        Ok(s) => compute_json(s),
+        Ok(s) => f(s),
         Err(_) => r#"{"error":"input is not UTF-8"}"#.to_string(),
     };
     #[allow(static_mut_refs)]
@@ -1028,6 +876,18 @@ pub unsafe extern "C" fn compute(ptr: *const u8, len: usize) -> usize {
         RESULT = out.into_bytes();
         RESULT.len()
     }
+}
+
+/// The viewpoint kernel: see `compute_json`.
+#[no_mangle]
+pub unsafe extern "C" fn compute(ptr: *const u8, len: usize) -> usize {
+    respond(ptr, len, compute_json)
+}
+
+/// The facets: see `apply_facet_json`.
+#[no_mangle]
+pub unsafe extern "C" fn apply_facet(ptr: *const u8, len: usize) -> usize {
+    respond(ptr, len, apply_facet_json)
 }
 
 #[no_mangle]
@@ -1228,17 +1088,44 @@ mod tests {
     }
 
     #[test]
-    fn what_the_facet_support_does_not_know_is_an_error_not_a_guess() {
-        for path in [
-            "$.application.elements[?(@.id == 'x')]",
-            "$.application..relationships[?(@.tags.k == 'v')]",
-            "$.application..relationships[?(@.label =~ /x/)]",
-        ] {
+    fn a_facet_can_filter_on_a_tag() {
+        let input = |path: &str| {
+            json!({
+                "viewpoint": "deep", "layer": "application", "focal": "a",
+                "facet": { "name": "f", "actions": remove(path) },
+                "elements": [
+                    { "reference": "a", "relationships": [
+                        { "destination": "b", "label": "yes", "tags": { "authn-enforcer-point": "yes" } },
+                        { "destination": "b", "label": "no", "tags": { "authn-enforcer-point": "no" } },
+                        { "destination": "b", "label": "none" },
+                        { "destination": "b", "label": "other", "tags": { "k": "yes" } }
+                    ] },
+                    { "reference": "b" }
+                ]
+            })
+        };
+        let run = |path: &str| -> Vec<String> {
+            let out: Value = serde_json::from_str(&compute_json(&input(path).to_string())).unwrap();
+            assert!(out.get("error").is_none(), "{path}: {out}");
+            let mut l: Vec<String> = labels(&out).into_iter().flatten().collect();
+            l.sort();
+            l
+        };
+        assert_eq!(run("$..relationships[?(@.tags['authn-enforcer-point'] == 'yes')]"), ["no", "none", "other"]);
+        assert_eq!(run("$..relationships[?(@.tags[\"authn-enforcer-point\"] != 'yes')]"), ["yes"]);
+        assert_eq!(run("$..relationships[?(@.tags.k == 'yes')]"), ["no", "none", "yes"]);
+    }
+
+    #[test]
+    fn what_a_facet_cannot_do_is_an_error_not_a_guess() {
+        for path in ["$.application..relationships[?(@.label =~ /x/)]", "$..relationships[?(@.label == ", "relationships", "$..relationships[?(@.label == 'x' ||)]"] {
             let out = with_facet("deep", "a", "application", remove(path));
-            assert!(out["error"].as_str().unwrap().contains("unsupported facet action"), "{path}");
+            assert!(error(&out).contains("invalid facet JSONPath"), "{path}: {out}");
         }
         let out = with_facet("deep", "a", "application", json!([{ "operator": "KEEP", "json_path": "$..relationships[?(@.label == 'x')]" }]));
-        assert!(out["error"].as_str().unwrap().contains("unsupported facet action"));
+        assert!(error(&out).contains("unsupported facet action: KEEP"));
+        let out = with_facet("deep", "a", "application", remove("$"));
+        assert!(error(&out).contains("whole workspace"), "{out}");
     }
 
     #[test]
@@ -1358,22 +1245,30 @@ mod tests {
         out["error"].as_str().unwrap_or_else(|| panic!("expected an error, got {out}"))
     }
 
-    // ---- compound facet filters ----
+    // ---- standard JSONPath: what the first dialect could not say ----
 
     #[test]
-    fn a_compound_facet_filter_is_refused_not_misread_as_one_literal() {
-        for path in [
-            "$..relationships[?(@.label == 'reads' || @.label == 'writes')]",
-            "$..relationships[?(@.label == 'reads' && @.label == 'writes')]",
-            "$..relationships[?(@.label == 'reads' && @.qualifiers == null)]",
-            "$..relationships[?(@.label == null || @.label == 'writes')]",
-            "$..relationships[?(@.qualifiers anyof ['REST'] || @.qualifiers anyof ['JDBC'])]",
-            "$..relationships[?(@.qualifiers anyof ['REST', 'a'' || @.x == ''b'])]",
-            "$..relationships[?(@.label == \"it's\")]",
-        ] {
-            let out = with_facet("deep", "a", "application", remove(path));
-            assert!(error(&out).contains("unsupported facet action"), "{path}: {out}");
-        }
+    fn a_compound_facet_filter_is_evaluated() {
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.label == 'reads' || @.label == 'writes')]"));
+        assert_eq!(labels(&out), [None]);
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.label == 'reads' && @.label == 'writes')]"));
+        assert_eq!(out["links"].as_array().unwrap().len(), 3, "nothing is both");
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(!@.label || @.label == 'writes')]"));
+        assert_eq!(labels(&out), [Some("reads".to_string())]);
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.qualifiers[?(@ == 'REST')] || @.label == 'writes')]"));
+        assert_eq!(labels(&out), [None]);
+    }
+
+    #[test]
+    fn a_facet_can_remove_an_element_and_what_points_at_it_is_then_dangling() {
+        let out = with_facet("deep", "a", "application", remove("$.application.elements[?(@.id == 'b')]"));
+        assert_eq!(error(&out), "dangling reference: b");
+        let out = with_facet("deep", "a", "application", remove("$.application.elements[?(@.id == 'a')]"));
+        assert!(!error(&out).is_empty(), "the focal element is gone: {out}");
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(length(@.qualifiers) == 1)]"));
+        assert_eq!(labels(&out), [None], "functions are available: only the relationship without qualifiers is left");
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(match(@.label, 'r.*'))]"));
+        assert!(error(&out).contains("invalid facet JSONPath"), "regular expressions are left out of the module: {out}");
     }
 
     #[test]
@@ -1658,5 +1553,77 @@ mod tests {
         let all: HashSet<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
         assert_eq!(all.len(), items.len());
         assert_eq!(item(&out, "prod_pod_shop_api")["reference"], "shop.api");
+    }
+
+    // ---- the earlier dialect ----
+
+    #[test]
+    fn the_earlier_dialect_is_rewritten_and_reported() {
+        let cases = [
+            ("$.application..relationships[?(@.qualifiers anyof ['REST', 'x'])]", "$.application..relationships[?(@.qualifiers[?(@ == 'REST' || @ == 'x')])]"),
+            ("$..relationships[?(@.qualifiers noneof ['REST'])]", "$..relationships[?((@.qualifiers && !@.qualifiers[?(@ == 'REST')]))]"),
+            ("$..relationships[?(@.qualifiers == null)]", "$..relationships[?(!@.qualifiers)]"),
+            ("$..relationships[?(@.label != null)]", "$..relationships[?(@.label)]"),
+            ("$..relationships[?(@.qualifiers == null && @.label == 'a anyof [x]')]", "$..relationships[?(!@.qualifiers && @.label == 'a anyof [x]')]"),
+        ];
+        for (old, new) in cases {
+            let (path, warnings) = facet::translate_legacy(old);
+            assert_eq!(path, new, "{old}");
+            assert_eq!(warnings.len(), 1, "{old}");
+        }
+        for standard in ["$..relationships[?(@.tags['k'] == 'v')]", "$..relationships[?(@.label == 'null')]", "$..relationships[?(@.label == 'anyof [x]')]"] {
+            assert_eq!(facet::translate_legacy(standard), (standard.to_string(), vec![]), "standard syntax is left alone");
+        }
+    }
+
+    #[test]
+    fn a_facet_in_the_earlier_dialect_warns() {
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.qualifiers anyof ['REST'])]"));
+        assert_eq!(out["warnings"].as_array().unwrap().len(), 1, "{out}");
+        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.qualifiers[?(@ == 'REST')])]"));
+        assert!(out.get("warnings").is_none(), "{out}");
+    }
+
+    #[test]
+    fn the_workspace_of_the_cli_is_filtered_as_the_elements_of_the_editor_are() {
+        let workspace = json!({
+            "application": { "elements": [
+                { "id": "s", "kind": "system", "relationships": [{ "destination": "t", "tags": { "audited": "yes" } }, { "destination": "t", "label": "x" }],
+                  "elements": [{ "id": "c", "kind": "container", "relationships": [{ "destination": "t", "tags": { "audited": "no" } }] }] },
+                { "id": "t", "kind": "system" }
+            ] },
+            "settings": { "views": { "path": "views" } }
+        });
+        let request = json!({ "workspace": workspace, "actions": remove("$..relationships[?(@.tags['audited'] == 'yes')]") });
+        let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
+        assert_eq!(out["version"], CONTRACT_VERSION);
+        assert_eq!(out["warnings"], json!([]));
+        let kept = &out["workspace"];
+        assert_eq!(kept["settings"], workspace["settings"], "the rest of the workspace is untouched");
+        assert_eq!(kept["application"]["elements"][0]["relationships"], json!([{ "destination": "t", "label": "x" }]));
+        assert_eq!(kept["application"]["elements"][0]["elements"][0]["relationships"].as_array().unwrap().len(), 1);
+        let request = json!({ "workspace": workspace, "actions": remove("$..relationships[?(@.tags['audited'] != 'yes')]") });
+        let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
+        assert_eq!(out["workspace"]["application"]["elements"][0]["relationships"], json!([{ "destination": "t", "tags": { "audited": "yes" } }]));
+        assert!(out["workspace"]["application"]["elements"][0]["elements"][0].get("relationships").is_none() || out["workspace"]["application"]["elements"][0]["elements"][0]["relationships"] == json!([]));
+        let request = json!({ "workspace": workspace, "actions": remove("$.application.elements[?(@.id == 't')]") });
+        let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
+        assert_eq!(out["workspace"]["application"]["elements"].as_array().unwrap().len(), 1, "an element can be removed too");
+        let out: Value = serde_json::from_str(&apply_facet_json(&json!({ "workspace": workspace, "actions": [{ "operator": "KEEP", "json_path": "$" }] }).to_string())).unwrap();
+        assert!(error(&out).contains("unsupported facet action"));
+    }
+
+    #[test]
+    fn removing_several_nodes_of_one_array_and_what_is_inside_them_keeps_the_indexes_right() {
+        let workspace = json!({ "application": { "elements": [
+            { "id": "a", "relationships": [{ "destination": "z", "label": "1" }, { "destination": "z", "label": "2" }, { "destination": "z", "label": "3" }, { "destination": "z", "label": "4" }] },
+            { "id": "b" }, { "id": "c" }, { "id": "z" }
+        ] } });
+        let request = json!({ "workspace": workspace, "actions": remove("$..relationships[?(@.label == '1' || @.label == '3')]") });
+        let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
+        assert_eq!(out["workspace"]["application"]["elements"][0]["relationships"], json!([{ "destination": "z", "label": "2" }, { "destination": "z", "label": "4" }]));
+        let request = json!({ "workspace": workspace, "actions": remove("$..elements[?(@.id == 'b' || @.id == 'z' || @.relationships)]") });
+        let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
+        assert_eq!(out["workspace"]["application"]["elements"], json!([{ "id": "c" }]));
     }
 }

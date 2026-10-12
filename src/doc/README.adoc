@@ -1049,6 +1049,33 @@ Navigating through complex architectural models often presents a challenge for p
 
 Archicode introduces the facet concept, a feature engineered to automate the generation of secondary workspaces and refine views to focus on specific concerns. By employing transformation rules based on JSON Path queries, facets effectively remove certain elements and relationships, offering a cleaner, focused view of specific subsets. This feature serves as a bridge from the chaos of detailed expressions to an organized, easily understandable visualization, paving the way for enhanced insights into complex architectural models.
 
+[NOTE]
+.The paths of a facet are standard JSONPath
+====
+The `json-path` of an action is a JSONPath as standardized by https://www.rfc-editor.org/rfc/rfc9535[RFC 9535]. It selects nodes of the workspace, and the `REMOVE` operator deletes them. The same code evaluates it in the command line and in the editor, so a facet cannot mean one thing in each. Beyond comparisons, a filter can combine tests with `&&`, `||` and `!`, test that a field exists (`?(@.label)`), look inside a list (`?(@.qualifiers[?(@ == 'oidc')])`) and call `length()` or `count()`. The functions `match()` and `search()` (regular expressions) are not available.
+
+The facets written for the previous engine (Jayway) keep working for now, with a warning that gives the standard form. They are going to be removed in a future major version.
+
+[cols="1,1"]
+|===
+|Before |Now
+
+|`@.qualifiers anyof ['a', 'b']`
+|`@.qualifiers[?(@ == 'a' \|\| @ == 'b')]`
+
+|`@.qualifiers noneof ['a']`
+|`(@.qualifiers && !@.qualifiers[?(@ == 'a')])`
+
+|`@.qualifiers == null`
+|`!@.qualifiers`
+
+|`@.qualifiers != null`
+|`@.qualifiers`
+|===
+
+Relationships that have no tag, or no qualifier, simply do not have the field: `@.tags['k'] != 'v'` selects them, `@.tags['k'] == 'v'` does not.
+====
+
 ===== Step #1: Create the main workspace
 
 // - The first step initializes the workspace.

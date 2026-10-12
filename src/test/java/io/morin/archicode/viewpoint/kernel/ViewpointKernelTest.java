@@ -49,4 +49,46 @@ class ViewpointKernelTest {
                 .asInt()
         );
     }
+
+    @Test
+    @SneakyThrows
+    void shouldApplyAFacetToTheJsonOfAWorkspace() {
+        val out = objectMapper.readTree(
+            ViewpointKernel.getInstance().applyFacet(
+                """
+                {"workspace":{"application":{"elements":[
+                   {"id":"a","relationships":[
+                     {"destination":"b","tags":{"audited":"yes"}},
+                     {"destination":"b","label":"keeps"}]},
+                   {"id":"b"}]}},
+                 "actions":[{"operator":"REMOVE","json_path":"$..relationships[?(@.tags['audited'] == 'yes')]"}]}
+                """
+            )
+        );
+        Assertions.assertEquals(ViewpointKernel.CONTRACT_VERSION, out.get("version").asInt());
+        val relationships = out.at("/workspace/application/elements/0/relationships");
+        Assertions.assertEquals(1, relationships.size());
+        Assertions.assertEquals("keeps", relationships.get(0).get("label").asText());
+        Assertions.assertEquals(0, out.get("warnings").size());
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldWarnAboutThePathsOfTheEarlierDialectAndRefuseWhatItCannotRead() {
+        val warned = objectMapper.readTree(
+            ViewpointKernel.getInstance().applyFacet(
+                """
+                {"workspace":{"application":{"elements":[]}},
+                 "actions":[{"operator":"REMOVE","json_path":"$..relationships[?(@.qualifiers anyof ['a'])]"}]}
+                """
+            )
+        );
+        Assertions.assertEquals(1, warned.get("warnings").size());
+        val refused = objectMapper.readTree(
+            ViewpointKernel.getInstance().applyFacet(
+                "{\"workspace\":{},\"actions\":[{\"operator\":\"REMOVE\",\"json_path\":\"$..x[?(@.a == \"}]}"
+            )
+        );
+        Assertions.assertTrue(refused.get("error").asText().contains("invalid facet JSONPath"));
+    }
 }

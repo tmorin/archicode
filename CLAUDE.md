@@ -43,6 +43,8 @@ workspace.yaml --> workspace/WorkspaceFactory --> manifest/ManifestParser
                  --> rendering/plantuml (PlantUML output)
 ```
 
+Facets (`settings.facets`) are evaluated by the same kernel, as standard JSONPath (RFC 9535, `serde_json_path`): `WorkspaceFactory` hands it the JSON of the workspace (`apply_facet`), the editor hands it the elements of the view. Jayway is still used by the `query` commands only. The earlier Jayway dialect of facets (`anyof`, `noneof`, `== null`) is rewritten with a warning, until a future major version removes it.
+
 ## Conventions
 
 - Lombok is used pervasively: `@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)` + `@RequiredArgsConstructor` for DI-injected fields, `@Slf4j` for logging, `@SneakyThrows` instead of checked-exception boilerplate.

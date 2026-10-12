@@ -45,3 +45,23 @@ settings:
         actions:
           - operator: "REMOVE"
             json-path: "$.application..relationships[?(@.qualifiers noneof ['REST'])]"
+      # filters on a tag: removes what is tagged audited=yes; what has no such tag is kept
+      - name: "unaudited"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$..relationships[?(@.tags['audited'] == 'yes')]"
+      # keeps only what is tagged audited=yes: removes what has another value, or no tag at all
+      - name: "audited-only"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$..relationships[?(@.tags['audited'] != 'yes')]"
+      # the standard JSONPath of what "rest-only" says in the earlier dialect: its views must be the same
+      - name: "rest-only-standard"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(!@.qualifiers[?(@ == 'REST')])]"
+      # a compound filter, which the earlier dialect could not say
+      - name: "compound"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$..relationships[?(@.label == 'routes to' || @.tags['audited'] == 'yes')]"

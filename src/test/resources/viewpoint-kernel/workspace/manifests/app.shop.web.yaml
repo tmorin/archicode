@@ -17,6 +17,8 @@ content:
           label: "calls"
           qualifiers:
             - "REST"
+          tags:
+            audited: "no"
     - kind: "group"
       id: "edge"
       name: "Edge"
@@ -46,6 +48,8 @@ content:
           label: "charges with"
           qualifiers:
             - "HTTPS"
+          tags:
+            audited: "yes"
         - destination: "mailer"
           label: "notifies through"
           qualifiers:

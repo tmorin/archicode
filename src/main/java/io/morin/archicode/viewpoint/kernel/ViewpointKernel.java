@@ -17,7 +17,7 @@ import lombok.val;
 public final class ViewpointKernel {
 
     /** The version of the input/output contract this class and {@link KernelViewpointFactory} were written for. */
-    public static final int CONTRACT_VERSION = 1;
+    public static final int CONTRACT_VERSION = 2;
 
     private static final class Holder {
 
@@ -43,11 +43,25 @@ public final class ViewpointKernel {
      * @return the output, as JSON: the view, or {@code {"error": "..."}}
      */
     public synchronized String compute(String json) {
+        return call("compute", json);
+    }
+
+    /**
+     * Apply the actions of a facet to the JSON of a workspace.
+     *
+     * @param json {@code {"workspace": {...}, "actions": [{"operator": "REMOVE", "json_path": "..."}]}}
+     * @return {@code {"version", "workspace", "warnings"}}, or {@code {"error": "..."}}
+     */
+    public synchronized String applyFacet(String json) {
+        return call("apply_facet", json);
+    }
+
+    private String call(String function, String json) {
         val bytes = json.getBytes(StandardCharsets.UTF_8);
         val pointer = (int) instance.export("alloc").apply(bytes.length)[0];
         try {
             instance.memory().write(pointer, bytes);
-            val length = (int) instance.export("compute").apply(pointer, bytes.length)[0];
+            val length = (int) instance.export(function).apply(pointer, bytes.length)[0];
             val resultPointer = (int) instance.export("result_ptr").apply()[0];
             return instance.memory().readString(resultPointer, length);
         } finally {
