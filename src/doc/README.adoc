@@ -425,6 +425,45 @@ include::examples/domain_viewpoint_views/workspace.yaml[]
 
 By embracing dynamic view generation, leveraging pluggable Viewpoint Services, and facilitating ad-hoc view definitions, ArchiCode equips architects with a toolkit for capturing, communicating, and exploring architectural insights in a dynamic and tailored manner. As we navigate deeper into ArchiCode's capabilities, you'll uncover the rendering of views and how they enhance your architectural workflow.
 
+[[stories]]
+==== Stories
+
+A story puts views in order, with a sentence for each, to tell how a part of the architecture works. It does not draw anything on its own: each step points at a view of the workspace, and the editor draws that view live from the model, so a story stays true as the architecture moves.
+
+Both are declared in `workspace.yaml`. The editor writes them for you (see <<editor-stories>>), but they are plain YAML:
+
+[source,yaml]
+----
+views:
+  - id: shop_overview
+    name: Shop — Overview
+    viewpoint: overview     # overview, detailed or deep: drawn by the command line as well
+    layer: application
+    properties:
+      element: shop
+      facet: flow           # optional: the editor draws the view through that facet
+  - id: payment_map
+    name: Map of the payments
+    viewpoint: map          # drawn by the editor only; the command line skips it
+    layer: application
+    properties:
+      pinned: [shop.payments]
+      hidden: [mailer]
+      opened: [shop]
+      hide-unlinked: true
+stories:
+  - id: order_flow
+    name: How an order travels
+    description: From the shop to the payment provider.
+    steps:
+      - view: shop_overview
+        text: The shop receives the order.
+      - view: payment_map
+        text: It hands the payment over.
+----
+
+A step names a view by its `id`. The text is plain text. A step on a view that is not declared is reported as a warning by the command line, and shown as missing by the editor. The command line ignores `stories`, and generates the views of its own viewpoints as it always did.
+
 ==== Rendering
 
 // - In ArchiCode, a View is rendered by a Renderer.
@@ -518,6 +557,20 @@ In the tree on the left, each row has two buttons, which appear when the pointer
 The pinned and hidden elements are also shown as chips over the map, each removable, with *Clear all* once there are several. In the tree, rows of the elements the map does not draw are greyed. Folding the tree does not change the boxes of the map: use *Fold all* and *Unfold all* in the toolbar of the map, or the buttons of the boxes. *Hide unlinked* leaves out the boxes that no link reaches.
 
 *Center* puts the selected box in the middle at a readable size, *Fit* shows the whole diagram, and *SVG* downloads it.
+
+[[editor-stories]]
+=== Stories
+
+The *Stories* perspective lists the stories of the workspace (see <<stories>>) and the views they are made of. A diagram on the Map or in Elements has two buttons in its header:
+
+- *Name view...* keeps the diagram as a view of `workspace.yaml`: the element and the viewpoint (Elements), or what is pinned, hidden and open (Map), with the facet and *Hide unlinked*. It keeps the recipe, not a picture: the view is drawn again from the model each time.
+- *Add to story...* puts the diagram in a story, as a step after the one being told, or at the end. Type the number of a story, or the name of a new one. The view is kept for you when none is saved for that diagram yet.
+
+While a story is being walked through, a bar over the diagram says where you are, with *Previous* and *Next*, and a box for what to say about the step: type in it as you go. *Back to this step* draws the saved view again when you moved away from it, and *Leave story* closes the bar. The story is in the URL, so a link or Back lands on the same step.
+
+In the Stories perspective, a story is edited in place: its name, its text, the order of its steps (*Up*, *Down*, *Remove*) and the words of each step. *Play* walks through it from the first step. A step whose element was deleted says so, and the others still work; renaming an element updates the views that point at it. The views can be opened, renamed and deleted there.
+
+Stories and views are written with the settings: they wait in memory, like the other changes, for *Save all changes*. The Map of a technology layer does not exist: to tell about environments, use views of Elements on the environments or the nodes.
 
 [[editor-facets]]
 === Facets

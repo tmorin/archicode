@@ -290,6 +290,34 @@
   .viewpoint-switch { display: inline-flex; gap: 0.5rem; flex: none; margin-left: 0.5rem; }
   .viewpoint-switch button { padding: 0 0.6rem !important; }
   /* buttons joined side by side, one border between two of them, the corners rounded at the ends only */
+  /* Stories */
+  .story-view { max-width: 56rem; }
+  .story-view h3 { margin: 1.5rem 0 0.5rem; font-size: 1rem; }
+  .story-intro { margin: 1rem 0; }
+  .story-count { color: var(--muted); font-size: 0.8rem; flex-shrink: 0; margin-left: auto; padding-left: 0.5rem; }
+  .story-nav-new { padding: 0.5rem 1rem; }
+  .story-field { display: grid; grid-template-columns: 5rem 1fr; gap: 0.5rem; align-items: start; margin: 0.6rem 0; }
+  .story-field > span { color: var(--muted); padding-top: 0.35rem; }
+  .story-field input, .story-field textarea, .story-step textarea { width: 100%; box-sizing: border-box; }
+  .story-steps { list-style: decimal; padding-left: 1.5rem; margin: 1rem 0; }
+  .story-step { margin: 0 0 0.9rem; }
+  .story-step::marker { color: var(--muted); font-weight: 600; }
+  .story-step-head, .story-view-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.3rem; }
+  .story-step-view, .story-view-name { font-weight: 600; }
+  .story-step-tools { display: inline-flex; gap: 0.3rem; margin-left: auto; }
+  .story-step-tools button { padding: 0.15rem 0.6rem !important; font-size: 0.8rem; }
+  .story-step.broken .story-step-view, .story-view-row.broken .story-view-name { color: var(--danger); }
+  .story-step-problem { flex-basis: 100%; color: var(--danger); font-size: 0.85rem; margin: 0 0 0.3rem; }
+  .story-add { display: flex; gap: 0.5rem; margin: 0.5rem 0 1rem; }
+  .story-view-list { list-style: none; padding: 0; margin: 0; }
+  .story-view-row { padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+  .story-bar { flex: none; padding: 0.5rem 0 0.4rem; border-bottom: 1px solid var(--border); }
+  .story-bar-line { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .story-bar-title { font-weight: 700; }
+  .story-bar-step { color: var(--muted); }
+  .story-bar-actions { display: inline-flex; gap: 0.4rem; margin-left: auto; flex-wrap: wrap; }
+  .story-bar-actions button { padding: 0.2rem 0.7rem !important; }
+  .story-bar-text { width: 100%; box-sizing: border-box; margin-top: 0.4rem; resize: vertical; }
   .button-group { display: inline-flex; }
   .button-group button { border-radius: 0 !important; }
   .button-group button + button { margin-left: -1px; }
@@ -2089,6 +2117,9 @@ function resetUiState() {
   treeExpandedEnvironments = true;
   treeQuietCache = null;
   elementTab = 'details';
+  activeStory = null;
+  selectedStoryId = null;
+  storyNotice = null;
   diagramFacet = null;
   diagramMaximized = false;
   diagramHideUnlinked = false;
@@ -2197,6 +2228,7 @@ let treeExpandedEnvironments = true;
 const PERSPECTIVES = {
   map: { label: 'Map' },
   elements: { label: 'Elements' },
+  stories: { label: 'Stories' },
   files: { label: 'Files' },
   settings: { label: 'Settings' }
 };
@@ -2229,9 +2261,18 @@ function refFromHash() {
  */
 function applyDiagramParamsFromHash() {
   const id = perspectiveIdFromHash();
-  if (id !== 'elements' && id !== 'map') return;
+  if (id !== 'elements' && id !== 'map' && id !== 'stories') return;
   const queryIdx = location.hash.indexOf('?');
   const params = new URLSearchParams(queryIdx === -1 ? '' : location.hash.slice(queryIdx + 1));
+  const storyParam = params.get('story');
+  if (id === 'stories') {
+    selectedStoryId = storyParam && findStory(storyParam) ? storyParam : null;
+    return;
+  }
+  // the story being walked through travels with the diagram it is showing
+  const storyOfUrl = storyParam ? findStory(storyParam) : null;
+  const stepOfUrl = Number(params.get('step'));
+  activeStory = storyOfUrl && Number.isInteger(stepOfUrl) && stepOfUrl >= 0 && stepOfUrl < storySteps(storyOfUrl).length ? { id: storyParam, step: stepOfUrl } : null;
   if (id === 'elements') {
     // an old "#/diagram?...&vp=deep" link: the viewpoint is the tab, and a diagram link without one meant the overview
     const legacy = location.hash.split('?')[0].replace(/^#\/?/, '') === 'diagram';
@@ -2289,6 +2330,10 @@ function currentRouteHash() {
   if (currentPerspective === 'map') {
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
     if (mapPinned.length) params.push('pin=' + mapPinned.map(encodeURIComponent).join(','));
+  }
+  if (currentPerspective === 'stories' && selectedStoryId) params.push('story=' + encodeURIComponent(selectedStoryId));
+  if ((currentPerspective === 'elements' || currentPerspective === 'map') && activeStory) {
+    params.push('story=' + encodeURIComponent(activeStory.id), 'step=' + activeStory.step);
   }
   return '/' + currentPerspective + (params.length ? '?' + params.join('&') : '');
 }
@@ -3505,6 +3550,7 @@ function forgetUiReferences(deletedRefs, layer) {
  */
 function rewriteInboundReferences(oldRef, newRef, layer) {
   const changedFiles = [];
+  rewriteSavedViewReferences(oldRef, newRef, layer); // the views of workspace.yaml that point at it follow
   for (const mf of AppState.manifestFiles) {
     const mfLayer = manifestLayer(mf);
     if (mfLayer === null) continue;
@@ -4877,6 +4923,11 @@ function handleAppInput(e) {
   if (!draftTyped && e.target.closest && e.target.closest('.element-edition-form, .settings-view, .file-view')) {
     draftTyped = true;
     refreshSaveAllButton();
+  }
+  const storyField = e.target.closest && e.target.closest('[data-story-field]');
+  if (storyField) {
+    updateStoryField(storyField);
+    return;
   }
   if (e.target.id === 'diagram-facet-select') {
     pushDiagramHistory();
@@ -6765,9 +6816,9 @@ function mountDiagramIfNeeded() {
 
 /** The center of Elements on a diagram tab: the header (tabs, facet, Maximize) and the diagram of the selected element. */
 function renderElementDiagramHtml(record) {
-  return '<div class="diagram-view">' +
+  return '<div class="diagram-view">' + renderStoryBarHtml() +
     renderElementHeaderHtml(renderElementTitleHtml(record),
-      renderShowOnMapButtonHtml(record) + renderFacetSelectHtml() + renderMaximizeButtonHtml()) +
+      renderShowOnMapButtonHtml(record) + renderStoryButtonsHtml() + renderFacetSelectHtml() + renderMaximizeButtonHtml()) +
     renderDiagramCanvasHtml(record) + '</div>';
 }
 
@@ -6788,9 +6839,9 @@ function renderMapPerspectiveHtml() {
   const record = sel.kind === 'element' ? findElementRecord(sel.key) : null;
   return {
     left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml()),
-    center: '<div class="diagram-view">' +
+    center: '<div class="diagram-view">' + renderStoryBarHtml() +
       renderElementHeaderHtml('<h2>Map</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
-        renderOpenAsDiagramButtonHtml(record) + renderFacetSelectHtml() + renderMaximizeButtonHtml()) +
+        renderOpenAsDiagramButtonHtml(record) + renderStoryButtonsHtml() + renderFacetSelectHtml() + renderMaximizeButtonHtml()) +
       renderDiagramCanvasHtml(null, renderMapChipsHtml()) + '</div>',
     right: null,
     bottom: null
@@ -6945,6 +6996,7 @@ function handleActivateKeydown(e) {
 function plainControlFocusOf(el) {
   const control = el && el.closest ? el.closest('.nav-row[role="button"], .tree-branch-title[role="button"]') : null;
   if (!control) return null;
+  if (control.hasAttribute('data-story')) return { selector: '.nav-row[role="button"]', attribute: 'data-story', value: control.getAttribute('data-story') };
   if (control.classList.contains('nav-row')) return { selector: '.nav-row[role="button"]', attribute: 'data-relpath', value: control.getAttribute('data-relpath') };
   const header = control.closest('.tree-branch-header');
   return { selector: '.tree-branch-title[role="button"]', attribute: 'data-branch', value: header ? header.getAttribute('data-branch') : null, parent: '.tree-branch-header' };
@@ -7022,9 +7074,564 @@ function renderSettingsPerspectiveHtml() {
   return { left: null, center: renderSettingsViewHtml(), right: null, bottom: null };
 }
 
+// =====================================================================
+// Stories — diagrams put in order, with a sentence for each
+//
+// A *saved view* is the recipe of a diagram, not its picture: the element and the viewpoint (Elements), or what is
+// pinned, hidden and open (Map), with the facet. It lives in `views:` of workspace.yaml, where the command line
+// already reads its views, and is drawn live from the model, so it stays true as the architecture moves.
+// A *story* (`stories:` of workspace.yaml) lists saved views in the order they are told, with a text for each.
+// Both are edited straight in `AppState.workspace.topLevel` (the parsed workspace.yaml, written back as it is),
+// which "Save all changes" writes along with the settings.
+// =====================================================================
+
+/** The story walked through on the diagrams ({ id, step }), kept in the URL (`story=`, `step=`). Null: none. */
+let activeStory = null;
+/** The story the Stories perspective shows, kept in the URL (`story=`). */
+let selectedStoryId = null;
+/** A line the Stories perspective says once (a step that cannot be shown, a list the editor leaves alone). */
+let storyNotice = null;
+
+const STORY_DIAGRAM_VIEWPOINTS = ['overview', 'detailed', 'deep'];
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function stringList(value) {
+  return Array.isArray(value) ? value.filter((entry) => typeof entry === 'string' && entry) : [];
+}
+
+function workspaceTopLevel() {
+  const workspace = AppState.workspace;
+  if (!workspace) return {};
+  if (!isPlainObject(workspace.topLevel)) workspace.topLevel = {};
+  return workspace.topLevel;
+}
+
+/** The entries of `views:` / `stories:` as the file has them (objects with an id). Nothing is created by reading. */
+function topLevelEntries(key) {
+  const list = AppState.workspace ? workspaceTopLevel()[key] : null;
+  return Array.isArray(list) ? list.filter((entry) => isPlainObject(entry) && typeof entry.id === 'string' && entry.id) : [];
+}
+
+/** The list to add to, created when the file has none; null (and a notice) when the file has something else under that key. */
+function writableTopLevelList(key) {
+  const top = workspaceTopLevel();
+  if (top[key] === undefined || top[key] === null) top[key] = [];
+  if (Array.isArray(top[key])) return top[key];
+  storyNotice = 'workspace.yaml has a “' + key + '” that is not a list: the editor leaves it alone.';
+  return null;
+}
+
+/** The workspace.yaml of the folder has changed in memory: "Save all changes" writes it. */
+function markWorkspaceYamlChanged() {
+  const workspace = AppState.workspace;
+  workspace.settingsDirty = true; // the file is written with the settings
+  workspace.settingsRevision = (workspace.settingsRevision || 0) + 1;
+  saveStatus = { state: 'idle' };
+}
+
+function savedViews() { return topLevelEntries('views'); }
+function storiesList() { return topLevelEntries('stories'); }
+function findSavedView(id) { return savedViews().find((view) => view.id === id) || null; }
+function findStory(id) { return storiesList().find((story) => story.id === id) || null; }
+
+/** The steps of a story as the file has them; one that is not an object stands for a view that is missing. */
+function storySteps(story) {
+  return Array.isArray(story.steps) ? story.steps.map((step) => (isPlainObject(step) ? step : { view: '' })) : [];
+}
+
+function storyLabel(story) { return story.name || story.id; }
+
+function capitalizeWord(word) { return word ? word.charAt(0).toUpperCase() + word.slice(1) : word; }
+
+/** Letters, digits and underscores, unique among `taken`: what a view or story id looks like. */
+function uniqueIdFor(text, taken, fallback) {
+  const base = String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || fallback;
+  let id = base;
+  for (let n = 2; taken.has(id); n++) id = base + '_' + n;
+  return id;
+}
+
+// ---- The recipe of a diagram ----
+
+/** The properties of a view, in the order they are written, without the empty ones: two equal diagrams give equal text. */
+function canonicalViewProperties(properties) {
+  const source = isPlainObject(properties) ? properties : {};
+  const out = {};
+  if (typeof source.element === 'string' && source.element) out.element = source.element;
+  for (const key of ['pinned', 'hidden', 'opened']) {
+    const list = stringList(source[key]).slice().sort();
+    if (list.length) out[key] = list;
+  }
+  if (typeof source.facet === 'string' && source.facet) out.facet = source.facet;
+  if (source['hide-unlinked'] === true) out['hide-unlinked'] = true;
+  return out;
+}
+
+function canonicalViewDefinition(view) {
+  const viewpoint = String(view.viewpoint);
+  return { viewpoint, layer: viewpoint === 'map' || view.layer !== 'technology' ? 'application' : 'technology', properties: canonicalViewProperties(view.properties) };
+}
+
+/** What the diagram on screen is, as a view; null when no diagram is on screen (a page, a form). */
+function currentViewDefinition() {
+  const facetName = diagramFacet && currentDiagramFacet() ? diagramFacet : null;
+  if (mapIsShown()) {
+    const state = currentMapState();
+    return canonicalViewDefinition({ viewpoint: 'map', layer: 'application', properties: { pinned: state.pinned, hidden: state.hidden, opened: state.opened, facet: facetName, 'hide-unlinked': diagramHideUnlinked } });
+  }
+  if (diagramTabShown()) {
+    const sel = AppState.selection;
+    const record = findElementRecord(sel.key, sel.layer);
+    return canonicalViewDefinition({ viewpoint: effectiveDiagramViewpoint(record), layer: layerOfReference(sel.key, sel.layer), properties: { element: sel.key, facet: facetName } });
+  }
+  return null;
+}
+
+function viewMatchesScreen(view) {
+  const current = currentViewDefinition();
+  return !!current && JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(current);
+}
+
+/** A name for a view nobody named: the element and the viewpoint, or what the map is pinned on. */
+function describeViewDefinition(view) {
+  const definition = canonicalViewDefinition(view);
+  const nameOf = (reference, layer) => {
+    const record = AppState.index && AppState.index[layer] ? AppState.index[layer].get(reference) : null;
+    return record ? (record.name || record.id) : reference;
+  };
+  let text;
+  if (definition.viewpoint === 'map') {
+    const pinned = stringList(definition.properties.pinned);
+    text = pinned.length ? 'Map of ' + pinned.slice(0, 3).map((reference) => nameOf(reference, 'application')).join(', ') + (pinned.length > 3 ? ' and ' + (pinned.length - 3) + ' more' : '') : 'Map';
+  } else {
+    text = nameOf(definition.properties.element, definition.layer) + ' — ' + capitalizeWord(definition.viewpoint);
+  }
+  return text + (definition.properties.facet ? ' (facet ' + definition.properties.facet + ')' : '');
+}
+
+function viewLabel(view) { return (typeof view.name === 'string' && view.name) || describeViewDefinition(view); }
+
+/** Why a saved view cannot be drawn now, or null when it can. */
+function viewProblem(view) {
+  if (!isPlainObject(view)) return 'This view does not exist.';
+  const properties = isPlainObject(view.properties) ? view.properties : {};
+  if (view.viewpoint === 'map') {
+    const pinned = stringList(properties.pinned);
+    return pinned.length && !pinned.some((reference) => AppState.index.application.has(reference)) ? 'None of the elements it was pinned on exists any more.' : null;
+  }
+  if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint)) return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
+  const layer = view.layer === 'technology' ? 'technology' : 'application';
+  if (typeof properties.element !== 'string' || !AppState.index[layer].has(properties.element)) {
+    return 'The element “' + properties.element + '” does not exist any more.';
+  }
+  return null;
+}
+
+/** Puts the editor where the view was saved. Returns why it cannot, or null once it is done (the caller redraws). */
+function applySavedView(view) {
+  const problem = viewProblem(view);
+  if (problem) return problem;
+  const properties = isPlainObject(view.properties) ? view.properties : {};
+  diagramFacet = typeof properties.facet === 'string' && AppState.workspace.settings.facets.customs.some((facet) => facet.name === properties.facet) ? properties.facet : null;
+  if (view.viewpoint === 'map') {
+    const known = (list) => stringList(list).filter((reference) => AppState.index.application.has(reference));
+    mapPinned = known(properties.pinned);
+    mapHidden = known(properties.hidden);
+    mapOpened = new Set(known(properties.opened));
+    diagramHideUnlinked = properties['hide-unlinked'] === true;
+    mapPinned.forEach(expandParentsOf);
+    mapSelectionCheck = true;
+    currentPerspective = 'map';
+  } else {
+    const layer = view.layer === 'technology' ? 'technology' : 'application';
+    AppState.selection = { kind: 'element', key: properties.element, layer, mode: 'view' };
+    elementTab = view.viewpoint;
+    expandAncestorsOf(properties.element);
+    scrollNavToSelection = true;
+    currentPerspective = 'elements';
+  }
+  if (rawYamlEditDraft) rawYamlEditDraft = null;
+  if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
+  return null;
+}
+
+// ---- Editing the lists (everything is in memory until "Save all changes") ----
+
+/** The saved view of that diagram: the one already saved when there is one, else a new one named `name`. Null when the file cannot take it. */
+function viewForDefinition(definition, name) {
+  const existing = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
+  if (existing) return existing;
+  const list = writableTopLevelList('views');
+  if (!list) return null;
+  const view = {
+    id: uniqueIdFor(name || describeViewDefinition(definition), new Set(savedViews().map((entry) => entry.id)), 'view'),
+    name: name || describeViewDefinition(definition),
+    viewpoint: definition.viewpoint,
+    layer: definition.layer,
+    properties: definition.properties
+  };
+  list.push(view);
+  markWorkspaceYamlChanged();
+  return view;
+}
+
+function createStory(name) {
+  const list = writableTopLevelList('stories');
+  if (!list) return null;
+  const story = { id: uniqueIdFor(name, new Set(storiesList().map((entry) => entry.id)), 'story'), name, steps: [] };
+  list.push(story);
+  markWorkspaceYamlChanged();
+  return story;
+}
+
+function writableSteps(story) {
+  if (!Array.isArray(story.steps)) story.steps = [];
+  return story.steps;
+}
+
+function removeEntryFrom(key, id) {
+  const list = workspaceTopLevel()[key];
+  if (!Array.isArray(list)) return;
+  const index = list.findIndex((entry) => isPlainObject(entry) && entry.id === id);
+  if (index >= 0) list.splice(index, 1);
+  if (!list.length) delete workspaceTopLevel()[key]; // a file that had no `stories:` does not keep an empty one
+  markWorkspaceYamlChanged();
+}
+
+/** How many steps of the stories show that view. */
+function storiesUsingView(viewId) {
+  return storiesList().reduce((count, story) => count + storySteps(story).filter((step) => step.view === viewId).length, 0);
+}
+
+/**
+ * An element was renamed: the saved views that point at it follow (the Map's pinned, hidden and open elements are of
+ * the application layer; the element of a view is of its own layer).
+ */
+function rewriteSavedViewReferences(oldRef, newRef, layer) {
+  let changed = false;
+  for (const view of savedViews()) {
+    const properties = view.properties;
+    if (!isPlainObject(properties)) continue;
+    const viewLayer = view.layer === 'technology' ? 'technology' : 'application';
+    if (view.viewpoint !== 'map' && viewLayer === layer && typeof properties.element === 'string') {
+      const element = rewriteReferenceValue(properties.element, oldRef, newRef);
+      if (element !== properties.element) { properties.element = element; changed = true; }
+    }
+    if (view.viewpoint === 'map' && layer === 'application') {
+      for (const key of ['pinned', 'hidden', 'opened']) {
+        if (!Array.isArray(properties[key])) continue;
+        const next = properties[key].map((reference) => rewriteReferenceValue(reference, oldRef, newRef));
+        if (next.some((reference, i) => reference !== properties[key][i])) { properties[key] = next; changed = true; }
+      }
+    }
+  }
+  if (changed) markWorkspaceYamlChanged();
+  return changed;
+}
+
+/** A text field of a story, typed in: the model follows at once (there is no form to apply), and "Save all changes" lights up. */
+function updateStoryField(field) {
+  const story = findStory(field.getAttribute('data-story'));
+  if (!story) return;
+  const name = field.getAttribute('data-story-field');
+  const value = field.value;
+  let target = story;
+  let key = name;
+  if (name === 'step-text') {
+    target = Array.isArray(story.steps) ? story.steps[Number(field.getAttribute('data-step'))] : null;
+    key = 'text';
+  } else if (name !== 'name' && name !== 'description') {
+    return;
+  }
+  if (!isPlainObject(target)) return;
+  if (value === '') delete target[key]; else target[key] = value;
+  markWorkspaceYamlChanged();
+  refreshSaveAllButton();
+}
+
+// ---- Actions ----
+
+/** Keeps the diagram on screen as a named view. */
+function nameCurrentView() {
+  const definition = currentViewDefinition();
+  if (!definition) return;
+  const existing = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
+  if (existing) {
+    alert('This diagram is already saved as “' + viewLabel(existing) + '”. Rename it in Stories.');
+    return;
+  }
+  const answer = prompt('Name this view. It is kept in workspace.yaml, to be put in a story.', describeViewDefinition(definition));
+  if (answer === null || !answer.trim()) return;
+  if (viewForDefinition(definition, answer.trim())) render();
+}
+
+/** Puts the diagram on screen in a story, after the step being told (else at the end), as a view of its own when none is saved for it. */
+function addCurrentViewToStory() {
+  const definition = currentViewDefinition();
+  if (!definition) return;
+  const stories = storiesList();
+  const walked = activeStory ? stories.findIndex((story) => story.id === activeStory.id) : -1;
+  const question = stories.length
+    ? 'Add this diagram to which story?\n\n' + stories.map((story, i) => (i + 1) + '. ' + storyLabel(story)).join('\n') + '\n\nType its number, or the name of a new story.'
+    : 'This workspace has no story yet. Name the first one:';
+  const answer = prompt(question, walked >= 0 ? String(walked + 1) : '');
+  const text = answer === null ? '' : answer.trim();
+  if (!text) return;
+  const number = /^\d+$/.test(text) ? Number(text) : 0;
+  const view = viewForDefinition(definition); // before a new story, so that `views:` comes first in the file
+  const story = view ? (number >= 1 && number <= stories.length ? stories[number - 1] : createStory(text)) : null;
+  if (!story || !view) { render(); return; }
+  const steps = writableSteps(story);
+  const at = activeStory && activeStory.id === story.id ? Math.min(activeStory.step + 1, steps.length) : steps.length;
+  steps.splice(at, 0, { view: view.id });
+  activeStory = { id: story.id, step: at };
+  selectedStoryId = story.id;
+  markWorkspaceYamlChanged();
+  render();
+}
+
+/** Draws a step of a story on the Map or in Elements. When it cannot be drawn, the Stories perspective says why. */
+function goToStoryStep(storyId, index) {
+  const story = findStory(storyId);
+  const steps = story ? storySteps(story) : [];
+  if (!story || index < 0 || index >= steps.length) return;
+  selectedStoryId = storyId;
+  const view = findSavedView(steps[index].view);
+  const problem = view ? applySavedView(view) : 'The view “' + steps[index].view + '” does not exist any more.';
+  activeStory = { id: storyId, step: index };
+  if (problem) {
+    storyNotice = 'Step ' + (index + 1) + ' cannot be shown. ' + problem;
+    currentPerspective = 'stories';
+  } else {
+    storyNotice = null;
+  }
+  location.hash = currentRouteHash();
+  render();
+}
+
+function selectStory(id) {
+  selectedStoryId = id;
+  storyNotice = null;
+  render();
+}
+
+function newStory() {
+  const answer = prompt('Name of the new story:', '');
+  if (answer === null || !answer.trim()) return;
+  const story = createStory(answer.trim());
+  if (story) { selectedStoryId = story.id; storyNotice = null; }
+  render();
+}
+
+function deleteStory(id) {
+  const story = findStory(id);
+  if (!story || !confirm('Delete the story “' + storyLabel(story) + '”? Its views stay saved.')) return;
+  removeEntryFrom('stories', id);
+  if (selectedStoryId === id) selectedStoryId = null;
+  if (activeStory && activeStory.id === id) activeStory = null;
+  render();
+}
+
+function moveStoryStep(storyId, index, delta) {
+  const story = findStory(storyId);
+  const steps = story && Array.isArray(story.steps) ? story.steps : null;
+  const to = index + delta;
+  if (!steps || index < 0 || index >= steps.length || to < 0 || to >= steps.length) return;
+  [steps[index], steps[to]] = [steps[to], steps[index]];
+  if (activeStory && activeStory.id === storyId) {
+    if (activeStory.step === index) activeStory.step = to; else if (activeStory.step === to) activeStory.step = index;
+  }
+  markWorkspaceYamlChanged();
+  render();
+}
+
+function removeStoryStep(storyId, index) {
+  const story = findStory(storyId);
+  if (!story || !Array.isArray(story.steps) || index < 0 || index >= story.steps.length) return;
+  story.steps.splice(index, 1);
+  if (activeStory && activeStory.id === storyId) {
+    if (activeStory.step > index) activeStory.step--;
+    if (activeStory.step >= story.steps.length) activeStory = story.steps.length ? { id: storyId, step: story.steps.length - 1 } : null;
+  }
+  markWorkspaceYamlChanged();
+  render();
+}
+
+function addStoryStep(storyId, viewId) {
+  const story = findStory(storyId);
+  if (!story || !findSavedView(viewId)) return;
+  writableSteps(story).push({ view: viewId });
+  markWorkspaceYamlChanged();
+  render();
+}
+
+function openSavedView(viewId) {
+  const view = findSavedView(viewId);
+  if (!view) return;
+  const problem = applySavedView(view);
+  if (problem) { storyNotice = problem; render(); return; }
+  activeStory = null;
+  storyNotice = null;
+  location.hash = currentRouteHash();
+  render();
+}
+
+function renameSavedView(viewId) {
+  const view = findSavedView(viewId);
+  if (!view) return;
+  const answer = prompt('Name of the view:', viewLabel(view));
+  if (answer === null || !answer.trim()) return;
+  view.name = answer.trim();
+  markWorkspaceYamlChanged();
+  render();
+}
+
+function deleteSavedView(viewId) {
+  const view = findSavedView(viewId);
+  if (!view) return;
+  const used = storiesUsingView(viewId);
+  if (!confirm('Delete the view “' + viewLabel(view) + '”?' + (used ? '\n\n' + used + ' step' + (used === 1 ? '' : 's') + ' of stories show it; they will say the view is missing.' : ''))) return;
+  removeEntryFrom('views', viewId);
+  render();
+}
+
+// ---- What is drawn ----
+
+/** Over a diagram that belongs to a story: where we are in it, the way to the other steps, and the words of the step. */
+function renderStoryBarHtml() {
+  const story = activeStory ? findStory(activeStory.id) : null;
+  const steps = story ? storySteps(story) : [];
+  if (!story || activeStory.step < 0 || activeStory.step >= steps.length) return '';
+  const n = activeStory.step;
+  const view = findSavedView(steps[n].view);
+  const here = !!view && !viewProblem(view) && viewMatchesScreen(view);
+  return '<div class="story-bar" role="region" aria-label="Story ' + escapeHtml(storyLabel(story)) + '">' +
+    '<div class="story-bar-line">' +
+      '<span class="story-bar-title">' + escapeHtml(storyLabel(story)) + '</span>' +
+      '<span class="story-bar-step">Step ' + (n + 1) + ' of ' + steps.length + (view ? ' · ' + escapeHtml(viewLabel(view)) : '') + '</span>' +
+      '<span class="story-bar-actions">' +
+        '<span class="button-group" role="group" aria-label="Steps">' +
+          '<button type="button" data-action="story-prev"' + (n === 0 ? ' disabled' : '') + ' title="The step before">Previous</button>' +
+          '<button type="button" data-action="story-next"' + (n === steps.length - 1 ? ' disabled' : '') + ' title="The next step">Next</button>' +
+        '</span>' +
+        (here ? '' : '<button type="button" data-action="story-restore" title="Draw this step again, as it was saved">Back to this step</button>') +
+        '<button type="button" data-action="story-edit" title="Reorder the steps, rename the story">Edit story</button>' +
+        '<button type="button" data-action="story-exit" title="Leave the story: the diagram stays as it is">Leave story</button>' +
+      '</span>' +
+    '</div>' +
+    '<textarea class="story-bar-text" rows="2" data-story="' + escapeHtml(story.id) + '" data-story-field="step-text" data-step="' + n + '" aria-label="What to say about this step" placeholder="What to say about this diagram…">' +
+      escapeHtml(steps[n].text || '') + '</textarea>' +
+  '</div>';
+}
+
+/** In the header of a diagram: keep it as a view, or put it in a story. */
+function renderStoryButtonsHtml() {
+  return '<span class="button-group" role="group" aria-label="Story">' +
+    '<button type="button" data-action="name-view" title="Keep this diagram as a named view, to put in a story (kept in memory until Save all changes)">Name view…</button>' +
+    '<button type="button" data-action="add-to-story" title="Add this diagram to a story as a step">Add to story…</button>' +
+  '</span>';
+}
+
+function renderStoriesNavHtml() {
+  const stories = storiesList();
+  let html = '<div class="nav-section"><div class="nav-section-title">Stories</div>';
+  for (const story of stories) {
+    const active = story.id === selectedStoryId ? ' active' : '';
+    const count = storySteps(story).length;
+    html += '<div class="nav-row story-row' + active + '" role="button" tabindex="0"' + (active ? ' aria-current="true"' : '') + ' data-action="select-story" data-story="' + escapeHtml(story.id) + '">' +
+      '<span class="file-relpath">' + escapeHtml(storyLabel(story)) + '</span><span class="story-count">' + count + (count === 1 ? ' step' : ' steps') + '</span></div>';
+  }
+  if (!stories.length) html += '<div class="tree-empty">No story yet.</div>';
+  html += '<div class="story-nav-new"><button type="button" data-action="story-new">New story…</button></div></div>';
+  return html;
+}
+
+function renderStoryStepHtml(story, step, index, count) {
+  const view = findSavedView(step.view);
+  const problem = view ? viewProblem(view) : 'The view “' + step.view + '” does not exist any more.';
+  const id = escapeHtml(story.id);
+  const button = (action, label, extra) => '<button type="button" data-action="' + action + '" data-story="' + id + '" data-step="' + index + '"' + (extra || '') + '>' + label + '</button>';
+  return '<li class="story-step' + (problem ? ' broken' : '') + '">' +
+    '<div class="story-step-head">' +
+      '<span class="story-step-view">' + (view ? escapeHtml(viewLabel(view)) : '<em>Missing view</em>') + '</span>' +
+      '<span class="story-step-tools">' +
+        (problem ? '' : button('story-play', 'Show', ' title="Draw this step on the diagrams"')) +
+        button('story-step-up', 'Up', index === 0 ? ' disabled' : '') +
+        button('story-step-down', 'Down', index === count - 1 ? ' disabled' : '') +
+        button('story-step-remove', 'Remove') +
+      '</span>' +
+    '</div>' +
+    (problem ? '<div class="story-step-problem" role="status">' + escapeHtml(problem) + '</div>' : '') +
+    '<textarea rows="2" data-story="' + id + '" data-story-field="step-text" data-step="' + index + '" aria-label="What to say about step ' + (index + 1) + '" placeholder="What to say about this diagram…">' + escapeHtml(step.text || '') + '</textarea>' +
+  '</li>';
+}
+
+function renderStoryEditorHtml(story) {
+  const id = escapeHtml(story.id);
+  const steps = storySteps(story);
+  const views = savedViews();
+  let html = '<section class="story-editor" aria-label="Story">' +
+    '<label class="story-field"><span>Name</span><input type="text" data-story="' + id + '" data-story-field="name" value="' + escapeHtml(story.name || '') + '" placeholder="' + id + '"></label>' +
+    '<label class="story-field"><span>About</span><textarea rows="2" data-story="' + id + '" data-story-field="description" placeholder="What this story shows, in a few words.">' + escapeHtml(story.description || '') + '</textarea></label>';
+  html += steps.length
+    ? '<ol class="story-steps">' + steps.map((step, i) => renderStoryStepHtml(story, step, i, steps.length)).join('') + '</ol>'
+    : '<p class="muted">No step yet. Open a diagram in Map or Elements and use “Add to story…”, or add a saved view below.</p>';
+  if (views.length) {
+    html += '<div class="story-add"><select id="story-add-view" aria-label="View to add">' +
+      views.map((view) => '<option value="' + escapeHtml(view.id) + '">' + escapeHtml(viewLabel(view)) + '</option>').join('') +
+      '</select><button type="button" data-action="story-add-step" data-story="' + id + '">Add step</button></div>';
+  }
+  return html + '</section>';
+}
+
+function renderSavedViewsHtml() {
+  const views = savedViews();
+  let html = '<section class="story-views" aria-label="Saved views"><h3>Saved views</h3>';
+  if (!views.length) return html + '<p class="muted">None yet. “Name view…” on a diagram keeps it here; “Add to story…” does it for you.</p></section>';
+  html += '<ul class="story-view-list">';
+  for (const view of views) {
+    const used = storiesUsingView(view.id);
+    const problem = viewProblem(view);
+    const id = escapeHtml(view.id);
+    html += '<li class="story-view-row' + (problem ? ' broken' : '') + '">' +
+      '<span class="story-view-name">' + escapeHtml(viewLabel(view)) + '</span>' +
+      '<span class="story-count">' + escapeHtml(String(view.viewpoint)) + (used ? ' · in ' + used + (used === 1 ? ' step' : ' steps') : '') + '</span>' +
+      '<span class="story-step-tools">' +
+        (problem ? '' : '<button type="button" data-action="saved-view-open" data-view="' + id + '">Open</button>') +
+        '<button type="button" data-action="saved-view-rename" data-view="' + id + '">Rename</button>' +
+        '<button type="button" data-action="saved-view-delete" data-view="' + id + '">Delete</button>' +
+      '</span>' +
+      (problem ? '<div class="story-step-problem" role="status">' + escapeHtml(problem) + '</div>' : '') +
+    '</li>';
+  }
+  return html + '</ul></section>';
+}
+
+/** Stories perspective — the stories on the left, the one picked in the center, and the views they are made of. */
+function renderStoriesPerspectiveHtml() {
+  const story = selectedStoryId ? findStory(selectedStoryId) : null;
+  const actions = story
+    ? '<button type="button" data-action="story-play" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Walk through the story on the diagrams, from its first step">Play</button>' +
+      '<button type="button" data-action="story-delete" data-story="' + escapeHtml(story.id) + '">Delete story</button>'
+    : '';
+  return {
+    left: renderLeftPanelWrapperHtml(renderStoriesNavHtml()),
+    center: '<div class="story-view">' + renderElementHeaderHtml('<h2>Stories</h2>', actions) +
+      (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') +
+      (story ? renderStoryEditorHtml(story) : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. Pick one on the left, or start one with “New story…”.</p>') +
+      renderSavedViewsHtml() + '</div>',
+    right: null,
+    bottom: null
+  };
+}
+
 /** Dispatch to the active perspective's region content. */
 function renderActivePerspectiveHtml() {
   if (currentPerspective === 'map') return renderMapPerspectiveHtml();
+  if (currentPerspective === 'stories') return renderStoriesPerspectiveHtml();
   if (currentPerspective === 'files') return renderFilesPerspectiveHtml();
   if (currentPerspective === 'settings') return renderSettingsPerspectiveHtml();
   return renderElementsPerspectiveHtml();
@@ -7098,7 +7705,8 @@ async function cancelChanges() {
 /** The clicks that replace the form on screen. Without a "Save all changes" first, what was typed in it is lost. */
 const ACTIONS_LEAVING_THE_FORM = new Set([
   'set-perspective', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
-  'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder'
+  'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
+  'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open'
 ]);
 
 /** Asks before throwing away what was typed in a form and not applied. True when the user accepts (the draft is then gone). */
@@ -7223,6 +7831,59 @@ function handleAppClick(e) {
       // the element on its own: its overview, unless a diagram was the last thing it showed
       if (elementTab === 'details') elementTab = 'overview';
       setPerspective('elements');
+      break;
+    case 'name-view':
+      nameCurrentView();
+      break;
+    case 'add-to-story':
+      addCurrentViewToStory();
+      break;
+    case 'select-story':
+      selectStory(target.getAttribute('data-story'));
+      break;
+    case 'story-new':
+      newStory();
+      break;
+    case 'story-delete':
+      deleteStory(target.getAttribute('data-story'));
+      break;
+    case 'story-play':
+      goToStoryStep(target.getAttribute('data-story'), Number(target.getAttribute('data-step') || 0));
+      break;
+    case 'story-prev':
+    case 'story-next':
+      if (activeStory) goToStoryStep(activeStory.id, activeStory.step + (action === 'story-next' ? 1 : -1));
+      break;
+    case 'story-restore':
+      if (activeStory) goToStoryStep(activeStory.id, activeStory.step);
+      break;
+    case 'story-edit':
+      if (activeStory) { selectedStoryId = activeStory.id; storyNotice = null; setPerspective('stories'); }
+      break;
+    case 'story-exit':
+      activeStory = null;
+      render();
+      break;
+    case 'story-step-up':
+    case 'story-step-down':
+      moveStoryStep(target.getAttribute('data-story'), Number(target.getAttribute('data-step')), action === 'story-step-down' ? 1 : -1);
+      break;
+    case 'story-step-remove':
+      removeStoryStep(target.getAttribute('data-story'), Number(target.getAttribute('data-step')));
+      break;
+    case 'story-add-step': {
+      const choice = document.getElementById('story-add-view');
+      if (choice) addStoryStep(target.getAttribute('data-story'), choice.value);
+      break;
+    }
+    case 'saved-view-open':
+      openSavedView(target.getAttribute('data-view'));
+      break;
+    case 'saved-view-rename':
+      renameSavedView(target.getAttribute('data-view'));
+      break;
+    case 'saved-view-delete':
+      deleteSavedView(target.getAttribute('data-view'));
       break;
     case 'map-clear':
       pushDiagramHistory();

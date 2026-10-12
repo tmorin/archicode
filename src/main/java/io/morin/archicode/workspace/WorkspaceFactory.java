@@ -53,6 +53,18 @@ public class WorkspaceFactory {
         log.debug("index the views");
         val viewIndex = ViewIndexFactory.builder().views(resources.getViews()).build().create();
 
+        resources
+            .getStories()
+            .forEach(story ->
+                story
+                    .getSteps()
+                    .stream()
+                    .filter(step -> viewIndex.searchView(step.getView()).isEmpty())
+                    .forEach(step ->
+                        log.warn("the story {} has a step on the view {}, which is not declared", story.getId(), step.getView())
+                    )
+            );
+
         return io.morin.archicode.workspace.Workspace.builder()
             .resources(resources)
             .appIndex(appIndex)

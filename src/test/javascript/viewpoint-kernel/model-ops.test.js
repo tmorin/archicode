@@ -933,3 +933,231 @@ test('Cancel sits with "Save all changes", is enabled by the same things, and gi
   ev(sandbox, 'draftTyped = true');
   assert.doesNotMatch(group(), /disabled/);
 });
+
+// ---- stories: saved views put in order, in workspace.yaml ----
+
+/** Draws nothing and answers the prompts of the page with what the test says. */
+function storySandbox(sandbox, answers) {
+  sandbox.render = () => {};
+  sandbox.prompt = () => (answers.length ? answers.shift() : null);
+  sandbox.alert = () => {};
+  sandbox.confirm = () => true;
+}
+
+const showApi = (sandbox, state) => {
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
+  ev(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'");
+};
+
+test('a diagram is kept once as a view, and a story lists it, after the step being told', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  const top = state.workspace.topLevel;
+  storySandbox(sandbox, ['Order flow', '1', '1']);
+  assert.equal(sandbox.currentViewDefinition(), null, 'no diagram on screen, nothing to keep');
+
+  showApi(sandbox, state);
+  same(sandbox.currentViewDefinition(), { viewpoint: 'overview', layer: 'application', properties: { element: 'shop.web.api' } });
+  assert.equal(state.workspace.settingsDirty, false);
+
+  sandbox.addCurrentViewToStory();
+  assert.equal(top.views.length, 1);
+  assert.match(top.views[0].name, /Overview/);
+  assert.equal(top.views[0].viewpoint, 'overview');
+  assert.equal(top.views[0].layer, 'application');
+  same(top.views[0].properties, { element: 'shop.web.api' });
+  assert.equal(top.stories[0].name, 'Order flow');
+  same(top.stories[0].steps, [{ view: top.views[0].id }]);
+  same(ev(sandbox, 'activeStory'), { id: top.stories[0].id, step: 0 });
+  assert.equal(state.workspace.settingsDirty, true);
+  assert.equal(sandbox.countUnsavedChanges(), 1, 'workspace.yaml is what there is to save');
+
+  // the same diagram again: the view is reused, the step goes after the one being told
+  sandbox.addCurrentViewToStory();
+  assert.equal(top.views.length, 1);
+  assert.equal(top.stories[0].steps.length, 2);
+
+  // the map has its own recipe: what is pinned, hidden and open, sorted so that equal maps are equal text
+  ev(sandbox, "currentPerspective = 'map'; mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['customer']; mapOpened = new Set(['shop.web', 'shop'])");
+  sandbox.addCurrentViewToStory();
+  assert.equal(top.views.length, 2);
+  assert.equal(top.views[1].viewpoint, 'map');
+  same(top.views[1].properties, { pinned: ['mailer', 'shop.web.api'], hidden: ['customer'], opened: ['shop', 'shop.web'] });
+  assert.equal(top.stories[0].steps.length, 3);
+  same(ev(sandbox, 'activeStory'), { id: top.stories[0].id, step: 2 });
+});
+
+test('walking a story puts the editor back where each view was saved, and the URL says where we are', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  storySandbox(sandbox, ['Tour', '1', '1']);
+  showApi(sandbox, state);
+  sandbox.addCurrentViewToStory();
+  ev(sandbox, "currentPerspective = 'map'; mapPinned = ['mailer']; mapHidden = ['customer']; mapOpened = new Set(['shop']); diagramHideUnlinked = true");
+  sandbox.addCurrentViewToStory();
+  const storyId = state.workspace.topLevel.stories[0].id;
+
+  // somewhere else entirely
+  ev(sandbox, "currentPerspective = 'files'; mapPinned = []; mapHidden = []; mapOpened = null; diagramHideUnlinked = false");
+  sandbox.goToStoryStep(storyId, 1);
+  assert.equal(ev(sandbox, 'currentPerspective'), 'map');
+  same(ev(sandbox, 'mapPinned'), ['mailer']);
+  same(ev(sandbox, 'mapHidden'), ['customer']);
+  same(Array.from(ev(sandbox, 'mapOpened')), ['shop']);
+  assert.equal(ev(sandbox, 'diagramHideUnlinked'), true);
+  assert.match(sandbox.currentRouteHash(), new RegExp('story=' + storyId + '&step=1'));
+  assert.match(sandbox.renderStoryBarHtml(), /Step 2 of 2/);
+  assert.doesNotMatch(sandbox.renderStoryBarHtml(), /Back to this step/, 'the diagram is the one of the step');
+
+  sandbox.goToStoryStep(storyId, 0);
+  assert.equal(ev(sandbox, 'currentPerspective'), 'elements');
+  assert.equal(state.selection.key, 'shop.web.api');
+  assert.equal(ev(sandbox, 'elementTab'), 'overview');
+  assert.match(sandbox.renderStoryBarHtml(), /data-action="story-prev" disabled/);
+
+  // what the URL carries is read back (Back, a link, a reload)
+  ev(sandbox, 'activeStory = null');
+  sandbox.applyDiagramParamsFromHash();
+  same(ev(sandbox, 'activeStory'), { id: storyId, step: 0 });
+  ev(sandbox, "location.hash = '#/elements?ref=shop.web.api&tab=overview&story=nope&step=0'");
+  sandbox.applyDiagramParamsFromHash();
+  assert.equal(ev(sandbox, 'activeStory'), null, 'a story that does not exist is no story');
+
+  // moving away from the step is said, and one click brings it back
+  ev(sandbox, "activeStory = { id: '" + storyId + "', step: 0 }; elementTab = 'deep'");
+  assert.match(sandbox.renderStoryBarHtml(), /data-action="story-restore"/);
+});
+
+test('the words of a step are typed straight into the model, and the whole is written to workspace.yaml with the rest of it', async () => {
+  const { sandbox, state, mem } = await openFixtureMem();
+  storySandbox(sandbox, ['Tour']);
+  showApi(sandbox, state);
+  sandbox.addCurrentViewToStory();
+  const story = state.workspace.topLevel.stories[0];
+  assert.equal(state.workspace.settingsDirty, true);
+  state.workspace.settingsDirty = false;
+
+  const field = (name, value, step) => ({ value, getAttribute: (a) => ({ 'data-story': story.id, 'data-story-field': name, 'data-step': step === undefined ? null : String(step) })[a] });
+  sandbox.updateStoryField(field('step-text', 'The API answers.\nIt checks the stock first.', 0));
+  sandbox.updateStoryField(field('description', 'How an order travels'));
+  sandbox.updateStoryField(field('name', 'The order'));
+  assert.equal(story.steps[0].text, 'The API answers.\nIt checks the stock first.');
+  assert.equal(story.name, 'The order');
+  assert.equal(state.workspace.settingsDirty, true, 'typing is enough to have something to save');
+  sandbox.updateStoryField(field('description', ''));
+  assert.ok(!('description' in story), 'an emptied field leaves no key behind');
+
+  await sandbox.saveAllChanges();
+  assert.equal(ev(sandbox, 'saveStatus').state, 'success');
+  const written = mem.files.get('workspace.yaml').text;
+  assert.match(written, /^stories:/m);
+  assert.match(written, /^views:/m);
+  assert.match(written, /^settings:/m, 'what was in the file stays');
+
+  const again = createApp();
+  await again.loadWorkspace(mem.handle);
+  const reloaded = again.__state().workspace.topLevel;
+  same(reloaded.stories, state.workspace.topLevel.stories);
+  same(reloaded.views, state.workspace.topLevel.views);
+  assert.equal(reloaded.stories[0].steps[0].text, 'The API answers.\nIt checks the stock first.');
+});
+
+test('steps move, go, and a story or a view can be deleted; a file with a views that is not a list is left alone', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  storySandbox(sandbox, ['Tour', '1', '1']);
+  showApi(sandbox, state);
+  sandbox.addCurrentViewToStory();
+  state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
+  sandbox.addCurrentViewToStory();
+  ev(sandbox, "currentPerspective = 'map'; mapPinned = ['mailer']");
+  sandbox.addCurrentViewToStory();
+  const top = state.workspace.topLevel;
+  const story = top.stories[0];
+  const [apiView, catalogView, mapView] = top.views.map((v) => v.id);
+  same(story.steps.map((s) => s.view), [apiView, catalogView, mapView]);
+
+  sandbox.moveStoryStep(story.id, 2, -1);
+  same(story.steps.map((s) => s.view), [apiView, mapView, catalogView]);
+  same(ev(sandbox, 'activeStory'), { id: story.id, step: 1 }, 'the step being told moves with it');
+  sandbox.moveStoryStep(story.id, 0, -1);
+  same(story.steps.map((s) => s.view), [apiView, mapView, catalogView], 'the first step does not go up');
+  sandbox.removeStoryStep(story.id, 0);
+  same(story.steps.map((s) => s.view), [mapView, catalogView]);
+  same(ev(sandbox, 'activeStory'), { id: story.id, step: 0 });
+  sandbox.addStoryStep(story.id, apiView);
+  assert.equal(story.steps.length, 3);
+
+  assert.equal(sandbox.storiesUsingView(apiView), 1);
+  sandbox.deleteSavedView(apiView);
+  assert.equal(top.views.length, 2);
+  assert.equal(sandbox.findSavedView(apiView), null);
+  assert.match(sandbox.renderStoryStepHtml(story, story.steps[2], 2, 3), /Missing view/, 'a step on a deleted view says so');
+
+  sandbox.deleteStory(story.id);
+  assert.ok(!('stories' in top), 'no empty list left in the file');
+  assert.equal(ev(sandbox, 'activeStory'), null);
+
+  const odd = await openMem({ 'workspace.yaml': 'views:\n  one: two\nsettings:\n  manifests:\n    paths:\n      - manifests\n' });
+  storySandbox(odd.sandbox, ['x']);
+  showApi(odd.sandbox, odd.state);
+  odd.state.selection = { kind: 'none', key: null, mode: 'view' };
+  assert.equal(odd.sandbox.writableTopLevelList('views'), null);
+  assert.match(ev(odd.sandbox, 'storyNotice'), /not a list/);
+  same(odd.state.workspace.topLevel.views, { one: 'two' });
+});
+
+test('renaming or deleting an element: the views that point at it follow, or say what is missing', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  storySandbox(sandbox, ['Tour', '1']);
+  showApi(sandbox, state);
+  sandbox.addCurrentViewToStory();
+  ev(sandbox, "currentPerspective = 'map'; mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web'])");
+  sandbox.addCurrentViewToStory();
+  const top = state.workspace.topLevel;
+  const story = top.stories[0];
+  state.workspace.settingsDirty = false;
+
+  sandbox.commitElementEdit('shop', (node) => { node.id = 'store'; return { renamedTo: { from: 'shop', to: 'store' } }; });
+  assert.equal(top.views[0].properties.element, 'store.web.api');
+  same(top.views[1].properties.pinned, ['mailer', 'store.web.api']);
+  same(top.views[1].properties.hidden, ['store.catalog']);
+  same(top.views[1].properties.opened, ['store', 'store.web']);
+  assert.equal(state.workspace.settingsDirty, true, 'workspace.yaml has to be written for the rename to hold');
+  assert.equal(sandbox.viewProblem(top.views[0]), null);
+
+  // gone for good: the step cannot be drawn, and the Stories page tells why instead of guessing
+  sandbox.commitDeleteElement('store', 'application', []);
+  assert.match(sandbox.viewProblem(top.views[0]), /store\.web\.api.*does not exist/);
+  assert.equal(sandbox.viewProblem(top.views[1]), null, 'mailer is still pinned');
+  ev(sandbox, "currentPerspective = 'files'");
+  sandbox.goToStoryStep(story.id, 0);
+  assert.equal(ev(sandbox, 'currentPerspective'), 'stories');
+  assert.match(ev(sandbox, 'storyNotice'), /Step 1 cannot be shown/);
+  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /story-step broken/);
+  sandbox.goToStoryStep(story.id, 1);
+  assert.equal(ev(sandbox, 'currentPerspective'), 'map', 'the other step is still drawn');
+  same(ev(sandbox, 'mapPinned'), ['mailer'], 'what is gone is not pinned any more');
+});
+
+test('a technology view is kept with its layer, and the Stories page offers the stories and the views', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  storySandbox(sandbox, ['Run', 'Run view']);
+  state.selection = { kind: 'element', key: 'prod.cluster', layer: 'technology', mode: 'view' };
+  ev(sandbox, "currentPerspective = 'elements'; elementTab = 'deep'");
+  sandbox.addCurrentViewToStory();
+  const view = state.workspace.topLevel.views[0];
+  assert.equal(view.layer, 'technology');
+  assert.equal(view.viewpoint, 'deep');
+  assert.equal(sandbox.viewProblem(view), null);
+  sandbox.nameCurrentView();
+  assert.equal(state.workspace.topLevel.views.length, 1, 'already kept: nothing new');
+
+  sandbox.goToStoryStep(state.workspace.topLevel.stories[0].id, 0);
+  assert.equal(state.selection.key, 'prod.cluster');
+  assert.equal(state.selection.layer, 'technology');
+
+  ev(sandbox, "currentPerspective = 'stories'");
+  const page = sandbox.renderStoriesPerspectiveHtml();
+  assert.match(page.left, /data-action="select-story"/);
+  assert.match(page.center, /Saved views/);
+  assert.match(page.center, /data-action="saved-view-open"/);
+  assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="stories"/);
+});

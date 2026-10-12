@@ -6,6 +6,7 @@ import io.morin.archicode.resource.element.application.ApplicationElement;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.resource.element.technology.TechnologyElement;
+import io.morin.archicode.resource.story.Story;
 import io.morin.archicode.resource.view.View;
 import java.util.Arrays;
 import java.util.Optional;
@@ -29,6 +30,12 @@ public class Workspace {
 
     @Singular
     Set<View> views;
+
+    /**
+     * The stories: views put in order, to be told. Only the editor plays them; the command line leaves them alone.
+     */
+    @Singular
+    Set<Story> stories;
 
     @Builder.Default
     Settings settings = Settings.builder().build();
