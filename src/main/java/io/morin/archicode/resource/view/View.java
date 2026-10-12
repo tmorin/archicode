@@ -1,5 +1,6 @@
 package io.morin.archicode.resource.view;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Builder;
 import lombok.NonNull;
@@ -11,6 +12,7 @@ import lombok.extern.jackson.Jacksonized;
 @ToString(onlyExplicitlyIncluded = true)
 @Builder(toBuilder = true)
 @Jacksonized
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class View {
 
     /**

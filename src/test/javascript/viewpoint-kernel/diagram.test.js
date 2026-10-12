@@ -195,7 +195,8 @@ test('the viewpoints of an element have no fold button, no Fold all / Unfold all
   const record = sandbox.findElementRecord('shop.web.api');
   const elementTools = sandbox.renderDiagramCanvasHtml(record);
   for (const gone of ['fold-all', 'unfold-all', 'toggle-hide-unlinked']) assert.ok(!elementTools.includes(gone), gone);
-  for (const kept of ['data-dir="out"', 'data-dir="in"', 'diagram-center-button', 'diagram-fit-button', 'diagram-export']) assert.ok(elementTools.includes(kept), kept);
+  for (const kept of ['data-dir="out"', 'data-dir="in"', 'diagram-center-button', 'diagram-fit-button']) assert.ok(elementTools.includes(kept), kept);
+  assert.ok(!elementTools.includes('diagram-export'), 'the download is in the header, not over the drawing');
   const mapTools = sandbox.renderDiagramCanvasHtml(null);
   for (const there of ['fold-all', 'unfold-all', 'toggle-hide-unlinked']) assert.ok(mapTools.includes(there), there);
 
@@ -547,7 +548,7 @@ test('the toolbars of Elements say what their controls are, keep the focus acros
   assert.doesNotMatch(page.match(/<button[^>]*toggle-maximize[^>]*>/)[0], /aria-pressed/, 'the label says the state, the button is not also pressed');
   assert.doesNotMatch(page.match(/<button[^>]*diagram-center-button[^>]*>/)[0], /aria-pressed/, 'Center is an action, lit while its framing holds');
   assert.match(page, /id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size"/);
-  assert.match(page, /diagram-tools-sep[^]*data-action="diagram-export"/, 'the export is set apart from the zoom and the framing');
+  assert.match(page, /role="group" aria-label="Download the diagram"><button[^>]*data-format="png"[^>]*>[^]*data-format="svg"[^]*<\/span>[^]*toggle-maximize/, 'PNG and SVG, side by side, before Maximize');
   assert.match(page, />Show on map</);
   // the map leads back to the diagram of the element, and the element is not dressed as a kind
   run(sandbox, "currentPerspective = 'map';");
@@ -906,4 +907,157 @@ test('a facet that takes a whole layer away is a facet that removes the element,
   await sandbox.markElementTabs();
   assert.ok(list.find((b) => b.tab === 'overview').disabled && list.find((b) => b.tab === 'deep').disabled);
   assert.ok(!list.find((b) => b.tab === 'details').disabled);
+});
+
+// ---- what a diagram says: labels, qualifiers, descriptions, wrap ----
+
+test('the texts of a diagram start as the default says, and only a choice that differs is remembered in the URL', async () => {
+  const { sandbox, state } = await openFixture();
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview';");
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.diagramShows(false))), { labels: true, qualifiers: true, descriptions: false, wrap: false });
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.diagramShows(true))), { labels: false, qualifiers: false, descriptions: false, wrap: false }, 'the map is dense: nothing by default');
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview');
+
+  // a click on a tool: lit while shown, and back to the default is no choice at all
+  const toggle = (name) => sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (a) => ({ 'data-action': 'toggle-show', 'data-show': name })[a] || null }) } });
+  sandbox.render = () => {};
+  toggle('labels');
+  toggle('descriptions');
+  toggle('wrap');
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview&labels=0&descriptions=1&wrap=1');
+  assert.match(sandbox.renderDiagramShowGroupHtml(false), /data-show="labels" aria-pressed="false"[^>]*>Labels.*data-show="qualifiers" aria-pressed="true".*data-show="descriptions" aria-pressed="true".*data-show="wrap" aria-pressed="true"/);
+  toggle('labels');
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview&descriptions=1&wrap=1');
+
+  // the details page of an element has no diagram: nothing to say about it in the URL
+  run(sandbox, "elementTab = 'details';");
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api');
+
+  // read back from a link, and a map has its own defaults
+  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=overview&qualifiers=0&labels=1&wrap=1';
+  sandbox.syncPerspectiveFromHash();
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.diagramShows(false))), { labels: true, qualifiers: false, descriptions: false, wrap: true });
+  sandbox.location.hash = '#/map?labels=1&qualifiers=1';
+  sandbox.syncPerspectiveFromHash();
+  assert.equal(sandbox.currentRouteHash(), '/map?labels=1&qualifiers=1');
+});
+
+test('a saved view remembers the texts it was drawn with, and a story step brings them back', async () => {
+  const { sandbox, state } = await openFixture();
+  state.workspace.topLevel = {};
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview';");
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.currentViewDefinition().properties)), { element: 'shop.web.api' }, 'the default is not a choice');
+
+  run(sandbox, "setDiagramShow({ labels: false, descriptions: true, wrap: true });");
+  const definition = sandbox.currentViewDefinition();
+  assert.deepEqual(JSON.parse(JSON.stringify(definition.properties)), { element: 'shop.web.api', labels: false, descriptions: true, wrap: true });
+
+  // drawn as the default says by hand in the file: the same diagram as the one without the key
+  const written = { viewpoint: 'overview', layer: 'application', properties: { element: 'shop.web.api', qualifiers: true, labels: false, descriptions: true, wrap: true } };
+  assert.equal(JSON.stringify(sandbox.canonicalViewDefinition(written)), JSON.stringify(definition));
+
+  run(sandbox, "setDiagramShow(null); currentPerspective = 'files';");
+  assert.equal(sandbox.applySavedView(Object.assign({ id: 'v' }, definition)), null);
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.diagramShows(false))), { labels: false, qualifiers: true, descriptions: true, wrap: true });
+  assert.ok(sandbox.viewMatchesScreen(Object.assign({ id: 'v' }, definition)));
+
+  // the map: its own defaults, so the same choice is not the same recipe
+  run(sandbox, "currentPerspective = 'map'; setDiagramShow({ labels: true });");
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.currentViewDefinition().properties)), { labels: true });
+  run(sandbox, "setDiagramShow({ labels: false });");
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.currentViewDefinition().properties)), {}, 'the map draws no labels by default');
+});
+
+test('the qualifiers of an element go after its kind, as the command line draws them; the description and Wrap make the box taller', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  const record = state.index.application.get('shop.web.api');
+  for (const other of state.index.application.values()) if (other !== record) other.description = ''; // only this box has a description to draw
+  record.qualifiers = ['rest', 'public'];
+  record.name = 'A very long name for a box that has to say it all on more than one line';
+  record.description = 'Answers the web shop. It validates the basket, asks the catalog for the prices and the stock, and hands the payment to the provider.';
+  const result = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api').input);
+  const heightOf = (graph, id) => { const find = (nodes) => { for (const n of nodes) { if (n.id === id) return n; const f = find(n.children || []); if (f) return f; } return null; }; return find(graph.children).height; };
+
+  const plain = sandbox.buildElkGraph(result);
+  assert.equal(heightOf(plain, 'shop.web.api'), 58, 'a box without description keeps its height');
+  assert.equal(sandbox.diagramItemText({ reference: 'shop.web.api', id: 'shop.web.api' }, { qualifiers: true }).sub, '[container: rest, public]');
+  assert.equal(sandbox.diagramItemText({ reference: 'shop.web.api', id: 'shop.web.api' }).sub, '[container]');
+  assert.match(sandbox.diagramItemText({ reference: 'shop.web.api', id: 'shop.web.api' }).tooltip, /\[rest, public\]/, 'the tooltip tells them whatever is drawn');
+
+  const cut = sandbox.buildElkGraph(result, { descriptions: true });
+  const wrapped = sandbox.buildElkGraph(result, { descriptions: true, wrap: true });
+  assert.ok(heightOf(cut, 'shop.web.api') > 58);
+  assert.ok(heightOf(wrapped, 'shop.web.api') > heightOf(cut, 'shop.web.api'), 'with Wrap nothing is cut: the box is taller');
+
+  const svg = (options, show) => sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result, options)), result, 'shop.web.api', { show }).html;
+  const without = svg({}, {});
+  assert.doesNotMatch(without, /dg-desc/);
+  assert.match(without, /…<\/text>/, 'a name too long for its box is cut');
+  const withCut = svg({ qualifiers: true, descriptions: true }, { qualifiers: true, descriptions: true });
+  assert.match(withCut, /\[container: rest, public\]/);
+  assert.equal((withCut.match(/class="dg-desc"/g) || []).length, 3, 'at most three lines of description');
+  assert.match(withCut, /…<\/text><\/g>/, 'and an ellipsis for the rest');
+  const withWrap = svg({ qualifiers: true, descriptions: true, wrap: true }, { qualifiers: true, descriptions: true, wrap: true });
+  assert.ok((withWrap.match(/class="dg-desc"/g) || []).length > 3, 'wrapped, all of it');
+  assert.ok((withWrap.match(/class="dg-title"/g) || []).length > (without.match(/class="dg-title"/g) || []).length, 'a long name takes several lines');
+  assert.match(withWrap, /hands the payment to the provider\./, 'the end of the description is there');
+});
+
+test('soft wrap cuts at the spaces and cuts a word that is longer than a line', async () => {
+  const { sandbox } = await openFixture();
+  const wrap = (...a) => JSON.parse(JSON.stringify(sandbox.diagramWrapText(...a)));
+  assert.deepEqual(wrap('one two three four', 9), ['one two', 'three', 'four']);
+  assert.deepEqual(wrap('abcdefghijkl', 5), ['abcde', 'fghij', 'kl']);
+  assert.deepEqual(wrap('', 10), []);
+  assert.deepEqual(wrap('one two three four five six', 9, 2), ['one two', 'three…'], 'what does not fit ends in an ellipsis');
+});
+
+test('PNG and SVG downloads sit in the header of Elements and of the Map, off until a drawing is on screen', async () => {
+  const { sandbox, state } = await openFixture();
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'; diagramMaximized = false;");
+  state.selection = { kind: 'element', key: 'shop', mode: 'view' };
+  const header = (html) => html.slice(0, html.indexOf('<div class="diagram-stage">'));
+  const elements = header(sandbox.renderElementsPerspectiveHtml().center);
+  run(sandbox, "currentPerspective = 'map';");
+  const map = header(sandbox.renderMapPerspectiveHtml().center);
+  for (const html of [elements, map]) {
+    assert.equal((html.match(/data-action="diagram-export"/g) || []).length, 2);
+    assert.match(html, /data-format="png"[^>]*disabled/);
+    assert.match(html, /aria-label="Download as SVG"/);
+  }
+
+  // a click routes by format
+  const calls = [];
+  sandbox.exportDiagramPng = () => calls.push('png');
+  sandbox.exportDiagramSvg = () => calls.push('svg');
+  const click = (format) => sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (a) => ({ 'data-action': 'diagram-export', 'data-format': format })[a] || null }) } });
+  click('png');
+  click('svg');
+  assert.deepEqual(calls, ['png', 'svg']);
+
+  // with no drawing there is nothing to download
+  assert.equal(sandbox.diagramExportDocument(), null);
+});
+
+test('a description is wrapped by the width of its text, not by a count of characters, and is written from the left', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  // a measure where "i" is thin and "W" is wide: the same number of characters, not the same lines
+  const wrap = (text, max) => JSON.parse(JSON.stringify(sandbox.diagramWrapText(text, max, 0, (line) => Array.from(line).reduce((w, c) => w + (c === 'i' ? 1 : c === 'W' ? 4 : 2), 0))));
+  assert.deepEqual(wrap('iiii iiii iiii', 20), ['iiii iiii iiii'].map((l) => l), 'thin letters: one line');
+  assert.deepEqual(wrap('WWWW WWWW WWWW', 20), ['WWWW', 'WWWW', 'WWWW'], 'wide letters: one word a line');
+  assert.deepEqual(wrap('abcdefghijkl', 8), ['abcd', 'efgh', 'ijkl'], 'a word wider than a line is cut by width');
+  assert.deepEqual(JSON.parse(JSON.stringify(sandbox.diagramWrapText('one two three four five six', 18, 2, (l) => l.length * 2))), ['one two', 'three…']);
+
+  const record = state.index.application.get('shop.web.api');
+  for (const other of state.index.application.values()) if (other !== record) other.description = '';
+  record.description = 'Identity and Relationship Management. It holds the shared model a decision reads: the identity mappings, the delegations, the representations, the care network, the consent register, and the machines with their organisations.';
+  const result = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api').input);
+  const svg = sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result, { descriptions: true, wrap: true })), result, 'shop.web.api', { show: { descriptions: true, wrap: true } }).html;
+  const lines = Array.from(svg.matchAll(/<text class="dg-desc" x="(\d+)"[^>]*>([^<]*)</g));
+  assert.ok(lines.length > 3);
+  const box = svg.match(/data-id="shop\.web\.api"[^]*?<rect class="dg-box" x="(\d+)" y="\d+" width="(\d+)"/);
+  assert.equal(Number(lines[0][1]), Number(box[1]) + 10, 'from the left, with a small margin');
+  assert.ok(Number(box[2]) >= 240, 'room for a description');
 });

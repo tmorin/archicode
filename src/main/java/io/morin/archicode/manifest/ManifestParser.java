@@ -4,6 +4,8 @@ import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.element.Element;
+import io.morin.archicode.resource.story.Story;
+import io.morin.archicode.resource.view.View;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.io.File;
 import java.nio.file.Path;
@@ -22,9 +24,14 @@ public class ManifestParser {
 
     MapperFactory mapperFactory;
 
+    /**
+     * Read the manifests: the elements, by category, and the views and the stories that are manifests of their own.
+     */
     @SneakyThrows
-    public Map<Class<?>, Set<Candidate>> parse(Path wksDir, Set<String> manifestsDirs) {
+    public Parsed parse(Path wksDir, Set<String> manifestsDirs) {
         val map = new HashMap<Class<?>, Set<Candidate>>();
+        val views = new LinkedHashSet<View>();
+        val stories = new LinkedHashSet<Story>();
 
         val paths = manifestsDirs
             .stream()
@@ -59,11 +66,24 @@ public class ManifestParser {
                         .build();
                     map.putIfAbsent(resource.getKind().getCategory(), new HashSet<>());
                     map.get(resource.getKind().getCategory()).add(candidate);
+                } else if (item instanceof View view) {
+                    views.add(view);
+                } else if (item instanceof Story story) {
+                    stories.add(story);
                 }
             }
         }
-        return map;
+        return new Parsed(map, views, stories);
     }
+
+    /**
+     * What the manifests hold.
+     *
+     * @param elements the elements, by category (application, technology)
+     * @param views    the views that are manifests of their own
+     * @param stories  the stories
+     */
+    public record Parsed(Map<Class<?>, Set<Candidate>> elements, Set<View> views, Set<Story> stories) {}
 
     @Value
     @Builder

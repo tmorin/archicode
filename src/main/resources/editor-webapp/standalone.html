@@ -294,6 +294,7 @@
   .story-view { max-width: 56rem; }
   .story-view h3 { margin: 1.5rem 0 0.5rem; font-size: 1rem; }
   .story-intro { margin: 1rem 0; }
+  .story-legacy { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.75rem 0; padding: 0.5rem 0.75rem; border: 1px solid var(--modified); border-radius: 6px; }
   .story-count { color: var(--muted); font-size: 0.8rem; flex-shrink: 0; margin-left: auto; padding-left: 0.5rem; }
   .story-nav-new { padding: 0.5rem 1rem; }
   .story-field { display: grid; grid-template-columns: 5rem 1fr; gap: 0.5rem; align-items: start; margin: 0.6rem 0; }
@@ -347,6 +348,8 @@
   .dg-ghost .dg-title { fill: var(--danger); }
   .dg-title { fill: var(--fg); font-size: 14px; font-weight: 600; }
   .dg-sub { fill: var(--muted); font-size: 12px; font-weight: 400; }
+  .dg-desc { fill: var(--muted); font-size: 11px; font-weight: 400; }
+  .download-button { display: inline-flex; align-items: center; gap: 0.3rem; }
   .dg-edge { fill: none; stroke: var(--muted); stroke-width: 1.4; }
   .dg-edge.dg-aggregated { stroke-dasharray: 7 4; }
   .dg-edge.dg-ghost-edge { stroke: var(--danger); stroke-dasharray: 3 4; }
@@ -1538,7 +1541,8 @@ function parseSettings(rawSettings) {
 
 const ARCHICODE_KIND_PREFIX = 'archicode.morin.io/';
 
-// Mirrors ManifestKind's ten constants (ASM-3a's fully-qualified
+// Mirrors ManifestKind's ten element constants (it has two more, `view` and `story`: manifests that are not elements,
+// see "Stories") (ASM-3a's fully-qualified
 // vocabulary). The JS mirror follows the marker-interface nesting rule
 // (ASM-4), not ManifestKind.java's mispaired SYSTEM_GROUP type field —
 // that distinction only matters for DEC-8's tree nesting, which this
@@ -1696,6 +1700,7 @@ function buildIndex(manifestFiles, settings) {
       continue;
     }
     const bareKind = stripArchicodeKindPrefix(mf.header.kind);
+    if (bareKind === 'view' || bareKind === 'story') continue; // manifests, but not elements: see "Stories"
     const mapping = ARCHICODE_KIND_MAP[bareKind];
     if (!mapping) {
       mf.error = 'Unrecognized header.kind "' + mf.header.kind + '"';
@@ -2117,6 +2122,7 @@ function resetUiState() {
   treeExpandedEnvironments = true;
   treeQuietCache = null;
   elementTab = 'details';
+  setDiagramShow(null);
   activeStory = null;
   selectedStoryId = null;
   storyNotice = null;
@@ -2283,6 +2289,9 @@ function applyDiagramParamsFromHash() {
     mapPinned = pin ? pin.split(',').filter((reference) => AppState.index.application.has(reference)) : [];
     mapPinned.forEach(expandParentsOf);
   }
+  const shown = {};
+  for (const name of DIAGRAM_SHOW_NAMES) shown[name] = params.get(name) === '1' ? true : params.get(name) === '0' ? false : null;
+  setDiagramShow(shown);
   const facet = params.get('facet');
   diagramFacet = facet && AppState.workspace.settings.facets.customs.some((f) => f.name === facet) ? facet : null;
 }
@@ -2314,6 +2323,12 @@ function syncPerspectiveFromHash() {
   if (AppState.workspace) applySelectionFromHashRef();
 }
 
+/** The texts the diagram draws otherwise than by default, for the URL. */
+function pushShowParams(params, isMap) {
+  const overrides = diagramShowOverrides(isMap);
+  for (const name of DIAGRAM_SHOW_NAMES) if (name in overrides) params.push(name + '=' + (overrides[name] ? '1' : '0'));
+}
+
 /** The "#/perspective?ref=..." hash for the current perspective + selection — what the URL should read right now (UX review follow-up: the URL mirrors what's on screen). */
 function currentRouteHash() {
   const sel = AppState.selection;
@@ -2326,9 +2341,11 @@ function currentRouteHash() {
   if (currentPerspective === 'elements' && ref && sel.kind === 'element' && sel.mode !== 'edit' && elementTab !== 'details') {
     params.push('tab=' + (findElementRecord(ref) ? effectiveDiagramViewpoint(findElementRecord(ref)) : elementTab)); // what the tabs show, not what a leaf was asked
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
+    pushShowParams(params, false);
   }
   if (currentPerspective === 'map') {
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
+    pushShowParams(params, true);
     if (mapPinned.length) params.push('pin=' + mapPinned.map(encodeURIComponent).join(','));
   }
   if (currentPerspective === 'stories' && selectedStoryId) params.push('story=' + encodeURIComponent(selectedStoryId));
@@ -5398,6 +5415,41 @@ let diagramMaximized = false;
 /** Leaves out of the diagram the boxes that no link reaches (the focal one and what encloses a kept box stay). */
 let diagramHideUnlinked = false;
 /**
+ * Which texts the diagram draws. Null follows the default of the diagram (DIAGRAM_SHOW_DEFAULTS), a boolean is what the
+ * user chose. Kept in the URL (`labels=`, `qualifiers=`, `descriptions=`, `wrap=`, only when they differ from the
+ * default) and in the saved views, so that a link or a step of a story draws the same texts.
+ */
+let diagramShow = { labels: null, qualifiers: null, descriptions: null, wrap: null };
+const DIAGRAM_SHOW_NAMES = ['labels', 'qualifiers', 'descriptions', 'wrap'];
+/** The Map is dense: it starts without any of them. An element's diagram starts as the command line draws it (the descriptions apart). */
+const DIAGRAM_SHOW_DEFAULTS = {
+  elements: { labels: true, qualifiers: true, descriptions: false, wrap: false },
+  map: { labels: false, qualifiers: false, descriptions: false, wrap: false }
+};
+
+/** What the diagram draws now: the choice of the user, else the default of that kind of diagram. */
+function diagramShows(isMap) {
+  const defaults = DIAGRAM_SHOW_DEFAULTS[isMap ? 'map' : 'elements'];
+  const out = {};
+  for (const name of DIAGRAM_SHOW_NAMES) out[name] = typeof diagramShow[name] === 'boolean' ? diagramShow[name] : defaults[name];
+  return out;
+}
+
+/** Only the texts that are not drawn as the default says: what a URL or a saved view has to remember. */
+function diagramShowOverrides(isMap) {
+  const defaults = DIAGRAM_SHOW_DEFAULTS[isMap ? 'map' : 'elements'];
+  const shows = diagramShows(isMap);
+  const out = {};
+  for (const name of DIAGRAM_SHOW_NAMES) if (shows[name] !== defaults[name]) out[name] = shows[name];
+  return out;
+}
+
+function setDiagramShow(values) {
+  const source = values || {};
+  diagramShow = {};
+  for (const name of DIAGRAM_SHOW_NAMES) diagramShow[name] = typeof source[name] === 'boolean' ? source[name] : null;
+}
+/**
  * How the diagram is framed. 'auto' (how a diagram opens): the element, at a readable size, never more than 100%, with
  * no empty margin the drawing does not need. 'fit': the whole drawing, however small. A number: what the user chose
  * (1 is the natural size), with `diagramCenter`; navigating to another diagram goes back to 'auto'.
@@ -5468,7 +5520,7 @@ function headerControlSelector(el) {
   const action = control.getAttribute('data-action');
   if (!action) return null;
   let selector = '[data-action="' + action + '"]';
-  for (const attribute of ['data-tab', 'data-dir', 'data-perspective']) {
+  for (const attribute of ['data-tab', 'data-dir', 'data-perspective', 'data-show', 'data-format']) {
     const value = control.getAttribute(attribute);
     if (value) selector += '[' + attribute + '="' + value + '"]';
   }
@@ -5797,22 +5849,106 @@ function diagramLinkText(link) {
   return parts.join(' ');
 }
 
-/** What a diagram box says about its element. */
-function diagramItemText(item) {
+/** What a diagram box says about its element. `show` (qualifiers) puts the qualifiers of the element in the line of its kind, as the command line does. */
+function diagramItemText(item, show) {
   if (item.ghost) {
     return {
       title: item.reference,
       sub: '[unknown element]',
+      description: '',
       tooltip: 'There is no element “' + item.reference + '”, but “' + item.owner + '” has a relationship to it. Click to open “' + item.owner + '” and fix it.'
     };
   }
   const record = findElementRecord(item.reference);
   const hidden = item.collapsed ? ' · ' + item.hidden + ' hidden' : '';
+  const qualifiers = record && Array.isArray(record.qualifiers) ? record.qualifiers.filter((q) => typeof q === 'string' && q) : [];
+  const description = record && record.description ? String(record.description).replace(/\s+/g, ' ').trim() : '';
   return {
     title: record ? (record.name || record.id) : item.reference,
-    sub: (record ? '[' + record.kind + ']' : '') + hidden,
-    tooltip: item.reference + (record && record.description ? ' — ' + record.description : '')
+    sub: (record ? '[' + record.kind + (show && show.qualifiers && qualifiers.length ? ': ' + qualifiers.join(', ') : '') + ']' : '') + hidden,
+    description,
+    tooltip: item.reference + (qualifiers.length ? ' [' + qualifiers.join(', ') + ']' : '') + (record && record.description ? ' — ' + record.description : '')
   };
+}
+
+/** Longest line of a box that contains others (its name and its kind share the line of its header): past it the kind is cut. */
+const DIAGRAM_HEADER_SUB_CHARS = 48;
+/** Room left on each side of a description, in pixels. It is written from the left: a paragraph is easier to read that way than centered. */
+const DIAGRAM_DESCRIPTION_PADDING = 10;
+/** A description shown without "Wrap" stops after this many lines. */
+const DIAGRAM_DESCRIPTION_LINES = 3;
+
+let diagramMeasureContext;
+
+/**
+ * The width in pixels of a text in the font of the diagram, measured by the browser (a canvas draws with the font the
+ * SVG does); an estimate where there is no canvas. Boxes are laid out from it, so it has to be near what is drawn.
+ */
+function diagramMeasureText(text, size, weight) {
+  if (diagramMeasureContext === undefined) {
+    try { diagramMeasureContext = document.createElement('canvas').getContext('2d') || null; } catch (e) { diagramMeasureContext = null; }
+  }
+  if (diagramMeasureContext) {
+    let family = 'sans-serif';
+    try { family = getComputedStyle(document.body).fontFamily || family; } catch (e) { /* the default family */ }
+    diagramMeasureContext.font = (weight || 400) + ' ' + size + 'px ' + family;
+    return diagramMeasureContext.measureText(String(text)).width;
+  }
+  return String(text).length * size * 0.55;
+}
+
+/**
+ * Cuts a text into lines no wider than `max`, at the spaces (a word wider than a line is cut). `measure` gives the
+ * width of a line (default: its number of characters). With `maxLines`, what does not fit is replaced by an ellipsis
+ * on the last line.
+ */
+function diagramWrapText(text, max, maxLines, measure) {
+  const width = measure || ((line) => line.length);
+  const lines = [];
+  let line = '';
+  for (let word of String(text).split(/\s+/).filter(Boolean)) {
+    while (width(word) > max && word.length > 1) {
+      if (line) { lines.push(line); line = ''; }
+      let cut = 1;
+      while (cut < word.length && width(word.slice(0, cut + 1)) <= max) cut++;
+      lines.push(word.slice(0, cut));
+      word = word.slice(cut);
+    }
+    if (!line) line = word;
+    else if (width(line + ' ' + word) <= max) line += ' ' + word;
+    else { lines.push(line); line = word; }
+  }
+  if (line) lines.push(line);
+  if (maxLines && lines.length > maxLines) {
+    const kept = lines.slice(0, maxLines);
+    let last = kept[maxLines - 1];
+    while (last.length > 1 && width(last + '…') > max) last = last.slice(0, -1);
+    kept[maxLines - 1] = last + '…';
+    return kept;
+  }
+  return lines;
+}
+
+/**
+ * The lines of a box without children and where they sit: the name, the kind (with the qualifiers), then the
+ * description. Without "Wrap" a line that is too long is cut with an ellipsis; with it, the box gets taller instead.
+ * The layout asks for the height, the drawing for the positions: one function, so that they agree.
+ */
+function diagramLeafLayout(text, width, show) {
+  const wrap = !!(show && show.wrap);
+  const titleChars = Math.max(8, Math.floor((width - 20) / 8));
+  const subChars = Math.max(8, Math.floor((width - 20) / 7));
+  const descWidth = width - 2 * DIAGRAM_DESCRIPTION_PADDING;
+  const titleLines = wrap ? diagramWrapText(text.title, titleChars) : [diagramTruncate(text.title, titleChars)];
+  let subLines = text.sub ? (wrap ? diagramWrapText(text.sub, subChars) : [diagramTruncate(text.sub, subChars)]) : [''];
+  if (!subLines.length) subLines = [''];
+  const descLines = show && show.descriptions && text.description ? diagramWrapText(text.description, descWidth, wrap ? 0 : DIAGRAM_DESCRIPTION_LINES, (line) => diagramMeasureText(line, 11)) : [];
+  if (!titleLines.length) titleLines.push('');
+  const titleY = titleLines.map((line, i) => 25 + i * 18);
+  const subY = subLines.map((line, i) => titleY[titleY.length - 1] + 19 + i * 16);
+  const descY = descLines.map((line, i) => subY[subY.length - 1] + 18 + i * 14);
+  const height = descLines.length ? descY[descY.length - 1] + 12 : subY[subY.length - 1] + 14;
+  return { titleLines, titleY, subLines, subY, descLines, descY, height };
 }
 
 /** What a link stands for, for its tooltip: each declared relationship, and a note when it groups several. */
@@ -5864,6 +6000,7 @@ function buildDiagramGhosts(result, focalReference, layer) {
  */
 function buildElkGraph(result, options) {
   const captions = !options || options.captions !== false;
+  const show = { qualifiers: !!(options && options.qualifiers), descriptions: !!(options && options.descriptions), wrap: !!(options && options.wrap) };
   const ids = new Set(result.items.map((item) => item.id));
   const childrenOf = new Map();
   const roots = [];
@@ -5874,10 +6011,10 @@ function buildElkGraph(result, options) {
     childrenOf.get(parent).push(item);
   }
   const toNode = (item) => {
-    const text = diagramItemText(item);
+    const text = diagramItemText(item, show);
     const kids = childrenOf.get(item.id) || [];
     if (kids.length) {
-      const minWidth = Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(text.sub, 12)) + 60;
+      const minWidth = Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS), 12)) + 60;
       return {
         id: item.id,
         children: kids.map(toNode),
@@ -5890,8 +6027,9 @@ function buildElkGraph(result, options) {
         }
       };
     }
-    const width = Math.max(150, Math.min(280, Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(text.sub, 12)) + 36));
-    return { id: item.id, width, height: 58 };
+    let width = Math.max(150, Math.min(280, Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(text.sub, 12)) + 36));
+    if (show.descriptions && text.description) width = Math.max(width, 240); // room for a description to read
+    return { id: item.id, width, height: diagramLeafLayout(text, width, show).height };
   };
   const edges = [];
   result.links.forEach((link, index) => {
@@ -5929,6 +6067,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const isMap = options && options.map !== undefined ? options.map : mapIsShown();
   const openedByUser = new Set(options && options.opened ? options.opened : (isMap ? currentMapOpened() : []));
   const pinnedOnMap = options && options.pinned ? options.pinned : (isMap ? mapPinned : []);
+  const show = options && options.show ? options.show : {};
   const itemById = new Map(result.items.map((item) => [item.id, item]));
   const origin = new Map([['root', { x: 0, y: 0 }]]);
   const boxes = [];
@@ -5962,7 +6101,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   for (const box of boxes.sort((a, b) => a.depth - b.depth)) {
     const item = itemById.get(box.node.id);
     if (!item) continue;
-    const text = diagramItemText(item);
+    const text = diagramItemText(item, show);
     const { x, y } = box;
     const w = box.node.width;
     const h = box.node.height;
@@ -5982,17 +6121,20 @@ function renderDiagramSvg(layout, result, focalReference, options) {
         '<rect class="dg-group" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="8"/>' +
         '<rect class="dg-header" x="' + x + '" y="' + y + '" width="' + w + '" height="36"/>' +
         '<text class="dg-title" x="' + (x + 34) + '" y="' + (y + 22) + '">' + escapeHtml(diagramTruncate(text.title, Math.max(8, Math.floor((w - 48) / 8)))) +
-        ' <tspan class="dg-sub">' + escapeHtml(text.sub) + '</tspan></text></g>' +
+        ' <tspan class="dg-sub">' + escapeHtml(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS)) + '</tspan></text></g>' +
         (closable ? foldButton(Object.assign({}, item, { expandable: false }), text, x + 6, y + 6) : '');
     } else {
       const folded = item.collapsed;
       // a box the kernel says opening would change (and only that: a button that does nothing is not drawn)
       const expandable = isMap && !item.ghost && item.expandable;
+      const lines = diagramLeafLayout(text, w, show);
+      const linesAt = (cls, anchorLines, ys) => anchorLines.map((line, i) =>
+        '<text class="' + cls + '" x="' + (x + w / 2) + '" y="' + (y + ys[i]) + '" text-anchor="middle">' + escapeHtml(line) + '</text>').join('');
       leaves += '<g class="dg-node dg-leaf' + (isFocal ? ' dg-focal' : '') + (item.ghost ? ' dg-ghost' : '') + (folded ? ' dg-folded' : '') + '"' + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
         (folded ? '<rect class="dg-box dg-stack" x="' + (x + 5) + '" y="' + (y + 5) + '" width="' + w + '" height="' + h + '" rx="6"/>' : '') +
         '<rect class="dg-box" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="6"/>' +
-        '<text class="dg-title" x="' + (x + w / 2) + '" y="' + (y + 25) + '" text-anchor="middle">' + escapeHtml(diagramTruncate(text.title, Math.max(8, Math.floor((w - 20) / 8)))) + '</text>' +
-        '<text class="dg-sub" x="' + (x + w / 2) + '" y="' + (y + 44) + '" text-anchor="middle">' + escapeHtml(text.sub) + '</text></g>' +
+        linesAt('dg-title', lines.titleLines, lines.titleY) + linesAt('dg-sub', lines.subLines, lines.subY) +
+        lines.descLines.map((line, i) => '<text class="dg-desc" x="' + (x + DIAGRAM_DESCRIPTION_PADDING) + '" y="' + (y + lines.descY[i]) + '">' + escapeHtml(line) + '</text>').join('') + '</g>' +
         (expandable ? foldButton(item, text, x + 2, y + 2) : '');
     }
   }
@@ -6373,6 +6515,7 @@ function showDiagramScene(scene) {
     }
   }
   diagramScene = scene;
+  document.querySelectorAll('[data-action="diagram-export"]').forEach((button) => { button.disabled = !scene.hasSvg; }); // nothing to download from a message
   canvas.innerHTML = scene.html;
   const status = document.getElementById('diagram-status');
   if (status) { status.textContent = scene.status; status.title = scene.status; }
@@ -6570,7 +6713,7 @@ function diagramExportCss() {
     '.dg-group{fill:none;stroke:' + c('--muted') + ';stroke-opacity:.55;stroke-width:1.5}' +
     '.dg-focal .dg-box,.dg-focal .dg-group{stroke:' + c('--accent') + ';stroke-width:2.5}' +
     '.dg-ghost .dg-box{stroke:' + c('--danger') + ';stroke-dasharray:5 4}' +
-    '.dg-title{fill:' + c('--fg') + ';font:600 14px sans-serif}.dg-sub{fill:' + c('--muted') + ';font:12px sans-serif}' +
+    '.dg-title{fill:' + c('--fg') + ';font:600 14px sans-serif}.dg-sub{fill:' + c('--muted') + ';font:12px sans-serif}.dg-desc{fill:' + c('--muted') + ';font:11px sans-serif}' +
     '.dg-edge{fill:none;stroke:' + c('--muted') + ';stroke-width:1.4}.dg-aggregated{stroke-dasharray:7 4}' +
     '.dg-ghost-edge{stroke:' + c('--danger') + ';stroke-dasharray:3 4}' +
     '.dg-arrowhead{fill:' + c('--muted') + '}' +
@@ -6578,11 +6721,11 @@ function diagramExportCss() {
     '.dg-header,.dg-hit,.dg-hit-edge{fill:none;stroke:none}.dg-fold{display:none}';
 }
 
-/** Download the diagram as a self-contained SVG. */
-function exportDiagramSvg() {
+/** The diagram on screen as a self-contained SVG document (what the SVG file holds, and what the PNG is drawn from); null when nothing is drawn. */
+function diagramExportDocument() {
   const canvas = document.getElementById('diagram-canvas');
   const svg = canvas && canvas.querySelector('svg');
-  if (!svg || !diagramScene) return;
+  if (!svg || !diagramScene) return null;
   const clone = svg.cloneNode(true);
   // the page pans the drawing with an inline transform, which would push it out of the image: the file is the drawing itself
   clone.removeAttribute('style');
@@ -6604,15 +6747,57 @@ function exportDiagramSvg() {
   background.setAttribute('fill', getComputedStyle(document.documentElement).getPropertyValue('--panel-bg').trim() || '#ffffff');
   clone.insertBefore(background, clone.firstChild);
   clone.insertBefore(style, clone.firstChild);
-  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone);
-  const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml' }));
+  return {
+    xml: '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone),
+    width: diagramScene.width,
+    height: diagramScene.height,
+    name: (canvas.getAttribute('data-ref') || 'diagram').replace(/[^\w.-]+/g, '_') + '-' + (diagramShownView ? diagramShownView.split('|')[1] : 'diagram')
+  };
+}
+
+function downloadDiagramFile(blob, fileName) {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = (canvas.getAttribute('data-ref') || 'diagram').replace(/[^\w.-]+/g, '_') + '-' + (diagramShownView ? diagramShownView.split('|')[1] : 'diagram') + '.svg';
+  link.download = fileName;
   document.body.appendChild(link);
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Download the diagram as a self-contained SVG. */
+function exportDiagramSvg() {
+  const exported = diagramExportDocument();
+  if (exported) downloadDiagramFile(new Blob([exported.xml], { type: 'image/svg+xml' }), exported.name + '.svg');
+}
+
+/** A PNG is drawn at twice the size of the diagram, less when that would pass this many pixels on its longest side (a browser refuses a canvas much bigger). */
+const DIAGRAM_PNG_MAX_SIDE = 8000;
+
+/** Download the diagram as a PNG: the SVG of the export, drawn on a canvas. */
+async function exportDiagramPng() {
+  const exported = diagramExportDocument();
+  if (!exported) return;
+  try {
+    const scale = Math.min(2, DIAGRAM_PNG_MAX_SIDE / Math.max(exported.width, exported.height, 1));
+    const image = new Image();
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error('the browser could not draw the diagram'));
+      image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(exported.xml);
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(exported.width * scale));
+    canvas.height = Math.max(1, Math.round(exported.height * scale));
+    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('the image is too big for the browser');
+    downloadDiagramFile(blob, exported.name + '.png');
+  } catch (e) {
+    console.error('PNG export failed', e);
+    alert('The PNG could not be made: ' + (e && e.message ? e.message : String(e)) + '. The SVG download does not have this limit.');
+  }
 }
 
 /** Moving to another element or viewpoint is a step the browser's Back button should be able to undo. */
@@ -6630,20 +6815,48 @@ function renderDiagramCanvasHtml(record, overlayHtml) {
     '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' + (record ? escapeHtml(record.reference) : '') + '"><span class="muted">Computing the diagram…</span></div>' +
     '<div class="diagram-tools" role="toolbar" aria-label="Diagram tools">' +
       // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
-      (record ? '' : '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
-        '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button>' +
+      (record ? '' : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
+          '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
+          '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>' +
         '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + diagramHideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
         '<span class="diagram-tools-sep" aria-hidden="true"></span>') +
-      '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
-      '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
-      '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button>' +
+      renderDiagramShowGroupHtml(!record) +
+      '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
+      '<span class="button-group" role="group" aria-label="Zoom">' +
+        '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
+        '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
+        '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
       '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' + (diagramScale === 'auto') + '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
       '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' + (diagramScale === 'fit') + '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
-      '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
-      '<button type="button" data-action="diagram-export" title="Download the diagram as an SVG file">SVG</button>' +
     '</div></div>' +
     // under the drawing: what it is (its status), the hint, and the key to the lines
     '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>';
+}
+
+/**
+ * Download the diagram: two buttons set side by side, one click each, rather than a menu to open for two choices. Off
+ * until a drawing is on screen (`showDiagramScene` turns them on).
+ */
+function renderDiagramDownloadHtml() {
+  const icon = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"><path d="M8 2v8M4.5 7 8 10.5 11.5 7M3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const tool = (format, title) => '<button type="button" class="download-button" data-action="diagram-export" data-format="' + format + '" disabled aria-label="Download as ' + format.toUpperCase() + '" title="' + escapeHtml(title) + '">' +
+    icon + '<span>' + format.toUpperCase() + '</span></button>';
+  return '<span class="button-group" role="group" aria-label="Download the diagram">' +
+    tool('png', 'Download the diagram as a PNG image, twice the size it has on screen') +
+    tool('svg', 'Download the diagram as a self-contained SVG file') +
+  '</span>';
+}
+
+/** The texts the diagram draws, each one a button that is lit while it is shown. */
+function renderDiagramShowGroupHtml(isMap) {
+  const shows = diagramShows(isMap);
+  const tool = (name, label, title) => '<button type="button" data-action="toggle-show" data-show="' + name + '" aria-pressed="' + shows[name] + '" title="' + escapeHtml(title) + '">' + label + '</button>';
+  return '<span class="button-group" role="group" aria-label="Show">' +
+    tool('labels', 'Labels', 'The caption of each link: its label, and its qualifiers in brackets') +
+    tool('qualifiers', 'Qualifiers', 'The qualifiers of each element, after its kind') +
+    tool('descriptions', 'Descriptions', 'The description of each element that does not contain others, up to ' + DIAGRAM_DESCRIPTION_LINES + ' lines (all of it with Wrap)') +
+    tool('wrap', 'Wrap', 'Break long names, qualifiers and descriptions over several lines instead of cutting them with an ellipsis (a box that contains others still cuts its kind)') +
+  '</span>';
 }
 
 /**
@@ -6750,10 +6963,11 @@ function mountDiagramIfNeeded() {
   const viewpoint = isMap ? 'map' : effectiveDiagramViewpoint(record);
   const facet = currentDiagramFacet();
   const mapState = isMap ? currentMapState() : null;
+  const shows = diagramShows(isMap);
   const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, opened: mapState.opened, pinned: mapState.pinned } : { facet });
   if (isMap) input.hidden = mapState.hidden;
   const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].join('|');
-  const key = JSON.stringify(input) + '|' + (isMap && diagramHideUnlinked) + '|' + diagramModelFingerprint();
+  const key = JSON.stringify(input) + '|' + (isMap && diagramHideUnlinked) + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint();
   if (diagramCache && diagramCache.key === key) {
     showDiagramScene(Object.assign({}, diagramCache.scene));
     return;
@@ -6795,8 +7009,8 @@ function mountDiagramIfNeeded() {
         const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? ' (try Deep to include what is inside it)' : '';
         scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint), status, '', { width: 0, height: 0 }, null);
       } else {
-        // a map has no captions on its links (they take most of its room): the tooltip says what a link stands for
-        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: !isMap })), drawn, reference, { map: isMap, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [] });
+        // the Map starts without captions on its links (they take most of its room): the tooltip says what a link stands for
+        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap })), drawn, reference, { map: isMap, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [], show: shows });
         scene = buildDiagramScene(viewKey, drawing.html, status, legend, drawing, drawing.focal);
         scene.boxes = drawing.boxes;
         scene.drawnIds = new Set(Object.keys(drawing.boxes));
@@ -6818,7 +7032,7 @@ function mountDiagramIfNeeded() {
 function renderElementDiagramHtml(record) {
   return '<div class="diagram-view">' + renderStoryBarHtml() +
     renderElementHeaderHtml(renderElementTitleHtml(record),
-      renderShowOnMapButtonHtml(record) + renderStoryButtonsHtml() + renderFacetSelectHtml() + renderMaximizeButtonHtml()) +
+      renderShowOnMapButtonHtml(record) + renderStoryButtonsHtml() + renderFacetSelectHtml() + renderDiagramDownloadHtml() + renderMaximizeButtonHtml()) +
     renderDiagramCanvasHtml(record) + '</div>';
 }
 
@@ -6841,7 +7055,7 @@ function renderMapPerspectiveHtml() {
     left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml()),
     center: '<div class="diagram-view">' + renderStoryBarHtml() +
       renderElementHeaderHtml('<h2>Map</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
-        renderOpenAsDiagramButtonHtml(record) + renderStoryButtonsHtml() + renderFacetSelectHtml() + renderMaximizeButtonHtml()) +
+        renderOpenAsDiagramButtonHtml(record) + renderStoryButtonsHtml() + renderFacetSelectHtml() + renderDiagramDownloadHtml() + renderMaximizeButtonHtml()) +
       renderDiagramCanvasHtml(null, renderMapChipsHtml()) + '</div>',
     right: null,
     bottom: null
@@ -7078,11 +7292,12 @@ function renderSettingsPerspectiveHtml() {
 // Stories — diagrams put in order, with a sentence for each
 //
 // A *saved view* is the recipe of a diagram, not its picture: the element and the viewpoint (Elements), or what is
-// pinned, hidden and open (Map), with the facet. It lives in `views:` of workspace.yaml, where the command line
-// already reads its views, and is drawn live from the model, so it stays true as the architecture moves.
-// A *story* (`stories:` of workspace.yaml) lists saved views in the order they are told, with a text for each.
-// Both are edited straight in `AppState.workspace.topLevel` (the parsed workspace.yaml, written back as it is),
-// which "Save all changes" writes along with the settings.
+// pinned, hidden and open (Map), with the facet and the texts it draws. A *story* lists steps in the order they are
+// told, with a text for each; a step names a saved view, or carries its own recipe. Both are manifests, like the
+// elements: `view.<id>.yaml` and `story.<id>.yaml` (kinds `archicode.morin.io/view` and `…/story`), one file each, so
+// that they are saved, cancelled and checked against the disk file by file, and never grow workspace.yaml. The ones
+// that older workspaces keep in `views:` and `stories:` of workspace.yaml are still read and edited where they are,
+// until "Move to manifests" takes them out.
 // =====================================================================
 
 /** The story walked through on the diagrams ({ id, step }), kept in the URL (`story=`, `step=`). Null: none. */
@@ -7109,37 +7324,76 @@ function workspaceTopLevel() {
   return workspace.topLevel;
 }
 
-/** The entries of `views:` / `stories:` as the file has them (objects with an id). Nothing is created by reading. */
-function topLevelEntries(key) {
+/** Where an entry lives: the manifest file it was read from, or null (workspace.yaml: where older workspaces keep them). */
+const entryOwners = new WeakMap();
+
+/** The views or stories that are manifests: the `content` of each file of that kind. */
+function manifestEntries(kind) {
+  const out = [];
+  for (const mf of AppState.manifestFiles || []) {
+    if (mf.error || !mf.header || !mf.content || stripArchicodeKindPrefix(String(mf.header.kind)) !== kind) continue;
+    if (!isPlainObject(mf.content) || typeof mf.content.id !== 'string' || !mf.content.id) continue;
+    entryOwners.set(mf.content, mf);
+    out.push(mf.content);
+  }
+  return out;
+}
+
+/** The entries of `views:` / `stories:` of workspace.yaml (an older place for them). Nothing is created by reading. */
+function legacyEntries(key) {
   const list = AppState.workspace ? workspaceTopLevel()[key] : null;
-  return Array.isArray(list) ? list.filter((entry) => isPlainObject(entry) && typeof entry.id === 'string' && entry.id) : [];
+  const out = Array.isArray(list) ? list.filter((entry) => isPlainObject(entry) && typeof entry.id === 'string' && entry.id) : [];
+  for (const entry of out) entryOwners.set(entry, null);
+  return out;
 }
 
-/** The list to add to, created when the file has none; null (and a notice) when the file has something else under that key. */
-function writableTopLevelList(key) {
-  const top = workspaceTopLevel();
-  if (top[key] === undefined || top[key] === null) top[key] = [];
-  if (Array.isArray(top[key])) return top[key];
-  storyNotice = 'workspace.yaml has a “' + key + '” that is not a list: the editor leaves it alone.';
-  return null;
+/** Manifests first; an entry of workspace.yaml with the same id is shadowed by the manifest, as the file of an element would. */
+function entriesOf(kind, key) {
+  const own = manifestEntries(kind);
+  const ids = new Set(own.map((entry) => entry.id));
+  return own.concat(legacyEntries(key).filter((entry) => !ids.has(entry.id)));
 }
 
-/** The workspace.yaml of the folder has changed in memory: "Save all changes" writes it. */
+/** workspace.yaml has changed in memory: "Save all changes" writes it (with the settings). */
 function markWorkspaceYamlChanged() {
   const workspace = AppState.workspace;
-  workspace.settingsDirty = true; // the file is written with the settings
+  workspace.settingsDirty = true;
   workspace.settingsRevision = (workspace.settingsRevision || 0) + 1;
   saveStatus = { state: 'idle' };
 }
 
-function savedViews() { return topLevelEntries('views'); }
-function storiesList() { return topLevelEntries('stories'); }
+/** An entry changed in memory: its manifest is rewritten and marked modified, or workspace.yaml is, for an older entry. */
+function markEntryChanged(entry) {
+  const owner = entryOwners.get(entry);
+  if (!owner) { markWorkspaceYamlChanged(); return; }
+  owner.rawText = serializeManifestFile(owner.header, owner.content);
+  owner.dirty = true;
+  saveStatus = { state: 'idle' };
+}
+
+function savedViews() { return entriesOf('view', 'views'); }
+function storiesList() { return entriesOf('story', 'stories'); }
 function findSavedView(id) { return savedViews().find((view) => view.id === id) || null; }
 function findStory(id) { return storiesList().find((story) => story.id === id) || null; }
 
 /** The steps of a story as the file has them; one that is not an object stands for a view that is missing. */
 function storySteps(story) {
   return Array.isArray(story.steps) ? story.steps.map((step) => (isPlainObject(step) ? step : { view: '' })) : [];
+}
+
+/** The view a step draws: the named one it points at (null when there is none), or the recipe the step carries. */
+function stepView(step) {
+  if (typeof step.view === 'string' && step.view) return findSavedView(step.view);
+  return typeof step.viewpoint === 'string' && step.viewpoint ? step : null;
+}
+
+/** Why a step cannot be drawn now, or null when it can. */
+function stepProblem(step) {
+  if (typeof step.view === 'string' && step.view) {
+    const view = findSavedView(step.view);
+    return view ? viewProblem(view) : 'The view “' + step.view + '” does not exist any more.';
+  }
+  return typeof step.viewpoint === 'string' && step.viewpoint ? viewProblem(step) : 'This step has no view.';
 }
 
 function storyLabel(story) { return story.name || story.id; }
@@ -7167,12 +7421,17 @@ function canonicalViewProperties(properties) {
   }
   if (typeof source.facet === 'string' && source.facet) out.facet = source.facet;
   if (source['hide-unlinked'] === true) out['hide-unlinked'] = true;
+  for (const name of DIAGRAM_SHOW_NAMES) if (typeof source[name] === 'boolean') out[name] = source[name];
   return out;
 }
 
 function canonicalViewDefinition(view) {
   const viewpoint = String(view.viewpoint);
-  return { viewpoint, layer: viewpoint === 'map' || view.layer !== 'technology' ? 'application' : 'technology', properties: canonicalViewProperties(view.properties) };
+  const properties = canonicalViewProperties(view.properties);
+  // a text drawn as the default of that diagram says is not a choice: it is not remembered
+  const defaults = DIAGRAM_SHOW_DEFAULTS[viewpoint === 'map' ? 'map' : 'elements'];
+  for (const name of DIAGRAM_SHOW_NAMES) if (properties[name] === defaults[name]) delete properties[name];
+  return { viewpoint, layer: viewpoint === 'map' || view.layer !== 'technology' ? 'application' : 'technology', properties };
 }
 
 /** What the diagram on screen is, as a view; null when no diagram is on screen (a page, a form). */
@@ -7180,12 +7439,12 @@ function currentViewDefinition() {
   const facetName = diagramFacet && currentDiagramFacet() ? diagramFacet : null;
   if (mapIsShown()) {
     const state = currentMapState();
-    return canonicalViewDefinition({ viewpoint: 'map', layer: 'application', properties: { pinned: state.pinned, hidden: state.hidden, opened: state.opened, facet: facetName, 'hide-unlinked': diagramHideUnlinked } });
+    return canonicalViewDefinition({ viewpoint: 'map', layer: 'application', properties: Object.assign({ pinned: state.pinned, hidden: state.hidden, opened: state.opened, facet: facetName, 'hide-unlinked': diagramHideUnlinked }, diagramShowOverrides(true)) });
   }
   if (diagramTabShown()) {
     const sel = AppState.selection;
     const record = findElementRecord(sel.key, sel.layer);
-    return canonicalViewDefinition({ viewpoint: effectiveDiagramViewpoint(record), layer: layerOfReference(sel.key, sel.layer), properties: { element: sel.key, facet: facetName } });
+    return canonicalViewDefinition({ viewpoint: effectiveDiagramViewpoint(record), layer: layerOfReference(sel.key, sel.layer), properties: Object.assign({ element: sel.key, facet: facetName }, diagramShowOverrides(false)) });
   }
   return null;
 }
@@ -7236,6 +7495,7 @@ function applySavedView(view) {
   if (problem) return problem;
   const properties = isPlainObject(view.properties) ? view.properties : {};
   diagramFacet = typeof properties.facet === 'string' && AppState.workspace.settings.facets.customs.some((facet) => facet.name === properties.facet) ? properties.facet : null;
+  setDiagramShow(properties);
   if (view.viewpoint === 'map') {
     const known = (list) => stringList(list).filter((reference) => AppState.index.application.has(reference));
     mapPinned = known(properties.pinned);
@@ -7260,31 +7520,59 @@ function applySavedView(view) {
 
 // ---- Editing the lists (everything is in memory until "Save all changes") ----
 
-/** The saved view of that diagram: the one already saved when there is one, else a new one named `name`. Null when the file cannot take it. */
+/** A new manifest of the editor's own kinds, in the first manifests folder, as the manifest of a new element is. */
+function createManifestEntry(kind, content) {
+  const header = { kind: ARCHICODE_KIND_PREFIX + kind, version: '1' };
+  const manifestsDir = AppState.workspace.settings.manifests.paths.map(normalizeRelDir).find((p) => p !== null);
+  const relPath = allocateManifestRelPath(manifestsDir === undefined ? 'manifests' : manifestsDir, kind + '.', content.id);
+  const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
+  adoptRemovedFile(mf);
+  AppState.manifestFiles.push(mf);
+  AppState.manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath));
+  entryOwners.set(content, mf);
+  saveStatus = { state: 'idle' };
+  return content;
+}
+
+/** The manifest of an entry leaves the model; its file goes with the next save (nothing to do for one that was never written). */
+function removeEntry(entry, key) {
+  const owner = entryOwners.get(entry);
+  if (owner) {
+    if (owner.existedOnDisk && !AppState.pendingFileRemovals.includes(owner.relPath)) {
+      AppState.pendingFileRemovals.push(owner.relPath);
+      AppState.removedFileBaselines.set(owner.relPath, owner.lastKnownDiskModified);
+    }
+    if (rawYamlEditDraft && rawYamlEditDraft.relPath === owner.relPath) rawYamlEditDraft = null;
+    if (AppState.selection.kind === 'file' && AppState.selection.key === owner.relPath) AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    AppState.manifestFiles = AppState.manifestFiles.filter((f) => f !== owner);
+    saveStatus = { state: 'idle' };
+    return;
+  }
+  const list = workspaceTopLevel()[key];
+  if (Array.isArray(list)) {
+    const index = list.indexOf(entry);
+    if (index >= 0) list.splice(index, 1);
+    if (!list.length) delete workspaceTopLevel()[key]; // a file that had no such list does not keep an empty one
+  }
+  markWorkspaceYamlChanged();
+}
+
+/** The saved view of that diagram: the one already saved when there is one, else a new one named `name`. */
 function viewForDefinition(definition, name) {
   const existing = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
   if (existing) return existing;
-  const list = writableTopLevelList('views');
-  if (!list) return null;
-  const view = {
-    id: uniqueIdFor(name || describeViewDefinition(definition), new Set(savedViews().map((entry) => entry.id)), 'view'),
-    name: name || describeViewDefinition(definition),
+  const label = name || describeViewDefinition(definition);
+  return createManifestEntry('view', {
+    id: uniqueIdFor(label, new Set(savedViews().map((entry) => entry.id)), 'view'),
+    name: label,
     viewpoint: definition.viewpoint,
     layer: definition.layer,
     properties: definition.properties
-  };
-  list.push(view);
-  markWorkspaceYamlChanged();
-  return view;
+  });
 }
 
 function createStory(name) {
-  const list = writableTopLevelList('stories');
-  if (!list) return null;
-  const story = { id: uniqueIdFor(name, new Set(storiesList().map((entry) => entry.id)), 'story'), name, steps: [] };
-  list.push(story);
-  markWorkspaceYamlChanged();
-  return story;
+  return createManifestEntry('story', { id: uniqueIdFor(name, new Set(storiesList().map((entry) => entry.id)), 'story'), name, steps: [] });
 }
 
 function writableSteps(story) {
@@ -7292,43 +7580,47 @@ function writableSteps(story) {
   return story.steps;
 }
 
-function removeEntryFrom(key, id) {
-  const list = workspaceTopLevel()[key];
-  if (!Array.isArray(list)) return;
-  const index = list.findIndex((entry) => isPlainObject(entry) && entry.id === id);
-  if (index >= 0) list.splice(index, 1);
-  if (!list.length) delete workspaceTopLevel()[key]; // a file that had no `stories:` does not keep an empty one
-  markWorkspaceYamlChanged();
-}
-
 /** How many steps of the stories show that view. */
 function storiesUsingView(viewId) {
   return storiesList().reduce((count, story) => count + storySteps(story).filter((step) => step.view === viewId).length, 0);
 }
 
+/** A recipe (a view, or a step that carries one) follows a renamed element. True when it changed. */
+function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
+  const properties = recipe.properties;
+  if (!isPlainObject(properties)) return false;
+  let changed = false;
+  const viewLayer = recipe.layer === 'technology' ? 'technology' : 'application';
+  if (recipe.viewpoint !== 'map' && viewLayer === layer && typeof properties.element === 'string') {
+    const element = rewriteReferenceValue(properties.element, oldRef, newRef);
+    if (element !== properties.element) { properties.element = element; changed = true; }
+  }
+  if (recipe.viewpoint === 'map' && layer === 'application') {
+    for (const key of ['pinned', 'hidden', 'opened']) {
+      if (!Array.isArray(properties[key])) continue;
+      const next = properties[key].map((reference) => rewriteReferenceValue(reference, oldRef, newRef));
+      if (next.some((reference, i) => reference !== properties[key][i])) { properties[key] = next; changed = true; }
+    }
+  }
+  return changed;
+}
+
 /**
- * An element was renamed: the saved views that point at it follow (the Map's pinned, hidden and open elements are of
- * the application layer; the element of a view is of its own layer).
+ * An element was renamed: the saved views, and the steps that carry their own view, follow it (the Map's pinned,
+ * hidden and open elements are of the application layer; the element of a view is of its own layer).
  */
 function rewriteSavedViewReferences(oldRef, newRef, layer) {
   let changed = false;
   for (const view of savedViews()) {
-    const properties = view.properties;
-    if (!isPlainObject(properties)) continue;
-    const viewLayer = view.layer === 'technology' ? 'technology' : 'application';
-    if (view.viewpoint !== 'map' && viewLayer === layer && typeof properties.element === 'string') {
-      const element = rewriteReferenceValue(properties.element, oldRef, newRef);
-      if (element !== properties.element) { properties.element = element; changed = true; }
-    }
-    if (view.viewpoint === 'map' && layer === 'application') {
-      for (const key of ['pinned', 'hidden', 'opened']) {
-        if (!Array.isArray(properties[key])) continue;
-        const next = properties[key].map((reference) => rewriteReferenceValue(reference, oldRef, newRef));
-        if (next.some((reference, i) => reference !== properties[key][i])) { properties[key] = next; changed = true; }
-      }
-    }
+    if (rewriteRecipeReferences(view, oldRef, newRef, layer)) { markEntryChanged(view); changed = true; }
   }
-  if (changed) markWorkspaceYamlChanged();
+  for (const story of storiesList()) {
+    let storyChanged = false;
+    for (const step of Array.isArray(story.steps) ? story.steps : []) {
+      if (isPlainObject(step) && !step.view && rewriteRecipeReferences(step, oldRef, newRef, layer)) storyChanged = true;
+    }
+    if (storyChanged) { markEntryChanged(story); changed = true; }
+  }
   return changed;
 }
 
@@ -7348,7 +7640,7 @@ function updateStoryField(field) {
   }
   if (!isPlainObject(target)) return;
   if (value === '') delete target[key]; else target[key] = value;
-  markWorkspaceYamlChanged();
+  markEntryChanged(story);
   refreshSaveAllButton();
 }
 
@@ -7363,9 +7655,10 @@ function nameCurrentView() {
     alert('This diagram is already saved as “' + viewLabel(existing) + '”. Rename it in Stories.');
     return;
   }
-  const answer = prompt('Name this view. It is kept in workspace.yaml, to be put in a story.', describeViewDefinition(definition));
+  const answer = prompt('Name this view. It is kept in a file of its own, to be put in stories.', describeViewDefinition(definition));
   if (answer === null || !answer.trim()) return;
-  if (viewForDefinition(definition, answer.trim())) render();
+  viewForDefinition(definition, answer.trim());
+  render();
 }
 
 /** Puts the diagram on screen in a story, after the step being told (else at the end), as a view of its own when none is saved for it. */
@@ -7381,15 +7674,16 @@ function addCurrentViewToStory() {
   const text = answer === null ? '' : answer.trim();
   if (!text) return;
   const number = /^\d+$/.test(text) ? Number(text) : 0;
-  const view = viewForDefinition(definition); // before a new story, so that `views:` comes first in the file
-  const story = view ? (number >= 1 && number <= stories.length ? stories[number - 1] : createStory(text)) : null;
-  if (!story || !view) { render(); return; }
+  const story = number >= 1 && number <= stories.length ? stories[number - 1] : createStory(text);
+  // a view that was named is pointed at; any other diagram goes in the step itself: no file for each diagram of a story
+  const named = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
+  const step = named ? { view: named.id } : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
   const steps = writableSteps(story);
   const at = activeStory && activeStory.id === story.id ? Math.min(activeStory.step + 1, steps.length) : steps.length;
-  steps.splice(at, 0, { view: view.id });
+  steps.splice(at, 0, step);
   activeStory = { id: story.id, step: at };
   selectedStoryId = story.id;
-  markWorkspaceYamlChanged();
+  markEntryChanged(story);
   render();
 }
 
@@ -7399,8 +7693,7 @@ function goToStoryStep(storyId, index) {
   const steps = story ? storySteps(story) : [];
   if (!story || index < 0 || index >= steps.length) return;
   selectedStoryId = storyId;
-  const view = findSavedView(steps[index].view);
-  const problem = view ? applySavedView(view) : 'The view “' + steps[index].view + '” does not exist any more.';
+  const problem = stepProblem(steps[index]) || applySavedView(stepView(steps[index]));
   activeStory = { id: storyId, step: index };
   if (problem) {
     storyNotice = 'Step ' + (index + 1) + ' cannot be shown. ' + problem;
@@ -7429,7 +7722,7 @@ function newStory() {
 function deleteStory(id) {
   const story = findStory(id);
   if (!story || !confirm('Delete the story “' + storyLabel(story) + '”? Its views stay saved.')) return;
-  removeEntryFrom('stories', id);
+  removeEntry(story, 'stories');
   if (selectedStoryId === id) selectedStoryId = null;
   if (activeStory && activeStory.id === id) activeStory = null;
   render();
@@ -7444,7 +7737,7 @@ function moveStoryStep(storyId, index, delta) {
   if (activeStory && activeStory.id === storyId) {
     if (activeStory.step === index) activeStory.step = to; else if (activeStory.step === to) activeStory.step = index;
   }
-  markWorkspaceYamlChanged();
+  markEntryChanged(story);
   render();
 }
 
@@ -7456,7 +7749,7 @@ function removeStoryStep(storyId, index) {
     if (activeStory.step > index) activeStory.step--;
     if (activeStory.step >= story.steps.length) activeStory = story.steps.length ? { id: storyId, step: story.steps.length - 1 } : null;
   }
-  markWorkspaceYamlChanged();
+  markEntryChanged(story);
   render();
 }
 
@@ -7464,7 +7757,7 @@ function addStoryStep(storyId, viewId) {
   const story = findStory(storyId);
   if (!story || !findSavedView(viewId)) return;
   writableSteps(story).push({ view: viewId });
-  markWorkspaceYamlChanged();
+  markEntryChanged(story);
   render();
 }
 
@@ -7485,7 +7778,7 @@ function renameSavedView(viewId) {
   const answer = prompt('Name of the view:', viewLabel(view));
   if (answer === null || !answer.trim()) return;
   view.name = answer.trim();
-  markWorkspaceYamlChanged();
+  markEntryChanged(view);
   render();
 }
 
@@ -7494,7 +7787,37 @@ function deleteSavedView(viewId) {
   if (!view) return;
   const used = storiesUsingView(viewId);
   if (!confirm('Delete the view “' + viewLabel(view) + '”?' + (used ? '\n\n' + used + ' step' + (used === 1 ? '' : 's') + ' of stories show it; they will say the view is missing.' : ''))) return;
-  removeEntryFrom('views', viewId);
+  removeEntry(view, 'views');
+  render();
+}
+
+/** The views and the stories that are still in workspace.yaml (and not shadowed by a manifest): what "Move to manifests" takes out. */
+function legacyEntriesToMove() {
+  const movable = (key, kind) => {
+    const taken = new Set(manifestEntries(kind).map((entry) => entry.id));
+    return legacyEntries(key).filter((entry) => !taken.has(entry.id));
+  };
+  return { views: movable('views', 'view'), stories: movable('stories', 'story') };
+}
+
+/** One manifest for each view and each story of workspace.yaml, and workspace.yaml without them. */
+function moveLegacyEntriesToManifests() {
+  const top = workspaceTopLevel();
+  const { views, stories } = legacyEntriesToMove();
+  const move = (key, kind, entries) => {
+    for (const entry of entries) {
+      const content = JSON.parse(JSON.stringify(entry));
+      delete content.kind; // the kind is the one of the manifest now
+      createManifestEntry(kind, content);
+    }
+    if (Array.isArray(top[key])) {
+      const rest = top[key].filter((entry) => !entries.includes(entry));
+      if (rest.length) top[key] = rest; else delete top[key];
+    }
+  };
+  move('views', 'view', views);
+  move('stories', 'story', stories);
+  markWorkspaceYamlChanged();
   render();
 }
 
@@ -7506,8 +7829,8 @@ function renderStoryBarHtml() {
   const steps = story ? storySteps(story) : [];
   if (!story || activeStory.step < 0 || activeStory.step >= steps.length) return '';
   const n = activeStory.step;
-  const view = findSavedView(steps[n].view);
-  const here = !!view && !viewProblem(view) && viewMatchesScreen(view);
+  const view = stepView(steps[n]);
+  const here = !!view && !stepProblem(steps[n]) && viewMatchesScreen(view);
   return '<div class="story-bar" role="region" aria-label="Story ' + escapeHtml(storyLabel(story)) + '">' +
     '<div class="story-bar-line">' +
       '<span class="story-bar-title">' + escapeHtml(storyLabel(story)) + '</span>' +
@@ -7550,13 +7873,14 @@ function renderStoriesNavHtml() {
 }
 
 function renderStoryStepHtml(story, step, index, count) {
-  const view = findSavedView(step.view);
-  const problem = view ? viewProblem(view) : 'The view “' + step.view + '” does not exist any more.';
+  const view = stepView(step);
+  const problem = stepProblem(step);
   const id = escapeHtml(story.id);
   const button = (action, label, extra) => '<button type="button" data-action="' + action + '" data-story="' + id + '" data-step="' + index + '"' + (extra || '') + '>' + label + '</button>';
   return '<li class="story-step' + (problem ? ' broken' : '') + '">' +
     '<div class="story-step-head">' +
       '<span class="story-step-view">' + (view ? escapeHtml(viewLabel(view)) : '<em>Missing view</em>') + '</span>' +
+      (view && !step.view ? '<span class="story-count" title="This step carries its own view: it has no file of its own">own view</span>' : '') +
       '<span class="story-step-tools">' +
         (problem ? '' : button('story-play', 'Show', ' title="Draw this step on the diagrams"')) +
         button('story-step-up', 'Up', index === 0 ? ' disabled' : '') +
@@ -7610,6 +7934,16 @@ function renderSavedViewsHtml() {
   return html + '</ul></section>';
 }
 
+/** Views and stories that an older workspace keeps in workspace.yaml: said once, with the way to move them out. */
+function renderLegacyEntriesNoticeHtml() {
+  const { views, stories } = legacyEntriesToMove();
+  if (!views.length && !stories.length) return '';
+  const count = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+  return '<div class="story-legacy" role="status"><span>' + [views.length ? count(views.length, 'view') : '', stories.length ? count(stories.length, 'story').replace('storys', 'stories') : ''].filter(Boolean).join(' and ') +
+    ' still in workspace.yaml. They work there, but every save rewrites that file. A manifest each keeps it small.</span>' +
+    '<button type="button" data-action="legacy-move" title="Write a manifest file for each, and take them out of workspace.yaml">Move to manifests</button></div>';
+}
+
 /** Stories perspective — the stories on the left, the one picked in the center, and the views they are made of. */
 function renderStoriesPerspectiveHtml() {
   const story = selectedStoryId ? findStory(selectedStoryId) : null;
@@ -7621,6 +7955,7 @@ function renderStoriesPerspectiveHtml() {
     left: renderLeftPanelWrapperHtml(renderStoriesNavHtml()),
     center: '<div class="story-view">' + renderElementHeaderHtml('<h2>Stories</h2>', actions) +
       (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') +
+      renderLegacyEntriesNoticeHtml() +
       (story ? renderStoryEditorHtml(story) : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. Pick one on the left, or start one with “New story…”.</p>') +
       renderSavedViewsHtml() + '</div>',
     right: null,
@@ -7785,7 +8120,7 @@ function handleAppClick(e) {
       resetDiagramView();
       break;
     case 'diagram-export':
-      exportDiagramSvg();
+      if (target.getAttribute('data-format') === 'png') exportDiagramPng(); else exportDiagramSvg();
       break;
     case 'toggle-fold': {
       const id = target.getAttribute('data-id');
@@ -7879,12 +8214,25 @@ function handleAppClick(e) {
     case 'saved-view-open':
       openSavedView(target.getAttribute('data-view'));
       break;
+    case 'legacy-move':
+      moveLegacyEntriesToManifests();
+      break;
     case 'saved-view-rename':
       renameSavedView(target.getAttribute('data-view'));
       break;
     case 'saved-view-delete':
       deleteSavedView(target.getAttribute('data-view'));
       break;
+    case 'toggle-show': {
+      const name = target.getAttribute('data-show');
+      if (!DIAGRAM_SHOW_NAMES.includes(name)) break;
+      pushDiagramHistory();
+      diagramShow[name] = !diagramShows(mapIsShown())[name];
+      // back to the default is "no choice": the URL and the saved views then say nothing
+      if (diagramShow[name] === DIAGRAM_SHOW_DEFAULTS[mapIsShown() ? 'map' : 'elements'][name]) diagramShow[name] = null;
+      render();
+      break;
+    }
     case 'map-clear':
       pushDiagramHistory();
       mapPinned = [];
