@@ -936,12 +936,30 @@ test('Cancel sits with "Save all changes", is enabled by the same things, and gi
 
 // ---- stories: views and stories are manifests, one file each ----
 
-/** Draws nothing and answers the prompts of the page with what the test says. */
+/**
+ * Draws nothing, and answers the dialogs of the page with what the test says: a number picks the story of that
+ * rank (by name), any other text is the name of a new story, or of a view.
+ */
 function storySandbox(sandbox, answers) {
   sandbox.render = () => {};
-  sandbox.prompt = () => (answers.length ? answers.shift() : null);
   sandbox.alert = () => {};
   sandbox.confirm = () => true;
+  const open = { add: sandbox.addCurrentViewToStory, name: sandbox.nameCurrentView };
+  const dialogOpen = () => ev(sandbox, 'appDialog') !== null;
+  sandbox.addCurrentViewToStory = () => {
+    open.add();
+    if (!dialogOpen()) return;
+    const answer = answers.shift();
+    if (answer === undefined) { sandbox.closeAppDialog(); return; }
+    sandbox.submitAppDialog(/^\d+$/.test(answer) ? { choice: sandbox.storiesSorted()[Number(answer) - 1].id } : { choice: '__new__', newName: answer });
+  };
+  sandbox.nameCurrentView = () => {
+    open.name();
+    if (!dialogOpen()) return;
+    const answer = answers.shift();
+    if (answer === undefined) { sandbox.closeAppDialog(); return; }
+    sandbox.submitAppDialog({ text: answer });
+  };
 }
 
 const showApi = (sandbox, state) => {
@@ -1138,8 +1156,11 @@ test('renaming or deleting an element: the views and the steps that point at it 
   assert.equal(sandbox.stepProblem(story.steps[1]), null, 'mailer is still pinned');
   ev(sandbox, "currentPerspective = 'files'");
   sandbox.goToStoryStep(story.id, 0);
-  assert.equal(ev(sandbox, 'currentPerspective'), 'stories');
-  assert.match(ev(sandbox, 'storyNotice'), /Step 1 cannot be shown/);
+  assert.equal(ev(sandbox, 'currentPerspective'), 'map', 'the story bar stays, on a diagram: the way on is open');
+  const bar = sandbox.renderStoryBarHtml();
+  assert.match(bar, /Step 1 cannot be shown/);
+  assert.doesNotMatch(bar, /data-action="story-next" disabled/);
+  assert.doesNotMatch(bar, /Back to this step/, 'nothing to go back to');
   assert.match(sandbox.renderStoriesPerspectiveHtml().center, /story-step broken/);
   sandbox.goToStoryStep(story.id, 1);
   assert.equal(ev(sandbox, 'currentPerspective'), 'map', 'the other step is still drawn');
@@ -1183,7 +1204,7 @@ test('views and stories that older workspaces keep in workspace.yaml are read an
   assert.equal(sandbox.storiesList().length, 1);
   assert.equal(sandbox.savedViews().length, 1);
   assert.equal(sandbox.stepProblem(sandbox.storiesList()[0].steps[0]), null);
-  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /1 view and 1 story still in workspace\.yaml/);
+  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /1 view and 1 story are still in workspace\.yaml/);
 
   // edited where they are: workspace.yaml is what is written
   sandbox.updateStoryField({ value: 'changed', getAttribute: (a) => ({ 'data-story': 'old_story', 'data-story-field': 'step-text', 'data-step': '0' })[a] });
@@ -1226,4 +1247,161 @@ test('a view or a story manifest is a file like the others: listed, edited as te
   assert.equal(sandbox.storiesList()[0].name, 'Renamed');
   assert.match(sandbox.stepProblem(sandbox.storiesList()[0].steps[1]), /“nowhere” does not exist/);
   assert.equal(manifest(state, 'manifests/story.s.yaml').dirty, true);
+});
+
+test('the picker puts a diagram in a story without ever duplicating one, and says where it went', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  sandbox.render = () => {};
+  showApi(sandbox, state);
+  sandbox.addCurrentViewToStory();
+  assert.equal(ev(sandbox, 'appDialog').kind, 'story-picker');
+  assert.match(sandbox.renderAppDialogHtml(), /role="dialog" aria-modal="true"[^]*name="story-choice" value="__new__" checked/, 'no story yet: the new one is picked');
+
+  // a name is needed, and the dialog stays
+  sandbox.submitAppDialog({ choice: '__new__', newName: '  ' });
+  assert.notEqual(ev(sandbox, 'appDialog'), null);
+  assert.equal(sandbox.storiesList().length, 0);
+
+  sandbox.submitAppDialog({ choice: '__new__', newName: 'Order flow' });
+  assert.equal(ev(sandbox, 'appDialog'), null);
+  assert.equal(sandbox.storiesList().length, 1);
+  assert.equal(ev(sandbox, 'storyBarNotice'), 'Added as step 1 of “Order flow”.');
+  assert.equal(ev(sandbox, 'storyBarEditing'), true, 'the words of the step are ready to type');
+  assert.equal(ev(sandbox, 'pendingFocusSelector'), '.story-bar-text');
+
+  // the same name, however it is written, is the same story
+  sandbox.addCurrentViewToStory();
+  assert.match(sandbox.renderAppDialogHtml(), /value="order_flow" checked/, 'the story being told is picked');
+  sandbox.submitAppDialog({ choice: '__new__', newName: ' ORDER flow ' });
+  assert.equal(sandbox.storiesList().length, 1);
+  assert.equal(sandbox.storiesList()[0].steps.length, 2);
+
+  // a name that is a number is a name, now that the stories are a list to pick from
+  sandbox.addCurrentViewToStory();
+  sandbox.submitAppDialog({ choice: '__new__', newName: '2024' });
+  assert.equal(sandbox.storiesList().length, 2);
+  assert.ok(sandbox.findStory('2024'));
+});
+
+test('the dialogs of the editor: Escape and a click beside close them, Enter in a field submits, the focus comes back', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  sandbox.render = () => {};
+  const key = (k, target) => { const e = { key: k, target, prevented: false, preventDefault() { this.prevented = true; }, stopPropagation() {} }; sandbox.handleAppDialogKeydown(e); return e; };
+  showApi(sandbox, state);
+  sandbox.document.activeElement = { closest: () => ({ getAttribute: (a) => ({ 'data-action': 'add-to-story' })[a] || null }) };
+  sandbox.addCurrentViewToStory();
+  assert.equal(ev(sandbox, 'appDialog').returnFocus, '[data-action="add-to-story"]');
+  key('Escape');
+  assert.equal(ev(sandbox, 'appDialog'), null);
+  assert.equal(ev(sandbox, 'pendingFocusSelector'), '[data-action="add-to-story"]', 'back on the button that opened it');
+
+  sandbox.addCurrentViewToStory();
+  sandbox.handleAppClick({ target: { classList: { contains: (c) => c === 'app-dialog-backdrop' }, closest: () => null } });
+  assert.equal(ev(sandbox, 'appDialog'), null, 'a click beside it');
+
+  // a text dialog: Enter submits what is typed, an empty name is refused
+  let named = null;
+  sandbox.openTextDialog('Name', 'Name', '', 'OK', (text) => { named = text; });
+  sandbox.document.querySelector = (selector) => (selector === '[data-dialog-text]' ? { value: '   ' } : null);
+  key('Enter', { matches: (s) => s === 'input[type="text"]' });
+  assert.equal(named, null);
+  assert.notEqual(ev(sandbox, 'appDialog'), null);
+  sandbox.document.querySelector = (selector) => (selector === '[data-dialog-text]' ? { value: ' Tour ' } : null);
+  const enter = key('Enter', { matches: (s) => s === 'input[type="text"]' });
+  assert.equal(named, 'Tour');
+  assert.equal(enter.prevented, true);
+  assert.equal(ev(sandbox, 'appDialog'), null);
+});
+
+test('the step controls keep the keyboard focus, a removed step can be put back, and the page says which step is showing', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  storySandbox(sandbox, ['Tour', '1', '1']);
+  showApi(sandbox, state);
+  sandbox.addCurrentViewToStory();
+  state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
+  sandbox.addCurrentViewToStory();
+  ev(sandbox, "currentPerspective = 'map'; mapPinned = ['mailer']");
+  sandbox.addCurrentViewToStory();
+  const story = sandbox.storiesList()[0];
+  const focus = () => ev(sandbox, 'pendingFocusSelector');
+
+  sandbox.moveStoryStep(story.id, 0, 1);
+  assert.equal(focus(), '[data-action="story-step-down"][data-story="tour"][data-step="1"]', 'the same button, on the step that moved');
+  sandbox.moveStoryStep(story.id, 1, 1);
+  assert.equal(focus(), '[data-action="story-step-up"][data-story="tour"][data-step="2"]', 'at the end Down is off: the other button');
+  sandbox.moveStoryStep(story.id, 2, -1);
+  assert.equal(focus(), '[data-action="story-step-up"][data-story="tour"][data-step="1"]');
+
+  const before = JSON.stringify(story.steps);
+  sandbox.removeStoryStep(story.id, 1);
+  assert.equal(story.steps.length, 2);
+  assert.equal(focus(), '[data-action="story-step-remove"][data-story="tour"][data-step="1"]', 'the step that took its place');
+  assert.match(sandbox.renderStoryEditorHtml(story), /Step 2 removed\. <button[^>]*data-action="story-undo"/);
+  sandbox.undoRemoveStoryStep();
+  assert.equal(JSON.stringify(story.steps), before, 'back where it was');
+  assert.doesNotMatch(sandbox.renderStoryEditorHtml(story), /story-undo/);
+
+  // the step showing now is marked, in the list and in the nav
+  ev(sandbox, "activeStory = { id: 'tour', step: 1 }");
+  assert.match(sandbox.renderStoryEditorHtml(story), /<li class="story-step current" aria-current="step">/);
+  assert.match(sandbox.renderStoriesNavHtml(), /step 2 of 3/);
+  assert.match(sandbox.renderStoriesNavHtml(), /modified-badge/, 'the story has not been saved');
+});
+
+test('the Stories page opens on a story, in the order of their names; a view of a step can be kept, or replaced when it is gone', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  storySandbox(sandbox, ['Zeta story', 'Alpha story', 'Catalog']);
+  showApi(sandbox, state);
+  sandbox.addCurrentViewToStory(); // Zeta
+  sandbox.addCurrentViewToStory(); // Alpha (a second story, the first answer left is a name)
+  const labels = sandbox.storiesSorted().map((story) => story.name);
+  same(labels, ['Alpha story', 'Zeta story']);
+  ev(sandbox, 'selectedStoryId = null');
+  const page = sandbox.renderStoriesPerspectiveHtml();
+  assert.equal(ev(sandbox, 'selectedStoryId'), 'alpha_story', 'a story is open when there is one');
+  assert.match(page.center, /element-header-subject">Alpha story/, 'its name is in the header');
+  assert.ok(page.left.indexOf('Alpha story') < page.left.indexOf('Zeta story'));
+  assert.ok(page.left.indexOf('story-new') < page.left.indexOf('Alpha story'), '"New story…" is at the top of the list');
+  assert.doesNotMatch(page.center.slice(0, page.center.indexOf('story-body')), /story-delete/, 'Delete is not next to Play');
+  assert.match(page.center, /class="btn-danger" data-action="story-delete"/);
+
+  // a step that carries its own view says so, and can keep it as a named view
+  const story = sandbox.findStory('alpha_story');
+  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /Own view — only in this step/);
+  sandbox.keepStepAsNamedView('alpha_story', 0);
+  sandbox.submitAppDialog({ text: 'Named api' });
+  assert.equal(story.steps[0].view, 'named_api');
+  assert.ok(!('viewpoint' in story.steps[0]));
+  assert.equal(sandbox.savedViews().length, 1);
+
+  // its view is gone: another one can be chosen on the step
+  sandbox.removeEntry(sandbox.savedViews()[0], 'views');
+  assert.match(sandbox.stepProblem(story.steps[0]), /does not exist/);
+  state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
+  sandbox.nameCurrentView(); // the answer left: Catalog
+  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /data-story-repair[^]*Choose another view…[^]*Catalog/);
+  sandbox.handleAppInput({ target: { id: 'x', matches: (s) => s === '[data-story-repair]', value: 'catalog', getAttribute: (a) => ({ 'data-story': 'alpha_story', 'data-step': '0' })[a], closest: () => null } });
+  assert.equal(story.steps[0].view, 'catalog');
+  assert.equal(sandbox.stepProblem(story.steps[0]), null);
+});
+
+test('the story bar shows the words to read, and a box to type in only on request', async () => {
+  const { sandbox, state } = await openFixtureMem();
+  storySandbox(sandbox, ['Tour']);
+  showApi(sandbox, state);
+  sandbox.addCurrentViewToStory();
+  assert.match(sandbox.renderStoryBarHtml(), /class="story-bar-text"/, 'just added: ready to type');
+  const click = (action) => sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (a) => ({ 'data-action': action })[a] || null }) } });
+  click('story-bar-edit');
+  assert.doesNotMatch(sandbox.renderStoryBarHtml(), /<textarea/);
+  assert.match(sandbox.renderStoryBarHtml(), /No words for this step yet/);
+  assert.match(sandbox.renderStoryBarHtml(), /aria-pressed="false"[^>]*>Edit text/);
+
+  sandbox.updateStoryField({ value: 'The API answers.', getAttribute: (a) => ({ 'data-story': 'tour', 'data-story-field': 'step-text', 'data-step': '0' })[a] });
+  assert.match(sandbox.renderStoryBarHtml(), /class="story-bar-words">The API answers\./);
+  click('story-bar-edit');
+  assert.match(sandbox.renderStoryBarHtml(), /<textarea class="story-bar-text"[^>]*>The API answers\./);
+  assert.match(sandbox.renderStoryBarHtml(), />Done</);
+  // the line about what was done lasts until the next action
+  assert.equal(ev(sandbox, 'storyBarNotice'), null);
 });
