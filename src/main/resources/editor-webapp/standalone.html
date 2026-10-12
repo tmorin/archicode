@@ -154,6 +154,7 @@
   .tree-node-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .modified-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--modified); flex-shrink: 0; }
   .nav-facet-note { padding: 0.2rem 1rem 0.4rem; font-size: 0.8rem; color: var(--muted); }
+  .nav-unread-note ul { margin: 0.2rem 0 0; padding-left: 1rem; }
   .nav-facet-note button { padding: 0 !important; border: none !important; background: none !important; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
   .tree-node-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
   .tree-node-row.active { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
@@ -640,8 +641,39 @@ function yamlError(message, lineIndex) {
   return e;
 }
 
-/** Set a key of a parsed mapping; `__proto__` is kept as an ordinary own key instead of changing the prototype. */
+/**
+ * JavaScript lists the keys that look like array indexes (`10`, `2`) first and in ascending order, whatever order they were
+ * set in: a tag key `10` would move to the top of its mapping on save. A mapping that has such a key therefore carries, in a
+ * hidden symbol, the order its keys were written in; `yamlKeysOf` is the order to read and write them in.
+ */
+const YAML_KEY_ORDER = Symbol('yamlKeyOrder');
+function isArrayIndexKey(key) {
+  return /^(0|[1-9][0-9]*)$/.test(key) && Number(key) < 4294967295;
+}
+
+/** The keys of a mapping in the order they were written in (insertion order for a mapping that has no array-index key). */
+function yamlKeysOf(map) {
+  const keys = Object.keys(map);
+  const order = map[YAML_KEY_ORDER];
+  if (!order) return keys;
+  const present = new Set(keys);
+  const ordered = order.filter((key) => present.has(key));
+  const known = new Set(ordered);
+  return ordered.concat(keys.filter((key) => !known.has(key)));
+}
+
+/** Set a key of a mapping; `__proto__` is kept as an ordinary own key instead of changing the prototype. */
 function setYamlKey(map, key, value) {
+  let order = map[YAML_KEY_ORDER];
+  if (!order && isArrayIndexKey(key)) {
+    order = Object.keys(map).filter((k) => k !== key);
+    Object.defineProperty(map, YAML_KEY_ORDER, { value: order, writable: true, enumerable: false, configurable: true });
+  }
+  if (order && !Object.prototype.hasOwnProperty.call(map, key)) {
+    const stale = order.indexOf(key);
+    if (stale !== -1) order.splice(stale, 1);
+    order.push(key);
+  }
   if (key === '__proto__') {
     Object.defineProperty(map, key, { value, writable: true, enumerable: true, configurable: true });
   } else {
@@ -1364,7 +1396,7 @@ function serializeYamlValue(value, indent) {
     const lines = [];
     for (const item of value) {
       if (item !== null && typeof item === 'object' && !Array.isArray(item) && !yamlEmptyCollection(item)) {
-        const keys = Object.keys(item);
+        const keys = yamlKeysOf(item);
         // restCol: the column the continuation keys of a sequence-of-maps item
         // align to (exactly one space after the dash, as emitted below).
         const restCol = indent + 2;
@@ -1392,7 +1424,7 @@ function serializeYamlValue(value, indent) {
 
   if (value !== null && typeof value === 'object') {
     const lines = [];
-    for (const key of Object.keys(value)) {
+    for (const key of yamlKeysOf(value)) {
       const val = value[key];
       if (isYamlComplexValue(val)) {
         lines.push(ind + serializeYamlKey(key) + ':');
@@ -1486,6 +1518,7 @@ function createInitialAppState() {
     permissionState: 'none', // 'granted' | 'needs-click' | 'none'
     workspace: null, // { application: {elements}, technology: {elements}, settings, styles, formatters, settingsDirty, settingsLastKnownDiskModified } | null
     manifestFiles: [], // Array<{ relPath, rawText, header, content, error, dirty, existedOnDisk, lastKnownDiskModified }>
+    unreadManifestFiles: [], // relPaths of the files the CLI reads as manifests (.toml, .json) and the editor does not: only YAML is
     index: { application: new Map(), technology: new Map() },
     relationshipStats: { total: 0, dangling: 0 },
     selection: { kind: 'none', key: null, mode: 'view' },
@@ -1841,6 +1874,7 @@ async function loadWorkspace(dirHandle) {
   AppState.fatalError = null;
   AppState.workspace = null;
   AppState.manifestFiles = [];
+  AppState.unreadManifestFiles = [];
   AppState.index = { application: new Map(), technology: new Map() };
   AppState.relationshipStats = { total: 0, dangling: 0 };
   AppState.dirtyReferences = new Set();
@@ -1869,6 +1903,7 @@ async function loadWorkspace(dirHandle) {
 
   // FR-5: direct (non-recursive) children of each settings.manifests.paths dir.
   const manifestFiles = [];
+  const unreadManifestFiles = [];
   const seenManifestDirs = new Set(); // `manifests` and `./manifests/` are one directory: read it once
   for (const rawDirPath of settings.manifests.paths) {
     const relDirPath = normalizeRelDir(rawDirPath);
@@ -1887,8 +1922,10 @@ async function loadWorkspace(dirHandle) {
     }
     for await (const [name, entryHandle] of manifestsDirHandle.entries()) {
       if (entryHandle.kind !== 'file') continue;
-      if (!/\.(ya?ml)$/.test(name)) continue; // like the CLI (String.endsWith): `.YAML` is not a manifest
       const relPath = (relDirPath ? relDirPath + '/' : '') + name;
+      // like the CLI (String.endsWith): `.YAML` is not a manifest. The CLI reads .toml and .json too; the editor writes YAML only
+      if (/\.(toml|json)$/.test(name)) unreadManifestFiles.push(relPath);
+      if (!/\.(ya?ml)$/.test(name)) continue;
       let rawText = '';
       let header = null;
       let content = null;
@@ -1910,6 +1947,7 @@ async function loadWorkspace(dirHandle) {
   }
   manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath));
   AppState.manifestFiles = manifestFiles;
+  AppState.unreadManifestFiles = unreadManifestFiles.sort((a, b) => a.localeCompare(b));
 
   // DEC-5 / FR-6 / FR-7: index + resolve (per-file parse errors do not abort this).
   const { index, rootsByCategory } = buildIndex(manifestFiles, settings);
@@ -4261,7 +4299,7 @@ function renderElementsNavHtml(showAddButton) {
   const note = facet
     ? '<div class="nav-facet-note">Greyed: nothing to draw through “' + escapeHtml(facet.name) + '”. <button type="button" data-action="clear-facet">Clear facet</button></div>'
     : '';
-  return note +
+  return note + renderUnreadManifestsHtml(false) +
          renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
          renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments, showAddButton);
 }
@@ -4288,6 +4326,19 @@ function referencesWithChildren(layer) {
   return found;
 }
 
+/**
+ * The files the CLI reads as manifests and the editor does not (TOML, JSON): what they declare is missing from the trees and
+ * the diagrams, and nothing else says so. `list`: name them (Files), else only count them (Elements).
+ */
+function renderUnreadManifestsHtml(list) {
+  const files = AppState.unreadManifestFiles || [];
+  if (!files.length) return '';
+  const text = files.length + (files.length === 1 ? ' manifest file is' : ' manifest files are') + ' not read by the editor, which reads YAML only: what ' +
+    (files.length === 1 ? 'it declares is' : 'they declare is') + ' missing here, and relationships to it show as dangling.';
+  return '<div class="nav-facet-note nav-unread-note" role="status">' + escapeHtml(text) +
+    (list ? '<ul>' + files.map((relPath) => '<li class="file-relpath">' + escapeHtml(relPath) + '</li>').join('') + '</ul>' : ' See Files.') + '</div>';
+}
+
 /** The manifest files list, no wrapper — the Files perspective's left panel. */
 function renderFilesNavHtml() {
   let html = '<div class="nav-section">';
@@ -4302,7 +4353,7 @@ function renderFilesNavHtml() {
             '</div>';
   }
   html += '</div>';
-  return html;
+  return html + renderUnreadManifestsHtml(true);
 }
 
 /** The left panel's `<nav>` shell — one resizable panel id shared by every perspective that uses it. */
@@ -4765,7 +4816,7 @@ function renderElementPropertiesHtml(record) {
   html += '</span></div>';
 
   html += '<div class="field-row"><span class="field-label">Tags</span><span class="field-value">';
-  const tagKeys = record.tags ? Object.keys(record.tags) : [];
+  const tagKeys = record.tags ? yamlKeysOf(record.tags) : [];
   if (tagKeys.length) {
     html += '<ul class="tag-list">' + tagKeys.map((k) =>
       '<li><span class="tag-key">' + escapeHtml(k) + '</span>: <span class="tag-value">' + escapeHtml(String(record.tags[k])) + '</span></li>'
@@ -4905,7 +4956,7 @@ function formatCommaList(arr) {
 /** Join a {k: v} map for a relationship's comma-separated `k=v` tags text input. */
 function formatCommaKvList(obj) {
   if (!obj || typeof obj !== 'object') return '';
-  return Object.keys(obj).map((k) => k + '=' + obj[k]).join(', ');
+  return yamlKeysOf(obj).map((k) => k + '=' + obj[k]).join(', ');
 }
 
 /** Parse a comma-separated text input into a trimmed, non-empty-entries string[]. */
@@ -4935,14 +4986,14 @@ function parseCommaKvList(text) {
 
 /** `obj[key] = value` as an own property, even for a key like `__proto__` (a plain assignment would set the prototype, or nothing). */
 function setOwnKey(obj, key, value) {
-  Object.defineProperty(obj, key, { value, enumerable: true, writable: true, configurable: true });
+  setYamlKey(obj, key, value); // keeps the order of the keys that look like array indexes
   return obj;
 }
 
 /** A shallow copy of an object's own enumerable properties, keys like `__proto__` included. */
 function copyOwnKeys(obj) {
   const copy = {};
-  for (const key of Object.keys(obj)) setOwnKey(copy, key, obj[key]);
+  for (const key of yamlKeysOf(obj)) setOwnKey(copy, key, obj[key]);
   return copy;
 }
 
@@ -5290,7 +5341,7 @@ function renderElementEditionFormHtml(reference) {
 
   // tags
   html += '<div class="edition-section"><h3>Tags</h3>';
-  const tagKeys = record.tags ? Object.keys(record.tags) : [];
+  const tagKeys = record.tags ? yamlKeysOf(record.tags) : [];
   if (tagKeys.length) {
     html += '<ul class="tag-list">' + tagKeys.map((k) =>
       '<li><span class="tag-key">' + escapeHtml(k) + '</span>: <span class="tag-value">' + escapeHtml(String(record.tags[k])) + '</span> ' +
@@ -6153,6 +6204,8 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const openedByUser = new Set(options && options.opened ? options.opened : (isMap ? currentMapOpened() : []));
   const pinnedOnMap = options && options.pinned ? options.pinned : (isMap ? mapPinned : []);
   const show = options && options.show ? options.show : {};
+  // every box of a drawing belongs to the layer it was computed for: a link must say it, two layers can share a reference
+  const layerAttribute = options && options.layer ? ' data-layer="' + escapeHtml(options.layer) + '"' : '';
   const itemById = new Map(result.items.map((item) => [item.id, item]));
   const origin = new Map([['root', { x: 0, y: 0 }]]);
   const boxes = [];
@@ -6195,7 +6248,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     if (!item.ghost) boxesById[item.id] = { x: x + w / 2 + 4, y: y + h / 2 + 4, w, h };
     const action = item.ghost
       ? ' data-action="fix-dangling" data-ref="' + escapeHtml(item.owner) + '"'
-      : ' data-action="goto-element" data-ref="' + escapeHtml(item.reference) + '"';
+      : ' data-action="goto-element" data-ref="' + escapeHtml(item.reference) + '"' + layerAttribute;
     const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="0" role="link" aria-label="' + escapeHtml(text.title + ' ' + text.sub) + '"';
     if (box.compound) {
       // Close is offered when it changes something: the user opened this box, and nothing pinned inside it keeps it open
@@ -6252,12 +6305,13 @@ function renderDiagramSvg(layout, result, focalReference, options) {
 }
 
 /** No layout engine (offline): the same information as a plain, still clickable, list. */
-function renderDiagramFallbackHtml(result) {
+function renderDiagramFallbackHtml(result, layer) {
   const itemById = new Map(result.items.map((item) => [item.id, item]));
   const nameOf = (id) => {
     const item = itemById.get(id);
     return '<button type="button" class="relationship-link" data-action="' + (item && item.ghost ? 'fix-dangling' : 'goto-element') + '" data-ref="' +
-      escapeHtml(item ? (item.ghost ? item.owner : item.reference) : id) + '">' + escapeHtml(item ? diagramItemText(item).title : id) + '</button>';
+      escapeHtml(item ? (item.ghost ? item.owner : item.reference) : id) + '"' + (layer && !(item && item.ghost) ? ' data-layer="' + escapeHtml(layer) + '"' : '') + '>' +
+      escapeHtml(item ? diagramItemText(item).title : id) + '</button>';
   };
   const links = result.links.filter((link) => !link.secondary);
   if (!links.length) return '<span class="muted">No relationships to show.</span>';
@@ -7093,7 +7147,7 @@ function mountDiagramIfNeeded() {
       const legend = diagramLegendHtml(ghosts.items.length > 0);
       let scene;
       if (!elk) {
-        scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn), status, '', { width: 0, height: 0 }, null);
+        scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer), status, '', { width: 0, height: 0 }, null);
         scene.drawnIds = new Set(drawn.items.filter((item) => !item.ghost).map((item) => item.id));
       } else if (isMap && !drawn.items.length) {
         scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no application element' + (mapState.hidden.length ? ' left once the hidden ones are out: show some again with their eye, or with the chips above the map.' : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
@@ -7103,7 +7157,7 @@ function mountDiagramIfNeeded() {
         scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint), status, '', { width: 0, height: 0 }, null);
       } else {
         // the Map starts without captions on its links (they take most of its room): the tooltip says what a link stands for
-        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap })), drawn, reference, { map: isMap, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [], show: shows });
+        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap })), drawn, reference, { map: isMap, layer: input.layer, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [], show: shows });
         scene = buildDiagramScene(viewKey, drawing.html, status, legend, drawing, drawing.focal);
         scene.boxes = drawing.boxes;
         scene.drawnIds = new Set(Object.keys(drawing.boxes));

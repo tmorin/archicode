@@ -476,3 +476,31 @@ test('leaving a form with text typed and not saved asks first, and staying keeps
   assert.equal(run(sandbox, 'draftTyped'), false);
   assert.ok(renders.n > 0);
 });
+
+test('the manifest files the editor cannot read (TOML, JSON) are named, in Files, and counted in Elements', async () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const { FIXTURE, makeDirHandle } = require('./harness');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'unread-'));
+  try {
+    fs.cpSync(FIXTURE, root, { recursive: true });
+    const sandbox = createApp();
+    await sandbox.loadWorkspace(makeDirHandle(root));
+    assert.deepEqual(Array.from(sandbox.__state().unreadManifestFiles), [], 'nothing to say about a YAML-only workspace');
+    assert.equal(sandbox.renderElementsNavHtml(false).includes('not read by the editor'), false);
+
+    fs.writeFileSync(path.join(root, 'manifests', 'zz.toml'), '[header]\n');
+    fs.writeFileSync(path.join(root, 'manifests', 'aa.json'), '{}');
+    fs.writeFileSync(path.join(root, 'manifests', 'notes.txt'), 'x');
+    await sandbox.loadWorkspace(makeDirHandle(root));
+    assert.deepEqual(Array.from(sandbox.__state().unreadManifestFiles), ['manifests/aa.json', 'manifests/zz.toml']);
+    assert.ok(!sandbox.__state().manifestFiles.some((mf) => /\.(toml|json)$/.test(mf.relPath)), 'they are not manifests of the editor');
+    const files = sandbox.renderFilesNavHtml();
+    assert.ok(files.includes('2 manifest files are not read by the editor') && files.includes('manifests/zz.toml') && files.includes('manifests/aa.json'));
+    assert.ok(!files.includes('notes.txt'));
+    const elements = sandbox.renderElementsNavHtml(false);
+    assert.ok(elements.includes('2 manifest files are not read by the editor') && !elements.includes('zz.toml'));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
