@@ -2292,6 +2292,9 @@ function applyDiagramParamsFromHash() {
   const shown = {};
   for (const name of DIAGRAM_SHOW_NAMES) shown[name] = params.get(name) === '1' ? true : params.get(name) === '0' ? false : null;
   setDiagramShow(shown);
+  // Fit or Center, as the link says; a zoom of the user's own is left as it is
+  if (params.get('frame') === 'fit') diagramScale = 'fit';
+  else if (diagramScale === 'fit') diagramScale = 'auto';
   const facet = params.get('facet');
   diagramFacet = facet && AppState.workspace.settings.facets.customs.some((f) => f.name === facet) ? facet : null;
 }
@@ -2323,6 +2326,19 @@ function syncPerspectiveFromHash() {
   if (AppState.workspace) applySelectionFromHashRef();
 }
 
+/**
+ * How the diagram is framed, for the URL: `frame=fit` (Fit: the whole drawing). Center is how a diagram opens, so a URL
+ * with no `frame` is Center; a zoom or a move of the user's own is not a framing worth a link.
+ */
+function pushFrameParam(params) {
+  if (diagramScale === 'fit') params.push('frame=fit');
+}
+
+/** A change of framing (Fit, Center, a zoom, a move) is in the address bar at once, without an entry in the history. */
+function diagramFramingChanged() {
+  if (AppState.workspace && (currentPerspective === 'elements' || currentPerspective === 'map')) syncHashFromState();
+}
+
 /** The texts the diagram draws otherwise than by default, for the URL. */
 function pushShowParams(params, isMap) {
   const overrides = diagramShowOverrides(isMap);
@@ -2342,11 +2358,13 @@ function currentRouteHash() {
     params.push('tab=' + (findElementRecord(ref) ? effectiveDiagramViewpoint(findElementRecord(ref)) : elementTab)); // what the tabs show, not what a leaf was asked
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
     pushShowParams(params, false);
+    pushFrameParam(params);
   }
   if (currentPerspective === 'map') {
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
-    pushShowParams(params, true);
     if (mapPinned.length) params.push('pin=' + mapPinned.map(encodeURIComponent).join(','));
+    pushShowParams(params, true);
+    pushFrameParam(params);
   }
   if (currentPerspective === 'stories' && selectedStoryId) params.push('story=' + encodeURIComponent(selectedStoryId));
   if ((currentPerspective === 'elements' || currentPerspective === 'map') && activeStory) {
@@ -6358,7 +6376,10 @@ function resolveDiagramScale(canvas) {
 
 /** The user took over the framing (zoom, drag, wheel): keep what is on screen as the manual view. */
 function takeOverDiagramFraming(canvas) {
-  if (typeof diagramScale !== 'number') diagramScale = resolveDiagramScale(canvas);
+  if (typeof diagramScale === 'number') return;
+  const wasFit = diagramScale === 'fit';
+  diagramScale = resolveDiagramScale(canvas);
+  if (wasFit) diagramFramingChanged(); // the framing is no longer Fit
 }
 
 function applyDiagramScale() {
@@ -6419,6 +6440,7 @@ function setDiagramScale(next, clientX, clientY) {
   if (next === 'fit' || next === 'auto') {
     diagramScale = next;
     applyDiagramScale();
+    diagramFramingChanged();
     return;
   }
   applyDiagramPan(canvas);
@@ -6431,6 +6453,7 @@ function setDiagramScale(next, clientX, clientY) {
   const after = applyDiagramScale();
   diagramCenter = { x: diagramCenter.x + ox / before - ox / after, y: diagramCenter.y + oy / before - oy / after };
   applyDiagramPan(canvas);
+  diagramFramingChanged();
 }
 
 /** One step along DIAGRAM_SCALES from the scale on screen. */
@@ -6446,6 +6469,7 @@ function diagramScaleStep(direction) {
 function resetDiagramView() {
   diagramScale = 'auto';
   applyDiagramScale();
+  diagramFramingChanged();
 }
 
 /** Pan so that a box is inside the canvas (keyboard focus can land on a box that is out of sight). */

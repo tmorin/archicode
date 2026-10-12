@@ -569,7 +569,7 @@ In the tree on the left, each row has two buttons, which appear when the pointer
 
 The pinned and hidden elements are also shown as chips over the map, each removable, with *Clear all* once there are several. In the tree, rows of the elements the map does not draw are greyed. Folding the tree does not change the boxes of the map: use *Fold all* and *Unfold all* in the toolbar of the map, or the buttons of the boxes. *Hide unlinked* leaves out the boxes that no link reaches.
 
-*Center* puts the selected box in the middle at a readable size, *Fit* shows the whole diagram, and *SVG* downloads it.
+*Center* puts the selected box in the middle at a readable size, and *Fit* shows the whole diagram. Fit is in the URL (`frame=fit`) and Center, how a diagram opens, is a URL with no `frame`, so a link opens the diagram framed as you left it; a zoom or a move of your own is not part of the link. *PNG* and *SVG*, in the header, download the diagram.
 
 [[editor-texts]]
 === The texts of a diagram
