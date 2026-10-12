@@ -10,7 +10,7 @@
 //! ```text
 //! { application: { elements: [ { id, kind, name, description, qualifiers, tags, relationships: [
 //!                                 { destination, label, qualifiers, tags } ], elements: [ … ] } ] },
-//!   technology:  { elements: [ { … applications: [reference] … } ] } }
+//!   technology:  { elements: [ { … applications: [reference], uses: [reference] … } ] } }
 //! ```
 //!
 //! An action is `{operator: "REMOVE", json_path}`: every node the path selects is deleted (RFC 9535 selects, it does
@@ -29,6 +29,9 @@ use std::collections::{HashMap, HashSet};
 pub(crate) struct Facet {
     #[serde(default, deserialize_with = "null_as_default")]
     pub actions: Vec<Action>,
+    /// the views of the technology layer leave out what the facet's links do not go through
+    #[serde(default, deserialize_with = "null_as_default")]
+    pub hide_unlinked: bool,
 }
 
 #[derive(Deserialize)]
@@ -289,6 +292,9 @@ fn to_document(elements: &[Elem]) -> Value {
                         if !e.applications.is_empty() {
                             node.insert("applications".into(), json!(e.applications));
                         }
+                        if !e.uses.is_empty() {
+                            node.insert("uses".into(), json!(e.uses));
+                        }
                         if !e.relationships.is_empty() {
                             node.insert("relationships".into(), Value::Array(e.relationships.iter().map(rel_to_value).collect()));
                         }
@@ -306,9 +312,11 @@ fn to_document(elements: &[Elem]) -> Value {
     if roots.is_empty() { json!({}) } else { json!({ "elements": roots }) }
 }
 
-/// What is left of a document in the elements: the ones still in it, with the relationships they still have.
+/// What is left of a document in the elements: the ones still in it, with the relationships they still have and the
+/// environments they still use.
 fn read_document(doc: &Value, elements: &mut Vec<Elem>) -> Result<(), String> {
-    fn walk(nodes: Option<&Value>, parent: Option<&str>, left: &mut HashMap<String, Vec<Rel>>) -> Result<(), String> {
+    type Left = (Vec<Rel>, Vec<String>);
+    fn walk(nodes: Option<&Value>, parent: Option<&str>, left: &mut HashMap<String, Left>) -> Result<(), String> {
         for node in nodes.and_then(Value::as_array).into_iter().flatten() {
             let id = node.get("id").and_then(Value::as_str).ok_or("a facet left an element without an id")?;
             let reference = parent.map_or(id.to_string(), |p| format!("{p}.{id}"));
@@ -319,8 +327,15 @@ fn read_document(doc: &Value, elements: &mut Vec<Elem>) -> Result<(), String> {
                     .collect::<Result<Vec<Rel>, String>>()?,
                 _ => Vec::new(),
             };
+            let uses = match node.get("uses") {
+                Some(Value::Array(list)) => list
+                    .iter()
+                    .map(|u| u.as_str().map(str::to_string).ok_or_else(|| format!("a facet left an unreadable `uses` in {reference}")))
+                    .collect::<Result<Vec<String>, String>>()?,
+                _ => Vec::new(),
+            };
             walk(node.get("elements"), Some(&reference), left)?;
-            left.insert(reference, relationships);
+            left.insert(reference, (relationships, uses));
         }
         Ok(())
     }
@@ -328,7 +343,7 @@ fn read_document(doc: &Value, elements: &mut Vec<Elem>) -> Result<(), String> {
     walk(doc.get("elements"), None, &mut left)?;
     elements.retain(|e| left.contains_key(&e.reference));
     for e in elements.iter_mut() {
-        e.relationships = left.remove(&e.reference).unwrap_or_default();
+        (e.relationships, e.uses) = left.remove(&e.reference).unwrap_or_default();
     }
     Ok(())
 }

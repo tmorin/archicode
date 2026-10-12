@@ -25,6 +25,17 @@ rectangle pod-b_shop_web_api <<container>> <<atomic>> <<Spring Boot>> [
 }
 }
 }
+rectangle psp as "**Payment Provider Cloud**\n""[environment]""" <<composite>> {
+rectangle psp.gateway as "**Provider Gateway**\n""[node]""" <<composite>> {
+rectangle gateway_shop_payments <<system>> <<external>> <<atomic>> [
+**Payment Provider**
+""[system]""
+
+Takes the money.
+]
+}
+}
+pod-b_shop_web_api --> gateway_shop_payments : charges with\n""[HTTPS]""
 <style>
 .external {
 actor {

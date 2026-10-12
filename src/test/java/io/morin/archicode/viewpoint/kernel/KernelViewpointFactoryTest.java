@@ -1,5 +1,6 @@
 package io.morin.archicode.viewpoint.kernel;
 
+import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.ResourceFixtures;
 import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.Container;
@@ -132,5 +133,111 @@ class KernelViewpointFactoryTest {
                 .filter(i -> i.getReference().equals("ref"))
                 .count()
         );
+    }
+
+    /**
+     * {@code dev} hosts {@code sys_a.con_a}, which reads from {@code sys_ext.con_mpi}, hosted by {@code int} and by
+     * {@code prd}.
+     */
+    private Workspace environments(Set<String> devUses) {
+        val readsFromMpi = Relationship.builder()
+            .destination("sys_ext.con_mpi")
+            .label("reads")
+            .tags(Map.of("port", "443"))
+            .build();
+        val app = Application.builder()
+            .elements(
+                Set.of(
+                    System.builder()
+                        .id("sys_a")
+                        .elements(Set.of(Container.builder().id("con_a").relationships(Set.of(readsFromMpi)).build()))
+                        .build(),
+                    System.builder()
+                        .id("sys_ext")
+                        .elements(Set.of(Container.builder().id("con_mpi").build()))
+                        .build()
+                )
+            )
+            .build();
+        val dep = Technology.builder()
+            .elements(
+                Set.of(
+                    Environment.builder()
+                        .id("dev")
+                        .uses(devUses)
+                        .elements(Set.of(Node.builder().id("host").applications(Set.of("sys_a.con_a")).build()))
+                        .build(),
+                    Environment.builder()
+                        .id("int")
+                        .elements(Set.of(Node.builder().id("host").applications(Set.of("sys_ext.con_mpi")).build()))
+                        .build(),
+                    Environment.builder()
+                        .id("prd")
+                        .elements(Set.of(Node.builder().id("host").applications(Set.of("sys_ext.con_mpi")).build()))
+                        .build()
+                )
+            )
+            .build();
+        return Workspace.builder().application(app).technology(dep).build();
+    }
+
+    @Test
+    void shouldDeriveTheDependencyOfAnEnvironmentOnTheOnesItUses() {
+        val viewpoint = create("deep", environments(Set.of("int")), View.Layer.TECHNOLOGY, "dev");
+
+        Assertions.assertEquals(1, viewpoint.getLinks().size());
+        val link = viewpoint.getLinks().iterator().next();
+        Assertions.assertEquals("reads", link.getLabel());
+        Assertions.assertFalse(
+            link.getTags().containsKey("rendering-secondary"),
+            "a dependency between environments is drawn"
+        );
+        Assertions.assertEquals("app:sys_a_con_a", link.getFrom().getReference());
+        Assertions.assertEquals("app:sys_ext_con_mpi", link.getTo().getReference());
+        val relationship = link.getRelationships().iterator().next();
+        Assertions.assertEquals("sys_ext.con_mpi", relationship.getDestination());
+        Assertions.assertEquals("443", relationship.getTags().get("port"), "the relationship of the application");
+        val references = viewpoint.getItems().stream().flatMap(Item::stream).map(Item::getReference).toList();
+        Assertions.assertTrue(references.contains("int.host"));
+        Assertions.assertFalse(references.contains("prd.host"), "an environment that is not used stays out");
+    }
+
+    @Test
+    void shouldDeriveNothingForAnEnvironmentThatUsesNothing() {
+        val viewpoint = create("deep", environments(Set.of()), View.Layer.TECHNOLOGY, "dev");
+
+        Assertions.assertTrue(viewpoint.getLinks().isEmpty());
+    }
+
+    @Test
+    void shouldKeepTheDerivedDependenciesOutOfAFacetThatRemovesTheirRelationship() {
+        val base = workspaceFactory.create(environments(Set.of("int")), Map.of());
+        val facet = Settings.Facets.Facet.builder()
+            .name("no443")
+            .actions(
+                Set.of(
+                    Settings.Facets.Facet.Action.builder()
+                        .operator(Settings.Facets.Facet.Action.Operator.REMOVE)
+                        .jsonPath("$.application..relationships[?(@.tags['port'] == '443')]")
+                        .build()
+                )
+            )
+            .build();
+        val view = ResourceFixtures.createDeepViewBuilder("view", "dev").layer(View.Layer.TECHNOLOGY).build();
+
+        val viewpoint = viewpointServiceRepository
+            .get("deep")
+            .createViewpointFactory()
+            .create(workspaceFactory.create(base, facet), view);
+
+        Assertions.assertTrue(viewpoint.getLinks().isEmpty());
+    }
+
+    @Test
+    void shouldRefuseAnEnvironmentThatUsesAnElementThatDoesNotExist() {
+        val exception = Assertions.assertThrows(ArchiCodeException.class, () ->
+            create("deep", environments(Set.of("nowhere")), View.Layer.TECHNOLOGY, "dev")
+        );
+        Assertions.assertTrue(exception.getMessage().contains("nowhere"));
     }
 }

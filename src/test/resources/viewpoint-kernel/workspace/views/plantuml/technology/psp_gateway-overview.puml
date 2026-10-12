@@ -23,7 +23,7 @@ rectangle psp.gateway <<atomic>> <<node>> [
 ""[node]""
 ]
 }
-prod --> psp.gateway : pays through\n""[HTTPS]""
+prod --> psp.gateway : uses\n""[HTTPS]""
 <style>
 .external {
 actor {

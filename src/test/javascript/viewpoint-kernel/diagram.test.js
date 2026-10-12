@@ -443,7 +443,8 @@ test('the tree of the Map is a tree for the keyboard and the screen reader, with
   assert.match(html, /role="group" id="map-scope-group-application-shop"/);
   assert.equal((html.match(/class="tree-node-row[^"]*" role="treeitem"[^>]*tabindex="0"/g) || []).length, 1, 'one tab stop for the whole tree');
   assert.match(html, /data-node="customer"[^>]*>/);
-  assert.match(html.match(/<div class="tree-node-row[^>]*data-node="customer"[^>]*>/)[0], /tabindex="0"/, 'the first row by default');
+  assert.ok(html.indexOf('data-node="shop"') < html.indexOf('data-node="mailer"') && html.indexOf('data-node="mailer"') < html.indexOf('data-node="customer"'), 'the solution, then the system, then the person');
+  assert.match(html.match(/<div class="tree-node-row[^>]*data-node="shop"[^>]*>/)[0], /tabindex="0"/, 'the first row by default');
   assert.match(html, /aria-label="Mail Provider, hidden"/, 'the state is read, not only drawn');
   assert.match(html, /aria-label="Catalog, pinned"/);
   assert.ok((html.match(/<button type="button" tabindex="-1" class="map-scope-btn"/g) || []).length >= 3, 'the buttons are out of the tab order: the keyboard has the row');
@@ -816,4 +817,93 @@ test('the actions of the map ask for the selection to be checked at the next red
   run(sandbox, 'mapSelectionCheck = false;');
   click('toggle-fold', { 'data-id': 'shop', 'data-mode': 'expand' });
   assert.equal(checked(), false, 'opening a box only adds to the map');
+});
+
+test('the tabs of an element are on the left of its header, on every tab, so that they do not move', async () => {
+  const { sandbox, state } = await openFixture();
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
+  const left = (html) => html.match(/element-header-label">(.*?)<\/div><div class="element-header-actions">/)[1];
+  const right = (html) => html.match(/element-header-actions">(.*?)<\/div><\/div>/)[1];
+
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'details'; diagramMaximized = false;");
+  const details = sandbox.renderElementsPerspectiveHtml().center;
+  run(sandbox, "elementTab = 'deep';");
+  const deep = sandbox.renderElementsPerspectiveHtml().center;
+
+  for (const html of [details, deep]) {
+    assert.ok(left(html).includes('viewpoint-switch'), 'the tabs are with the name');
+    assert.ok(!right(html).includes('viewpoint-switch'), 'and not with the actions');
+  }
+  const unpressed = (html) => left(html).replace(/ aria-pressed="(true|false)"/g, '');
+  assert.equal(unpressed(details), unpressed(deep), 'the left of the header does not depend on the tab');
+  assert.ok(right(details).includes('toggle-element-edit') && right(deep).includes('diagram-facet-select'), 'what differs is on the right');
+});
+
+test('the tabs of an element that would show nothing are off, whichever the cause: nothing inside it, or a facet removing the relationships', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  const emptyOf = (reference, facet) => ['overview', 'detailed', 'deep'].filter((id) => {
+    const out = kernel.compute(sandbox.buildKernelInput(id, reference, { facet }).input);
+    return !out.error && !out.links.some((link) => !link.secondary) && out.items.length <= 1;
+  });
+  const tabsOf = async (reference, tabState) => {
+    state.selection = { kind: 'element', key: reference, mode: 'view' };
+    run(sandbox, "currentPerspective = 'elements'; " + tabState);
+    const list = ['details', 'overview', 'detailed', 'deep'].map((tab) => ({ tab, disabled: false, title: '', getAttribute: () => tab }));
+    sandbox.document.querySelector = () => ({ querySelectorAll: () => list });
+    await sandbox.markElementTabs();
+    return list;
+  };
+  const off = (list) => list.filter((b) => b.disabled).map((b) => b.tab);
+
+  // a container with nothing inside it has no Detailed diagram (the others have one)
+  assert.deepEqual(emptyOf('shop.web.api'), ['detailed']);
+  const container = await tabsOf('shop.web.api', "elementTab = 'details'; diagramFacet = null;");
+  assert.deepEqual(off(container), ['detailed']);
+  assert.match(container.find((b) => b.tab === 'detailed').title, /Nothing to show/);
+  assert.deepEqual(off(await tabsOf('shop.web', "elementTab = 'details'; diagramFacet = null;")), [], 'nothing to turn off when every diagram has something');
+  assert.deepEqual(off(await tabsOf('shop.web.api', "elementTab = 'detailed'; diagramFacet = null;")), [], 'the tab being shown stays on: it says why there is nothing');
+
+  // a facet that takes away every relationship of an element empties its tabs
+  const refs = [...state.index.application.keys()];
+  const pair = state.workspace.settings.facets.customs
+    .map((facet) => ({ facet, ref: refs.find((r) => !emptyOf(r).includes('overview') && emptyOf(r, facet).includes('overview')) }))
+    .find((p) => p.ref);
+  assert.ok(pair, 'the fixture has a facet that empties an element');
+  const through = await tabsOf(pair.ref, "elementTab = 'details'; diagramFacet = " + JSON.stringify(pair.facet.name) + ';');
+  assert.ok(off(through).includes('overview'));
+  assert.ok(through.find((b) => b.tab === 'overview').title.includes(pair.facet.name), 'and the tooltip names the facet');
+});
+
+test('Overview, Detailed and Deep are one group of buttons, and Details is next to it, not in it', async () => {
+  const { sandbox } = await openFixture();
+  const html = sandbox.renderElementTabsHtml(sandbox.__state().index.application.get('shop.web'));
+  const group = html.match(/<span class="button-group"[^>]*>(.*?)<\/span>/)[1];
+  assert.deepEqual([...group.matchAll(/data-tab="(\w+)"/g)].map((m) => m[1]), ['overview', 'detailed', 'deep']);
+  assert.ok(html.indexOf('data-tab="details"') < html.indexOf('class="button-group"'), 'Details comes first, outside the group');
+});
+
+test('a facet that takes a whole layer away is a facet that removes the element, not a dangling reference', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  const facet = { name: 'no-tech', actions: [{ operator: 'REMOVE', jsonPath: '$.technology.elements[*]' }] };
+  state.workspace.settings.facets.customs.push(facet);
+  const reference = [...state.index.technology.keys()][0];
+  state.selection = { kind: 'element', key: reference, layer: 'technology', mode: 'view' };
+
+  const through = kernel.compute(sandbox.buildKernelInput('overview', reference, { facet }).input);
+  assert.match(through.error, /dangling reference/, 'the kernel cannot find the element any more');
+  assert.equal(sandbox.facetRemovesElement(kernel, 'overview', reference), true, 'the editor knows why: without the facet the diagram is there');
+  assert.equal(sandbox.facetRemovesElement(kernel, 'overview', 'nowhere.at.all'), false, 'a reference that exists nowhere is still an error');
+
+  // the tree greys the elements the facet removes
+  const quiet = sandbox.quietReferencesThroughFacet(kernel, facet);
+  assert.ok([...state.index.technology.keys()].every((r) => quiet.has(r)), 'every element of the layer');
+  assert.ok(![...state.index.application.keys()].every((r) => quiet.has(r)), 'but not the other layer');
+
+  // and the tabs of the element are off, but the one being shown
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'details'; diagramFacet = 'no-tech';");
+  const list = ['details', 'overview', 'detailed', 'deep'].map((tab) => ({ tab, disabled: false, title: '', getAttribute: () => tab }));
+  sandbox.document.querySelector = () => ({ querySelectorAll: () => list });
+  await sandbox.markElementTabs();
+  assert.ok(list.find((b) => b.tab === 'overview').disabled && list.find((b) => b.tab === 'deep').disabled);
+  assert.ok(!list.find((b) => b.tab === 'details').disabled);
 });

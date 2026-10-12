@@ -27,6 +27,11 @@ rectangle prod.cluster.web.pod-b <<atomic>> <<node>> [
 }
 }
 }
+rectangle psp <<environment>> <<atomic>> [
+**Payment Provider Cloud**
+""[environment]""
+]
+prod.cluster.web.pod-b --> psp : charges with\n""[HTTPS]""
 <style>
 .external {
 actor {

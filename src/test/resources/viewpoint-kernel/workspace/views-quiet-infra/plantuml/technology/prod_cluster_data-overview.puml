@@ -19,8 +19,13 @@ rectangle prod.cluster.data <<atomic>> <<node>> [
 **data namespace**
 ""[node]""
 ]
+rectangle prod.cluster.web <<atomic>> <<node>> [
+**web namespace**
+""[node]""
+]
 }
 }
+prod.cluster.web --> prod.cluster.data : queries\n""[gRPC]""
 <style>
 .external {
 actor {
