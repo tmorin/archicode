@@ -934,7 +934,7 @@ test('Cancel sits with "Save all changes", is enabled by the same things, and gi
   assert.doesNotMatch(group(), /disabled/);
 });
 
-// ---- stories: saved views put in order, in workspace.yaml ----
+// ---- stories: views and stories are manifests, one file each ----
 
 /** Draws nothing and answers the prompts of the page with what the test says. */
 function storySandbox(sandbox, answers) {
@@ -948,11 +948,12 @@ const showApi = (sandbox, state) => {
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   ev(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'");
 };
+const dirtyPaths = (state) => state.manifestFiles.filter((f) => f.dirty).map((f) => f.relPath).sort();
 
-test('a diagram is kept once as a view, and a story lists it, after the step being told', async () => {
+test('a diagram goes in a story as a step of its own; only a view that was named is pointed at; each is a file', async () => {
   const { sandbox, state } = await openFixtureMem();
-  const top = state.workspace.topLevel;
-  storySandbox(sandbox, ['Order flow', '1', '1']);
+  storySandbox(sandbox, ['Order flow', 'Api view', '1', '1']);
+  const elementsBefore = state.index.application.size;
   assert.equal(sandbox.currentViewDefinition(), null, 'no diagram on screen, nothing to keep');
 
   showApi(sandbox, state);
@@ -960,30 +961,36 @@ test('a diagram is kept once as a view, and a story lists it, after the step bei
   assert.equal(state.workspace.settingsDirty, false);
 
   sandbox.addCurrentViewToStory();
-  assert.equal(top.views.length, 1);
-  assert.match(top.views[0].name, /Overview/);
-  assert.equal(top.views[0].viewpoint, 'overview');
-  assert.equal(top.views[0].layer, 'application');
-  same(top.views[0].properties, { element: 'shop.web.api' });
-  assert.equal(top.stories[0].name, 'Order flow');
-  same(top.stories[0].steps, [{ view: top.views[0].id }]);
-  same(ev(sandbox, 'activeStory'), { id: top.stories[0].id, step: 0 });
-  assert.equal(state.workspace.settingsDirty, true);
-  assert.equal(sandbox.countUnsavedChanges(), 1, 'workspace.yaml is what there is to save');
+  const story = sandbox.storiesList()[0];
+  assert.equal(story.name, 'Order flow');
+  same(story.steps, [{ viewpoint: 'overview', layer: 'application', properties: { element: 'shop.web.api' } }]);
+  assert.equal(sandbox.savedViews().length, 0, 'no file for a diagram that was not named');
+  same(dirtyPaths(state), ['manifests/story.order_flow.yaml']);
+  const file = manifest(state, 'manifests/story.order_flow.yaml');
+  assert.equal(file.existedOnDisk, false);
+  assert.equal(file.header.kind, 'archicode.morin.io/story');
+  assert.equal(state.workspace.settingsDirty, false, 'workspace.yaml is left alone');
+  assert.equal(sandbox.countUnsavedChanges(), 1);
+  same(ev(sandbox, 'activeStory'), { id: 'order_flow', step: 0 });
+  assert.equal(sandbox.parseManifestText(file.rawText).error, null, 'the text to save is a manifest');
 
-  // the same diagram again: the view is reused, the step goes after the one being told
+  // a named view is a file of its own, and the same diagram then points at it
+  sandbox.nameCurrentView();
+  const view = sandbox.savedViews()[0];
+  assert.equal(view.name, 'Api view');
+  assert.equal(view.id, 'api_view');
+  same(dirtyPaths(state), ['manifests/story.order_flow.yaml', 'manifests/view.api_view.yaml']);
   sandbox.addCurrentViewToStory();
-  assert.equal(top.views.length, 1);
-  assert.equal(top.stories[0].steps.length, 2);
+  same(story.steps[1], { view: 'api_view' }, 'after the step that was being told');
+  assert.equal(story.steps.length, 2);
 
-  // the map has its own recipe: what is pinned, hidden and open, sorted so that equal maps are equal text
+  // the map has its own recipe, sorted so that equal maps are equal text
   ev(sandbox, "currentPerspective = 'map'; mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['customer']; mapOpened = new Set(['shop.web', 'shop'])");
   sandbox.addCurrentViewToStory();
-  assert.equal(top.views.length, 2);
-  assert.equal(top.views[1].viewpoint, 'map');
-  same(top.views[1].properties, { pinned: ['mailer', 'shop.web.api'], hidden: ['customer'], opened: ['shop', 'shop.web'] });
-  assert.equal(top.stories[0].steps.length, 3);
-  same(ev(sandbox, 'activeStory'), { id: top.stories[0].id, step: 2 });
+  same(story.steps[2], { viewpoint: 'map', layer: 'application', properties: { pinned: ['mailer', 'shop.web.api'], hidden: ['customer'], opened: ['shop', 'shop.web'] } });
+  assert.equal(sandbox.countUnsavedChanges(), 2, 'two files, whatever the number of steps');
+  assert.equal(state.index.application.size, elementsBefore, 'the elements are what they were: a view or a story is not one');
+  assert.equal(file.error, null);
 });
 
 test('walking a story puts the editor back where each view was saved, and the URL says where we are', async () => {
@@ -993,9 +1000,8 @@ test('walking a story puts the editor back where each view was saved, and the UR
   sandbox.addCurrentViewToStory();
   ev(sandbox, "currentPerspective = 'map'; mapPinned = ['mailer']; mapHidden = ['customer']; mapOpened = new Set(['shop']); diagramHideUnlinked = true");
   sandbox.addCurrentViewToStory();
-  const storyId = state.workspace.topLevel.stories[0].id;
+  const storyId = sandbox.storiesList()[0].id;
 
-  // somewhere else entirely
   ev(sandbox, "currentPerspective = 'files'; mapPinned = []; mapHidden = []; mapOpened = null; diagramHideUnlinked = false");
   sandbox.goToStoryStep(storyId, 1);
   assert.equal(ev(sandbox, 'currentPerspective'), 'map');
@@ -1013,7 +1019,6 @@ test('walking a story puts the editor back where each view was saved, and the UR
   assert.equal(ev(sandbox, 'elementTab'), 'overview');
   assert.match(sandbox.renderStoryBarHtml(), /data-action="story-prev" disabled/);
 
-  // what the URL carries is read back (Back, a link, a reload)
   ev(sandbox, 'activeStory = null');
   sandbox.applyDiagramParamsFromHash();
   same(ev(sandbox, 'activeStory'), { id: storyId, step: 0 });
@@ -1021,112 +1026,115 @@ test('walking a story puts the editor back where each view was saved, and the UR
   sandbox.applyDiagramParamsFromHash();
   assert.equal(ev(sandbox, 'activeStory'), null, 'a story that does not exist is no story');
 
-  // moving away from the step is said, and one click brings it back
   ev(sandbox, "activeStory = { id: '" + storyId + "', step: 0 }; elementTab = 'deep'");
   assert.match(sandbox.renderStoryBarHtml(), /data-action="story-restore"/);
 });
 
-test('the words of a step are typed straight into the model, and the whole is written to workspace.yaml with the rest of it', async () => {
+test('the words of a step are typed straight into the story, and only its file is written; it reads back', async () => {
   const { sandbox, state, mem } = await openFixtureMem();
+  const workspaceBefore = mem.files.get('workspace.yaml').text;
   storySandbox(sandbox, ['Tour']);
   showApi(sandbox, state);
   sandbox.addCurrentViewToStory();
-  const story = state.workspace.topLevel.stories[0];
-  assert.equal(state.workspace.settingsDirty, true);
-  state.workspace.settingsDirty = false;
+  const story = sandbox.storiesList()[0];
+  await sandbox.saveAllChanges();
+  assert.equal(ev(sandbox, 'saveStatus').state, 'success');
+  assert.ok(mem.files.has('manifests/story.tour.yaml'));
+  assert.equal(sandbox.countUnsavedChanges(), 0);
 
   const field = (name, value, step) => ({ value, getAttribute: (a) => ({ 'data-story': story.id, 'data-story-field': name, 'data-step': step === undefined ? null : String(step) })[a] });
   sandbox.updateStoryField(field('step-text', 'The API answers.\nIt checks the stock first.', 0));
   sandbox.updateStoryField(field('description', 'How an order travels'));
   sandbox.updateStoryField(field('name', 'The order'));
   assert.equal(story.steps[0].text, 'The API answers.\nIt checks the stock first.');
-  assert.equal(story.name, 'The order');
-  assert.equal(state.workspace.settingsDirty, true, 'typing is enough to have something to save');
+  same(dirtyPaths(state), ['manifests/story.tour.yaml']);
+  assert.equal(state.workspace.settingsDirty, false);
+  assert.equal(sandbox.countUnsavedChanges(), 1, 'typing is enough to have something to save');
   sandbox.updateStoryField(field('description', ''));
   assert.ok(!('description' in story), 'an emptied field leaves no key behind');
 
+  const writesBefore = mem.writes.length;
   await sandbox.saveAllChanges();
-  assert.equal(ev(sandbox, 'saveStatus').state, 'success');
-  const written = mem.files.get('workspace.yaml').text;
-  assert.match(written, /^stories:/m);
-  assert.match(written, /^views:/m);
-  assert.match(written, /^settings:/m, 'what was in the file stays');
+  same(mem.writes.slice(writesBefore), ['manifests/story.tour.yaml'], 'nothing else is rewritten');
+  assert.equal(mem.files.get('workspace.yaml').text, workspaceBefore, 'workspace.yaml is not touched, nor its comments');
 
   const again = createApp();
   await again.loadWorkspace(mem.handle);
-  const reloaded = again.__state().workspace.topLevel;
-  same(reloaded.stories, state.workspace.topLevel.stories);
-  same(reloaded.views, state.workspace.topLevel.views);
-  assert.equal(reloaded.stories[0].steps[0].text, 'The API answers.\nIt checks the stock first.');
+  const reloaded = again.storiesList();
+  assert.equal(reloaded.length, 1);
+  assert.equal(reloaded[0].name, 'The order');
+  assert.equal(reloaded[0].steps[0].text, 'The API answers.\nIt checks the stock first.');
+  assert.equal(again.__state().manifestFiles.find((f) => f.relPath === 'manifests/story.tour.yaml').error, null);
 });
 
-test('steps move, go, and a story or a view can be deleted; a file with a views that is not a list is left alone', async () => {
-  const { sandbox, state } = await openFixtureMem();
-  storySandbox(sandbox, ['Tour', '1', '1']);
+test('steps move, go; a story or a view is deleted with its file; what was never written leaves nothing to remove', async () => {
+  const { sandbox, state, mem } = await openFixtureMem();
+  storySandbox(sandbox, ['Tour', 'Catalog view', '1', '1']);
   showApi(sandbox, state);
-  sandbox.addCurrentViewToStory();
+  sandbox.addCurrentViewToStory(); // step 0: inline
   state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
-  sandbox.addCurrentViewToStory();
+  sandbox.nameCurrentView();
+  sandbox.addCurrentViewToStory(); // step 1: the named view
   ev(sandbox, "currentPerspective = 'map'; mapPinned = ['mailer']");
-  sandbox.addCurrentViewToStory();
-  const top = state.workspace.topLevel;
-  const story = top.stories[0];
-  const [apiView, catalogView, mapView] = top.views.map((v) => v.id);
-  same(story.steps.map((s) => s.view), [apiView, catalogView, mapView]);
+  sandbox.addCurrentViewToStory(); // step 2: inline map
+  const story = sandbox.storiesList()[0];
+  const catalogView = sandbox.savedViews()[0].id;
+  same(story.steps.map((s) => s.view || s.viewpoint), ['overview', catalogView, 'map']);
 
   sandbox.moveStoryStep(story.id, 2, -1);
-  same(story.steps.map((s) => s.view), [apiView, mapView, catalogView]);
+  same(story.steps.map((s) => s.view || s.viewpoint), ['overview', 'map', catalogView]);
   same(ev(sandbox, 'activeStory'), { id: story.id, step: 1 }, 'the step being told moves with it');
   sandbox.moveStoryStep(story.id, 0, -1);
-  same(story.steps.map((s) => s.view), [apiView, mapView, catalogView], 'the first step does not go up');
+  same(story.steps.map((s) => s.view || s.viewpoint), ['overview', 'map', catalogView], 'the first step does not go up');
   sandbox.removeStoryStep(story.id, 0);
-  same(story.steps.map((s) => s.view), [mapView, catalogView]);
+  same(story.steps.map((s) => s.view || s.viewpoint), ['map', catalogView]);
   same(ev(sandbox, 'activeStory'), { id: story.id, step: 0 });
-  sandbox.addStoryStep(story.id, apiView);
+  sandbox.addStoryStep(story.id, catalogView);
   assert.equal(story.steps.length, 3);
 
-  assert.equal(sandbox.storiesUsingView(apiView), 1);
-  sandbox.deleteSavedView(apiView);
-  assert.equal(top.views.length, 2);
-  assert.equal(sandbox.findSavedView(apiView), null);
-  assert.match(sandbox.renderStoryStepHtml(story, story.steps[2], 2, 3), /Missing view/, 'a step on a deleted view says so');
+  assert.equal(sandbox.storiesUsingView(catalogView), 2);
+  // never written: deleting it takes it out of the model, and there is nothing on the disk to remove
+  sandbox.deleteSavedView(catalogView);
+  assert.equal(sandbox.savedViews().length, 0);
+  same(state.pendingFileRemovals, []);
+  assert.match(sandbox.renderStoryStepHtml(story, story.steps[1], 1, 3), /Missing view/, 'a step on a deleted view says so');
 
+  // written, then deleted: the file goes with the next save
+  await sandbox.saveAllChanges();
+  assert.ok(mem.files.has('manifests/story.tour.yaml'));
   sandbox.deleteStory(story.id);
-  assert.ok(!('stories' in top), 'no empty list left in the file');
+  assert.equal(sandbox.storiesList().length, 0);
+  same(state.pendingFileRemovals, ['manifests/story.tour.yaml']);
   assert.equal(ev(sandbox, 'activeStory'), null);
-
-  const odd = await openMem({ 'workspace.yaml': 'views:\n  one: two\nsettings:\n  manifests:\n    paths:\n      - manifests\n' });
-  storySandbox(odd.sandbox, ['x']);
-  showApi(odd.sandbox, odd.state);
-  odd.state.selection = { kind: 'none', key: null, mode: 'view' };
-  assert.equal(odd.sandbox.writableTopLevelList('views'), null);
-  assert.match(ev(odd.sandbox, 'storyNotice'), /not a list/);
-  same(odd.state.workspace.topLevel.views, { one: 'two' });
+  await sandbox.saveAllChanges();
+  assert.ok(!mem.files.has('manifests/story.tour.yaml'));
+  assert.equal(mem.files.has('manifests/view.catalog_view.yaml'), false);
 });
 
-test('renaming or deleting an element: the views that point at it follow, or say what is missing', async () => {
+test('renaming or deleting an element: the views and the steps that point at it follow, or say what is missing', async () => {
   const { sandbox, state } = await openFixtureMem();
-  storySandbox(sandbox, ['Tour', '1']);
+  storySandbox(sandbox, ['Named api', 'Tour', '1']);
   showApi(sandbox, state);
-  sandbox.addCurrentViewToStory();
+  sandbox.nameCurrentView(); // a named view on the api
+  sandbox.addCurrentViewToStory(); // step 0 points at it
   ev(sandbox, "currentPerspective = 'map'; mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web'])");
-  sandbox.addCurrentViewToStory();
-  const top = state.workspace.topLevel;
-  const story = top.stories[0];
-  state.workspace.settingsDirty = false;
+  sandbox.addCurrentViewToStory(); // step 1 carries its own map
+  const story = sandbox.storiesList()[0];
+  const view = sandbox.savedViews()[0];
+  for (const f of state.manifestFiles) f.dirty = false;
 
   sandbox.commitElementEdit('shop', (node) => { node.id = 'store'; return { renamedTo: { from: 'shop', to: 'store' } }; });
-  assert.equal(top.views[0].properties.element, 'store.web.api');
-  same(top.views[1].properties.pinned, ['mailer', 'store.web.api']);
-  same(top.views[1].properties.hidden, ['store.catalog']);
-  same(top.views[1].properties.opened, ['store', 'store.web']);
-  assert.equal(state.workspace.settingsDirty, true, 'workspace.yaml has to be written for the rename to hold');
-  assert.equal(sandbox.viewProblem(top.views[0]), null);
+  assert.equal(view.properties.element, 'store.web.api');
+  same(story.steps[1].properties.pinned, ['mailer', 'store.web.api']);
+  same(story.steps[1].properties.hidden, ['store.catalog']);
+  same(story.steps[1].properties.opened, ['store', 'store.web']);
+  assert.ok(dirtyPaths(state).includes('manifests/view.named_api.yaml') && dirtyPaths(state).includes('manifests/story.tour.yaml'), 'the files that follow are written');
+  assert.match(manifest(state, 'manifests/view.named_api.yaml').rawText, /element: store\.web\.api/, 'the text to save follows too');
+  assert.equal(sandbox.stepProblem(story.steps[0]), null);
 
-  // gone for good: the step cannot be drawn, and the Stories page tells why instead of guessing
   sandbox.commitDeleteElement('store', 'application', []);
-  assert.match(sandbox.viewProblem(top.views[0]), /store\.web\.api.*does not exist/);
-  assert.equal(sandbox.viewProblem(top.views[1]), null, 'mailer is still pinned');
+  assert.match(sandbox.stepProblem(story.steps[0]), /store\.web\.api.*does not exist/);
+  assert.equal(sandbox.stepProblem(story.steps[1]), null, 'mailer is still pinned');
   ev(sandbox, "currentPerspective = 'files'");
   sandbox.goToStoryStep(story.id, 0);
   assert.equal(ev(sandbox, 'currentPerspective'), 'stories');
@@ -1143,14 +1151,16 @@ test('a technology view is kept with its layer, and the Stories page offers the 
   state.selection = { kind: 'element', key: 'prod.cluster', layer: 'technology', mode: 'view' };
   ev(sandbox, "currentPerspective = 'elements'; elementTab = 'deep'");
   sandbox.addCurrentViewToStory();
-  const view = state.workspace.topLevel.views[0];
-  assert.equal(view.layer, 'technology');
-  assert.equal(view.viewpoint, 'deep');
-  assert.equal(sandbox.viewProblem(view), null);
+  const step = sandbox.storiesList()[0].steps[0];
+  assert.equal(step.layer, 'technology');
+  assert.equal(step.viewpoint, 'deep');
+  assert.equal(sandbox.stepProblem(step), null);
   sandbox.nameCurrentView();
-  assert.equal(state.workspace.topLevel.views.length, 1, 'already kept: nothing new');
+  assert.equal(sandbox.savedViews()[0].layer, 'technology');
+  sandbox.nameCurrentView();
+  assert.equal(sandbox.savedViews().length, 1, 'already kept: nothing new');
 
-  sandbox.goToStoryStep(state.workspace.topLevel.stories[0].id, 0);
+  sandbox.goToStoryStep(sandbox.storiesList()[0].id, 0);
   assert.equal(state.selection.key, 'prod.cluster');
   assert.equal(state.selection.layer, 'technology');
 
@@ -1160,4 +1170,59 @@ test('a technology view is kept with its layer, and the Stories page offers the 
   assert.match(page.center, /Saved views/);
   assert.match(page.center, /data-action="saved-view-open"/);
   assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="stories"/);
+});
+
+test('views and stories that older workspaces keep in workspace.yaml are read and edited there, and "Move to manifests" takes them out', async () => {
+  const files = {
+    'workspace.yaml': '# my workspace\nviews:\n  - id: old_view\n    viewpoint: overview\n    layer: application\n    properties:\n      element: shop\nstories:\n  - id: old_story\n    name: Old\n    steps:\n      - view: old_view\n        text: first\nsettings:\n  manifests:\n    paths:\n      - manifests\n',
+    'manifests/app.shop.yaml': SOLUTION('shop')
+  };
+  const { sandbox, state, mem } = await openMem(files);
+  storySandbox(sandbox, []);
+  assert.equal(sandbox.storiesList().length, 1);
+  assert.equal(sandbox.savedViews().length, 1);
+  assert.equal(sandbox.stepProblem(sandbox.storiesList()[0].steps[0]), null);
+  assert.match(sandbox.renderStoriesPerspectiveHtml().center, /1 view and 1 story still in workspace\.yaml/);
+
+  // edited where they are: workspace.yaml is what is written
+  sandbox.updateStoryField({ value: 'changed', getAttribute: (a) => ({ 'data-story': 'old_story', 'data-story-field': 'step-text', 'data-step': '0' })[a] });
+  assert.equal(state.workspace.settingsDirty, true);
+  assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 0);
+
+  sandbox.moveLegacyEntriesToManifests();
+  assert.ok(!('views' in state.workspace.topLevel) && !('stories' in state.workspace.topLevel));
+  same(dirtyPaths(state), ['manifests/story.old_story.yaml', 'manifests/view.old_view.yaml']);
+  assert.equal(sandbox.storiesList()[0].steps[0].text, 'changed', 'what was typed comes along');
+  assert.doesNotMatch(sandbox.renderStoriesPerspectiveHtml().center, /still in workspace\.yaml/);
+
+  await sandbox.saveAllChanges();
+  assert.equal(ev(sandbox, 'saveStatus').state, 'success');
+  const written = mem.files.get('workspace.yaml').text;
+  assert.doesNotMatch(written, /^(views|stories):/m);
+  assert.match(mem.files.get('manifests/story.old_story.yaml').text, /text: changed/);
+  const again = createApp();
+  await again.loadWorkspace(mem.handle);
+  assert.equal(again.storiesList().length, 1);
+  assert.equal(again.savedViews()[0].id, 'old_view');
+  assert.doesNotMatch(again.renderStoriesPerspectiveHtml().center, /still in workspace\.yaml/);
+});
+
+test('a view or a story manifest is a file like the others: listed, edited as text, never an element, never an error', async () => {
+  const { sandbox, state } = await openMem({
+    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+    'manifests/app.shop.yaml': SOLUTION('shop'),
+    'manifests/view.v.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  viewpoint: "overview"\n  properties:\n    element: "shop"\n',
+    'manifests/story.s.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "s"\n  steps:\n    - view: "v"\n'
+  });
+  assert.ok(state.manifestFiles.every((f) => f.error === null), 'no "Unrecognized header.kind"');
+  same(sorted(state.index.application.keys()), ['shop']);
+  assert.equal(sandbox.storiesList().length, 1);
+  assert.equal(sandbox.stepProblem(sandbox.storiesList()[0].steps[0]), null);
+
+  // edited as raw YAML, it is read again
+  sandbox.render = () => {};
+  sandbox.commitFileEdit('manifests/story.s.yaml', 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "s"\n  name: "Renamed"\n  steps:\n    - view: "v"\n    - view: "nowhere"\n');
+  assert.equal(sandbox.storiesList()[0].name, 'Renamed');
+  assert.match(sandbox.stepProblem(sandbox.storiesList()[0].steps[1]), /“nowhere” does not exist/);
+  assert.equal(manifest(state, 'manifests/story.s.yaml').dirty, true);
 });

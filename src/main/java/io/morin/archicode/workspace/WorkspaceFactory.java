@@ -53,17 +53,19 @@ public class WorkspaceFactory {
         log.debug("index the views");
         val viewIndex = ViewIndexFactory.builder().views(resources.getViews()).build().create();
 
-        resources
-            .getStories()
-            .forEach(story ->
-                story
-                    .getSteps()
-                    .stream()
-                    .filter(step -> viewIndex.searchView(step.getView()).isEmpty())
-                    .forEach(step ->
-                        log.warn("the story {} has a step on the view {}, which is not declared", story.getId(), step.getView())
+        resources.getStories().forEach(story ->
+            story
+                .getSteps()
+                .stream()
+                .filter(step -> step.getView() != null && viewIndex.searchView(step.getView()).isEmpty())
+                .forEach(step ->
+                    log.warn(
+                        "the story {} has a step on the view {}, which is not declared",
+                        story.getId(),
+                        step.getView()
                     )
-            );
+                )
+        );
 
         return io.morin.archicode.workspace.Workspace.builder()
             .resources(resources)
@@ -103,13 +105,17 @@ public class WorkspaceFactory {
             )
             .orElse(rawWorkspace);
 
-        // parse the manifests
+        // parse the manifests: the elements, and the views and the stories that are manifests of their own, which join
+        // the ones of workspace.yaml
         val manifests = manifestParser.parse(
             path.toFile().getParentFile().toPath(),
             fixedRawWorkspace.getSettings().getManifests().getPaths()
         );
 
-        return create(fixedRawWorkspace, manifests);
+        return create(
+            fixedRawWorkspace.toBuilder().views(manifests.views()).stories(manifests.stories()).build(),
+            manifests.elements()
+        );
     }
 
     @SneakyThrows
