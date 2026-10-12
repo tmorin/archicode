@@ -7,14 +7,14 @@
 //!
 //! Contract (version 2)
 //!   input : { viewpoint: "overview"|"detailed"|"deep"|"map", layer: "application"|"technology", focal,
-//!             default_synthetic_label, elements: [{reference, parent, applications, relationships}],
+//!             default_synthetic_label, elements: [{reference, parent, applications, uses, relationships}],
 //!             app_elements (technology deep only), collapsed: [item id], expanded: [item id],
 //!             facet: {name, actions: [{operator: "REMOVE", json_path}]} }
 //!           an element may carry more than `reference` and the rest above (kind, name, description, qualifiers, tags):
 //!           only a facet reads it, as a JSONPath can select on it
 //!   output: { version, items: [{id, reference, parent, collapsed, hidden, expandable}],
 //!             links: [{from, to, label, synthetic, qualifiers, tags, secondary,
-//!                      relationships: [{from, destination, label, qualifiers, tags}]}] }
+//!                      relationships: [{from, destination, label, qualifiers, tags, application}]}] }
 //!                      + warnings: [text] when there is something to say (omitted otherwise) }
 //!         | { error }
 //! A JSON `null` is read as "not given" wherever a field is optional (an absent `default_synthetic_label` is "uses").
@@ -33,6 +33,17 @@
 //! optional lists of references, added to version 1.
 //! A `facet` is applied to the elements first, as the CLI does before it generates the views of a facet. Its paths are
 //! standard JSONPath (RFC 9535), see `facet.rs`; the earlier dialect still works and is reported in `warnings`.
+//!
+//! In the deep viewpoint of the technology layer, the applications deployed on the nodes of the view are drawn inside
+//! them. Inside an environment, a relationship between two deployed applications is a "secondary" link (the CLI does not
+//! draw it), unless `application_links` is true, which a `facet` in the input turns on: the view is then about one flow,
+//! and its links are drawn, with their label and qualifiers, in the three viewpoints. `hide_unlinked` (a facet asks for
+//! it with `hide_unlinked`) leaves out the boxes no link goes through, the focal element staying. Between two environments, it is drawn, as a link between the two deployed applications, when the first
+//! environment `uses` (lists in `uses`) the second one or a node of it, and when the environment does not host the
+//! destination itself: what it hosts wins, and an application hosted by several environments is reached in the ones the
+//! environment uses, and nowhere else. `uses` is a scope, never a link of its own; its entries must be elements of the
+//! layer. `application` is true for a relationship that an application declares, the view being a technology one:
+//! the caller finds it in the application layer. `uses`, `application`, `application_links` and `hide_unlinked` were added to version 2: all optional.
 //!
 //! A second entry point serves the CLI, which filters the JSON of the whole workspace: `apply_facet`,
 //!   input : { workspace, actions: [{operator: "REMOVE", json_path}] }
@@ -138,6 +149,11 @@ struct Elem {
     /// technology nodes: references of the application elements deployed on them
     #[serde(default, deserialize_with = "null_as_default")]
     applications: Vec<String>,
+    /// technology environments: references (of an environment, or of a node of one) whose deployed applications the
+    /// applications deployed in this environment may reach. It is a scope for the dependencies the deep viewpoint of the
+    /// technology layer derives, never a link by itself.
+    #[serde(default, deserialize_with = "null_as_default")]
+    uses: Vec<String>,
     #[serde(default, deserialize_with = "null_as_default")]
     relationships: Vec<Rel>,
     /// whatever else the caller knows of the element (kind, name, description, qualifiers, tags): only a facet reads it
@@ -169,6 +185,15 @@ struct Input {
     /// a facet of the workspace's settings, applied before the viewpoint
     #[serde(default)]
     facet: Option<facet::Facet>,
+    /// deep viewpoint of the technology layer: draw the links between the applications deployed in the same environment
+    /// (they are "secondary", and not drawn, otherwise). It is what a facet is for: a view about one flow. A `facet` in
+    /// the input turns it on; the CLI, which applies the facets to the workspace before it asks for a view, says it itself.
+    #[serde(default, deserialize_with = "null_as_default")]
+    application_links: bool,
+    /// technology layer, overview, detailed and deep: leave out the boxes no link goes through (the focal element stays). A
+    /// `facet` of the input can ask for it (`hide_unlinked`); the CLI says it itself, for the workspace of such a facet.
+    #[serde(default, deserialize_with = "null_as_default")]
+    hide_unlinked: bool,
     /// map: references of the elements that are open (their children are shown)
     #[serde(default, deserialize_with = "null_as_default")]
     opened: Vec<String>,
@@ -192,6 +217,10 @@ struct OutRel {
     label: Option<String>,
     qualifiers: QSet,
     tags: BTreeMap<String, String>,
+    /// true when the relationship is declared by an element of the application layer, in a view of the technology
+    /// layer (the applications deployed on its nodes): the caller finds it in the other layer
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    application: bool,
 }
 
 impl OutRel {
@@ -202,7 +231,13 @@ impl OutRel {
             label: rel.label.clone(),
             qualifiers: rel.qualifiers.clone(),
             tags: rel.tags.clone(),
+            application: false,
         }
+    }
+
+    /// A relationship of a deployed application.
+    fn of_application(from: &str, rel: &Rel) -> OutRel {
+        OutRel { application: true, ..OutRel::of(from, rel) }
     }
 }
 
@@ -294,6 +329,19 @@ struct MetaLink {
     from: String,
     to: String,
     rel: Rel,
+    /// the application that declares `rel`, when the relationship is a dependency derived between two environments:
+    /// the ends are then the nodes that host the applications, not the applications themselves
+    application: Option<String>,
+}
+
+impl MetaLink {
+    /// The relationship, as the link it ends up in stands for it.
+    fn declared(&self) -> OutRel {
+        match &self.application {
+            Some(application) => OutRel::of_application(application, &self.rel),
+            None => OutRel::of(&self.from, &self.rel),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -372,10 +420,10 @@ fn groom(metas: &[MetaLink], dir: Direction, from_t: usize, to_t: usize, expande
         });
         if from_upper || to_upper {
             g.synthetic.insert(ml.rel.clone());
-            g.synthetic_src.insert(OutRel::of(&ml.from, &ml.rel));
+            g.synthetic_src.insert(ml.declared());
         } else {
             g.natural.insert(ml.rel.clone());
-            g.natural_src.insert(OutRel::of(&ml.from, &ml.rel));
+            g.natural_src.insert(ml.declared());
         }
     }
     by_key.into_values().collect()
@@ -395,7 +443,7 @@ fn find_egress(elems: &[Elem], known: &Known, root: &str) -> Result<Vec<MetaLink
             for r in e.relationships.iter().collect::<BTreeSet<_>>() {
                 if !is_descendant_of(&r.destination, root) {
                     require(known, &r.destination)?;
-                    out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: r.clone() });
+                    out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: r.clone(), application: None });
                 }
             }
         }
@@ -413,7 +461,7 @@ fn find_ingress(elems: &[Elem], known: &Known, root: &str) -> Result<Vec<MetaLin
         for r in e.relationships.iter().collect::<BTreeSet<_>>() {
             if r.destination == root || is_descendant_of(&r.destination, root) {
                 require(known, &r.destination)?;
-                out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: r.clone() });
+                out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: r.clone(), application: None });
             }
         }
     }
@@ -494,8 +542,25 @@ fn emit_links(groomed: &[Groomed], default_label: &str, refs: &mut Vec<String>) 
 /// OverviewViewpointFactory
 fn overview(input: &Input, known: &Known, focal: &str) -> Result<Content, String> {
     require(known, focal)?;
-    let egress = find_egress(&input.elements, known, focal)?;
-    let ingress = find_ingress(&input.elements, known, focal)?;
+    let mut egress = find_egress(&input.elements, known, focal)?;
+    let mut ingress = find_ingress(&input.elements, known, focal)?;
+    if input.layer == "technology" {
+        // the dependencies of the applications deployed in an environment on those of another one it uses are relationships
+        // of the nodes that host them
+        let app_known: Known = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+        let mut dependencies = derived_dependencies(input, &app_known);
+        if input.application_links {
+            dependencies.extend(local_dependencies(input, &app_known));
+        }
+        for d in dependencies {
+            let meta = MetaLink { from: d.from_node.to_string(), to: d.to_node.to_string(), rel: d.rel.clone(), application: Some(d.from_app.to_string()) };
+            match (within(d.from_node, focal), within(d.to_node, focal)) {
+                (true, false) => egress.push(meta),
+                (false, true) => ingress.push(meta),
+                _ => {}
+            }
+        }
+    }
     let focal_level = level_from(focal);
     let mut groomed = groom(&egress, Direction::Egress, focal_level, 0, &input.expanded, focal);
     groomed.extend(groom(&ingress, Direction::Ingress, 0, focal_level, &input.expanded, focal));
@@ -633,16 +698,115 @@ fn deep(input: &Input, known: &Known) -> Result<(Content, Vec<String>), String> 
     Ok(((to_items(&item_refs), links), node_refs))
 }
 
-/// TechnologyDeepViewpointFactory: the deep viewpoint plus the applications deployed on the nodes, linked together
-/// with "secondary" links when one application has a relationship towards another deployed one.
+/// The environment of a technology element: the first segment of its reference.
+fn environment_of(reference: &str) -> &str {
+    reference.split('.').next().unwrap_or(reference)
+}
+
+/// `reference` is `scope` or is inside it.
+fn within(reference: &str, scope: &str) -> bool {
+    reference == scope || is_descendant_of(reference, scope)
+}
+
+/// A dependency between two deployed applications that live in two environments: `from_app`, deployed on `from_node`,
+/// has the relationship `rel` towards `to_app`, deployed on `to_node`.
+struct Derived<'a> {
+    from_node: &'a str,
+    from_app: &'a str,
+    to_node: &'a str,
+    rel: &'a Rel,
+}
+
+/// Where each application is deployed, by application reference.
+fn hosts_of_applications(elements: &[Elem]) -> BTreeMap<&str, BTreeSet<&str>> {
+    let mut hosts: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    for node in elements {
+        for app in &node.applications {
+            hosts.entry(app.as_str()).or_default().insert(node.reference.as_str());
+        }
+    }
+    hosts
+}
+
+/// The dependencies the applications of an environment have on applications deployed in another one. A relationship of
+/// an application towards another application is a dependency of the node that hosts the first on the node that hosts
+/// the second. An environment reaches what it hosts itself first; what it does not host, it finds in the environments
+/// (or the nodes) it `uses`, and nowhere else: an application deployed in several environments is therefore reached
+/// where the environment says so.
+fn derived_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Derived<'a>> {
+    let hosts = hosts_of_applications(&input.elements);
+    let scopes: HashMap<&str, &Vec<String>> = input.elements.iter().filter(|e| !e.uses.is_empty()).map(|e| (e.reference.as_str(), &e.uses)).collect();
+    let mut out = Vec::new();
+    for (app, from_nodes) in &hosts {
+        let Some(elem) = app_known.get(app) else { continue };
+        for rel in elem.relationships.iter().collect::<BTreeSet<_>>() {
+            let Some(to_nodes) = hosts.get(rel.destination.as_str()) else { continue };
+            for from_node in from_nodes {
+                let environment = environment_of(from_node);
+                if to_nodes.iter().any(|to_node| environment_of(to_node) == environment) {
+                    continue; // hosted by the environment itself
+                }
+                let Some(scope) = scopes.get(environment) else { continue };
+                for to_node in to_nodes.iter().filter(|to_node| scope.iter().any(|used| within(to_node, used))) {
+                    out.push(Derived { from_node, from_app: app, to_node, rel });
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The dependencies between the applications deployed in one environment, on different nodes: the node that hosts the
+/// first depends on the node that hosts the second. Only a view about a flow (`application_links`) draws them.
+fn local_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Derived<'a>> {
+    let hosts = hosts_of_applications(&input.elements);
+    let mut out = Vec::new();
+    for (app, from_nodes) in &hosts {
+        let Some(elem) = app_known.get(app) else { continue };
+        for rel in elem.relationships.iter().collect::<BTreeSet<_>>() {
+            let Some(to_nodes) = hosts.get(rel.destination.as_str()) else { continue };
+            for from_node in from_nodes {
+                for to_node in to_nodes.iter().filter(|to_node| *to_node != from_node && environment_of(to_node) == environment_of(from_node)) {
+                    out.push(Derived { from_node, from_app: app, to_node, rel });
+                }
+            }
+        }
+    }
+    out
+}
+
+/// TechnologyDeepViewpointFactory: the deep viewpoint plus every node inside the focal element, and the applications
+/// deployed on the nodes. Inside an
+/// environment, the applications are linked together with "secondary" links (which are not drawn, unless the view is about
+/// a flow chosen by a facet: `application_links`) when one has a relationship towards another deployed one. Between two environments, the relationships of the applications are drawn
+/// as links between the deployed applications, as far as the first environment `uses` the second.
 fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
+    let focal = input.focal.as_str();
     let ((mut items, mut links), tech_refs) = deep(input, known)?;
+    for e in &input.elements {
+        for used in &e.uses {
+            require(known, used)?;
+        }
+    }
     let app_known: Known = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+    // the dependencies between environments that touch the focal element, with the nodes they end on
+    let derived: Vec<Derived> = derived_dependencies(input, &app_known)
+        .into_iter()
+        .filter(|d| within(d.from_node, focal) || within(d.to_node, focal))
+        .collect();
+    let mut node_refs: BTreeSet<String> = tech_refs.into_iter().collect();
+    // an environment, or a node, is shown with everything it is made of, whether or not it takes part in a link
+    node_refs.extend(with_ancestors(input.elements.iter().filter(|e| within(&e.reference, focal)).map(|e| e.reference.clone())));
+    node_refs.extend(with_ancestors(derived.iter().flat_map(|d| [d.from_node.to_string(), d.to_node.to_string()])));
+    for r in &node_refs {
+        require(known, r)?;
+    }
+    items.extend(to_items(&node_refs));
     // (node, application, id) of the application items to create, one per hosting node and deployed application. The id
     // is the last segment of the node and the application, unless that reads the same for several of them (or for a
     // node of the view): they are then all named after the whole path of their node.
     let mut deployed: Vec<(&String, &String, String)> = Vec::new();
-    for r in &tech_refs {
+    for r in &node_refs {
         let node = known.get(r.as_str()).ok_or_else(|| format!("dangling reference: {r}"))?;
         let node_id = parts(r).last().copied().unwrap_or("");
         for app in node.applications.iter().collect::<BTreeSet<_>>() {
@@ -654,8 +818,9 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
     }
     let mut taken: HashSet<String> = items.iter().map(|i| i.id.clone()).collect();
     let uses = |id: &str| deployed.iter().filter(|(_, _, short)| short == id).count();
-    // application reference -> ids of the items created for it (one per hosting node)
-    let mut by_app: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    // application reference -> (id of the item created for it, node that hosts it), one per hosting node
+    let mut by_app: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+    let mut item_of: HashMap<(String, String), String> = HashMap::new();
     for (r, app, short) in &deployed {
         let mut item_id = short.clone();
         if uses(short) > 1 || taken.contains(short) {
@@ -668,28 +833,50 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
             item_id = format!("{base}_{n}");
         }
         items.insert(OutItem::new(&item_id, app, Some((*r).clone())));
-        by_app.entry((*app).clone()).or_default().push(item_id);
+        by_app.entry((*app).clone()).or_default().push((item_id.clone(), (*r).clone()));
+        item_of.insert(((*r).clone(), (*app).clone()), item_id);
     }
-    for (app, from_ids) in &by_app {
+    for (app, from_items) in &by_app {
         let app_elem = app_known.get(app.as_str()).ok_or_else(|| format!("dangling application reference: {app}"))?;
-        for from_id in from_ids {
+        for (from_id, from_node) in from_items {
             for rel in app_elem.relationships.iter().collect::<BTreeSet<_>>() {
-                if let Some(to_ids) = by_app.get(&rel.destination) {
-                    for to_id in to_ids {
+                if let Some(to_items) = by_app.get(&rel.destination) {
+                    for (to_id, to_node) in to_items {
+                        if environment_of(from_node) != environment_of(to_node) {
+                            continue; // between two environments, only what the environment uses is drawn (below)
+                        }
                         links.insert(OutLink {
                             from: from_id.clone(),
                             to: to_id.clone(),
-                            label: None,
+                            label: if input.application_links { rel.label.clone() } else { None },
                             synthetic: false,
-                            qualifiers: QSet::default(),
+                            qualifiers: if input.application_links { rel.qualifiers.clone() } else { QSet::default() },
                             tags: rel.tags.clone(),
-                            secondary: true,
-                            relationships: BTreeSet::from([OutRel::of(app, rel)]),
+                            secondary: !input.application_links,
+                            relationships: BTreeSet::from([OutRel::of_application(app, rel)]),
                         });
                     }
                 }
             }
         }
+    }
+    for d in &derived {
+        let (Some(from), Some(to)) = (
+            item_of.get(&(d.from_node.to_string(), d.from_app.to_string())),
+            item_of.get(&(d.to_node.to_string(), d.rel.destination.clone())),
+        ) else {
+            continue;
+        };
+        links.insert(OutLink {
+            from: from.clone(),
+            to: to.clone(),
+            label: d.rel.label.clone(),
+            synthetic: false,
+            qualifiers: d.rel.qualifiers.clone(),
+            tags: d.rel.tags.clone(),
+            secondary: false,
+            relationships: BTreeSet::from([OutRel::of_application(d.from_app, d.rel)]),
+        });
     }
     Ok((items, links))
 }
@@ -794,6 +981,22 @@ fn collapse(items: BTreeSet<OutItem>, links: Vec<OutLink>, input: &Input) -> (Ve
     (kept, merge_links(out))
 }
 
+/// A view that hides what is unlinked (`hide_unlinked`, technology layer) keeps what the links go through: the ends of the links,
+/// what encloses them and the focal element; the boxes with no link are left out.
+fn keep_the_flow(items: BTreeSet<OutItem>, links: BTreeSet<OutLink>, focal: &str) -> Content {
+    let parents: HashMap<&str, &str> = items.iter().filter_map(|i| i.parent.as_deref().map(|p| (i.id.as_str(), p))).collect();
+    let mut keep: HashSet<String> = HashSet::new();
+    let mut pending: Vec<&str> = links.iter().filter(|l| !l.secondary).flat_map(|l| [l.from.as_str(), l.to.as_str()]).chain([focal]).collect();
+    while let Some(id) = pending.pop() {
+        if keep.insert(id.to_string()) {
+            pending.extend(parents.get(id).copied());
+        }
+    }
+    let kept = items.iter().filter(|i| keep.contains(&i.id)).cloned().collect();
+    let links = links.into_iter().filter(|l| keep.contains(&l.from) && keep.contains(&l.to)).collect();
+    (kept, links)
+}
+
 /// The view of the input: the viewpoint, then the folds.
 fn build(input: &Input) -> Result<(Vec<OutItem>, Vec<OutLink>), String> {
     let known: Known = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
@@ -805,6 +1008,11 @@ fn build(input: &Input) -> Result<(Vec<OutItem>, Vec<OutLink>), String> {
         "deep" => deep(input, &known).map(|(c, _)| c),
         other => Err(format!("unsupported viewpoint: {other}")),
     }?;
+    let (items, links) = if input.hide_unlinked && input.layer == "technology" && input.viewpoint != "map" {
+        keep_the_flow(items, links, &input.focal)
+    } else {
+        (items, links)
+    };
     Ok(collapse(items, merge_links(links), input))
 }
 
@@ -834,7 +1042,11 @@ pub fn compute_json(input: &str) -> String {
         .map_err(|e| format!("invalid input: {e}"))
         .and_then(|mut input| {
             let warnings = match input.facet.take() {
-                Some(facet) => facet::apply_to_input(&mut input, &facet)?,
+                Some(facet) => {
+                    input.application_links = true;
+                    input.hide_unlinked |= facet.hide_unlinked;
+                    facet::apply_to_input(&mut input, &facet)?
+                }
                 None => Vec::new(),
             };
             let (mut items, links) = build(&input)?;
@@ -921,6 +1133,14 @@ mod tests {
 
     fn link<'a>(out: &'a Value, from: &str, to: &str) -> Option<&'a Value> {
         out["links"].as_array().unwrap().iter().find(|l| l["from"] == from && l["to"] == to)
+    }
+
+    fn link_between(out: &Value, from: &str, to: &str) -> bool {
+        link(out, from, to).is_some()
+    }
+
+    fn has_item(out: &Value, id: &str) -> bool {
+        out["items"].as_array().unwrap().iter().any(|i| i["id"] == id)
     }
 
     fn ids(out: &Value) -> Vec<String> {
@@ -1553,6 +1773,284 @@ mod tests {
         let all: HashSet<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
         assert_eq!(all.len(), items.len());
         assert_eq!(item(&out, "prod_pod_shop_api")["reference"], "shop.api");
+    }
+
+    // ---- dependencies between environments ----
+
+    /// `dev` hosts `shop.api`, which calls `ext.registry`; `int` and `prd` host `ext.registry`. `dev_uses` is what `dev` uses.
+    fn environments(focal: &str, dev_uses: Value, extra: Value) -> Value {
+        let mut input = json!({
+            "viewpoint": "deep", "layer": "technology", "focal": focal,
+            "elements": [
+                { "reference": "dev", "parent": true, "uses": dev_uses },
+                { "reference": "dev.app", "applications": ["shop.api"] },
+                { "reference": "int", "parent": true },
+                { "reference": "int.a", "applications": ["ext.registry"] },
+                { "reference": "int.b", "applications": ["ext.registry"] },
+                { "reference": "prd", "parent": true },
+                { "reference": "prd.a", "applications": ["ext.registry"] }
+            ],
+            "app_elements": [
+                { "reference": "shop", "parent": true },
+                { "reference": "shop.api", "relationships": [
+                    { "destination": "ext.registry", "label": "reads patients from", "qualifiers": ["REST"], "tags": { "tcp-port": "443" } }
+                ] },
+                { "reference": "ext", "parent": true },
+                { "reference": "ext.registry" }
+            ]
+        });
+        for (key, value) in extra.as_object().cloned().unwrap_or_default() {
+            input[key] = value;
+        }
+        compute(input)
+    }
+
+    #[test]
+    fn an_environment_reaches_the_applications_of_the_environments_it_uses() {
+        let out = environments("dev", json!(["int"]), json!({}));
+        let link = link(&out, "app_shop_api", "a_ext_registry").expect("the dependency is drawn between the deployed applications");
+        assert!(!link["secondary"].as_bool().unwrap(), "unlike a link inside an environment, it is drawn");
+        assert_eq!(link["label"], "reads patients from");
+        assert_eq!(link["qualifiers"], json!(["REST"]));
+        assert_eq!(link["tags"], json!({ "tcp-port": "443" }));
+        assert_eq!(link["relationships"][0]["from"], "shop.api");
+        assert!(link["relationships"][0]["application"].as_bool().unwrap(), "declared in the application layer");
+        assert_eq!(item(&out, "a_ext_registry")["parent"], "int.a");
+        assert!(link_between(&out, "app_shop_api", "b_ext_registry"), "every host of the application in the used environment");
+        assert!(!has_item(&out, "prd") && !has_item(&out, "prd.a"), "an environment that is not used stays out");
+    }
+
+    #[test]
+    fn the_overview_of_an_environment_shows_the_environments_it_uses() {
+        for viewpoint in ["overview", "detailed"] {
+            let out = environments("dev", json!(["int"]), json!({ "viewpoint": viewpoint }));
+            let from = if viewpoint == "overview" { "dev" } else { "dev.app" };
+            let link = link(&out, from, "int").unwrap_or_else(|| panic!("{viewpoint}: the dependency is drawn up to the environments"));
+            assert_eq!(link["label"], "reads patients from", "{viewpoint}: it keeps its caption");
+            assert_eq!(link["relationships"][0]["from"], "shop.api");
+            assert!(link["relationships"][0]["application"].as_bool().unwrap(), "{viewpoint}: declared in the application layer");
+            assert!(!has_item(&out, "prd"), "{viewpoint}: an environment that is not used stays out");
+        }
+        let out = environments("dev", json!([]), json!({ "viewpoint": "overview" }));
+        assert!(out["links"].as_array().unwrap().is_empty(), "nothing is used, nothing is shown");
+    }
+
+    #[test]
+    fn the_overview_of_a_used_environment_shows_who_depends_on_it() {
+        let out = environments("int", json!(["int"]), json!({ "viewpoint": "overview", "elements": [
+            { "reference": "dev", "parent": true, "uses": ["int"] },
+            { "reference": "dev.app", "applications": ["shop.api"] },
+            { "reference": "int", "parent": true },
+            { "reference": "int.a", "applications": ["ext.registry"] }
+        ] }));
+        assert!(link_between(&out, "dev", "int"), "the dependent environment, linked to the one it uses");
+    }
+
+    #[test]
+    fn the_overview_of_a_node_shows_what_leaves_it_and_not_what_stays_inside() {
+        let out = environments("dev.app", json!(["int"]), json!({ "viewpoint": "overview" }));
+        assert!(link_between(&out, "dev.app", "int"), "the node hosting the application depends on the environment");
+        let inside = environments("dev", json!(["int"]), json!({ "viewpoint": "overview", "elements": [
+            { "reference": "dev", "parent": true, "uses": ["int"] },
+            { "reference": "dev.app", "applications": ["shop.api"] },
+            { "reference": "dev.db", "applications": ["ext.registry"] },
+            { "reference": "int", "parent": true },
+            { "reference": "int.a", "applications": ["ext.registry"] }
+        ] }));
+        assert!(inside["links"].as_array().unwrap().is_empty(), "what the environment hosts itself wins: nothing leaves it");
+    }
+
+    #[test]
+    fn the_deep_view_of_a_node_shows_everything_inside_it_linked_or_not() {
+        let out = compute(json!({
+            "viewpoint": "deep", "layer": "technology", "focal": "dev",
+            "elements": [
+                { "reference": "dev", "parent": true },
+                { "reference": "dev.ns", "parent": true },
+                { "reference": "dev.ns.quiet" },
+                { "reference": "dev.other", "parent": true },
+                { "reference": "dev.other.pod" },
+                { "reference": "prd", "parent": true },
+                { "reference": "prd.pod" }
+            ]
+        }));
+        assert_eq!(ids(&out), ["dev", "dev.ns", "dev.ns.quiet", "dev.other", "dev.other.pod"], "all of it, and nothing of the other environment");
+        let part = compute(json!({
+            "viewpoint": "deep", "layer": "technology", "focal": "dev.ns",
+            "elements": [
+                { "reference": "dev", "parent": true },
+                { "reference": "dev.ns", "parent": true },
+                { "reference": "dev.ns.quiet" },
+                { "reference": "dev.other", "parent": true }
+            ]
+        }));
+        assert_eq!(ids(&part), ["dev", "dev.ns", "dev.ns.quiet"], "a node is shown with its ancestors and its content, not with its siblings");
+    }
+
+    #[test]
+    fn the_applications_of_an_environment_are_linked_without_being_drawn_unless_the_view_is_a_flow() {
+        let input = |extra: Value| {
+            let mut input = json!({
+                "viewpoint": "deep", "layer": "technology", "focal": "dev",
+                "elements": [
+                    { "reference": "dev", "parent": true },
+                    { "reference": "dev.web", "applications": ["shop.web"] },
+                    { "reference": "dev.api", "applications": ["shop.api"] }
+                ],
+                "app_elements": [
+                    { "reference": "shop", "parent": true },
+                    { "reference": "shop.web", "relationships": [
+                        { "destination": "shop.api", "label": "calls", "qualifiers": ["REST"], "tags": { "flow": "yes" } },
+                        { "destination": "shop.api", "label": "logs to", "tags": { "flow": "no" } }
+                    ] },
+                    { "reference": "shop.api" }
+                ]
+            });
+            for (key, value) in extra.as_object().cloned().unwrap_or_default() {
+                input[key] = value;
+            }
+            compute(input)
+        };
+
+        let plain = input(json!({}));
+        let link = link(&plain, "web_shop_web", "api_shop_api").expect("the dependency exists");
+        assert!(link["secondary"].as_bool().unwrap(), "inside an environment it is not drawn");
+        assert!(link["label"].is_null());
+
+        let flow = input(json!({ "application_links": true }));
+        let drawn: Vec<&Value> = flow["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).collect();
+        assert_eq!(drawn.len(), 2, "one link per relationship, drawn");
+        assert!(drawn.iter().any(|l| l["label"] == "calls" && l["qualifiers"] == json!(["REST"]) && l["tags"] == json!({ "flow": "yes" })));
+        assert_eq!(drawn[0]["relationships"][0]["from"], "shop.web");
+        assert!(drawn[0]["relationships"][0]["application"].as_bool().unwrap());
+
+        let faceted = input(json!({ "facet": { "name": "flow", "actions": [
+            { "operator": "REMOVE", "json_path": "$.application..relationships[?(@.tags.flow != 'yes')]" }
+        ] } }));
+        let drawn: Vec<&Value> = faceted["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).collect();
+        assert_eq!(drawn.len(), 1, "through a facet the flow is drawn, and only the flow");
+        assert_eq!(drawn[0]["label"], "calls");
+    }
+
+    #[test]
+    fn a_view_about_a_flow_shows_it_in_every_viewpoint_and_hides_what_has_no_link_when_asked() {
+        let flow_with = |viewpoint: &str, focal: &str, hide: bool| {
+            compute(json!({
+                "viewpoint": viewpoint, "layer": "technology", "focal": focal, "application_links": true, "hide_unlinked": hide,
+                "elements": [
+                    { "reference": "dev", "parent": true },
+                    { "reference": "dev.front", "parent": true },
+                    { "reference": "dev.front.web", "applications": ["shop.web"] },
+                    { "reference": "dev.back", "parent": true },
+                    { "reference": "dev.back.api", "applications": ["shop.api"] },
+                    { "reference": "dev.data", "parent": true },
+                    { "reference": "dev.data.db", "applications": ["shop.db"] }
+                ],
+                "app_elements": [
+                    { "reference": "shop", "parent": true },
+                    { "reference": "shop.web", "relationships": [{ "destination": "shop.api", "label": "calls" }] },
+                    { "reference": "shop.api" },
+                    { "reference": "shop.db" }
+                ]
+            }))
+        };
+
+        let flow = |viewpoint: &str, focal: &str| flow_with(viewpoint, focal, true);
+
+        let shown = flow_with("detailed", "dev", false);
+        assert!(link_between(&shown, "dev.front", "dev.back") && has_item(&shown, "dev.data"), "the option off: the link, and the child with no link");
+
+        let detailed = flow("detailed", "dev");
+        let link = link(&detailed, "dev.front", "dev.back").expect("the dependency is lifted to the children of the focal element");
+        assert_eq!(link["label"], "calls");
+        assert!(link["relationships"][0]["application"].as_bool().unwrap());
+        assert_eq!(ids(&detailed), ["dev", "dev.back", "dev.front"], "the child with no link is left out");
+
+        let deep = flow("deep", "dev");
+        assert!(link_between(&deep, "web_shop_web", "api_shop_api"), "the applications are linked");
+        assert!(!has_item(&deep, "dev.data") && !has_item(&deep, "db_shop_db"), "what the flow does not go through is left out");
+        assert!(has_item(&deep, "dev.front") && has_item(&deep, "dev.back"), "what encloses the ends is kept");
+
+        let overview = flow("overview", "dev.front");
+        assert!(link_between(&overview, "dev.front", "dev.back"), "what leaves a node is its dependency on the other nodes");
+        assert_eq!(ids(&overview), ["dev", "dev.back", "dev.front"]);
+
+        let alone = flow("overview", "dev.data");
+        assert_eq!(ids(&alone), ["dev", "dev.data"], "the focal element is always there, with nothing around it");
+    }
+
+    #[test]
+    fn an_environment_that_uses_nothing_reaches_nothing() {
+        for uses in [json!([]), json!(null)] {
+            let out = environments("dev", uses, json!({}));
+            assert!(out["links"].as_array().unwrap().is_empty());
+            assert_eq!(ids(&out), ["app_shop_api", "dev", "dev.app"], "the environment is shown with what it is made of, linked to nothing");
+        }
+    }
+
+    #[test]
+    fn an_environment_can_use_a_node_of_another_one_only() {
+        let out = environments("dev", json!(["int.b", "prd"]), json!({}));
+        assert!(link_between(&out, "app_shop_api", "b_ext_registry") && link_between(&out, "app_shop_api", "a_ext_registry"));
+        assert!(!has_item(&out, "int.a"), "the sibling node is not used");
+    }
+
+    #[test]
+    fn what_an_environment_hosts_itself_wins_over_what_it_uses() {
+        let out = environments("dev", json!(["int"]), json!({
+            "elements": [
+                { "reference": "dev", "parent": true, "uses": ["int"] },
+                { "reference": "dev.app", "applications": ["shop.api"] },
+                { "reference": "dev.db", "applications": ["ext.registry"] },
+                { "reference": "int", "parent": true },
+                { "reference": "int.a", "applications": ["ext.registry"] }
+            ]
+        }));
+        assert!(out["links"].as_array().unwrap().iter().all(|l| l["secondary"].as_bool().unwrap()), "the application is found in the environment: nothing leaves it");
+        assert!(!has_item(&out, "int.a"), "the used environment is not even drawn");
+    }
+
+    #[test]
+    fn the_view_of_a_used_environment_shows_who_depends_on_it() {
+        let out = environments("int", json!(["int.a"]), json!({}));
+        let link = link(&out, "app_shop_api", "a_ext_registry").expect("seen from the used environment");
+        assert_eq!(link["relationships"][0]["from"], "shop.api");
+        assert_eq!(item(&out, "app_shop_api")["parent"], "dev.app");
+        assert!(!link_between(&out, "app_shop_api", "b_ext_registry"), "only what is used is linked");
+    }
+
+    #[test]
+    fn the_dependencies_between_environments_fold_with_their_nodes() {
+        let out = environments("dev", json!(["int"]), json!({ "collapsed": ["dev.app", "int.a", "int.b"] }));
+        let grouped = link(&out, "dev.app", "int.a").expect("grouped under the folded nodes");
+        assert!(grouped["synthetic"].as_bool().unwrap());
+        assert_eq!(grouped["label"], "reads patients from", "the caption of a single relationship is kept");
+        assert!(link(&out, "dev.app", "int.b").is_some());
+    }
+
+    #[test]
+    fn a_facet_that_removes_the_relationship_removes_the_dependency() {
+        let facet = json!({ "facet": { "name": "f", "actions": [
+            { "operator": "REMOVE", "json_path": "$.application..relationships[?(@.tags['tcp-port'] == '443')]" }
+        ] } });
+        let out = environments("dev", json!(["int"]), facet);
+        assert!(out["links"].as_array().unwrap().is_empty(), "nothing is left to derive the dependency from");
+    }
+
+    #[test]
+    fn a_facet_can_take_an_environment_out_of_the_ones_that_are_used() {
+        let facet = json!({ "facet": { "name": "f", "actions": [
+            { "operator": "REMOVE", "json_path": "$.technology.elements[?(@.id == 'dev')].uses[?(@ == 'int')]" }
+        ] } });
+        let out = environments("dev", json!(["int", "prd"]), facet);
+        assert!(link_between(&out, "app_shop_api", "a_ext_registry"), "prd.a");
+        assert!(!has_item(&out, "int.a"));
+    }
+
+    #[test]
+    fn a_dangling_environment_in_uses_is_an_error() {
+        let out = environments("dev", json!(["nowhere"]), json!({}));
+        assert_eq!(out["error"], "dangling reference: nowhere");
     }
 
     // ---- the earlier dialect ----

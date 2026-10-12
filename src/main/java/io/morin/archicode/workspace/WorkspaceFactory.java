@@ -164,6 +164,6 @@ public class WorkspaceFactory {
 
         val facetWorkspace = jsonMapper.treeToValue(answer.get("workspace"), Workspace.class);
 
-        return create(facetWorkspace, Map.of());
+        return create(facetWorkspace, Map.of()).toBuilder().faceted(true).hideUnlinked(facet.isHideUnlinked()).build();
     }
 }

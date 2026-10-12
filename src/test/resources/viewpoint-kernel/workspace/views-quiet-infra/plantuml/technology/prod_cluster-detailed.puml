@@ -29,7 +29,8 @@ rectangle psp <<environment>> <<atomic>> [
 **Payment Provider Cloud**
 ""[environment]""
 ]
-prod.cluster.web --> psp : pays through\n""[HTTPS]""
+prod.cluster.web --> prod.cluster.data : queries\n""[gRPC]""
+prod.cluster.web --> psp : uses\n""[HTTPS]""
 <style>
 .external {
 actor {

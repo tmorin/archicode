@@ -57,6 +57,7 @@ settings:
             json-path: "$..relationships[?(@.tags['audited'] != 'yes')]"
       # the standard JSONPath of what "rest-only" says in the earlier dialect: its views must be the same
       - name: "rest-only-standard"
+        hide-unlinked: true
         actions:
           - operator: "REMOVE"
             json-path: "$.application..relationships[?(!@.qualifiers[?(@ == 'REST')])]"

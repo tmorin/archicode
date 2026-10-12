@@ -114,6 +114,13 @@ public class Settings {
             @Builder.Default
             Set<Action> actions = new LinkedHashSet<>();
 
+            /**
+             * Leave out, from the views of the technology layer, the elements none of the links of the facet goes through.
+             */
+            @Builder.Default
+            @JsonAlias("hide-unlinked")
+            boolean hideUnlinked = false;
+
             @Value
             @Jacksonized
             @Builder(toBuilder = true)

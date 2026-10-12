@@ -31,6 +31,7 @@ rectangle pod-b_shop_web_api <<container>> <<atomic>> <<Spring Boot>> [
 }
 }
 }
+pod-a_shop_web_frontend --> pod-b_shop_web_api : calls\n""[REST]""
 prod.cluster.web.pod-a --> prod.cluster.web.pod-b : forwards to\n""[HTTP]""
 <style>
 .external {

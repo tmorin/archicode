@@ -15,6 +15,10 @@ FontStyle: normal
 </style>
 rectangle prod as "**Production**\n""[environment]""" <<composite>> {
 rectangle prod.cluster as "**Kubernetes Cluster**\n""[node: K8s]""" <<composite>> <<K8s>> {
+rectangle prod.cluster.data <<atomic>> <<node>> [
+**data namespace**
+""[node]""
+]
 rectangle prod.cluster.web <<atomic>> <<node>> [
 **web namespace**
 ""[node]""
@@ -25,7 +29,8 @@ rectangle psp <<environment>> <<atomic>> [
 **Payment Provider Cloud**
 ""[environment]""
 ]
-prod.cluster.web --> psp : pays through\n""[HTTPS]""
+prod.cluster.web --> prod.cluster.data : queries\n""[gRPC]""
+prod.cluster.web --> psp : uses\n""[HTTPS]""
 <style>
 .external {
 actor {

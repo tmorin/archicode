@@ -58,6 +58,17 @@ Two things worth knowing before touching the code:
   was a bug); the overview, detailed and map viewpoints always compared paths.
 - `expandable` is not a structural guess: an item is flagged only if listing it in `expanded` (in `opened` for the map)
   changes the view, which is checked by computing the view again.
+- The deep viewpoint of the technology layer shows every node inside the focal element, linked or not, and derives the dependencies between environments: a relationship between two
+  deployed applications is drawn as a link between them when the environment of the first lists the second (or a node
+  of it) in `uses` and does not host the destination itself. `uses` is a scope, never a link: nothing is drawn for an
+  entry that no relationship rests on, and a facet that removes the relationships removes the links. Inside an
+  environment the links between deployed applications stay "secondary" (the CLI does not draw them). The overview and
+  detailed viewpoints of the technology layer see the same dependencies as relationships of the nodes that host the
+  applications, so they group like the declared ones: an environment is linked to the environments it uses.
+- Inside an environment the relationships between deployed applications are "secondary" (not drawn), unless the view is
+  about a flow: a `facet` in the input, or `application_links: true` (what the CLI says for the workspace of a facet),
+  draws them with their label and qualifiers, and the overview and detailed viewpoints lift them to the nodes of the
+  view. `hide_unlinked` (a facet can carry it) leaves out, in the technology layer, the boxes no link goes through.
 - Relationships that differ only by their tags are different relationships: the tags travel in the links
   (`tags`, and `relationships[].tags`) and are part of what makes two links, or two captions, the same.
 - A JSON `null` is read as "not given" (`default_synthetic_label: null` is "uses"). A dangling reference, in any

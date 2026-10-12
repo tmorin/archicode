@@ -13,12 +13,17 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
+rectangle prod <<environment>> <<atomic>> [
+**Production**
+""[environment]""
+]
 rectangle psp as "**Payment Provider Cloud**\n""[environment]""" <<composite>> {
 rectangle psp.gateway <<atomic>> <<node>> [
 **Provider Gateway**
 ""[node]""
 ]
 }
+prod --> psp.gateway : charges with\n""[HTTPS]""
 <style>
 .external {
 actor {

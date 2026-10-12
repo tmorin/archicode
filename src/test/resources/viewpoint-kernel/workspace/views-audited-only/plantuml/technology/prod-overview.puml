@@ -17,6 +17,11 @@ rectangle prod <<environment>> <<atomic>> [
 **Production**
 ""[environment]""
 ]
+rectangle psp <<environment>> <<atomic>> [
+**Payment Provider Cloud**
+""[environment]""
+]
+prod --> psp : charges with\n""[HTTPS]""
 <style>
 .external {
 actor {

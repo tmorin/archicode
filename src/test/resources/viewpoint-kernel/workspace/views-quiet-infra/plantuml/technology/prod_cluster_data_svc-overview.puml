@@ -25,9 +25,15 @@ rectangle prod.cluster.data.svc <<atomic>> <<node>> [
 ""[node]""
 ]
 }
+rectangle prod.cluster.web <<atomic>> <<node>> [
+**web namespace**
+""[node]""
+]
 }
 }
 prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
+prod.cluster.data.svc --> prod.cluster.data.pg : reads and writes\n""[JDBC]""
+prod.cluster.web --> prod.cluster.data.svc : queries\n""[gRPC]""
 <style>
 .external {
 actor {

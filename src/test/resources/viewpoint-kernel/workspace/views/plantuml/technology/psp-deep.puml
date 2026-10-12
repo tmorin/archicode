@@ -35,6 +35,7 @@ Takes the money.
 ]
 }
 }
+pod-b_shop_web_api --> gateway_shop_payments : charges with\n""[HTTPS]""
 prod.cluster.web.pod-b --> psp.gateway : pays through\n""[HTTPS]""
 <style>
 .external {

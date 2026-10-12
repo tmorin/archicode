@@ -16,24 +16,18 @@ FontStyle: normal
 rectangle prod as "**Production**\n""[environment]""" <<composite>> {
 rectangle prod.cluster as "**Kubernetes Cluster**\n""[node: K8s]""" <<composite>> <<K8s>> {
 rectangle prod.cluster.web as "**web namespace**\n""[node]""" <<composite>> {
-rectangle prod.cluster.web.pod-b as "**api pod**\n""[node]""" <<composite>> {
-rectangle pod-b_shop_web_api <<container>> <<atomic>> <<Spring Boot>> [
-**API**
-""[container: Spring Boot]""
+rectangle prod.cluster.web.pod-b <<atomic>> <<node>> [
+**api pod**
+""[node]""
 ]
-}
 }
 }
 }
 rectangle psp as "**Payment Provider Cloud**\n""[environment]""" <<composite>> {
-rectangle psp.gateway as "**Provider Gateway**\n""[node]""" <<composite>> {
-rectangle gateway_shop_payments <<system>> <<external>> <<atomic>> [
-**Payment Provider**
-""[system]""
-
-Takes the money.
+rectangle psp.gateway <<atomic>> <<node>> [
+**Provider Gateway**
+""[node]""
 ]
-}
 }
 prod.cluster.web.pod-b --> psp.gateway : pays through\n""[HTTPS]""
 <style>
