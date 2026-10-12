@@ -2696,6 +2696,57 @@ EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.Use
 <div class="paragraph">
 <p>Archicode introduces the facet concept, a feature engineered to automate the generation of secondary workspaces and refine views to focus on specific concerns. By employing transformation rules based on JSON Path queries, facets effectively remove certain elements and relationships, offering a cleaner, focused view of specific subsets. This feature serves as a bridge from the chaos of detailed expressions to an organized, easily understandable visualization, paving the way for enhanced insights into complex architectural models.</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+<div class="title">The paths of a facet are standard JSONPath</div>
+<div class="paragraph">
+<p>The <code>json-path</code> of an action is a JSONPath as standardized by <a href="https://www.rfc-editor.org/rfc/rfc9535">RFC 9535</a>. It selects nodes of the workspace, and the <code>REMOVE</code> operator deletes them. The same code evaluates it in the command line and in the editor, so a facet cannot mean one thing in each. Beyond comparisons, a filter can combine tests with <code>&amp;&amp;</code>, <code>||</code> and <code>!</code>, test that a field exists (<code>?(@.label)</code>), look inside a list (<code>?(@.qualifiers[?(@ == 'oidc')])</code>) and call <code>length()</code> or <code>count()</code>. The functions <code>match()</code> and <code>search()</code> (regular expressions) are not available.</p>
+</div>
+<div class="paragraph">
+<p>The facets written for the previous engine (Jayway) keep working for now, with a warning that gives the standard form. They are going to be removed in a future major version.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Before</th>
+<th class="tableblock halign-left valign-top">Now</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@.qualifiers anyof ['a', 'b']</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@.qualifiers[?(@ == 'a' || @ == 'b')]</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@.qualifiers noneof ['a']</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>(@.qualifiers &amp;&amp; !@.qualifiers[?(@ == 'a')])</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@.qualifiers == null</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!@.qualifiers</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@.qualifiers != null</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@.qualifiers</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Relationships that have no tag, or no qualifier, simply do not have the field: <code>@.tags['k'] != 'v'</code> selects them, <code>@.tags['k'] == 'v'</code> does not.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect4">
 <h5 id="_step_1_create_the_main_workspace">Step #1: Create the main workspace</h5>
@@ -3083,9 +3134,7 @@ User --&gt; EcommercePlatform.UserInterface
       - <span class="string"><span class="content">name: &quot;oidc&quot;</span></span>
         <span class="key">actions</span>:
           - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
-            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers noneof ['oidc'])]</span><span class="delimiter">&quot;</span></span>
-          - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
-            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers == null)]</span><span class="delimiter">&quot;</span></span></code></pre>
+            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(!@.qualifiers[?(@ == 'oidc')])]</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -3228,13 +3277,11 @@ EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.Use
       - <span class="string"><span class="content">name: &quot;main&quot;</span></span>
         <span class="key">actions</span>:
           - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
-            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers anyof ['oidc'])]</span><span class="delimiter">&quot;</span></span>
+            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers[?(@ == 'oidc')])]</span><span class="delimiter">&quot;</span></span>
       - <span class="string"><span class="content">name: &quot;oidc&quot;</span></span>
         <span class="key">actions</span>:
           - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
-            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers noneof ['oidc'])]</span><span class="delimiter">&quot;</span></span>
-          - <span class="string"><span class="content">operator: &quot;REMOVE&quot;</span></span>
-            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(@.qualifiers == null)]</span><span class="delimiter">&quot;</span></span></code></pre>
+            <span class="key">json-path</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">$.application..relationships[?(!@.qualifiers[?(@ == 'oidc')])]</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -3829,7 +3876,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-12 07:03:06 UTC
+Last updated 2026-10-12 08:51:02 UTC
 </div>
 </div>
 </body>
