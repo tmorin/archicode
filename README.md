@@ -57,7 +57,7 @@ browser serves the editor and opens the folder of `workspace.yaml` in it, with
 nothing to pick (the page is refused without the token; the editor removes it
 from the address bar, and a session cookie lets a reload in): browse the elements,
 edit them, see their diagrams and the map of the workspace, and save. It works
-in any browser. The same editor is published with the manual, at
+in any browser. The same editor is published next to the manual, at
 https://tmorin.github.io/archicode/editor/, and is a single file
 (`standalone.html`): opened from there, or from a file, it asks for a folder
 instead, which needs the File System Access API (Chrome, Edge, Brave, Opera).

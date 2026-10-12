@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="archicode-version" content="dev">
+<title>ArchiCode · Architecture as code</title>
+<meta name="description" content="Describe your systems and their relationships in YAML, in your repository. ArchiCode generates PlantUML views from that model.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6e5c'/%3E%3Cpath d='M9 22l7-12 7 12z' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+// Marks the page as scripted (the tabs of the diagrams need it). Also: the manual used to be at the root of this site. A
+// link with one of its anchors (#editor-map, #_commands…) is sent to the same anchor of docs/; an anchor of this page
+// stays here. The page is not parsed yet: look the anchor up once it is.
+(function () {
+  document.documentElement.className = 'js';
+  var hash = location.hash.slice(1);
+  if (!hash) return;
+  document.addEventListener('DOMContentLoaded', function () {
+    var known;
+    try { known = document.getElementById(decodeURIComponent(hash)); } catch (e) { known = true; } // malformed: stay
+    if (!known) location.replace('docs/#' + hash);
+  });
+})();
+</script>
+<style>
+:root {
+  --bg: #fafaf7;
+  --bg-alt: #f1f0ea;
+  --ink: #1b1d1f;
+  --muted: #5a6068;
+  --line: #d9d8cf;
+  --accent: #0b6e5c;
+  --accent-ink: #ffffff;
+  --code-bg: #14181a;
+  --code-ink: #e3e8e6;
+  --code-muted: #8b9894;
+  --code-key: #7fd3bd;
+  --code-str: #e6c07b;
+  --box-fill: #ffffff;
+  --box-line: #1b1d1f;
+  --box-person: #e6f1ee;
+  --composite-line: #8a8f94;
+  --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1213;
+    --bg-alt: #161a1b;
+    --ink: #e9ecea;
+    --muted: #9aa3a0;
+    --line: #2a3032;
+    --accent: #4cc3a6;
+    --accent-ink: #08201a;
+    --code-bg: #0a0d0e;
+    --box-fill: #1a1f20;
+    --box-line: #d6dcda;
+    --box-person: #1d3a33;
+    --composite-line: #7d8686;
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 4.5rem; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 1.0625rem/1.6 var(--sans); }
+a { color: var(--accent); text-underline-offset: 0.18em; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+code, pre { font-family: var(--mono); }
+code { font-size: 0.9em; background: var(--bg-alt); padding: 0.1em 0.35em; border-radius: 4px; }
+.wrap { width: 100%; max-width: 62rem; margin: 0 auto; padding: 0 1rem; }
+@media (min-width: 40rem) { .wrap { padding: 0 2rem; } }
+
+.bar { position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 1px solid var(--line); }
+.bar .wrap { display: flex; align-items: center; gap: 1.25rem; min-height: 3.5rem; }
+.brand { font-weight: 700; color: var(--ink); text-decoration: none; margin-right: auto; }
+.bar nav { display: flex; gap: 1.25rem; align-items: center; font-size: 0.95rem; }
+.bar nav a:not(.btn) { color: var(--muted); text-decoration: none; }
+.bar nav a:not(.btn):hover { color: var(--ink); }
+
+.btn { display: inline-block; padding: 0.65rem 1.1rem; border-radius: 8px; border: 1px solid var(--ink); font-weight: 600; text-decoration: none; color: var(--ink); }
+.btn:hover { background: var(--bg-alt); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.bar .btn { padding: 0.45rem 0.8rem; font-size: 0.9rem; }
+
+section { padding: 3.5rem 0; }
+section + section { border-top: 1px solid var(--line); }
+h1, h2, h3 { line-height: 1.15; letter-spacing: -0.015em; margin: 0 0 0.75rem; }
+h1 { font-size: clamp(2.2rem, 5.5vw, 3.4rem); }
+h2 { font-size: clamp(1.6rem, 3.2vw, 2.1rem); }
+h3 { font-size: 1.2rem; margin-top: 3rem; }
+p, ul { margin: 0 0 1rem; }
+.prose { max-width: 40rem; }
+.lead { font-size: 1.2rem; color: var(--muted); max-width: 38rem; }
+.cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.75rem; }
+.hero { padding: 4.5rem 0 3.5rem; }
+.hint { margin: 1rem 0 0; max-width: 38rem; font-size: 0.95rem; color: var(--muted); }
+.problem { background: var(--bg-alt); }
+.limits { margin-bottom: 0; }
+
+pre { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; background: var(--code-bg); color: var(--code-ink); border-radius: 10px; font-size: 0.85rem; line-height: 1.55; tab-size: 2; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.k { color: var(--code-key); }
+.s { color: var(--code-str); }
+.c { color: var(--code-muted); }
+.prompt::before { content: "$ "; color: var(--code-muted); user-select: none; }
+
+.pair { display: grid; gap: 1rem; margin-top: 1.25rem; }
+@media (min-width: 52rem) { .pair { grid-template-columns: 1fr 1fr; } }
+.card { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); overflow: hidden; display: flex; flex-direction: column; }
+.card > header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0.9rem; border-bottom: 1px solid var(--line); font: 0.8rem/1.2 var(--mono); color: var(--muted); min-height: 2.9rem; }
+.card pre { border-radius: 0; flex: 1; }
+.card .note { padding: 0.8rem 0.9rem; font-size: 0.9rem; color: var(--muted); margin: 0; border-top: 1px solid var(--line); }
+.card .grow { flex: 1; border-top: 0; }
+.tabs { display: none; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.js .tabs { display: inline-flex; }
+.tabs button { font: 600 0.8rem/1 var(--mono); padding: 0.45rem 0.7rem; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.diagram { padding: 0.75rem; }
+.diagram svg { width: 100%; height: auto; display: block; }
+.diagram .caption { margin: 0.5rem 0.25rem 0.75rem; font-size: 0.85rem; color: var(--muted); }
+.d-box { fill: var(--box-fill); stroke: var(--box-line); stroke-width: 1.5; }
+.d-person { fill: var(--box-person); stroke: var(--box-line); stroke-width: 1.5; }
+.d-composite { fill: none; stroke: var(--composite-line); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.d-edge { stroke: var(--box-line); stroke-width: 1.4; fill: none; }
+.d-head { fill: var(--box-line); }
+.d-t { fill: var(--ink); font: 600 13px var(--sans); text-anchor: middle; }
+.d-k { fill: var(--muted); font: 11px var(--mono); text-anchor: middle; }
+.d-cap { fill: var(--muted); font: 11px var(--mono); }
+
+.start { background: var(--bg-alt); }
+.start-grid { display: grid; gap: 1.25rem; margin-top: 1.25rem; }
+@media (min-width: 60rem) { .start-grid { grid-template-columns: repeat(3, 1fr); } }
+
+footer { border-top: 1px solid var(--line); padding: 2rem 0 3rem; color: var(--muted); font-size: 0.9rem; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; }
+footer a { color: var(--muted); }
+.links { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; }
+.skip { position: absolute; left: -999px; top: 0; background: var(--ink); color: var(--bg); padding: 0.6rem 1rem; z-index: 20; }
+.skip:focus { left: 0; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top">ArchiCode</a>
+    <nav aria-label="Site">
+      <a href="docs/">Docs</a>
+      <a href="https://github.com/tmorin/archicode">GitHub</a>
+      <a class="btn primary" href="editor/">Editor</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero" id="top">
+  <div class="wrap">
+    <h1>Architecture as code</h1>
+    <p class="lead">Describe your systems and their relationships in YAML, in your repository. ArchiCode generates PlantUML views from that model.</p>
+    <div class="cta">
+      <a class="btn primary" href="editor/">Open the editor</a>
+      <a class="btn" href="#start">Get started</a>
+    </div>
+    <p class="hint">The editor runs in your browser, nothing to install. Pick a workspace folder (Chrome, Edge, Brave or Opera); your files are not uploaded.</p>
+  </div>
+</section>
+
+<section id="context">
+  <div class="wrap prose">
+    <h2>Context</h2>
+    <p>Code, infrastructure and pipelines are versioned and reviewed in pull requests. The architecture usually is not: it lives in diagram files, slides or wiki pages. Text-to-diagram tools such as PlantUML make a diagram cheap to write, and the C4 model gives a common vocabulary to describe a system at several levels.</p>
+  </div>
+</section>
+
+<section id="problem" class="problem">
+  <div class="wrap prose">
+    <h2>Problem</h2>
+    <p>Writing a diagram as code still means writing each view by hand. A system appears in the view of each level, and a change has to be repeated in each of them. Nothing checks that they agree.</p>
+    <p>A diagram is also a picture, not data. You cannot ask it what depends on the payment gateway.</p>
+  </div>
+</section>
+
+<section id="solution">
+  <div class="wrap">
+    <h2>Solution</h2>
+    <p class="prose">ArchiCode keeps the model (elements and relationships) apart from the views. You edit the model, and the views are generated from it.</p>
+
+    <h3>Model</h3>
+    <p class="prose">The workspace is a YAML, TOML or JSON file, optionally completed by manifests: more files in the same formats. Each element has a kind and an id, and optionally relationships. A JSON Schema (<code>archicode query schemas workspace</code>) lets your IDE validate and complete the files.</p>
+    <div class="pair">
+      <div class="card">
+        <header><span>workspace.yaml</span></header>
+<pre><code><span class="k">application</span>:
+  <span class="k">elements</span>:
+    - <span class="k">kind</span>: <span class="s">"person"</span>
+      <span class="k">id</span>: <span class="s">"User"</span>
+      <span class="k">relationships</span>:
+        - <span class="k">destination</span>: <span class="s">"EcommercePlatform.UserInterface"</span>
+    - <span class="k">kind</span>: <span class="s">"solution"</span>
+      <span class="k">id</span>: <span class="s">"EcommercePlatform"</span>
+      <span class="k">elements</span>:
+        - <span class="k">kind</span>: <span class="s">"system"</span>
+          <span class="k">id</span>: <span class="s">"UserInterface"</span>
+          <span class="k">relationships</span>:
+            - <span class="k">destination</span>: <span class="s">"EcommercePlatform.ProductCatalog"</span>
+            - <span class="k">destination</span>: <span class="s">"EcommercePlatform.UserManagement"</span>
+            - <span class="k">destination</span>: <span class="s">"EcommercePlatform.OrderProcessing"</span>
+            - <span class="k">destination</span>: <span class="s">"EcommercePlatform.ContentManagement"</span>
+        - <span class="k">kind</span>: <span class="s">"system"</span>
+          <span class="k">id</span>: <span class="s">"ProductCatalog"</span>
+        - <span class="k">kind</span>: <span class="s">"system"</span>
+          <span class="k">id</span>: <span class="s">"UserManagement"</span>
+          <span class="k">relationships</span>:
+            - <span class="k">destination</span>: <span class="s">"SocialIdentityProvider"</span>
+        - <span class="k">kind</span>: <span class="s">"system"</span>
+          <span class="k">id</span>: <span class="s">"OrderProcessing"</span>
+          <span class="k">relationships</span>:
+            - <span class="k">destination</span>: <span class="s">"EcommercePlatform.ProductCatalog"</span>
+            - <span class="k">destination</span>: <span class="s">"PaymentGateway"</span>
+        - <span class="k">kind</span>: <span class="s">"system"</span>
+          <span class="k">id</span>: <span class="s">"ContentManagement"</span>
+    - <span class="k">kind</span>: <span class="s">"system"</span>
+      <span class="k">id</span>: <span class="s">"SocialIdentityProvider"</span>
+    - <span class="k">kind</span>: <span class="s">"system"</span>
+      <span class="k">id</span>: <span class="s">"PaymentGateway"</span></code></pre>
+      </div>
+
+      <div class="card">
+        <header>
+          <span>generated from it</span>
+          <span class="tabs" role="group" aria-label="Viewpoint">
+            <button type="button" data-view="overview" aria-pressed="true">overview</button>
+            <button type="button" data-view="detailed" aria-pressed="false">detailed</button>
+          </span>
+        </header>
+        <div class="diagram">
+          <div class="view" data-view="overview">
+            <svg viewBox="0 0 640 300" role="img" aria-label="Overview of EcommercePlatform: the User uses EcommercePlatform, which uses SocialIdentityProvider and PaymentGateway.">
+              <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-head"/></marker></defs>
+              <rect class="d-person" x="20" y="115" width="120" height="64" rx="32"/>
+              <text class="d-t" x="80" y="144">User</text><text class="d-k" x="80" y="162">[person]</text>
+              <rect class="d-box" x="215" y="115" width="170" height="64" rx="6"/>
+              <text class="d-t" x="300" y="144">EcommercePlatform</text><text class="d-k" x="300" y="162">[solution]</text>
+              <rect class="d-box" x="480" y="40" width="150" height="64" rx="6"/>
+              <text class="d-t" x="555" y="69">SocialIdentityProvider</text><text class="d-k" x="555" y="87">[system]</text>
+              <rect class="d-box" x="480" y="190" width="150" height="64" rx="6"/>
+              <text class="d-t" x="555" y="219">PaymentGateway</text><text class="d-k" x="555" y="237">[system]</text>
+              <path class="d-edge" marker-end="url(#ah)" d="M140 147H213"/>
+              <path class="d-edge" marker-end="url(#ah)" d="M385 135C430 135 430 82 478 78"/>
+              <path class="d-edge" marker-end="url(#ah)" d="M385 160C430 160 430 214 478 218"/>
+              <text class="d-cap" x="148" y="140">uses</text>
+              <text class="d-cap" x="418" y="104">uses</text>
+              <text class="d-cap" x="418" y="196">uses</text>
+            </svg>
+            <p class="caption">Overview: what the element exchanges with the outside.</p>
+          </div>
+          <div class="view" data-view="detailed">
+            <svg viewBox="0 0 640 340" role="img" aria-label="Detailed view of EcommercePlatform: User calls UserInterface, which calls ContentManagement, ProductCatalog, OrderProcessing and UserManagement; OrderProcessing calls ProductCatalog and PaymentGateway; UserManagement calls SocialIdentityProvider.">
+              <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-head"/></marker></defs>
+              <rect class="d-composite" x="130" y="10" width="340" height="320" rx="8"/>
+              <text class="d-cap" x="142" y="29">EcommercePlatform [solution]</text>
+              <rect class="d-person" x="8" y="152" width="96" height="56" rx="28"/>
+              <text class="d-t" x="56" y="177">User</text><text class="d-k" x="56" y="194">[person]</text>
+              <rect class="d-box" x="146" y="152" width="120" height="56" rx="6"/>
+              <text class="d-t" x="206" y="177">UserInterface</text><text class="d-k" x="206" y="194">[system]</text>
+              <rect class="d-box" x="316" y="44" width="136" height="52" rx="6"/>
+              <text class="d-t" x="384" y="67">ContentManagement</text><text class="d-k" x="384" y="84">[system]</text>
+              <rect class="d-box" x="316" y="116" width="136" height="52" rx="6"/>
+              <text class="d-t" x="384" y="139">ProductCatalog</text><text class="d-k" x="384" y="156">[system]</text>
+              <rect class="d-box" x="316" y="204" width="136" height="52" rx="6"/>
+              <text class="d-t" x="384" y="227">OrderProcessing</text><text class="d-k" x="384" y="244">[system]</text>
+              <rect class="d-box" x="316" y="272" width="136" height="48" rx="6"/>
+              <text class="d-t" x="384" y="294">UserManagement</text><text class="d-k" x="384" y="310">[system]</text>
+              <rect class="d-box" x="520" y="204" width="112" height="52" rx="6"/>
+              <text class="d-t" x="576" y="227">PaymentGateway</text><text class="d-k" x="576" y="244">[system]</text>
+              <rect class="d-box" x="520" y="268" width="112" height="52" rx="6"/>
+              <text class="d-t" x="576" y="288" style="font-size:11px">SocialIdentity</text><text class="d-t" x="576" y="302" style="font-size:11px">Provider</text>
+              <path class="d-edge" marker-end="url(#ah2)" d="M104 180H144"/>
+              <path class="d-edge" marker-end="url(#ah2)" d="M266 165C290 150 290 78 314 72"/>
+              <path class="d-edge" marker-end="url(#ah2)" d="M266 172C288 160 290 146 314 142"/>
+              <path class="d-edge" marker-end="url(#ah2)" d="M266 190C290 200 290 224 314 230"/>
+              <path class="d-edge" marker-end="url(#ah2)" d="M266 198C290 230 290 290 314 296"/>
+              <path class="d-edge" marker-end="url(#ah2)" d="M384 204V170"/>
+              <path class="d-edge" marker-end="url(#ah2)" d="M452 230H518"/>
+              <path class="d-edge" marker-end="url(#ah2)" d="M452 296H518"/>
+            </svg>
+            <p class="caption">Detailed: the children of the element, and what they exchange with each other and with the outside.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Editor, online</h3>
+    <p class="prose">Browse and edit your workspace in the browser: the elements as a tree, with their details and their diagrams, and a map of the whole application layer. Pick the folder that holds your <code>workspace.yaml</code>, edit, save.</p>
+    <p><a class="btn primary" href="editor/">Open the editor</a></p>
+
+    <h3>Views</h3>
+    <p class="prose">A viewpoint is a set of rules that extracts one perspective from the model: <code>overview</code> shows what an element exchanges with the outside, <code>detailed</code> its children and what they exchange, <code>deep</code> the same for all its descendants. The command generates every view of every viewpoint as PlantUML files in <code>views/</code>. Rendering them to images is up to your PlantUML tooling.</p>
+    <pre><code><span class="prompt">archicode views generate</span>
+<span class="prompt">archicode views generate --viewpoint=overview -o ./diagrams</span></code></pre>
+
+    <h3>Queries</h3>
+    <p class="prose"><code>archicode query graph</code> prints the resolved elements and relationships as JSON, so you can ask the model a question with the tool you already have. <code>archicode query views</code> filters the generated views with JSONPath.</p>
+    <pre><code><span class="c"># what depends on PaymentGateway?</span>
+<span class="prompt">archicode query graph | jq -r '.relationships[] | select(.relationship.destination=="PaymentGateway") | .source'</span>
+<span class="c">EcommercePlatform.OrderProcessing</span></code></pre>
+
+  </div>
+</section>
+
+<section id="start" class="start">
+  <div class="wrap">
+    <h2>Get started</h2>
+    <p class="prose">Start with an empty folder.</p>
+    <div class="start-grid">
+      <div class="card">
+        <header>1 · Write a workspace</header>
+<pre><code><span class="c"># workspace.yaml</span>
+<span class="k">application</span>:
+  <span class="k">elements</span>:
+    - <span class="k">kind</span>: <span class="s">"person"</span>
+      <span class="k">id</span>: <span class="s">"User"</span>
+      <span class="k">relationships</span>:
+        - <span class="k">destination</span>: <span class="s">"Shop"</span>
+    - <span class="k">kind</span>: <span class="s">"system"</span>
+      <span class="k">id</span>: <span class="s">"Shop"</span></code></pre>
+        <p class="note">Kinds and relationships: <a href="docs/#domain">the domain chapter</a>.</p>
+      </div>
+      <div class="card">
+        <header>2 · Open it in the online editor</header>
+        <p class="note grow">Pick the folder. In a browser other than Chrome, Edge, Brave or Opera: <code>archicode editor serve</code> (<a href="docs/#serve-the-editor">how</a>).</p>
+        <p class="note"><a class="btn primary" href="editor/">Open the editor</a></p>
+      </div>
+      <div class="card">
+        <header>3 · Or generate the views with Docker</header>
+<pre><code><span class="prompt">docker run \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/workdir" -w /workdir \
+  --rm ghcr.io/tmorin/archicode \
+  views generate</span></code></pre>
+        <p class="note">The PlantUML files are written to <code>views/</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap prose">
+    <h2>Scope and limits</h2>
+    <ul class="limits">
+      <li>The model covers the application layer (person, solution, system, container, component) and the technology layer (environments, deployment nodes). There is no business layer.</li>
+      <li>PlantUML is the only renderer.</li>
+      <li>It is pre-1.0: the model and the commands can change between releases.</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>ArchiCode · MIT License<span id="version"></span></span>
+    <span class="links">
+      <a href="https://github.com/tmorin/archicode/pkgs/container/archicode">Container image</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // The release stamps the version into the meta tag; the file of the repository says "dev".
+  var meta = document.querySelector('meta[name="archicode-version"]');
+  var version = meta && meta.getAttribute('content');
+  if (version && version !== 'dev') document.getElementById('version').textContent = ' · v' + version;
+
+  // Without this script both views are shown, one after the other.
+  var views = document.querySelectorAll('.diagram .view');
+  var buttons = document.querySelectorAll('.tabs button');
+  function show(name) {
+    Array.prototype.forEach.call(buttons, function (button) {
+      button.setAttribute('aria-pressed', String(button.getAttribute('data-view') === name));
+    });
+    Array.prototype.forEach.call(views, function (view) {
+      view.hidden = view.getAttribute('data-view') !== name;
+    });
+  }
+  Array.prototype.forEach.call(buttons, function (button) {
+    button.addEventListener('click', function () { show(button.getAttribute('data-view')); });
+  });
+  show('overview');
+})();
+</script>
+</body>
+</html>

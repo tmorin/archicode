@@ -62,6 +62,7 @@ The facet feature in Archicode elegantly simplifies complex architectural views,
 
 This next parts will comprehensively guide you through ArchiCode's features, commands, and best practices, enabling you to harness the full potential of this tool in your architectural endeavors. Let's delve into the details and unlock the benefits ArchiCode has to offer.
 
+[[domain]]
 == Domain
 
 The ArchiCode domain serves as the foundational framework for your architectural endeavors, encompassing essential elements that facilitate and enhance your architectural work:
@@ -455,7 +456,7 @@ ArchiCode comes with an editor to browse, edit and draw a workspace without leav
 There are two ways to open it:
 
 - *Served by the command line.* `archicode editor serve` serves the editor and opens the folder of the `workspace.yaml` in it, with nothing to pick. It works in any browser. See <<serve-the-editor>>.
-- *From the published page.* The page published with this documentation, at `editor/` next to it, asks for a folder. That needs the File System Access API, which Chrome, Edge, Brave and Opera have and Firefox and Safari do not: with one of those, use the command above instead.
+- *From the published page.* The page published next to this documentation, at `/editor/` of the same site, asks for a folder. That needs the File System Access API, which Chrome, Edge, Brave and Opera have and Firefox and Safari do not: with one of those, use the command above instead.
 
 The editor loads `elkjs` (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.
 
