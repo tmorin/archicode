@@ -297,3 +297,17 @@ test('garbled files only ever fail with a YamlParseError', () => {
     }
   }
 });
+
+test('keys that look like array indexes keep the order they were written in, through an edit and a save', () => {
+  const text = 'tags:\n  zone: eu\n  "10": ten\n  "2": two\n  owner: me'; // a key that reads as a number is written quoted
+  const parsed = app.parseYaml(text);
+  assert.deepEqual(Array.from(app.yamlKeysOf(parsed.tags)), ['zone', '10', '2', 'owner']);
+  assert.equal(app.serializeYamlValue(parsed, 0), text, 'written back as read');
+  const copy = app.copyOwnKeys(parsed.tags);
+  app.setOwnKey(copy, '1', 'one');
+  delete copy['10'];
+  assert.equal(app.serializeYamlValue({ tags: copy }, 0), 'tags:\n  zone: eu\n  "2": two\n  owner: me\n  "1": one', 'a new key goes last, a removed one is gone');
+  app.setOwnKey(copy, '10', 'again');
+  assert.deepEqual(Array.from(app.yamlKeysOf(copy)), ['zone', '2', 'owner', '1', '10']);
+  assert.deepEqual(Array.from(app.yamlKeysOf({ b: 1, a: 2 })), ['b', 'a'], 'a mapping without such a key is left alone');
+});

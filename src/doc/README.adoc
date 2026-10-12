@@ -547,6 +547,8 @@ There are two ways to open it:
 
 The editor loads `elkjs` (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.
 
+The editor reads and writes YAML manifests (`.yaml` and `.yml`) only. The command line also reads TOML and JSON manifests: the editor does not, so what such a file declares is missing from its trees and diagrams, and relationships that point at it show as dangling. It says so, in *Files* (which names the files) and above the trees of *Elements* (which counts them).
+
 [[editor-elements]]
 === Elements
 
