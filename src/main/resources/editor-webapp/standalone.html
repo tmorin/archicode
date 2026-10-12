@@ -6005,6 +6005,10 @@ function showDiagramScene(scene) {
   if (canvas.hasAttribute('data-map')) {
     const sel = AppState.selection;
     scene.focal = sel.kind === 'element' && scene.boxes && scene.boxes[sel.key] ? scene.boxes[sel.key] : null;
+    // an element that is not on the map (folded away, hidden, pinned out) is not "selected on the map": no name beside the title, no Open in Elements
+    if (sel.kind === 'element' && scene.boxes && !scene.boxes[sel.key]) {
+      document.querySelectorAll('.element-header-subject, [data-action="open-as-diagram"]').forEach((el) => el.remove());
+    }
   }
   diagramScene = scene;
   canvas.innerHTML = scene.html;
