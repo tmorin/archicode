@@ -281,6 +281,9 @@ test('framing: a diagram that fits is centered whole, one that does not keeps th
   const big = frame({ width: 4000, height: 3000 }, box(2000, 1500, 2400, 2000), 1);
   assert.equal(big.x, 800 - 24 + 500, 'left edge of the element (800), a margin, half the view');
   assert.equal(big.y, 500 - 24 + 300, 'top edge of the element (500), a margin, half the view');
+  // nothing to put in the middle (the map with nothing selected): centered across, from the top down
+  assert.deepEqual(frame({ width: 3000, height: 3000 }, null, 0.8), { x: 1500, y: 345 }, 'across: the middle; down: the top edge of the drawing, a margin, half the view');
+  assert.deepEqual(frame({ width: 800, height: 300 }, null, 1), { x: 400, y: 150 }, 'a drawing that fits is centered whole');
   // the scale
   assert.equal(sandbox.diagramAutoScale(view, { width: 800, height: 300 }), 1, 'never enlarged');
   assert.equal(sandbox.diagramAutoScale(view, { width: 1500, height: 300 }), 0.8 > (1000 - 48) / 1500 ? 0.8 : (1000 - 48) / 1500);
@@ -699,15 +702,20 @@ test('pin, hide, open and close act on the map, and unfold-all goes one level do
   assert.equal(scene().items.length, closed);
 });
 
-test('the map opens whole: with no element to put in the middle, auto framing is the fit', async () => {
+test('Center keeps a readable size with or without an element to put in the middle; only Fit shows the whole drawing', async () => {
   const { sandbox } = await openFixture();
   const canvas = { parentElement: null, clientWidth: 1000, clientHeight: 600 };
   run(sandbox, "diagramScale = 'auto'");
   vm.runInContext("diagramScene = { hasSvg: true, width: 3000, height: 1800, focal: null }", sandbox);
-  const scale = sandbox.resolveDiagramScale(canvas);
-  assert.ok(scale < 0.8, 'the readable floor does not apply: ' + scale);
+  assert.equal(sandbox.resolveDiagramScale(canvas), 0.8, 'the map with nothing selected: the readable floor, not the fit');
   vm.runInContext("diagramScene = { hasSvg: true, width: 3000, height: 1800, focal: { x: 1500, y: 900, w: 100, h: 50 } }", sandbox);
   assert.equal(sandbox.resolveDiagramScale(canvas), 0.8, 'an element in the middle keeps the floor');
+  run(sandbox, "diagramScale = 'fit'");
+  assert.ok(sandbox.resolveDiagramScale(canvas) < 0.8, 'Fit shows it all');
+  // a map that is readable whole opens whole
+  run(sandbox, "diagramScale = 'auto'");
+  vm.runInContext("diagramScene = { hasSvg: true, width: 1100, height: 500, focal: null }", sandbox);
+  assert.equal(sandbox.resolveDiagramScale(canvas), (1000 - 48) / 1100 > 0.8 ? (1000 - 48) / 1100 : 0.8);
 });
 
 test('the status line of the map speaks of the workspace', async () => {
