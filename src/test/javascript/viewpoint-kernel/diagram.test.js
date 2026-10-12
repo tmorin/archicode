@@ -68,7 +68,7 @@ test('the header of Elements offers Details and the three viewpoints, and the fa
   assert.match(sandbox.renderElementTabsHtml(leaf), /data-tab="overview" aria-pressed="true"/);
 
   const select = sandbox.renderFacetSelectHtml();
-  for (const name of ['rest-only', 'no-smtp', 'quiet-infra', 'keep-untyped']) assert.ok(select.includes('value="' + name + '"'), name);
+  for (const name of ['rest-only', 'no-smtp', 'quiet-infra', 'keep-untyped', 'unaudited', 'audited-only']) assert.ok(select.includes('value="' + name + '"'), name);
   assert.ok(select.includes('<option value="">Facet: none</option>'));
 });
 
@@ -743,4 +743,28 @@ test('the pinned and hidden chips float over the map, with Clear all once there 
   sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
   assert.equal(run(sandbox, 'mapPinned.length + mapHidden.length'), 0);
   assert.ok(!sandbox.renderMapPerspectiveHtml().center.includes('map-chips'));
+});
+
+test('on the map, an element that is no longer drawn is not shown as selected: no name beside the title, no Open in Elements', async () => {
+  const { sandbox, state } = await openFixture();
+  run(sandbox, "currentPerspective = 'map'; mapOpened = null;");
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
+  const removed = [];
+  const canvas = { hasAttribute: (name) => name === 'data-map', innerHTML: '', querySelectorAll: () => [], querySelector: () => null, getAttribute: () => null, closest: () => null, clientWidth: 800, clientHeight: 600, scrollTo() {}, style: {}, classList: { add() {}, remove() {}, toggle() {} } };
+  const document = sandbox.document;
+  const saved = { getElementById: document.getElementById, querySelectorAll: document.querySelectorAll };
+  document.getElementById = (id) => (id === 'diagram-canvas' ? canvas : saved.getElementById.call(document, id));
+  document.querySelectorAll = (selector) => (selector.includes('element-header-subject') ? [{ remove: () => removed.push('el') }, { remove: () => removed.push('el') }] : []);
+  try {
+    const scene = (boxes) => ({ html: '', status: '', legend: '', width: 10, height: 10, viewKey: 'map', boxes });
+    sandbox.showDiagramScene(scene({ 'shop.web': { x: 1, y: 1, w: 1, h: 1 } }));
+    assert.equal(removed.length, 2, 'folded away: the selection is not on the map');
+    removed.length = 0;
+    sandbox.showDiagramScene(scene({ 'shop.web.api': { x: 1, y: 1, w: 1, h: 1 } }));
+    assert.equal(removed.length, 0, 'drawn: still the selection of the map');
+    sandbox.showDiagramScene(scene(undefined));
+    assert.equal(removed.length, 0, 'an error or an empty map says nothing about the selection');
+  } finally {
+    Object.assign(document, saved);
+  }
 });
