@@ -1072,3 +1072,54 @@ test('the Map is where the editor opens: with no route, or one it does not know'
   sandbox.location.hash = '#/elements?ref=shop';
   assert.equal(sandbox.perspectiveIdFromHash(), 'elements', 'a route that names a perspective still wins');
 });
+
+test('Fit is in the URL, Center is how a diagram opens, and a link restores either', async () => {
+  const { sandbox, state } = await openFixture();
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'; diagramScale = 'auto';");
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview', 'Center: nothing to say');
+  run(sandbox, "diagramScale = 'fit';");
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview&frame=fit');
+  run(sandbox, "diagramScale = 1.5;");
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview', 'a zoom of the user\'s own is not a framing worth a link');
+  run(sandbox, "diagramScale = 'fit'; elementTab = 'details';");
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api', 'the page of an element has no diagram');
+  run(sandbox, "currentPerspective = 'map'; mapPinned = ['shop'];");
+  state.selection = { kind: 'none', key: null, mode: 'view' };
+  assert.equal(sandbox.currentRouteHash(), '/map?pin=shop&frame=fit');
+
+  // read back
+  run(sandbox, "diagramScale = 'auto';");
+  sandbox.location.hash = '#/map?pin=shop&frame=fit';
+  sandbox.syncPerspectiveFromHash();
+  assert.equal(run(sandbox, 'diagramScale'), 'fit');
+  sandbox.location.hash = '#/map?pin=shop';
+  sandbox.syncPerspectiveFromHash();
+  assert.equal(run(sandbox, 'diagramScale'), 'auto', 'no frame: Center');
+  run(sandbox, 'diagramScale = 2;');
+  sandbox.syncPerspectiveFromHash();
+  assert.equal(run(sandbox, 'diagramScale'), 2, 'a zoom of the user\'s own is kept');
+});
+
+test('pressing Fit or Center, or moving away from Fit, changes the address bar at once', async () => {
+  const { sandbox, state } = await openFixture();
+  state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
+  run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'; diagramScale = 'auto';");
+  // a canvas that holds a drawing, as far as the framing code reads it
+  const svg = { setAttribute() {}, style: {} };
+  const canvas = { clientWidth: 800, clientHeight: 600, querySelector: (s) => (s === 'svg' ? svg : null), getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) };
+  sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? canvas : null);
+  run(sandbox, "diagramScene = { width: 900, height: 700, hasSvg: true, focal: null };");
+  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=overview';
+
+  sandbox.setDiagramScale('fit');
+  assert.match(sandbox.location.hash, /frame=fit/, 'Fit');
+  sandbox.resetDiagramView();
+  assert.doesNotMatch(sandbox.location.hash, /frame/, 'Center');
+  sandbox.setDiagramScale('fit');
+  sandbox.setDiagramScale(1.5);
+  assert.doesNotMatch(sandbox.location.hash, /frame/, 'a zoom leaves Fit');
+  sandbox.setDiagramScale('fit');
+  sandbox.takeOverDiagramFraming(canvas); // the first move of the drawing
+  assert.doesNotMatch(sandbox.location.hash, /frame/, 'a move leaves Fit');
+});
