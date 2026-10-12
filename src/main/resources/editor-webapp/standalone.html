@@ -108,7 +108,7 @@
   .top-panel > .folder-name { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .help-wrap { position: relative; flex-shrink: 0; }
   .top-actions { display: flex; align-items: center; gap: 1rem; margin-left: auto; min-width: 0; max-width: 100%; }
-  .top-actions > button { flex-shrink: 0; }
+  .top-actions > button, .top-actions > .button-group { flex-shrink: 0; }
   .top-panel .help-button { width: 2rem; padding: 0 !important; border-radius: 50% !important; flex-shrink: 0; font-weight: 600; }
   .top-panel .help-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .help-menu { position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; width: min(21rem, calc(100vw - 2rem)); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
@@ -3785,7 +3785,7 @@ function readViewPropertiesEditorText(viewpoint) {
  * Read and validate the whole Settings form (FLOW-2, all-or-nothing): clears
  * every previous inline error, shows each failing field's own error, and
  * returns `{ valid: false }` if any failed — else `{ valid: true, apply }`,
- * where `apply(settings)` writes every field. Shared by the header Save and
+ * where `apply(settings)` writes every field. Shared by "Save all changes" and
  * by the structural add/remove-facet(-action) buttons, which apply it first
  * so a re-render never discards what the user typed elsewhere.
  */
@@ -3925,16 +3925,71 @@ function renderPerspectiveTabsHtml() {
   return html;
 }
 
+/**
+ * The one Save of the editor. Always rendered (disabled when there is nothing to write) so the bar never shifts as
+ * edits come and go, and the action stays discoverable. It is also enabled by text typed in a form and not applied yet:
+ * clicking it applies the form (`flushPendingDraft`), then writes.
+ */
+function renderSaveAllButtonHtml() {
+  return '<span class="button-group" role="group" aria-label="Changes">' + renderCancelButtonHtml() + renderSaveButtonHtml() + '</span>';
+}
+
+/** Gives up everything not written yet. Disabled, like Save, when there is nothing to give up. */
+function renderCancelButtonHtml() {
+  const count = countUnsavedChanges();
+  if (count === 0 && !draftTyped) return '<button type="button" data-action="cancel-changes" disabled title="No changes to cancel.">Cancel</button>';
+  return '<button type="button" data-action="cancel-changes"' + (saveInFlight ? ' disabled' : '') +
+    ' title="Discards what you typed and every change not written to disk, and reloads the folder.">Cancel</button>';
+}
+
+function renderSaveButtonHtml() {
+  const count = countUnsavedChanges();
+  if (count === 0 && !draftTyped) return '<button type="button" class="btn-primary" data-action="save-all-changes" disabled title="No changes to save.">Save all changes</button>';
+  const busy = saveInFlight ? ' disabled aria-busy="true"' : '';
+  if (count === 0) return '<button type="button" class="btn-primary" data-action="save-all-changes"' + busy + ' title="Applies what you typed, then writes it to disk.">Save all changes</button>';
+  return '<button type="button" class="btn-primary" data-action="save-all-changes"' + busy + ' title="Writes ' + count + ' modified item' + (count === 1 ? '' : 's') +
+    ' to disk (files, pending file removals, workspace.yaml settings). Until then, edits live in memory only.">Save all changes (' + count + ')</button>';
+}
+
+/** True once something was typed in the form on screen and not applied to the model yet. Any redraw starts a form afresh. */
+let draftTyped = false;
+
+/** Redraws the Cancel and Save buttons alone, so typing in a form enables it without redrawing (and losing) the form. */
+function refreshSaveAllButton() {
+  const group = document.querySelector('[aria-label="Changes"]');
+  if (!group || !group.outerHTML) return;
+  const holder = document.createElement('template');
+  holder.innerHTML = renderSaveAllButtonHtml();
+  if (holder.content && holder.content.firstElementChild) group.replaceWith(holder.content.firstElementChild);
+}
+
+/**
+ * Applies what the form on screen holds (an element, the settings or a manifest file) to the model, as the former
+ * per-form Save did. False when it is invalid: the form shows its errors and the save must not go on.
+ */
+function flushPendingDraft() {
+  if (currentPerspective === 'settings') {
+    if (!draftTyped) return true;
+    const draft = readSettingsDraft();
+    if (!draft.valid) return false;
+    commitSettingsEdit(draft.apply);
+    return true;
+  }
+  const sel = AppState.selection;
+  if (sel.kind === 'file') {
+    const text = currentFileEditorText();
+    const mf = AppState.manifestFiles.find((f) => f.relPath === sel.key);
+    if (text === null || !mf || text === mf.rawText) return true;
+    commitFileEdit(sel.key, text);
+    return !(rawYamlEditDraft && rawYamlEditDraft.relPath === sel.key); // a rejected text stays in the editor with its error
+  }
+  if (sel.kind === 'element' && sel.mode === 'edit' && draftTyped) return commitElementWithDraft(sel.key, null);
+  return true;
+}
+
 function renderTopPanelHtml() {
   if (!AppState.folder) return '';
-  const dirty = hasUnsavedChanges();
-  const count = countUnsavedChanges();
-  // Always rendered (disabled when there is nothing to write) so the bar never
-  // shifts as edits come and go, and the action stays discoverable.
-  const saveAll = dirty
-    ? '<button type="button" class="btn-primary" data-action="save-all-changes"' + (saveInFlight ? ' disabled aria-busy="true"' : '') + ' title="Writes ' + count + ' modified item' + (count === 1 ? '' : 's') +
-      ' to disk (files, pending file removals, workspace.yaml settings). Until then, edits live in memory only.">Save all changes (' + count + ')</button>'
-    : '<button type="button" class="btn-primary" data-action="save-all-changes" disabled title="No changes to save.">Save all changes</button>';
+  const saveAll = renderSaveAllButtonHtml();
   return '<header class="top-panel col-span-3 flex items-center px-4">' +
       '<span class="folder-name" title="Browsers do not expose an absolute filesystem path for a picked folder (ASM-1/DEC-11) — this shows the folder\'s own name and its position as the browsing root instead.">' +
         escapeHtml(AppState.folder.name) + '<span class="folder-root-slash">/</span>' +
@@ -4280,7 +4335,7 @@ function renderViewsLabelsEditorHtml(labels) {
  * the viewpoint's whole property object, edited as JSON — nested values
  * need no special case. CodeMirror (JSON mode) when loaded, else the same
  * auto-grow textarea fallback every other plain-text field uses. Committed
- * by the Settings view's single header Save, with everything else.
+ * by "Save all changes", with everything else.
  */
 function renderPropertyRowsHtml(viewpoint, props) {
   const text = JSON.stringify(props || {}, null, 2);
@@ -4369,8 +4424,7 @@ function renderFacetsEditorHtml(customs) {
  * unlike the element view, there is no separate view/edit mode: this
  * function always renders the form, seeded from the live
  * `AppState.workspace.settings` (CTR-4 — same shape `parseSettings`
- * already produces). One sticky header `data-action="save-settings"`
- * button validates and commits the whole form at once (FLOW-2, each field
+ * already produces). "Save all changes" validates and commits the whole form at once (FLOW-2, each field
  * with its own inline-error span). Adding/removing a facet or action is
  * structural, so it keeps its own button — but applies the rest of the
  * form first (see readSettingsDraft), so nothing typed is lost.
@@ -4380,7 +4434,7 @@ function renderSettingsViewHtml() {
   if (!settings) return '<div class="center-placeholder">No settings available.</div>';
   return (
     '<div class="settings-view">' +
-      renderElementHeaderHtml('<h2>Settings</h2>', '<button type="button" class="btn-primary" data-action="save-settings">Save</button>') +
+      renderElementHeaderHtml('<h2>Settings</h2>', '') +
       '<div class="edition-section"><h3>Manifests</h3>' +
         '<div class="field-row"><label class="field-label" for="settings-manifests-paths-input">Paths</label><span class="field-value">' +
           '<textarea id="settings-manifests-paths-input" class="auto-grow-textarea" placeholder="manifests"' + describedBy('manifestsPaths') + '>' + escapeHtml(settings.manifests.paths.join('\n')) + '</textarea>' +
@@ -4472,8 +4526,7 @@ function renderFileViewHtml(relPath) {
       (mf.existedOnDisk
         ? ' title="Re-read this file from disk and discard unsaved changes to it."'
         : ' disabled title="This file has not been written to disk yet, so there is nothing to reload."') +
-      '>Reload</button>' +
-    '<button type="button" class="btn-primary" data-action="commit-file-edit" data-relpath="' + escapeHtml(relPath) + '">Save</button>'
+      '>Reload</button>'
   );
   if (draftError) {
     html += '<div class="error-panel"><strong>Parse error:</strong> ' + escapeHtml(draftError) + '</div>';
@@ -4821,6 +4874,10 @@ function autosizeAllTextareas() {
 
 /** Delegated `input` listener (DEC — mirrors the existing click/pointerdown/dblclick delegation on #app): resizes as the user types. */
 function handleAppInput(e) {
+  if (!draftTyped && e.target.closest && e.target.closest('.element-edition-form, .settings-view, .file-view')) {
+    draftTyped = true;
+    refreshSaveAllButton();
+  }
   if (e.target.id === 'diagram-facet-select') {
     pushDiagramHistory();
     diagramFacet = e.target.value || null;
@@ -4992,7 +5049,7 @@ function renderRelationshipEditRowHtml(reference, rel, index) {
  * The edit-mode sibling of `renderElementViewHtml` (DEC-1/DEC-2): one
  * shared template covering every kind's id/name/description/qualifiers/
  * tags/relationships, plus a `node`-only `applications` block (DEC-2a).
- * One header Save commits the whole form (id/name/description and every
+ * "Save all changes" commits the whole form (id/name/description and every
  * relationship row — readElementDraft). Each add/remove control commits
  * immediately (DEC-5) but applies that draft first, so nothing typed
  * elsewhere in the form is lost to the re-render.
@@ -5013,8 +5070,7 @@ function renderElementEditionFormHtml(reference) {
     (childKindOptionsFor(record).length > 0
       ? '<button type="button" data-action="open-create-child-form" data-ref="' + refAttr + '">Add child</button>'
       : '') +
-    '<button type="button" data-action="toggle-element-edit">Back to view</button>' +
-    '<button type="button" class="btn-primary" data-action="save-element" data-ref="' + refAttr + '">Save</button>'
+    '<button type="button" data-action="toggle-element-edit">Back to view</button>'
   );
 
   // TDD-0010 DEC-4: a pending delete confirmation for this exact element
@@ -5049,7 +5105,7 @@ function renderElementEditionFormHtml(reference) {
     html += '</div>';
   }
 
-  // id / name / description — committed together with the rest of the form by the header Save (see readElementDraft).
+  // id / name / description — committed together with the rest of the form by "Save all changes" (see readElementDraft).
   html += '<div class="edition-section">';
   html += '<div class="field-row"><label class="field-label" for="edit-id-input">Id</label><span class="field-value">' +
             '<input type="text" id="edit-id-input" value="' + escapeHtml(record.id) + '">' +
@@ -7025,6 +7081,33 @@ function renderShellHtml() {
   return html;
 }
 
+/** Gives up everything not written to disk — what is typed in the form and every change in memory — after a confirmation. */
+async function cancelChanges() {
+  if (saveInFlight || !AppState.folder || !AppState.folder.handle) return;
+  const count = countUnsavedChanges();
+  if (count === 0 && !draftTyped) return;
+  const what = count === 0 ? 'what you typed in this form' : count + ' modified item' + (count === 1 ? '' : 's') + (draftTyped ? ' and what you typed in this form' : '');
+  if (!confirm('Cancel and discard ' + what + '?\n\nThe folder is read again from disk. This cannot be undone.')) return;
+  draftTyped = false;
+  rawYamlEditDraft = null;
+  pendingDeleteConfirmation = null;
+  saveStatus = { state: 'idle' };
+  await loadWorkspace(AppState.folder.handle); // from the disk, and back to the element of the URL: the user keeps their place
+}
+
+/** The clicks that replace the form on screen. Without a "Save all changes" first, what was typed in it is lost. */
+const ACTIONS_LEAVING_THE_FORM = new Set([
+  'set-perspective', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
+  'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder'
+]);
+
+/** Asks before throwing away what was typed in a form and not applied. True when the user accepts (the draft is then gone). */
+function confirmDiscardingDraft() {
+  if (!confirm('Attention: what you typed in this form has not been saved.\n\nClick “Save all changes” to keep it. Leave anyway and lose it?')) return false;
+  draftTyped = false;
+  return true;
+}
+
 /**
  * Single delegated click handler for the whole #app subtree — every
  * interactive element declares `data-action` (and the data it needs),
@@ -7040,6 +7123,7 @@ function handleAppClick(e) {
     setHelpOpen(false); // a click anywhere else closes the help — no redraw: the action of this click reads the fields as they are
   }
   if (!target) return;
+  if (draftTyped && ACTIONS_LEAVING_THE_FORM.has(action) && !confirmDiscardingDraft()) return;
   switch (action) {
     case 'toggle-help':
       // e.detail is 0 for a click made with the keyboard (Enter, Space): then the focus goes along
@@ -7240,10 +7324,6 @@ function handleAppClick(e) {
       toggleExpandedKey(target.getAttribute('data-ref'));
       render();
       break;
-    case 'save-element': {
-      commitElementWithDraft(target.getAttribute('data-ref'), null);
-      break;
-    }
     case 'add-qualifier': {
       const reference = target.getAttribute('data-ref');
       const input = document.getElementById('add-qualifier-input');
@@ -7377,12 +7457,6 @@ function handleAppClick(e) {
       });
       break;
     }
-    case 'save-settings': {
-      const draft = readSettingsDraft();
-      if (!draft.valid) break;
-      commitSettingsEdit(draft.apply);
-      break;
-    }
     case 'add-facet': {
       const input = document.getElementById('add-facet-name-input');
       const result = validateFacetName(input ? input.value : '', AppState.workspace.settings.facets.customs);
@@ -7444,13 +7518,6 @@ function handleAppClick(e) {
         customs[facetIndex] = Object.assign({}, facet, { actions: actions });
         settings.facets.customs = customs;
       });
-      break;
-    }
-    case 'commit-file-edit': {
-      const relPath = target.getAttribute('data-relpath');
-      // CodeMirror's own doc, when mounted, is the source of truth — the
-      // plain <textarea> only exists at all when it isn't (window.CM unset).
-      commitFileEdit(relPath, currentFileEditorText() || '');
       break;
     }
     case 'reload-file-edit': {
@@ -7636,11 +7703,15 @@ function handleAppClick(e) {
       pendingDeleteConfirmation = null;
       render();
       break;
+    case 'cancel-changes':
+      cancelChanges();
+      break;
     case 'save-all-changes':
       // TDD-0010 DEC-7/ASM-2: saveAllChanges() is called directly and
       // synchronously from this click handler so its first await
       // (inside ensureWritePermission) is still reached within the
       // triggering user gesture.
+      if (!flushPendingDraft()) break; // an invalid form shows its own errors and nothing is written
       saveAllChanges();
       break;
     default:
@@ -7801,6 +7872,7 @@ function pageTitle() {
 
 function render() {
   const app = document.getElementById('app');
+  draftTyped = !!rawYamlEditDraft; // a redraw gives every form afresh; only a rejected YAML text is kept
 
   // Every branch below replaces #app's innerHTML wholesale, which already
   // discards whatever DOM node a mounted CodeMirror instance lived on — but
