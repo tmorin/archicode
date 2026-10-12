@@ -96,6 +96,19 @@ test('the SVG: clickable boxes, the focal one marked, grouped links explain them
   assert.doesNotMatch(svg, /<script|onclick=/i);
 });
 
+test('the boxes of a diagram say their layer: an application and an environment can share a reference', async () => {
+  const { sandbox, kernel } = await openFixture();
+  for (const [layer, reference] of [['application', 'shop.web.api'], ['technology', sandbox.__state().index.technology.keys().next().value]]) {
+    const result = kernel.compute(sandbox.buildKernelInput('overview', reference, { layer }).input);
+    const svg = sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(result)), result, reference, { map: false, layer }).html;
+    const links = svg.match(/<g [^>]*data-action="goto-element"[^>]*>/g) || [];
+    assert.ok(links.length > 0);
+    assert.ok(links.every((link) => link.includes('data-layer="' + layer + '"')), layer + ': every link carries its layer');
+    const fallback = sandbox.renderDiagramFallbackHtml(result, layer);
+    assert.ok((fallback.match(/data-action="goto-element"/g) || []).length === (fallback.match(/data-layer="/g) || []).length, layer + ': so does the list');
+  }
+});
+
 test('a folded box is drawn as a box that says how much it hides', async () => {
   const { sandbox, kernel } = await openFixture();
   const result = kernel.compute(sandbox.buildKernelInput('deep', 'shop.catalog', { collapsed: ['shop.catalog.service'] }).input);
