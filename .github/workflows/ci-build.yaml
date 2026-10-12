@@ -79,16 +79,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: "Assemble website"
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        # The manual at the root, and the editor next to it at /editor/: the page of the tag, stamped with its release
-        # (a copy: the file of the repository keeps "dev"). Only the latest release is published, as the manual is.
+        # The presentation page at the root, the manual at /docs/ and the editor at /editor/. The presentation page and
+        # the editor are those of the tag, stamped with its release (copies: the files of the repository keep "dev").
+        # Only the latest release is published, as the manual is.
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#archicode-}"
-          mkdir -p target/site/editor
-          cp -r target/generated-docs/. target/site/
-          sed "s|<meta name=\"archicode-version\" content=\"dev\">|<meta name=\"archicode-version\" content=\"${version}\">|" \
-            src/main/resources/editor-webapp/standalone.html > target/site/editor/index.html
+          stamp="s|<meta name=\"archicode-version\" content=\"dev\">|<meta name=\"archicode-version\" content=\"${version}\">|"
+          mkdir -p target/site/docs target/site/editor
+          cp -r target/generated-docs/. target/site/docs/
+          sed "${stamp}" src/site/index.html > target/site/index.html
+          sed "${stamp}" src/main/resources/editor-webapp/standalone.html > target/site/editor/index.html
+          grep -q "content=\"${version}\"" target/site/index.html
           grep -q "content=\"${version}\"" target/site/editor/index.html
+          test -f target/site/docs/index.html
       - name: "Publish website"
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         uses: "peaceiris/actions-gh-pages@v4"

@@ -21,8 +21,8 @@ test('every anchor of the manual that the editor links to is written in the manu
     assert.match(anchor, /^#[a-z-]+$/, key + ' is a plain anchor');
     assert.ok(MANUAL.includes('[[' + anchor.slice(1) + ']]'), key + ': the manual has no [[' + anchor.slice(1) + ']] anchor — a link of the editor would land on nothing');
   }
-  assert.equal(sandbox.docUrl('map'), 'https://tmorin.github.io/archicode/#editor-map');
-  assert.equal(sandbox.docUrl('manual'), 'https://tmorin.github.io/archicode/');
+  assert.equal(sandbox.docUrl('manual'), 'https://tmorin.github.io/archicode/docs/');
+  assert.equal(sandbox.docUrl('map'), 'https://tmorin.github.io/archicode/docs/#editor-map');
 });
 
 test('the manual describes the editor command, and the keys the editor answers to', () => {
@@ -43,7 +43,7 @@ test('the help opens from the top panel, shows the manual and the version, and c
   assert.equal(run(sandbox, 'helpOpen'), true);
   const menu = sandbox.renderHelpMenuHtml();
   assert.match(menu, /role="dialog" aria-label="Help"/);
-  assert.match(menu, /href="https:\/\/tmorin\.github\.io\/archicode\/#editor-keyboard" target="_blank" rel="noopener">Keyboard shortcuts</);
+  assert.match(menu, /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#editor-keyboard" target="_blank" rel="noopener">Keyboard shortcuts</);
   assert.match(menu, /ArchiCode dev · kernel contract 1/, 'the release this page is, here the file of the repository');
   assert.match(menu, /Nothing is uploaded/);
   assert.match(menu, /in the folder you picked/, 'opened on its own, the editor says where the files are');
@@ -67,12 +67,12 @@ test('the version is the one the page was stamped with, and the help says where 
 
 test('some texts of the settings point at the manual', async () => {
   const { sandbox } = await openFixture();
-  assert.match(sandbox.renderHelpHtml('facetsIntro'), /href="https:\/\/tmorin\.github\.io\/archicode\/#facets" target="_blank" rel="noopener">Manual</);
+  assert.match(sandbox.renderHelpHtml('facetsIntro'), /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#facets" target="_blank" rel="noopener">Manual</);
   assert.match(sandbox.renderHelpHtml('manifestsPaths'), /#technical-configuration/);
   assert.doesNotMatch(sandbox.renderHelpHtml('viewsLabels'), /<a /, 'a text the manual does not explain further has no link');
 });
 
 test('the landing page links to the manual', () => {
   const sandbox = createApp();
-  assert.match(sandbox.renderLandingHtml(sandbox.landingScreenConfig()), /href="https:\/\/tmorin\.github\.io\/archicode\/#editor"/);
+  assert.match(sandbox.renderLandingHtml(sandbox.landingScreenConfig()), /href="https:\/\/tmorin\.github\.io\/archicode\/docs\/#editor"/);
 });
