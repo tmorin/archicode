@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 004
-status: proposed
+status: completed
 date: 2026-10-13
 related:
   - docs/wav/wav-003-standalone-workspace-editor/wav-003-standalone-workspace-editor.md
