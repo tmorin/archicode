@@ -6,6 +6,7 @@ import io.morin.archicode.resource.element.application.System;
 import io.morin.archicode.resource.workspace.Formatters;
 import io.morin.archicode.viewpoint.Viewpoint;
 import io.morin.archicode.workspace.Workspace;
+import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -66,12 +67,12 @@ class ItemRendererForCompositeTest {
         val element = solutionBuilder.build();
         element.getQualifiers().add("q1");
         element.getQualifiers().add("q2");
-        val item = ViewpointFixtures.createItemBuilder(element).build();
+        val item = ViewpointFixtures.createItemBuilder(element).stereotypes(List.of("q1", "q2")).build();
         val puml = ItemRenderer.CompositeItemRenderer.builder().build().render(viewpoint, item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-            rectangle sol_id as "sol_id\\n[solution: q1, q2]" <<composite>> <<q1>> <<q2>> {
+            rectangle sol_id as "sol_id\\n[solution: q1, q2]" <<q1>> <<q2>> <<composite>> {
             }
             """,
             puml

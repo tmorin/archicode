@@ -17,7 +17,7 @@ rectangle EcommercePlatform <<solution>> <<atomic>> [
 EcommercePlatform
 [solution]
 ]
-person User <<atomic>> <<person>> [
+person User <<person>> <<atomic>> [
 User
 [person]
 ]

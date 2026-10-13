@@ -7,6 +7,7 @@ import io.morin.archicode.resource.element.application.System;
 import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 import lombok.*;
@@ -32,6 +33,13 @@ public class Item implements Comparable<Item> {
 
     @Builder.Default
     Set<Item> children = new HashSet<>();
+
+    /**
+     * What the element is drawn with, as the viewpoint kernel tells it: its qualifiers, then the words of its
+     * {@code rendering-stereotypes} tag. The kind of the item and the way it is drawn are not in it.
+     */
+    @Builder.Default
+    List<String> stereotypes = List.of();
 
     public Stream<Item> stream() {
         return Stream.concat(Stream.of(this), this.children.stream().flatMap(Item::stream));

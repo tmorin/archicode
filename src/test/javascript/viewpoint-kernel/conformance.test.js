@@ -83,6 +83,63 @@ test('every generated view is reproduced, for the workspace and for each facet',
   assert.ok(checked >= 5 * 40, 'only ' + checked + ' views were compared');
 });
 
+/** The stereotypes the CLI draws each box with, from what its generated .puml says of the box, without the ones of the way it is drawn (the kind and `atomic`, or `composite`). */
+function pumlStereotypes(text) {
+  const boxes = new Map();
+  for (const line of text.split(/\r?\n/)) {
+    let m = line.match(new RegExp('^(?:' + SHAPES + ') (\\S+) ((?:<<.+?>> ?)+) \\[$'));
+    let drawnWith = 2;
+    if (!m) {
+      m = line.match(new RegExp('^(?:' + SHAPES + ') (\\S+) as ".*" ((?:<<.+?>> ?)+) \\{$'));
+      drawnWith = 1;
+    }
+    if (m) boxes.set(m[1], Array.from(m[2].matchAll(/<<(.+?)>>/g), (s) => s[1]).slice(0, -drawnWith));
+  }
+  return boxes;
+}
+
+test('the stereotypes of every box are the ones the CLI draws it with: the qualifiers, then each word of rendering-stereotypes', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  const sets = [{ dir: 'views', facet: null }].concat(
+    state.workspace.settings.facets.customs.map((facet) => ({ dir: 'views-' + facet.name, facet }))
+  );
+  const seen = new Set();
+  const problems = [];
+  let boxes = 0;
+  for (const set of sets) {
+    for (const layer of ['application', 'technology']) {
+      const dir = path.join(FIXTURE, set.dir, 'plantuml', layer);
+      for (const ref of state.index[layer].keys()) {
+        for (const viewpoint of ['overview', 'detailed', 'deep']) {
+          const file = path.join(dir, ref.replace(/\./g, '_') + '-' + viewpoint + '.puml');
+          if (!fs.existsSync(file)) continue;
+          const gold = pumlStereotypes(fs.readFileSync(file, 'utf8'));
+          const out = kernel.compute(sandbox.buildKernelInput(viewpoint, ref, { layer, facet: set.facet }).input);
+          for (const item of out.items) {
+            if (!gold.has(item.id)) { problems.push(file + ': no box ' + item.id); continue; }
+            boxes++;
+            const mine = Array.from(item.stereotypes); // from another realm: copied
+            if (JSON.stringify(mine) !== JSON.stringify(gold.get(item.id))) problems.push(file + ' ' + item.id + ': the kernel says ' + JSON.stringify(mine) + ', the CLI draws ' + JSON.stringify(gold.get(item.id)));
+            mine.forEach((s) => seen.add(s));
+          }
+        }
+      }
+    }
+  }
+  assert.deepEqual(problems, []);
+  assert.ok(boxes >= 5 * 100, 'only ' + boxes + ' boxes were compared');
+  for (const expected of ['external', 'changed', 'Spring Boot', 'PostgreSQL']) assert.ok(seen.has(expected), expected + ' is among the stereotypes compared');
+  assert.ok(!seen.has('external changed'), 'the tag is a list, not one stereotype');
+});
+
+test('the tag is split into stereotypes by the editor too, from the elements it sends', async () => {
+  const { sandbox, kernel } = await openFixture();
+  const out = kernel.compute(sandbox.buildKernelInput('overview', 'shop.catalog.service').input);
+  const stereotypesOf = (id) => Array.from(out.items.find((i) => i.id === id).stereotypes);
+  assert.deepEqual(stereotypesOf('mailer'), ['external', 'changed'], 'one word per stereotype');
+  assert.deepEqual(stereotypesOf('shop.catalog.service'), ['Quarkus'], 'the qualifiers, whole');
+});
+
 test('the output states its contract version and says what each link stands for', async () => {
   const { sandbox, kernel } = await openFixture();
   const out = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api').input);

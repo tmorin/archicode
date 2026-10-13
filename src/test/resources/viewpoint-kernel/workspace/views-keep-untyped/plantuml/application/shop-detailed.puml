@@ -13,7 +13,7 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-rectangle mailer <<system>> <<external>> <<atomic>> [
+rectangle mailer <<external>> <<changed>> <<system>> <<atomic>> [
 **Mail Provider**
 ""[system]""
 
@@ -26,7 +26,7 @@ rectangle shop.catalog <<system>> <<atomic>> [
 
 What is for sale.
 ]
-rectangle shop.payments <<system>> <<external>> <<atomic>> [
+rectangle shop.payments <<external>> <<system>> <<atomic>> [
 **Payment Provider**
 ""[system]""
 
