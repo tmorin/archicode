@@ -30,6 +30,8 @@ function makeDirHandle(absPath) {
   return {
     kind: 'directory',
     name: path.basename(absPath),
+    __path: absPath,
+    async isSameEntry(other) { return !!other && other.__path === absPath; },
     async queryPermission() { return 'granted'; },
     async requestPermission() { return 'granted'; },
     async getFileHandle(name) {
@@ -47,6 +49,183 @@ function makeDirHandle(absPath) {
         const p = path.join(absPath, name);
         yield [name, fs.statSync(p).isDirectory() ? makeDirHandle(p) : makeFileHandle(p)];
       }
+    }
+  };
+}
+
+function domError(name, message) {
+  const e = new Error(message || name);
+  e.name = name;
+  return e;
+}
+
+/**
+ * An in-memory IndexedDB with the semantics the editor relies on: `open` with a version (`upgradeneeded` when the
+ * database is new or older, `VersionError` when it is newer), transactions that commit when no request is left and keep
+ * nothing when they abort (a request error not prevented aborts them, so does a throw in a handler), requests refused
+ * once their transaction has committed (as a browser's auto-commit across an `await` does), a `DataCloneError` thrown
+ * synchronously by `put` for a value that cannot be cloned, and get / put / delete / getAll / getAllKeys. Every event
+ * fires later, as in a browser. Options: `failOpen` (an error name), `failGetAll`, `failPut(key, value)` (an
+ * asynchronous `QuotaExceededError`). A handle carrying `unclonable: true` cannot be cloned. `seed` and `dump` set and
+ * read a database from a test; `calls` lists what the page asked.
+ */
+function fakeIndexedDB(options = {}) {
+  const databases = new Map(); // name -> { version, stores: Map<storeName, Map<key, value>> }
+  const calls = [];
+  const later = (fn) => setTimeout(fn, 0);
+  // a browser stores a clone: the record is a new object, the handle in it an equivalent handle (here, the same one)
+  const copy = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.assign({}, v) : v);
+  const unclonable = (v) => !!v && typeof v === 'object' && (v.unclonable === true || Object.values(v).some((x) => x && x.unclonable === true));
+  const sortedKeys = (map) => Array.from(map.keys()).sort();
+
+  function connection(db) {
+    let closed = false;
+    const conn = {
+      get version() { return db.version; },
+      objectStoreNames: { contains: (s) => db.stores.has(s) },
+      createObjectStore(s) { db.stores.set(s, new Map()); return {}; },
+      onversionchange: null,
+      close() { closed = true; },
+      get closed() { return closed; },
+      transaction(storeName, mode = 'readonly') {
+        if (closed) throw domError('InvalidStateError', 'the connection is closed');
+        if (!db.stores.has(storeName)) throw domError('NotFoundError', 'no object store ' + storeName);
+        calls.push({ op: 'transaction', store: storeName, mode });
+        return transaction(db.stores.get(storeName), storeName, mode);
+      }
+    };
+    return conn;
+  }
+
+  function transaction(live, storeName, mode) {
+    const staged = new Map(live); // what this transaction reads: the store as it was, plus its own writes
+    const writes = []; // replayed on the store at the commit, so two transactions never overwrite each other's keys
+    const queue = [];
+    let done = false;
+    let scheduled = false;
+    const tx = { mode, error: null, oncomplete: null, onerror: null, onabort: null, objectStore, abort() { if (done) throw domError('InvalidStateError'); end(null); } };
+    function end(error) {
+      done = true;
+      tx.error = error;
+      for (const { req } of queue.splice(0)) req.error = domError('AbortError');
+      later(() => {
+        if (error && tx.onerror) tx.onerror({ target: tx });
+        if (tx.onabort) tx.onabort({ target: tx });
+      });
+    }
+    function pump() {
+      if (scheduled || done) return;
+      scheduled = true;
+      later(() => {
+        scheduled = false;
+        if (done) return;
+        if (queue.length === 0) { // nothing left to do: the transaction commits
+          done = true;
+          for (const w of writes) w(live);
+          if (tx.oncomplete) tx.oncomplete({ target: tx });
+          return;
+        }
+        const { req, op } = queue.shift();
+        let result;
+        try { result = op(); } catch (e) {
+          req.error = e;
+          let prevented = false;
+          try { if (req.onerror) req.onerror({ target: req, preventDefault() { prevented = true; } }); } catch (thrown) { prevented = false; }
+          if (!prevented) { end(e); return; }
+          pump();
+          return;
+        }
+        req.result = result;
+        try { if (req.onsuccess) req.onsuccess({ target: req }); } catch (e) { end(e); return; }
+        pump();
+      });
+    }
+    function request(op) {
+      if (done) throw domError('TransactionInactiveError', 'the transaction has finished');
+      const req = { result: undefined, error: null, onsuccess: null, onerror: null };
+      queue.push({ req, op });
+      pump();
+      return req;
+    }
+    function writable() { if (mode !== 'readwrite') throw domError('ReadOnlyError'); }
+    function objectStore(s) {
+      if (s !== storeName) throw domError('NotFoundError', 'not in this transaction: ' + s);
+      return {
+        get: (key) => request(() => copy(staged.get(key))),
+        getAll: () => request(() => {
+          if (options.failGetAll) throw domError('DataError', 'a stored value could not be read');
+          return sortedKeys(staged).map((k) => copy(staged.get(k)));
+        }),
+        getAllKeys: () => request(() => sortedKeys(staged)),
+        put(value, key) {
+          writable();
+          if (done) throw domError('TransactionInactiveError', 'the transaction has finished');
+          if (unclonable(value)) throw domError('DataCloneError', 'the value cannot be cloned');
+          const stored = copy(value);
+          calls.push({ op: 'put', key });
+          return request(() => {
+            if (options.failPut && options.failPut(key, value)) throw domError('QuotaExceededError', 'no room left');
+            staged.set(key, stored);
+            writes.push((m) => m.set(key, stored));
+            return key;
+          });
+        },
+        delete(key) {
+          writable();
+          calls.push({ op: 'delete', key });
+          return request(() => {
+            staged.delete(key);
+            writes.push((m) => m.delete(key));
+          });
+        }
+      };
+    }
+    pump(); // a transaction that is given no request commits too
+    return tx;
+  }
+
+  return {
+    calls,
+    open(name, version) {
+      calls.push({ op: 'open', name, version });
+      const req = { result: null, error: null, onsuccess: null, onerror: null, onupgradeneeded: null, onblocked: null };
+      const fail = (error) => { req.error = error; if (req.onerror) req.onerror({ target: req }); };
+      later(() => {
+        if (options.failOpen) { fail(domError(options.failOpen)); return; }
+        let db = databases.get(name);
+        const wanted = version === undefined ? (db ? db.version : 1) : version;
+        if (db && wanted < db.version) { fail(domError('VersionError', 'the database is newer')); return; }
+        if (!db || wanted > db.version) {
+          const oldVersion = db ? db.version : 0;
+          const before = db ? new Map(Array.from(db.stores, ([k, v]) => [k, new Map(v)])) : null;
+          if (!db) { db = { version: wanted, stores: new Map() }; databases.set(name, db); }
+          db.version = wanted;
+          req.result = connection(db);
+          try {
+            if (req.onupgradeneeded) req.onupgradeneeded({ target: req, oldVersion, newVersion: wanted });
+          } catch (e) { // the upgrade aborts: the database is left as it was
+            if (before) { db.version = oldVersion; db.stores = before; } else databases.delete(name);
+            fail(domError('AbortError', 'the upgrade failed'));
+            return;
+          }
+        } else {
+          req.result = connection(db);
+        }
+        if (req.onsuccess) req.onsuccess({ target: req });
+      });
+      return req;
+    },
+    /** Puts a database in place, as an earlier page would have left it: `{ storeName: { key: value } }`. */
+    seed(name, version, stores) {
+      databases.set(name, { version, stores: new Map(Object.entries(stores).map(([s, records]) => [s, new Map(Object.entries(records))])) });
+    },
+    /** The database as stored: `{ version, stores: { storeName: { key: value } } }`, or null. */
+    dump(name) {
+      const db = databases.get(name);
+      if (!db) return null;
+      const stores = {};
+      for (const [s, records] of db.stores) stores[s] = Object.fromEntries(Array.from(records, ([k, v]) => [k, copy(v)]));
+      return { version: db.version, stores };
     }
   };
 }
@@ -106,7 +285,8 @@ function createApp(options = {}) {
     fetch: options.fetch,
     File: options.serverToken ? class { constructor(parts, name, options = {}) { this.parts = parts; this.name = name; this.lastModified = options.lastModified; } async text() { return this.parts.join(''); } } : undefined,
     Blob,
-    indexedDB: {},
+    // the remembered folders: an in-memory IndexedDB of its own per page, unless the test gives one (to share it, or seed it)
+    indexedDB: options.indexedDB === undefined ? fakeIndexedDB() : options.indexedDB,
     setTimeout,
     atob, TextEncoder, TextDecoder, URLSearchParams
   };
@@ -130,4 +310,4 @@ async function openFixture() {
   return { sandbox, state, kernel };
 }
 
-module.exports = { FIXTURE, createApp, makeDirHandle, openFixture };
+module.exports = { FIXTURE, createApp, fakeIndexedDB, makeDirHandle, openFixture };
