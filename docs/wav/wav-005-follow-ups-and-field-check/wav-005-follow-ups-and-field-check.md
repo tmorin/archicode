@@ -127,7 +127,7 @@ wave_manifest:
       slug: editor-field-check
       phase: P3
       depends_on: [W-2, W-3, W-4]
-      run: null
+      run: '0026'
       delegation: standard
       likely_paths:
         - 'docs/wav/wav-005-follow-ups-and-field-check/run/**'
@@ -159,7 +159,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-5 | — | `editor-field-check` | W-2, W-3, W-4 | See the real editor on a copy of a real workspace, light and dark, and fix what is clearly broken | `single-document`, evidence run, tmorin/archicode#8 (the Visual check and Dangling-reference items). Copy `<real-workspace>` outside the repository (never write there), build the CLI of this branch, run `archicode editor serve` on the copy and drive the page in the built-in browser. Check: top bar wrapping, theme (light, dark, system) including the code editor, the help menu and manual links, styled boxes and badges, the inspection panel beside a wide Map and the link panel, the centre header at several widths, the workspace name. Dangling-reference fix: make a relationship point at nothing in the copy, run the fix from the page, and compare the manifest file before and after. Findings are recorded; a clear regression of wave 004 or 005 is fixed with a test, anything else is written up as a finding for a follow-up issue (not filed by the run). The folder list and the IndexedDB migration cannot be exercised in served mode and are out of reach (see Non-Goals). | The run document: each check with what was observed and how, screenshots described, each finding fixed (with its test) or open |
+| W-5 | 0026 | `editor-field-check` | W-2, W-3, W-4 | See the real editor on a copy of a real workspace, light and dark, and fix what is clearly broken | `single-document`, evidence run, tmorin/archicode#8 (the Visual check and Dangling-reference items). Copy `<real-workspace>` outside the repository (never write there), build the CLI of this branch, run `archicode editor serve` on the copy and drive the page in the built-in browser. Check: top bar wrapping, theme (light, dark, system) including the code editor, the help menu and manual links, styled boxes and badges, the inspection panel beside a wide Map and the link panel, the centre header at several widths, the workspace name. Dangling-reference fix: make a relationship point at nothing in the copy, run the fix from the page, and compare the manifest file before and after. Findings are recorded; a clear regression of wave 004 or 005 is fixed with a test, anything else is written up as a finding for a follow-up issue (not filed by the run). The folder list and the IndexedDB migration cannot be exercised in served mode and are out of reach (see Non-Goals). | The run document: each check with what was observed and how, screenshots described, each finding fixed (with its test) or open |
 
 **Gate:** the checks listed under P3 in the manifest hold.
 
