@@ -286,7 +286,7 @@ const contrast = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort(
 test('the text of the badges is readable (4.5:1) in the light and in the dark scheme', () => {
   const css = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
   const light = css.match(/:root \{([^}]*)\}/)[1];
-  const dark = css.match(/prefers-color-scheme: dark\) \{\s*:root \{([^}]*)\}/)[1];
+  const dark = css.match(/prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([^}]*)\}/)[1];
   const vars = (block) => Object.fromEntries(Array.from(block.matchAll(/--([\w-]+):\s*(#[0-9a-f]{6})/gi), (m) => [m[1], m[2]]));
   const scheme = { light: vars(light), dark: Object.assign(vars(light), vars(dark)) };
   scheme.light = vars(light);

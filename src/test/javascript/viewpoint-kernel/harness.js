@@ -63,6 +63,7 @@ function createApp(options = {}) {
   const pathname = options.pathname || '/';
   const windowListeners = {};
   const documentListeners = {};
+  const rootAttributes = {}; // the attributes of the root element (data-theme), as the page sets them
   const sandbox = {
     console: { log() {}, info() {}, debug() {}, warn: console.warn, error: console.error }, // the editor logs its state
     window: { addEventListener(type, fn) { (windowListeners[type] = windowListeners[type] || []).push(fn); } },
@@ -84,6 +85,11 @@ function createApp(options = {}) {
       pushState() {}
     },
     document: {
+      documentElement: {
+        getAttribute: (name) => (name in rootAttributes ? rootAttributes[name] : null),
+        setAttribute: (name, value) => { rootAttributes[name] = String(value); },
+        removeAttribute: (name) => { delete rootAttributes[name]; }
+      },
       getElementById(id) {
         if (id === 'app') return appEl;
         if (id === 'viewpoint-kernel-wasm') return { textContent: wasm[1] };
@@ -96,6 +102,7 @@ function createApp(options = {}) {
       },
       addEventListener(type, fn) { (documentListeners[type] = documentListeners[type] || []).push(fn); }
     },
+    localStorage: options.localStorage, // absent: the page runs as if the browser refused its storage
     fetch: options.fetch,
     File: options.serverToken ? class { constructor(parts, name, options = {}) { this.parts = parts; this.name = name; this.lastModified = options.lastModified; } async text() { return this.parts.join(''); } } : undefined,
     Blob,
