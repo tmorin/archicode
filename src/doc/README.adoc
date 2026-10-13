@@ -536,6 +536,25 @@ content:
     rendering-stereotypes: "external changed"
 ----
 
+*In the editor.* The editor draws a box with the style of the stereotypes it is drawn with: `background-color` is the fill, `line-color`, `line-thickness` and `line-style` the outline, and `round-corner`, `font-color`, `font-style` and `shadowing` the rest.
+A styled stereotype is also written on its box as a text badge with its name, so that a colour is never the only carrier.
+The same badge follows the name of the element in the *Elements* tree and in the tree of the *Map*, and the key under the diagram shows the badge of each styled stereotype drawn.
+The badges are part of the SVG and PNG exported from a diagram, while the key is not; a badge is not the dot that marks an element as modified and not yet saved.
+
+For the same stereotype, `by-tags` wins over `by-qualifiers`.
+When a box has several styled stereotypes, a later one overrides an earlier one property by property: with `rendering-stereotypes: "external changed"`, the fill of `changed` wins, and the properties it does not set come from `external`.
+The order is that of the stereotypes of the box, its qualifiers first and then the words of the tag; the command line defines no order for this case.
+
+Colours are read as `#rgb`, `#rrggbb`, `rgb(r, g, b)`, `transparent` or a CSS colour name such as `lightgray`; a value the editor cannot read is ignored.
+Numbers are whole numbers.
+
+The fill is the colour written in `styles`, in both themes, as in the diagrams of the command line; `styles` has no separate dark colour.
+The editor chooses the colour of the text so that it reads on that fill, black or white with a contrast ratio of at least 4.5: the `font-color` of the style is kept when it reads well, and replaced otherwise.
+Without a `background-color`, the box and its text keep the colours of the theme, and `font-color` is not used.
+
+Compared with the command line, `line-style` and `round-corner` are an approximation of what PlantUML draws.
+The editor styles only the stereotypes of an element, its qualifiers and the words of `rendering-stereotypes`: it does not use the kind of the element, nor `atomic` and `composite`, as keys, and `styles.atomic` and `styles.composite` are not drawn.
+
 [[technical-configuration]]
 === Technical Configuration
 
@@ -601,6 +620,8 @@ The *Elements* perspective is the tree of the workspace on the left, and the sel
 
 - *Details*: the fields, qualifiers, tags and relationships of the element, with *Edit* to change them, and *Delete* (the relationships of other elements that pointed at it are listed first, so that none is left dangling by surprise).
 - *Overview*, *Detailed* and *Deep*: the viewpoints of the same names, drawn live from the model, as the command line generates them. *Detailed* is for an element that can contain others. Clicking a box in a diagram selects that element.
+
+The badges and colours of styled stereotypes, on the boxes and in the tree, are explained in <<stereotypes-and-styles>>.
 
 Changes stay in memory, with a mark on the tree for each modified element, until *Save all changes* writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one.
 
