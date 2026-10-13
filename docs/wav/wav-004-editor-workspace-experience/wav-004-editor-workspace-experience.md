@@ -160,7 +160,7 @@ wave_manifest:
       slug: inspection-panel-elements
       phase: P3
       depends_on: [W-2, W-6]
-      run: null
+      run: '0018'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -214,7 +214,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-7 | — | `inspection-panel-elements` | W-2, W-6 | Read the data of the selected element in a right-hand panel without leaving the view | `TDD+pln`. A right panel (the shell already supports resizable right and bottom panels, none is used today) shown when an element is selected in the Map, and in the diagram tabs of Elements where the TDD finds it useful; it reuses `renderElementPropertiesHtml` and the badges of W-6. Click semantics unchanged. Nothing rendered with nothing selected. | Node tests: panel content for an element, absent without selection, resize handle and saved width |
+| W-7 | 0018 | `inspection-panel-elements` | W-2, W-6 | Read the data of the selected element in a right-hand panel without leaving the view | `TDD+pln`. A right panel (the shell already supports resizable right and bottom panels, none is used today) shown when an element is selected in the Map, and in the diagram tabs of Elements where the TDD finds it useful; it reuses `renderElementPropertiesHtml` and the badges of W-6. Click semantics unchanged. Nothing rendered with nothing selected. | Node tests: panel content for an element, absent without selection, resize handle and saved width |
 | W-8 | — | `inspection-panel-links` | W-7 | Select a link and read its relationships and their tags | `TDD+pln`. A new selection kind `link`; a click on a diagram link selects it; the panel lists each declared relationship with label, qualifiers and tags (for instance `tcp-port`, `doc-exchange`). | Node tests: selecting a link, the listed relationships and tags, selection cleared on navigation |
 
 **Gate:** the checks listed under P3 in the manifest hold.
