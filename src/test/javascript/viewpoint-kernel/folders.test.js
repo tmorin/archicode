@@ -544,7 +544,7 @@ test('the card is drawn before the permissions are known, all asked at once, the
     return lists[lists.length - 1];
   };
   const loading = p.sandbox.tryAutoReopen();
-  await new Promise((r) => setTimeout(r, 30));
+  for (let i = 0; i < 200 && (html(p.sandbox).match(/<li class="landing-folder">/g) || []).length < 12; i++) await new Promise((r) => setTimeout(r, 10)); // the card is drawn: as soon as it is, not after a fixed wait that a busy machine overruns
   assert.equal(p.sandbox.landingScreenConfig().kind, 'first-launch');
   assert.equal((html(p.sandbox).match(/<li class="landing-folder">/g) || []).length, 12, 'the list is on screen');
   assert.doesNotMatch(html(p.sandbox), /landing-folder-state/, 'no state yet, and none waited for');

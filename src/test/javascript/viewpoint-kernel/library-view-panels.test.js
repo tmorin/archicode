@@ -7,150 +7,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
-const { openFixture } = require('./harness');
+const { run, plain, NONE, fakeLayout, startPage, addView, openView, click, boxesOf, linksOf } = require('./library-page');
 
-const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
-const plain = (value) => JSON.parse(JSON.stringify(value));
-const NONE = { kind: 'none', key: null, mode: 'view' };
-
-function fakeLayout(graph) {
-  const place = (node, x) => Object.assign({}, node, {
-    x, y: 0, width: node.width || 400, height: node.height || 200,
-    children: (node.children || []).map((child, i) => place(child, 10 + i * 20))
-  });
-  return Object.assign(place(graph, 0), {
-    width: 900, height: 600,
-    edges: graph.edges.map((edge) => Object.assign({}, edge, {
-      sections: [{ startPoint: { x: 1, y: 1 }, bendPoints: [{ x: 5, y: 1 }], endPoint: { x: 9, y: 9 } }],
-      labels: (edge.labels || []).map((label) => Object.assign({ x: 3, y: 3 }, label))
-    }))
-  });
-}
-
-/** A DOM element just big enough for the marks the page puts on the drawing (classes and attributes). */
-function fakeMark(attributes, classes) {
-  const classSet = new Set(classes);
-  const attrs = Object.assign({}, attributes);
-  return {
-    attrs,
-    classes: classSet,
-    classList: { add: (c) => classSet.add(c), remove: (c) => classSet.delete(c), toggle: (c, on) => (on ? classSet.add(c) : classSet.delete(c)), contains: (c) => classSet.has(c) },
-    getAttribute: (name) => (name in attrs ? attrs[name] : null),
-    setAttribute: (name, value) => { attrs[name] = String(value); }
-  };
-}
-
-async function startPage() {
-  const { sandbox, state, kernel } = await openFixture();
-  sandbox.window.showDirectoryPicker = function showDirectoryPicker() {};
-  sandbox.__elk = { layout: async (graph) => fakeLayout(graph) };
-  run(sandbox, 'loadElk = async () => __elk;');
-  const app = sandbox.document.getElementById('app');
-  const originalGet = sandbox.document.getElementById;
-  const originalQuery = sandbox.document.querySelector;
-  let html = '';
-  let canvas = null;
-  let marks = null;
-  Object.defineProperty(app, 'innerHTML', { get: () => html, set: (value) => { html = value; canvas = null; marks = null; }, configurable: true });
-  /** The nodes, links and captions of the scene on the canvas, as the elements `showDiagramScene` marks. */
-  const marksOf = () => {
-    if (marks) return marks;
-    const scene = run(sandbox, 'diagramScene');
-    marks = { nodes: [], links: [], labels: [] };
-    if (!scene || !scene.html) return marks;
-    for (const m of scene.html.matchAll(/<g class="(dg-node[^"]*)"([^>]*)>/g)) marks.nodes.push(fakeMark(Object.fromEntries(Array.from(m[2].matchAll(/([\w-]+)="([^"]*)"/g), (a) => [a[1], a[2]])), m[1].split(' ')));
-    for (const m of scene.html.matchAll(/<g class="(dg-link)"([^>]*)>/g)) marks.links.push(fakeMark(Object.fromEntries(Array.from(m[2].matchAll(/([\w-]+)="([^"]*)"/g), (a) => [a[1], a[2]])), m[1].split(' ')));
-    for (const m of scene.html.matchAll(/<text class="(dg-label)"([^>]*)>/g)) marks.labels.push(fakeMark(Object.fromEntries(Array.from(m[2].matchAll(/([\w-]+)="([^"]*)"/g), (a) => [a[1], a[2]])), m[1].split(' ')));
-    return marks;
-  };
-  const canvasOf = () => {
-    if (canvas) return canvas;
-    const tag = /<div class="diagram-canvas" id="diagram-canvas"([^>]*)>/.exec(html);
-    if (!tag) return null;
-    const attributes = {};
-    for (const m of tag[1].matchAll(/([\w-]+)(?:="([^"]*)")?/g)) attributes[m[1]] = m[2] === undefined ? '' : m[2];
-    canvas = {
-      attributes, innerHTML: '', clientWidth: 800, clientHeight: 600, parentElement: null,
-      classList: { add() {}, remove() {}, contains: () => false },
-      getAttribute: (name) => (name in attributes ? attributes[name] : null),
-      hasAttribute: (name) => name in attributes,
-      querySelector: () => null,
-      querySelectorAll: (selector) => {
-        const found = marksOf();
-        if (selector === '.dg-selected') return found.nodes.filter((el) => el.classes.has('dg-selected'));
-        if (selector === '.dg-node') return found.nodes;
-        if (selector === '.dg-link, .dg-label') return found.links.concat(found.labels);
-        if (selector === '.dg-link') return found.links;
-        return [];
-      },
-      contains: () => false, focus() {},
-      getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 })
-    };
-    return canvas;
-  };
-  sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? canvasOf() : originalGet(id));
-  // the panel of the page, as `refreshInspection` and the scroll after a selection find it
-  const panel = { removed: false, scrolled: 0 };
-  sandbox.document.querySelector = (selector) => {
-    if (selector === '.library-selection') return html.includes('class="library-selection"') ? { remove() { panel.removed = true; }, scrollIntoView() { panel.scrolled++; } } : null;
-    if (selector === '.inspection') return html.includes('class="inspection') ? { set outerHTML(value) { panel.refreshed = value; } } : null;
-    return originalQuery ? originalQuery.call(sandbox.document, selector) : null;
-  };
-  const page = {
-    sandbox, state, kernel, panel,
-    html: () => html,
-    canvas: canvasOf,
-    marks: marksOf,
-    resetMarks() { marks = null; },
-    async drawn() {
-      for (let i = 0; i < 400; i++) {
-        const c = canvasOf();
-        if (c && c.innerHTML !== '') return c;
-        await new Promise((resolve) => setImmediate(resolve));
-      }
-      throw new Error('the diagram was never put on the canvas');
-    },
-    async show() { sandbox.render(); return canvasOf() ? page.drawn() : null; },
-    scene: () => run(sandbox, 'diagramScene'),
-    async go(perspective) { sandbox.setPerspective(perspective); return page.drawn().catch(() => null); },
-    /** The panel on the right, as the page returns it. */
-    right: () => sandbox.renderLibraryPerspectiveHtml().right,
-    center: () => sandbox.renderLibraryPerspectiveHtml().center
-  };
-  return page;
-}
-
-function addView(page, content) {
-  return page.sandbox.createManifestEntry('view', Object.assign({ layer: 'application' }, content));
-}
-
-async function openView(page, view) {
-  run(page.sandbox, "libraryTab = 'views'; selectedViewId = " + JSON.stringify(view.id) + ";");
-  page.sandbox.setPerspective('library');
-  return page.drawn().catch(() => null);
-}
-
-/** A click on an element carrying these attributes (what a browser gives the delegated handler). */
-function click(sandbox, attributes) {
-  const target = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
-  sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
-}
-
-/** The attributes of every box of the drawing that selects (the ones with an action), as written in the markup. */
-function boxesOf(page) {
-  return Array.from(page.scene().html.matchAll(/<g class="dg-node[^>]*? data-id="([^"]*)" data-action="goto-element" data-ref="([^"]*)" data-layer="([^"]*)"/g), (m) => ({ 'data-action': 'goto-element', 'data-id': m[1], 'data-ref': m[2], 'data-layer': m[3] }));
-}
-
-/** The attributes of every link of the drawing, as written in the markup. */
-function linksOf(page) {
-  return Array.from(page.scene().html.matchAll(/<g class="dg-link" data-from="([^"]*)" data-to="([^"]*)"( data-nth="[^"]*")? data-layer="([^"]*)" data-action="select-link"/g), (m) => {
-    const attributes = { 'data-action': 'select-link', 'data-from': m[1], 'data-to': m[2], 'data-layer': m[4] };
-    if (m[3]) attributes['data-nth'] = /"([^"]*)"/.exec(m[3])[1];
-    return attributes;
-  });
-}
 
 const pick = (page) => plain(run(page.sandbox, 'libraryPick.selection'));
 
@@ -169,10 +28,17 @@ test('the panel on the right lists the attributes of an Elements view: what it d
   await openView(page, view);
   const right = page.right();
   assert.ok(right, 'there is a right-hand region');
-  const text = right.replace(/<[^>]+>/g, '|').replace(/\|+/g, '|');
-  for (const expected of ['Draws', 'Viewpoint|detailed', 'Layer|application', 'element|shop', 'facet|rest-only', 'hide-unlinked|true', 'labels|false', 'qualifiers|false', 'descriptions|true', 'wrap|true', 'Kept in', 'Shown in']) {
-    assert.ok(text.includes(expected), expected + ' is listed: ' + text);
-  }
+  assert.match(right, /<dt>Draws<\/dt>/);
+  assert.match(right, /<option value="detailed" selected>Detailed<\/option>/, 'the viewpoint');
+  assert.match(right, /<option value="application" selected>Application<\/option>/, 'the layer');
+  assert.match(right, /id="view-edit-element"[^>]* value="shop"/, 'the element');
+  assert.match(right, /<option value="rest-only" selected>rest-only<\/option>/, 'the facet');
+  assert.match(right, /id="view-edit-hide-unlinked" data-view-field="hide-unlinked" checked/);
+  assert.doesNotMatch(right, /id="view-edit-show-labels"[^>]* checked/);
+  assert.doesNotMatch(right, /id="view-edit-show-qualifiers"[^>]* checked/);
+  assert.match(right, /id="view-edit-show-descriptions"[^>]* checked/);
+  assert.match(right, /id="view-edit-show-wrap"[^>]* checked/);
+  assert.ok(right.includes('<dt>Kept in</dt>') && right.includes('<h3>Shown in</h3>'));
   assert.match(right, /<code>manifests\/view\.full\.yaml<\/code>/);
   assert.match(right, /data-action="library-go-story" data-story="tour" data-step="0"/);
   assert.match(right, /data-action="library-go-story" data-story="tour" data-step="1"/);
@@ -184,8 +50,12 @@ test('the panel lists the pinned, hidden and opened elements of a Map view', asy
   const page = await startPage();
   const view = addView(page, { id: 'scope', name: 'Scope', viewpoint: 'map', properties: { pinned: ['shop.web'], hidden: ['customer'], opened: ['shop'] } });
   await openView(page, view);
-  const text = page.right().replace(/<[^>]+>/g, '|').replace(/\|+/g, '|');
-  for (const expected of ['Viewpoint|map', 'pinned|shop.web', 'hidden|customer', 'opened|shop', 'Kept in']) assert.ok(text.includes(expected), expected + ': ' + text);
+  const right = page.right();
+  assert.match(right, /<option value="map" selected>Map<\/option>/);
+  for (const [list, reference] of [['pinned', 'shop.web'], ['hidden', 'customer'], ['opened', 'shop']]) {
+    assert.ok(right.includes('data-action="view-list-remove" data-list="' + list + '" data-ref="' + reference + '"'), list + ' lists ' + reference);
+  }
+  assert.ok(right.includes('<dt>Kept in</dt>'));
 });
 
 test('the panel is the shell\'s right panel: a handle to resize it, the width remembered, and a name', async () => {
