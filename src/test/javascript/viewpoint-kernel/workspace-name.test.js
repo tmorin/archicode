@@ -160,10 +160,10 @@ test('the top bar shows the name in place of the folder, and the folder is its t
   assert.ok(!html.includes('>archi<'), 'the folder name is not displayed');
 });
 
-test('without a name the top bar is unchanged: the folder name, its slash and the explanation', async () => {
+test('without a name the top bar is unchanged: the folder name and its slash', async () => {
   const { sandbox } = await open('  views:\n    path: out\n', 'archi');
   const html = sandbox.renderTopPanelHtml();
-  assert.match(html, /<span class="folder-name" title="Browsers do not expose an absolute filesystem path[^"]*">archi<span class="folder-root-slash">\/<\/span><\/span>/);
+  assert.match(html, /<span class="folder-name" title="Folder: archi \(a browser does not tell the full path of a folder\)">archi<span class="folder-root-slash">\/<\/span><\/span>/);
   assert.doesNotMatch(html, /workspace-name/);
   const blank = await open('  name: "  "\n', 'archi');
   assert.equal(blank.sandbox.renderTopPanelHtml(), html, 'a blank name is no name');
@@ -202,4 +202,24 @@ test('"Opening “x”…" says the name stored with the folder, and the folder 
   assert.equal(sandbox.openingMessage('archi', ''), 'Opening “archi”…', 'no name, the folder');
   assert.equal(sandbox.openingMessage('archi'), 'Opening “archi”…', 'a folder never opened, or the served one');
   assert.equal(run(sandbox, 'typeof lastWorkspaceName'), 'undefined', 'the memory of the last name rendered is gone');
+});
+
+test('a save keeps the comments of workspace.yaml and the lines it did not touch', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archicode-keep-'));
+  fs.mkdirSync(path.join(dir, 'manifests'));
+  fs.writeFileSync(path.join(dir, 'manifests', 'app.s1.yaml'), MANIFEST);
+  const original = '# my workspace\napplication:\n  elements: []\nsettings:\n  views:\n    path: "out"   # where the views go\n';
+  fs.writeFileSync(path.join(dir, 'workspace.yaml'), original);
+  const sandbox = createApp();
+  await sandbox.loadWorkspace(writableFolder(dir));
+  const state = sandbox.__state();
+  state.folder = { handle: writableFolder(dir), name: 'f' };
+  state.workspace.settings.name = 'Shop';
+  await sandbox.writeWorkspaceYaml();
+  const text = saved(dir);
+  assert.ok(text.startsWith('# my workspace\napplication:\n'));
+  assert.ok(text.includes('    path: "out"   # where the views go\n'));
+  assert.equal(plain(sandbox.parseYaml(text)).settings.name, 'Shop');
+  await sandbox.writeWorkspaceYaml();
+  assert.equal(saved(dir), text, 'a second save with nothing changed writes the same text');
 });
