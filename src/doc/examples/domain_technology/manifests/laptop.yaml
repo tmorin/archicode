@@ -5,8 +5,8 @@ header:
 content:
   id: "Laptop"
   elements:
-    - kind: "Node"
+    - kind: "node"
       id: "OperatingSystem"
       elements:
-        - kind: "Node"
+        - kind: "node"
           id: "TerminalSession"
