@@ -478,7 +478,7 @@ test('the tree of the Map is a tree for the keyboard and the screen reader, with
   assert.match(html, /data-node="application:customer"[^>]*>/);
   assert.ok(html.indexOf('data-node="application:shop"') < html.indexOf('data-node="application:mailer"') && html.indexOf('data-node="application:mailer"') < html.indexOf('data-node="application:customer"'), 'the solution, then the system, then the person');
   assert.match(html.match(/<div class="tree-node-row[^>]*data-node="application:shop"[^>]*>/)[0], /tabindex="0"/, 'the first row by default');
-  assert.match(html, /aria-label="Mail Provider, hidden"/, 'the state is read, not only drawn');
+  assert.match(html, /aria-label="Mail Provider, external, hidden"/, 'the state is read, not only drawn, after the stereotype the workspace styled');
   assert.match(html, /aria-label="Catalog, pinned"/);
   assert.ok((html.match(/<button type="button" tabindex="-1" class="map-scope-btn"/g) || []).length >= 3, 'the buttons are out of the tab order: the keyboard has the row');
   run(sandbox, "navActiveKey = 'application:shop.web';");
@@ -542,7 +542,7 @@ test('the tree of Elements is a tree too: short kinds with their title, a dot fo
   assert.match(row('shop.web'), /aria-expanded="true"/);
   assert.match(row('shop.web.frontend'), /style="--level:3" aria-level="3"/, 'the depth is the padding of the row, not a margin around the branch');
   assert.doesNotMatch(row('customer'), /aria-expanded/, 'a leaf has nothing to expand');
-  assert.match(row('shop.payments'), /aria-label="Payment Provider, modified"/);
+  assert.match(row('shop.payments'), /aria-label="Payment Provider, external, modified"/);
   assert.match(html, /<span class="tree-node-kind" title="person">PRS<\/span>/, 'the kind is short, its title says it in full');
   assert.match(html, /class="tree-node-label" title="Payment Provider"/, 'a name that is cut can still be read');
   assert.match(html, /class="modified-dot"[^>]*title="This element has unsaved changes"/);
