@@ -241,7 +241,7 @@ test('the viewpoints of an element have no fold button and no Fold all / Unfold 
   assert.ok(out.items.some((i) => i.expandable), 'the kernel still says what could be opened; the editor does not offer it');
 });
 
-test('Elements shows the page of the element on Details and its diagram on the other tabs, with no panel but the tree', async () => {
+test('Elements shows the page of the element on Details and its diagram on the other tabs; the inspection panel is beside the diagrams only', async () => {
   const { sandbox, state } = await openFixture();
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'details'; diagramMaximized = false;");
@@ -257,7 +257,7 @@ test('Elements shows the page of the element on Details and its diagram on the o
   const deep = sandbox.renderElementsPerspectiveHtml();
   assert.ok(deep.center.includes('id="diagram-canvas"') && deep.center.includes('diagram-facet-select'));
   assert.match(deep.center, /data-tab="deep" aria-pressed="true"/);
-  assert.ok(deep.right === null && deep.bottom === null);
+  assert.ok(deep.right.includes('data-inspection-ref="shop.web.api"') && deep.bottom === null, 'the data of the element sits beside its diagram, not at the bottom');
 
   // editing is done on the Details, whatever tab was open
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'edit' };
@@ -423,7 +423,7 @@ test('the Map perspective draws the workspace without any element selected, with
   state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
   const picked = sandbox.renderMapPerspectiveHtml();
   assert.ok(picked.center.includes('data-action="open-as-diagram" data-ref="shop.catalog"'));
-  assert.ok(picked.right === null && picked.bottom === null && html.right === null && html.bottom === null, 'the map has the room to itself: no panel on the right or at the bottom');
+  assert.ok(picked.right.includes('data-inspection-ref="shop.catalog"') && picked.bottom === null && html.right === null && html.bottom === null, 'the selected element is read in the panel on the right; with nothing selected the map has its whole width');
 });
 
 test('the tree of the Map only folds and unfolds, and says what each element is for the map', async () => {
