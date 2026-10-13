@@ -609,6 +609,9 @@ There are two ways to open it:
 - *Served by the command line.* `archicode editor serve` serves the editor and opens the folder of the `workspace.yaml` in it, with nothing to pick. It works in any browser. See <<serve-the-editor>>.
 - *From the published page.* The page published next to this documentation, at `/editor/` of the same site, asks for a folder. That needs the File System Access API, which Chrome, Edge, Brave and Opera have and Firefox and Safari do not: with one of those, use the command above instead.
 
+[[editor-folders]]
+The published page remembers, in the browser, every folder it opened, with the name its workspace gives itself (see <<editor-workspace-name>>). When the page opens again, it opens the last folder directly if the browser still lets it read it; otherwise it asks for a click (*Reopen*), because a browser only gives that permission back on a click. *Close folder*, at the top right, closes the folder and shows the list of the remembered folders: the closed one stays in it, and the next visit does not open it by itself. When no folder is open, the list shows each folder by the name of its workspace, with the name of the folder below it when they differ, most recent first: a click on one opens it (the browser may ask for the permission again), *Remove from the list* makes the browser forget it, and nothing is deleted on disk. A folder picked again is not added twice. A folder that cannot be opened (the permission refused, the folder moved or deleted) stays in the list, which says why, until it is removed. Served by `archicode editor serve`, the editor has one folder, the one of the server: there is no list and no *Close folder*.
+
 The editor loads `elkjs` (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.
 
 The editor reads and writes YAML manifests (`.yaml` and `.yml`) only. The command line also reads TOML and JSON manifests: the editor does not, so what such a file declares is missing from its trees and diagrams, and relationships that point at it show as dangling. It says so, in *Files* (which names the files) and above the trees of *Elements* (which counts them).
@@ -694,7 +697,7 @@ The facets of the workspace (see <<facets>>) are in a list in the header of the 
 
 A workspace can have a name, the optional `name` key of its `settings` (see <<workspace>>). *Settings* has a section, *Workspace*, with a *Name* field. Unlike the theme below, the name is a setting of the workspace: it is written to `workspace.yaml`, so it counts as a change to save and lights *Save all changes*.
 
-When the workspace has a name, the editor shows it at the top left of the window, in place of the name of the folder, in the title of the page and in the "Opening" messages when it already knows it; the name of the folder is then the tooltip of the name. Without a name, or with a blank one, the editor shows the name of the folder, as before, and an emptied *Name* is left out of the file.
+When the workspace has a name, the editor shows it at the top left of the window, in place of the name of the folder, in the title of the page, in the <<editor-folders,list of remembered folders>> and in the "Opening" messages, which use the name the workspace had when its folder was last opened; the name of the folder is then the tooltip of the name. Without a name, or with a blank one, the editor shows the name of the folder, as before, and an emptied *Name* is left out of the file.
 
 [[editor-theme]]
 === Theme

@@ -194,18 +194,12 @@ test('the title of the page is the editor then the name, or the folder when ther
   assert.equal(unnamed.sandbox.pageTitle(), 'ArchiCode Editor Typed', 'follows the settings as they are edited');
 });
 
-test('"Opening “x”…" says the name of a workspace this page has already read, and the folder otherwise', async () => {
-  const { sandbox, state } = await open('  name: Shop\n', 'archi');
-  run(sandbox, 'render()'); // what the page remembers of the workspace it shows
-  assert.equal(sandbox.openingMessage('archi'), 'Opening “Shop”…');
-  assert.equal(sandbox.openingMessage('other'), 'Opening “other”…', 'another folder is not the one that was read');
-
-  state.workspace = null; // the folder is closed, or its workspace.yaml could not be read: the memory stays
-  assert.equal(sandbox.openingMessage('archi'), 'Opening “Shop”…');
-
-  const fresh = createApp();
-  assert.equal(fresh.openingMessage('archi'), 'Opening “archi”…', 'a page that has read nothing');
-  const unnamed = await open(null, 'archi');
-  run(unnamed.sandbox, 'render()');
-  assert.equal(unnamed.sandbox.openingMessage('archi'), 'Opening “archi”…', 'no name, the folder');
+test('"Opening “x”…" says the name stored with the folder, and the folder otherwise', () => {
+  // the name comes from the remembered folder (run 0020), not from what this page rendered last: folders.test.js checks
+  // that each opening passes it
+  const sandbox = createApp();
+  assert.equal(sandbox.openingMessage('archi', 'Shop'), 'Opening “Shop”…');
+  assert.equal(sandbox.openingMessage('archi', ''), 'Opening “archi”…', 'no name, the folder');
+  assert.equal(sandbox.openingMessage('archi'), 'Opening “archi”…', 'a folder never opened, or the served one');
+  assert.equal(run(sandbox, 'typeof lastWorkspaceName'), 'undefined', 'the memory of the last name rendered is gone');
 });
