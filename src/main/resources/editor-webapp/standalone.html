@@ -182,6 +182,11 @@
   .tree-toggle { width: 1rem; flex-shrink: 0; text-align: center; color: var(--muted); user-select: none; }
   .tree-toggle-empty { visibility: hidden; }
   .tree-node-kind { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 0.3rem; flex-shrink: 0; }
+  /* the badge of a stereotype the workspace styled: its name is the carrier, the colours (--st-*) repeat the style; also in the legend of a diagram */
+  .stereotype-badge { flex-shrink: 0; max-width: 6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.65rem; font-weight: 600; line-height: 1.35; padding: 0 0.4rem; border-radius: 999px;
+    background: var(--st-fill, transparent); border: 1px solid var(--st-stroke, var(--border)); color: var(--st-text, var(--muted)); }
+  .tree-node-row.quiet .stereotype-badge, .map-scope-row.off-map .stereotype-badge, .map-scope-row.left-out .stereotype-badge { opacity: 0.45; }
+  .map-scope-row .stereotype-badge { font-size: 0.6rem; padding: 0 0.3rem; max-width: 4.5rem; }
   .tree-node-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* No vertical padding here on purpose — every view supplies its own top
@@ -306,6 +311,7 @@
   .diagram-status > span:first-child { flex: 1 1 8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dg-legend { flex: none; display: inline-flex; gap: 0.35rem; align-items: center; }
   .dg-legend svg { overflow: visible; }
+  .dg-legend-stereotypes { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; }
   .diagram-note { margin: 0 0 0.5rem; color: var(--muted); }
   .diagram-fallback { margin: 0; padding-left: 1.25rem; }
   .viewpoint-switch { display: inline-flex; gap: 0.5rem; flex: none; margin-left: 0.5rem; }
@@ -386,6 +392,17 @@
   .dg-box { fill: var(--bg); stroke: var(--border); stroke-width: 1.25; }
   .dg-stack { fill: var(--panel-bg); }
   .dg-group { fill: none; stroke: var(--muted); stroke-opacity: 0.55; stroke-width: 1.5; }
+  /* What the workspace styled (`styles`): the look of a box arrives as --st-* custom properties on its group, the usual look being the
+     fallback. These rules come before the focal and selected ones, which tie with them in specificity and must win. The colour of the text
+     is computed from the fill, so it reads the same in both themes. */
+  .dg-styled > .dg-box { fill: var(--st-fill, var(--bg)); stroke: var(--st-stroke, var(--border)); stroke-width: var(--st-width, 1.25px); stroke-dasharray: var(--st-dash, none); }
+  .dg-styled > .dg-stack { fill: var(--st-fill, var(--panel-bg)); }
+  .dg-styled > .dg-group { fill: var(--st-fill, none); stroke: var(--st-stroke, var(--muted)); stroke-opacity: var(--st-stroke-opacity, 0.55); stroke-width: var(--st-width, 1.5px); stroke-dasharray: var(--st-dash, none); pointer-events: visibleStroke; }
+  .dg-styled .dg-title { fill: var(--st-text, var(--fg)); font-weight: var(--st-weight, 600); font-style: var(--st-fstyle, normal); }
+  .dg-styled .dg-sub, .dg-styled .dg-desc { fill: var(--st-text, var(--muted)); font-weight: var(--st-weight, 400); font-style: var(--st-fstyle, normal); }
+  .dg-shadow > .dg-box, .dg-shadow > .dg-group { filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.4)); }
+  .dg-badge rect { fill: var(--st-fill, var(--panel-bg)); stroke: var(--st-stroke, var(--border)); stroke-width: 1; }
+  .dg-badge text { fill: var(--st-text, var(--fg)); font-size: 10.5px; font-weight: 600; pointer-events: none; }
   .dg-focal .dg-box, .dg-focal .dg-group, .dg-selected .dg-box, .dg-selected .dg-group { stroke: var(--accent); stroke-width: 2.5; }
   .dg-ghost .dg-box { stroke: var(--danger); stroke-dasharray: 5 4; }
   .dg-ghost .dg-title { fill: var(--danger); }
@@ -401,7 +418,7 @@
   .dg-header, .dg-hit { fill: transparent; pointer-events: all; }
   .dg-hit-edge { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; }
   .dg-fold-bg { fill: transparent; stroke: transparent; stroke-width: 1; }
-  .dg-fold-glyph { fill: none; stroke: var(--fg); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  .dg-fold-glyph { fill: none; stroke: var(--st-text, var(--fg)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
   .dg-fold:hover .dg-fold-bg { fill: var(--accent); stroke: var(--accent); }
   .dg-fold:hover .dg-fold-glyph { stroke: var(--on-accent); }
   .dg-node, .dg-fold { cursor: pointer; }
@@ -4353,7 +4370,8 @@ function renderTreeNodeHtml(record, level) {
   const modified = AppState.dirtyReferences.has(key);
   const ref = escapeHtml(record.reference);
   const groupId = treeGroupId('tree-group-', record.layer || 'application', record.reference);
-  const spoken = label + (modified ? ', modified' : '');
+  const styled = styledStereotypesOf(stereotypesOfRecord(record)); // what the workspace styled: shown as badges, said in the label
+  const spoken = label + (styled.length ? ', ' + styled.join(', ') : '') + (modified ? ', modified' : '');
 
   let html = '<div class="tree-node">';
   html += '<div class="tree-node-row' + (isActive ? ' active' : '') + '" role="treeitem" style="--level:' + level + '" aria-level="' + level + '" aria-selected="' + isActive + '"' +
@@ -4366,7 +4384,7 @@ function renderTreeNodeHtml(record, level) {
     html += '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
   }
   html += '<span class="tree-node-kind" title="' + escapeHtml(record.kind) + '">' + escapeHtml(kindAbbreviation(record.kind)) + '</span>';
-  html += '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
+  html += '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' + stereotypeBadgesHtml(styled);
   if (modified) {
     html += '<span class="modified-dot" aria-hidden="true" title="This element has unsaved changes"></span>';
   }
@@ -6302,6 +6320,195 @@ function diagramLinkText(link) {
   return parts.join(' ');
 }
 
+// ---- Stereotypes and styles ----
+// The `styles` of the workspace give a stereotype its look (`by-tags` and `by-qualifiers`: the key is the stereotype, as
+// in the PlantUML the command line generates). What a box is drawn with comes from the kernel (`item.stereotypes`).
+
+/** The CSS colour names as `name:rrggbb`, from a browser's own list (`grey` is read as `gray`). */
+const CSS_COLOR_TABLE =
+  'aliceblue:f0f8ff antiquewhite:faebd7 aqua:00ffff aquamarine:7fffd4 azure:f0ffff beige:f5f5dc bisque:ffe4c4 ' +
+  'black:000000 blanchedalmond:ffebcd blue:0000ff blueviolet:8a2be2 brown:a52a2a burlywood:deb887 cadetblue:5f9ea0 ' +
+  'chartreuse:7fff00 chocolate:d2691e coral:ff7f50 cornflowerblue:6495ed cornsilk:fff8dc crimson:dc143c cyan:00ffff ' +
+  'darkblue:00008b darkcyan:008b8b darkgoldenrod:b8860b darkgray:a9a9a9 darkgreen:006400 darkkhaki:bdb76b ' +
+  'darkmagenta:8b008b darkolivegreen:556b2f darkorange:ff8c00 darkorchid:9932cc darkred:8b0000 darksalmon:e9967a ' +
+  'darkseagreen:8fbc8f darkslateblue:483d8b darkslategray:2f4f4f darkturquoise:00ced1 darkviolet:9400d3 ' +
+  'deeppink:ff1493 deepskyblue:00bfff dimgray:696969 dodgerblue:1e90ff firebrick:b22222 floralwhite:fffaf0 ' +
+  'forestgreen:228b22 fuchsia:ff00ff gainsboro:dcdcdc ghostwhite:f8f8ff gold:ffd700 goldenrod:daa520 gray:808080 ' +
+  'green:008000 greenyellow:adff2f honeydew:f0fff0 hotpink:ff69b4 indianred:cd5c5c indigo:4b0082 ivory:fffff0 ' +
+  'khaki:f0e68c lavender:e6e6fa lavenderblush:fff0f5 lawngreen:7cfc00 lemonchiffon:fffacd lightblue:add8e6 ' +
+  'lightcoral:f08080 lightcyan:e0ffff lightgoldenrodyellow:fafad2 lightgray:d3d3d3 lightgreen:90ee90 ' +
+  'lightpink:ffb6c1 lightsalmon:ffa07a lightseagreen:20b2aa lightskyblue:87cefa lightslategray:778899 ' +
+  'lightsteelblue:b0c4de lightyellow:ffffe0 lime:00ff00 limegreen:32cd32 linen:faf0e6 magenta:ff00ff maroon:800000 ' +
+  'mediumaquamarine:66cdaa mediumblue:0000cd mediumorchid:ba55d3 mediumpurple:9370db mediumseagreen:3cb371 ' +
+  'mediumslateblue:7b68ee mediumspringgreen:00fa9a mediumturquoise:48d1cc mediumvioletred:c71585 ' +
+  'midnightblue:191970 mintcream:f5fffa mistyrose:ffe4e1 moccasin:ffe4b5 navajowhite:ffdead navy:000080 ' +
+  'oldlace:fdf5e6 olive:808000 olivedrab:6b8e23 orange:ffa500 orangered:ff4500 orchid:da70d6 palegoldenrod:eee8aa ' +
+  'palegreen:98fb98 paleturquoise:afeeee palevioletred:db7093 papayawhip:ffefd5 peachpuff:ffdab9 peru:cd853f ' +
+  'pink:ffc0cb plum:dda0dd powderblue:b0e0e6 purple:800080 rebeccapurple:663399 red:ff0000 rosybrown:bc8f8f ' +
+  'royalblue:4169e1 saddlebrown:8b4513 salmon:fa8072 sandybrown:f4a460 seagreen:2e8b57 seashell:fff5ee ' +
+  'sienna:a0522d silver:c0c0c0 skyblue:87ceeb slateblue:6a5acd slategray:708090 snow:fffafa springgreen:00ff7f ' +
+  'steelblue:4682b4 tan:d2b48c teal:008080 thistle:d8bfd8 tomato:ff6347 turquoise:40e0d0 violet:ee82ee wheat:f5deb3 ' +
+  'white:ffffff whitesmoke:f5f5f5 yellow:ffff00 yellowgreen:9acd32 ' +
+  '';
+let cssColorByName = null;
+
+/** A colour of the workspace as {r, g, b, a} (a is 0 for `transparent`, else 1): `#rgb`, `#rrggbb`, `rgb(r, g, b)` or a CSS name (also after a `#`, as PlantUML reads it). Anything else is null: it is ignored, never written into the page. */
+function parseCssColor(value) {
+  if (typeof value !== 'string') return null;
+  const text = value.trim().toLowerCase().replace(/grey/g, 'gray');
+  let match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(text);
+  if (match) {
+    const hex = match[1].length === 3 ? match[1].replace(/./g, '$&$&') : match[1];
+    return { r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16), a: 1 };
+  }
+  match = /^rgb\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*\)$/.exec(text);
+  if (match) {
+    const [r, g, b] = [match[1], match[2], match[3]].map(Number);
+    return r <= 255 && g <= 255 && b <= 255 ? { r, g, b, a: 1 } : null;
+  }
+  const name = text.replace(/^#/, '');
+  if (name === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
+  if (!cssColorByName) {
+    cssColorByName = Object.create(null);
+    for (const entry of CSS_COLOR_TABLE.split(' ')) { if (entry) cssColorByName[entry.slice(0, entry.indexOf(':'))] = entry.slice(entry.indexOf(':') + 1); }
+  }
+  const hex = cssColorByName[name];
+  return hex ? { r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16), a: 1 } : null;
+}
+
+/** A parsed colour as CSS: `#rrggbb`, or `transparent`. */
+function cssColorOf(color) {
+  if (color.a === 0) return 'transparent';
+  return '#' + [color.r, color.g, color.b].map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+
+/** WCAG 2 contrast ratio of two parsed colours, from 1 to 21. */
+function contrastRatio(a, b) {
+  const luminance = (c) => {
+    const [r, g, bl] = [c.r, c.g, c.b].map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (high + 0.05) / (low + 0.05);
+}
+
+/** The least contrast between a text and its fill that is still comfortable to read (WCAG AA). */
+const STYLE_MIN_CONTRAST = 4.5;
+const STYLE_TEXT_DARK = { r: 0, g: 0, b: 0, a: 1 };
+const STYLE_TEXT_LIGHT = { r: 255, g: 255, b: 255, a: 1 };
+
+/**
+ * The colour of a text on a fill, whatever the theme of the page: the author's `font-color` when it reads well on the
+ * fill, otherwise the better of black and white. The fill is the author's own colour in every theme, so the text
+ * is what adapts.
+ */
+function readableTextColor(fill, preferred) {
+  if (preferred && preferred.a !== 0 && contrastRatio(preferred, fill) >= STYLE_MIN_CONTRAST) return preferred;
+  return contrastRatio(STYLE_TEXT_DARK, fill) >= contrastRatio(STYLE_TEXT_LIGHT, fill) ? STYLE_TEXT_DARK : STYLE_TEXT_LIGHT;
+}
+
+const STYLE_KEYS = ['background-color', 'line-color', 'line-style', 'line-thickness', 'round-corner', 'font-color', 'font-style', 'shadowing'];
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** The style the workspace gives a stereotype, or null when `styles` does not mention it (a key with no property is a style with none). `by-tags` overrides `by-qualifiers` for the same key. */
+function stereotypeStyleOf(name) {
+  const styles = AppState.workspace && AppState.workspace.styles;
+  if (!isPlainObject(styles)) return null;
+  let declared = false;
+  const merged = {};
+  for (const kind of ['by-qualifiers', 'by-tags']) {
+    const map = styles[kind];
+    if (!isPlainObject(map) || !Object.prototype.hasOwnProperty.call(map, name)) continue;
+    declared = true;
+    const entry = map[name];
+    if (!isPlainObject(entry)) continue;
+    for (const key of STYLE_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(entry, key) && entry[key] !== null && entry[key] !== undefined && String(entry[key]).trim() !== '') merged[key] = entry[key];
+    }
+  }
+  return declared ? merged : null;
+}
+
+/** A whole number of a style (`3`, or `"3"`), 0 to `max`; null for anything else. */
+function styleWholeNumber(value, max) {
+  const n = typeof value === 'number' ? value : (typeof value === 'string' && /^\d{1,4}$/.test(value.trim()) ? Number(value) : NaN);
+  return Number.isInteger(n) && n >= 0 ? Math.min(n, max) : null;
+}
+
+/**
+ * What the editor draws of a style. `vars` are CSS custom properties read by the stylesheet (and by the export), with
+ * the usual look as the fallback; `rx` is the corner radius of the box (PlantUML draws a `round-corner` of N as a
+ * radius of N / 2); `shadow` is a drop shadow. Only parsed values come out: nothing the author wrote is passed on as is.
+ */
+function styleLookOf(style) {
+  const vars = {};
+  let rx = null;
+  const source = style || {};
+  const fill = parseCssColor(source['background-color']);
+  if (fill) vars['--st-fill'] = cssColorOf(fill);
+  const stroke = parseCssColor(source['line-color']);
+  if (stroke) { vars['--st-stroke'] = cssColorOf(stroke); vars['--st-stroke-opacity'] = '1'; }
+  const thickness = styleWholeNumber(source['line-thickness'], 20);
+  if (thickness !== null) vars['--st-width'] = thickness + 'px';
+  const dash = styleWholeNumber(source['line-style'], 50);
+  if (dash !== null) vars['--st-dash'] = dash > 0 ? dash + ' ' + dash : 'none';
+  const round = styleWholeNumber(source['round-corner'], 100);
+  if (round !== null) rx = round / 2;
+  // the text: against the fill the author chose; without a fill the box is the theme's and so is its text
+  if (fill && fill.a !== 0) vars['--st-text'] = cssColorOf(readableTextColor(fill, parseCssColor(source['font-color'])));
+  const fontStyle = typeof source['font-style'] === 'string' ? source['font-style'].toLowerCase().split(/[\s,;]+/) : [];
+  if (fontStyle.includes('bold')) vars['--st-weight'] = '700';
+  else if (fontStyle.includes('plain') || fontStyle.includes('normal')) vars['--st-weight'] = '400';
+  if (fontStyle.includes('italic')) vars['--st-fstyle'] = 'italic';
+  const shadow = source.shadowing === true || String(source.shadowing).toLowerCase() === 'true';
+  return { vars, rx, shadow, empty: !Object.keys(vars).length && rx === null && !shadow };
+}
+
+/** The styled stereotypes of a list (the ones `styles` mentions), in the order of the list. */
+function styledStereotypesOf(names) {
+  return (Array.isArray(names) ? names : []).filter((name) => stereotypeStyleOf(name) !== null);
+}
+
+/** The look of a box drawn with these stereotypes: the style of each styled one, a later stereotype overriding an earlier one property by property. */
+function stereotypeLookOf(names) {
+  const styled = styledStereotypesOf(names);
+  const merged = {};
+  for (const name of styled) Object.assign(merged, stereotypeStyleOf(name));
+  return Object.assign(styleLookOf(merged), { styled });
+}
+
+/** The custom properties of a badge: the look of its own stereotype only (`initial` where it says nothing, so that it does not take the one of the box it sits in). */
+function stereotypeBadgeVarsOf(name) {
+  const vars = styleLookOf(stereotypeStyleOf(name)).vars;
+  const own = {};
+  for (const key of ['--st-fill', '--st-stroke', '--st-text']) own[key] = key in vars ? vars[key] : 'initial';
+  return own;
+}
+
+/** Custom properties as the text of a `style` attribute (every value is one this file generated). */
+function styleVarsText(vars) {
+  return Object.keys(vars).map((key) => key + ':' + vars[key]).join(';');
+}
+
+/** The stereotypes of an element as the kernel tells them (the qualifiers, then the words of `rendering-stereotypes`, once each): the trees have no view to ask, so this mirrors the kernel and a test compares the two. */
+function stereotypesOfRecord(record) {
+  const out = [];
+  const add = (stereotype) => { if (stereotype && !out.includes(stereotype)) out.push(stereotype); };
+  kernelStringsOf(record.qualifiers).forEach(add);
+  const tags = kernelTagsOf(record.tags);
+  if (Object.prototype.hasOwnProperty.call(tags, 'rendering-stereotypes')) tags['rendering-stereotypes'].split(/\s+/).forEach(add);
+  return out;
+}
+
+/** The text badges of the styled stereotypes in a tree row or a legend: the name is the carrier, the colours only repeat the style. */
+function stereotypeBadgesHtml(names) {
+  return styledStereotypesOf(names).map((name) =>
+    '<span class="stereotype-badge" style="' + escapeHtml(styleVarsText(stereotypeBadgeVarsOf(name))) + '" title="Stereotype: ' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>').join('');
+}
+
 /** What a diagram box says about its element. `show` (qualifiers) puts the qualifiers of the element in the line of its kind, as the command line does. */
 function diagramItemText(item, show) {
   if (item.ghost) {
@@ -6309,18 +6516,26 @@ function diagramItemText(item, show) {
       title: item.reference,
       sub: '[unknown element]',
       description: '',
-      tooltip: 'There is no element “' + item.reference + '”, but “' + item.owner + '” has a relationship to it. Click to open “' + item.owner + '” and fix it.'
+      tooltip: 'There is no element “' + item.reference + '”, but “' + item.owner + '” has a relationship to it. Click to open “' + item.owner + '” and fix it.',
+      badges: [],
+      look: styleLookOf(null)
     };
   }
   const record = findElementRecord(item.reference);
   const hidden = item.collapsed ? ' · ' + item.hidden + ' hidden' : '';
   const qualifiers = record && Array.isArray(record.qualifiers) ? record.qualifiers.filter((q) => typeof q === 'string' && q) : [];
   const description = record && record.description ? String(record.description).replace(/\s+/g, ' ').trim() : '';
+  // what the kernel says the box is drawn with, and what the workspace styled of it
+  const stereotypes = Array.isArray(item.stereotypes) ? item.stereotypes : [];
+  const look = stereotypeLookOf(stereotypes);
   return {
+    badges: look.styled,
+    look,
     title: record ? (record.name || record.id) : item.reference,
     sub: (record ? '[' + record.kind + (show && show.qualifiers && qualifiers.length ? ': ' + qualifiers.join(', ') : '') + ']' : '') + hidden,
     description,
-    tooltip: item.reference + (qualifiers.length ? ' [' + qualifiers.join(', ') + ']' : '') + (record && record.description ? ' — ' + record.description : '')
+    tooltip: item.reference + (qualifiers.length ? ' [' + qualifiers.join(', ') + ']' : '') + (record && record.description ? ' — ' + record.description : '') +
+      (look.styled.length ? '\nStereotypes: ' + stereotypes.join(', ') : '')
   };
 }
 
@@ -6382,6 +6597,52 @@ function diagramWrapText(text, max, maxLines, measure) {
   return lines;
 }
 
+/** The badges of the styled stereotypes of a box: pills 16px high, 10.5px bold text, with 7px at each side; a name is cut at 16 characters. */
+const DIAGRAM_BADGE_HEIGHT = 16;
+const DIAGRAM_BADGE_GAP = 4;
+const DIAGRAM_BADGE_PADDING = 7;
+const DIAGRAM_BADGE_NAME_CHARS = 16;
+
+function diagramBadgePill(label, name) {
+  return { name, label, width: Math.ceil(diagramMeasureText(label, 10.5, 600)) + 2 * DIAGRAM_BADGE_PADDING };
+}
+
+function diagramBadgeRowWidth(pills) {
+  return pills.reduce((sum, pill) => sum + pill.width, 0) + Math.max(0, pills.length - 1) * DIAGRAM_BADGE_GAP;
+}
+
+/** The row of pills for these stereotype names in `maxWidth` pixels; the ones that do not fit are replaced by a "+N" pill (the tooltip of the box lists them all). The layout and the drawing both ask for it. */
+function diagramBadgeRow(names, maxWidth) {
+  const pills = names.map((name) => diagramBadgePill(diagramTruncate(name, DIAGRAM_BADGE_NAME_CHARS), name));
+  if (diagramBadgeRowWidth(pills) <= maxWidth) return { pills, width: diagramBadgeRowWidth(pills) };
+  let shown = pills;
+  for (let kept = pills.length - 1; kept >= 0; kept--) {
+    shown = pills.slice(0, kept).concat(diagramBadgePill('+' + (pills.length - kept), null));
+    if (diagramBadgeRowWidth(shown) <= maxWidth) break;
+  }
+  return { pills: shown, width: diagramBadgeRowWidth(shown) };
+}
+
+/** The pills of a row as SVG, from `x` at height `y`; each one is drawn with the style of its own stereotype. */
+function diagramBadgesSvg(row, x, y) {
+  let cursor = x;
+  let svg = '';
+  for (const pill of row.pills) {
+    const style = pill.name === null ? '' : ' style="' + escapeHtml(styleVarsText(stereotypeBadgeVarsOf(pill.name))) + '"';
+    svg += '<g class="dg-badge' + (pill.name === null ? ' dg-badge-more' : '') + '"' + style + ' aria-hidden="true">' +
+      '<rect x="' + cursor + '" y="' + y + '" width="' + pill.width + '" height="' + DIAGRAM_BADGE_HEIGHT + '" rx="' + DIAGRAM_BADGE_HEIGHT / 2 + '"/>' +
+      '<text x="' + (cursor + pill.width / 2) + '" y="' + (y + 11.5) + '" text-anchor="middle">' + escapeHtml(pill.label) + '</text></g>';
+    cursor += pill.width + DIAGRAM_BADGE_GAP;
+  }
+  return svg;
+}
+
+/** The classes and the style attribute a styled box carries (nothing for a box whose stereotypes style nothing). */
+function diagramLookAttributes(look) {
+  const vars = styleVarsText(look.vars);
+  return { classes: (look.empty ? '' : ' dg-styled') + (look.shadow ? ' dg-shadow' : ''), style: vars ? ' style="' + escapeHtml(vars) + '"' : '' };
+}
+
 /**
  * The lines of a box without children and where they sit: the name, the kind (with the qualifiers), then the
  * description. Without "Wrap" a line that is too long is cut with an ellipsis; with it, the box gets taller instead.
@@ -6400,8 +6661,12 @@ function diagramLeafLayout(text, width, show) {
   const titleY = titleLines.map((line, i) => 25 + i * 18);
   const subY = subLines.map((line, i) => titleY[titleY.length - 1] + 19 + i * 16);
   const descY = descLines.map((line, i) => subY[subY.length - 1] + 18 + i * 14);
-  const height = descLines.length ? descY[descY.length - 1] + 12 : subY[subY.length - 1] + 14;
-  return { titleLines, titleY, subLines, subY, descLines, descY, height };
+  let height = descLines.length ? descY[descY.length - 1] + 12 : subY[subY.length - 1] + 14;
+  // the badges of the styled stereotypes: a row under the text, the box grows by what it needs
+  const badgeRow = text.badges && text.badges.length ? diagramBadgeRow(text.badges, width - 16) : null;
+  const badgeY = height - 4;
+  if (badgeRow) height = badgeY + DIAGRAM_BADGE_HEIGHT + 10;
+  return { titleLines, titleY, subLines, subY, descLines, descY, height, badgeRow, badgeY };
 }
 
 /** What a link stands for, for its tooltip: each declared relationship, and a note when it groups several. */
@@ -6467,7 +6732,8 @@ function buildElkGraph(result, options) {
     const text = diagramItemText(item, show);
     const kids = childrenOf.get(item.id) || [];
     if (kids.length) {
-      const minWidth = Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS), 12)) + 60;
+      const minWidth = Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS), 12)) + 60 +
+        (text.badges.length ? diagramBadgeRow(text.badges, Infinity).width : 0);
       return {
         id: item.id,
         children: kids.map(toNode),
@@ -6482,6 +6748,7 @@ function buildElkGraph(result, options) {
     }
     let width = Math.max(150, Math.min(280, Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(text.sub, 12)) + 36));
     if (show.descriptions && text.description) width = Math.max(width, 240); // room for a description to read
+    if (text.badges.length) width = Math.max(width, Math.min(280, diagramBadgeRow(text.badges, Infinity).width + 20)); // room for the badges
     return { id: item.id, width, height: diagramLeafLayout(text, width, show).height };
   };
   const edges = [];
@@ -6543,7 +6810,9 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const mode = item.expandable ? 'expand' : 'close';
     const verb = { expand: 'Expand', close: 'Close' }[mode];
     const glyph = mode === 'expand' ? 'M-2.5,-4.5 L2.5,0 L-2.5,4.5' : 'M-4.5,-2.5 L0,2.5 L4.5,-2.5';
-    return '<g class="dg-fold" data-action="toggle-fold" data-mode="' + mode + '" data-id="' + escapeHtml(item.id) + '" tabindex="0" role="button" aria-label="' +
+    // the chevron is drawn in the colour the text of the box takes, so that it reads on the fill of a styled box
+    const textColor = text.look && text.look.vars['--st-text'];
+    return '<g class="dg-fold"' + (textColor ? ' style="--st-text:' + textColor + '"' : '') + ' data-action="toggle-fold" data-mode="' + mode + '" data-id="' + escapeHtml(item.id) + '" tabindex="0" role="button" aria-label="' +
       escapeHtml(verb + ' ' + text.title) + '"><title>' + verb + '</title>' +
       // a button that looks like one (the chevron alone was too small to hit), with a hit area larger than what is drawn
       '<rect class="dg-hit" x="' + (x - 3) + '" y="' + (y - 3) + '" width="30" height="30"/>' +
@@ -6566,17 +6835,20 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const action = item.ghost
       ? ' data-action="fix-dangling" data-ref="' + escapeHtml(item.owner) + '"'
       : ' data-action="goto-element" data-ref="' + escapeHtml(item.reference) + '"' + layerAttribute;
-    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="0" role="link" aria-label="' + escapeHtml(text.title + ' ' + text.sub) + '"';
+    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="0" role="link" aria-label="' + escapeHtml(text.title + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
     if (box.compound) {
       // Close is offered when it changes something: the user opened this box, and nothing pinned inside it keeps it open
       // (the kernel opens what encloses a pin), nor the focal element (a box around it cannot be folded)
       const closable = isMap && !item.ghost && openedByUser.has(item.id) && !pinnedOnMap.some((pin) => pin.startsWith(item.reference + '.')) &&
         !(focalReference && focalReference.startsWith(item.reference + '.'));
-      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + '"' + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
-        '<rect class="dg-group" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="8"/>' +
+      const look = diagramLookAttributes(text.look);
+      const badgeRow = text.badges.length ? diagramBadgeRow(text.badges, Math.floor((w - 48) / 2)) : null; // right-aligned in the header
+      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + look.classes + '"' + look.style + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
+        '<rect class="dg-group" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (text.look.rx === null ? 8 : text.look.rx) + '"/>' +
         '<rect class="dg-header" x="' + x + '" y="' + y + '" width="' + w + '" height="36"/>' +
-        '<text class="dg-title" x="' + (x + 34) + '" y="' + (y + 22) + '">' + escapeHtml(diagramTruncate(text.title, Math.max(8, Math.floor((w - 48) / 8)))) +
-        ' <tspan class="dg-sub">' + escapeHtml(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS)) + '</tspan></text></g>' +
+        '<text class="dg-title" x="' + (x + 34) + '" y="' + (y + 22) + '">' + escapeHtml(diagramTruncate(text.title, Math.max(8, Math.floor((w - 48 - (badgeRow ? badgeRow.width : 0)) / 8)))) +
+        ' <tspan class="dg-sub">' + escapeHtml(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS)) + '</tspan></text>' +
+        (badgeRow ? diagramBadgesSvg(badgeRow, x + w - 8 - badgeRow.width, y + 10) : '') + '</g>' +
         (closable ? foldButton(Object.assign({}, item, { expandable: false }), text, x + 6, y + 6) : '');
     } else {
       const folded = item.collapsed;
@@ -6585,11 +6857,14 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       const lines = diagramLeafLayout(text, w, show);
       const linesAt = (cls, anchorLines, ys) => anchorLines.map((line, i) =>
         '<text class="' + cls + '" x="' + (x + w / 2) + '" y="' + (y + ys[i]) + '" text-anchor="middle">' + escapeHtml(line) + '</text>').join('');
-      leaves += '<g class="dg-node dg-leaf' + (isFocal ? ' dg-focal' : '') + (item.ghost ? ' dg-ghost' : '') + (folded ? ' dg-folded' : '') + '"' + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
-        (folded ? '<rect class="dg-box dg-stack" x="' + (x + 5) + '" y="' + (y + 5) + '" width="' + w + '" height="' + h + '" rx="6"/>' : '') +
-        '<rect class="dg-box" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="6"/>' +
+      const look = diagramLookAttributes(text.look);
+      const rx = text.look.rx === null ? 6 : text.look.rx;
+      leaves += '<g class="dg-node dg-leaf' + (isFocal ? ' dg-focal' : '') + (item.ghost ? ' dg-ghost' : '') + (folded ? ' dg-folded' : '') + look.classes + '"' + look.style + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
+        (folded ? '<rect class="dg-box dg-stack" x="' + (x + 5) + '" y="' + (y + 5) + '" width="' + w + '" height="' + h + '" rx="' + rx + '"/>' : '') +
+        '<rect class="dg-box" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + rx + '"/>' +
         linesAt('dg-title', lines.titleLines, lines.titleY) + linesAt('dg-sub', lines.subLines, lines.subY) +
-        lines.descLines.map((line, i) => '<text class="dg-desc" x="' + (x + DIAGRAM_DESCRIPTION_PADDING) + '" y="' + (y + lines.descY[i]) + '">' + escapeHtml(line) + '</text>').join('') + '</g>' +
+        lines.descLines.map((line, i) => '<text class="dg-desc" x="' + (x + DIAGRAM_DESCRIPTION_PADDING) + '" y="' + (y + lines.descY[i]) + '">' + escapeHtml(line) + '</text>').join('') +
+        (lines.badgeRow ? diagramBadgesSvg(lines.badgeRow, x + (w - lines.badgeRow.width) / 2, y + lines.badgeY) : '') + '</g>' +
         (expandable ? foldButton(item, text, x + 2, y + 2) : '');
     }
   }
@@ -6745,9 +7020,11 @@ function hideUnlinkedItems(items, links, focalReference) {
 }
 
 /** The key to the line styles, shown under the diagram. */
-function diagramLegendHtml(hasGhosts) {
+function diagramLegendHtml(hasGhosts, stereotypes) {
   const sample = (cls) => '<svg width="26" height="8" aria-hidden="true"><line class="dg-edge ' + cls + '" x1="0" y1="4" x2="26" y2="4"/></svg>';
-  return sample('') + ' direct ' + sample('dg-aggregated') + ' grouped' + (hasGhosts ? ' ' + sample('dg-ghost-edge') + ' unknown element' : '');
+  const styled = styledStereotypesOf(stereotypes);
+  return sample('') + ' direct ' + sample('dg-aggregated') + ' grouped' + (hasGhosts ? ' ' + sample('dg-ghost-edge') + ' unknown element' : '') +
+    (styled.length ? ' <span class="dg-legend-stereotypes" role="group" aria-label="Stereotypes">' + stereotypeBadgesHtml(styled) + '</span>' : '');
 }
 
 /** What `showDiagramScene` needs to put a computed diagram on screen. */
@@ -7175,9 +7452,17 @@ function diagramExportCss() {
   return '.dg-box{fill:' + c('--bg') + ';stroke:' + c('--border') + ';stroke-width:1.25}' +
     '.dg-stack{fill:' + c('--panel-bg') + '}' +
     '.dg-group{fill:none;stroke:' + c('--muted') + ';stroke-opacity:.55;stroke-width:1.5}' +
+    // what the workspace styled: the --st-* variables stay inline on the boxes, these rules read them (the colours of the theme are the fallbacks)
+    '.dg-styled>.dg-box{fill:var(--st-fill,' + c('--bg') + ');stroke:var(--st-stroke,' + c('--border') + ');stroke-width:var(--st-width,1.25px);stroke-dasharray:var(--st-dash,none)}' +
+    '.dg-styled>.dg-stack{fill:var(--st-fill,' + c('--panel-bg') + ')}' +
+    '.dg-styled>.dg-group{fill:var(--st-fill,none);stroke:var(--st-stroke,' + c('--muted') + ');stroke-opacity:var(--st-stroke-opacity,.55);stroke-width:var(--st-width,1.5px);stroke-dasharray:var(--st-dash,none)}' +
+    '.dg-shadow>.dg-box,.dg-shadow>.dg-group{filter:drop-shadow(2px 2px 2px rgba(0,0,0,.4))}' +
     '.dg-focal .dg-box,.dg-focal .dg-group{stroke:' + c('--accent') + ';stroke-width:2.5}' +
     '.dg-ghost .dg-box{stroke:' + c('--danger') + ';stroke-dasharray:5 4}' +
     '.dg-title{fill:' + c('--fg') + ';font:600 14px sans-serif}.dg-sub{fill:' + c('--muted') + ';font:12px sans-serif}.dg-desc{fill:' + c('--muted') + ';font:11px sans-serif}' +
+    '.dg-styled .dg-title{fill:var(--st-text,' + c('--fg') + ');font-weight:var(--st-weight,600);font-style:var(--st-fstyle,normal)}' +
+    '.dg-styled .dg-sub,.dg-styled .dg-desc{fill:var(--st-text,' + c('--muted') + ');font-weight:var(--st-weight,400);font-style:var(--st-fstyle,normal)}' +
+    '.dg-badge rect{fill:var(--st-fill,' + c('--panel-bg') + ');stroke:var(--st-stroke,' + c('--border') + ');stroke-width:1}.dg-badge text{fill:var(--st-text,' + c('--fg') + ');font:600 10.5px sans-serif}' +
     '.dg-edge{fill:none;stroke:' + c('--muted') + ';stroke-width:1.4}.dg-aggregated{stroke-dasharray:7 4}' +
     '.dg-ghost-edge{stroke:' + c('--danger') + ';stroke-dasharray:3 4}' +
     '.dg-arrowhead{fill:' + c('--muted') + '}' +
@@ -7431,7 +7716,7 @@ function mountDiagramIfNeeded() {
   const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, opened: mapState.opened, pinned: mapState.pinned } : { facet });
   if (isMap) input.hidden = mapState.hidden;
   const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].join('|');
-  const key = JSON.stringify(input) + '|' + diagramHideUnlinked + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint();
+  const key = JSON.stringify(input) + '|' + diagramHideUnlinked + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint() + '|' + JSON.stringify(AppState.workspace.styles || null);
   if (diagramCache && diagramCache.key === key) {
     showDiagramScene(Object.assign({}, diagramCache.scene));
     return;
@@ -7461,7 +7746,10 @@ function mountDiagramIfNeeded() {
       }
       let status = diagramStatusText(viewpoint, reference, facet, shownResult, ghosts);
       if (hiddenCount) status += ' ' + hiddenCount + ' unlinked ' + (hiddenCount === 1 ? 'box' : 'boxes') + ' hidden.';
-      const legend = diagramLegendHtml(ghosts.items.length > 0);
+      // the styled stereotypes of the boxes on screen, each once, in the order they are met
+      const drawnStereotypes = [];
+      for (const item of drawn.items) for (const name of (item.ghost || !Array.isArray(item.stereotypes) ? [] : item.stereotypes)) if (!drawnStereotypes.includes(name)) drawnStereotypes.push(name);
+      const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes);
       let scene;
       if (!elk) {
         scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer), status, '', { width: 0, height: 0 }, null);
@@ -7565,8 +7853,8 @@ function mapElementIsOnMap(reference) {
 }
 
 /** What a screen reader hears for a row of the tree of the map: the name, then the state the colours and the icons show. */
-function mapScopeRowLabel(name, pinned, hidden, offMap) {
-  return name + (pinned ? ', pinned' : '') + (hidden ? ', hidden' : '') + (offMap && !hidden ? ', not on the map' : '');
+function mapScopeRowLabel(name, pinned, hidden, offMap, stereotypes) {
+  return name + (stereotypes ? ', ' + stereotypes : '') + (pinned ? ', pinned' : '') + (hidden ? ', hidden' : '') + (offMap && !hidden ? ', not on the map' : '');
 }
 
 /** Grey the rows of the elements the map does not draw (a pin, a hidden element or "Hide unlinked" left them out); applied after each drawing. */
@@ -7578,7 +7866,7 @@ function markMapScope() {
     const hidden = row.classList.contains('left-out');
     row.classList.toggle('off-map', offMap && !hidden);
     if (offMap && !hidden) row.title = 'Not on the map right now'; else row.removeAttribute('title');
-    row.setAttribute('aria-label', mapScopeRowLabel(row.getAttribute('data-name'), pinned, hidden, offMap));
+    row.setAttribute('aria-label', mapScopeRowLabel(row.getAttribute('data-name'), pinned, hidden, offMap, row.getAttribute('data-stereotypes')));
   });
 }
 
@@ -7615,17 +7903,18 @@ function renderMapScopeNodeHtml(record, level) {
   const kind = String(record.kind);
   const abbreviation = kindAbbreviation(kind);
   const groupId = treeGroupId('map-scope-group-', record.layer || 'application', reference);
+  const styled = styledStereotypesOf(stereotypesOfRecord(record));
   // a row folds or unfolds its branch, nothing more: the tree of the map selects no element
   let html = '<div class="tree-node"><div class="tree-node-row map-scope-row' + (pinned ? ' pinned' : '') + (hidden ? ' left-out' : '') + (offMap ? ' off-map' : '') + (hasChildren ? ' foldable' : '') + '"' +
              ' role="treeitem" style="--level:' + level + '" aria-level="' + level + '"' + (hasChildren ? ' aria-expanded="' + isExpanded + '"' + (isExpanded ? ' aria-owns="' + groupId + '"' : '') : '') +
-             ' tabindex="' + navTabIndex(key) + '" data-node="' + escapeHtml(key) + '" data-name="' + escapeHtml(label) + '"' +
-             ' aria-label="' + escapeHtml(mapScopeRowLabel(label, pinned, hidden, offMap)) + '"' + (offMap ? ' title="Not on the map right now"' : '') +
+             ' tabindex="' + navTabIndex(key) + '" data-node="' + escapeHtml(key) + '" data-name="' + escapeHtml(label) + '"' + (styled.length ? ' data-stereotypes="' + escapeHtml(styled.join(', ')) + '"' : '') +
+             ' aria-label="' + escapeHtml(mapScopeRowLabel(label, pinned, hidden, offMap, styled.join(', '))) + '"' + (offMap ? ' title="Not on the map right now"' : '') +
              (hasChildren ? ' data-action="toggle-element" data-ref="' + ref + '" data-layer="application"' : '') + '>';
   html += hasChildren
     ? '<span class="tree-toggle" aria-hidden="true">' + (isExpanded ? '▾' : '▸') + '</span>'
     : '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
   html += '<span class="tree-node-kind" title="' + escapeHtml(kind) + '">' + escapeHtml(abbreviation) + '</span>' +
-          '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
+          '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' + stereotypeBadgesHtml(styled);
   // what the map does with the element is visible without hovering; the buttons themselves appear on hover, focus and the active row
   if (pinned) html += '<span class="map-scope-mark" title="Pinned" aria-hidden="true">' + MAP_PIN_ICON + '</span>';
   // Pin is always the last button, at the same place under the mouse: Hide comes before it, and is not drawn at all when it cannot be used
