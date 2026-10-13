@@ -3,17 +3,18 @@ technology:
     - kind: "environment"
       id: "Reference"
       elements:
-        - kind: "Node"
+        - kind: "node"
           id: "Laptop"
           elements:
-            - kind: "Node"
+            - kind: "node"
               id: "OperatingSystem"
               elements:
-                - kind: "Node"
+                - kind: "node"
                   id: "TerminalSession"
 views:
   - kind: "view"
+    id: "terminal-session"
     viewpoint: "overview"
     layer: "technology"
     properties:
-      element: "Reference.Laptop.OperatingSystem.TechnicalSession"
+      element: "Reference.Laptop.OperatingSystem.TerminalSession"

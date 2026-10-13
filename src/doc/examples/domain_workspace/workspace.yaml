@@ -7,7 +7,7 @@ application:
       elements:
         - kind: "container"
           id: "CommandLineInterface"
-          qualifier:
+          qualifiers:
             - "Quarkus"
 technology:
   elements:

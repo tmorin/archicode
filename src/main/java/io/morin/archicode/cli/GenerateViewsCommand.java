@@ -73,7 +73,7 @@ public class GenerateViewsCommand implements Runnable {
         names = { "-o", "--output" },
         paramLabel = "PATH",
         showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
-        description = "The output directory."
+        description = "The output directory: relative to the folder of the workspace file, or absolute."
     )
     Path viewsDirPath;
 
@@ -122,10 +122,11 @@ public class GenerateViewsCommand implements Runnable {
     public void renderWorkspace(Workspace workspace) {
         log.info("render workspace in {}", workspace.getSettings().getViews().getPath());
 
-        val outputDirPath = Path.of(
-            viewsGroup.archiCode.workspaceFilePath.toAbsolutePath().toFile().getParent(),
-            workspace.getSettings().getViews().getPath()
-        );
+        // a relative path is below the folder of the workspace file; an absolute one is used as it is
+        val outputDirPath = viewsGroup.archiCode.workspaceFilePath
+            .toAbsolutePath()
+            .getParent()
+            .resolve(workspace.getSettings().getViews().getPath());
 
         for (String viewId : viewIds) {
             workspace.viewIndex.searchView(viewId).ifPresent(view -> {
