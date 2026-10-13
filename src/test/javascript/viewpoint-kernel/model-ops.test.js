@@ -180,16 +180,16 @@ test('deleting a manifest root keeps the siblings attached elsewhere; deleting a
 
 test('a delete forgets the references of the map, the selection and the tree', async () => {
   const { sandbox, state } = await openFixtureMem();
-  ev(sandbox, "mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web']); navActiveRef = 'shop.web.api';");
+  ev(sandbox, "mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web']); navActiveKey = 'application:shop.web.api';");
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'edit' };
-  state.expanded.add('shop');
+  state.expanded.add('application:shop');
   sandbox.commitDeleteElement('shop', 'application', []);
   same(ev(sandbox, 'mapPinned'), ['mailer']);
   same(ev(sandbox, 'mapHidden'), []);
   same(Array.from(ev(sandbox, 'mapOpened')), []);
-  assert.equal(ev(sandbox, 'navActiveRef'), null);
+  assert.equal(ev(sandbox, 'navActiveKey'), null);
   assert.equal(state.selection.kind, 'none');
-  assert.ok(!state.expanded.has('shop'));
+  assert.ok(!state.expanded.has('application:shop'));
   // a later element with the same reference does not inherit a stale pin
   sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'solution', attachUnderReference: null, id: 'shop', name: null, description: null });
   same(ev(sandbox, 'mapPinned'), ['mailer']);
@@ -199,11 +199,11 @@ test('a delete forgets the references of the map, the selection and the tree', a
 
 test('renaming a solution rewrites the links, the deployed applications and the parent of the attached manifests', async () => {
   const { sandbox, state } = await openFixtureMem();
-  ev(sandbox, "mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web']); navActiveRef = 'shop.web.api';");
+  ev(sandbox, "mapPinned = ['shop.web.api', 'mailer']; mapHidden = ['shop.catalog']; mapOpened = new Set(['shop', 'shop.web']); navActiveKey = 'application:shop.web.api';");
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
-  state.expanded.add('shop');
-  state.expanded.add('shop.web');
-  state.dirtyReferences.add('shop.catalog');
+  state.expanded.add('application:shop');
+  state.expanded.add('application:shop.web');
+  state.dirtyReferences.add('application:shop.catalog');
 
   sandbox.commitElementEdit('shop', (node) => { node.id = 'store'; return { renamedTo: { from: 'shop', to: 'store' } }; });
 
@@ -224,9 +224,9 @@ test('renaming a solution rewrites the links, the deployed applications and the 
   assert.equal(manifest(state, 'manifests/app.mailer.yaml').dirty, false, 'a file that pointed nowhere near stays clean');
 
   assert.equal(state.selection.key, 'store.web.api');
-  assert.ok(state.expanded.has('store') && state.expanded.has('store.web') && !state.expanded.has('shop'));
-  assert.ok(state.dirtyReferences.has('store.catalog') && state.dirtyReferences.has('store'));
-  assert.equal(ev(sandbox, 'navActiveRef'), 'store.web.api');
+  assert.ok(state.expanded.has('application:store') && state.expanded.has('application:store.web') && !state.expanded.has('application:shop'));
+  assert.ok(state.dirtyReferences.has('application:store.catalog') && state.dirtyReferences.has('application:store'));
+  assert.equal(ev(sandbox, 'navActiveKey'), 'application:store.web.api');
   same(ev(sandbox, 'mapPinned'), ['store.web.api', 'mailer']);
   same(ev(sandbox, 'mapHidden'), ['store.catalog']);
   same(sorted(ev(sandbox, 'mapOpened')), ['store', 'store.web']);
@@ -879,9 +879,9 @@ test('the navigation sorts its rows by kind (solution, system, container, compon
   const rows = (html) => [...html.matchAll(/data-node="([^"]+)"/g)].map((m) => m[1]);
   const kinds = (ref) => ev(sandbox, 'AppState.index.application.get(' + JSON.stringify(ref) + ').kind');
   // top level: both solutions by name; then, once zeta is open, its children by kind then name
-  ev(sandbox, "AppState.expanded.add('zeta'); AppState.expanded.add('e2');");
+  ev(sandbox, "AppState.expanded.add('application:zeta'); AppState.expanded.add('technology:e2');");
   const nav = sandbox.renderElementsNavHtml(true);
-  assert.deepEqual(rows(nav), ['alpha', 'zeta', 'zeta.a', 'zeta.b', 'zeta.c', 'zeta.p', 'e2', 'e2.n1', 'e2.n2']);
+  assert.deepEqual(rows(nav), ['application:alpha', 'application:zeta', 'application:zeta.a', 'application:zeta.b', 'application:zeta.c', 'application:zeta.p', 'technology:e2', 'technology:e2.n1', 'technology:e2.n2']);
   assert.equal(kinds('zeta.p'), 'person');
 });
 

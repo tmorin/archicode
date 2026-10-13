@@ -234,7 +234,7 @@ test('closing a folder forgets what the page held about it, and a reload of the 
   run(sandbox, `
     saveStatus = { state: 'success' }; mapPinned = ['shop.web']; mapHidden = ['mailer']; mapOpened = new Set(['shop']);
     diagramMaximized = true; diagramHideUnlinked = true; elementTab = 'deep'; diagramFacet = 'rest-only';
-    diagramCache = { key: 'k' }; diagramScene = { hasSvg: true }; treeExpandedApplications = false; navActiveRef = 'shop';
+    diagramCache = { key: 'k' }; diagramScene = { hasSvg: true }; treeExpandedApplications = false; navActiveKey = 'application:shop';
     helpOpen = true; pendingDeleteConfirmation = { x: 1 }; rawYamlEditDraft = { relPath: 'a' }; currentPerspective = 'map';`);
   const seq = run(sandbox, 'diagramSeq');
 
@@ -246,7 +246,7 @@ test('closing a folder forgets what the page held about it, and a reload of the 
   await sandbox.closeFolder();
   const forgotten = JSON.parse(run(sandbox, `JSON.stringify({
     saveStatus, mapPinned, mapHidden, opened: mapOpened, maximized: diagramMaximized, hide: diagramHideUnlinked, elementTab, facet: diagramFacet,
-    cache: diagramCache, scene: diagramScene, apps: treeExpandedApplications, nav: navActiveRef, help: helpOpen,
+    cache: diagramCache, scene: diagramScene, apps: treeExpandedApplications, nav: navActiveKey, help: helpOpen,
     del: pendingDeleteConfirmation, draft: rawYamlEditDraft, perspective: currentPerspective })`));
   assert.deepEqual(forgotten, {
     saveStatus: { state: 'idle' }, mapPinned: [], mapHidden: [], opened: null, maximized: false, hide: false, elementTab: 'details', facet: null,
@@ -430,15 +430,112 @@ test('two relationships to the same unknown element make one box with two edges;
   assert.match(id('application', 'shop.web-1'), /^[A-Za-z0-9_-]+$/);
 });
 
-test('a reference that is in both layers has one tab stop, not two', async () => {
-  const { sandbox, state } = await openFixture();
-  const both = state.index.application.get('customer');
-  state.index.technology.set('customer', Object.assign({}, both, { layer: 'technology', children: [] }));
-  run(sandbox, "navActiveRef = 'customer'; navTabStopGiven = false;");
-  const a = sandbox.renderTreeNodeHtml(state.index.application.get('customer'), 1);
-  const b = sandbox.renderTreeNodeHtml(state.index.technology.get('customer'), 1);
-  assert.match(a, /tabindex="0"/);
-  assert.match(b, /tabindex="-1"/);
+/** The fixture, with an environment that shares its reference (and its children) with the solution `shop`. */
+async function openFixtureWithSharedReference() {
+  const opened = await openFixture();
+  const shop = opened.state.index.application.get('shop');
+  const twin = Object.assign({}, shop, { layer: 'technology', children: shop.children.map((child) => Object.assign({}, child, { layer: 'technology' })) });
+  opened.state.index.technology.set('shop', twin);
+  opened.state.index.technology.set('shop.web', twin.children.find((child) => child.reference === 'shop.web'));
+  return Object.assign(opened, { app: shop, tech: twin });
+}
+
+test('a reference that is in both layers has one tab stop, not two, and it is the row the user was on', async () => {
+  const { sandbox, state } = await openFixtureWithSharedReference();
+  const render = (tabStop) => {
+    run(sandbox, 'navActiveKey = ' + JSON.stringify(tabStop) + '; navTabStopGiven = false;');
+    return [sandbox.renderTreeNodeHtml(state.index.application.get('shop'), 1), sandbox.renderTreeNodeHtml(state.index.technology.get('shop'), 1)]
+      .map((html) => html.match(/tabindex="(-?\d)"/)[1]);
+  };
+  assert.deepEqual(render('application:shop'), ['0', '-1']);
+  // the row of the other layer is the one that takes it when the user was on that one, whichever tree comes first
+  assert.deepEqual(render('technology:shop'), ['-1', '0']);
+  const rows = (html) => [...html.matchAll(/data-node="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(rows(sandbox.renderTreeNodeHtml(state.index.technology.get('shop'), 1)), ['technology:shop']);
+  assert.deepEqual(rows(sandbox.renderTreeNodeHtml(state.index.application.get('shop'), 1)), ['application:shop']);
+});
+
+test('what the tree remembers of a row (unfolded, modified) is kept per layer: two elements with the same reference do not share it', async () => {
+  const { sandbox, state } = await openFixtureWithSharedReference();
+  const html = (layer) => sandbox.renderTreeNodeHtml(state.index[layer].get('shop'), 1);
+  state.expanded.clear();
+  state.dirtyReferences.clear();
+  state.expanded.add('application:shop');
+  state.dirtyReferences.add('technology:shop');
+  assert.match(html('application'), /aria-expanded="true"/);
+  assert.match(html('technology'), /aria-expanded="false"/);
+  assert.doesNotMatch(html('application'), /modified-dot/);
+  assert.match(html('technology'), /modified-dot/);
+  assert.match(html('technology'), /aria-label="[^"]*, modified"/);
+
+  // the fold button of a row says which layer it folds
+  assert.match(html('technology'), /data-action="toggle-element" data-ref="shop" data-layer="technology"/);
+  const click = (action, attrs) => {
+    const target = { getAttribute: (name) => (name === 'data-action' ? action : (attrs || {})[name] || null) };
+    sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
+  };
+  countRenders(sandbox);
+  click('toggle-element', { 'data-ref': 'shop', 'data-layer': 'technology' });
+  assert.deepEqual(Array.from(state.expanded).sort(), ['application:shop', 'technology:shop']);
+  click('toggle-element', { 'data-ref': 'shop', 'data-layer': 'application' });
+  assert.deepEqual(Array.from(state.expanded), ['technology:shop']);
+
+  // "Unfold all" of a tree is the unfold of that tree
+  state.expanded.clear();
+  click('nav-unfold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
+  assert.ok(Array.from(state.expanded).length > 0 && Array.from(state.expanded).every((key) => key.startsWith('technology:')));
+  click('nav-fold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
+  assert.equal(state.expanded.size, 0);
+});
+
+test('revealing an element unfolds the branches above it in its own layer', async () => {
+  const { sandbox, state } = await openFixtureWithSharedReference();
+  state.expanded.clear();
+  sandbox.expandAncestorsOf('shop.web', 'technology');
+  assert.deepEqual(Array.from(state.expanded).sort(), ['technology:shop', 'technology:shop.web']);
+  state.expanded.clear();
+  // a link to the environment says so (`layer=`), and so does the view it opens
+  sandbox.location.hash = '#/elements?ref=shop.web&layer=technology';
+  sandbox.applySelectionFromHashRef();
+  assert.deepEqual(Array.from(state.expanded).sort(), ['technology:shop', 'technology:shop.web']);
+  state.expanded.clear();
+  state.selection = { kind: 'none', key: null, mode: 'view' };
+  sandbox.expandAncestorsOf('shop.web');
+  assert.deepEqual(Array.from(state.expanded).sort(), ['application:shop', 'application:shop.web'], 'no layer asked: the one a reference resolves to');
+});
+
+test('a rename rewrites the state of the rows of its own layer only, a delete forgets the rows of its own layer only', async () => {
+  const { sandbox, state } = await openFixtureWithSharedReference();
+  const keys = (set) => Array.from(set).sort();
+  const seed = () => {
+    state.expanded = new Set(['application:shop', 'application:shop.web', 'technology:shop', 'technology:shop.web']);
+    state.dirtyReferences = new Set(['application:shop.web', 'technology:shop.web']);
+    run(sandbox, "navActiveKey = 'technology:shop.web';");
+  };
+
+  seed();
+  sandbox.rewriteUiReferences('shop', 'store', 'technology');
+  assert.deepEqual(keys(state.expanded), ['application:shop', 'application:shop.web', 'technology:store', 'technology:store.web']);
+  assert.deepEqual(keys(state.dirtyReferences), ['application:shop.web', 'technology:store.web']);
+  assert.equal(run(sandbox, 'navActiveKey'), 'technology:store.web');
+
+  seed();
+  sandbox.rewriteUiReferences('shop', 'store', 'application');
+  assert.deepEqual(keys(state.expanded), ['application:store', 'application:store.web', 'technology:shop', 'technology:shop.web']);
+  assert.deepEqual(keys(state.dirtyReferences), ['application:store.web', 'technology:shop.web']);
+  assert.equal(run(sandbox, 'navActiveKey'), 'technology:shop.web', 'the row the user was on is not the renamed one');
+
+  seed();
+  sandbox.forgetUiReferences(new Set(['shop', 'shop.web']), 'application');
+  assert.deepEqual(keys(state.expanded), ['technology:shop', 'technology:shop.web']);
+  assert.deepEqual(keys(state.dirtyReferences), ['technology:shop.web']);
+  assert.equal(run(sandbox, 'navActiveKey'), 'technology:shop.web');
+
+  seed();
+  sandbox.forgetUiReferences(new Set(['shop', 'shop.web']), 'technology');
+  assert.deepEqual(keys(state.expanded), ['application:shop', 'application:shop.web']);
+  assert.deepEqual(keys(state.dirtyReferences), ['application:shop.web']);
+  assert.equal(run(sandbox, 'navActiveKey'), null);
 });
 
 test('leaving a form with text typed and not saved asks first, and staying keeps everything', async () => {

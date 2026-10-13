@@ -2185,7 +2185,7 @@ function resetUiState() {
   mapPinned = [];
   mapHidden = [];
   mapOpened = null;
-  navActiveRef = null;
+  navActiveKey = null;
   treeExpandedApplications = true;
   treeExpandedEnvironments = true;
   treeQuietCache = null;
@@ -2392,7 +2392,7 @@ function applySelectionFromHashRef() {
       const layerParam = new URLSearchParams(location.hash.indexOf('?') === -1 ? '' : location.hash.slice(location.hash.indexOf('?') + 1)).get('layer');
       const layer = (layerParam === 'application' || layerParam === 'technology') && AppState.index[layerParam].has(ref) ? layerParam : null;
       AppState.selection = layer ? { kind: 'element', key: ref, layer, mode: 'view' } : { kind: 'element', key: ref, mode: 'view' };
-      expandAncestorsOf(ref);
+      expandAncestorsOf(ref, layer || undefined);
       scrollNavToSelection = true;
       return;
     }
@@ -2561,17 +2561,38 @@ let pendingDeleteConfirmation = null;
  */
 let saveStatus = { state: 'idle' };
 
-/** Add every ancestor reference of `reference` (itself included) to AppState.expanded (FR-14/FLOW-5). */
-function expandAncestorsOf(reference) {
+/**
+ * The key of a row of a tree. A reference can exist in both layers (the application solution `epr` and the environment
+ * `epr`), so what the UI remembers about a row (unfolded, modified, the tab stop) is keyed by layer and reference:
+ * `application:shop.web`. `layer` defaults to the one `layerOfReference` picks.
+ */
+function nodeKey(reference, layer) {
+  return (layer || layerOfReference(reference) || 'application') + ':' + reference;
+}
+function nodeKeyLayer(key) {
+  return String(key).slice(0, String(key).indexOf(':'));
+}
+function nodeKeyReference(key) {
+  return String(key).slice(String(key).indexOf(':') + 1);
+}
+/** The key of the row an ElementRecord has in its tree. */
+function recordKey(record) {
+  return nodeKey(record.reference, record.layer || 'application');
+}
+
+/** Add every ancestor reference of `reference` (itself included, in `layer`) to AppState.expanded (FR-14/FLOW-5). */
+function expandAncestorsOf(reference, layer) {
   if (!reference) return;
+  const owner = layer || layerOfReference(reference) || 'application';
   const segments = String(reference).split('.');
   let acc = '';
   for (const segment of segments) {
     acc = acc ? acc + '.' + segment : segment;
-    AppState.expanded.add(acc);
+    AppState.expanded.add(nodeKey(acc, owner));
   }
 }
 
+/** Fold or unfold a row of a tree; `key` is a `nodeKey`. */
 function toggleExpandedKey(key) {
   if (AppState.expanded.has(key)) {
     AppState.expanded.delete(key);
@@ -2712,7 +2733,7 @@ function commitElementEdit(reference, mutatorFn, layer) {
   }
   mf.rawText = serializeManifestFile(mf.header, mf.content);
   mf.dirty = true; // TDD-0010 DEC-8 — every structural edit marks its file dirty for the next save
-  AppState.dirtyReferences.add(dirtyReference); // UX review follow-up — element-level "modified" tracking
+  AppState.dirtyReferences.add(nodeKey(dirtyReference, elementLayer)); // UX review follow-up — element-level "modified" tracking
   saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
   rebuildIndexAndRender();
   return result;
@@ -2827,7 +2848,7 @@ function commitCreateTopLevelElement({ category, headerKind, attachUnderReferenc
   adoptRemovedFile(mf);
   AppState.manifestFiles.push(mf);
   AppState.manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath)); // matches loadWorkspace's own ordering
-  AppState.dirtyReferences.add(reference); // UX review follow-up — element-level "modified" tracking
+  AppState.dirtyReferences.add(nodeKey(reference, category)); // UX review follow-up — element-level "modified" tracking
   saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
   rebuildIndexAndRender();
   return { createdReference: reference, relPath };
@@ -2862,7 +2883,7 @@ function commitCreateChildElement({ parentReference, layer, kind, id, name, desc
     return { ok: false, field: 'kind', error: e && e.message ? e.message : String(e) };
   }
   // UX review follow-up: the new child is wholly unsaved on its own, independent of the parent's own dirty state
-  AppState.dirtyReferences.add(createdReference);
+  AppState.dirtyReferences.add(nodeKey(createdReference, category));
   return { ok: true, createdReference, layer: category };
 }
 
@@ -3012,7 +3033,7 @@ function commitDeleteElement(reference, category, affected) {
         if (kept.length !== node.relationships.length) {
           node.relationships = kept;
           touchedRelPaths.add(mf.relPath);
-          AppState.dirtyReferences.add(ownerRef); // UX review follow-up — this owner's own relationships changed
+          AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); // UX review follow-up — this owner's own relationships changed
         }
       }
       // an environment no longer uses an environment or a node that is deleted
@@ -3021,7 +3042,7 @@ function commitDeleteElement(reference, category, affected) {
         if (kept.length !== node.uses.length) {
           if (kept.length > 0) node.uses = kept; else delete node.uses;
           touchedRelPaths.add(mf.relPath);
-          AppState.dirtyReferences.add(ownerRef);
+          AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer));
         }
       }
       // a technology node no longer deploys an application element that is deleted
@@ -3030,7 +3051,7 @@ function commitDeleteElement(reference, category, affected) {
         if (kept.length !== node.applications.length) {
           node.applications = kept;
           touchedRelPaths.add(mf.relPath);
-          AppState.dirtyReferences.add(ownerRef);
+          AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer));
         }
       }
     });
@@ -3312,7 +3333,7 @@ function countUnsavedChanges() {
 function clearDirtyReferencesForFile(relPath) {
   for (const category of ['application', 'technology']) {
     for (const record of AppState.index[category].values()) {
-      if (record.sourceFile === relPath) AppState.dirtyReferences.delete(record.reference);
+      if (record.sourceFile === relPath) AppState.dirtyReferences.delete(nodeKey(record.reference, category));
     }
   }
 }
@@ -3626,11 +3647,14 @@ function rewriteUiReferences(oldPrefix, newPrefix, layer) {
   } else if (sel.kind === 'create' && sel.parentReference && (!layer || layer === sel.category)) {
     sel.parentReference = rewrite(sel.parentReference);
   }
-  AppState.expanded = rewriteSet(AppState.expanded);
+  // the keys of the rows (`layer:reference`) follow a rename in the layer it happened in only: the other layer's element with the same reference stays
+  const rewriteKey = (key) => (layer && nodeKeyLayer(key) !== layer) ? key : nodeKeyLayer(key) + ':' + rewrite(nodeKeyReference(key));
+  const rewriteKeys = (set) => new Set(Array.from(set).map(rewriteKey));
+  AppState.expanded = rewriteKeys(AppState.expanded);
   // UX review follow-up: dirtyReferences holds the *old* reference (added by commitElementEdit before a
   // rename-aware rewrite runs) — carry it over to the new one.
-  AppState.dirtyReferences = rewriteSet(AppState.dirtyReferences);
-  if (navActiveRef) navActiveRef = rewrite(navActiveRef);
+  AppState.dirtyReferences = rewriteKeys(AppState.dirtyReferences);
+  if (navActiveKey) navActiveKey = rewriteKey(navActiveKey);
   if (!layer || layer === 'application') {
     mapPinned = mapPinned.map(rewrite);
     mapHidden = mapHidden.map(rewrite);
@@ -3650,10 +3674,10 @@ function forgetUiReferences(deletedRefs, layer) {
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
   }
   for (const ref of deletedRefs) {
-    AppState.expanded.delete(ref);
-    AppState.dirtyReferences.delete(ref);
+    AppState.expanded.delete(nodeKey(ref, layer));
+    AppState.dirtyReferences.delete(nodeKey(ref, layer));
   }
-  if (gone(navActiveRef)) navActiveRef = null;
+  if (navActiveKey && nodeKeyLayer(navActiveKey) === layer && gone(nodeKeyReference(navActiveKey))) navActiveKey = null;
   if (layer === 'application') {
     mapPinned = mapPinned.filter((ref) => !gone(ref));
     mapHidden = mapHidden.filter((ref) => !gone(ref));
@@ -3679,23 +3703,23 @@ function rewriteInboundReferences(oldRef, newRef, layer) {
     let changed = false;
     if (mfLayer === layer && typeof mf.header.parent === 'string') {
       const parent = rewriteReferenceValue(mf.header.parent, oldRef, newRef);
-      if (parent !== mf.header.parent) { mf.header.parent = parent; changed = true; AppState.dirtyReferences.add(manifestRootReference(mf)); }
+      if (parent !== mf.header.parent) { mf.header.parent = parent; changed = true; AppState.dirtyReferences.add(nodeKey(manifestRootReference(mf), mfLayer)); }
     }
     walkContentNodes(mf, (node, ownerRef) => {
       if (mfLayer === layer && Array.isArray(node.relationships)) {
         for (const rel of node.relationships) {
           if (!rel || typeof rel !== 'object') continue;
           const destination = rewriteReferenceValue(rel.destination, oldRef, newRef);
-          if (destination !== rel.destination) { rel.destination = destination; changed = true; AppState.dirtyReferences.add(ownerRef); }
+          if (destination !== rel.destination) { rel.destination = destination; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
         }
       }
       if (layer === 'technology' && mfLayer === 'technology' && Array.isArray(node.uses)) {
         const uses = node.uses.map((u) => rewriteReferenceValue(u, oldRef, newRef));
-        if (uses.some((u, i) => u !== node.uses[i])) { node.uses = uses; changed = true; AppState.dirtyReferences.add(ownerRef); }
+        if (uses.some((u, i) => u !== node.uses[i])) { node.uses = uses; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
       }
       if (layer === 'application' && mfLayer === 'technology' && Array.isArray(node.applications)) {
         const applications = node.applications.map((a) => rewriteReferenceValue(a, oldRef, newRef));
-        if (applications.some((a, i) => a !== node.applications[i])) { node.applications = applications; changed = true; AppState.dirtyReferences.add(ownerRef); }
+        if (applications.some((a, i) => a !== node.applications[i])) { node.applications = applications; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
       }
     });
     if (changed) {
@@ -4183,8 +4207,8 @@ function treeGroupId(prefix, layer, reference) {
 
 /** The tab stop of a tree is one row: a reference that is in both layers has two rows, and only the first takes it. */
 let navTabStopGiven = false;
-function navTabIndex(reference) {
-  if (reference !== navActiveRef || navTabStopGiven) return '-1';
+function navTabIndex(key) {
+  if (key !== navActiveKey || navTabStopGiven) return '-1';
   navTabStopGiven = true;
   return '0';
 }
@@ -4210,12 +4234,13 @@ function sortedForNav(records) {
 
 function renderTreeNodeHtml(record, level) {
   const hasChildren = Array.isArray(record.children) && record.children.length > 0;
-  const isExpanded = AppState.expanded.has(record.reference);
+  const key = recordKey(record);
+  const isExpanded = AppState.expanded.has(key);
   // the same reference can be an element of both layers: only the row of the selected layer is the selected one
   const isActive = AppState.selection.kind === 'element' && AppState.selection.key === record.reference &&
     layerOfReference(record.reference, AppState.selection.layer) === (record.layer || 'application');
   const label = (record.name !== undefined && record.name !== null && record.name !== '') ? record.name : record.id;
-  const modified = AppState.dirtyReferences.has(record.reference);
+  const modified = AppState.dirtyReferences.has(key);
   const ref = escapeHtml(record.reference);
   const groupId = treeGroupId('tree-group-', record.layer || 'application', record.reference);
   const spoken = label + (modified ? ', modified' : '');
@@ -4223,10 +4248,10 @@ function renderTreeNodeHtml(record, level) {
   let html = '<div class="tree-node">';
   html += '<div class="tree-node-row' + (isActive ? ' active' : '') + '" role="treeitem" style="--level:' + level + '" aria-level="' + level + '" aria-selected="' + isActive + '"' +
           (hasChildren ? ' aria-expanded="' + isExpanded + '"' + (isExpanded ? ' aria-owns="' + groupId + '"' : '') : '') +
-          ' tabindex="' + navTabIndex(record.reference) + '" data-node="' + ref + '" data-aria="' + escapeHtml(spoken) + '" aria-label="' + escapeHtml(spoken) + '"' +
+          ' tabindex="' + navTabIndex(key) + '" data-node="' + escapeHtml(key) + '" data-aria="' + escapeHtml(spoken) + '" aria-label="' + escapeHtml(spoken) + '"' +
           ' data-action="select-element" data-ref="' + ref + '" data-layer="' + escapeHtml(record.layer || 'application') + '">';
   if (hasChildren) {
-    html += '<span class="tree-toggle" aria-hidden="true" data-action="toggle-element" data-ref="' + ref + '">' + (isExpanded ? '▾' : '▸') + '</span>';
+    html += '<span class="tree-toggle" aria-hidden="true" data-action="toggle-element" data-ref="' + ref + '" data-layer="' + escapeHtml(record.layer || 'application') + '">' + (isExpanded ? '▾' : '▸') + '</span>';
   } else {
     html += '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
   }
@@ -4290,10 +4315,10 @@ function renderElementsNavHtml(showAddButton) {
   const techElements = (AppState.workspace && AppState.workspace.technology && AppState.workspace.technology.elements) || [];
   // one tab stop for both trees: the row the user was on, else the selected one, else the first
   const visible = [];
-  const collect = (record) => { visible.push(record.reference); if (AppState.expanded.has(record.reference)) sortedForNav(record.children).forEach(collect); };
+  const collect = (record) => { visible.push(recordKey(record)); if (AppState.expanded.has(recordKey(record))) sortedForNav(record.children).forEach(collect); };
   if (treeExpandedApplications) sortedForNav(appElements).forEach(collect);
   if (treeExpandedEnvironments) sortedForNav(techElements).forEach(collect);
-  resolveNavActive(visible, AppState.selection.kind === 'element' ? AppState.selection.key : null);
+  resolveNavActive(visible, AppState.selection.kind === 'element' ? nodeKey(AppState.selection.key, AppState.selection.layer) : null);
   navTabStopGiven = false;
   const facet = anyDiagramShown() ? currentDiagramFacet() : null;
   const note = facet
@@ -5642,8 +5667,8 @@ let mapOpened = null;
 /** The elements the map is about (none: all of them), and the ones it leaves out. */
 let mapPinned = [];
 let mapHidden = [];
-/** The row of the tree of the map that takes the focus when the user tabs into it (one tab stop for the whole tree). */
-let navActiveRef = null;
+/** The row (a `nodeKey`) of the tree that takes the focus when the user tabs into it (one tab stop for the whole tree). */
+let navActiveKey = null;
 
 /**
  * How to find a control of the header again once render() has rebuilt the page: its id, or its action with what tells
@@ -5665,8 +5690,8 @@ function headerControlSelector(el) {
 
 /** Give the one tab stop of the navigation to a row that is on screen: the one the user was on, else `preferred` (the selection), else the first. */
 function resolveNavActive(visible, preferred) {
-  if (visible.includes(navActiveRef)) return;
-  navActiveRef = visible.includes(preferred) ? preferred : (visible[0] || null);
+  if (visible.includes(navActiveKey)) return;
+  navActiveKey = visible.includes(preferred) ? preferred : (visible[0] || null);
 }
 
 /** The next render brings the selected row of the tree into view (set when the selection changes without a click in the tree). */
@@ -5674,7 +5699,7 @@ let scrollNavToSelection = false;
 
 /** Unfold the branches above an element, so that its row in the tree of the map can be seen (the element itself stays as it is). */
 function expandParentsOf(reference) {
-  expandAncestorsOf(String(reference).split('.').slice(0, -1).join('.'));
+  expandAncestorsOf(String(reference).split('.').slice(0, -1).join('.'), 'application'); // the map draws the application layer only
 }
 /** Past this many boxes, "Unfold all" asks before drawing them. */
 const MAP_UNFOLD_CONFIRM_BOXES = 150;
@@ -7219,7 +7244,7 @@ function renderOpenAsDiagramButtonHtml(record) {
 function renderMapScopeHtml() {
   const roots = (AppState.workspace && AppState.workspace.application && AppState.workspace.application.elements) || [];
   const visible = [];
-  const collect = (record) => { visible.push(record.reference); if (AppState.expanded.has(record.reference)) sortedForNav(record.children).forEach(collect); };
+  const collect = (record) => { visible.push(nodeKey(record.reference, 'application')); if (AppState.expanded.has(nodeKey(record.reference, 'application'))) sortedForNav(record.children).forEach(collect); };
   sortedForNav(roots).forEach(collect);
   // one tab stop for the whole tree: the row the user was on, or the first one
   resolveNavActive(visible);
@@ -7253,7 +7278,7 @@ function mapScopeRowLabel(name, pinned, hidden, offMap) {
 /** Grey the rows of the elements the map does not draw (a pin, a hidden element or "Hide unlinked" left them out); applied after each drawing. */
 function markMapScope() {
   document.querySelectorAll('.map-scope-row').forEach((row) => {
-    const onMap = mapElementIsOnMap(row.getAttribute('data-node'));
+    const onMap = mapElementIsOnMap(nodeKeyReference(row.getAttribute('data-node')));
     const offMap = onMap === false;
     const pinned = row.classList.contains('pinned');
     const hidden = row.classList.contains('left-out');
@@ -7284,7 +7309,8 @@ const MAP_HIDE_ICON = MAP_ICON_OPEN + MAP_EYE + '<path d="M2.5 13.5l11-11" strok
 function renderMapScopeNodeHtml(record, level) {
   const reference = record.reference;
   const hasChildren = Array.isArray(record.children) && record.children.length > 0;
-  const isExpanded = AppState.expanded.has(reference);
+  const key = nodeKey(reference, 'application'); // the map draws the application layer only
+  const isExpanded = AppState.expanded.has(key);
   const pinned = mapPinned.includes(reference);
   const hidden = mapHidden.some((h) => reference === h || reference.startsWith(h + '.'));
   const hiddenItself = mapHidden.includes(reference);
@@ -7298,9 +7324,9 @@ function renderMapScopeNodeHtml(record, level) {
   // a row folds or unfolds its branch, nothing more: the tree of the map selects no element
   let html = '<div class="tree-node"><div class="tree-node-row map-scope-row' + (pinned ? ' pinned' : '') + (hidden ? ' left-out' : '') + (offMap ? ' off-map' : '') + (hasChildren ? ' foldable' : '') + '"' +
              ' role="treeitem" style="--level:' + level + '" aria-level="' + level + '"' + (hasChildren ? ' aria-expanded="' + isExpanded + '"' + (isExpanded ? ' aria-owns="' + groupId + '"' : '') : '') +
-             ' tabindex="' + navTabIndex(reference) + '" data-node="' + ref + '" data-name="' + escapeHtml(label) + '"' +
+             ' tabindex="' + navTabIndex(key) + '" data-node="' + escapeHtml(key) + '" data-name="' + escapeHtml(label) + '"' +
              ' aria-label="' + escapeHtml(mapScopeRowLabel(label, pinned, hidden, offMap)) + '"' + (offMap ? ' title="Not on the map right now"' : '') +
-             (hasChildren ? ' data-action="toggle-element" data-ref="' + ref + '"' : '') + '>';
+             (hasChildren ? ' data-action="toggle-element" data-ref="' + ref + '" data-layer="application"' : '') + '>';
   html += hasChildren
     ? '<span class="tree-toggle" aria-hidden="true">' + (isExpanded ? '▾' : '▸') + '</span>'
     : '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
@@ -7333,7 +7359,7 @@ function navRows() {
 function focusNavRow(row) {
   if (!row) return;
   navRows().forEach((other) => other.setAttribute('tabindex', other === row ? '0' : '-1'));
-  navActiveRef = row.getAttribute('data-node');
+  navActiveKey = row.getAttribute('data-node');
   row.focus();
 }
 
@@ -7370,7 +7396,7 @@ function handleNavKeydown(e) {
   const index = rows.indexOf(row);
   const foldable = row.hasAttribute('aria-expanded');
   const expanded = row.getAttribute('aria-expanded') === 'true';
-  const toggle = () => { navActiveRef = row.getAttribute('data-node'); toggleExpandedKey(row.getAttribute('data-node')); render(); };
+  const toggle = () => { navActiveKey = row.getAttribute('data-node'); toggleExpandedKey(row.getAttribute('data-node')); render(); };
   switch (e.key) {
     case 'ArrowDown': focusNavRow(rows[index + 1]); break;
     case 'ArrowUp': focusNavRow(rows[index - 1]); break;
@@ -7390,16 +7416,16 @@ function handleNavKeydown(e) {
     case 'Enter': case ' ':
       // on the map a row only folds; in Elements it selects the element (the arrows fold)
       if (row.classList.contains('map-scope-row')) { if (foldable) toggle(); }
-      else { navActiveRef = row.getAttribute('data-node'); row.click(); }
+      else { navActiveKey = row.getAttribute('data-node'); row.click(); }
       break;
     case 'p': case 'P': {
-      navActiveRef = row.getAttribute('data-node');
+      navActiveKey = row.getAttribute('data-node');
       const button = row.querySelector('[data-action="map-pin"]');
       if (button) button.click();
       break;
     }
     case 'h': case 'H': {
-      navActiveRef = row.getAttribute('data-node');
+      navActiveKey = row.getAttribute('data-node');
       const button = row.querySelector('[data-action="map-hide"]');
       if (button) button.click();
       break;
@@ -7658,7 +7684,7 @@ function applySavedView(view) {
     const layer = view.layer === 'technology' ? 'technology' : 'application';
     AppState.selection = { kind: 'element', key: properties.element, layer, mode: 'view' };
     elementTab = view.viewpoint;
-    expandAncestorsOf(properties.element);
+    expandAncestorsOf(properties.element, layer);
     scrollNavToSelection = true;
     currentPerspective = 'elements';
   }
@@ -8789,7 +8815,7 @@ function handleAppClick(e) {
       if (pendingDeleteConfirmation) pendingDeleteConfirmation = null; // TDD-0010 DEC-4 — same discard-on-navigate philosophy
       const destinationLayer = target.getAttribute('data-layer');
       AppState.selection = destinationLayer ? { kind: 'element', key: destinationRef, layer: destinationLayer, mode: 'view' } : { kind: 'element', key: destinationRef, mode: 'view' };
-      expandAncestorsOf(destinationRef); // FR-14/FLOW-5
+      expandAncestorsOf(destinationRef, destinationLayer || undefined); // FR-14/FLOW-5
       scrollNavToSelection = true;
       render();
       break;
@@ -8814,7 +8840,8 @@ function handleAppClick(e) {
     case 'nav-fold-all': {
       // the tree of one layer: its elements, and — in Elements, where each tree has its own header — the tree itself
       const unfold = action === 'nav-unfold-all';
-      referencesWithChildren(target.getAttribute('data-layer')).forEach((reference) => (unfold ? AppState.expanded.add(reference) : AppState.expanded.delete(reference)));
+      const treeLayer = target.getAttribute('data-layer');
+      referencesWithChildren(treeLayer).forEach((reference) => (unfold ? AppState.expanded.add(nodeKey(reference, treeLayer)) : AppState.expanded.delete(nodeKey(reference, treeLayer))));
       const branch = target.getAttribute('data-branch');
       if (branch === 'applications') treeExpandedApplications = unfold;
       else if (branch === 'environments') treeExpandedEnvironments = unfold;
@@ -8822,7 +8849,7 @@ function handleAppClick(e) {
       break;
     }
     case 'toggle-element':
-      toggleExpandedKey(target.getAttribute('data-ref'));
+      toggleExpandedKey(nodeKey(target.getAttribute('data-ref'), target.getAttribute('data-layer')));
       render();
       break;
     case 'add-qualifier': {
@@ -9416,7 +9443,7 @@ function render() {
   // the tree of the map keeps the focus of the row the user was on, whatever redraws it
   const focusedScopeRow = document.activeElement && document.activeElement.closest ? document.activeElement.closest('.tree-node-row[role="treeitem"]') : null;
   const focusedScopeRef = focusedScopeRow ? focusedScopeRow.getAttribute('data-node') : null;
-  if (focusedScopeRef) navActiveRef = focusedScopeRef;
+  if (focusedScopeRef) navActiveKey = focusedScopeRef;
 
   // the controls of the headers and of the diagram keep the focus too: the tabs, the facet, Edit… all redraw the page
   const focusedControl = focusedScopeRef ? null : headerControlSelector(document.activeElement);

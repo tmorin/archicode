@@ -431,12 +431,12 @@ test('the tree of the Map only folds and unfolds, and says what each element is 
   run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = ['shop.catalog']; mapHidden = ['mailer'];");
   state.selection = { kind: 'element', key: 'shop.catalog', mode: 'view' };
   assert.ok(sandbox.renderMapScopeHtml().includes('data-ref="shop.catalog"') === false, 'closed branches are not drawn');
-  state.expanded.add('shop');
+  state.expanded.add('application:shop');
   const html = sandbox.renderMapScopeHtml();
   assert.ok(!html.includes('map-select'), 'a row selects nothing');
   assert.ok(!/tree-node-row[^"]*\bactive\b/.test(html), 'and the tree does not show a selection');
   assert.match(html, /map-scope-row pinned foldable"[^>]*data-action="toggle-element" data-ref="shop.catalog"/, 'a row with children folds or unfolds it');
-  assert.match(html, /<div class="tree-node-row map-scope-row left-out"[^>]*data-node="mailer"[^>]*><span class="tree-toggle tree-toggle-empty"/, 'a row with none does nothing');
+  assert.match(html, /<div class="tree-node-row map-scope-row left-out"[^>]*data-node="application:mailer"[^>]*><span class="tree-toggle tree-toggle-empty"/, 'a row with none does nothing');
   assert.doesNotMatch(html, /data-action="map-hide" data-ref="shop"/, 'what encloses a pinned element has no Hide button, rather than a disabled one');
   assert.doesNotMatch(html, /data-action="map-hide" data-ref="shop.catalog"/, 'nor has a pinned element');
   assert.doesNotMatch(html, /map-scope-btn[^>]*disabled/, 'no button is drawn disabled');
@@ -458,40 +458,40 @@ test('the tree of the Map only folds and unfolds, and says what each element is 
   };
   click('toggle-element', { 'data-ref': 'shop.catalog' });
   assert.equal(state.selection.key, 'shop.catalog', 'folding does not change the selection');
-  assert.equal(state.expanded.has('shop.catalog'), true);
+  assert.equal(state.expanded.has('application:shop.catalog'), true);
   click('map-hide', { 'data-ref': 'mailer' });
   assert.equal(run(sandbox, 'mapHidden.length'), 0, 'Hide on a hidden element brings it back');
 });
 
 test('the tree of the Map is a tree for the keyboard and the screen reader, with one tab stop', async () => {
   const { sandbox, state } = await openFixture();
-  run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = ['shop.catalog']; mapHidden = ['mailer']; navActiveRef = null;");
-  state.expanded.add('shop');
+  run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = ['shop.catalog']; mapHidden = ['mailer']; navActiveKey = null;");
+  state.expanded.add('application:shop');
   const html = sandbox.renderMapScopeHtml();
   assert.match(html, /role="tree" aria-label="[^"]+"/);
   assert.equal((html.match(/role="treeitem"/g) || []).length, (html.match(/class="tree-node-row map-scope-row/g) || []).length, 'every row is an item');
-  assert.match(html, /data-node="shop"[^>]*>/);
+  assert.match(html, /data-node="application:shop"[^>]*>/);
   assert.match(html, /map-scope-row foldable" role="treeitem" style="--level:1" aria-level="1" aria-expanded="true" aria-owns="map-scope-group-application-shop"/, 'a branch says it is open and what it holds');
   assert.match(html, /role="treeitem" style="--level:2" aria-level="2" aria-expanded="false"/, 'a closed branch says so, one level down');
   assert.match(html, /role="group" id="map-scope-group-application-shop"/);
   assert.equal((html.match(/class="tree-node-row[^"]*" role="treeitem"[^>]*tabindex="0"/g) || []).length, 1, 'one tab stop for the whole tree');
-  assert.match(html, /data-node="customer"[^>]*>/);
-  assert.ok(html.indexOf('data-node="shop"') < html.indexOf('data-node="mailer"') && html.indexOf('data-node="mailer"') < html.indexOf('data-node="customer"'), 'the solution, then the system, then the person');
-  assert.match(html.match(/<div class="tree-node-row[^>]*data-node="shop"[^>]*>/)[0], /tabindex="0"/, 'the first row by default');
+  assert.match(html, /data-node="application:customer"[^>]*>/);
+  assert.ok(html.indexOf('data-node="application:shop"') < html.indexOf('data-node="application:mailer"') && html.indexOf('data-node="application:mailer"') < html.indexOf('data-node="application:customer"'), 'the solution, then the system, then the person');
+  assert.match(html.match(/<div class="tree-node-row[^>]*data-node="application:shop"[^>]*>/)[0], /tabindex="0"/, 'the first row by default');
   assert.match(html, /aria-label="Mail Provider, hidden"/, 'the state is read, not only drawn');
   assert.match(html, /aria-label="Catalog, pinned"/);
   assert.ok((html.match(/<button type="button" tabindex="-1" class="map-scope-btn"/g) || []).length >= 3, 'the buttons are out of the tab order: the keyboard has the row');
-  run(sandbox, "navActiveRef = 'shop.web';");
-  assert.match(sandbox.renderMapScopeHtml().match(/<div class="tree-node-row[^>]*data-node="shop\.web"[^>]*>/)[0], /tabindex="0"/, 'the row the user was on keeps the tab stop');
-  run(sandbox, "navActiveRef = 'shop.gone';");
+  run(sandbox, "navActiveKey = 'application:shop.web';");
+  assert.match(sandbox.renderMapScopeHtml().match(/<div class="tree-node-row[^>]*data-node="application:shop\.web"[^>]*>/)[0], /tabindex="0"/, 'the row the user was on keeps the tab stop');
+  run(sandbox, "navActiveKey = 'application:shop.gone';");
   assert.equal((sandbox.renderMapScopeHtml().match(/tabindex="0"/g) || []).length, 1, 'a row that is gone gives the stop back to the first one');
 });
 
 test('the tree of the Map greys the elements the drawn map leaves out, and unfolds the way to a pinned element', async () => {
   const { sandbox, state } = await openFixture();
   run(sandbox, "currentPerspective = 'map'; mapOpened = null; mapPinned = []; mapHidden = ['mailer'];");
-  state.expanded.add('shop');
-  const row = (html, ref) => html.match(new RegExp('<div class="tree-node-row[^>]*data-node="' + ref.replace(/\./g, '\\.') + '"[^>]*>'))[0];
+  state.expanded.add('application:shop');
+  const row = (html, ref) => html.match(new RegExp('<div class="tree-node-row[^>]*data-node="application:' + ref.replace(/\./g, '\\.') + '"[^>]*>'))[0];
   // nothing drawn yet, or the drawing of an element: no row is said to be off the map
   run(sandbox, "diagramScene = { viewKey: 'shop|overview||', boxes: { shop: {} } };");
   assert.doesNotMatch(sandbox.renderMapScopeHtml(), /off-map/);
@@ -517,25 +517,25 @@ test('the tree of the Map greys the elements the drawn map leaves out, and unfol
     sandbox.handleAppClick({ target: { closest: () => target }, preventDefault() {}, stopPropagation() {} });
   };
   click('map-pin', { 'data-ref': 'shop.catalog' });
-  assert.equal(state.expanded.has('shop'), true, 'the branch above a pinned element is unfolded');
-  assert.equal(state.expanded.has('shop.catalog'), false, 'the element itself is left as it was');
+  assert.equal(state.expanded.has('application:shop'), true, 'the branch above a pinned element is unfolded');
+  assert.equal(state.expanded.has('application:shop.catalog'), false, 'the element itself is left as it was');
   state.expanded.clear();
   run(sandbox, 'mapPinned = [];');
   sandbox.location.hash = '#/map?pin=shop.web';
   sandbox.syncPerspectiveFromHash();
-  assert.equal(state.expanded.has('shop'), true, 'also when the pin comes from the URL');
+  assert.equal(state.expanded.has('application:shop'), true, 'also when the pin comes from the URL');
 });
 
 test('the tree of Elements is a tree too: short kinds with their title, a dot for what is modified, one tab stop, the selection announced', async () => {
   const { sandbox, state } = await openFixture();
-  run(sandbox, "currentPerspective = 'elements'; navActiveRef = null; diagramFacet = null; elementTab = 'details';");
+  run(sandbox, "currentPerspective = 'elements'; navActiveKey = null; diagramFacet = null; elementTab = 'details';");
   state.expanded.clear();
-  state.expanded.add('shop');
-  state.expanded.add('shop.web');
+  state.expanded.add('application:shop');
+  state.expanded.add('application:shop.web');
   state.selection = { kind: 'element', key: 'shop.web', mode: 'view' };
-  state.dirtyReferences.add('shop.payments');
+  state.dirtyReferences.add('application:shop.payments');
   const html = sandbox.renderElementsNavHtml(true);
-  const row = (ref) => html.match(new RegExp('<div class="tree-node-row[^>]*data-node="' + ref.replace(/\./g, '\\.') + '"[^>]*>'))[0];
+  const row = (ref) => html.match(new RegExp('<div class="tree-node-row[^>]*data-node="application:' + ref.replace(/\./g, '\\.') + '"[^>]*>'))[0];
   assert.equal((html.match(/role="tree"/g) || []).length, 2, 'Applications and Environments are two trees');
   assert.match(row('shop.web'), /aria-selected="true"/);
   assert.match(row('shop.payments'), /aria-selected="false"/);
@@ -619,20 +619,20 @@ test('each tree of the navigations can unfold and fold all its branches, and not
   assert.match(nav, /aria-label="Fold every branch of Environments"/, 'the two pairs are told apart');
   state.expanded.clear();
   click('nav-unfold-all', { 'data-layer': 'application', 'data-branch': 'applications' });
-  assert.equal(state.expanded.has('shop'), true, 'every parent of the tree is unfolded');
-  assert.equal(state.expanded.has('shop.web'), true, 'at every depth');
-  assert.equal(state.expanded.has('customer'), false, 'a leaf has nothing to unfold');
-  assert.equal(state.expanded.has('production'), false, 'the other tree is left as it was');
+  assert.equal(state.expanded.has('application:shop'), true, 'every parent of the tree is unfolded');
+  assert.equal(state.expanded.has('application:shop.web'), true, 'at every depth');
+  assert.equal(state.expanded.has('application:customer'), false, 'a leaf has nothing to unfold');
+  assert.equal(state.expanded.has('technology:production'), false, 'the other tree is left as it was');
   assert.equal(run(sandbox, 'treeExpandedApplications'), true);
   assert.equal(run(sandbox, 'mapOpened === null || mapOpened.size === 0'), true, 'the boxes of the map are not touched');
   click('nav-fold-all', { 'data-layer': 'application', 'data-branch': 'applications' });
-  assert.equal(state.expanded.has('shop'), false);
-  assert.equal(state.expanded.has('shop.web'), false);
+  assert.equal(state.expanded.has('application:shop'), false);
+  assert.equal(state.expanded.has('application:shop.web'), false);
   assert.equal(run(sandbox, 'treeExpandedApplications'), false, 'the tree itself folds, down to its header');
   assert.equal(run(sandbox, 'treeExpandedEnvironments'), true, 'the other one stays open');
   click('nav-unfold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
   assert.equal(run(sandbox, 'treeExpandedEnvironments'), true);
-  assert.ok(Array.from(state.expanded).some((reference) => state.index.technology.has(reference)), 'the environments are unfolded');
+  assert.ok(Array.from(state.expanded).some((key) => key.startsWith('technology:') && state.index.technology.has(key.slice('technology:'.length))), 'the environments are unfolded');
   click('nav-fold-all', { 'data-layer': 'technology', 'data-branch': 'environments' });
   assert.equal(run(sandbox, 'treeExpandedEnvironments'), false);
 
@@ -642,9 +642,9 @@ test('each tree of the navigations can unfold and fold all its branches, and not
   const map = sandbox.renderMapScopeHtml();
   assert.equal((map.match(/data-action="nav-unfold-all"/g) || []).length, 1);
   click('nav-unfold-all', { 'data-layer': 'application' });
-  assert.equal(state.expanded.has('shop.web'), true);
+  assert.equal(state.expanded.has('application:shop.web'), true);
   click('nav-fold-all', { 'data-layer': 'application' });
-  assert.equal(state.expanded.has('shop'), false);
+  assert.equal(state.expanded.has('application:shop'), false);
   assert.equal(run(sandbox, 'treeExpandedApplications'), true, 'the Map has no header of its tree to fold');
 });
 
