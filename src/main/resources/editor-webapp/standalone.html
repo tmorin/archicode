@@ -3118,6 +3118,7 @@ function restoreLinkFromHash() {
     return;
   }
   revealLinkAfterDrawing = { nth: null };
+  diagramLinkStop = null; // the selected link is the tab stop of the links then, not where the focus was
 }
 
 /** The hash's selection, whole: an element or a file, or a link over the element (see `restoreLinkFromHash`). */
@@ -7799,7 +7800,8 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const nth = pairs.get(pairKey).links.push(link) - 1;
     const caption = diagramLinkText(link);
     const select = ends + (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') + layerAttribute + ' data-action="select-link"';
-    edges += '<g class="dg-link"' + select + ' tabindex="0" role="button" aria-pressed="false" aria-label="' +
+    // the links are one tab stop (roving tabindex, `syncLinkTabStop` moves it): the first one until the page says otherwise
+    edges += '<g class="dg-link"' + select + ' tabindex="' + (edges ? '-1' : '0') + '" role="button" aria-pressed="false" aria-label="' +
       escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById)) + '</title>' +
       '<path class="dg-hit-edge" d="' + d + '"/>' +
       '<path class="dg-edge' + (link.synthetic ? ' dg-aggregated' : '') + (link.ghost ? ' dg-ghost-edge' : '') + '" marker-end="url(#dg-arrow)" d="' + d + '"/></g>';
@@ -7813,7 +7815,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const height = Math.ceil(layout.height || 0) + 8;
   const html = '<svg xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Diagram" viewBox="-4 -4 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' +
     '<defs><marker id="dg-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead" d="M0,0 L10,4 L0,8 z"/></marker></defs>' +
-    compounds + edges + leaves + labels + '</svg>';
+    compounds + (edges ? '<g class="dg-links" role="group" aria-label="Links: one tab stop, the arrow keys move between them">' + edges + '</g>' : '') + leaves + labels + '</svg>';
   return { html, width, height, focal, boxes: boxesById, links: Array.from(pairs.values()) };
 }
 
@@ -8130,7 +8132,7 @@ function revealDiagramNode(node) {
 /** What identifies the box (or fold button) of the diagram that `el` is, to find it again once the drawing is rebuilt; null for anything else. */
 function diagramFocusTargetOf(el) {
   const part = el && el.closest ? el.closest('#diagram-canvas .dg-node, #diagram-canvas .dg-fold, #diagram-canvas .dg-link') : null;
-  if (part && part.classList.contains('dg-link')) return { link: true, from: part.getAttribute('data-from'), to: part.getAttribute('data-to') };
+  if (part && part.classList.contains('dg-link')) return diagramLinkKeyOf(part);
   return part ? { fold: part.classList.contains('dg-fold'), id: part.getAttribute('data-id') } : null;
 }
 
@@ -8144,12 +8146,59 @@ function diagramNodeOf(el) {
   return Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).find((n) => n.getAttribute('data-id') === id) || null;
 }
 
-/** The box a focused link starts from: the arrow keys go on from it. */
-function diagramLinkStartOf(el) {
-  const link = el && el.closest ? el.closest('.dg-link') : null;
-  if (!link) return null;
-  const from = link.getAttribute('data-from');
-  return Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).find((n) => n.getAttribute('data-id') === from) || null;
+/** What tells a link of the drawing from the others: its pair of boxes and, when it has a twin, its position among them (`data-nth`, else null). */
+function diagramLinkKeyOf(link) {
+  return { link: true, from: link.getAttribute('data-from'), to: link.getAttribute('data-to'), nth: diagramLinkNth(link) };
+}
+
+/** The position (`data-nth`) of a link among the links of its pair, as text; null for a link that has no twin. */
+function diagramLinkNth(link) {
+  const nth = link.getAttribute('data-nth');
+  return nth === null || nth === undefined ? null : nth;
+}
+
+/** The link of the drawing that `key` (see `diagramLinkKeyOf`) names; with a twin that is gone, the first link of the pair; else null. */
+function findDiagramLink(links, key) {
+  const ofPair = links.filter((el) => el.getAttribute('data-from') === key.from && el.getAttribute('data-to') === key.to);
+  return ofPair.find((el) => diagramLinkNth(el) === key.nth) || ofPair[0] || null;
+}
+
+/**
+ * The links of a diagram are one tab stop (roving tabindex): `tabindex="0"` on one of them, `-1` on the others, and the arrow
+ * keys move among them (`handleDiagramKeydown`). The stop is where the focus last rested in the group; this is that link's
+ * key, or null (nothing remembered yet, or the selection came from elsewhere, an address).
+ */
+let diagramLinkStop = null;
+
+/**
+ * After the drawing is on screen: exactly one link is the tab stop. The one the focus last rested on if the drawing still has it,
+ * else the first link of the selected pair, else the first link drawn; what is kept is what was chosen, so it is never a link the
+ * drawing lacks. A drawing with no link has no stop.
+ */
+function syncLinkTabStop(canvas) {
+  if (!canvas || !canvas.querySelectorAll) return;
+  const links = Array.from(canvas.querySelectorAll('.dg-link'));
+  if (!links.length) { diagramLinkStop = null; return; }
+  const sel = AppState.selection;
+  const remembered = diagramLinkStop ? findDiagramLink(links, diagramLinkStop) : null;
+  const selected = sel.kind === 'link' ? links.find((el) => el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to) : null;
+  setLinkTabStop(links, remembered || selected || links[0]);
+}
+
+/** `stop` is the one link of `links` that Tab reaches; its key is remembered. */
+function setLinkTabStop(links, stop) {
+  for (const el of links) el.setAttribute('tabindex', el === stop ? '0' : '-1');
+  diagramLinkStop = diagramLinkKeyOf(stop);
+}
+
+/** Arrow keys, Home and End on a focused link: the link to go to in the order of the drawing (no wrap-around), or null. */
+function diagramLinkTarget(links, current, key) {
+  const index = links.indexOf(current);
+  if (index < 0) return null;
+  if (key === 'Home') return links[0];
+  if (key === 'End') return links[links.length - 1];
+  const step = key === 'ArrowRight' || key === 'ArrowDown' ? 1 : -1;
+  return links[Math.min(links.length - 1, Math.max(0, index + step))];
 }
 
 /**
@@ -8163,7 +8212,7 @@ function restoreDiagramFocus(canvas) {
   const active = document.activeElement;
   if (active && active !== document.body && !(canvas.contains && canvas.contains(active))) return;
   const find = (selector) => Array.from(canvas.querySelectorAll(selector)).find((el) => el.getAttribute('data-id') === wanted.id);
-  const link = wanted.link ? Array.from(canvas.querySelectorAll('.dg-link')).find((el) => el.getAttribute('data-from') === wanted.from && el.getAttribute('data-to') === wanted.to) : null;
+  const link = wanted.link ? findDiagramLink(Array.from(canvas.querySelectorAll('.dg-link')), wanted) : null;
   const target = link || (wanted.link ? null : ((wanted.fold ? find('.dg-fold') : null) || find('.dg-node'))) || canvas;
   if (target.focus) target.focus({ preventScroll: true });
 }
@@ -8202,6 +8251,7 @@ function showDiagramScene(scene) {
   reconcileLinkSelection();
   markMapSelection();
   markLinkSelection();
+  syncLinkTabStop(canvas);
   revealSelectedLink(canvas);
   markMapScope();
   markInspection();
@@ -8266,6 +8316,8 @@ function handleDiagramFocus(e) {
   const node = e.type === 'focusin' ? e.target.closest('.dg-node, .dg-fold, .dg-link') : null;
   highlightDiagram(node);
   if (node) revealDiagramNode(node);
+  // the stop of the links goes where their focus is (a click, an arrow key, Tab coming back, the focus given back after a redraw)
+  if (node && node.classList.contains('dg-link')) setLinkTabStop(Array.from(document.querySelectorAll('#diagram-canvas .dg-link')), node);
 }
 
 /**
@@ -8363,8 +8415,16 @@ function handleDiagramKeydown(e) {
     }
     return;
   }
+  // on a link the arrow keys, Home and End move among the links (they are one tab stop); on a box they move between boxes
+  const onLink = e.target.closest('.dg-link');
+  if (onLink && canvas && (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End')) {
+    e.preventDefault();
+    const next = diagramLinkTarget(Array.from(canvas.querySelectorAll('.dg-link')), onLink, e.key);
+    if (next && next !== onLink) next.focus({ preventScroll: true }); // the focus handler pans to it and moves the stop
+    return;
+  }
   if (e.key.startsWith('Arrow')) {
-    const current = diagramNodeOf(e.target) || diagramLinkStartOf(e.target);
+    const current = diagramNodeOf(e.target);
     const next = current ? diagramNeighbor(current, e.key) : canvas && canvas.querySelector('.dg-focal, .dg-node');
     if (next) {
       e.preventDefault();
@@ -8423,6 +8483,7 @@ function diagramExportDocument() {
   clone.querySelectorAll('.dg-on').forEach((el) => el.classList.remove('dg-on'));
   for (const el of clone.querySelectorAll('[tabindex],[data-action]')) { el.removeAttribute('tabindex'); el.removeAttribute('data-action'); }
   for (const el of clone.querySelectorAll('[aria-pressed]')) el.removeAttribute('aria-pressed');
+  for (const el of clone.querySelectorAll('.dg-links')) { el.removeAttribute('role'); el.removeAttribute('aria-label'); } // it describes keys of the page
   for (const el of clone.querySelectorAll('.dg-link-selected')) el.classList.remove('dg-link-selected');
   const ns = 'http://www.w3.org/2000/svg';
   const style = document.createElementNS(ns, 'style');
@@ -10388,6 +10449,7 @@ function handleAppClick(e) {
         if (canvas) takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
       }
       const nth = target.getAttribute('data-nth');
+      diagramLinkStop = diagramLinkKeyOf(target); // a click moves the stop of the links to its link, whether or not the browser focuses it
       selectLink(target.getAttribute('data-from'), target.getAttribute('data-to'), target.getAttribute('data-layer'), nth === null ? null : parseInt(nth, 10));
       if (mapIsShown()) revealLinkAfterDrawing = { nth: Number.isInteger(parseInt(nth, 10)) ? parseInt(nth, 10) : null }; // the panel narrows the Map: the link must not end up behind it
       render();

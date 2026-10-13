@@ -53,10 +53,10 @@ const linkSelection = (from, to, extra) => Object.assign({ kind: 'link', key: fr
 
 // ============================================================ the markup of a link in the drawing
 
-test('a link and its caption are selectable: the action, the pair, the layer, a tab stop, a role and a label', async () => {
+test('a link and its caption are selectable: the action, the pair, the layer, a role, a label and a place in the roving tab stop', async () => {
   const { drawing } = await page('elements', 'overview', 'shop.web.api');
   const link = drawing.html.match(/<g class="dg-link"[^>]*>/g).find((g) => g.includes('data-from="shop.web.frontend"'));
-  assert.match(link, /^<g class="dg-link" data-from="shop\.web\.frontend" data-to="shop\.web\.api" data-layer="application" data-action="select-link" tabindex="0" role="button" aria-pressed="false" aria-label="Link from [^"]+ to [^"]+: calls \[REST\]">$/);
+  assert.match(link, /^<g class="dg-link" data-from="shop\.web\.frontend" data-to="shop\.web\.api" data-layer="application" data-action="select-link" tabindex="-?[01]" role="button" aria-pressed="false" aria-label="Link from [^"]+ to [^"]+: calls \[REST\]">$/);
   const caption = drawing.html.match(/<text class="dg-label"[^>]*>/g).find((t) => t.includes('data-from="shop.web.frontend"'));
   assert.match(caption, /data-action="select-link"/);
   assert.ok(!/tabindex/.test(caption), 'the caption is clickable, not a tab stop: its link is');
@@ -440,14 +440,8 @@ test('Enter on a focused link is a click: the handler that already did it for bo
 
 // ============================================================ the outline, the focus, the highlight
 
-test('the arrow keys go on from the box a focused link starts from', async () => {
-  const { sandbox } = await page('map', 'map', null);
-  const from = { getAttribute: (n) => (n === 'data-id' ? 'customer' : null) };
-  sandbox.document.querySelectorAll = (selector) => (selector === '#diagram-canvas .dg-node' ? [{ getAttribute: () => 'shop' }, from] : []);
-  const link = { getAttribute: (n) => (n === 'data-from' ? 'customer' : null) };
-  assert.equal(sandbox.diagramLinkStartOf({ closest: (selector) => (selector === '.dg-link' ? link : null) }), from);
-  assert.equal(sandbox.diagramLinkStartOf({ closest: () => null }), null);
-});
+// the arrow keys on a link moved to a box next to the link's start box until run 0025: they move among the links now
+// (diagram-link-tab-stops.test.js)
 
 test('the pair of the selected link is outlined and says it is pressed; the others are not', async () => {
   const { sandbox, state } = await page('map', 'map', null);
@@ -467,7 +461,7 @@ test('the focus goes back to the same link after the drawing is rebuilt', async 
   const { sandbox } = await page('map', 'map', null);
   const part = { classList: { contains: (c) => c === 'dg-link' }, getAttribute: (n) => ({ 'data-from': 'customer', 'data-to': 'shop' })[n] };
   const wanted = sandbox.diagramFocusTargetOf({ closest: () => part });
-  assert.deepEqual(plain(wanted), { link: true, from: 'customer', to: 'shop' });
+  assert.deepEqual(plain(wanted), { link: true, from: 'customer', to: 'shop', nth: null });
   const focused = [];
   const mk = (from, to) => ({ getAttribute: (n) => ({ 'data-from': from, 'data-to': to })[n], focus: () => focused.push(from + '>' + to) });
   const canvas = { contains: () => true, focus() { focused.push('canvas'); }, querySelectorAll: (selector) => (selector === '.dg-link' ? [mk('mailer', 'customer'), mk('customer', 'shop')] : []) };
