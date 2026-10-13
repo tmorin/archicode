@@ -183,6 +183,13 @@ wording).
   ghost box and its link are the way into the repair; in Details of the owner the relationship reads `-> platform.access.ghost`
   with a `DANGLING` badge and cannot be clicked, so a user who reads the badge has to go to *Edit* by hand. The repair itself
   works (above).
+- **Resolved after the close-out of the wave** (commits that follow it, outside any run, each with its tests): F-1 (a file is saved
+  with its comments, blank lines, quotes and final line break kept, for the manifests and for `workspace.yaml`; a layout the
+  editor does not write still falls back to the emitter's text, said in the manual), F-2 and F-3 (the tab group wraps in the
+  tight state, the badges of a tree row give way before its name; measured again at a window of 420 px: no overflow, names of 56 to
+  70 px), F-4, F-5 and F-6 (text and a debug line), F-7 (the dangling relationship of Details is a button to the edit form of
+  its owner, which now also keeps the layer of the owner). From run 0022: F-1 (four examples of the manual did not load: `qualifier`,
+  `Node` twice, and a view without `id`; a test now loads every example) and F-2 (an absolute `-o` is used as it is).
 - **Not a finding:** a hash change typed into the address bar while the page was still loading dropped the selection (a test artefact: the same URL after the load worked).
 
 Wave-level lessons for the orchestrator: (1) a screenshot of a wide emulated viewport in this pane is scaled and often stale on

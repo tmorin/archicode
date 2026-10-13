@@ -229,7 +229,9 @@
     background: var(--st-fill, transparent); border: 1px solid var(--st-stroke, var(--border)); color: var(--st-text, var(--muted)); }
   .tree-node-row.quiet .stereotype-badge, .map-scope-row.off-map .stereotype-badge, .map-scope-row.left-out .stereotype-badge { opacity: 0.45; }
   .map-scope-row .stereotype-badge { font-size: 0.6rem; padding: 0 0.3rem; max-width: 4.5rem; }
-  .tree-node-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* a narrow left panel: the badges give way first (down to an ellipsis) so that the name keeps a few letters */
+  .tree-node-row .stereotype-badge { flex-shrink: 8; min-width: 1.3rem; }
+  .tree-node-label { flex: 1 1 auto; min-width: 3.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* No vertical padding here on purpose — every view supplies its own top
      and bottom inset instead (see each below). A view with a sticky
@@ -547,7 +549,8 @@
     .element-header { height: auto; min-height: var(--header-h); flex-wrap: wrap; gap: 0.4rem 0.75rem; padding-top: 0.4rem; padding-bottom: 0.4rem; }
     .element-header-label { flex-wrap: wrap; row-gap: 0.25rem; }
     .element-header-badges { max-height: none; max-width: 100%; flex: none; margin-left: 0; }
-    .viewpoint-switch { flex-wrap: wrap; row-gap: 0.25rem; }
+    .viewpoint-switch { flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; row-gap: 0.25rem; }
+    .viewpoint-switch .button-group { flex-wrap: wrap; row-gap: 0.25rem; }
     .element-header-actions { margin-left: auto; }
   }
 
@@ -566,6 +569,7 @@
   .relationship-link { display: inline; background: none !important; border: none !important; padding: 0 !important; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
   .relationship-link:hover { border-color: transparent; }
   .relationship-dangling { color: var(--muted); }
+  button.relationship-dangling { color: var(--danger); text-decoration-style: dashed; }
   .dangling-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-accent); background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; margin-left: 0.3rem; }
   .field-count { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 0.4rem; margin-left: 0.25rem; }
 
@@ -1579,6 +1583,130 @@ function serializeManifestFile(header, content) {
   return serializeYamlValue({ header: header, content: content }, 0);
 }
 
+/**
+ * The text of a YAML file after an edit, that keeps of the file what the edit did not touch: its comments, its blank
+ * lines, its quotes and its final line break. `oldText` is the file as it is, `newValue` what it must now say.
+ *
+ * The emitter writes a value in one way only, so it cannot tell what a file looked like. This compares what it writes for
+ * the old value (read from `oldText`) with what it writes for the new one, line by line, and applies the difference to
+ * the lines of `oldText`: a line the edit did not touch stays as it was, the lines around it too. Each line the emitter
+ * wrote for the old value has to be found, in order, in `oldText` with the same indentation and the same words (the
+ * quotes and a trailing comment do not count); when one is not (a flow list, other indentation, a key written another
+ * way), the layout of the file is not one this can follow, and the text is the emitter's, as before.
+ */
+function patchYamlText(oldText, newValue) {
+  const emitted = serializeYamlValue(newValue, 0);
+  let oldValue;
+  try {
+    oldValue = parseYaml(oldText);
+  } catch (e) {
+    return emitted;
+  }
+  if (oldValue === null || typeof oldValue !== 'object') return emitted;
+  const eol = /\r\n/.test(oldText) ? '\r\n' : '\n';
+  const endsWithBreak = /\n$/.test(oldText);
+  const original = oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
+  if (endsWithBreak) original.pop();
+  const before = serializeYamlValue(oldValue, 0).split('\n');
+  const after = emitted.split('\n');
+
+  // the words of a line: no quote, no trailing comment, no space around it; its indentation is compared on its own
+  const indentOf = (line) => line.length - line.replace(/^ +/, '').length;
+  const wordsOf = (line) => stripYamlComment(line).replace(/["']/g, '').trim();
+  // where each emitted line of the old value sits in the original text
+  const place = [];
+  const spans = []; // the lines of a block scalar that follow its first line
+  let cursor = 0;
+  for (const line of before) {
+    let found = -1;
+    if (wordsOf(line) === '') { // a blank line or one that reads as a comment: inside a block scalar, where it is text, so it is the very next line
+      if (cursor < original.length && original[cursor].trim() === line.trim()) found = cursor;
+      if (found === -1) return emitted;
+      place.push(found);
+      spans.push(0);
+      cursor = found + 1;
+      continue;
+    }
+    let span = 0;
+    for (let j = cursor; j < original.length; j++) {
+      const candidate = original[j];
+      if (wordsOf(candidate) === '' ) continue; // a comment or a blank line
+      if (indentOf(candidate) === indentOf(line)) {
+        if (wordsOf(candidate) === wordsOf(line)) found = j;
+        else {
+          // a text over several lines is a block (| or >) in the file and a quoted string on one line for the emitter
+          const key = line.slice(0, line.indexOf(': ') + 1);
+          const header = stripYamlComment(candidate).replace(/["']/g, '').trim();
+          if (key.length > 1 && /^[|>][-+0-9]*$/.test(header.slice(key.replace(/["']/g, '').trim().length).trim()) && header.startsWith(key.replace(/["']/g, '').trim())) {
+            found = j;
+            const keyColumn = candidate.length - candidate.replace(/^ *(?:- +)*/, '').length;
+            for (let k = j + 1; k < original.length; k++) {
+              if (original[k].trim() === '') continue;
+              if (indentOf(original[k]) < keyColumn + 1) break;
+              span = k - j;
+            }
+          }
+        }
+      }
+      break; // the next line with words has to be it
+    }
+    if (found === -1) return emitted;
+    place.push(found);
+    spans.push(span);
+    cursor = found + 1 + span;
+  }
+
+  // the lines both have, in order (the common start and end first, which is nearly always most of it)
+  let start = 0;
+  while (start < before.length && start < after.length && before[start] === after[start]) start++;
+  let endBefore = before.length;
+  let endAfter = after.length;
+  while (endBefore > start && endAfter > start && before[endBefore - 1] === after[endAfter - 1]) { endBefore--; endAfter--; }
+  const middleBefore = before.slice(start, endBefore);
+  const middleAfter = after.slice(start, endAfter);
+  const rows = middleBefore.length + 1;
+  const cols = middleAfter.length + 1;
+  const table = new Array(rows * cols).fill(0);
+  for (let i = rows - 2; i >= 0; i--) {
+    for (let j = cols - 2; j >= 0; j--) {
+      table[i * cols + j] = middleBefore[i] === middleAfter[j] ? table[(i + 1) * cols + j + 1] + 1 : Math.max(table[(i + 1) * cols + j], table[i * cols + j + 1]);
+    }
+  }
+  // the edit as a list of steps over `before`: keep the line, drop it, or write a new line there
+  const steps = [];
+  for (let i = 0; i < start; i++) steps.push({ keep: i });
+  let i = 0;
+  let j = 0;
+  while (i < middleBefore.length || j < middleAfter.length) {
+    if (i < middleBefore.length && j < middleAfter.length && middleBefore[i] === middleAfter[j]) { steps.push({ keep: start + i }); i++; j++; }
+    else if (j < middleAfter.length && (i === middleBefore.length || table[i * cols + j + 1] >= table[(i + 1) * cols + j])) { steps.push({ add: middleAfter[j] }); j++; }
+    else { steps.push({ drop: start + i }); i++; }
+  }
+  for (let k = endBefore; k < before.length; k++) steps.push({ keep: k });
+
+  // the original lines, the ones that sit between two lines of the value (comments, blank lines) with the line before them
+  const out = [];
+  let next = 0; // the next original line not yet written
+  const copyUpTo = (index) => { // up to and including the original line `index`
+    while (next <= index) out.push(original[next++]);
+  };
+  for (const step of steps) {
+    if (step.keep !== undefined) copyUpTo(place[step.keep] + spans[step.keep]);
+    else if (step.drop !== undefined) {
+      // the comments above a dropped line are not its own: they stay, the line goes
+      while (next < place[step.drop]) out.push(original[next++]);
+      next = place[step.drop] + 1 + spans[step.drop];
+    } else out.push(step.add);
+  }
+  while (next < original.length) out.push(original[next++]); // what follows the last line of the value: a trailing comment, a blank line
+  return out.join(eol) + (endsWithBreak ? eol : '');
+}
+
+/** The manifest of a file that exists, rewritten after an edit of its `header` and `content` (see patchYamlText). */
+function reserializeManifestFile(mf) {
+  return patchYamlText(mf.rawText, { header: mf.header, content: mf.content });
+}
+
 // =====================================================================
 // IndexedDB: the remembered folders (run 0020, TDD-0020 DEC-1/DEC-2, CTR-1)
 //
@@ -2431,11 +2559,13 @@ async function loadWorkspace(dirHandle) {
   // FR-4 / DEC-10: workspace.yaml is fatal to the open attempt if missing/unparseable.
   let workspaceRaw;
   let workspaceLastKnownDiskModified = null; // TDD-0010 DEC-8
+  let workspaceText = ''; // the file as it is: the next Save keeps of it what the edit did not touch
   try {
     const fileHandle = await dirHandle.getFileHandle('workspace.yaml');
     const file = await fileHandle.getFile();
     workspaceLastKnownDiskModified = file.lastModified;
     const text = await file.text();
+    workspaceText = text;
     workspaceRaw = parseYaml(text) || {};
     // a workspace.yaml that is not a mapping is not one the editor can write back without losing it
     if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw)) throw new Error('the file is not a mapping of keys');
@@ -2512,14 +2642,12 @@ async function loadWorkspace(dirHandle) {
     // so the other top-level keys (application, technology, views, ...) and the unknown settings survive a save.
     topLevel: workspaceRaw,
     settingsDirty: false, // TDD-0010 DEC-8
-    settingsLastKnownDiskModified: workspaceLastKnownDiskModified
+    settingsLastKnownDiskModified: workspaceLastKnownDiskModified,
+    rawText: workspaceText
   };
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   render();
   await noteWorkspaceName(); // the list of folders says it, and so does the next "Opening" of this folder (TDD-0020 DEC-4)
-
-  // eslint-disable-next-line no-console
-  console.log('ArchiCode standalone editor — AppState after load:', AppState);
 }
 
 // =====================================================================
@@ -3489,7 +3617,7 @@ function commitElementEdit(reference, mutatorFn, layer) {
     rewriteInboundReferences(from, to, elementLayer);
     dirtyReference = to;
   }
-  mf.rawText = serializeManifestFile(mf.header, mf.content);
+  mf.rawText = reserializeManifestFile(mf);
   mf.dirty = true; // TDD-0010 DEC-8 — every structural edit marks its file dirty for the next save
   AppState.dirtyReferences.add(nodeKey(dirtyReference, elementLayer)); // UX review follow-up — element-level "modified" tracking
   saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
@@ -3845,7 +3973,7 @@ function commitDeleteElement(reference, category, affected) {
   // reference held from before that reassignment.
   for (const mf of AppState.manifestFiles) {
     if (touchedRelPaths.has(mf.relPath)) {
-      mf.rawText = serializeManifestFile(mf.header, mf.content);
+      mf.rawText = reserializeManifestFile(mf);
       mf.dirty = true;
     }
   }
@@ -4065,11 +4193,12 @@ async function writeWorkspaceYaml() {
     if (Object.prototype.hasOwnProperty.call(raw, key)) continue;
     if (key === 'settings' || isYamlComplexValue(managed[key])) raw[key] = managed[key];
   }
-  const text = serializeYamlValue(raw, 0);
+  const text = typeof ws.rawText === 'string' && ws.rawText !== '' ? patchYamlText(ws.rawText, raw) : serializeYamlValue(raw, 0);
   const fileHandle = await AppState.folder.handle.getFileHandle('workspace.yaml');
   const writable = await fileHandle.createWritable();
   await writable.write(text);
   await writable.close();
+  ws.rawText = text;
 }
 
 /**
@@ -4498,7 +4627,7 @@ function rewriteInboundReferences(oldRef, newRef, layer) {
       }
     });
     if (changed) {
-      mf.rawText = serializeManifestFile(mf.header, mf.content);
+      mf.rawText = reserializeManifestFile(mf);
       mf.dirty = true;
       changedFiles.push(mf.relPath);
     }
@@ -4962,7 +5091,7 @@ function renderTopPanelHtml() {
   // the name of the workspace in place of the folder, which is then the tooltip; without one, the folder and its root slash
   const label = name
     ? '<span class="folder-name workspace-name" title="Folder: ' + escapeHtml(AppState.folder.name) + '">' + escapeHtml(name) + '</span>'
-    : '<span class="folder-name" title="Browsers do not expose an absolute filesystem path for a picked folder (ASM-1/DEC-11) — this shows the folder\'s own name and its position as the browsing root instead.">' +
+    : '<span class="folder-name" title="Folder: ' + escapeHtml(AppState.folder.name) + ' (a browser does not tell the full path of a folder)">' +
         escapeHtml(AppState.folder.name) + '<span class="folder-root-slash">/</span>' +
       '</span>';
   return '<header class="top-panel col-span-3 flex items-center px-4">' +
@@ -5189,7 +5318,7 @@ const SETTINGS_HELP = {
   facetsGlobalEnabled: 'Also generate the unfiltered views into the Views path. Turn off to generate only facet views. Default: on.',
   facetsTemplate: 'Folder name for each facet\'s views, as a Java format string: the first `%s` is the Views path, the second is the facet name. Default `%s-%s` gives `views-main` for a facet named `main`.',
   facetsCustoms: 'Each facet needs a unique name. Its actions run in order on the workspace model.',
-  facetsAction: '`REMOVE` deletes every node matched by the JSONPath, e.g. `$.application..relationships[?(@.qualifiers anyof [\'oidc\'])]`.'
+  facetsAction: '`REMOVE` deletes every node matched by the JSONPath, e.g. `$.application..relationships[?(@.qualifiers[?(@ == \'oidc\')])]`.'
 };
 
 /** The default view title per viewpoint (Overview/Detailed/DeepViewpointService), shown as the empty-label placeholder. */
@@ -5759,10 +5888,14 @@ function renderItemListHtml(itemsHtml) {
  * A reference as an item: a link to its element, in `layer` (the element itself, or one of the other layer's: a deployed
  * application), followed by the kind of that element; or, when nothing answers to it, its name flagged as dangling.
  */
-function renderReferenceItemHtml(reference, layer) {
+function renderReferenceItemHtml(reference, layer, owner) {
   const target = AppState.index[layer || 'application'].get(String(reference));
   if (!target) {
-    return '<span class="relationship-dangling">' + escapeHtml(String(reference)) + '<span class="dangling-badge">dangling</span></span>';
+    const badge = '<span class="dangling-badge">dangling</span>';
+    // a relationship that points at nothing is repaired where it is declared, as from the box of the diagram: a button to its owner's edit form
+    if (owner === undefined) return '<span class="relationship-dangling">' + escapeHtml(String(reference)) + badge + '</span>';
+    return '<button type="button" class="relationship-link relationship-dangling" data-action="fix-dangling" data-ref="' + escapeHtml(String(owner)) + '"' +
+      (layer ? ' data-layer="' + escapeHtml(layer) + '"' : '') + ' title="Edit the relationship of ' + escapeHtml(String(owner)) + ' that points at nothing">' + escapeHtml(String(reference)) + '</button>' + badge;
   }
   return renderReferenceLinkHtml(String(reference), layer) + ' <span class="element-kind-badge">' + escapeHtml(target.kind) + '</span>';
 }
@@ -5778,7 +5911,7 @@ function renderElementRelationshipsHtml(record) {
   const layer = record.layer || 'application';
   return renderItemListHtml(record.relationships.map((rel) => {
     const qualifiersText = (rel.qualifiers && rel.qualifiers.length) ? ' (' + rel.qualifiers.map((q) => escapeHtml(q)).join(', ') + ')' : '';
-    return escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + renderReferenceItemHtml(rel.destination, layer);
+    return escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + renderReferenceItemHtml(rel.destination, layer, record.reference);
   }));
 }
 
@@ -9140,7 +9273,7 @@ function markWorkspaceYamlChanged() {
 function markEntryChanged(entry) {
   const owner = entryOwners.get(entry);
   if (!owner) { markWorkspaceYamlChanged(); return; }
-  owner.rawText = serializeManifestFile(owner.header, owner.content);
+  owner.rawText = reserializeManifestFile(owner);
   owner.dirty = true;
   saveStatus = { state: 'idle' };
 }
@@ -10398,8 +10531,9 @@ function handleAppClick(e) {
     case 'fix-dangling': {
       // a relationship that points at nothing is repaired where it is declared: in its owner's edit form
       const owner = target.getAttribute('data-ref');
-      AppState.selection = { kind: 'element', key: owner, mode: 'edit' };
-      expandAncestorsOf(owner);
+      const ownerLayer = target.getAttribute('data-layer');
+      AppState.selection = ownerLayer ? { kind: 'element', key: owner, layer: ownerLayer, mode: 'edit' } : { kind: 'element', key: owner, mode: 'edit' };
+      expandAncestorsOf(owner, ownerLayer || undefined);
       scrollNavToSelection = true;
       setPerspective('elements');
       break;
