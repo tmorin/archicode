@@ -99,7 +99,7 @@ wave_manifest:
       slug: library-view-edit
       phase: P2
       depends_on: [W-2]
-      run: null
+      run: '0029'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -132,7 +132,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-3 | — | `library-view-edit` | W-2 | Change a view by saying what it draws, and see the diagram follow | `TDD+pln`. The attributes of the panel become controls: viewpoint (and layer), element (or the pinned, hidden and opened elements of a Map view), facet, *Hide unlinked*, the four texts. A change redraws the diagram, marks the view *modified* (the existing mechanism: `markEntryChanged`, written by *Save all changes*, given up by *Cancel*), and a value that makes the view undrawable says why. The toolbar of the diagram on this page acts on the view being edited, not on the Map's state. The TDD decides which attributes are edited by a field and which by the diagram itself (pins by the tree of the Map or by the chips), and whether a view that is only moved around (zoom, pan) is a change (it is not today). Manual updated. | Node tests: each attribute edit redraws and marks modified; nothing written before save, only the view's manifest after; Cancel; undrawable edit; element rename still updates views; a story step shows the edited view |
+| W-3 | 0029 | `library-view-edit` | W-2 | Change a view by saying what it draws, and see the diagram follow | `TDD+pln`. The attributes of the panel become controls: viewpoint (and layer), element (or the pinned, hidden and opened elements of a Map view), facet, *Hide unlinked*, the four texts. A change redraws the diagram, marks the view *modified* (the existing mechanism: `markEntryChanged`, written by *Save all changes*, given up by *Cancel*), and a value that makes the view undrawable says why. The toolbar of the diagram on this page acts on the view being edited, not on the Map's state. The TDD decides which attributes are edited by a field and which by the diagram itself (pins by the tree of the Map or by the chips), and whether a view that is only moved around (zoom, pan) is a change (it is not today). Manual updated. | Node tests: each attribute edit redraws and marks modified; nothing written before save, only the view's manifest after; Cancel; undrawable edit; element rename still updates views; a story step shows the edited view |
 
 **Gate:** the checks listed under P2 in the manifest hold.
 

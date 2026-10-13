@@ -1219,8 +1219,8 @@ test('the Library has a Stories side and a Views side that lead to one another, 
   assert.equal(ev(sandbox, 'libraryTab'), 'views');
   page = sandbox.renderLibraryPerspectiveHtml();
   assert.match(page.left, /data-action="select-view"/);
-  assert.match(page.center, /Shown in/);
-  assert.match(page.center, /data-action="library-go-story" data-story="tour" data-step="1"/);
+  assert.match(page.right, /Shown in/); // the facts and the steps that show the view are in the panel on the right (run 0028)
+  assert.match(page.right, /data-action="library-go-story" data-story="tour" data-step="1"/);
   assert.match(page.center, /Open on diagram/);
   assert.equal(sandbox.currentRouteHash().split('?')[0], '/library/views');
   assert.match(sandbox.currentRouteHash(), new RegExp('view=' + viewId));
