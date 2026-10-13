@@ -83,7 +83,11 @@ test('every generated view is reproduced, for the workspace and for each facet',
   assert.ok(checked >= 5 * 40, 'only ' + checked + ' views were compared');
 });
 
-/** The stereotypes the CLI draws each box with, from what its generated .puml says of the box, without the ones of the way it is drawn (the kind and `atomic`, or `composite`). */
+/**
+ * The stereotypes the CLI draws each box with, from what its generated .puml says of the box, without the ones of the way
+ * it is drawn (the kind and `atomic`, or `composite`). The .puml lists them last first (PlantUML lets the first
+ * stereotype of a box win, the editor the last one), so they are put back in the order of the kernel.
+ */
 function pumlStereotypes(text) {
   const boxes = new Map();
   for (const line of text.split(/\r?\n/)) {
@@ -93,7 +97,7 @@ function pumlStereotypes(text) {
       m = line.match(new RegExp('^(?:' + SHAPES + ') (\\S+) as ".*" ((?:<<.+?>> ?)+) \\{$'));
       drawnWith = 1;
     }
-    if (m) boxes.set(m[1], Array.from(m[2].matchAll(/<<(.+?)>>/g), (s) => s[1]).slice(0, -drawnWith));
+    if (m) boxes.set(m[1], Array.from(m[2].matchAll(/<<(.+?)>>/g), (s) => s[1]).slice(0, -drawnWith).reverse());
   }
   return boxes;
 }

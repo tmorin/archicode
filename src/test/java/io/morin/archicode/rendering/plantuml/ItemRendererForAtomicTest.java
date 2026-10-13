@@ -75,7 +75,7 @@ class ItemRendererForAtomicTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-            rectangle item_id <<q1>> <<q2>> <<solution>> <<atomic>> [
+            rectangle item_id <<q2>> <<q1>> <<solution>> <<atomic>> [
             item_id
             [solution: q1, q2]
             ]
@@ -103,15 +103,16 @@ class ItemRendererForAtomicTest {
     }
 
     @Test
-    void shouldRenderEveryStereotypeTheKernelTellsInThatOrder() {
-        // `rendering-stereotypes: "external changed"` is two stereotypes, each one a key `styles` can style
+    void shouldRenderEveryStereotypeTheKernelTellsLastFirstSoThatTheLastOneWins() {
+        // `rendering-stereotypes: "external changed"` is two stereotypes, each one a key `styles` can style;
+        // PlantUML lets the first stereotype of a box win, the editor lets the last one win
         val element = elementBuilder.build();
         val item = ViewpointFixtures.createItemBuilder(element)
             .stereotypes(List.of("Spring Boot", "external", "changed"))
             .build();
         val puml = ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, item);
         Assertions.assertTrue(
-            puml.startsWith("rectangle item_id <<Spring Boot>> <<external>> <<changed>> <<solution>> <<atomic>> [\n"),
+            puml.startsWith("rectangle item_id <<changed>> <<external>> <<Spring Boot>> <<solution>> <<atomic>> [\n"),
             puml
         );
         Assertions.assertFalse(puml.contains("external changed"), puml);
