@@ -14,10 +14,10 @@ FontStyle: normal
 }
 </style>
 rectangle prod as "**Production**\n""[environment]""" <<composite>> {
-rectangle prod.cluster as "**Kubernetes Cluster**\n""[node: K8s]""" <<composite>> <<K8s>> {
+rectangle prod.cluster as "**Kubernetes Cluster**\n""[node: K8s]""" <<K8s>> <<composite>> {
 rectangle prod.cluster.data as "**data namespace**\n""[node]""" <<composite>> {
 rectangle prod.cluster.data.pg as "**database pod**\n""[node]""" <<composite>> {
-rectangle pg_shop_catalog_db <<container>> <<PostgreSQL>> <<atomic>> [
+rectangle pg_shop_catalog_db <<PostgreSQL>> <<container>> <<atomic>> [
 **Catalog Database**
 ""[container: PostgreSQL]""
 ]
@@ -37,7 +37,7 @@ rectangle pod-a_shop_web_frontend <<Angular>> <<container>> <<atomic>> [
 ]
 }
 rectangle prod.cluster.web.pod-b as "**api pod**\n""[node]""" <<composite>> {
-rectangle pod-b_shop_web_api <<container>> <<atomic>> <<Spring Boot>> [
+rectangle pod-b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]
@@ -47,7 +47,7 @@ rectangle pod-b_shop_web_api <<container>> <<atomic>> <<Spring Boot>> [
 }
 rectangle psp as "**Payment Provider Cloud**\n""[environment]""" <<composite>> {
 rectangle psp.gateway as "**Provider Gateway**\n""[node]""" <<composite>> {
-rectangle gateway_shop_payments <<system>> <<external>> <<atomic>> [
+rectangle gateway_shop_payments <<external>> <<system>> <<atomic>> [
 **Payment Provider**
 ""[system]""
 

@@ -14,9 +14,9 @@ FontStyle: normal
 }
 </style>
 rectangle prod as "**Production**\n""[environment]""" <<composite>> {
-rectangle prod.cluster as "**Kubernetes Cluster**\n""[node: K8s]""" <<composite>> <<K8s>> {
+rectangle prod.cluster as "**Kubernetes Cluster**\n""[node: K8s]""" <<K8s>> <<composite>> {
 rectangle prod.cluster.data as "**data namespace**\n""[node]""" <<composite>> {
-rectangle prod.cluster.data.svc <<atomic>> <<node>> [
+rectangle prod.cluster.data.svc <<node>> <<atomic>> [
 **catalog pod**
 ""[node]""
 ]

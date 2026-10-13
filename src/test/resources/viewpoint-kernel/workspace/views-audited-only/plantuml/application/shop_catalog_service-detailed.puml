@@ -15,7 +15,7 @@ FontStyle: normal
 </style>
 rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
 rectangle shop.catalog as "**Catalog**\n""[system]""" <<composite>> {
-rectangle shop.catalog.service as "**Catalog Service**\n""[container: Quarkus]""" <<composite>> <<Quarkus>> {
+rectangle shop.catalog.service as "**Catalog Service**\n""[container: Quarkus]""" <<Quarkus>> <<composite>> {
 rectangle shop.catalog.service.indexer <<component>> <<atomic>> [
 **Indexer**
 ""[component]""

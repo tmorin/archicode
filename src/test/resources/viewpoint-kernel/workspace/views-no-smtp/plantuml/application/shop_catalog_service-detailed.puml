@@ -13,7 +13,7 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-rectangle mailer <<system>> <<external>> <<atomic>> [
+rectangle mailer <<external>> <<changed>> <<system>> <<atomic>> [
 **Mail Provider**
 ""[system]""
 
@@ -21,11 +21,11 @@ Sends the e-mails.
 ]
 rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
 rectangle shop.catalog as "**Catalog**\n""[system]""" <<composite>> {
-rectangle shop.catalog.db <<container>> <<PostgreSQL>> <<atomic>> [
+rectangle shop.catalog.db <<PostgreSQL>> <<container>> <<atomic>> [
 **Catalog Database**
 ""[container: PostgreSQL]""
 ]
-rectangle shop.catalog.service as "**Catalog Service**\n""[container: Quarkus]""" <<composite>> <<Quarkus>> {
+rectangle shop.catalog.service as "**Catalog Service**\n""[container: Quarkus]""" <<Quarkus>> <<composite>> {
 rectangle shop.catalog.service.indexer <<component>> <<atomic>> [
 **Indexer**
 ""[component]""

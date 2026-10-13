@@ -14,7 +14,7 @@ FontStyle: normal
 }
 </style>
 rectangle prod as "**Production**\n""[environment]""" <<composite>> {
-rectangle prod.cluster <<K8s>> <<atomic>> <<node>> [
+rectangle prod.cluster <<K8s>> <<node>> <<atomic>> [
 **Kubernetes Cluster**
 ""[node: K8s]""
 ]

@@ -5,6 +5,7 @@ import io.morin.archicode.resource.element.application.Solution;
 import io.morin.archicode.resource.workspace.Formatters;
 import io.morin.archicode.viewpoint.Viewpoint;
 import io.morin.archicode.workspace.Workspace;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.junit.jupiter.api.Assertions;
@@ -69,7 +70,7 @@ class ItemRendererForAtomicTest {
         val element = elementBuilder.build();
         element.getQualifiers().add("q1");
         element.getQualifiers().add("q2");
-        val item = ViewpointFixtures.createItemBuilder(element).build();
+        val item = ViewpointFixtures.createItemBuilder(element).stereotypes(List.of("q1", "q2")).build();
         val puml = ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
@@ -99,5 +100,20 @@ class ItemRendererForAtomicTest {
             """,
             puml
         );
+    }
+
+    @Test
+    void shouldRenderEveryStereotypeTheKernelTellsInThatOrder() {
+        // `rendering-stereotypes: "external changed"` is two stereotypes, each one a key `styles` can style
+        val element = elementBuilder.build();
+        val item = ViewpointFixtures.createItemBuilder(element)
+            .stereotypes(List.of("Spring Boot", "external", "changed"))
+            .build();
+        val puml = ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, item);
+        Assertions.assertTrue(
+            puml.startsWith("rectangle item_id <<Spring Boot>> <<external>> <<changed>> <<solution>> <<atomic>> [\n"),
+            puml
+        );
+        Assertions.assertFalse(puml.contains("external changed"), puml);
     }
 }

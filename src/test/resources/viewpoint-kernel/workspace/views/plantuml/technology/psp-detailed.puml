@@ -18,7 +18,7 @@ rectangle prod <<environment>> <<atomic>> [
 ""[environment]""
 ]
 rectangle psp as "**Payment Provider Cloud**\n""[environment]""" <<composite>> {
-rectangle psp.gateway <<atomic>> <<node>> [
+rectangle psp.gateway <<node>> <<atomic>> [
 **Provider Gateway**
 ""[node]""
 ]

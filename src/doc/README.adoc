@@ -493,6 +493,47 @@ ArchiCode introduces a systematic approach to rendering views, enriching archite
 
 By introducing a robust rendering mechanism, employing opinionated rules for artifact generation, and facilitating the pluggable Renderer Service, ArchiCode enhances architectural communication by transforming abstract architectural concepts into tangible representations.
 
+[[stereotypes-and-styles]]
+==== Stereotypes and styles
+
+Every box of a diagram is drawn with a list of _stereotypes_.
+The stereotypes of an element are, in this order, its `qualifiers` (each one whole: `Spring Boot` is one stereotype) and the words of its `rendering-stereotypes` tag.
+The tag is a whitespace-separated list, so that `external changed` gives the two stereotypes `external` and `changed`, and a value of one word gives the one stereotype it always gave.
+A stereotype named twice counts once.
+The renderer then adds the kind of the element and the way the box is drawn.
+The command line and the editor read the stereotypes the same way: they come from the same kernel.
+
+The `styles` of the workspace give a stereotype its look.
+`styles.by-tags` and `styles.by-qualifiers` map a stereotype to a style, and a box has the style of every stereotype it is drawn with.
+The key is the stereotype itself, not the name of a tag: the keys of `by-tags` are the words of `rendering-stereotypes`, the keys of `by-qualifiers` are the qualifiers.
+The two maps are equivalent for the renderer, which only sees stereotypes; use the one that says where the stereotype comes from.
+A style sets any of `background-color`, `line-color`, `line-style`, `line-thickness`, `round-corner`, `font-color`, `font-style` and `shadowing`.
+
+.Styling the boxes tagged `external` and `changed`
+[source,yaml]
+----
+styles:
+  by-tags:
+    external:
+      background-color: "lightgray"
+    changed:
+      line-color: "orangered"
+      line-thickness: 3
+  by-qualifiers:
+    PostgreSQL:
+      round-corner: 20
+----
+
+.An element drawn with the `external` and the `changed` styles
+[source,yaml]
+----
+content:
+  id: "mailer"
+  name: "Mail Provider"
+  tags:
+    rendering-stereotypes: "external changed"
+----
+
 [[technical-configuration]]
 === Technical Configuration
 
@@ -1463,6 +1504,7 @@ Or it can be the name of the RDMS for a database Container : PostgreSQL.
 |string
 |A list of key/value pairs that helps to drive the rendering of views.
 For instance, to assign a predefined shape to the element or to categorize the element during a threat modeling process.
+The tag `rendering-stereotypes` is a whitespace-separated list of stereotypes the styles apply to (see <<stereotypes-and-styles>>).
 
 |relationships
 |string

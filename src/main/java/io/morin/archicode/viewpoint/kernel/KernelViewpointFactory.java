@@ -47,7 +47,7 @@ import lombok.val;
  * Input of the kernel: {@code viewpoint}, {@code layer}, {@code focal} (the reference of the view's element),
  * {@code default_synthetic_label} and {@code elements}, one entry per element of the layer with its {@code reference},
  * whether it is a {@code parent}, the {@code applications} it hosts (technology nodes), the environments it
- * {@code uses} (technology environments) and its egress {@code relationships}. The deep viewpoint of the technology layer also needs the application layer
+ * {@code uses} (technology environments) and its egress {@code relationships}, and its {@code qualifiers} and {@code tags}, from which the kernel tells the {@code stereotypes} of an item. The deep viewpoint of the technology layer also needs the application layer
  * ({@code app_elements}), and {@code application_links} and {@code hide_unlinked} for the workspace of a facet. See {@code src/main/rust/viewpoint-kernel/src/lib.rs} for the whole contract.
  */
 @Slf4j
@@ -84,6 +84,11 @@ public class KernelViewpointFactory implements ViewpointFactory {
                 val uses = node.putArray("uses");
                 new TreeSet<>(Optional.ofNullable(environment.getUses()).orElseGet(Set::of)).forEach(uses::add);
             }
+            // the kernel tells the stereotypes of the element from its qualifiers and its tags
+            val elementQualifiers = node.putArray("qualifiers");
+            Optional.ofNullable(element.getQualifiers()).ifPresent(q -> q.forEach(elementQualifiers::add));
+            val elementTags = node.putObject("tags");
+            Optional.ofNullable(element.getTags()).ifPresent(t -> t.forEach(elementTags::put));
             val relationships = node.putArray("relationships");
             for (val relationship : Optional.ofNullable(element.getRelationships()).orElseGet(Set::of)) {
                 val rel = relationships.addObject();
@@ -185,6 +190,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
                 .reference(deployedApplication ? "app:" + reference.replace(".", "_") : reference)
                 .element(element)
                 .kind(Item.Kind.from(element))
+                .stereotypes(stereotypesOf(node))
                 .build();
             val previous = itemById.putIfAbsent(id, item);
             if (previous != null) {
@@ -205,6 +211,12 @@ public class KernelViewpointFactory implements ViewpointFactory {
             itemById.get(parentById.get(id)).getChildren().add(itemById.get(id));
         }
         return itemById;
+    }
+
+    private static List<String> stereotypesOf(JsonNode item) {
+        val stereotypes = new ArrayList<String>();
+        item.path("stereotypes").forEach(stereotype -> stereotypes.add(stereotype.asText()));
+        return List.copyOf(stereotypes);
     }
 
     private static int depth(String id, Map<String, String> parentById) {

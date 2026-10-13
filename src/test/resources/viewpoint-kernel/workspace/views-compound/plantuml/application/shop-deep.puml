@@ -13,13 +13,13 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-person customer <<atomic>> <<person>> [
+person customer <<person>> <<atomic>> [
 **Customer**
 ""[person]""
 
 Someone who buys things.
 ]
-rectangle mailer <<system>> <<external>> <<atomic>> [
+rectangle mailer <<external>> <<changed>> <<system>> <<atomic>> [
 **Mail Provider**
 ""[system]""
 
@@ -27,11 +27,11 @@ Sends the e-mails.
 ]
 rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
 rectangle shop.catalog as "**Catalog**\n""[system]""" <<composite>> {
-rectangle shop.catalog.db <<container>> <<PostgreSQL>> <<atomic>> [
+rectangle shop.catalog.db <<PostgreSQL>> <<container>> <<atomic>> [
 **Catalog Database**
 ""[container: PostgreSQL]""
 ]
-rectangle shop.catalog.service as "**Catalog Service**\n""[container: Quarkus]""" <<composite>> <<Quarkus>> {
+rectangle shop.catalog.service as "**Catalog Service**\n""[container: Quarkus]""" <<Quarkus>> <<composite>> {
 rectangle shop.catalog.service.indexer <<component>> <<atomic>> [
 **Indexer**
 ""[component]""
@@ -43,7 +43,7 @@ rectangle shop.catalog.service.search <<component>> <<atomic>> [
 }
 }
 rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
-rectangle shop.web.api <<container>> <<atomic>> <<Spring Boot>> [
+rectangle shop.web.api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]

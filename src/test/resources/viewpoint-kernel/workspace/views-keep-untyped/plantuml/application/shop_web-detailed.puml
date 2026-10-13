@@ -15,7 +15,7 @@ FontStyle: normal
 </style>
 rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
 rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
-rectangle shop.web.api <<container>> <<atomic>> <<Spring Boot>> [
+rectangle shop.web.api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]

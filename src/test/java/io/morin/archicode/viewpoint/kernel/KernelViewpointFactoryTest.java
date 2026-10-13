@@ -20,8 +20,11 @@ import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.val;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -133,6 +136,34 @@ class KernelViewpointFactoryTest {
                 .filter(i -> i.getReference().equals("ref"))
                 .count()
         );
+    }
+
+    @Test
+    void shouldGiveAnItemTheStereotypesOfItsElementInAStableOrder() {
+        // the tag is a whitespace-separated list: "external changed" is two stereotypes, after the qualifiers
+        val api = Container.builder()
+            .id("api")
+            .qualifiers(new LinkedHashSet<>(List.of("Spring Boot", "PostgreSQL")))
+            .tags(Map.of("rendering-stereotypes", "external changed"))
+            .build();
+        val plain = Container.builder().id("plain").build();
+        val sys = System.builder().id("sys").elements(Set.of(api, plain)).build();
+        val raw = Workspace.builder()
+            .application(Application.builder().elements(Set.of(sys)).build())
+            .build();
+
+        val viewpoint = create("detailed", raw, View.Layer.APPLICATION, "sys");
+
+        val stereotypes = viewpoint
+            .getItems()
+            .stream()
+            .flatMap(Item::stream)
+            .collect(Collectors.toMap(Item::getReference, Item::getStereotypes));
+        Assertions.assertEquals(
+            List.of("Spring Boot", "PostgreSQL", "external", "changed"),
+            stereotypes.get("sys.api")
+        );
+        Assertions.assertEquals(List.of(), stereotypes.get("sys.plain"));
     }
 
     /**
