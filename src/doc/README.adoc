@@ -639,6 +639,13 @@ The pinned and hidden elements are also shown as chips over the map, each remova
 
 *Center* puts the selected box in the middle at a readable size (with nothing selected on the Map: the top of the map, centered across), never below 80%, and *Fit* shows the whole diagram, however small. Fit is in the URL (`frame=fit`) and Center, how a diagram opens, is a URL with no `frame`, so a link opens the diagram framed as you left it; a zoom or a move of your own is not part of the link. *PNG* and *SVG*, in the header, download the diagram.
 
+[[editor-inspection]]
+=== The inspection panel
+
+Beside a diagram, on the right, a panel shows the data of the selected element without leaving the view: its name and styled stereotypes, its kind, its layer, its id and reference, its description, qualifiers and tags, and the file that declares it. It is there on the *Map* and on the *Overview*, *Detailed* and *Deep* tabs of Elements (where a click on a box moves to that element, and the panel follows); it is not on *Details* and in the edit form, which show the same things themselves. Nothing is shown, and no room is kept, while nothing is selected. The panel is resized by dragging its edge (the width is remembered; a double click on the edge gives the default back), it goes away with *Maximize*, and on the Map its *x* button deselects the element. On the Map the panel says so when the selected element is not drawn (a pin, a hidden element or a folded box leaves it out), and when it is a technology element, which the Map never draws. A click does what it did before: on the Map it selects, in Elements it moves to the element.
+
+Since the panel takes room from the center, the header of the diagram goes to its narrower states sooner (see <<editor-header>>): resize or close the panel to give it back.
+
 [[editor-header]]
 === The header of a diagram
 
