@@ -306,7 +306,7 @@ test('the compact state hides the words of the icon controls and leaves the over
 
 test('the minimal state shows the "⋯" button and turns the overflow into a popup that opens with data-open', () => {
   const minimal = blockOf(CSS_NO_COMMENTS, QUERY(60));
-  assert.match(ruleOf(minimal, '.header-more-button'), /display: inline-flex;/);
+  assert.match(ruleOf(minimal, '.element-header .header-more-button'), /display: inline-flex;/);
   assert.match(ruleOf(minimal, '.header-more'), /display: block; position: relative;/, 'the popup hangs from its holder');
   const popup = ruleOf(minimal, '.header-overflow');
   assert.match(popup, /position: absolute;/);
@@ -314,6 +314,19 @@ test('the minimal state shows the "⋯" button and turns the overflow into a pop
   assert.equal(ruleOf(minimal, '.header-overflow[data-open="true"]'), 'display: flex;');
   assert.match(ruleOf(minimal, '.element-header:has(.header-overflow[data-open="true"])'), /z-index: 5;/, 'the header is raised above the chips of the map while the menu is open');
   assert.ok(minimal.indexOf('.header-overflow {') < minimal.indexOf('.header-overflow[data-open="true"]'), 'the open rule comes after the closed one');
+});
+
+test('the "⋯" button keeps its 2rem and no padding: its rule is more specific than ".element-header button", which has !important too', () => {
+  // field check of wave 006 (run 0030): the base rule `.element-header button { padding: 0 0.8rem !important }` (0,1,1) beat
+  // `.header-more-button { padding: 0 !important }` (0,1,0), so the 2rem button had 25.6px of padding and its 16px icon was 4.4px wide.
+  // A container query adds no specificity: the rule has to name .element-header itself (0,2,0).
+  const base = ruleOf(CSS_NO_COMMENTS, '.top-panel button, .element-header button');
+  assert.match(base, /padding: 0 0\.8rem !important;/, 'the base rule of the header buttons has !important padding');
+  const minimal = blockOf(CSS_NO_COMMENTS, QUERY(60));
+  const more = ruleOf(minimal, '.element-header .header-more-button');
+  assert.match(more, /width: 2rem;/);
+  assert.match(more, /padding: 0 !important;/);
+  assert.ok(!rulesOf(minimal).some((r) => r.selector === '.header-more-button' && /padding/.test(r.body)), 'no weaker rule of the same name is left');
 });
 
 test('the tight state gives the header two rows instead of overflowing', () => {

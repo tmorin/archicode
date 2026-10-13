@@ -554,7 +554,9 @@
   }
   @container center (max-width: 60rem) {
     .header-more { display: block; position: relative; }
-    .header-more-button { display: inline-flex; align-items: center; justify-content: center; width: 2rem; padding: 0 !important; }
+    /* "padding: 0" must beat the page's ".element-header button { padding: 0 0.8rem !important }" (the same !important, a higher
+       specificity): without the .element-header here, the 2rem button kept 0.8rem on each side and its icon was squeezed to a 4px sliver */
+    .element-header .header-more-button { display: inline-flex; align-items: center; justify-content: center; width: 2rem; padding: 0 !important; }
     .header-more-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
     /* the menu hangs from the "⋯" button like the help from the "?" (same box); it is open when the button says so, closed otherwise */
     .header-overflow { display: none; position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; flex-direction: column; align-items: stretch; min-width: 13rem; max-width: calc(100vw - 2rem); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
