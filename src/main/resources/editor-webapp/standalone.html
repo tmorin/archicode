@@ -99,12 +99,9 @@
   .folder-name { font-weight: 600; cursor: default; }
   .folder-root-slash { color: var(--muted); margin-left: 0.1rem; }
 
-  .perspective-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; }
   /* Both headers share one control size (2rem) so buttons line up from the top bar down to the center header. */
   .top-panel button, .element-header button { height: 2rem; padding: 0 0.8rem !important; font-size: 0.875rem; line-height: 1.25; white-space: nowrap; }
-  .top-panel .perspective-tab { padding: 0 0.8rem !important; border-radius: 999px !important; font-size: 0.8rem; }
-  .top-panel .perspective-tab.active { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
-  .top-panel > button, .top-panel .perspective-tabs { flex-shrink: 0; }
+  .top-panel .perspective-tabs { flex-shrink: 0; }
   .top-panel > .folder-name { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .help-wrap { position: relative; flex-shrink: 0; }
   .top-actions { display: flex; align-items: center; gap: 1rem; margin-left: auto; min-width: 0; max-width: 100%; }
@@ -356,7 +353,9 @@
   .button-group button:first-child { border-top-left-radius: 4px !important; border-bottom-left-radius: 4px !important; }
   .button-group button:last-child { border-top-right-radius: 4px !important; border-bottom-right-radius: 4px !important; }
   .button-group button[aria-pressed="true"] { position: relative; z-index: 1; }
-  .viewpoint-switch button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  /* The neighbours overlap by one border (margin -1px): the hovered or focused button rises above them, so none of its borders is hidden. */
+  .button-group button:hover, .button-group button:focus-visible { position: relative; z-index: 2; }
+  .perspective-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
   /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
   .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -4104,12 +4103,11 @@ function renderSaveStatusHtml() {
   return '<span class="save-status ' + (isError ? 'save-status-error' : 'save-status-success') + '" role="status" title="' + escapeHtml(text) + '">' + escapeHtml(text) + '</span>';
 }
 
-/** The three perspective tabs (header, left of the folder actions) — active one marked, UX review follow-up. */
+/** The perspective switch (header, left of the folder actions): a button group, the current perspective is the pressed one. */
 function renderPerspectiveTabsHtml() {
-  let html = '<span class="perspective-tabs">';
+  let html = '<span class="perspective-tabs button-group" role="group" aria-label="Perspectives">';
   for (const id of Object.keys(PERSPECTIVES)) {
-    const active = id === currentPerspective ? ' active' : '';
-    html += '<button type="button" class="perspective-tab' + active + '" data-action="set-perspective" data-perspective="' + id + '">' +
+    html += '<button type="button" data-action="set-perspective" data-perspective="' + id + '" aria-pressed="' + (id === currentPerspective) + '">' +
               escapeHtml(PERSPECTIVES[id].label) +
             '</button>';
   }
@@ -4186,11 +4184,12 @@ function renderTopPanelHtml() {
       '<span class="folder-name" title="Browsers do not expose an absolute filesystem path for a picked folder (ASM-1/DEC-11) — this shows the folder\'s own name and its position as the browsing root instead.">' +
         escapeHtml(AppState.folder.name) + '<span class="folder-root-slash">/</span>' +
       '</span>' +
-      // the folder of `archicode editor serve` is the one the server was started on: there is no other to pick
-      (isServedByArchiCode() ? '' : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and return to the folder picker.">Close folder</button>') +
       renderPerspectiveTabsHtml() +
-      // one group, pushed to the right: when the bar wraps it moves as a whole, and the status gives way before the buttons do
-      '<span class="top-actions">' + renderSaveStatusHtml() + saveAll + renderHelpButtonHtml() + '</span>' +
+      // one group, pushed to the right: when the bar wraps it moves as a whole, and the status gives way before the buttons do;
+      // the folder of `archicode editor serve` is the one the server was started on: there is no other to pick, so no Close folder
+      '<span class="top-actions">' + renderSaveStatusHtml() + saveAll + renderHelpButtonHtml() +
+        (isServedByArchiCode() ? '' : '<button type="button" class="btn-ghost" data-action="close-folder" title="Close this workspace folder and return to the folder picker.">Close folder</button>') +
+      '</span>' +
     '</header>';
 }
 
