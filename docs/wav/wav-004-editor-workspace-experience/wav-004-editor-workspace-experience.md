@@ -88,7 +88,7 @@ wave_manifest:
       slug: editor-toolbar-polish
       phase: P1
       depends_on: []
-      run: null
+      run: '0012'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -98,7 +98,7 @@ wave_manifest:
       slug: kernel-stereotypes
       phase: P1
       depends_on: []
-      run: null
+      run: '0013'
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
@@ -114,7 +114,7 @@ wave_manifest:
       slug: editor-theme-setting
       phase: P1
       depends_on: []
-      run: null
+      run: '0014'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -125,7 +125,7 @@ wave_manifest:
       slug: workspace-name
       phase: P1
       depends_on: []
-      run: null
+      run: '0015'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/resource/workspace/Settings.java'
@@ -139,7 +139,7 @@ wave_manifest:
       slug: center-header-responsive
       phase: P2
       depends_on: []
-      run: null
+      run: '0016'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -149,7 +149,7 @@ wave_manifest:
       slug: editor-applies-styles
       phase: P2
       depends_on: [W-3, W-5]
-      run: null
+      run: '0017'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -194,10 +194,10 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-1 | — | `editor-toolbar-polish` | — | Buttons groups, perspective switch and Close folder look and sit right | `single-document`. A hovered or focused button of a `.button-group` keeps its right border (`z-index` on `:hover` and `:focus-visible`, which fixes every group). The perspective tabs become a button group with `aria-pressed`. "Close folder" moves to the far right of the top bar, after "?". | Node tests assert the group markup (`aria-pressed` on the active perspective, order of the top-bar controls) and the CSS rule; existing tests updated |
-| W-5 | — | `kernel-stereotypes` | — | The CLI and the editor read `rendering-stereotypes` the same way, from the kernel | `single-document`, Rust + Java. The value is a whitespace-separated list (backward compatible). The kernel returns per item its stereotypes (qualifiers + split tag, stable order). `PlantumlUtilities.generateStereotypes` consumes them (no more `Collectors.toSet()`). `embed.sh` re-run. The manual documents `rendering-stereotypes` and `styles.by-tags`. | `cargo test`, `embed.sh --check`, a Java test and a node conformance test on `"external changed"`; `./mvnw test` green |
-| W-3 | — | `editor-theme-setting` | — | Choose light, dark or system in Settings, remembered by the browser | `single-document`. Section "Appearance (this browser)" with a light/dark/system radio list, stored in `localStorage` (every access in try/catch), never touching `workspace.yaml` or the Save state. The stylesheet moves from `prefers-color-scheme` alone to `:root[data-theme]` overrides (system = no attribute). CodeMirror theme and the SVG export follow. The stored choice is applied before the first paint. | Node tests for the radio, the attribute, the unavailable storage, the CodeMirror dark flag |
-| W-4 | — | `workspace-name` | — | Give a workspace a name that the editor shows instead of the folder name | `single-document`, Java + editor. Optional `name` in `settings` (`Settings.java`), read and written with the managed settings (omitted when empty), a "Name" field in Settings (section "Workspace", through Save). It replaces the folder name in the top bar, in the "Opening “x”…" messages and in the page title; the folder name becomes a tooltip. Manual and the `domain_workspace` example updated. | Java and node tests: round trip, absent key unchanged, display and tooltip |
+| W-1 | 0012 | `editor-toolbar-polish` | — | Buttons groups, perspective switch and Close folder look and sit right | `single-document`. A hovered or focused button of a `.button-group` keeps its right border (`z-index` on `:hover` and `:focus-visible`, which fixes every group). The perspective tabs become a button group with `aria-pressed`. "Close folder" moves to the far right of the top bar, after "?". | Node tests assert the group markup (`aria-pressed` on the active perspective, order of the top-bar controls) and the CSS rule; existing tests updated |
+| W-5 | 0013 | `kernel-stereotypes` | — | The CLI and the editor read `rendering-stereotypes` the same way, from the kernel | `single-document`, Rust + Java. The value is a whitespace-separated list (backward compatible). The kernel returns per item its stereotypes (qualifiers + split tag, stable order). `PlantumlUtilities.generateStereotypes` consumes them (no more `Collectors.toSet()`). `embed.sh` re-run. The manual documents `rendering-stereotypes` and `styles.by-tags`. | `cargo test`, `embed.sh --check`, a Java test and a node conformance test on `"external changed"`; `./mvnw test` green |
+| W-3 | 0014 | `editor-theme-setting` | — | Choose light, dark or system in Settings, remembered by the browser | `single-document`. Section "Appearance (this browser)" with a light/dark/system radio list, stored in `localStorage` (every access in try/catch), never touching `workspace.yaml` or the Save state. The stylesheet moves from `prefers-color-scheme` alone to `:root[data-theme]` overrides (system = no attribute). CodeMirror theme and the SVG export follow. The stored choice is applied before the first paint. | Node tests for the radio, the attribute, the unavailable storage, the CodeMirror dark flag |
+| W-4 | 0015 | `workspace-name` | — | Give a workspace a name that the editor shows instead of the folder name | `single-document`, Java + editor. Optional `name` in `settings` (`Settings.java`), read and written with the managed settings (omitted when empty), a "Name" field in Settings (section "Workspace", through Save). It replaces the folder name in the top bar, in the "Opening “x”…" messages and in the page title; the folder name becomes a tooltip. Manual and the `domain_workspace` example updated. | Java and node tests: round trip, absent key unchanged, display and tooltip |
 
 **Gate:** the checks listed under P1 in the manifest hold.
 
@@ -205,8 +205,8 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-2 | — | `center-header-responsive` | — | The header of the centre panel holds together whatever the width of the panel | `TDD+pln`. Container queries on the centre panel, three states (full, compact with icon-only controls carrying `title` and `aria-label`, minimal with a "⋯" menu reusing the `.help-menu` pattern). Decided by the user: the menu holds Story (`Name view…`, `Add to story…`), Download (PNG/SVG) and "Show on map" / "Open in Elements" (same slot in both perspectives); the Facet select stays visible. Removes the hidden-scroll strip. The TDD decides duplicate-versus-move of the controls and how the focus returns (`headerControlSelector`, focus after the add-to-story dialog). | DOM-level tests per state; the existing header tests updated deliberately; no `overflow-x:auto` strip left in `.element-header-actions` |
-| W-6 | — | `editor-applies-styles` | W-3, W-5 | See in the editor what the workspace styled: new, changed, external | `TDD+pln`. Fill and stroke from `styles.by-tags` / `by-qualifiers` on diagram boxes, a text badge (colour is never alone), the same in tree rows, in the legend and in the SVG export; readable text colour on custom fills in the dark theme (the TDD decides whether `styles` gets an optional dark variant). Reads the workspace mapping, nothing hard-coded; consumes the kernel stereotypes. Not to be confused with the existing `modified-dot` (unsaved changes). Manual updated. | Node tests: a styled stereotype yields its fill, stroke and badge in the SVG, the tree row, the legend and the export, in both themes |
+| W-2 | 0016 | `center-header-responsive` | — | The header of the centre panel holds together whatever the width of the panel | `TDD+pln`. Container queries on the centre panel, three states (full, compact with icon-only controls carrying `title` and `aria-label`, minimal with a "⋯" menu reusing the `.help-menu` pattern). Decided by the user: the menu holds Story (`Name view…`, `Add to story…`), Download (PNG/SVG) and "Show on map" / "Open in Elements" (same slot in both perspectives); the Facet select stays visible. Removes the hidden-scroll strip. The TDD decides duplicate-versus-move of the controls and how the focus returns (`headerControlSelector`, focus after the add-to-story dialog). | DOM-level tests per state; the existing header tests updated deliberately; no `overflow-x:auto` strip left in `.element-header-actions` |
+| W-6 | 0017 | `editor-applies-styles` | W-3, W-5 | See in the editor what the workspace styled: new, changed, external | `TDD+pln`. Fill and stroke from `styles.by-tags` / `by-qualifiers` on diagram boxes, a text badge (colour is never alone), the same in tree rows, in the legend and in the SVG export; readable text colour on custom fills in the dark theme (the TDD decides whether `styles` gets an optional dark variant). Reads the workspace mapping, nothing hard-coded; consumes the kernel stereotypes. Not to be confused with the existing `modified-dot` (unsaved changes). Manual updated. | Node tests: a styled stereotype yields its fill, stroke and badge in the SVG, the tree row, the legend and the export, in both themes |
 
 **Gate:** the checks listed under P2 in the manifest hold.
 
