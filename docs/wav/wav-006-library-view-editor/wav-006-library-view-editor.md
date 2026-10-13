@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 006
-status: in-progress
+status: completed
 date: 2026-10-13
 related:
   - docs/wav/wav-006-library-view-editor/wbc-006-library-view-editor.md
@@ -40,7 +40,7 @@ the user's workspace, with the view `authentication_token_validation`.
 wave_manifest:
   wave: 006
   slug: library-view-editor
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P1
@@ -187,3 +187,9 @@ wave_manifest:
   pass on the wave branch.
 - The page `#/library/views?view=authentication_token_validation` of the copy of the user's workspace draws the view in
   the centre and shows its attributes on the right, as recorded by the run document of W-4.
+
+### Exceptions at close-out
+
+- The wave pull request is not opened by `complete-wave` (an outward-facing step left to the operator): "the wave is one pull request" is not yet satisfied.
+- The field check could not take screenshots in the built-in browser (pane hidden); the look was seen in screenshots by a headless Firefox. Chromium, Safari, a screenshot of *System* with the OS in dark, a mouse-picked datalist suggestion, a screen reader and a real folder picker are not verified.
+- Nine findings of the field check are open and unfiled (see the progress log); one was fixed with a test.
