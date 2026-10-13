@@ -543,7 +543,10 @@ The badges are part of the SVG and PNG exported from a diagram, while the key is
 
 For the same stereotype, `by-tags` wins over `by-qualifiers`.
 When a box has several styled stereotypes, a later one overrides an earlier one property by property: with `rendering-stereotypes: "external changed"`, the fill of `changed` wins, and the properties it does not set come from `external`.
-The order is that of the stereotypes of the box, its qualifiers first and then the words of the tag; the command line defines no order for this case.
+The order is that of the stereotypes of the box, its qualifiers first and then the words of the tag.
+The command line follows the same rule: it writes the stereotypes of a box last first, since PlantUML lets the first stereotype of a box win, property by property, whatever the order of the styles.
+The `.puml` of a box carrying `external changed` therefore says `<<changed>> <<external>>`, and the same workspace always gives the same file, byte for byte.
+The one difference: `shadowing` is a flag that is only ever switched on, so a style cannot switch off the shadow another style of the same box switched on (the editor lets `shadowing: false` of a later stereotype do it).
 
 Colours are read as `#rgb`, `#rrggbb`, `rgb(r, g, b)`, `transparent` or a CSS colour name such as `lightgray`; a value the editor cannot read is ignored.
 Numbers are whole numbers.

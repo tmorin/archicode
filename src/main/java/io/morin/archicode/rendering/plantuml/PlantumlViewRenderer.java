@@ -1,15 +1,12 @@
 package io.morin.archicode.rendering.plantuml;
 
 import io.morin.archicode.rendering.ViewRenderer;
-import io.morin.archicode.resource.workspace.Styles;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Map;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -63,10 +60,7 @@ public class PlantumlViewRenderer implements ViewRenderer {
                     outputStreamWriter.write(linkRenderer.render(viewpoint, link));
                 }
 
-                val entries = new HashSet<Map.Entry<String, Styles.Style>>();
-                entries.addAll(viewpoint.getWorkspace().getStyles().getByQualifiers().entrySet());
-                entries.addAll(viewpoint.getWorkspace().getStyles().getByTags().entrySet());
-                for (Map.Entry<String, Styles.Style> entry : entries) {
+                for (val entry : PlantumlUtilities.stereotypeStyles(viewpoint.getWorkspace().getStyles())) {
                     outputStreamWriter.write(styleShapeRenderer.render("actor", entry));
                     outputStreamWriter.write(styleShapeRenderer.render("card", entry));
                     outputStreamWriter.write(styleShapeRenderer.render("database", entry));

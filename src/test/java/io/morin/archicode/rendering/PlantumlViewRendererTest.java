@@ -1,9 +1,17 @@
 package io.morin.archicode.rendering;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.morin.archicode.ResourceFixtures;
 import io.morin.archicode.WorkspaceAFixtures;
+import io.morin.archicode.resource.element.application.Application;
+import io.morin.archicode.resource.element.application.Container;
+import io.morin.archicode.resource.element.application.Solution;
+import io.morin.archicode.resource.element.application.System;
+import io.morin.archicode.resource.workspace.Styles;
 import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.viewpoint.Viewpoint;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
@@ -12,7 +20,10 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -160,5 +171,51 @@ class PlantumlViewRendererTest {
         val outContent = Files.readString(outFile);
         log.info("{}", outContent);
         assertNotNull(outContent);
+    }
+
+    @SneakyThrows
+    @Test
+    void shouldRenderTheStylesInAStableOrderAndTheStereotypesLastFirst() {
+        val view = ResourceFixtures.createDetailedView("solution_a.system_a", "solution_a.system_a");
+        val container = Container.builder()
+            .id("container_a")
+            .qualifiers(Set.of("Spring Boot"))
+            .tags(Map.of("rendering-stereotypes", "external changed"))
+            .build();
+        val system = System.builder().id("system_a").elements(Set.of(container)).build();
+        val solution = Solution.builder().id("solution_a").elements(Set.of(system)).build();
+        val rawWorkspace = Workspace.builder()
+            .application(Application.builder().elements(Set.of(solution)).build())
+            .styles(
+                Styles.builder()
+                    .byTag("external", Styles.Style.builder().backgroundColor("lightgray").build())
+                    .byTag("changed", Styles.Style.builder().lineColor("orangered").build())
+                    .byQualifier("Spring Boot", Styles.Style.builder().roundCorner(20).build())
+                    .byQualifier("external", Styles.Style.builder().backgroundColor("red").lineThickness(2).build())
+                    .build()
+            )
+            .build();
+        val context = viewpointServiceRepository
+            .get("detailed")
+            .createViewpointFactory()
+            .create(workspaceFactory.create(rawWorkspace, Map.of()), view);
+
+        val first = Files.readString(prepareOutDir("shouldRenderTheStylesInAStableOrder1", context));
+        val second = Files.readString(prepareOutDir("shouldRenderTheStylesInAStableOrder2", context));
+
+        assertEquals(first, second);
+        // the last stereotype of the box comes first, because PlantUML lets the first one win
+        assertTrue(first.contains("<<changed>> <<external>> <<Spring Boot>> <<container>> <<atomic>>"), first);
+        // by name; `external` is declared in both maps, and is one style, the tags over the qualifiers
+        val blocks = Pattern.compile("^\\.(.+) \\{$", Pattern.MULTILINE)
+            .matcher(first)
+            .results()
+            .map(m -> m.group(1))
+            .distinct()
+            .toList();
+        assertEquals(List.of("composite", "Spring Boot", "changed", "external"), blocks);
+        assertTrue(first.contains("BackgroundColor: lightgray"), first);
+        assertTrue(first.contains("LineThickness: 2"), first);
+        assertFalse(first.contains("BackgroundColor: red"), first);
     }
 }

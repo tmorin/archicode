@@ -72,7 +72,7 @@ class ItemRendererForCompositeTest {
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
-            rectangle sol_id as "sol_id\\n[solution: q1, q2]" <<q1>> <<q2>> <<composite>> {
+            rectangle sol_id as "sol_id\\n[solution: q1, q2]" <<q2>> <<q1>> <<composite>> {
             }
             """,
             puml

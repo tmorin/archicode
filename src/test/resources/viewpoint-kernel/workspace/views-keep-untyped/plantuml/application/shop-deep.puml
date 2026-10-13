@@ -13,7 +13,7 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-rectangle mailer <<external>> <<changed>> <<system>> <<atomic>> [
+rectangle mailer <<changed>> <<external>> <<system>> <<atomic>> [
 **Mail Provider**
 ""[system]""
 
