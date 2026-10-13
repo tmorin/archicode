@@ -280,12 +280,12 @@ test('maximizing the diagram hides the tree, and only on a diagram', async () =>
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'; diagramMaximized = false;");
   const normal = sandbox.renderElementsPerspectiveHtml();
   assert.ok(normal.left);
-  assert.match(normal.center, /data-action="toggle-maximize"[^>]*>.*<span class="maximize-label">Maximize<\/span>/);
+  assert.match(normal.center, /data-action="toggle-maximize"[^>]*>.*<span class="control-label">Maximize<\/span>/);
 
   run(sandbox, 'diagramMaximized = true;');
   const maximized = sandbox.renderElementsPerspectiveHtml();
   assert.equal(maximized.left, null);
-  assert.match(maximized.center, /data-action="toggle-maximize"[^>]*>.*<span class="maximize-label">Restore<\/span>/);
+  assert.match(maximized.center, /data-action="toggle-maximize"[^>]*>.*<span class="control-label">Restore<\/span>/);
 
   run(sandbox, "elementTab = 'details';");
   assert.ok(sandbox.renderElementsPerspectiveHtml().left, 'the page of an element always has its tree');
@@ -861,7 +861,16 @@ test('the tabs of an element are on the left of its header, on every tab, so tha
   const { sandbox, state } = await openFixture();
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   const left = (html) => html.match(/element-header-label">(.*?)<\/div><div class="element-header-actions">/)[1];
-  const right = (html) => html.match(/element-header-actions">(.*?)<\/div><\/div>/)[1];
+  // the actions row holds nested divs (the "⋯" menu), so it is cut where its own div closes, not at the first `</div></div>`
+  const right = (html) => {
+    const from = html.indexOf('element-header-actions">') + 'element-header-actions">'.length;
+    let depth = 1;
+    for (const m of html.slice(from).matchAll(/<div\b|<\/div>/g)) {
+      depth += m[0] === '</div>' ? -1 : 1;
+      if (depth === 0) return html.slice(from, from + m.index);
+    }
+    throw new Error('the actions row does not close');
+  };
 
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'details'; diagramMaximized = false;");
   const details = sandbox.renderElementsPerspectiveHtml().center;

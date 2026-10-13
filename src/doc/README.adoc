@@ -618,6 +618,16 @@ The pinned and hidden elements are also shown as chips over the map, each remova
 
 *Center* puts the selected box in the middle at a readable size (with nothing selected on the Map: the top of the map, centered across), never below 80%, and *Fit* shows the whole diagram, however small. Fit is in the URL (`frame=fit`) and Center, how a diagram opens, is a URL with no `frame`, so a link opens the diagram framed as you left it; a zoom or a move of your own is not part of the link. *PNG* and *SVG*, in the header, download the diagram.
 
+[[editor-header]]
+=== The header of a diagram
+
+The header over a diagram, on the tabs of Elements and on the Map, adapts to the width of the center panel, which is the window minus the left panel, so dragging the left panel changes it. From wide to narrow:
+
+- *Wide*: every control shows its words.
+- *Narrower*: *Show on map* (or *Open in Elements* on the Map), *Name view...*, *Add to story...* and *Maximize* show only their icon; the tooltip says what each one does.
+- *Narrower still*: *Show on map* or *Open in Elements*, the *Story* buttons and the *Download* buttons (PNG, SVG) move into the menu of a "⋯" button, which closes with Escape or a click elsewhere. The facet list and *Maximize* stay in the header. The menu items work exactly like the buttons they replace.
+- *Very narrow*: the header takes two rows.
+
 [[editor-texts]]
 === The texts of a diagram
 
