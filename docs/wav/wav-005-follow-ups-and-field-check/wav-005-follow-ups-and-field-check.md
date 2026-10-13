@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 005
-status: in-progress
+status: completed
 date: 2026-10-13
 related:
   - docs/wav/wav-005-follow-ups-and-field-check/wbc-005-follow-ups-and-field-check.md
@@ -39,7 +39,7 @@ been pulled and run.
 wave_manifest:
   wave: 005
   slug: follow-ups-and-field-check
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P1
@@ -196,3 +196,9 @@ P3      └───────────────┴───────
 - Each of the six runs has a `run-NNNN-*.md` with `status: completed` and exactly one commit; the wave is one pull request.
 - `JAVA_HOME=/home/tibo/.sdkman/candidates/java/25.0.4-tem ./mvnw test` and `node --test "src/test/javascript/**/*.test.js"` pass on the wave branch.
 - tmorin/archicode#15 is solved; the items of #16 and #17 named in the scope are solved; the items of #8 named in W-5 and W-6 have a recorded result.
+
+### Exceptions at close-out
+
+- The wave pull request is not opened by `complete-wave` (an outward-facing step left to the operator): "the wave is one pull request" is not yet satisfied, and the issues named in the criteria are solved on the branch, not yet on `main`.
+- The field check could not exercise the folder list, the IndexedDB migration or the permission states (served mode hides them); a human look in a real Chromium remains (third item of tmorin/archicode#16).
+- Seven findings of the field check are open and unfiled (see the progress log).

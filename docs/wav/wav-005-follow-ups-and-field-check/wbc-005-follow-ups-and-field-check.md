@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 005
-status: proposed
+status: completed
 date: 2026-10-13
 related:
   - docs/wav/wav-004-editor-workspace-experience/wav-004-editor-workspace-experience.md
