@@ -56,6 +56,10 @@ Two things worth knowing before touching the code:
   does not pull in a sibling that merely starts with the same letters (`sys2`). The deep viewpoint of the Java it
   replaces compared references with `String.startsWith`, which did. This is an intentional divergence (the old behaviour
   was a bug); the overview, detailed and map viewpoints always compared paths.
+- Each item carries the `stereotypes` of its element, for the CLI's PlantUML and for the editor: the element's
+  `qualifiers` (whole, as declared), then the words of its `rendering-stereotypes` tag (a whitespace-separated list),
+  once each. The caller sends `qualifiers` and `tags` with its elements; the kind and `atomic` / `composite` are the
+  renderer's business, not the kernel's.
 - `expandable` is not a structural guess: an item is flagged only if listing it in `expanded` (in `opened` for the map)
   changes the view, which is checked by computing the view again.
 - The deep viewpoint of the technology layer shows every node inside the focal element, linked or not, and derives the dependencies between environments: a relationship between two

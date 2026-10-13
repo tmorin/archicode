@@ -11,12 +11,18 @@
 //!             app_elements (technology deep only), collapsed: [item id], expanded: [item id],
 //!             facet: {name, actions: [{operator: "REMOVE", json_path}]} }
 //!           an element may carry more than `reference` and the rest above (kind, name, description, qualifiers, tags):
-//!           only a facet reads it, as a JSONPath can select on it
-//!   output: { version, items: [{id, reference, parent, collapsed, hidden, expandable}],
+//!           a facet reads it, as a JSONPath can select on it, and so do the `stereotypes` of an item (below)
+//!   output: { version, items: [{id, reference, parent, collapsed, hidden, expandable, stereotypes}],
 //!             links: [{from, to, label, synthetic, qualifiers, tags, secondary,
 //!                      relationships: [{from, destination, label, qualifiers, tags, application}]}] }
 //!                      + warnings: [text] when there is something to say (omitted otherwise) }
 //!         | { error }
+//! `stereotypes` of an item are what the diagram says about its element: the `qualifiers` of the element (declared order),
+//! then the words of its `rendering-stereotypes` tag (a whitespace-separated list, so that `"external changed"` is the two
+//! stereotypes `external` and `changed`, each one a key `styles` can style), without duplicate, the first occurrence
+//! winning. A qualifier is never split (`Spring Boot` is one). The kind of the element and how the box is drawn are not
+//! in the list: the renderer adds them. Added to version 2: `qualifiers` and `tags` of an element are optional, and an
+//! item that has none of them has an empty list.
 //! A JSON `null` is read as "not given" wherever a field is optional (an absent `default_synthetic_label` is "uses").
 //! Two relationships that differ only by their tags are two relationships: a natural link carries the tags of its
 //! relationship (a grouped one has none), and links that differ by tags are never merged.
@@ -267,11 +273,43 @@ struct OutItem {
     hidden: usize,
     /// true when the item has children in the model that the view does not show: it can be opened with `expanded`
     expandable: bool,
+    /// the qualifiers of the element, then the words of its `rendering-stereotypes` tag (see `stereotypes_of`)
+    stereotypes: Vec<String>,
 }
 
 impl OutItem {
     fn new(id: &str, reference: &str, parent: Option<String>) -> OutItem {
-        OutItem { id: id.to_string(), reference: reference.to_string(), parent, collapsed: false, hidden: 0, expandable: false }
+        OutItem { id: id.to_string(), reference: reference.to_string(), parent, collapsed: false, hidden: 0, expandable: false, stereotypes: Vec::new() }
+    }
+}
+
+/// The tag whose value lists the stereotypes (the names in `styles`) an element is drawn with, separated by whitespace.
+const TAG_STEREOTYPES: &str = "rendering-stereotypes";
+
+/// What a diagram says about an element: its qualifiers, as declared, then the words of its `rendering-stereotypes` tag;
+/// nothing twice. Both come from the free-form properties of the element, where a caller that knows them puts them.
+fn stereotypes_of(element: &Elem) -> Vec<String> {
+    let qualifiers = element.other.get("qualifiers").and_then(|q| q.as_array()).into_iter().flatten().filter_map(|q| q.as_str());
+    let tagged = element.other.get("tags").and_then(|t| t.get(TAG_STEREOTYPES)).and_then(|v| v.as_str()).into_iter().flat_map(|v| v.split_whitespace());
+    let mut out: Vec<String> = Vec::new();
+    for stereotype in qualifiers.chain(tagged).filter(|s| !s.is_empty()) {
+        if !out.iter().any(|known| known == stereotype) {
+            out.push(stereotype.to_string());
+        }
+    }
+    out
+}
+
+/// Tells each item what its element is drawn with. A deployed application (an item whose id is not its reference) is an
+/// element of the application layer.
+fn add_stereotypes(items: &mut [OutItem], input: &Input) {
+    let main: HashMap<&str, &Elem> = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+    let apps: HashMap<&str, &Elem> = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+    for item in items.iter_mut() {
+        let layer = if item.id == item.reference { &main } else { &apps };
+        if let Some(element) = layer.get(item.reference.as_str()) {
+            item.stereotypes = stereotypes_of(element);
+        }
     }
 }
 
@@ -1053,6 +1091,7 @@ pub fn compute_json(input: &str) -> String {
             if input.viewpoint != "deep" {
                 mark_expandable(&mut items, &links, &mut input);
             }
+            add_stereotypes(&mut items, &input);
             Ok(Output { version: CONTRACT_VERSION, items, links, warnings })
         })
         .and_then(|out| serde_json::to_string(&out).map_err(|e| format!("cannot write the view: {e}")));
@@ -2142,5 +2181,85 @@ mod tests {
         assert!(at("\"external\"") < at("\"new\"") && at("\"new\"") < at("\"changed\""), "{out}");
         assert!(at("tag-y") < at("tag-a"), "{out}");
         assert!(at("\"styles\"") < at("\"application\""), "{out}");
+    }
+
+    // ---- stereotypes ----
+
+    fn stereotypes(out: &Value, id: &str) -> Value {
+        out["items"].as_array().unwrap().iter().find(|i| i["id"] == id).unwrap_or_else(|| panic!("item {id} in {out}"))["stereotypes"].clone()
+    }
+
+    fn with_properties(properties: Value) -> Value {
+        let mut element = json!({ "reference": "a" });
+        for (key, value) in properties.as_object().unwrap() {
+            element[key] = value.clone();
+        }
+        compute(json!({ "viewpoint": "overview", "layer": "application", "focal": "a", "elements": [element, { "reference": "b" }] }))
+    }
+
+    #[test]
+    fn the_tag_is_a_list_of_stereotypes_and_not_one_of_them() {
+        let out = with_properties(json!({ "tags": { "rendering-stereotypes": "external changed" } }));
+        assert_eq!(stereotypes(&out, "a"), json!(["external", "changed"]));
+    }
+
+    #[test]
+    fn a_tag_of_one_word_is_the_one_stereotype_it_always_was() {
+        let out = with_properties(json!({ "tags": { "rendering-stereotypes": "external" } }));
+        assert_eq!(stereotypes(&out, "a"), json!(["external"]));
+    }
+
+    #[test]
+    fn the_qualifiers_come_first_in_the_order_they_were_declared_and_are_not_split() {
+        let out = with_properties(json!({ "qualifiers": ["Spring Boot", "PostgreSQL"], "tags": { "rendering-stereotypes": "  new\tchanged  " } }));
+        assert_eq!(stereotypes(&out, "a"), json!(["Spring Boot", "PostgreSQL", "new", "changed"]));
+    }
+
+    #[test]
+    fn a_stereotype_is_named_once_wherever_it_comes_from() {
+        let out = with_properties(json!({ "qualifiers": ["external", "external"], "tags": { "rendering-stereotypes": "changed external changed" } }));
+        assert_eq!(stereotypes(&out, "a"), json!(["external", "changed"]));
+    }
+
+    #[test]
+    fn an_element_that_says_nothing_has_no_stereotype() {
+        let out = with_properties(json!({}));
+        assert_eq!(stereotypes(&out, "a"), json!([]));
+        let out = with_properties(json!({ "qualifiers": null, "tags": { "rendering-stereotypes": "", "other": "x" } }));
+        assert_eq!(stereotypes(&out, "a"), json!([]), "empty, or another tag, or a null: nothing");
+        let out = with_properties(json!({ "qualifiers": ["", "q"], "tags": { "rendering-stereotypes": 3 } }));
+        assert_eq!(stereotypes(&out, "a"), json!(["q"]), "an empty qualifier and a tag that is not a text are left out");
+    }
+
+    #[test]
+    fn a_deployed_application_is_told_by_the_element_of_the_application_layer() {
+        let out = compute(json!({
+            "viewpoint": "deep", "layer": "technology", "focal": "dev",
+            "elements": [
+                { "reference": "dev", "parent": true, "qualifiers": ["K8s"] },
+                { "reference": "dev.app", "applications": ["shop.api"], "qualifiers": ["not the application"] }
+            ],
+            "app_elements": [
+                { "reference": "shop", "parent": true },
+                { "reference": "shop.api", "qualifiers": ["Quarkus"], "tags": { "rendering-stereotypes": "external changed" } }
+            ]
+        }));
+        assert_eq!(stereotypes(&out, "dev"), json!(["K8s"]));
+        assert_eq!(stereotypes(&out, "dev.app"), json!(["not the application"]));
+        assert_eq!(stereotypes(&out, "app_shop_api"), json!(["Quarkus", "external", "changed"]));
+    }
+
+    #[test]
+    fn a_facet_still_reads_the_qualifiers_and_the_tags_the_stereotypes_come_from() {
+        let out = compute(json!({
+            "viewpoint": "overview", "layer": "application", "focal": "a",
+            "facet": { "name": "f", "actions": remove("$.application..relationships[?(@.label == 'x')]") },
+            "elements": [
+                { "reference": "a", "qualifiers": ["q"], "tags": { "rendering-stereotypes": "external changed" }, "relationships": [{ "destination": "b", "label": "x" }] },
+                { "reference": "b" }
+            ]
+        }));
+        assert_eq!(stereotypes(&out, "a"), json!(["q", "external", "changed"]));
+        assert!(out["links"].as_array().unwrap().is_empty());
     }
 }

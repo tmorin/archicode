@@ -14,7 +14,7 @@ FontStyle: normal
 }
 </style>
 rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
-rectangle shop.payments <<system>> <<external>> <<atomic>> [
+rectangle shop.payments <<external>> <<system>> <<atomic>> [
 **Payment Provider**
 ""[system]""
 

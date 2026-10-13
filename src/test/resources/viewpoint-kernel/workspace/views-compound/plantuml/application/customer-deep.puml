@@ -13,13 +13,13 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-person customer <<atomic>> <<person>> [
+person customer <<person>> <<atomic>> [
 **Customer**
 ""[person]""
 
 Someone who buys things.
 ]
-rectangle mailer <<system>> <<external>> <<atomic>> [
+rectangle mailer <<external>> <<changed>> <<system>> <<atomic>> [
 **Mail Provider**
 ""[system]""
 

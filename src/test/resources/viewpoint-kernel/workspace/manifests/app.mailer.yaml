@@ -6,7 +6,7 @@ content:
   name: "Mail Provider"
   description: "Sends the e-mails."
   tags:
-    rendering-stereotypes: "external"
+    rendering-stereotypes: "external changed"
   relationships:
     - destination: "customer"
       label: "sends e-mails to"

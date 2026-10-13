@@ -1,6 +1,5 @@
 package io.morin.archicode.rendering.plantuml;
 
-import io.morin.archicode.rendering.ViewRenderer;
 import io.morin.archicode.resource.workspace.Styles;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
@@ -84,19 +83,14 @@ class PlantumlUtilities {
         return buf.toString();
     }
 
+    /** The stereotypes of the element, as the kernel tells them, then the ones of the way it is drawn. */
     String generateStereotypes(@NonNull Item item, @NonNull String... types) {
-        val stereotypes = new LinkedHashSet<>(item.getElement().getQualifiers());
-        Optional.ofNullable(item.getElement().getTags().get(ViewRenderer.TAG_ADDITIONAL_STEREOTYPES)).ifPresent(
-            stereotypes::add
-        );
+        val stereotypes = new LinkedHashSet<>(item.getStereotypes());
         stereotypes.addAll(List.of(types));
-        return String.join(
-            " ",
-            stereotypes
-                .stream()
-                .map(value -> String.format("<<%s>>", value))
-                .collect(Collectors.toSet())
-        );
+        return stereotypes
+            .stream()
+            .map(value -> String.format("<<%s>>", value))
+            .collect(Collectors.joining(" "));
     }
 
     String generateQualifiers(@NonNull Item item) {

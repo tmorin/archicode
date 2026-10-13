@@ -20,14 +20,14 @@ rectangle shop.catalog.service <<Quarkus>> <<container>> <<atomic>> [
 ""[container: Quarkus]""
 ]
 }
-rectangle shop.payments <<system>> <<external>> <<atomic>> [
+rectangle shop.payments <<external>> <<system>> <<atomic>> [
 **Payment Provider**
 ""[system]""
 
 Takes the money.
 ]
 rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
-rectangle shop.web.api <<container>> <<atomic>> <<Spring Boot>> [
+rectangle shop.web.api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]

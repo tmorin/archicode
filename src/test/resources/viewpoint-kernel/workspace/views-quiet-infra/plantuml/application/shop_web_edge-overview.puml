@@ -13,7 +13,7 @@ LineStyle: 5
 FontStyle: normal
 }
 </style>
-person customer <<atomic>> <<person>> [
+person customer <<person>> <<atomic>> [
 **Customer**
 ""[person]""
 
