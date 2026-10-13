@@ -106,7 +106,7 @@ wave_manifest:
       slug: inspection-panel-navigation
       phase: P2
       depends_on: []
-      run: null
+      run: '0024'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -117,7 +117,7 @@ wave_manifest:
       slug: diagram-link-tab-stops
       phase: P2
       depends_on: []
-      run: null
+      run: '0025'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -150,8 +150,8 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-2 | — | `inspection-panel-navigation` | — | Jump from a relationship to its declaring element, share a selected link by URL, and tell parallel links apart | `TDD+pln`, tmorin/archicode#17 (items 1, 2, 3, 5, 6). In the link panel each relationship offers its declaring element (a click selects it, like `goto-element`); a selected link is carried by the hash and restored on load (the TDD decides the key, given that a link is keyed by the pair of boxes); on the Map, selecting a link brings it into view; two parallel links between the same pair are marked so the panel says which one was clicked; the element header shows the stereotype badges. Manual (`[[editor-inspection]]`) updated. | Node tests: the declaring-element action, URL round trip, the parallel-link marker, header badges |
-| W-3 | — | `diagram-link-tab-stops` | — | Reach the links of a dense diagram by keyboard without tabbing through all of them | `single-document`, tmorin/archicode#17 (item 4). Replace one tab stop per link by a roving tab stop with arrow-key movement (the ARIA pattern for a composite widget), keeping the selection model, focus return after a redraw and the existing Escape behaviour. | Node tests: one tab stop for the group of links, arrow movement, focus kept across a redraw |
+| W-2 | 0024 | `inspection-panel-navigation` | — | Jump from a relationship to its declaring element, share a selected link by URL, and tell parallel links apart | `TDD+pln`, tmorin/archicode#17 (items 1, 2, 3, 5, 6). In the link panel each relationship offers its declaring element (a click selects it, like `goto-element`); a selected link is carried by the hash and restored on load (the TDD decides the key, given that a link is keyed by the pair of boxes); on the Map, selecting a link brings it into view; two parallel links between the same pair are marked so the panel says which one was clicked; the element header shows the stereotype badges. Manual (`[[editor-inspection]]`) updated. | Node tests: the declaring-element action, URL round trip, the parallel-link marker, header badges |
+| W-3 | 0025 | `diagram-link-tab-stops` | — | Reach the links of a dense diagram by keyboard without tabbing through all of them | `single-document`, tmorin/archicode#17 (item 4). Replace one tab stop per link by a roving tab stop with arrow-key movement (the ARIA pattern for a composite widget), keeping the selection model, focus return after a redraw and the existing Escape behaviour. | Node tests: one tab stop for the group of links, arrow movement, focus kept across a redraw |
 
 **Gate:** the checks listed under P2 in the manifest hold.
 
