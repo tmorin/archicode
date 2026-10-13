@@ -601,3 +601,34 @@ test('the manifest files the editor cannot read (TOML, JSON) are named, in Files
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('the top bar: the perspectives are a button group, the pressed one is the current one, and Close folder is last', async () => {
+  const { sandbox, state } = await openFixture();
+  state.folder = { name: 'ws' };
+  const bar = sandbox.renderTopPanelHtml();
+  const tabs = bar.match(/<span class="perspective-tabs button-group" role="group" aria-label="Perspectives">(.*?)<\/span>/)[1];
+  const ids = Array.from(tabs.matchAll(/data-perspective="([a-z]+)" aria-pressed="(true|false)"/g));
+  assert.ok(ids.length >= 2, 'one button per perspective');
+  assert.equal(ids.filter((m) => m[2] === 'true').length, 1, 'exactly one is pressed');
+  assert.equal(ids.find((m) => m[2] === 'true')[1], run(sandbox, 'currentPerspective'));
+  assert.doesNotMatch(bar, /perspective-tab"|class="[^"]*\bactive\b/, 'no more pills with an "active" class');
+
+  run(sandbox, "currentPerspective = 'settings'");
+  assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="settings" aria-pressed="true"/);
+  assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="map" aria-pressed="false"/);
+
+  const at = (needle) => { const i = bar.indexOf(needle); assert.ok(i >= 0, needle); return i; };
+  assert.ok(at('class="perspective-tabs') < at('class="top-actions"'));
+  assert.ok(at('data-action="save-all-changes"') < at('data-action="toggle-help"'));
+  assert.ok(at('data-action="toggle-help"') < at('data-action="close-folder"'), 'Close folder comes after "?"');
+  assert.ok(at('data-action="close-folder"') > at('class="top-actions"'), 'in the group pushed to the right');
+  assert.match(bar, /<\/button><\/span><\/header>$/, 'the last control of the bar');
+});
+
+test('a hovered or focused button of a button group rises above its neighbours, which overlap it by one border', () => {
+  const css = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+  assert.match(css, /\.button-group button \+ button \{ margin-left: -1px; \}/);
+  assert.match(css, /\.button-group button:hover, \.button-group button:focus-visible \{ position: relative; z-index: 2; \}/);
+  assert.match(css, /\.perspective-tabs button\[aria-pressed="true"\]/, 'the pressed perspective is highlighted');
+  assert.doesNotMatch(css, /\.perspective-tab[ .{]/, 'the pill styling of the tabs is gone');
+});
