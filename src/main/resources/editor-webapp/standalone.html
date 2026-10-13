@@ -159,6 +159,12 @@
   .inspection .field-row { flex-direction: column; gap: 0.1rem; }
   .inspection .tag-list { padding-left: 0; list-style: none; }
   .inspection .field-label { width: auto; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  /* a selected link: its two ends, then one block per declared relationship */
+  .inspection-end-name { font-weight: 600; overflow-wrap: anywhere; }
+  .inspection-subhead { margin: 0.25rem 0 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .inspection-rel { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
+  .inspection-rel-label { font-weight: 600; overflow-wrap: anywhere; }
+  .inspection-rel-path { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
 
   [data-resize] { background: var(--border); flex-shrink: 0; }
   [data-resize]:hover, [data-resize][data-active] { background: var(--accent); }
@@ -429,6 +435,12 @@
   .dg-edge.dg-ghost-edge { stroke: var(--danger); stroke-dasharray: 3 4; }
   .dg-arrowhead { fill: var(--muted); }
   .dg-label { fill: var(--fg); font-size: 11px; paint-order: stroke; stroke: var(--panel-bg); stroke-width: 4px; stroke-linejoin: round; }
+  /* a link is clicked to be selected (and so is its caption); the selected pair, and the one the keyboard is on, take the accent */
+  .dg-link, .dg-label[data-action] { cursor: pointer; }
+  .dg-link:focus { outline: none; }
+  .dg-link:focus-visible .dg-edge { stroke: var(--accent); stroke-width: 3; }
+  .dg-link-selected .dg-edge { stroke: var(--accent); stroke-width: 2.8; }
+  .dg-label.dg-link-selected { fill: var(--accent); font-weight: 600; }
   .dg-header, .dg-hit { fill: transparent; pointer-events: all; }
   .dg-hit-edge { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; }
   .dg-fold-bg { fill: transparent; stroke: transparent; stroke-width: 1; }
@@ -2552,7 +2564,7 @@ function pushShowParams(params, isMap) {
 
 /** The "#/perspective?ref=..." hash for the current perspective + selection — what the URL should read right now (UX review follow-up: the URL mirrors what's on screen). */
 function currentRouteHash() {
-  const sel = AppState.selection;
+  const sel = elementSelection(); // a link selected in a diagram of Elements leaves the element, and so the URL, as it is
   const ref = (sel.kind === 'element' || sel.kind === 'file') ? sel.key : null;
   const params = [];
   if (ref) params.push('ref=' + encodeURIComponent(ref));
@@ -2731,7 +2743,7 @@ function toggleExpandedKey(key) {
 function layerOfReference(reference, layer) {
   const has = (candidate) => !!AppState.index && !!AppState.index[candidate] && AppState.index[candidate].has(reference);
   if (layer && has(layer)) return layer;
-  const sel = AppState.selection;
+  const sel = elementSelection();
   if (!layer && sel && sel.kind === 'element' && sel.key === reference && sel.layer && has(sel.layer)) return sel.layer;
   if (has('application')) return 'application';
   if (has('technology')) return 'technology';
@@ -3688,6 +3700,7 @@ async function reloadManifestFile(relPath) {
   rebuildIndexAndRender();
 
   // The reloaded file may no longer contain the selected element.
+  dropLinkSelection();
   const sel = AppState.selection;
   if (sel.kind === 'element' && !findElementRecord(sel.key)) {
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
@@ -3775,6 +3788,7 @@ function rewriteReferenceValue(value, oldRef, newRef) {
 function rewriteUiReferences(oldPrefix, newPrefix, layer) {
   const rewrite = (value) => rewriteReferenceValue(value, oldPrefix, newPrefix);
   const rewriteSet = (set) => new Set(Array.from(set).map(rewrite));
+  dropLinkSelection(); // the rest only knows the kinds that name a reference
   const sel = AppState.selection;
   if (sel.kind === 'element' && sel.key && (!layer || layerOfReference(sel.key, sel.layer) === layer)) {
     sel.key = rewrite(sel.key);
@@ -3801,6 +3815,7 @@ function rewriteUiReferences(oldPrefix, newPrefix, layer) {
 /** The UI state that held `deletedRefs` (a set of references of `layer`) forgets them: selection, expanded, modified markers, focus row, Map. */
 function forgetUiReferences(deletedRefs, layer) {
   const gone = (value) => typeof value === 'string' && deletedRefs.has(value);
+  dropLinkSelection();
   const sel = AppState.selection;
   if (sel.kind === 'element' && gone(sel.key) && layerOfReference(sel.key, sel.layer) === layer) {
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
@@ -4378,8 +4393,9 @@ function renderTreeNodeHtml(record, level) {
   const key = recordKey(record);
   const isExpanded = AppState.expanded.has(key);
   // the same reference can be an element of both layers: only the row of the selected layer is the selected one
-  const isActive = AppState.selection.kind === 'element' && AppState.selection.key === record.reference &&
-    layerOfReference(record.reference, AppState.selection.layer) === (record.layer || 'application');
+  const selected = elementSelection();
+  const isActive = selected.kind === 'element' && selected.key === record.reference &&
+    layerOfReference(record.reference, selected.layer) === (record.layer || 'application');
   const label = (record.name !== undefined && record.name !== null && record.name !== '') ? record.name : record.id;
   const modified = AppState.dirtyReferences.has(key);
   const ref = escapeHtml(record.reference);
@@ -4460,7 +4476,8 @@ function renderElementsNavHtml(showAddButton) {
   const collect = (record) => { visible.push(recordKey(record)); if (AppState.expanded.has(recordKey(record))) sortedForNav(record.children).forEach(collect); };
   if (treeExpandedApplications) sortedForNav(appElements).forEach(collect);
   if (treeExpandedEnvironments) sortedForNav(techElements).forEach(collect);
-  resolveNavActive(visible, AppState.selection.kind === 'element' ? nodeKey(AppState.selection.key, AppState.selection.layer) : null);
+  const selected = elementSelection();
+  resolveNavActive(visible, selected.kind === 'element' ? nodeKey(selected.key, selected.layer) : null);
   navTabStopGiven = false;
   const facet = anyDiagramShown() ? currentDiagramFacet() : null;
   const note = facet
@@ -5068,25 +5085,23 @@ function renderElementPropertiesHtml(record) {
   html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' + (record.name != null ? escapeHtml(record.name) : '<span class="muted">none</span>') + '</span></div>';
   html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' + (record.description != null ? escapeHtml(record.description) : '<span class="muted">none</span>') + '</span></div>';
 
-  html += '<div class="field-row"><span class="field-label">Qualifiers</span><span class="field-value">';
-  if (record.qualifiers && record.qualifiers.length) {
-    html += record.qualifiers.map((q) => '<span class="pill">' + escapeHtml(q) + '</span>').join('');
-  } else {
-    html += '<span class="muted">none</span>';
-  }
-  html += '</span></div>';
-
-  html += '<div class="field-row"><span class="field-label">Tags</span><span class="field-value">';
-  const tagKeys = record.tags ? yamlKeysOf(record.tags) : [];
-  if (tagKeys.length) {
-    html += '<ul class="tag-list">' + tagKeys.map((k) =>
-      '<li><span class="tag-key">' + escapeHtml(k) + '</span>: <span class="tag-value">' + escapeHtml(String(record.tags[k])) + '</span></li>'
-    ).join('') + '</ul>';
-  } else {
-    html += '<span class="muted">none</span>';
-  }
-  html += '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Qualifiers</span><span class="field-value">' + renderQualifierPillsHtml(record.qualifiers) + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Tags</span><span class="field-value">' + renderTagListHtml(record.tags) + '</span></div>';
   return html;
+}
+
+/** The qualifiers of an element or of a relationship, one pill each, or "none". */
+function renderQualifierPillsHtml(qualifiers) {
+  return qualifiers && qualifiers.length ? qualifiers.map((q) => '<span class="pill">' + escapeHtml(q) + '</span>').join('') : '<span class="muted">none</span>';
+}
+
+/** The tags of an element or of a relationship, `key: value` each, or "none". */
+function renderTagListHtml(tags) {
+  const keys = tags ? yamlKeysOf(tags) : [];
+  if (!keys.length) return '<span class="muted">none</span>';
+  return '<ul class="tag-list">' + keys.map((k) =>
+    '<li><span class="tag-key">' + escapeHtml(k) + '</span>: <span class="tag-value">' + escapeHtml(String(tags[k])) + '</span></li>'
+  ).join('') + '</ul>';
 }
 
 /**
@@ -5743,7 +5758,7 @@ function renderReferenceDatalistsHtml() {
 
 /** The Elements perspective's center — element view/edit or the create form; everything else (notably a 'file' selection, which belongs to the Files perspective) falls back to the same placeholder as "nothing selected". */
 function renderCenterPanelHtml() {
-  const sel = AppState.selection;
+  const sel = elementSelection();
   if (sel.kind === 'create') return renderCreateElementFormHtml(sel);
   if (sel.kind === 'element') {
     // an element is edited on its Details: Back to view must not land on a diagram the user left long ago
@@ -5781,6 +5796,7 @@ function inspectionRecordFor(sel) {
  */
 function renderInspectionHtml(onMap) {
   if (diagramMaximized) return null;
+  if (AppState.selection.kind === 'link') return renderLinkInspectionHtml(AppState.selection);
   const record = inspectionRecordFor(AppState.selection);
   if (!record) return null;
   const layer = record.layer || 'application';
@@ -5812,6 +5828,136 @@ function markInspection() {
 /** The Map dropped its selection by itself: the panel goes with it, with its handle (the page is not redrawn). */
 function removeInspectionPanel() {
   document.querySelectorAll('#panel-right, [data-resize="panel-right"]').forEach((el) => el.remove());
+}
+
+// ---- A link of a diagram is selected: the pair of boxes it joins ----
+// A link selection is `{ kind: 'link', key, from, to, layer, mode: 'view' }`, plus `focal` when it was made on
+// the diagram of an element in Elements: there the selection *is* the element looked at (the centre, the tree and the URL
+// read it), so the element stays the subject and everything that asks which element a perspective is about reads
+// `elementSelection()`. On the Map a link selection has no element, and is read as "no element selected".
+
+/** The selection as the places that care about the element being looked at read it: a link selected in Elements is that element. */
+function elementSelection() {
+  const sel = AppState.selection;
+  if (!sel || sel.kind !== 'link' || !sel.focal) return sel;
+  // the layer of the drawing is the layer of the element it is about
+  return sel.layer ? { kind: 'element', key: sel.focal, layer: sel.layer, mode: 'view' } : { kind: 'element', key: sel.focal, mode: 'view' };
+}
+
+/** The link is no longer selected: the element it was made on (Elements), or nothing (the Map). */
+function dropLinkSelection() {
+  const sel = AppState.selection;
+  if (!sel || sel.kind !== 'link') return;
+  AppState.selection = sel.focal ? elementSelection() : { kind: 'none', key: null, mode: 'view' };
+}
+
+/**
+ * Start of every render(): a link stays selected only while the diagram it was made on is on screen: the Map for one of the
+ * Map, a diagram tab of that very element for one of Elements. Any other perspective, Details, the edit form or a deleted
+ * element ends it. This is the one place that says "a link selection is cleared on navigation"; the handlers that replace
+ * the selection (a box, a tree row, a file) end it by replacing it.
+ */
+function settleLinkSelection() {
+  const sel = AppState.selection;
+  if (!sel || sel.kind !== 'link') return;
+  if (!(sel.focal ? diagramTabShown() : currentPerspective === 'map')) dropLinkSelection();
+}
+
+/** What the drawing on screen drew for the selected link: the pair of boxes (ends, links), or null (nothing drawn yet, or not in it). */
+function inspectionLinkFor(sel) {
+  if (!sel || sel.kind !== 'link') return null;
+  const pairs = diagramScene && diagramScene.links;
+  return (pairs && pairs.find((pair) => pair.from === sel.from && pair.to === sel.to)) || null;
+}
+
+/** The declared relationships of a pair, once each, in the order the kernel lists them (a link the kernel gives none for, a ghost, speaks for itself). */
+function relationshipsOfPair(pair) {
+  const rels = [];
+  const seen = new Set();
+  for (const link of pair.links) {
+    const own = Array.isArray(link.relationships) ? link.relationships : [];
+    const list = own.length ? own : [{ from: pair.fromEnd.reference, destination: pair.toEnd.reference, label: link.label, qualifiers: link.qualifiers, tags: link.tags, unresolved: !!link.ghost }];
+    for (const rel of list) {
+      const key = JSON.stringify([rel.from, rel.destination, rel.label, rel.qualifiers, rel.tags]);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rels.push(rel);
+    }
+  }
+  return rels;
+}
+
+/** One end of a link, for the panel: its name and kind, its reference when that differs, and what a folded box hides. */
+function renderLinkEndHtml(end) {
+  let html = '<span class="inspection-end-name">' + escapeHtml(end.title) + '</span>' + (end.sub ? ' <span class="muted">' + escapeHtml(end.sub) + '</span>' : '');
+  if (end.reference !== end.title) html += '<br><span class="muted">' + escapeHtml(end.reference) + '</span>';
+  return html;
+}
+
+/** One declared relationship: its label, who declares it and to whom, its qualifiers and its tags. */
+function renderRelationshipInspectionHtml(rel) {
+  const label = rel.label !== undefined && rel.label !== null && String(rel.label).trim() ? escapeHtml(rel.label) : '<span class="muted">no label</span>';
+  return '<div class="inspection-rel"><div class="inspection-rel-label">' + label + '</div>' +
+    '<div class="inspection-rel-path">' + escapeHtml(rel.from) + ' &rarr; ' + escapeHtml(rel.destination) + '</div>' +
+    renderFieldRowHtml('Qualifiers', renderQualifierPillsHtml(rel.qualifiers)) +
+    renderFieldRowHtml('Tags', renderTagListHtml(rel.tags)) +
+    (rel.unresolved ? '<p class="inspection-note">There is no element &ldquo;' + escapeHtml(rel.destination) + '&rdquo;: the relationship points at nothing.</p>' : '') +
+    '</div>';
+}
+
+/** The panel of a selected link: its two ends, then each relationship it stands for. */
+function renderLinkInspectionHtml(sel) {
+  const layer = sel.layer || 'application';
+  let html = '<div class="inspection inspection-link" data-inspection-from="' + escapeHtml(sel.from) + '" data-inspection-to="' + escapeHtml(sel.to) + '" data-inspection-layer="' + escapeHtml(layer) + '">' +
+    '<div class="inspection-head"><h3>Selected link</h3>' +
+    '<button type="button" class="inspection-close" data-action="close-inspection" aria-label="Close the panel" title="Deselect the link">&times;</button></div>';
+  const pair = inspectionLinkFor(sel);
+  if (!pair) return html + '<p class="inspection-note">Reading the link&hellip;</p></div>';
+  html += renderFieldRowHtml('From', renderLinkEndHtml(pair.fromEnd)) + renderFieldRowHtml('To', renderLinkEndHtml(pair.toEnd));
+  for (const end of [pair.fromEnd, pair.toEnd]) {
+    if (end.collapsed) html += '<p class="inspection-note">&ldquo;' + escapeHtml(end.title) + '&rdquo; is folded: it stands for ' + end.hidden + ' hidden element' + (end.hidden === 1 ? '' : 's') + '. Open it to see their relationships one by one.</p>';
+  }
+  const rels = relationshipsOfPair(pair);
+  if (rels.length > 1) html += '<p class="inspection-note">' + rels.length + ' relationships are grouped in this link.</p>';
+  html += '<h4 class="inspection-subhead">Relationships <span class="field-count">' + rels.length + '</span></h4>' + rels.map(renderRelationshipInspectionHtml).join('');
+  html += renderFieldRowHtml('Layer', escapeHtml(layer));
+  return html + '</div>';
+}
+
+/** After a drawing, with a link selected: the panel says what this drawing drew (a facet may have removed some relationships). */
+function refreshInspection() {
+  const holder = document.querySelector('.inspection');
+  if (!holder) return; // nothing on screen to refresh (maximized)
+  const html = renderInspectionHtml(mapIsShown());
+  if (html === null) removeInspectionPanel(); else holder.outerHTML = html;
+}
+
+/**
+ * After the drawing was put on screen: a selected link that this drawing does not have (a fold, a pin, a facet, another tab,
+ * a drawing with no links at all) is no longer selected. Like the Map's own clear of an element, it is done by hand and the
+ * page is not redrawn: the Map has nothing else that depends on a link selection but the panel, which goes with its handle;
+ * Elements goes back to the panel of its element. Anything added to the Map that depends on a link selection must be undone here.
+ */
+function reconcileLinkSelection() {
+  const sel = AppState.selection;
+  if (sel.kind !== 'link') return;
+  if (!inspectionLinkFor(sel)) {
+    dropLinkSelection();
+    syncHashFromState();
+  }
+  refreshInspection();
+}
+
+/** The pair of the selected link is outlined, and the links of the diagram say whether they are the selected one. */
+function markLinkSelection() {
+  const canvas = document.getElementById('diagram-canvas');
+  if (!canvas) return;
+  const sel = AppState.selection;
+  canvas.querySelectorAll('.dg-link, .dg-label').forEach((el) => {
+    const selected = sel.kind === 'link' && el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to;
+    el.classList.toggle('dg-link-selected', selected);
+    if (el.classList.contains('dg-link')) el.setAttribute('aria-pressed', String(selected));
+  });
 }
 
 /**
@@ -6217,7 +6363,7 @@ function effectiveDiagramViewpoint(record) {
 
 /** A diagram of the selected element is what the Elements perspective shows now (not its page, not a form). */
 function diagramTabShown() {
-  const sel = AppState.selection;
+  const sel = elementSelection();
   return currentPerspective === 'elements' && sel.kind === 'element' && sel.mode !== 'edit' && elementTab !== 'details' && !!findElementRecord(sel.key);
 }
 
@@ -6768,7 +6914,7 @@ function buildDiagramGhosts(result, focalReference, layer) {
       const known = ghosts.items.some((ghost) => ghost.id === id);
       if (!known && ghosts.items.length >= DIAGRAM_MAX_GHOSTS) continue;
       if (!known) ghosts.items.push({ id, reference: rel.destination, parent: null, ghost: true, owner: item.reference, collapsed: false, hidden: 0 });
-      ghosts.links.push({ from: item.id, to: id, label: rel.rawLabel, qualifiers: rel.qualifiers || [], synthetic: false, secondary: false, ghost: true, relationships: [] });
+      ghosts.links.push({ from: item.id, to: id, label: rel.rawLabel, qualifiers: rel.qualifiers || [], tags: rel.tags || {}, synthetic: false, secondary: false, ghost: true, relationships: [] });
     }
   }
   return ghosts;
@@ -6932,6 +7078,13 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     }
   }
 
+  // what a click on a link selects is the pair of boxes it joins: this is what the drawing drew, for the inspection panel
+  const pairs = new Map();
+  const endOf = (id) => {
+    const item = itemById.get(id);
+    const text = item ? diagramItemText(item) : { title: id, sub: '' };
+    return { id, reference: item ? item.reference : id, title: text.title, sub: text.sub, ghost: !!(item && item.ghost), collapsed: !!(item && item.collapsed), hidden: item && item.hidden ? item.hidden : 0 };
+  };
   let edges = '';
   let labels = '';
   for (const edge of layout.edges || []) {
@@ -6942,12 +7095,18 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const link = result.links[parseInt(edge.id.slice(1), 10)];
     const d = points.map((p, i) => (i ? 'L' : 'M') + (o.x + p.x) + ',' + (o.y + p.y)).join(' ');
     const ends = ' data-from="' + escapeHtml(link.from) + '" data-to="' + escapeHtml(link.to) + '"';
-    edges += '<g class="dg-link"' + ends + '><title>' + escapeHtml(diagramLinkTitle(link, itemById)) + '</title>' +
+    const pairKey = link.from + '\u0000' + link.to;
+    if (!pairs.has(pairKey)) pairs.set(pairKey, { from: link.from, to: link.to, fromEnd: endOf(link.from), toEnd: endOf(link.to), links: [] });
+    pairs.get(pairKey).links.push(link);
+    const caption = diagramLinkText(link);
+    const select = ends + layerAttribute + ' data-action="select-link"';
+    edges += '<g class="dg-link"' + select + ' tabindex="0" role="button" aria-pressed="false" aria-label="' +
+      escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById)) + '</title>' +
       '<path class="dg-hit-edge" d="' + d + '"/>' +
       '<path class="dg-edge' + (link.synthetic ? ' dg-aggregated' : '') + (link.ghost ? ' dg-ghost-edge' : '') + '" marker-end="url(#dg-arrow)" d="' + d + '"/></g>';
     const label = edge.labels && edge.labels[0];
     if (label) {
-      labels += '<text class="dg-label"' + ends + ' text-anchor="middle" x="' + (o.x + label.x + label.width / 2) + '" y="' + (o.y + label.y + label.height - 3) + '">' + escapeHtml(label.text) + '</text>';
+      labels += '<text class="dg-label"' + select + ' text-anchor="middle" x="' + (o.x + label.x + label.width / 2) + '" y="' + (o.y + label.y + label.height - 3) + '">' + escapeHtml(label.text) + '</text>';
     }
   }
 
@@ -6956,7 +7115,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const html = '<svg xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Diagram" viewBox="-4 -4 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' +
     '<defs><marker id="dg-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead" d="M0,0 L10,4 L0,8 z"/></marker></defs>' +
     compounds + edges + leaves + labels + '</svg>';
-  return { html, width, height, focal, boxes: boxesById };
+  return { html, width, height, focal, boxes: boxesById, links: Array.from(pairs.values()) };
 }
 
 /** No layout engine (offline): the same information as a plain, still clickable, list. */
@@ -6991,7 +7150,7 @@ function diagramHasNothingToDraw(drawn) {
  */
 async function markElementTabs() {
   const group = document.querySelector('.viewpoint-switch');
-  const sel = AppState.selection;
+  const sel = elementSelection();
   if (!group || sel.kind !== 'element') return;
   const record = findElementRecord(sel.key);
   if (!record) return;
@@ -7009,7 +7168,7 @@ async function markElementTabs() {
       empty[id] = diagramHasNothingToDraw({ items: result.items.concat(ghosts.items), links: result.links.concat(ghosts.links) });
     }
     const live = document.querySelector('.viewpoint-switch');
-    const nowSel = AppState.selection;
+    const nowSel = elementSelection();
     if (!live || nowSel.kind !== 'element' || nowSel.key !== sel.key || currentDiagramFacet() !== facet) return; // a newer render took over
     live.querySelectorAll('button[data-tab]').forEach((button) => {
       const id = button.getAttribute('data-tab');
@@ -7271,7 +7430,8 @@ function revealDiagramNode(node) {
 
 /** What identifies the box (or fold button) of the diagram that `el` is, to find it again once the drawing is rebuilt; null for anything else. */
 function diagramFocusTargetOf(el) {
-  const part = el && el.closest ? el.closest('#diagram-canvas .dg-node, #diagram-canvas .dg-fold') : null;
+  const part = el && el.closest ? el.closest('#diagram-canvas .dg-node, #diagram-canvas .dg-fold, #diagram-canvas .dg-link') : null;
+  if (part && part.classList.contains('dg-link')) return { link: true, from: part.getAttribute('data-from'), to: part.getAttribute('data-to') };
   return part ? { fold: part.classList.contains('dg-fold'), id: part.getAttribute('data-id') } : null;
 }
 
@@ -7285,6 +7445,14 @@ function diagramNodeOf(el) {
   return Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).find((n) => n.getAttribute('data-id') === id) || null;
 }
 
+/** The box a focused link starts from: the arrow keys go on from it. */
+function diagramLinkStartOf(el) {
+  const link = el && el.closest ? el.closest('.dg-link') : null;
+  if (!link) return null;
+  const from = link.getAttribute('data-from');
+  return Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).find((n) => n.getAttribute('data-id') === from) || null;
+}
+
 /**
  * After the drawing was rebuilt: the focus goes back to the same box (or fold button, else the box it belonged to, else
  * the canvas), unless the user has meanwhile gone elsewhere.
@@ -7296,7 +7464,8 @@ function restoreDiagramFocus(canvas) {
   const active = document.activeElement;
   if (active && active !== document.body && !(canvas.contains && canvas.contains(active))) return;
   const find = (selector) => Array.from(canvas.querySelectorAll(selector)).find((el) => el.getAttribute('data-id') === wanted.id);
-  const target = (wanted.fold ? find('.dg-fold') : null) || find('.dg-node') || canvas;
+  const link = wanted.link ? Array.from(canvas.querySelectorAll('.dg-link')).find((el) => el.getAttribute('data-from') === wanted.from && el.getAttribute('data-to') === wanted.to) : null;
+  const target = link || (wanted.link ? null : ((wanted.fold ? find('.dg-fold') : null) || find('.dg-node'))) || canvas;
   if (target.focus) target.focus({ preventScroll: true });
 }
 
@@ -7331,7 +7500,9 @@ function showDiagramScene(scene) {
   if (scene.viewKey !== diagramShownView && typeof diagramScale === 'number') diagramScale = 'auto';
   applyDiagramScale();
   diagramShownView = scene.viewKey;
+  reconcileLinkSelection();
   markMapSelection();
+  markLinkSelection();
   markMapScope();
   markInspection();
   restoreDiagramFocus(canvas);
@@ -7386,13 +7557,13 @@ function handleDiagramPointerOut(e) {
   if (!canvas) return;
   const into = e.relatedTarget;
   if (into && canvas.contains && canvas.contains(into)) return;
-  const focused = document.activeElement && document.activeElement.closest ? document.activeElement.closest('.dg-node, .dg-fold') : null;
+  const focused = document.activeElement && document.activeElement.closest ? document.activeElement.closest('.dg-node, .dg-fold, .dg-link') : null;
   highlightDiagram(focused && canvas.contains(focused) ? focused : null);
 }
 
 function handleDiagramFocus(e) {
   if (!(e.target.closest && e.target.closest('#diagram-canvas'))) return;
-  const node = e.type === 'focusin' ? e.target.closest('.dg-node, .dg-fold') : null;
+  const node = e.type === 'focusin' ? e.target.closest('.dg-node, .dg-fold, .dg-link') : null;
   highlightDiagram(node);
   if (node) revealDiagramNode(node);
 }
@@ -7493,7 +7664,7 @@ function handleDiagramKeydown(e) {
     return;
   }
   if (e.key.startsWith('Arrow')) {
-    const current = diagramNodeOf(e.target);
+    const current = diagramNodeOf(e.target) || diagramLinkStartOf(e.target);
     const next = current ? diagramNeighbor(current, e.key) : canvas && canvas.querySelector('.dg-focal, .dg-node');
     if (next) {
       e.preventDefault();
@@ -7508,6 +7679,7 @@ function handleDiagramKeydown(e) {
   else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); resetDiagramView(); }
   else if ((e.key === 'm' || e.key === 'M') && !diagramMaximized && anyDiagramShown()) { e.preventDefault(); toggleDiagramMaximized(); }
   else if (e.key === 'Escape' && diagramMaximized) { e.preventDefault(); toggleDiagramMaximized(); }
+  else if (e.key === 'Escape' && AppState.selection.kind === 'link') { e.preventDefault(); dropLinkSelection(); render(); }
 }
 
 /** The styles of the diagram with real colors, for an SVG that must look right outside this page. */
@@ -7550,6 +7722,8 @@ function diagramExportDocument() {
   clone.querySelectorAll('.dg-fold').forEach((el) => el.remove());
   clone.querySelectorAll('.dg-on').forEach((el) => el.classList.remove('dg-on'));
   for (const el of clone.querySelectorAll('[tabindex],[data-action]')) { el.removeAttribute('tabindex'); el.removeAttribute('data-action'); }
+  for (const el of clone.querySelectorAll('[aria-pressed]')) el.removeAttribute('aria-pressed');
+  for (const el of clone.querySelectorAll('.dg-link-selected')) el.classList.remove('dg-link-selected');
   const ns = 'http://www.w3.org/2000/svg';
   const style = document.createElementNS(ns, 'style');
   style.textContent = diagramExportCss();
@@ -7612,6 +7786,15 @@ async function exportDiagramPng() {
     console.error('PNG export failed', e);
     alert('The PNG could not be made: ' + (e && e.message ? e.message : String(e)) + '. The SVG download does not have this limit.');
   }
+}
+
+/** The pair of boxes joined by a link becomes the selection (with the element of the diagram it was made on, in Elements). */
+function selectLink(from, to, layer) {
+  const canvas = document.getElementById('diagram-canvas');
+  const focal = mapIsShown() || !canvas ? null : canvas.getAttribute('data-ref');
+  const sel = { kind: 'link', key: from + ' -> ' + to, from, to, layer: layer || 'application', mode: 'view' };
+  if (focal) sel.focal = focal;
+  AppState.selection = sel;
 }
 
 /** Moving to another element or viewpoint is a step the browser's Back button should be able to undo. */
@@ -7830,6 +8013,7 @@ function mountDiagramIfNeeded() {
         const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap })), drawn, reference, { map: isMap, layer: input.layer, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [], show: shows });
         scene = buildDiagramScene(viewKey, drawing.html, status, legend, drawing, drawing.focal);
         scene.boxes = drawing.boxes;
+        scene.links = drawing.links;
         scene.drawnIds = new Set(Object.keys(drawing.boxes));
       }
       if (seq !== diagramSeq) return;
@@ -8265,7 +8449,7 @@ function currentViewDefinition() {
     return canonicalViewDefinition({ viewpoint: 'map', layer: 'application', properties: Object.assign({ pinned: state.pinned, hidden: state.hidden, opened: state.opened, facet: facetName, 'hide-unlinked': diagramHideUnlinked }, diagramShowOverrides(true)) });
   }
   if (diagramTabShown()) {
-    const sel = AppState.selection;
+    const sel = elementSelection();
     const record = findElementRecord(sel.key, sel.layer);
     return canonicalViewDefinition({ viewpoint: effectiveDiagramViewpoint(record), layer: layerOfReference(sel.key, sel.layer), properties: Object.assign({ element: sel.key, facet: facetName, 'hide-unlinked': diagramHideUnlinked }, diagramShowOverrides(false)) });
   }
@@ -9160,7 +9344,7 @@ async function cancelChanges() {
 /** The clicks that replace the form on screen. Without a "Save all changes" first, what was typed in it is lost. */
 const ACTIONS_LEAVING_THE_FORM = new Set([
   'set-perspective', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
-  'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
+  'select-link', 'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
   'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
   'library-tab', 'select-view', 'library-go-story', 'library-go-view'
 ]);
@@ -9480,8 +9664,20 @@ function handleAppClick(e) {
       render();
       break;
     }
-    case 'close-inspection': // the Map only: nothing else deselects an element there
-      AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    case 'select-link': {
+      // a link is not a place: no history entry, no change of perspective, tab or box; the drafts go like for any other selection
+      if (rawYamlEditDraft) rawYamlEditDraft = null;
+      if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
+      if (mapIsShown() && diagramScale === 'auto') {
+        const canvas = document.getElementById('diagram-canvas');
+        if (canvas) takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
+      }
+      selectLink(target.getAttribute('data-from'), target.getAttribute('data-to'), target.getAttribute('data-layer'));
+      render();
+      break;
+    }
+    case 'close-inspection': // nothing else deselects on the Map; in Elements a link goes back to its element
+      if (AppState.selection.kind === 'link') dropLinkSelection(); else AppState.selection = { kind: 'none', key: null, mode: 'view' };
       render();
       break;
     case 'toggle-element-edit':
@@ -10079,6 +10275,7 @@ function render() {
   for (const view of Object.values(activeJsonEditorViews)) view.destroy();
   activeJsonEditorViews = {};
 
+  settleLinkSelection(); // a link is selected only while the diagram it was made on is on screen
   const landing = landingScreenConfig();
   if (landing) {
     document.title = 'ArchiCode Editor'; // no workspace is loaded yet, whatever folder is remembered
@@ -10102,7 +10299,7 @@ function render() {
     const el = document.getElementById(id);
     if (el) scrollBefore[id] = { top: el.scrollTop, left: el.scrollLeft };
   }
-  const viewKey = currentPerspective + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '');
+  const viewKey = currentPerspective + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '') + '|' + (AppState.selection.focal || '');
   const sameView = viewKey === lastRenderedViewKey;
   lastRenderedViewKey = viewKey;
 
