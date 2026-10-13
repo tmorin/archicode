@@ -645,6 +645,13 @@ A story is a file (`story.<id>.yaml`) in the first manifests folder, and so is e
 
 The facets of the workspace (see <<facets>>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out. In the tree, the elements the facet leaves with nothing to draw are greyed. The facets themselves are edited in the *Settings* perspective, along with the other settings of the workspace (see <<technical-configuration>>).
 
+[[editor-theme]]
+=== Theme
+
+The editor is drawn in a light or a dark theme. By default it follows the one of the operating system. *Settings* has a section, *Appearance (this browser)*, to choose *Light*, *Dark* or *System* instead: the choice applies at once, to the page, the code editors and the SVG and PNG exported from a diagram.
+
+The choice is a preference of the browser, not of the workspace. It is remembered by the browser alone (nothing is written to `workspace.yaml` or to any file of the folder), it is not a change to save, and it does not light *Save all changes*. A browser that refuses to remember it keeps the choice until the page is closed.
+
 [[editor-keyboard]]
 === Keyboard
 
