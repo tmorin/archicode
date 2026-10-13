@@ -1567,6 +1567,28 @@ let AppState = createInitialAppState();
 // ("Opening “x”…"); null otherwise. Kept outside AppState: it is transient UI.
 let landingBusy = null;
 
+// The name the last loaded workspace gave itself (`settings.name`), and the folder it was in. Kept outside AppState,
+// which a closed folder resets: opening that folder again says its name while it loads, before workspace.yaml is read.
+// In memory only (what a later visit knows is up to the list of folders); null when that workspace had no name.
+let lastWorkspaceName = null;
+
+/** "Opening “x”…" for a folder: the name of its workspace when this page has seen it, the name of the folder otherwise. */
+function openingMessage(folderName) {
+  const shown = lastWorkspaceName && lastWorkspaceName.folder === folderName ? lastWorkspaceName.name : folderName;
+  return 'Opening “' + shown + '”…';
+}
+
+/** The name the loaded workspace gives itself (`settings.name`), trimmed; '' when it has none. */
+function workspaceName() {
+  const settings = AppState.workspace && AppState.workspace.settings;
+  return settings && typeof settings.name === 'string' ? settings.name.trim() : '';
+}
+
+/** What the page calls the loaded workspace: its name, or the name of its folder when it has none. */
+function workspaceLabel() {
+  return workspaceName() || (AppState.folder && AppState.folder.name) || '';
+}
+
 // =====================================================================
 // Settings parsing with documented defaults + camelCase/kebab-case
 // aliasing (PRD FR-4, task spec item 4 — mirrors the real Java
@@ -1602,7 +1624,12 @@ function parseSettings(rawSettings) {
     return Object.assign(rest, { actions, hideUnlinked: readAliased(custom, 'hideUnlinked', 'hide-unlinked', false) === true });
   });
 
+  // `name` is optional; Jackson reads a number or a boolean into a String field, a blank name is no name
+  const nameRaw = raw.name;
+  const name = typeof nameRaw === 'string' ? nameRaw : (typeof nameRaw === 'number' || typeof nameRaw === 'boolean') ? String(nameRaw) : '';
+
   return {
+    name: name.trim() === '' ? '' : name,
     manifests: {
       paths: Array.isArray(manifestsRaw.paths) ? manifestsRaw.paths : ['manifests']
     },
@@ -2131,7 +2158,7 @@ async function openServedFolder() {
     if (!response.ok) throw await serverFailure(response, 'the server');
     const info = await response.json();
     const handle = serverDirectoryHandle('', info.folder);
-    landingBusy = 'Opening “' + info.folder + '”…';
+    landingBusy = openingMessage(info.folder);
     AppState.folder = { handle, name: info.folder };
     AppState.permissionState = 'granted';
     render();
@@ -2157,7 +2184,7 @@ async function openFolder() {
       AppState = createInitialAppState();
       resetUiState();
     }
-    landingBusy = 'Opening “' + handle.name + '”…';
+    landingBusy = openingMessage(handle.name);
     render();
     await putStoredHandleRecord(handle);
     AppState.folder = { handle, name: handle.name };
@@ -2183,7 +2210,7 @@ async function reopenFolder() {
     const permission = await AppState.folder.handle.requestPermission({ mode: 'read' });
     if (permission === 'granted') {
       AppState.permissionState = 'granted';
-      landingBusy = 'Opening “' + AppState.folder.name + '”…';
+      landingBusy = openingMessage(AppState.folder.name);
       render();
       await loadWorkspace(AppState.folder.handle);
       return;
@@ -2245,7 +2272,7 @@ function resetUiState() {
 /** "Try again" on the landing error card: re-read the already-picked folder (e.g. after fixing workspace.yaml). */
 async function retryFolder() {
   if (!AppState.folder || !AppState.folder.handle) return;
-  landingBusy = 'Opening “' + AppState.folder.name + '”…';
+  landingBusy = openingMessage(AppState.folder.name);
   render();
   await loadWorkspace(AppState.folder.handle);
 }
@@ -2291,7 +2318,7 @@ async function tryAutoReopen() {
   AppState.folder = { handle, name: handle.name };
   if (permission === 'granted') {
     AppState.permissionState = 'granted';
-    landingBusy = 'Opening “' + handle.name + '”…';
+    landingBusy = openingMessage(handle.name);
     render();
     await loadWorkspace(handle);
   } else {
@@ -3246,11 +3273,23 @@ const SETTINGS_MANAGED_KEYS = {
   facets: ['global-enabled', 'globalEnabled', 'directory-name-template', 'directoryNameTemplate', 'customs']
 };
 
+// The keys of `settings` that are a single value, not a section: written when they hold something, and removed from the
+// file when they no longer do (a cleared name must not stay in the file as an unmanaged key).
+const SETTINGS_MANAGED_SCALARS = ['name'];
+
 function serializeSettingsToRaw(settings, rawSettings) {
   const managed = serializeManagedSettings(settings);
   if (!rawSettings || typeof rawSettings !== 'object' || Array.isArray(rawSettings)) return managed;
   const out = {};
+  // a name the file did not have yet comes first; one it had keeps its place
+  for (const key of SETTINGS_MANAGED_SCALARS) {
+    if (Object.prototype.hasOwnProperty.call(managed, key) && !Object.prototype.hasOwnProperty.call(rawSettings, key)) out[key] = managed[key];
+  }
   for (const key of Object.keys(rawSettings)) {
+    if (SETTINGS_MANAGED_SCALARS.indexOf(key) !== -1) {
+      if (Object.prototype.hasOwnProperty.call(managed, key)) out[key] = managed[key];
+      continue;
+    }
     if (!Object.prototype.hasOwnProperty.call(managed, key)) {
       setYamlKey(out, key, rawSettings[key]);
       continue;
@@ -3271,7 +3310,8 @@ function serializeSettingsToRaw(settings, rawSettings) {
 }
 
 function serializeManagedSettings(settings) {
-  return {
+  const name = typeof settings.name === 'string' ? settings.name.trim() : '';
+  return Object.assign(name === '' ? {} : { name }, {
     manifests: { paths: settings.manifests.paths },
     relationships: { 'default-synthetic-label': settings.relationships.defaultSyntheticLabel },
     views: { path: settings.views.path, labels: settings.views.labels, properties: settings.views.properties },
@@ -3293,7 +3333,7 @@ function serializeManagedSettings(settings) {
         return facet;
       })
     }
-  };
+  });
 }
 
 /**
@@ -4016,6 +4056,7 @@ function readSettingsDraft() {
   let hasError = false;
   const fail = (id, message) => { setInlineErrorText(id, message); hasError = true; };
 
+  const nameInput = byId('settings-name-input');
   const pathsInput = byId('settings-manifests-paths-input');
   const viewsPathInput = byId('settings-views-path-input');
   const templateInput = byId('settings-facets-directory-template-input');
@@ -4060,6 +4101,7 @@ function readSettingsDraft() {
   return {
     valid: true,
     apply(settings) {
+      if (nameInput) settings.name = nameInput.value.trim();
       settings.manifests.paths = pathsResult.paths;
       settings.relationships.defaultSyntheticLabel = defaultLabelInput ? defaultLabelInput.value : '';
       settings.views.path = viewsPathResult.path;
@@ -4206,10 +4248,15 @@ function flushPendingDraft() {
 function renderTopPanelHtml() {
   if (!AppState.folder) return '';
   const saveAll = renderSaveAllButtonHtml();
-  return '<header class="top-panel col-span-3 flex items-center px-4">' +
-      '<span class="folder-name" title="Browsers do not expose an absolute filesystem path for a picked folder (ASM-1/DEC-11) — this shows the folder\'s own name and its position as the browsing root instead.">' +
+  const name = workspaceName();
+  // the name of the workspace in place of the folder, which is then the tooltip; without one, the folder and its root slash
+  const label = name
+    ? '<span class="folder-name workspace-name" title="Folder: ' + escapeHtml(AppState.folder.name) + '">' + escapeHtml(name) + '</span>'
+    : '<span class="folder-name" title="Browsers do not expose an absolute filesystem path for a picked folder (ASM-1/DEC-11) — this shows the folder\'s own name and its position as the browsing root instead.">' +
         escapeHtml(AppState.folder.name) + '<span class="folder-root-slash">/</span>' +
-      '</span>' +
+      '</span>';
+  return '<header class="top-panel col-span-3 flex items-center px-4">' +
+      label +
       renderPerspectiveTabsHtml() +
       // one group, pushed to the right: when the bar wraps it moves as a whole, and the status gives way before the buttons do;
       // the folder of `archicode editor serve` is the one the server was started on: there is no other to pick, so no Close folder
@@ -4419,6 +4466,7 @@ function renderLeftPanelWrapperHtml(innerHtml) {
  * `WorkspaceFactory`, `GenerateViewsCommand`). `backticks` render as <code>.
  */
 const SETTINGS_HELP = {
+  name: 'The name of the workspace. The editor shows it in place of the name of the folder, which then becomes a tooltip. Leave empty to show the folder name.',
   manifestsPaths: 'Folders scanned for manifest files, relative to the folder containing `workspace.yaml`. One per line. Default: `manifests`.',
   defaultLabel: 'Label for a relationship that declares none, and for a link merged from several relationships. Default: `uses`.',
   viewsPath: 'Folder where generated views are written, relative to `workspace.yaml`. Facets write to sibling folders (see Facets). Default: `views`.',
@@ -4462,6 +4510,7 @@ function docUrl(key) {
 
 /** The settings texts that are explained further in the manual, and where. */
 const SETTINGS_HELP_DOCS = {
+  name: 'workspace',
   manifestsPaths: 'settings',
   defaultLabel: 'settings',
   viewsPath: 'settings',
@@ -4676,6 +4725,12 @@ function renderSettingsViewHtml() {
     '<div class="settings-view">' +
       renderElementHeaderHtml('<h2>Settings</h2>', '') +
       renderAppearanceSectionHtml() +
+      '<div class="edition-section" id="settings-workspace"><h3>Workspace</h3>' +
+        '<div class="field-row"><label class="field-label" for="settings-name-input">Name</label><span class="field-value">' +
+          '<input type="text" id="settings-name-input" value="' + escapeHtml(settings.name || '') + '" placeholder="' + escapeHtml(AppState.folder ? AppState.folder.name : '') + '"' + describedBy('name') + '>' +
+          renderHelpHtml('name') +
+        '</span></div>' +
+      '</div>' +
       '<div class="edition-section"><h3>Manifests</h3>' +
         '<div class="field-row"><label class="field-label" for="settings-manifests-paths-input">Paths</label><span class="field-value">' +
           '<textarea id="settings-manifests-paths-input" class="auto-grow-textarea" placeholder="manifests"' + describedBy('manifestsPaths') + '>' + escapeHtml(settings.manifests.paths.join('\n')) + '</textarea>' +
@@ -9508,9 +9563,10 @@ function renderLandingHtml(cfg) {
   return '<main class="landing"><section class="landing-card" data-landing="' + cfg.kind + '">' + brand + body + '</section></main>';
 }
 
-/** The title of the page: the editor, then the folder whose workspace is loaded. */
+/** The title of the page: the editor, then the workspace that is loaded (its name, or its folder when it has none). */
 function pageTitle() {
-  return AppState.folder && AppState.folder.name ? 'ArchiCode Editor ' + AppState.folder.name : 'ArchiCode Editor';
+  const label = workspaceLabel();
+  return label ? 'ArchiCode Editor ' + label : 'ArchiCode Editor';
 }
 
 function render() {
@@ -9539,6 +9595,7 @@ function render() {
     return;
   }
 
+  lastWorkspaceName = workspaceName() && AppState.folder ? { folder: AppState.folder.name, name: workspaceName() } : null;
   document.title = pageTitle();
 
   // innerHTML replacement resets every scroll position to 0 — so expanding a

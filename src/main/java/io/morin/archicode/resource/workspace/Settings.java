@@ -14,6 +14,12 @@ import lombok.extern.jackson.Jacksonized;
 @Builder(toBuilder = true)
 public class Settings {
 
+    /**
+     * The name of the workspace, shown by the editor in place of the name of the folder. Optional: a workspace without
+     * one is still valid.
+     */
+    String name;
+
     @Builder.Default
     Manifests manifests = Manifests.builder().build();
 

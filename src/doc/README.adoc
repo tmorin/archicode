@@ -94,7 +94,9 @@ In ArchiCode, a workspace is a fundamental construct that orchestrates the found
 
 - Collaboration Support: Embracing the manifest concept not only refines source code organization but also provides enhanced collaboration capabilities. Manifests facilitate clearer communication among team members by offering a well-defined structure and purpose.
 
-The following snippet describes a workspace designing the `CommandLineInterface` container of the `ArchiCode` system and its localization in the `Reference` environment.
+- Optional Name: a workspace can be given a name with `settings.name`. The editor shows it in place of the name of the folder (see <<editor-workspace-name>>); the command line does not need it. A workspace without a name stays valid.
+
+The following snippet describes a workspace named `ArchiCode`, designing the `CommandLineInterface` container of the `ArchiCode` system and its localization in the `Reference` environment.
 
 .The content of `workspace.yaml`
 [source,yaml]
@@ -553,6 +555,8 @@ ArchiCode embraces configurability as a cornerstone of its design, affording you
 
 - Tailored View Generation: ArchiCode's configurability extends to the very essence of view generation. You have the ability to redefine the output folder for generated views, as well as customize the labels utilized in the built-in viewpoints. This level of customization ensures that the generated views align harmoniously with your architectural narrative.
 
+The `settings` also accept a `name` for the workspace. It has no default, so the snippet below does not show it: see <<workspace>>.
+
 .The default settings of a workspace
 [source,yaml]
 ----
@@ -644,6 +648,13 @@ A story is a file (`story.<id>.yaml`) in the first manifests folder, and so is e
 === Facets
 
 The facets of the workspace (see <<facets>>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out. In the tree, the elements the facet leaves with nothing to draw are greyed. The facets themselves are edited in the *Settings* perspective, along with the other settings of the workspace (see <<technical-configuration>>).
+
+[[editor-workspace-name]]
+=== Name of the workspace
+
+A workspace can have a name, the optional `name` key of its `settings` (see <<workspace>>). *Settings* has a section, *Workspace*, with a *Name* field. Unlike the theme below, the name is a setting of the workspace: it is written to `workspace.yaml`, so it counts as a change to save and lights *Save all changes*.
+
+When the workspace has a name, the editor shows it at the top left of the window, in place of the name of the folder, in the title of the page and in the "Opening" messages when it already knows it; the name of the folder is then the tooltip of the name. Without a name, or with a blank one, the editor shows the name of the folder, as before, and an emptied *Name* is left out of the file.
 
 [[editor-theme]]
 === Theme
