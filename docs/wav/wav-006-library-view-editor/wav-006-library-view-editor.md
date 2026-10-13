@@ -88,7 +88,7 @@ wave_manifest:
       slug: library-view-panels
       phase: P1
       depends_on: [W-1]
-      run: null
+      run: '0028'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -124,7 +124,7 @@ wave_manifest:
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
 | W-1 | 0027 | `library-view-diagram` | — | See a saved view drawn in the Library, where it is managed, without leaving it | `TDD+pln`. The centre of `#/library/views` draws the selected view (Elements viewpoints `overview`/`detailed`/`deep`, layer application or technology, and the Map) with the diagram canvas, its tools (zoom, centre, fit, PNG, SVG, hide unlinked, texts) and the facet of the view. The TDD decides how a third host of the diagram reads its inputs from the view instead of the global state of the Map and Elements (parametrise the pipeline, or give it a view-scoped copy of that state), under one constraint: visiting the page changes nothing the Map and Elements show. A view that cannot be drawn keeps its message. *Open on diagram*, *Rename*, *Delete* stay. | Node tests: the canvas and its scene for an Elements view and for a Map view; Map and Elements state, and the address, unchanged after a visit; the broken-view case; `./mvnw test` green |
-| W-2 | — | `library-view-panels` | W-1 | Read the attributes of a view, and of the box or link selected in it, in the right-hand panel | `TDD+pln`. The page gets a right-hand panel (resizable like the Map's, width remembered, absent while the viewport is too narrow or the diagram is maximized, as the Map's). It shows the attributes of the view (what it draws, viewpoint, layer, element or pins, facet, hide-unlinked, texts, the file that keeps it, the steps that show it: the facts now in the centre move here) and, when a box or a link of the diagram is selected, the inspection panel of the Map (`renderInspectionHtml`, link panel included). Selecting in the page does not leave it (the Map's rule "a click on a box moves to that element" does not apply here; the TDD decides how a reader still reaches the element). Manual updated. | Node tests: the attributes listed; box and link selection show the inspection and the link panel; selection stays on the page and in its address; the steps that show the view still lead to their story |
+| W-2 | 0028 | `library-view-panels` | W-1 | Read the attributes of a view, and of the box or link selected in it, in the right-hand panel | `TDD+pln`. The page gets a right-hand panel (resizable like the Map's, width remembered, absent while the viewport is too narrow or the diagram is maximized, as the Map's). It shows the attributes of the view (what it draws, viewpoint, layer, element or pins, facet, hide-unlinked, texts, the file that keeps it, the steps that show it: the facts now in the centre move here) and, when a box or a link of the diagram is selected, the inspection panel of the Map (`renderInspectionHtml`, link panel included). Selecting in the page does not leave it (the Map's rule "a click on a box moves to that element" does not apply here; the TDD decides how a reader still reaches the element). Manual updated. | Node tests: the attributes listed; box and link selection show the inspection and the link panel; selection stays on the page and in its address; the steps that show the view still lead to their story |
 
 **Gate:** the checks listed under P1 in the manifest hold.
 

@@ -346,6 +346,13 @@
   .map-chip button:hover { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; color: var(--fg); }
   .diagram-canvas > .dg-list { position: absolute; inset: 0; overflow: auto; padding: 0.75rem; cursor: auto; }
   .diagram-tools { position: absolute; right: 1.5rem; bottom: 1.5rem; display: flex; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 2rem); gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
+  /* the page of a view in the Library: the diagram of the Map, then the facts and the steps that show the view under it */
+  .library-view-notices { flex: none; }
+  .library-view-details { flex: 0 1 auto; max-height: 33%; overflow: auto; padding-top: 0.25rem; }
+  .library-view-details > .story-editor { max-width: 56rem; }
+  .library-view-details .view-facts { margin: 0.5rem 0; }
+  .library-view-details h3 { margin: 0.75rem 0 0.5rem; font-size: 1rem; }
+  .diagram-canvas[data-host="library"] .dg-node, .diagram-canvas[data-host="library"] .dg-link { cursor: inherit; } /* nothing to click on this page: the canvas' own hand */
   .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
   .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
   .diagram-tools button[aria-pressed="true"], .diagram-tools button[data-lit="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
@@ -3018,6 +3025,10 @@ function resetUiState() {
   diagramCache = null;
   diagramScene = null;
   diagramShownView = null;
+  diagramLinkStop = null;
+  diagramHost = 'main';
+  parkedDiagramHost = newDiagramHostState();
+  libraryLook = libraryLookFor(null);
   diagramSeq++; // a layout still being computed for the old folder is dropped when it ends
   helpOpen = false;
   headerMenuOpen = false;
@@ -3280,6 +3291,7 @@ function selectFromHashRef() {
 /** Re-sync `currentPerspective` (and, once a workspace is loaded, the selection) from the URL — bootstrap and every 'hashchange' (back/forward, a hand-edited URL). */
 function syncPerspectiveFromHash() {
   currentPerspective = perspectiveIdFromHash();
+  useDiagramHost(diagramHostOf(currentPerspective)); // the framing an address carries (`frame=fit`) is that of the diagram it will draw
   if (AppState.workspace) applySelectionFromHashRef();
 }
 
@@ -3371,6 +3383,7 @@ function syncHashFromState() {
 function setPerspective(id) {
   if (!Object.prototype.hasOwnProperty.call(PERSPECTIVES, id)) return;
   currentPerspective = id;
+  useDiagramHost(diagramHostOf(id)); // the address below is written from the framing of the diagram it leads to
   if (rawYamlEditDraft) rawYamlEditDraft = null;
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
   location.hash = currentRouteHash();
@@ -6774,7 +6787,7 @@ function markLinkSelection() {
   canvas.querySelectorAll('.dg-link, .dg-label').forEach((el) => {
     const selected = sel.kind === 'link' && el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to;
     el.classList.toggle('dg-link-selected', selected);
-    if (el.classList.contains('dg-link')) el.setAttribute('aria-pressed', String(selected));
+    if (el.classList.contains('dg-link') && el.getAttribute('role') !== 'img') el.setAttribute('aria-pressed', String(selected)); // the links of the page of a view in the Library (role img) press nothing
   });
 }
 
@@ -6890,6 +6903,42 @@ let diagramPanned = false;
 let pendingDiagramFocus = null;
 let viewpointKernelPromise = null;
 let elkPromise = null;
+
+/**
+ * The diagram on screen is not the model: the camera, the scene, the cache and the tab stop of the links belong to the host
+ * that draws them. The Map and the diagrams of Elements ('main') have always shared one set of them (the same diagram keeps
+ * the view the user chose, whichever of the two shows it); the page of a view in the Library ('library') has its own. The live
+ * globals (`diagramScale`, `diagramCenter`, `diagramShownView`, `diagramScene`, `diagramCache`, `diagramLinkStop`) are those of
+ * `diagramHost`; the other host's are parked here, and `useDiagramHost` swaps them. Nothing a host does to its own diagram can
+ * then show on the other.
+ */
+let diagramHost = 'main';
+let parkedDiagramHost = newDiagramHostState();
+
+function newDiagramHostState() {
+  return { scale: 'auto', center: { x: 0, y: 0 }, shownView: null, scene: null, cache: null, linkStop: null };
+}
+
+/** The host a perspective draws its diagram for: the page of a view in the Library, else the Map and Elements. */
+function diagramHostOf(perspective) {
+  return perspective === 'library' ? 'library' : 'main';
+}
+
+/** Makes `host` the one whose diagram state the live globals hold. Idempotent. */
+function useDiagramHost(host) {
+  if (host === diagramHost) return;
+  const live = { scale: diagramScale, center: diagramCenter, shownView: diagramShownView, scene: diagramScene, cache: diagramCache, linkStop: diagramLinkStop };
+  const parked = parkedDiagramHost;
+  diagramScale = parked.scale;
+  diagramCenter = parked.center;
+  diagramShownView = parked.shownView;
+  diagramScene = parked.scene;
+  diagramCache = parked.cache;
+  diagramLinkStop = parked.linkStop;
+  parkedDiagramHost = live;
+  diagramHost = host;
+  pendingDiagramFocus = null; // a box that had the focus on the other host is not a box of this one
+}
 
 /** The version of the kernel's input/output contract this editor was written for. */
 const KERNEL_CONTRACT_VERSION = 2;
@@ -7174,9 +7223,14 @@ function currentDiagramFacet() {
   return AppState.workspace.settings.facets.customs.find((facet) => facet.name === diagramFacet) || null;
 }
 
-/** The viewpoint actually shown: 'detailed' only makes sense for an element that can contain others. */
+/** The viewpoint actually drawn for an element: 'detailed' only makes sense for an element that can contain others. */
+function leafSafeViewpoint(viewpoint, record) {
+  return viewpoint === 'detailed' && LEAF_KINDS.includes(record.kind) ? 'overview' : viewpoint;
+}
+
+/** The viewpoint actually shown by the tabs of Elements. */
 function effectiveDiagramViewpoint(record) {
-  return elementTab === 'detailed' && LEAF_KINDS.includes(record.kind) ? 'overview' : elementTab;
+  return leafSafeViewpoint(elementTab, record);
 }
 
 /** A diagram of the selected element is what the Elements perspective shows now (not its page, not a form). */
@@ -7546,7 +7600,7 @@ function stereotypeBadgesHtml(names) {
 }
 
 /** What a diagram box says about its element. `show` (qualifiers) puts the qualifiers of the element in the line of its kind, as the command line does. */
-function diagramItemText(item, show) {
+function diagramItemText(item, show, layer) {
   if (item.ghost) {
     return {
       title: item.reference,
@@ -7557,7 +7611,9 @@ function diagramItemText(item, show) {
       look: styleLookOf(null)
     };
   }
-  const record = findElementRecord(item.reference);
+  // `layer` (the page of a view names it; the Map and Elements leave it out and keep letting the selection decide): the box of the
+  // diagram's own layer is the one whose id is its reference, the others are the applications hosted on it
+  const record = findElementRecord(item.reference, layer ? (item.id === item.reference ? layer : 'application') : undefined);
   const hidden = item.collapsed ? ' · ' + item.hidden + ' hidden' : '';
   const qualifiers = record && Array.isArray(record.qualifiers) ? record.qualifiers.filter((q) => typeof q === 'string' && q) : [];
   const description = record && record.description ? String(record.description).replace(/\s+/g, ' ').trim() : '';
@@ -7706,8 +7762,8 @@ function diagramLeafLayout(text, width, show) {
 }
 
 /** What a link stands for, for its tooltip: each declared relationship, and a note when it groups several. */
-function diagramLinkTitle(link, itemById) {
-  const name = (id) => { const item = itemById.get(id); return item ? diagramItemText(item).title : id; };
+function diagramLinkTitle(link, itemById, layer) {
+  const name = (id) => { const item = itemById.get(id); return item ? diagramItemText(item, undefined, layer).title : id; };
   const caption = diagramLinkText(link);
   const lines = [name(link.from) + ' → ' + name(link.to) + (caption ? ' : ' + caption : '')];
   const rels = link.relationships || [];
@@ -7765,7 +7821,7 @@ function buildElkGraph(result, options) {
     childrenOf.get(parent).push(item);
   }
   const toNode = (item) => {
-    const text = diagramItemText(item, show);
+    const text = diagramItemText(item, show, options && options.itemLayer);
     const kids = childrenOf.get(item.id) || [];
     if (kids.length) {
       const minWidth = Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS), 12)) + 60 +
@@ -7824,6 +7880,9 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const openedByUser = new Set(options && options.opened ? options.opened : (isMap ? currentMapOpened() : []));
   const pinnedOnMap = options && options.pinned ? options.pinned : (isMap ? mapPinned : []);
   const show = options && options.show ? options.show : {};
+  // the page of a view in the Library only shows the drawing: no box, link or caption acts, and nothing folds (the keyboard, the
+  // highlight and the roving tab stop of the links do not depend on an action, so they stay)
+  const readonly = !!(options && options.readonly);
   // every box of a drawing belongs to the layer it was computed for: a link must say it, two layers can share a reference
   const layerAttribute = options && options.layer ? ' data-layer="' + escapeHtml(options.layer) + '"' : '';
   const itemById = new Map(result.items.map((item) => [item.id, item]));
@@ -7861,21 +7920,21 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   for (const box of boxes.sort((a, b) => a.depth - b.depth)) {
     const item = itemById.get(box.node.id);
     if (!item) continue;
-    const text = diagramItemText(item, show);
+    const text = diagramItemText(item, show, options && options.itemLayer);
     const { x, y } = box;
     const w = box.node.width;
     const h = box.node.height;
     const isFocal = !item.ghost && item.reference === focalReference && item.id === item.reference;
     if (isFocal) focal = { x: x + w / 2 + 4, y: y + h / 2 + 4, w, h };
     if (!item.ghost) boxesById[item.id] = { x: x + w / 2 + 4, y: y + h / 2 + 4, w, h };
-    const action = item.ghost
+    const action = readonly ? '' : item.ghost
       ? ' data-action="fix-dangling" data-ref="' + escapeHtml(item.owner) + '"'
       : ' data-action="goto-element" data-ref="' + escapeHtml(item.reference) + '"' + layerAttribute;
-    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="0" role="link" aria-label="' + escapeHtml(text.title + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
+    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="0" role="' + (readonly ? 'img' : 'link') + '" aria-label="' + escapeHtml(text.title + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
     if (box.compound) {
       // Close is offered when it changes something: the user opened this box, and nothing pinned inside it keeps it open
       // (the kernel opens what encloses a pin), nor the focal element (a box around it cannot be folded)
-      const closable = isMap && !item.ghost && openedByUser.has(item.id) && !pinnedOnMap.some((pin) => pin.startsWith(item.reference + '.')) &&
+      const closable = isMap && !readonly && !item.ghost && openedByUser.has(item.id) && !pinnedOnMap.some((pin) => pin.startsWith(item.reference + '.')) &&
         !(focalReference && focalReference.startsWith(item.reference + '.'));
       const look = diagramLookAttributes(text.look);
       const badgeRow = text.badges.length ? diagramBadgeRow(text.badges, Math.floor((w - 48) / 2)) : null; // right-aligned in the header
@@ -7889,7 +7948,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     } else {
       const folded = item.collapsed;
       // a box the kernel says opening would change (and only that: a button that does nothing is not drawn)
-      const expandable = isMap && !item.ghost && item.expandable;
+      const expandable = isMap && !readonly && !item.ghost && item.expandable;
       const lines = diagramLeafLayout(text, w, show);
       const linesAt = (cls, anchorLines, ys) => anchorLines.map((line, i) =>
         '<text class="' + cls + '" x="' + (x + w / 2) + '" y="' + (y + ys[i]) + '" text-anchor="middle">' + escapeHtml(line) + '</text>').join('');
@@ -7909,7 +7968,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const pairs = new Map();
   const endOf = (id) => {
     const item = itemById.get(id);
-    const text = item ? diagramItemText(item) : { title: id, sub: '' };
+    const text = item ? diagramItemText(item, undefined, options && options.itemLayer) : { title: id, sub: '' };
     return { id, reference: item ? item.reference : id, title: text.title, sub: text.sub, ghost: !!(item && item.ghost), collapsed: !!(item && item.collapsed), hidden: item && item.hidden ? item.hidden : 0 };
   };
   // the links drawn between the same two boxes, in order: the ones of a pair of several say which of them they are (`data-nth`)
@@ -7932,10 +7991,10 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     if (!pairs.has(pairKey)) pairs.set(pairKey, { from: link.from, to: link.to, fromEnd: endOf(link.from), toEnd: endOf(link.to), links: [] });
     const nth = pairs.get(pairKey).links.push(link) - 1;
     const caption = diagramLinkText(link);
-    const select = ends + (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') + layerAttribute + ' data-action="select-link"';
+    const select = ends + (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') + layerAttribute + (readonly ? '' : ' data-action="select-link"');
     // the links are one tab stop (roving tabindex, `syncLinkTabStop` moves it): the first one until the page says otherwise
-    edges += '<g class="dg-link"' + select + ' tabindex="' + (edges ? '-1' : '0') + '" role="button" aria-pressed="false" aria-label="' +
-      escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById)) + '</title>' +
+    edges += '<g class="dg-link"' + select + ' tabindex="' + (edges ? '-1' : '0') + '" role="' + (readonly ? 'img' : 'button') + '"' + (readonly ? '' : ' aria-pressed="false"') + ' aria-label="' +
+      escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer)) + '</title>' +
       '<path class="dg-hit-edge" d="' + d + '"/>' +
       '<path class="dg-edge' + (link.synthetic ? ' dg-aggregated' : '') + (link.ghost ? ' dg-ghost-edge' : '') + '" marker-end="url(#dg-arrow)" d="' + d + '"/></g>';
     const label = edge.labels && edge.labels[0];
@@ -7953,10 +8012,11 @@ function renderDiagramSvg(layout, result, focalReference, options) {
 }
 
 /** No layout engine (offline): the same information as a plain, still clickable, list. */
-function renderDiagramFallbackHtml(result, layer) {
+function renderDiagramFallbackHtml(result, layer, readonly) {
   const itemById = new Map(result.items.map((item) => [item.id, item]));
   const nameOf = (id) => {
     const item = itemById.get(id);
+    if (readonly) return '<span class="relationship-name">' + escapeHtml(item ? diagramItemText(item, undefined, layer).title : id) + '</span>'; // the page of a view acts on nothing
     return '<button type="button" class="relationship-link" data-action="' + (item && item.ghost ? 'fix-dangling' : 'goto-element') + '" data-ref="' +
       escapeHtml(item ? (item.ghost ? item.owner : item.reference) : id) + '"' + (layer && !(item && item.ghost) ? ' data-layer="' + escapeHtml(layer) + '"' : '') + '>' +
       escapeHtml(item ? diagramItemText(item).title : id) + '</button>';
@@ -7968,8 +8028,8 @@ function renderDiagramFallbackHtml(result, layer) {
 }
 
 /** The diagram of an element fails through the facet and not without it: the facet removes the element itself (a rule that takes a whole layer away, for one). */
-function facetRemovesElement(kernel, viewpoint, reference) {
-  const plain = kernel.compute(buildKernelInput(viewpoint, reference).input);
+function facetRemovesElement(kernel, viewpoint, reference, layer) {
+  const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer }).input);
   return !plain.error;
 }
 
@@ -8034,14 +8094,15 @@ function diagramStatusText(viewpoint, reference, facet, result, ghosts) {
  * What the canvas says when there is nothing to draw. Through a facet that is usually the facet's doing, not the
  * element's: say so, count what it removed, and offer the diagram without it.
  */
-function diagramEmptyHtml(kernel, viewpoint, reference, facet, hint) {
+function diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, options) {
+  const readonly = !!(options && options.readonly); // the page of a view offers no way to change what it draws
   if (facet) {
-    const plain = kernel.compute(buildKernelInput(viewpoint, reference).input);
+    const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer: options && options.layer }).input);
     const removed = plain.error ? 0 : plain.links.filter((link) => !link.secondary).length;
     if (removed) {
       return '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes the ' +
-        (removed === 1 ? 'link' : removed + ' links') + ' of this element' + hint + '. ' +
-        '<button type="button" data-action="clear-facet">Show it without the facet</button></div>';
+        (removed === 1 ? 'link' : removed + ' links') + ' of this element' + hint + '.' +
+        (readonly ? '' : ' <button type="button" data-action="clear-facet">Show it without the facet</button>') + '</div>';
     }
   }
   return '<div class="muted diagram-empty">Nothing to show: this element has no relationships' + hint + '.</div>';
@@ -8571,8 +8632,8 @@ function handleDiagramKeydown(e) {
   else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); setDiagramScale('fit'); }
   else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); resetDiagramView(); }
   else if ((e.key === 'm' || e.key === 'M') && !diagramMaximized && anyDiagramShown()) { e.preventDefault(); toggleDiagramMaximized(); }
-  else if (e.key === 'Escape' && diagramMaximized) { e.preventDefault(); toggleDiagramMaximized(); }
-  else if (e.key === 'Escape' && AppState.selection.kind === 'link') { e.preventDefault(); dropLinkSelection(); render(); }
+  else if (e.key === 'Escape' && diagramMaximized && anyDiagramShown()) { e.preventDefault(); toggleDiagramMaximized(); } // the page of a view in the Library is neither maximized nor the one to restore the Map
+  else if (e.key === 'Escape' && AppState.selection.kind === 'link' && anyDiagramShown()) { e.preventDefault(); dropLinkSelection(); render(); }
 }
 
 /** The styles of the diagram with real colors, for an SVG that must look right outside this page. */
@@ -8633,7 +8694,7 @@ function diagramExportDocument() {
     xml: '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone),
     width: diagramScene.width,
     height: diagramScene.height,
-    name: (canvas.getAttribute('data-ref') || 'diagram').replace(/[^\w.-]+/g, '_') + '-' + (diagramShownView ? diagramShownView.split('|')[1] : 'diagram')
+    name: (canvas.getAttribute('data-ref') || canvas.getAttribute('data-view') || 'diagram').replace(/[^\w.-]+/g, '_') + '-' + (diagramShownView ? diagramShownView.split('|')[1] : 'diagram')
   };
 }
 
@@ -8704,20 +8765,28 @@ function pushDiagramHistory() {
 
 // ---- Diagram: the perspective's markup and the computation behind it ----
 
-/** The canvas, its tools and the status line; `mountDiagramIfNeeded` fills the canvas once render() has put it in the page. */
-function renderDiagramCanvasHtml(record, overlayHtml) {
+/**
+ * The canvas, its tools and the status line; `mountDiagramIfNeeded` fills the canvas once render() has put it in the page.
+ * `host` is only given by the page of a view in the Library ({ view, isMap, hideUnlinked, shows }, see `libraryDiagramRecipe`): its
+ * canvas names the view, its tools show what that page draws and offer no folding (a Map view's open boxes are part of the view).
+ */
+function renderDiagramCanvasHtml(record, overlayHtml, host) {
   // no record: the map of the whole workspace
-  const subject = record ? escapeHtml(record.name || record.id) : 'the workspace';
-  return '<div class="diagram-stage">' + (overlayHtml || '') + '<div class="diagram-canvas" id="diagram-canvas"' + (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
-    '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' + (record ? escapeHtml(record.reference) : '') + '"><span class="muted">Computing the diagram…</span></div>' +
+  const subject = host ? 'the view ' + escapeHtml(viewLabel(host.view)) : record ? escapeHtml(record.name || record.id) : 'the workspace';
+  const canvasAttributes = host
+    ? ' data-host="library" data-view="' + escapeHtml(host.view.id) + '" tabindex="0" aria-label="Diagram of ' + subject + '. Arrow keys move between boxes, plus and minus zoom."'
+    : (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
+      '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' + (record ? escapeHtml(record.reference) : '') + '"';
+  const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
+  return '<div class="diagram-stage">' + (overlayHtml || '') + '<div class="diagram-canvas" id="diagram-canvas"' + canvasAttributes + '><span class="muted">Computing the diagram…</span></div>' +
     '<div class="diagram-tools" role="toolbar" aria-label="Diagram tools">' +
       // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
-      (record ? '' : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
+      (record || host ? '' : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
           '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
           '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>') +
-      '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + diagramHideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
+      '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + hideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
       '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
-      renderDiagramShowGroupHtml(!record) +
+      renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
       '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
       '<span class="button-group" role="group" aria-label="Zoom">' +
         '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
@@ -8745,8 +8814,8 @@ function renderDiagramDownloadHtml() {
 }
 
 /** The texts the diagram draws, each one a button that is lit while it is shown. */
-function renderDiagramShowGroupHtml(isMap) {
-  const shows = diagramShows(isMap);
+function renderDiagramShowGroupHtml(isMap, drawn) {
+  const shows = drawn || diagramShows(isMap); // `drawn`: what the page of a view in the Library draws
   const tool = (name, label, title) => '<button type="button" data-action="toggle-show" data-show="' + name + '" aria-pressed="' + shows[name] + '" title="' + escapeHtml(title) + '">' + label + '</button>';
   return '<span class="button-group" role="group" aria-label="Show">' +
     tool('labels', 'Labels', 'The caption of each link: its label, and its qualifiers in brackets') +
@@ -8842,9 +8911,85 @@ async function markTreeThroughFacet() {
 }
 
 /**
+ * What a diagram draws, and nothing else the pipeline needs to decide: the one argument of `mountDiagramIfNeeded`. A host builds
+ * it from the state it owns and the pipeline never reads that state itself, so a host cannot disturb another one:
+ *   host      'main' (the Map and the diagrams of Elements, which read the page's state) or 'library' (the page of a view);
+ *   view      the saved view, for 'library';
+ *   isMap, reference, record   the map of the workspace, or the element drawn (`record` is its model);
+ *   layer     the layer of the element (undefined: `layerOfReference` picks it, as the Map and Elements always did);
+ *   viewpoint 'map', or the viewpoint actually drawn; facet: the facet of the settings, or null;
+ *   mapState  { opened, pinned, hidden } of a map, else null;
+ *   hideUnlinked, shows   whether the boxes no link reaches are left out; the texts drawn (the four, as booleans).
+ */
+function mainDiagramRecipe(canvas) {
+  const isMap = canvas.hasAttribute('data-map');
+  const reference = isMap ? '' : canvas.getAttribute('data-ref');
+  const record = isMap ? null : findElementRecord(reference);
+  if (!isMap && !record) return null;
+  return {
+    host: 'main', view: null, isMap, reference, record, layer: undefined,
+    // the diagram of the Elements perspective is always the overview of the element, whatever the Diagram perspective shows
+    viewpoint: isMap ? 'map' : effectiveDiagramViewpoint(record),
+    facet: currentDiagramFacet(),
+    mapState: isMap ? currentMapState() : null,
+    hideUnlinked: diagramHideUnlinked,
+    shows: diagramShows(isMap)
+  };
+}
+
+/**
+ * What the page of a view in the Library has been asked to look at, beyond the view itself: the unlinked boxes and the texts as
+ * the toolbar of that page toggles them (null: as the view says). It is a way of looking at the view, like the zoom, and not an
+ * edit: nothing is marked modified and the state of the Map and Elements is not touched. One view at a time: another view
+ * starts from what it says.
+ */
+let libraryLook = { view: null, hideUnlinked: null, shows: { labels: null, qualifiers: null, descriptions: null, wrap: null } };
+
+function libraryLookFor(viewId) {
+  if (libraryLook.view !== viewId) libraryLook = { view: viewId, hideUnlinked: null, shows: { labels: null, qualifiers: null, descriptions: null, wrap: null } };
+  return libraryLook;
+}
+
+/** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view, the model and the page's look, and nothing else. */
+function libraryDiagramRecipe(view) {
+  if (!view || viewProblem(view)) return null;
+  const properties = isPlainObject(view.properties) ? view.properties : {};
+  const look = libraryLookFor(view.id);
+  const isMap = view.viewpoint === 'map';
+  const layer = !isMap && view.layer === 'technology' ? 'technology' : 'application';
+  const facet = typeof properties.facet === 'string' ? AppState.workspace.settings.facets.customs.find((candidate) => candidate.name === properties.facet) || null : null;
+  const defaults = DIAGRAM_SHOW_DEFAULTS[isMap ? 'map' : 'elements'];
+  const shows = {};
+  for (const name of DIAGRAM_SHOW_NAMES) {
+    shows[name] = typeof look.shows[name] === 'boolean' ? look.shows[name] : typeof properties[name] === 'boolean' ? properties[name] : defaults[name];
+  }
+  const recipe = {
+    host: 'library', view, isMap, reference: '', record: null, layer, viewpoint: 'map', facet, mapState: null,
+    hideUnlinked: typeof look.hideUnlinked === 'boolean' ? look.hideUnlinked : properties['hide-unlinked'] === true,
+    shows
+  };
+  if (isMap) {
+    const known = (list) => stringList(list).filter((reference) => AppState.index.application.has(reference));
+    recipe.mapState = { opened: known(properties.opened), pinned: known(properties.pinned), hidden: known(properties.hidden) };
+  } else {
+    recipe.reference = properties.element;
+    recipe.record = AppState.index[layer].get(properties.element);
+    recipe.viewpoint = leafSafeViewpoint(view.viewpoint, recipe.record);
+  }
+  return recipe;
+}
+
+/** The recipe of the diagram in `canvas`, from the host that wrote it; null when there is nothing to draw (the element is gone). */
+function diagramRecipeOf(canvas) {
+  if (canvas.getAttribute('data-host') === 'library') return libraryDiagramRecipe(findSavedView(canvas.getAttribute('data-view')));
+  return mainDiagramRecipe(canvas);
+}
+
+/**
  * Called at the end of every render(): when the Diagram canvas is on screen, compute its viewpoint and draw it.
  * The computation is asynchronous (WebAssembly instantiation, ELK), so `diagramSeq` drops the answer of any request
  * that a newer render superseded, and an identical request is served from `diagramCache` without a flash.
+ * What to draw comes from the recipe of the host that wrote the canvas (`diagramRecipeOf`), never from the page's state.
  */
 function mountDiagramIfNeeded() {
   // every call supersedes the layouts still being computed, also when there is nothing to draw now: a layout started on
@@ -8852,19 +8997,14 @@ function mountDiagramIfNeeded() {
   const seq = ++diagramSeq;
   const canvas = document.getElementById('diagram-canvas');
   if (!canvas) { diagramScene = null; pendingDiagramFocus = null; return; }
-  const isMap = canvas.hasAttribute('data-map');
-  const reference = isMap ? '' : canvas.getAttribute('data-ref');
-  const record = isMap ? null : findElementRecord(reference);
-  if (!isMap && !record) return;
-  // the diagram of the Elements perspective is always the overview of the element, whatever the Diagram perspective shows
-  const viewpoint = isMap ? 'map' : effectiveDiagramViewpoint(record);
-  const facet = currentDiagramFacet();
-  const mapState = isMap ? currentMapState() : null;
-  const shows = diagramShows(isMap);
-  const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, opened: mapState.opened, pinned: mapState.pinned } : { facet });
+  const recipe = diagramRecipeOf(canvas);
+  if (!recipe) return;
+  const { isMap, reference, record, viewpoint, facet, mapState, shows, hideUnlinked } = recipe;
+  const readonly = recipe.host === 'library'; // the page of a view only shows the drawing
+  const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, layer: recipe.layer, opened: mapState.opened, pinned: mapState.pinned } : { facet, layer: recipe.layer });
   if (isMap) input.hidden = mapState.hidden;
-  const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].join('|');
-  const key = JSON.stringify(input) + '|' + diagramHideUnlinked + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint() + '|' + JSON.stringify(AppState.workspace.styles || null);
+  const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].concat(readonly ? ['view:' + recipe.view.id] : []).join('|');
+  const key = JSON.stringify(input) + '|' + hideUnlinked + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint() + '|' + JSON.stringify(AppState.workspace.styles || null) + '|' + viewKey;
   if (diagramCache && diagramCache.key === key) {
     showDiagramScene(Object.assign({}, diagramCache.scene));
     return;
@@ -8875,9 +9015,9 @@ function mountDiagramIfNeeded() {
       const result = kernel.compute(input);
       if (seq !== diagramSeq) return;
       if (result.error) {
-        const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference);
+        const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference, recipe.layer);
         showDiagramScene(buildDiagramScene(viewKey, removed
-          ? '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes this element. <button type="button" data-action="clear-facet">Show it without the facet</button></div>'
+          ? '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes this element.' + (readonly ? '' : ' <button type="button" data-action="clear-facet">Show it without the facet</button>') + '</div>'
           : '<div class="error-panel">' + escapeHtml(result.error) + '</div>', '', '', { width: 0, height: 0 }, null));
         return;
       }
@@ -8885,7 +9025,7 @@ function mountDiagramIfNeeded() {
       let drawn = { items: result.items.concat(ghosts.items), links: result.links.concat(ghosts.links) };
       let shownResult = result;
       let hiddenCount = 0;
-      if (diagramHideUnlinked) {
+      if (hideUnlinked) {
         const kept = hideUnlinkedItems(drawn.items, drawn.links, isMap ? mapState.pinned : reference);
         hiddenCount = kept.hidden;
         drawn = { items: kept.items, links: kept.links };
@@ -8900,24 +9040,25 @@ function mountDiagramIfNeeded() {
       const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes);
       let scene;
       if (!elk) {
-        scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer), status, '', { width: 0, height: 0 }, null);
+        scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer, readonly), status, '', { width: 0, height: 0 }, null);
         scene.drawnIds = new Set(drawn.items.filter((item) => !item.ghost).map((item) => item.id));
       } else if (isMap && !drawn.items.length) {
-        scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no application element' + (mapState.hidden.length ? ' left once the hidden ones are out: show some again with their eye, or with the chips above the map.' : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
+        scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no application element' +
+          (mapState.hidden.length ? ' left once the hidden ones are out' + (readonly ? '.' : ': show some again with their eye, or with the chips above the map.') : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
         scene.drawnIds = new Set();
       } else if (!isMap && diagramHasNothingToDraw(drawn)) {
-        const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? ' (try Deep to include what is inside it)' : '';
-        scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint), status, '', { width: 0, height: 0 }, null);
+        const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? (readonly ? ' (the deep viewpoint includes what is inside it)' : ' (try Deep to include what is inside it)') : '';
+        scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, { readonly, layer: recipe.layer }), status, '', { width: 0, height: 0 }, null);
       } else {
         // the Map starts without captions on its links (they take most of its room): the tooltip says what a link stands for
-        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap })), drawn, reference, { map: isMap, layer: input.layer, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [], show: shows });
+        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap, itemLayer: recipe.layer })), drawn, reference, { map: isMap, layer: input.layer, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [], show: shows, readonly, itemLayer: recipe.layer });
         scene = buildDiagramScene(viewKey, drawing.html, status, legend, drawing, drawing.focal);
         scene.boxes = drawing.boxes;
         scene.links = drawing.links;
         scene.drawnIds = new Set(Object.keys(drawing.boxes));
       }
       if (seq !== diagramSeq) return;
-      if (isMap) Object.assign(scene, diagramFoldTargets(shownResult, reference));
+      if (isMap && !readonly) Object.assign(scene, diagramFoldTargets(shownResult, reference));
       diagramCache = { key, scene };
       showDiagramScene(Object.assign({}, scene));
     } catch (e) {
@@ -9412,6 +9553,7 @@ function applySavedView(view) {
     mapPinned.forEach(expandParentsOf);
     mapSelectionCheck = true;
     currentPerspective = 'map';
+    useDiagramHost('main');
   } else {
     const layer = view.layer === 'technology' ? 'technology' : 'application';
     AppState.selection = { kind: 'element', key: properties.element, layer, mode: 'view' };
@@ -9419,6 +9561,7 @@ function applySavedView(view) {
     expandAncestorsOf(properties.element, layer);
     scrollNavToSelection = true;
     currentPerspective = 'elements';
+    useDiagramHost('main');
   }
   if (rawYamlEditDraft) rawYamlEditDraft = null;
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
@@ -9752,7 +9895,7 @@ function goToStoryStep(storyId, index) {
   if (!story || index < 0 || index >= steps.length) return;
   selectedStoryId = storyId;
   const problem = stepProblem(steps[index]) || applySavedView(stepView(steps[index]));
-  if (problem && currentPerspective !== 'map' && currentPerspective !== 'elements') currentPerspective = 'map'; // somewhere to show the bar
+  if (problem && currentPerspective !== 'map' && currentPerspective !== 'elements') { currentPerspective = 'map'; useDiagramHost('main'); } // somewhere to show the bar
   activeStory = { id: storyId, step: index };
   storyBarEditing = false;
   storyBarNotice = null;
@@ -10140,7 +10283,7 @@ function renderLibraryPerspectiveHtml() {
     if (view) {
       const id = escapeHtml(view.id);
       subject = '<span class="element-header-subject">' + escapeHtml(viewLabel(view)) + '</span>';
-      actions = (viewProblem(view) ? '' : '<button type="button" data-action="saved-view-open" data-view="' + id + '" title="Draw this view on the Map or in Elements">Open on diagram</button>') +
+      actions = (viewProblem(view) ? '' : renderDiagramDownloadHtml() + '<button type="button" data-action="saved-view-open" data-view="' + id + '" title="Draw this view on the Map or in Elements">Open on diagram</button>') +
         '<button type="button" data-action="saved-view-rename" data-view="' + id + '">Rename</button>' +
         '<button type="button" data-action="saved-view-delete" data-view="' + id + '">Delete</button>';
     }
@@ -10156,11 +10299,17 @@ function renderLibraryPerspectiveHtml() {
     body = story ? renderStoryEditorHtml(story)
       : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. To start, open a diagram on the Map or in Elements and press “Add to story…”, or create an empty story with “New story…”.</p>';
   }
+  const header = renderElementHeaderHtml('<h2>Library</h2>' + renderLibraryTabsHtml() + subject, actions);
+  const notices = (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') + renderLegacyEntriesNoticeHtml();
+  // a view that can be drawn is drawn: the diagram of the Map under the header, then the facts and the steps that show it
+  const recipe = onViews && selectedViewId ? libraryDiagramRecipe(findSavedView(selectedViewId)) : null;
+  const center = recipe
+    ? '<div class="diagram-view library-view">' + header + (notices ? '<div class="library-view-notices">' + notices + '</div>' : '') +
+        renderDiagramCanvasHtml(null, '', recipe) + '<div class="library-view-details">' + body + '</div></div>'
+    : '<div class="story-view">' + header + '<div class="story-body">' + notices + body + '</div></div>';
   return {
     left: renderLeftPanelWrapperHtml(onViews ? renderViewsNavHtml() : renderStoriesNavHtml()),
-    center: '<div class="story-view">' + renderElementHeaderHtml('<h2>Library</h2>' + renderLibraryTabsHtml() + subject, actions) + '<div class="story-body">' +
-      (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') +
-      renderLegacyEntriesNoticeHtml() + body + '</div></div>',
+    center,
     right: null,
     bottom: null
   };
@@ -10496,6 +10645,11 @@ function handleAppClick(e) {
     case 'toggle-show': {
       const name = target.getAttribute('data-show');
       if (!DIAGRAM_SHOW_NAMES.includes(name)) break;
+      if (currentPerspective === 'library') { // the page of a view: a look of that page, not the Map's or Elements' choice, and not an edit of the view
+        const recipe = libraryDiagramRecipe(findSavedView(selectedViewId));
+        if (recipe) { libraryLook.shows[name] = !recipe.shows[name]; render(); }
+        break;
+      }
       pushDiagramHistory();
       diagramShow[name] = !diagramShows(mapIsShown())[name];
       // back to the default is "no choice": the URL and the saved views then say nothing
@@ -10539,6 +10693,11 @@ function handleAppClick(e) {
       break;
     }
     case 'toggle-hide-unlinked':
+      if (currentPerspective === 'library') { // see 'toggle-show'
+        const recipe = libraryDiagramRecipe(findSavedView(selectedViewId));
+        if (recipe) { libraryLook.hideUnlinked = !recipe.hideUnlinked; render(); }
+        break;
+      }
       if (!mapIsShown() && !diagramTabShown()) break;
       pushDiagramHistory();
       diagramHideUnlinked = !diagramHideUnlinked;
@@ -11271,6 +11430,7 @@ function render() {
   for (const view of Object.values(activeJsonEditorViews)) view.destroy();
   activeJsonEditorViews = {};
 
+  useDiagramHost(diagramHostOf(currentPerspective)); // before anything is drawn: the tree of the Map reads the scene of the Map
   settleLinkSelection(); // a link is selected only while the diagram it was made on is on screen
   const landing = landingScreenConfig();
   if (landing) {
