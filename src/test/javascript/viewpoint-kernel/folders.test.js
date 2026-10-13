@@ -2,7 +2,9 @@
 // The remembered folders (run 0020): every folder opened is remembered in IndexedDB with the name of its workspace, the
 // last one opens on load when its permission holds, the landing card lists them all when none is open, each can be
 // opened (a click) or removed from the list (nothing on disk). The single record an earlier version stored is migrated,
-// and never lost. The browser's IndexedDB is played by the fake of the harness; how the card looks is checked in a browser.
+// and never lost. Run 0023: each folder of the list says what a click will meet (its permission, asked without a prompt),
+// and the records two tabs wrote for one folder are merged into one. The browser's IndexedDB is played by the fake of
+// the harness; how the card looks is checked in a browser.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -335,7 +337,9 @@ test('a refused permission keeps the folder in the list and says so; a vanished 
   assert.equal(cfg.kind, 'first-launch');
   assert.equal(cfg.folders[0].problem, 'The browser did not give access to this folder.');
   assert.match(cfg.notice, /“Shop” did not open\. The browser did not give access/);
-  assert.match(html(p.sandbox), /<p class="landing-folder-problem">The browser did not give access to this folder\.<\/p>/);
+  // the problem line is the Open button's description, in place of its permission (TDD-0023 DEC-2)
+  assert.match(html(p.sandbox), /aria-describedby="landing-folder-problem-0"[^]*<p class="landing-folder-problem" id="landing-folder-problem-0">The browser did not give access to this folder\.<\/p>/);
+  assert.doesNotMatch(html(p.sandbox), /landing-folder-state/);
 
   entry.handle.requestPermission = async () => { const e = new Error('gone'); e.name = 'NotFoundError'; throw e; };
   await p.sandbox.openRememberedFolder(entry);
@@ -450,6 +454,352 @@ test('a failed storage does not stop a picked folder from opening', async () => 
   assert.equal(p.state().fatalError, null);
   assert.ok(p.state().workspace);
   assert.equal(p.state().folder.id, null, 'just not remembered');
+});
+
+// ---- run 0023: the permission of each folder, said before any click ----
+
+/** A folder record as the page stores it. */
+const folderRecord = (id, dir, name, openedAt, permission = 'granted', extra = {}) =>
+  ({ kind: 'folder', id, handle: handleOn(dir, permission, extra), name, openedAt });
+
+/** A promise and the function that settles it. */
+function deferred() {
+  let resolve;
+  const promise = new Promise((r) => { resolve = r; });
+  return { promise, resolve };
+}
+
+test('each remembered folder says what a click will meet, asked without any prompt', async () => {
+  const idb = fakeIndexedDB();
+  const thrown = (name) => async () => { const e = new Error(name); e.name = name; throw e; };
+  idb.seed(DB, 1, { handles: {
+    'folder:g': folderRecord('g', workspaceFolder('granted', 'Shop'), 'Shop', 50),
+    'folder:p': folderRecord('p', workspaceFolder('prompt'), '', 40, 'prompt'),
+    'folder:d': folderRecord('d', workspaceFolder('denied'), '', 30, 'denied'),
+    'folder:u': folderRecord('u', workspaceFolder('broken'), '', 20, 'granted', { queryPermission: thrown('SecurityError') }),
+    'folder:n': folderRecord('n', workspaceFolder('gone'), '', 10, 'granted', { queryPermission: thrown('NotFoundError') })
+  } });
+  const asked = [];
+  for (const record of Object.values(records(idb))) {
+    const query = record.handle.queryPermission;
+    record.handle.queryPermission = async (options) => { asked.push(plain(options)); return query(); };
+    record.handle.requestPermission = async () => { throw new Error('no prompt may be shown on load'); };
+  }
+  const p = await load(idb);
+  const cfg = p.sandbox.landingScreenConfig();
+  assert.equal(cfg.kind, 'first-launch');
+  assert.deepEqual(plain(cfg.folders.map((f) => [f.title, f.permission])),
+    [['Shop', 'granted'], ['prompt', 'prompt'], ['denied', 'denied'], ['broken', 'unknown'], ['gone', 'unreachable']]);
+  assert.equal(asked.length, 5, 'one query per folder');
+  assert.ok(asked.every((o) => o.mode === 'read'));
+
+  const card = html(p.sandbox);
+  // in words, as the Open button's description; the icon is hidden from assistive technology
+  assert.match(card, /aria-label="Open “Shop” \(folder granted\)" aria-describedby="landing-folder-state-0">[^]*?<span class="landing-folder-state" id="landing-folder-state-0" data-permission="granted"><svg[^>]*aria-hidden="true">[^]*?<\/svg><span>Opens without asking<\/span><\/span><\/button>/);
+  assert.match(card, /aria-describedby="landing-folder-state-1">[^]*?<span>Will ask for permission<\/span>/);
+  assert.match(card, /aria-describedby="landing-folder-state-2">[^]*?<span>Blocked by the browser<\/span>/);
+  assert.match(card, /aria-describedby="landing-folder-state-3">[^]*?<span>Could not be checked<\/span>/);
+  assert.match(card, /aria-describedby="landing-folder-state-4">[^]*?<span>Could not be reached<\/span>/);
+});
+
+test('the reopen card lists the states too, the last folder with the answer that decided not to open it', async () => {
+  const idb = fakeIndexedDB();
+  const last = folderRecord('x1', workspaceFolder('archi'), '', 50, 'prompt');
+  let queried = 0;
+  last.handle.queryPermission = async () => { queried++; return 'prompt'; };
+  idb.seed(DB, 1, { handles: {
+    'folder:x1': last,
+    'folder:x2': folderRecord('x2', workspaceFolder('infra'), '', 10),
+    workspace: { handle: last.handle, id: 'x1' }
+  } });
+  const p = await load(idb);
+  const cfg = p.sandbox.landingScreenConfig();
+  assert.equal(cfg.kind, 'reopen');
+  assert.equal(cfg.text, 'Your browser needs your permission to read “archi” again.', 'the wording is unchanged');
+  assert.deepEqual(plain(cfg.folders.map((f) => [f.title, f.permission])), [['archi', 'prompt'], ['infra', 'granted']]);
+  assert.equal(queried, 1, 'not asked twice');
+  assert.match(html(p.sandbox), /data-permission="prompt"/);
+});
+
+test('the card is drawn before the permissions are known, all asked at once, then drawn once more with the focus kept', async () => {
+  const idb = fakeIndexedDB();
+  const answers = [];
+  const stored = {};
+  let asked = 0;
+  for (let i = 0; i < 12; i++) {
+    const record = folderRecord('f' + i, workspaceFolder('folder' + i), '', 100 - i);
+    const answer = deferred();
+    answers.push(answer);
+    record.handle.queryPermission = () => { asked++; return answer.promise; };
+    stored['folder:f' + i] = record;
+  }
+  idb.seed(DB, 1, { handles: stored });
+  const p = page(idb);
+  const focused = [];
+  const lists = []; // the list of the card, as each draw finds it
+  const app = run(p.sandbox, "document.getElementById('app')");
+  app.querySelector = (selector) => {
+    if (selector !== '.landing-folder-list') return { focus() { focused.push(selector); } };
+    lists.push({ scrollTop: 0 });
+    return lists[lists.length - 1];
+  };
+  const loading = p.sandbox.tryAutoReopen();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(p.sandbox.landingScreenConfig().kind, 'first-launch');
+  assert.equal((html(p.sandbox).match(/<li class="landing-folder">/g) || []).length, 12, 'the list is on screen');
+  assert.doesNotMatch(html(p.sandbox), /landing-folder-state/, 'no state yet, and none waited for');
+  assert.equal(asked, 12, 'every folder asked at once, none waiting for another');
+
+  // the user went to the Remove of the third folder meanwhile
+  const control = { id: '', tagName: 'BUTTON', getAttribute: (n) => ({ 'data-action': 'forget-folder', 'data-folder-id': 'f2' })[n] || null };
+  run(p.sandbox, 'document').activeElement = { closest: () => control };
+  // and scrolled the list
+  lists.length = 0;
+  const scrolled = { scrollTop: 120 };
+  app.querySelector = (selector) => {
+    if (selector !== '.landing-folder-list') return { focus() { focused.push(selector); } };
+    lists.push(lists.length === 0 ? scrolled : { scrollTop: 0 });
+    return lists[lists.length - 1];
+  };
+  answers.forEach((a, i) => a.resolve(i % 2 ? 'prompt' : 'granted'));
+  await loading;
+  assert.equal((html(p.sandbox).match(/class="landing-folder-state"/g) || []).length, 12);
+  assert.equal(focused.pop(), '[data-action="forget-folder"][data-folder-id="f2"]', 'the focus stays on the control that had it');
+  assert.equal(lists.length, 2, 'drawn once more, once');
+  assert.equal(lists[1].scrollTop, 120, 'the list stays where it was scrolled to');
+
+  // drawn again while the focus is not on the card: the focus is left alone, not given to the primary button
+  const doc = run(p.sandbox, 'document');
+  const byId = doc.getElementById;
+  doc.getElementById = (id) => (id === 'landing-primary' ? { focus() { focused.push('#landing-primary'); } } : byId(id));
+  doc.activeElement = null;
+  run(p.sandbox, 'rememberedFolders.forEach((f) => { f.permission = undefined; })');
+  focused.length = 0;
+  for (const record of Object.values(stored)) record.handle.queryPermission = async () => 'granted';
+  await p.sandbox.checkFolderPermissions();
+  assert.deepEqual(focused, []);
+});
+
+// ---- run 0023: one record per folder, whatever two tabs did ----
+
+test('two tabs picking the same folder at the same moment end with one record, the last-folder pointer naming it', async () => {
+  const idb = fakeIndexedDB();
+  const shop = workspaceFolder('archi', 'Shop');
+  const one = await load(idb, [handleOn(shop)]);
+  const two = await load(idb, [handleOn(shop)]);
+  await Promise.all([one.sandbox.openFolder(), two.sandbox.openFolder()]);
+  const written = new Set(idb.calls.filter((c) => c.op === 'put' && c.key.startsWith('folder:')).map((c) => c.key));
+  assert.ok(written.size >= 2, 'the race happened: each tab added a record of its own');
+
+  assert.equal(folderRecords(idb).length, 1, 'one record is left');
+  const [kept] = folderRecords(idb);
+  assert.equal(pathOf(kept), shop);
+  assert.equal(records(idb).workspace.id, kept.id, 'the last-folder pointer names it');
+  assert.equal(kept.name, 'Shop', 'with the name of its workspace');
+  assert.ok(one.state().workspace && two.state().workspace, 'both tabs opened it');
+
+  // whichever tab holds the id merged away, it closes the folder as it is stored now: the pointer goes, the record stays
+  await one.sandbox.closeFolder();
+  await two.sandbox.closeFolder();
+  assert.equal(records(idb).workspace, undefined);
+  assert.deepEqual(folderRecords(idb).map((r) => r.id), [kept.id]);
+  assert.equal(one.sandbox.landingScreenConfig().folders.length, 1);
+});
+
+test('records of one folder stored twice are merged on load: the pointer, the stored name and the latest openedAt are kept', async () => {
+  const idb = fakeIndexedDB();
+  const shop = workspaceFolder('archi');
+  const twin = workspaceFolder('archi'); // another folder of the same name: never merged
+  const pointer = { handle: handleOn(shop, 'prompt'), id: 'a' };
+  idb.seed(DB, 1, { handles: {
+    'folder:a': folderRecord('a', shop, 'Shop', 5, 'prompt'),
+    'folder:b': folderRecord('b', shop, '', 9, 'prompt'),
+    'folder:c': folderRecord('c', twin, 'Twin', 7, 'prompt'),
+    workspace: pointer
+  } });
+  const p = await load(idb);
+  assert.deepEqual(Object.keys(records(idb)).sort(), ['folder:a', 'folder:c', 'workspace']);
+  assert.equal(records(idb)['folder:a'].name, 'Shop', 'the stored name, not the empty one of the newer record');
+  assert.equal(records(idb)['folder:a'].openedAt, 9, 'the latest openedAt: the folder keeps its place in the list');
+  assert.equal(records(idb)['folder:c'].name, 'Twin');
+  assert.deepEqual(records(idb).workspace, pointer, 'the pointer is as it was');
+  assert.ok(!idb.calls.some((c) => c.key === 'workspace'), 'a merge never writes the last-folder record');
+  const cfg = p.sandbox.landingScreenConfig();
+  assert.equal(cfg.kind, 'reopen');
+  assert.deepEqual(plain(cfg.folders.map((f) => [f.id, f.title])), [['a', 'Shop'], ['c', 'Twin']]);
+  assert.equal(p.state().folder.id, 'a');
+});
+
+test('without a pointer, the most recently opened record is kept, with the name a record had', async () => {
+  const idb = fakeIndexedDB();
+  const shop = workspaceFolder('archi');
+  idb.seed(DB, 1, { handles: {
+    'folder:a': folderRecord('a', shop, 'Shop', 5),
+    'folder:b': folderRecord('b', shop, '', 9)
+  } });
+  await load(idb);
+  assert.deepEqual(Object.keys(records(idb)), ['folder:b']);
+  assert.equal(records(idb)['folder:b'].name, 'Shop');
+  assert.equal(records(idb)['folder:b'].openedAt, 9);
+});
+
+test('a merge that fails writes nothing, and the folder is still one row, whose Remove forgets both records', async () => {
+  for (const [label, options, extra] of [
+    ['a write that fails later', { failPut: () => true }, {}],
+    ['a handle that cannot be cloned', {}, { unclonable: true }]
+  ]) {
+    const idb = fakeIndexedDB(options);
+    const shop = workspaceFolder('archi');
+    idb.seed(DB, 1, { handles: {
+      'folder:a': folderRecord('a', shop, 'Shop', 5),
+      'folder:b': folderRecord('b', shop, '', 9, 'granted', extra)
+    } });
+    const before = idb.dump(DB);
+    const p = await load(idb);
+    await new Promise((r) => setTimeout(r, 20)); // long after the transaction would have committed
+    assert.deepEqual(idb.dump(DB), before, label + ': the records are exactly as they were');
+    const cfg = p.sandbox.landingScreenConfig();
+    assert.equal(cfg.folders.length, 1, label + ': listed once');
+    assert.equal(cfg.folders[0].title, 'Shop', label + ': with the stored name');
+    assert.deepEqual(plain(p.folders()[0].others), ['a']);
+
+    await p.sandbox.forgetFolder(p.folders()[0]);
+    assert.deepEqual(records(idb), {}, label + ': Remove forgets both');
+  }
+});
+
+test('a merge that finds the records changed since it read them writes nothing; the next read merges them', async () => {
+  const idb = fakeIndexedDB();
+  const shop = workspaceFolder('archi');
+  const a = folderRecord('a', shop, 'Shop', 5);
+  const b = folderRecord('b', shop, '', 9);
+  const changed = { 'folder:a': Object.assign({}, a, { name: 'Shop 2' }), 'folder:b': b };
+  let once = true;
+  const isSameEntry = b.handle.isSameEntry;
+  b.handle.isSameEntry = async (other) => {
+    // another tab notes a new name between the read and the merge
+    if (once) { once = false; idb.seed(DB, 1, { handles: Object.assign({}, changed) }); }
+    return isSameEntry(other);
+  };
+  a.handle.isSameEntry = b.handle.isSameEntry;
+  idb.seed(DB, 1, { handles: { 'folder:a': a, 'folder:b': b } });
+  const p = await load(idb);
+  assert.deepEqual(records(idb), changed, 'nothing written over what the other tab wrote');
+  assert.equal(p.sandbox.landingScreenConfig().folders.length, 1);
+
+  await load(idb);
+  assert.deepEqual(Object.keys(records(idb)), ['folder:b']);
+  assert.equal(records(idb)['folder:b'].name, 'Shop 2', 'the name the other tab wrote');
+});
+
+test('a merge skipped because the pointer moved to another record of the folder: Remove forgets all of them and the pointer', async () => {
+  const idb = fakeIndexedDB();
+  const shop = workspaceFolder('archi');
+  const a = folderRecord('a', shop, 'Shop', 5);
+  const b = folderRecord('b', shop, '', 9);
+  let once = true;
+  const isSameEntry = b.handle.isSameEntry;
+  a.handle.isSameEntry = b.handle.isSameEntry = async (other) => {
+    // another tab makes `a` the last folder between the read and the merge, which would have deleted it
+    if (once) { once = false; idb.seed(DB, 1, { handles: { 'folder:a': a, 'folder:b': b, workspace: { handle: a.handle, id: 'a' } } }); }
+    return isSameEntry(other);
+  };
+  idb.seed(DB, 1, { handles: { 'folder:a': a, 'folder:b': b } });
+  const p = await load(idb);
+  assert.deepEqual(Object.keys(records(idb)).sort(), ['folder:a', 'folder:b', 'workspace'], 'nothing merged, the pointer intact');
+  assert.equal(p.folders().length, 1, 'listed once');
+  assert.deepEqual(plain([p.folders()[0].id, p.folders()[0].others]), ['b', ['a']]);
+  await p.sandbox.forgetFolder(p.folders()[0]);
+  assert.deepEqual(records(idb), {}, 'no pointer left naming a record that is gone');
+
+  // and Close clears a pointer that names one of those records
+  idb.seed(DB, 1, { handles: { 'folder:a': a, 'folder:b': b, workspace: { handle: a.handle, id: 'a' } } });
+  await p.sandbox.clearLastFolder('b');
+  assert.ok(records(idb).workspace, 'not the folder\'s own id: left alone');
+  await p.sandbox.clearLastFolder('b', ['a']);
+  assert.equal(records(idb).workspace, undefined);
+});
+
+test('a pointer an older tab left on a record merged away is moved to the record of its folder, which opens', async () => {
+  const idb = fakeIndexedDB();
+  const shop = workspaceFolder('archi', 'Shop');
+  // 0.10.0 migrated its pointer onto `a`, which a newer tab had merged into `b`
+  idb.seed(DB, 1, { handles: { 'folder:b': folderRecord('b', shop, 'Shop', 9), workspace: { handle: handleOn(shop), id: 'a' } } });
+  const p = await load(idb);
+  assert.ok(p.state().workspace, 'the last folder opens on load');
+  assert.deepEqual(Object.keys(records(idb)).sort(), ['folder:b', 'workspace'], 'no record added');
+  assert.equal(records(idb).workspace.id, 'b');
+  assert.equal(p.state().folder.id, 'b');
+});
+
+test('a tab holding the id of a record another tab merged away acts on the folder as it is stored now', async () => {
+  const idb = fakeIndexedDB();
+  const shop = workspaceFolder('archi', 'Shop');
+  idb.seed(DB, 1, { handles: { 'folder:a': folderRecord('a', shop, 'Shop', 5), workspace: { handle: handleOn(shop), id: 'a' } } });
+  const p = await load(idb);
+  assert.equal(p.state().folder.id, 'a');
+  const merged = () => idb.seed(DB, 1, { handles: { 'folder:b': folderRecord('b', shop, 'Shop', 9), workspace: { handle: handleOn(shop), id: 'b' } } });
+
+  // the name, noted after a change in Settings, goes to the record the folder has now
+  merged();
+  p.state().workspace.settings.name = 'Shop 9';
+  await p.sandbox.noteWorkspaceName();
+  assert.deepEqual(Object.keys(records(idb)).sort(), ['folder:b', 'workspace']);
+  assert.equal(records(idb)['folder:b'].name, 'Shop 9');
+  assert.equal(p.state().folder.id, 'b');
+
+  // opened again from an entry read before the merge: the merged-away record does not come back
+  merged();
+  run(p.sandbox, "rememberedFolders = rememberedFolders.map((f) => Object.assign(f, { id: 'a' }))");
+  await p.sandbox.openRememberedFolder(p.folders()[0]);
+  assert.deepEqual(Object.keys(records(idb)).sort(), ['folder:b', 'workspace']);
+  assert.equal(records(idb).workspace.id, 'b');
+
+  // closed under the old id: the pointer of the folder goes all the same
+  merged();
+  p.state().folder.id = 'a';
+  await p.sandbox.closeFolder();
+  assert.deepEqual(Object.keys(records(idb)), ['folder:b']);
+
+  // removed from an entry read before the merge: the folder is forgotten
+  merged();
+  run(p.sandbox, "rememberedFolders = rememberedFolders.map((f) => Object.assign(f, { id: 'a' }))");
+  await p.sandbox.forgetFolder(p.folders()[0]);
+  assert.deepEqual(records(idb), {});
+});
+
+test('a folder removed from the list in another tab is not remembered again when this tab closes it', async () => {
+  const idb = fakeIndexedDB();
+  const shop = workspaceFolder('archi');
+  const p = await load(idb, [handleOn(shop)]);
+  await p.sandbox.openFolder();
+  idb.seed(DB, 1, { handles: {} }); // the other tab removed it
+  await p.sandbox.closeFolder();
+  assert.deepEqual(records(idb), {});
+});
+
+test('the fake runs two readwrite transactions one after the other, as a browser does', async () => {
+  const gate = deferred();
+  const idb = fakeIndexedDB({ holdCommit: ({ keys }) => (keys.includes('k') ? gate.promise : null) });
+  const { sandbox } = page(idb);
+  const order = [];
+  const first = sandbox.withArchicodeStore('readwrite', (store) => { store.put(1, 'k'); }).then(() => order.push('first'));
+  await new Promise((r) => setTimeout(r, 5));
+  const second = sandbox.withArchicodeStore('readwrite', (store) => {
+    const seen = {};
+    store.get('k').onsuccess = (e) => { seen.k = e.target.result; };
+    return seen;
+  }).then((seen) => order.push('second saw ' + seen.k));
+  const reader = sandbox.withArchicodeStore('readonly', (store) => {
+    const seen = {};
+    store.get('k').onsuccess = (e) => { seen.k = e.target.result; };
+    return seen;
+  }).then((seen) => order.push('reader saw ' + seen.k));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(order, [], 'both wait for the first, held before its commit');
+  gate.resolve();
+  await Promise.all([first, second, reader]);
+  assert.deepEqual(order, ['first', 'second saw 1', 'reader saw 1']);
 });
 
 test('the CSS of the list uses the variables of the theme, and keeps a long list inside the card', () => {
