@@ -72,7 +72,7 @@ wave_manifest:
       slug: cli-style-order
       phase: P1
       depends_on: []
-      run: null
+      run: '0021'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/rendering/plantuml/**'
@@ -85,7 +85,7 @@ wave_manifest:
       slug: remembered-folders-followups
       phase: P1
       depends_on: []
-      run: null
+      run: '0023'
       delegation: hard_judgment
       delegation_reason: 'merging duplicate records deletes stored IndexedDB records of remembered folders (data deletion)'
       likely_paths:
@@ -97,7 +97,7 @@ wave_manifest:
       slug: release-artifacts-check
       phase: P1
       depends_on: []
-      run: null
+      run: '0022'
       delegation: standard
       likely_paths:
         - 'docs/wav/wav-005-follow-ups-and-field-check/run/**'
@@ -140,9 +140,9 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-1 | — | `cli-style-order` | — | The CLI and the editor pick the same style, every time, for a box with several styled stereotypes | `single-document`, tmorin/archicode#15. `PlantumlViewRenderer` collects style entries in a `HashSet`: make the order stable and the rule the editor's (a later stereotype overrides an earlier one property by property; `by-tags` overrides `by-qualifiers` for the same key). Regenerated example views and fixtures are expected. Manual updated if it describes the rule. | Java tests: repeated renders are identical; the winner follows the rule; `./mvnw test` green |
-| W-4 | — | `remembered-folders-followups` | — | The list of remembered folders says what will need a click, and never holds the same folder twice | `TDD+pln`, tmorin/archicode#16 (first two items). Each entry shows its permission state without prompting (`queryPermission` needs no gesture; a failing query is shown as such). Two records for the same folder, created by two tabs racing, are merged (the TDD decides the mechanism: Web Locks or a `BroadcastChannel` to prevent it, a post-hoc merge to repair it, or both) without ever losing the last-folder record. | Node tests with the fake `indexedDB`: state shown per entry, a race produces one record, a merge keeps the right name and last-folder pointer |
-| W-6 | — | `release-artifacts-check` | — | What the 0.10.0 release published can be pulled and run | `single-document`, evidence run, tmorin/archicode#8 (third unchecked item, redone for 0.10.0). Check the release workflow of tag `archicode-0.10.0` finished; the published site (`/`, `/docs/`, `/editor/` stamped 0.10.0, fetched over HTTP); the container image of the tag (pull and run it against an example workspace if a container runtime is available); the Maven package (listed, and downloaded if the credentials allow). Writes only its run directory. Anything that cannot be checked is recorded with the reason, not treated as a failure of the release. | The run document: one line per artifact with the command used and what came back |
+| W-1 | 0021 | `cli-style-order` | — | The CLI and the editor pick the same style, every time, for a box with several styled stereotypes | `single-document`, tmorin/archicode#15. `PlantumlViewRenderer` collects style entries in a `HashSet`: make the order stable and the rule the editor's (a later stereotype overrides an earlier one property by property; `by-tags` overrides `by-qualifiers` for the same key). Regenerated example views and fixtures are expected. Manual updated if it describes the rule. | Java tests: repeated renders are identical; the winner follows the rule; `./mvnw test` green |
+| W-4 | 0023 | `remembered-folders-followups` | — | The list of remembered folders says what will need a click, and never holds the same folder twice | `TDD+pln`, tmorin/archicode#16 (first two items). Each entry shows its permission state without prompting (`queryPermission` needs no gesture; a failing query is shown as such). Two records for the same folder, created by two tabs racing, are merged (the TDD decides the mechanism: Web Locks or a `BroadcastChannel` to prevent it, a post-hoc merge to repair it, or both) without ever losing the last-folder record. | Node tests with the fake `indexedDB`: state shown per entry, a race produces one record, a merge keeps the right name and last-folder pointer |
+| W-6 | 0022 | `release-artifacts-check` | — | What the 0.10.0 release published can be pulled and run | `single-document`, evidence run, tmorin/archicode#8 (third unchecked item, redone for 0.10.0). Check the release workflow of tag `archicode-0.10.0` finished; the published site (`/`, `/docs/`, `/editor/` stamped 0.10.0, fetched over HTTP); the container image of the tag (pull and run it against an example workspace if a container runtime is available); the Maven package (listed, and downloaded if the credentials allow). Writes only its run directory. Anything that cannot be checked is recorded with the reason, not treated as a failure of the release. | The run document: one line per artifact with the command used and what came back |
 
 **Gate:** the checks listed under P1 in the manifest hold.
 
