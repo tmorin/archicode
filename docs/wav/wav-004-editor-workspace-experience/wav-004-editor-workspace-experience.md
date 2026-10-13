@@ -170,7 +170,7 @@ wave_manifest:
       slug: inspection-panel-links
       phase: P3
       depends_on: [W-7]
-      run: null
+      run: '0019'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -180,7 +180,7 @@ wave_manifest:
       slug: multiple-folders
       phase: P4
       depends_on: [W-4]
-      run: null
+      run: '0020'
       delegation: hard_judgment
       delegation_reason: 'migrates the stored IndexedDB record of the remembered folder (data migration) and adds a delete action on remembered folders'
       likely_paths:
@@ -215,7 +215,7 @@ wave_manifest:
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
 | W-7 | 0018 | `inspection-panel-elements` | W-2, W-6 | Read the data of the selected element in a right-hand panel without leaving the view | `TDD+pln`. A right panel (the shell already supports resizable right and bottom panels, none is used today) shown when an element is selected in the Map, and in the diagram tabs of Elements where the TDD finds it useful; it reuses `renderElementPropertiesHtml` and the badges of W-6. Click semantics unchanged. Nothing rendered with nothing selected. | Node tests: panel content for an element, absent without selection, resize handle and saved width |
-| W-8 | — | `inspection-panel-links` | W-7 | Select a link and read its relationships and their tags | `TDD+pln`. A new selection kind `link`; a click on a diagram link selects it; the panel lists each declared relationship with label, qualifiers and tags (for instance `tcp-port`, `fhir-exchange`). | Node tests: selecting a link, the listed relationships and tags, selection cleared on navigation |
+| W-8 | 0019 | `inspection-panel-links` | W-7 | Select a link and read its relationships and their tags | `TDD+pln`. A new selection kind `link`; a click on a diagram link selects it; the panel lists each declared relationship with label, qualifiers and tags (for instance `tcp-port`, `fhir-exchange`). | Node tests: selecting a link, the listed relationships and tags, selection cleared on navigation |
 
 **Gate:** the checks listed under P3 in the manifest hold.
 
@@ -223,7 +223,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-9 | — | `multiple-folders` | W-4 | Come back to any of the folders already opened, and forget the ones that are no longer wanted | `TDD+pln`. On load, the last folder is opened directly if its permission still holds (current behaviour). With no folder open (after "Close folder", or when a permission must be re-requested) the landing card lists every remembered folder, each with "Open" (a click is the user gesture the permission needs) and "Remove from the list" (the label says nothing is deleted on disk). New IndexedDB schema with migration of the single `workspace` record, de-duplication by `isSameEntry`, the workspace name of W-4 remembered with each folder (the `workspace.yaml` of a folder without permission cannot be read). Hidden in `archicode editor serve`. The test harness gets a fake `indexedDB`. Manual updated. | Node tests with the fake `indexedDB`: migration, listing, open, remove, no list in served mode |
+| W-9 | 0020 | `multiple-folders` | W-4 | Come back to any of the folders already opened, and forget the ones that are no longer wanted | `TDD+pln`. On load, the last folder is opened directly if its permission still holds (current behaviour). With no folder open (after "Close folder", or when a permission must be re-requested) the landing card lists every remembered folder, each with "Open" (a click is the user gesture the permission needs) and "Remove from the list" (the label says nothing is deleted on disk). New IndexedDB schema with migration of the single `workspace` record, de-duplication by `isSameEntry`, the workspace name of W-4 remembered with each folder (the `workspace.yaml` of a folder without permission cannot be read). Hidden in `archicode editor serve`. The test harness gets a fake `indexedDB`. Manual updated. | Node tests with the fake `indexedDB`: migration, listing, open, remove, no list in served mode |
 
 **Gate:** the checks listed under P4 in the manifest hold.
 
