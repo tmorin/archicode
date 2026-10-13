@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 004
-status: in-progress
+status: completed
 date: 2026-10-13
 related:
   - docs/wav/wav-004-editor-workspace-experience/wbc-004-editor-workspace-experience.md
@@ -44,7 +44,7 @@ remembered and listed when none is open.
 wave_manifest:
   wave: 004
   slug: editor-workspace-experience
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P1
@@ -262,3 +262,9 @@ P4                                    W-9 ◄───────┘
 - Each of the nine runs has a `run-NNNN-*.md` with `status: completed` and exactly one commit; the wave is one pull request, rebased and merged.
 - `JAVA_HOME=/home/tibo/.sdkman/candidates/java/25.0.4-tem ./mvnw verify` and `node --test "src/test/javascript/**/*.test.js"` pass on the wave branch, and CI is green on the PR.
 - The manual describes `rendering-stereotypes`, `styles.by-tags`, `settings.name`, the theme setting and the folder list.
+
+### Exceptions at close-out
+
+- The wave pull request is not opened or merged by `complete-wave` (an outward-facing step left to the operator): "rebased and merged" and "CI is green on the PR" are not checked. The branch `feat/editor-workspace-experience` is stacked on PR tmorin/archicode#13 (run 0011), which is still open, and contains its commit.
+- `./mvnw verify` ran with the integration tests skipped (`skipITs=true` by default, see `CLAUDE.md`).
+- No run could be looked at in the real editor (File System Access picker); the DOM, the CSS text and replicas in the built-in browser were checked, and a human look in a Chromium browser is still recommended (also an unchecked point of issue #8).
