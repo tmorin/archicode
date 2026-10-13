@@ -563,6 +563,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_views">Views</a></li>
 <li><a href="#stories">Stories</a></li>
 <li><a href="#_rendering">Rendering</a></li>
+<li><a href="#stereotypes-and-styles">Stereotypes and styles</a></li>
 </ul>
 </li>
 <li><a href="#technical-configuration">Technical Configuration</a></li>
@@ -573,9 +574,13 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#editor-open">Opening the editor</a></li>
 <li><a href="#editor-elements">Elements</a></li>
 <li><a href="#editor-map">Map</a></li>
+<li><a href="#editor-inspection">The inspection panel</a></li>
+<li><a href="#editor-header">The header of a diagram</a></li>
 <li><a href="#editor-texts">The texts of a diagram</a></li>
 <li><a href="#editor-stories">Library: stories and views</a></li>
 <li><a href="#editor-facets">Facets</a></li>
+<li><a href="#editor-workspace-name">Name of the workspace</a></li>
+<li><a href="#editor-theme">Theme</a></li>
 <li><a href="#editor-keyboard">Keyboard</a></li>
 </ul>
 </li>
@@ -764,15 +769,20 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li>
 <p>Collaboration Support: Embracing the manifest concept not only refines source code organization but also provides enhanced collaboration capabilities. Manifests facilitate clearer communication among team members by offering a well-defined structure and purpose.</p>
 </li>
+<li>
+<p>Optional Name: a workspace can be given a name with <code>settings.name</code>. The editor shows it in place of the name of the folder (see <a href="#editor-workspace-name">Name of the workspace</a>); the command line does not need it. A workspace without a name stays valid.</p>
+</li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The following snippet describes a workspace designing the <code>CommandLineInterface</code> container of the <code>ArchiCode</code> system and its localization in the <code>Reference</code> environment.</p>
+<p>The following snippet describes a workspace named <code>ArchiCode</code>, designing the <code>CommandLineInterface</code> container of the <code>ArchiCode</code> system and its localization in the <code>Reference</code> environment.</p>
 </div>
 <div class="listingblock">
 <div class="title">The content of <code>workspace.yaml</code></div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">application</span>:
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">settings</span>:
+  <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ArchiCode</span><span class="delimiter">&quot;</span></span>
+<span class="key">application</span>:
   <span class="key">elements</span>:
     - <span class="string"><span class="content">kind: &quot;system&quot;</span></span>
       <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ArchiCode</span><span class="delimiter">&quot;</span></span>
@@ -1357,6 +1367,73 @@ View o--&gt; "1" Layer
 <p>By introducing a robust rendering mechanism, employing opinionated rules for artifact generation, and facilitating the pluggable Renderer Service, ArchiCode enhances architectural communication by transforming abstract architectural concepts into tangible representations.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="stereotypes-and-styles">Stereotypes and styles</h4>
+<div class="paragraph">
+<p>Every box of a diagram is drawn with a list of <em>stereotypes</em>.
+The stereotypes of an element are, in this order, its <code>qualifiers</code> (each one whole: <code>Spring Boot</code> is one stereotype) and the words of its <code>rendering-stereotypes</code> tag.
+The tag is a whitespace-separated list, so that <code>external changed</code> gives the two stereotypes <code>external</code> and <code>changed</code>, and a value of one word gives the one stereotype it always gave.
+A stereotype named twice counts once.
+The renderer then adds the kind of the element and the way the box is drawn.
+The command line and the editor read the stereotypes the same way: they come from the same kernel.</p>
+</div>
+<div class="paragraph">
+<p>The <code>styles</code> of the workspace give a stereotype its look.
+<code>styles.by-tags</code> and <code>styles.by-qualifiers</code> map a stereotype to a style, and a box has the style of every stereotype it is drawn with.
+The key is the stereotype itself, not the name of a tag: the keys of <code>by-tags</code> are the words of <code>rendering-stereotypes</code>, the keys of <code>by-qualifiers</code> are the qualifiers.
+The two maps are equivalent for the renderer, which only sees stereotypes; use the one that says where the stereotype comes from.
+A style sets any of <code>background-color</code>, <code>line-color</code>, <code>line-style</code>, <code>line-thickness</code>, <code>round-corner</code>, <code>font-color</code>, <code>font-style</code> and <code>shadowing</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Styling the boxes tagged <code>external</code> and <code>changed</code></div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">styles</span>:
+  <span class="key">by-tags</span>:
+    <span class="key">external</span>:
+      <span class="key">background-color</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">lightgray</span><span class="delimiter">&quot;</span></span>
+    <span class="key">changed</span>:
+      <span class="key">line-color</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">orangered</span><span class="delimiter">&quot;</span></span>
+      <span class="key">line-thickness</span>: <span class="string"><span class="content">3</span></span>
+  <span class="key">by-qualifiers</span>:
+    <span class="key">PostgreSQL</span>:
+      <span class="key">round-corner</span>: <span class="string"><span class="content">20</span></span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">An element drawn with the <code>external</code> and the <code>changed</code> styles</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">content</span>:
+  <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">mailer</span><span class="delimiter">&quot;</span></span>
+  <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Mail Provider</span><span class="delimiter">&quot;</span></span>
+  <span class="key">tags</span>:
+    <span class="key">rendering-stereotypes</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">external changed</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>In the editor.</strong> The editor draws a box with the style of the stereotypes it is drawn with: <code>background-color</code> is the fill, <code>line-color</code>, <code>line-thickness</code> and <code>line-style</code> the outline, and <code>round-corner</code>, <code>font-color</code>, <code>font-style</code> and <code>shadowing</code> the rest.
+A styled stereotype is also written on its box as a text badge with its name, so that a colour is never the only carrier.
+The same badge follows the name of the element in the <strong>Elements</strong> tree and in the tree of the <strong>Map</strong>, and the key under the diagram shows the badge of each styled stereotype drawn.
+The badges are part of the SVG and PNG exported from a diagram, while the key is not; a badge is not the dot that marks an element as modified and not yet saved.</p>
+</div>
+<div class="paragraph">
+<p>For the same stereotype, <code>by-tags</code> wins over <code>by-qualifiers</code>.
+When a box has several styled stereotypes, a later one overrides an earlier one property by property: with <code>rendering-stereotypes: "external changed"</code>, the fill of <code>changed</code> wins, and the properties it does not set come from <code>external</code>.
+The order is that of the stereotypes of the box, its qualifiers first and then the words of the tag; the command line defines no order for this case.</p>
+</div>
+<div class="paragraph">
+<p>Colours are read as <code>#rgb</code>, <code>#rrggbb</code>, <code>rgb(r, g, b)</code>, <code>transparent</code> or a CSS colour name such as <code>lightgray</code>; a value the editor cannot read is ignored.
+Numbers are whole numbers.</p>
+</div>
+<div class="paragraph">
+<p>The fill is the colour written in <code>styles</code>, in both themes, as in the diagrams of the command line; <code>styles</code> has no separate dark colour.
+The editor chooses the colour of the text so that it reads on that fill, black or white with a contrast ratio of at least 4.5: the <code>font-color</code> of the style is kept when it reads well, and replaced otherwise.
+Without a <code>background-color</code>, the box and its text keep the colours of the theme, and <code>font-color</code> is not used.</p>
+</div>
+<div class="paragraph">
+<p>Compared with the command line, <code>line-style</code> and <code>round-corner</code> are an approximation of what PlantUML draws.
+The editor styles only the stereotypes of an element, its qualifiers and the words of <code>rendering-stereotypes</code>: it does not use the kind of the element, nor <code>atomic</code> and <code>composite</code>, as keys, and <code>styles.atomic</code> and <code>styles.composite</code> are not drawn.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="technical-configuration">Technical Configuration</h3>
@@ -1378,6 +1455,9 @@ View o--&gt; "1" Layer
 <p>Tailored View Generation: ArchiCode&#8217;s configurability extends to the very essence of view generation. You have the ability to redefine the output folder for generated views, as well as customize the labels utilized in the built-in viewpoints. This level of customization ensures that the generated views align harmoniously with your architectural narrative.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>The <code>settings</code> also accept a <code>name</code> for the workspace. It has no default, so the snippet below does not show it: see <a href="#workspace">Workspace</a>.</p>
 </div>
 <div class="listingblock">
 <div class="title">The default settings of a workspace</div>
@@ -1450,8 +1530,14 @@ View o--&gt; "1" Layer
 </li>
 </ul>
 </div>
+<div id="editor-folders" class="paragraph">
+<p>The published page remembers, in the browser, every folder it opened, with the name its workspace gives itself (see <a href="#editor-workspace-name">Name of the workspace</a>). When the page opens again, it opens the last folder directly if the browser still lets it read it; otherwise it asks for a click (<strong>Reopen</strong>), because a browser only gives that permission back on a click. <strong>Close folder</strong>, at the top right, closes the folder and shows the list of the remembered folders: the closed one stays in it, and the next visit does not open it by itself. When no folder is open, the list shows each folder by the name of its workspace, with the name of the folder below it when they differ, most recent first: a click on one opens it (the browser may ask for the permission again), <strong>Remove from the list</strong> makes the browser forget it, and nothing is deleted on disk. A folder picked again is not added twice. A folder that cannot be opened (the permission refused, the folder moved or deleted) stays in the list, which says why, until it is removed. Served by <code>archicode editor serve</code>, the editor has one folder, the one of the server: there is no list and no <strong>Close folder</strong>.</p>
+</div>
 <div class="paragraph">
 <p>The editor loads <code>elkjs</code> (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.</p>
+</div>
+<div class="paragraph">
+<p>The editor reads and writes YAML manifests (<code>.yaml</code> and <code>.yml</code>) only. The command line also reads TOML and JSON manifests: the editor does not, so what such a file declares is missing from its trees and diagrams, and relationships that point at it show as dangling. It says so, in <strong>Files</strong> (which names the files) and above the trees of <strong>Elements</strong> (which counts them).</p>
 </div>
 </div>
 <div class="sect2">
@@ -1468,6 +1554,9 @@ View o--&gt; "1" Layer
 <p><strong>Overview</strong>, <strong>Detailed</strong> and <strong>Deep</strong>: the viewpoints of the same names, drawn live from the model, as the command line generates them. <strong>Detailed</strong> is for an element that can contain others. Clicking a box in a diagram selects that element.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>The badges and colours of styled stereotypes, on the boxes and in the tree, are explained in <a href="#stereotypes-and-styles">Stereotypes and styles</a>.</p>
 </div>
 <div class="paragraph">
 <p>Changes stay in memory, with a mark on the tree for each modified element, until <strong>Save all changes</strong> writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one.</p>
@@ -1496,6 +1585,40 @@ View o--&gt; "1" Layer
 </div>
 <div class="paragraph">
 <p><strong>Center</strong> puts the selected box in the middle at a readable size (with nothing selected on the Map: the top of the map, centered across), never below 80%, and <strong>Fit</strong> shows the whole diagram, however small. Fit is in the URL (<code>frame=fit</code>) and Center, how a diagram opens, is a URL with no <code>frame</code>, so a link opens the diagram framed as you left it; a zoom or a move of your own is not part of the link. <strong>PNG</strong> and <strong>SVG</strong>, in the header, download the diagram.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-inspection">The inspection panel</h3>
+<div class="paragraph">
+<p>Beside a diagram, on the right, a panel shows the data of the selected element without leaving the view: its name and styled stereotypes, its kind, its layer, its id and reference, its description, qualifiers and tags, and the file that declares it. It is there on the <strong>Map</strong> and on the <strong>Overview</strong>, <strong>Detailed</strong> and <strong>Deep</strong> tabs of Elements (where a click on a box moves to that element, and the panel follows); it is not on <strong>Details</strong> and in the edit form, which show the same things themselves. Nothing is shown, and no room is kept, while nothing is selected. The panel is resized by dragging its edge (the width is remembered; a double click on the edge gives the default back), it goes away with <strong>Maximize</strong>, and on the Map its <strong>x</strong> button deselects the element. On the Map the panel says so when the selected element is not drawn (a pin, a hidden element or a folded box leaves it out), and when it is a technology element, which the Map never draws. A click does what it did before: on the Map it selects, in Elements it moves to the element.</p>
+</div>
+<div class="paragraph">
+<p>A click on a link of the diagram, or on its caption, selects it instead, and the panel lists each relationship the link stands for: its label, its qualifiers and its tags (<code>tcp-port</code>, <code>doc-exchange</code>&#8230;&#8203;), with the element that declares it and the one it points at. What is selected is the pair of boxes the link joins, so a link that groups several relationships lists them all (and says so), a link between folded boxes names the folded end and how many elements it hides (open it to see the relationships one by one), and a link to an unknown element says it points at nothing. The links of that pair are outlined. The links can be reached with the Tab key and selected with Enter or Space; the arrow keys then go on from the box the link starts from. <strong>x</strong> or Escape deselects: on the Map the panel goes, in Elements the panel of the element comes back. Selecting a link changes neither the perspective nor the tab, and in Elements the element stays the one being looked at (the tree, the tabs and the URL keep it); the selection is not in the URL, and it ends as soon as the diagram it was made on is no longer the one on screen (another perspective, Details, another element, or a drawing that no longer has the link: a fold, a pin, a facet). A click on a box does what it did before and ends the link selection. A relationship the diagram does not draw (secondary links between deployed applications, unless a facet asks for them) cannot be selected.</p>
+</div>
+<div class="paragraph">
+<p>Since the panel takes room from the center, the header of the diagram goes to its narrower states sooner (see <a href="#editor-header">The header of a diagram</a>): resize or close the panel to give it back.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-header">The header of a diagram</h3>
+<div class="paragraph">
+<p>The header over a diagram, on the tabs of Elements and on the Map, adapts to the width of the center panel, which is the window minus the left panel, so dragging the left panel changes it. From wide to narrow:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Wide</strong>: every control shows its words.</p>
+</li>
+<li>
+<p><strong>Narrower</strong>: <strong>Show on map</strong> (or <strong>Open in Elements</strong> on the Map), <strong>Name view&#8230;&#8203;</strong>, <strong>Add to story&#8230;&#8203;</strong> and <strong>Maximize</strong> show only their icon; the tooltip says what each one does.</p>
+</li>
+<li>
+<p><strong>Narrower still</strong>: <strong>Show on map</strong> or <strong>Open in Elements</strong>, the <strong>Story</strong> buttons and the <strong>Download</strong> buttons (PNG, SVG) move into the menu of a "⋯" button, which closes with Escape or a click elsewhere. The facet list and <strong>Maximize</strong> stay in the header. The menu items work exactly like the buttons they replace.</p>
+</li>
+<li>
+<p><strong>Very narrow</strong>: the header takes two rows.</p>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect2">
@@ -1552,6 +1675,24 @@ View o--&gt; "1" Layer
 <h3 id="editor-facets">Facets</h3>
 <div class="paragraph">
 <p>The facets of the workspace (see <a href="#facets">Tackling view clutter</a>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out. In the tree, the elements the facet leaves with nothing to draw are greyed. The facets themselves are edited in the <strong>Settings</strong> perspective, along with the other settings of the workspace (see <a href="#technical-configuration">Technical Configuration</a>).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-workspace-name">Name of the workspace</h3>
+<div class="paragraph">
+<p>A workspace can have a name, the optional <code>name</code> key of its <code>settings</code> (see <a href="#workspace">Workspace</a>). <strong>Settings</strong> has a section, <strong>Workspace</strong>, with a <strong>Name</strong> field. Unlike the theme below, the name is a setting of the workspace: it is written to <code>workspace.yaml</code>, so it counts as a change to save and lights <strong>Save all changes</strong>.</p>
+</div>
+<div class="paragraph">
+<p>When the workspace has a name, the editor shows it at the top left of the window, in place of the name of the folder, in the title of the page, in the <a href="#editor-folders">list of remembered folders</a> and in the "Opening" messages, which use the name the workspace had when its folder was last opened; the name of the folder is then the tooltip of the name. Without a name, or with a blank one, the editor shows the name of the folder, as before, and an emptied <strong>Name</strong> is left out of the file.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-theme">Theme</h3>
+<div class="paragraph">
+<p>The editor is drawn in a light or a dark theme. By default it follows the one of the operating system. <strong>Settings</strong> has a section, <strong>Appearance (this browser)</strong>, to choose <strong>Light</strong>, <strong>Dark</strong> or <strong>System</strong> instead: the choice applies at once, to the page, the code editors and the SVG and PNG exported from a diagram.</p>
+</div>
+<div class="paragraph">
+<p>The choice is a preference of the browser, not of the workspace. It is remembered by the browser alone (nothing is written to <code>workspace.yaml</code> or to any file of the folder), it is not a change to save, and it does not light <strong>Save all changes</strong>. A browser that refuses to remember it keeps the choice until the page is closed.</p>
 </div>
 </div>
 <div class="sect2">
@@ -2029,7 +2170,7 @@ rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 SocialIdentityProvider
 [system]
 ]
-person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 User
 [person]
 ]
@@ -2357,7 +2498,7 @@ rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 SocialIdentityProvider
 [system]
 ]
-person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 User
 [person]
 ]
@@ -2416,7 +2557,7 @@ UserManagement
 [system]
 ]
 }
-person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 User
 [person]
 ]
@@ -2462,7 +2603,7 @@ rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 SocialIdentityProvider
 [system]
 ]
-person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 User
 [person]
 ]
@@ -2749,7 +2890,7 @@ rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 SocialIdentityProvider
 [system]
 ]
-person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 User
 [person]
 ]
@@ -3038,7 +3179,7 @@ rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 SocialIdentityProvider
 [system]
 ]
-person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 User
 [person]
 ]
@@ -3199,7 +3340,7 @@ rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 SocialIdentityProvider
 [system]
 ]
-person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 User
 [person]
 ]
@@ -3518,7 +3659,7 @@ rectangle SocialIdentityProvider &lt;&lt;system&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 SocialIdentityProvider
 [system]
 ]
-person User &lt;&lt;atomic&gt;&gt; &lt;&lt;person&gt;&gt; [
+person User &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
 User
 [person]
 ]
@@ -3728,7 +3869,8 @@ Or it can be the name of the RDMS for a database Container : PostgreSQL.</p></td
 <td class="tableblock halign-left valign-top"><p class="tableblock">tags</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">string</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">A list of key/value pairs that helps to drive the rendering of views.
-For instance, to assign a predefined shape to the element or to categorize the element during a threat modeling process.</p></td>
+For instance, to assign a predefined shape to the element or to categorize the element during a threat modeling process.
+The tag <code>rendering-stereotypes</code> is a whitespace-separated list of stereotypes the styles apply to (see <a href="#stereotypes-and-styles">Stereotypes and styles</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">relationships</p></td>
@@ -4039,7 +4181,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-12 18:42:24 UTC
+Last updated 2026-10-13 17:20:04 UTC
 </div>
 </div>
 </body>

@@ -1,3 +1,5 @@
+settings:
+  name: "ArchiCode"
 application:
   elements:
     - kind: "system"

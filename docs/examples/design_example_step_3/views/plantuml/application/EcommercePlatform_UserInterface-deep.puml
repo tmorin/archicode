@@ -37,7 +37,7 @@ UserProfileService
 ]
 }
 }
-person User <<atomic>> <<person>> [
+person User <<person>> <<atomic>> [
 User
 [person]
 ]

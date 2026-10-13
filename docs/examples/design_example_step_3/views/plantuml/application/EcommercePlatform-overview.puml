@@ -25,7 +25,7 @@ rectangle SocialIdentityProvider <<system>> <<atomic>> [
 SocialIdentityProvider
 [system]
 ]
-person User <<atomic>> <<person>> [
+person User <<person>> <<atomic>> [
 User
 [person]
 ]
