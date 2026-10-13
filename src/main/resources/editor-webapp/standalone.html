@@ -146,6 +146,20 @@
   .right-panel { border-left: 1px solid var(--border); }
   .bottom-panel { border-top: 1px solid var(--border); }
 
+  /* ---- The inspection panel (right region): the data of the selected element, beside the diagram ----
+     Only the variables of the theme are used. The rows of the Details page stack here (label above value): the panel is
+     about 18rem wide, where the 140px label column of the page would leave nothing to the value. */
+  .inspection { display: flex; flex-direction: column; gap: 0.5rem; }
+  .inspection-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .inspection-head h3 { margin: 0; }
+  .inspection-close { flex: none; width: 1.75rem; height: 1.75rem; padding: 0 !important; line-height: 1; }
+  .inspection-name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.4rem; font-weight: 600; font-size: 1.05rem; overflow-wrap: anywhere; }
+  .inspection-note { margin: 0; padding: 0.3rem 0.5rem; font-size: 0.8rem; color: var(--muted); border: 1px dashed var(--border); border-radius: 4px; }
+  .inspection-note[hidden] { display: none; }
+  .inspection .field-row { flex-direction: column; gap: 0.1rem; }
+  .inspection .tag-list { padding-left: 0; list-style: none; }
+  .inspection .field-label { width: auto; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
   [data-resize] { background: var(--border); flex-shrink: 0; }
   [data-resize]:hover, [data-resize][data-active] { background: var(--accent); }
 
@@ -5752,16 +5766,65 @@ function renderResizeHandleHtml(panelId, axis, sign) {
 }
 
 /**
+ * The element the inspection panel shows: the selected one, in the layer the selection carries (a reference that exists
+ * in both layers is two elements), unless it is being edited or no longer exists. Null: no panel.
+ */
+function inspectionRecordFor(sel) {
+  if (!sel || sel.kind !== 'element' || sel.mode === 'edit') return null;
+  return findElementRecord(sel.key, sel.layer) || null;
+}
+
+/**
+ * The right region of a perspective that shows a diagram: the data of the selected element, next to the diagram, or null
+ * (nothing selected, maximized) so that nothing is rendered. `onMap`: the Map, where the panel can be closed (nothing else
+ * deselects an element there) and says when the element is not drawn.
+ */
+function renderInspectionHtml(onMap) {
+  if (diagramMaximized) return null;
+  const record = inspectionRecordFor(AppState.selection);
+  if (!record) return null;
+  const layer = record.layer || 'application';
+  let html = '<div class="inspection" data-inspection-ref="' + escapeHtml(record.reference) + '" data-inspection-layer="' + escapeHtml(layer) + '">';
+  html += '<div class="inspection-head"><h3>Selected element</h3>' + (onMap
+    ? '<button type="button" class="inspection-close" data-action="close-inspection" aria-label="Close the panel" title="Deselect the element and give the map its whole width back">&times;</button>'
+    : '') + '</div>';
+  html += '<div class="inspection-name"><span>' + escapeHtml(record.name || record.id) + '</span>' + stereotypeBadgesHtml(stereotypesOfRecord(record)) + '</div>';
+  if (onMap) {
+    html += layer === 'technology'
+      ? '<p class="inspection-note">The map draws applications only.</p>'
+      : '<p class="inspection-note" id="inspection-offmap" hidden>Not on the map right now (a pin, a hidden element or a folded box leaves it out).</p>';
+  }
+  html += renderFieldRowHtml('Kind', escapeHtml(record.kind));
+  html += renderFieldRowHtml('Layer', escapeHtml(layer));
+  html += renderElementPropertiesHtml(record);
+  html += renderFieldRowHtml('Source file', record.sourceFile ? escapeHtml(record.sourceFile) : renderNoneHtml());
+  return html + '</div>';
+}
+
+/** After each drawing of the Map: say, in the panel, when the selected element is not on the map as it is drawn now. */
+function markInspection() {
+  const note = document.getElementById('inspection-offmap');
+  const holder = document.querySelector('[data-inspection-ref]');
+  if (!note || !holder) return;
+  note.hidden = mapElementIsOnMap(holder.getAttribute('data-inspection-ref')) !== false;
+}
+
+/** The Map dropped its selection by itself: the panel goes with it, with its handle (the page is not redrawn). */
+function removeInspectionPanel() {
+  document.querySelectorAll('#panel-right, [data-resize="panel-right"]').forEach((el) => el.remove());
+}
+
+/**
  * Elements perspective — navigate Elements on the left, view/edit/create
- * in the center. Right/bottom are unused by this perspective (Diagram
- * owns the properties/relations side panels) — `null`, not rendered at
- * all (see renderShellHtml): hidden, not a disabled placeholder.
+ * in the center. The right region holds the inspection panel while a diagram of the element is shown (the Details page
+ * says the same things itself); the bottom one is unused. A `null` region is not rendered at all (see renderShellHtml):
+ * hidden, not a disabled placeholder.
  */
 function renderElementsPerspectiveHtml() {
   return {
     left: diagramMaximized && diagramTabShown() ? null : renderLeftPanelWrapperHtml(renderElementsNavHtml(true)),
     center: renderCenterPanelHtml(),
-    right: null,
+    right: diagramTabShown() ? renderInspectionHtml(false) : null, // Details and the forms say the same, or are being edited
     bottom: null
   };
 }
@@ -7251,6 +7314,7 @@ function showDiagramScene(scene) {
         AppState.selection = { kind: 'none', key: null, mode: 'view' };
         syncHashFromState();
         document.querySelectorAll('.element-header-subject, [data-action="open-as-diagram"]').forEach((el) => el.remove());
+        removeInspectionPanel();
       }
       mapSelectionCheck = false;
     }
@@ -7269,6 +7333,7 @@ function showDiagramScene(scene) {
   diagramShownView = scene.viewKey;
   markMapSelection();
   markMapScope();
+  markInspection();
   restoreDiagramFocus(canvas);
   if (diagramResizeObserver) diagramResizeObserver.disconnect();
   if (typeof ResizeObserver === 'function') {
@@ -7798,8 +7863,8 @@ function renderShowOnMapButtonHtml(record) {
 /**
  * Map perspective — the whole workspace from its systems down, whatever is selected: the element tree on the left says
  * what the map is about (pin) and what it leaves out (hide); picking an element finds it on the map, and clicking a
- * box selects it. The map has the room to itself: no panel on the right or at the bottom (the element's properties and
- * relationships are on its Details, one click away).
+ * box selects it. The selected element is read in the panel on the right (nothing is rendered while nothing is selected,
+ * or when maximized); its relationships are on its Details, one click away.
  */
 function renderMapPerspectiveHtml() {
   const sel = AppState.selection;
@@ -7810,7 +7875,7 @@ function renderMapPerspectiveHtml() {
       renderElementHeaderHtml('<h2>Map</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
         renderDiagramHeaderActionsHtml(renderOpenAsDiagramButtonHtml(record))) +
       renderDiagramCanvasHtml(null, renderMapChipsHtml()) + '</div>',
-    right: null,
+    right: renderInspectionHtml(true),
     bottom: null
   };
 }
@@ -9060,7 +9125,7 @@ function renderShellHtml() {
         html += '<div class="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_auto_auto]">';
         html += '<main id="panel-center" class="center-panel min-h-0 min-w-0">' + p.center + '</main>';
         html += renderResizeHandleHtml('panel-right', 'x', '-1');
-        html += '<aside id="panel-right" class="right-panel min-w-56 w-72 max-w-[40vw]" style="' + savedPanelSizeStyle('panel-right', 'width') + '">' + p.right + '</aside>';
+        html += '<aside id="panel-right" class="right-panel min-w-56 w-72 max-w-[40vw]" aria-label="Inspection" style="' + savedPanelSizeStyle('panel-right', 'width') + '">' + p.right + '</aside>';
         html += '</div>';
       } else {
         html += '<main id="panel-center" class="center-panel min-h-0 min-w-0">' + p.center + '</main>';
@@ -9415,6 +9480,10 @@ function handleAppClick(e) {
       render();
       break;
     }
+    case 'close-inspection': // the Map only: nothing else deselects an element there
+      AppState.selection = { kind: 'none', key: null, mode: 'view' };
+      render();
+      break;
     case 'toggle-element-edit':
       if (AppState.selection.kind === 'element') {
         AppState.selection.mode = AppState.selection.mode === 'edit' ? 'view' : 'edit';
@@ -10033,7 +10102,7 @@ function render() {
     const el = document.getElementById(id);
     if (el) scrollBefore[id] = { top: el.scrollTop, left: el.scrollLeft };
   }
-  const viewKey = currentPerspective + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode;
+  const viewKey = currentPerspective + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '');
   const sameView = viewKey === lastRenderedViewKey;
   lastRenderedViewKey = viewKey;
 
@@ -10095,7 +10164,7 @@ function render() {
   markTreeThroughFacet();
   markElementTabs();
   for (const id of Object.keys(scrollBefore)) {
-    if (id === 'panel-center' && !sameView) continue;
+    if ((id === 'panel-center' || id === 'panel-right') && !sameView) continue; // another element or view opens at the top
     const el = document.getElementById(id);
     if (el) { el.scrollTop = scrollBefore[id].top; el.scrollLeft = scrollBefore[id].left; }
   }
