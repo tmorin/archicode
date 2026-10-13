@@ -64,10 +64,14 @@ function domError(name, message) {
  * database is new or older, `VersionError` when it is newer), transactions that commit when no request is left and keep
  * nothing when they abort (a request error not prevented aborts them, so does a throw in a handler), requests refused
  * once their transaction has committed (as a browser's auto-commit across an `await` does), a `DataCloneError` thrown
- * synchronously by `put` for a value that cannot be cloned, and get / put / delete / getAll / getAllKeys. Every event
- * fires later, as in a browser. Options: `failOpen` (an error name), `failGetAll`, `failPut(key, value)` (an
- * asynchronous `QuotaExceededError`). A handle carrying `unclonable: true` cannot be cloned. `seed` and `dump` set and
- * read a database from a test; `calls` lists what the page asked.
+ * synchronously by `put` for a value that cannot be cloned, and get / put / delete / getAll / getAllKeys. Transactions
+ * are scheduled as a browser schedules them: one starts only when no earlier unfinished transaction on its store
+ * conflicts with it (one of the two writes), and it sees what every transaction that committed before it started wrote;
+ * so two `readwrite` transactions run one after the other, never blind to each other. Every event fires later, as in a
+ * browser. Options: `failOpen` (an error name), `failGetAll`, `failPut(key, value)` (an asynchronous
+ * `QuotaExceededError`), `holdCommit({ mode, keys })` (a promise: the transaction commits when it settles, so a test can
+ * let another tab act in between). A handle carrying `unclonable: true` cannot be cloned. `seed` and `dump` set and read
+ * a database from a test; `calls` lists what the page asked.
  */
 function fakeIndexedDB(options = {}) {
   const databases = new Map(); // name -> { version, stores: Map<storeName, Map<key, value>> }
@@ -91,38 +95,68 @@ function fakeIndexedDB(options = {}) {
         if (closed) throw domError('InvalidStateError', 'the connection is closed');
         if (!db.stores.has(storeName)) throw domError('NotFoundError', 'no object store ' + storeName);
         calls.push({ op: 'transaction', store: storeName, mode });
-        return transaction(db.stores.get(storeName), storeName, mode);
+        return transaction(db, storeName, mode);
       }
     };
     return conn;
   }
 
-  function transaction(live, storeName, mode) {
-    const staged = new Map(live); // what this transaction reads: the store as it was, plus its own writes
-    const writes = []; // replayed on the store at the commit, so two transactions never overwrite each other's keys
+  function transaction(db, storeName, mode) {
+    let live = null; // the store, once this transaction has started
+    let staged = null; // what this transaction reads: the store as it was when it started, plus its own writes
+    const writes = []; // replayed on the store at the commit
+    const keys = []; // the keys it writes, for holdCommit
     const queue = [];
     let done = false;
+    let started = false;
     let scheduled = false;
+    const slot = { storeName, mode, tryStart };
+    db.running = (db.running || []).concat([slot]); // unfinished transactions, in creation order
     const tx = { mode, error: null, oncomplete: null, onerror: null, onabort: null, objectStore, abort() { if (done) throw domError('InvalidStateError'); end(null); } };
+    function conflicts(other) {
+      return other.storeName === storeName && (mode === 'readwrite' || other.mode === 'readwrite');
+    }
+    function tryStart() {
+      if (started || done) return;
+      for (const other of db.running) {
+        if (other === slot) break;
+        if (conflicts(other)) return; // an earlier transaction that writes, or that this one would write under
+      }
+      started = true;
+      live = db.stores.get(storeName);
+      staged = new Map(live);
+      pump();
+    }
+    function finish() {
+      db.running = db.running.filter((other) => other !== slot);
+      for (const other of db.running) other.tryStart();
+    }
     function end(error) {
       done = true;
       tx.error = error;
       for (const { req } of queue.splice(0)) req.error = domError('AbortError');
       later(() => {
+        finish();
         if (error && tx.onerror) tx.onerror({ target: tx });
         if (tx.onabort) tx.onabort({ target: tx });
       });
     }
+    function commit() {
+      for (const w of writes) w(live);
+      finish();
+      if (tx.oncomplete) tx.oncomplete({ target: tx });
+    }
     function pump() {
-      if (scheduled || done) return;
+      if (scheduled || done || !started) return;
       scheduled = true;
       later(() => {
         scheduled = false;
         if (done) return;
         if (queue.length === 0) { // nothing left to do: the transaction commits
           done = true;
-          for (const w of writes) w(live);
-          if (tx.oncomplete) tx.oncomplete({ target: tx });
+          const hold = options.holdCommit ? options.holdCommit({ mode, keys: keys.slice() }) : null;
+          if (hold && typeof hold.then === 'function') hold.then(() => later(commit));
+          else commit();
           return;
         }
         const { req, op } = queue.shift();
@@ -163,6 +197,7 @@ function fakeIndexedDB(options = {}) {
           if (unclonable(value)) throw domError('DataCloneError', 'the value cannot be cloned');
           const stored = copy(value);
           calls.push({ op: 'put', key });
+          keys.push(key);
           return request(() => {
             if (options.failPut && options.failPut(key, value)) throw domError('QuotaExceededError', 'no room left');
             staged.set(key, stored);
@@ -173,6 +208,7 @@ function fakeIndexedDB(options = {}) {
         delete(key) {
           writable();
           calls.push({ op: 'delete', key });
+          keys.push(key);
           return request(() => {
             staged.delete(key);
             writes.push((m) => m.delete(key));
@@ -180,7 +216,7 @@ function fakeIndexedDB(options = {}) {
         }
       };
     }
-    pump(); // a transaction that is given no request commits too
+    later(tryStart); // a transaction that is given no request commits too, once started
     return tx;
   }
 

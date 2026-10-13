@@ -114,6 +114,8 @@
   .landing-folder-dir svg { flex: none; width: 0.8rem; height: 0.8rem; }
   .landing-folder-remove { flex: none; margin-left: auto; font-size: 0.8rem; }
   .landing-folder-problem { flex-basis: 100%; margin: 0; color: var(--danger); font-size: 0.8rem; line-height: 1.4; }
+  .landing-folder-state { display: flex; align-items: flex-start; gap: 0.3rem; max-width: 100%; color: var(--muted); font-size: 0.8rem; font-weight: 400; line-height: 1.4; }
+  .landing-folder-state svg { flex: none; width: 0.8rem; height: 0.8rem; margin-top: 0.15rem; }
   .landing-notice { margin: 0; padding: 0.5rem 0.75rem; border-left: 3px solid var(--accent); border-radius: 2px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 0.875rem; line-height: 1.5; }
   .landing-busy { display: flex; align-items: center; gap: 0.75rem; margin: 0; }
   .landing-spinner { flex: none; width: 1.1rem; height: 1.1rem; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: landing-spin 0.8s linear infinite; }
@@ -1581,6 +1583,9 @@ function serializeManifestFile(header, content) {
 //                                    rewritten in place with its `id`, never deleted, so a failed migration loses nothing.
 //   'folder:<id>' -> { kind: 'folder', id, handle, name, openedAt }  one per remembered folder; `name` is what its
 //                                    workspace calls itself (settings.name, '' when none), `openedAt` orders the list.
+// Two tabs that pick the same folder at the same moment can each add a record for it: the records of one folder are
+// merged into one whenever the list is read and after each folder remembered (run 0023, TDD-0023 DEC-3..DEC-6), in one
+// transaction that never writes the 'workspace' record and writes nothing at all if it fails.
 // Never JSON.stringify a handle: it is structured-clone-native and `put` takes it as it is.
 // =====================================================================
 
@@ -1682,15 +1687,141 @@ async function readArchicodeRecords() {
   }
 }
 
+/** Whether two handles are the same folder (`isSameEntry`). A handle that cannot be compared is another folder. */
+async function isSameFolder(a, b) {
+  if (!a || !b || typeof a.isSameEntry !== 'function') return false;
+  try {
+    return (await a.isSameEntry(b)) === true;
+  } catch (e) {
+    return false;
+  }
+}
+
 /** The remembered folder that is the same folder as `handle` (`isSameEntry`, DEC-3), or null. */
 async function findSameFolder(handle, folders) {
   for (const folder of folders) {
-    if (!folder.handle || typeof folder.handle.isSameEntry !== 'function') continue;
-    try {
-      if (await folder.handle.isSameEntry(handle)) return folder;
-    } catch (e) { /* a handle that cannot be compared is another folder */ }
+    if (await isSameFolder(folder.handle, handle)) return folder;
   }
   return null;
+}
+
+/**
+ * The remembered folders grouped by folder (TDD-0023 DEC-4): a group of more than one holds records of one folder.
+ * Only records whose handles have the same name are compared (two handles of one folder have its name), so a list of
+ * distinct folders costs no `isSameEntry` call. Never in a transaction: `isSameEntry` is not IndexedDB.
+ */
+async function groupSameFolders(folders) {
+  const groups = [];
+  const byName = new Map();
+  for (const folder of folders) {
+    const name = folder.handle && typeof folder.handle.name === 'string' ? folder.handle.name : null;
+    let group = null;
+    for (const candidate of name === null ? [] : byName.get(name) || []) {
+      if (await isSameFolder(candidate[0].handle, folder.handle)) { group = candidate; break; }
+    }
+    if (group) {
+      group.push(folder);
+    } else {
+      group = [folder];
+      groups.push(group);
+      if (name !== null) byName.set(name, (byName.get(name) || []).concat([group]));
+    }
+  }
+  return groups;
+}
+
+/**
+ * The one entry the records of a folder become (TDD-0023 DEC-5): the record the last-folder pointer names if it is one
+ * of them (so the pointer never has to change), else the most recently opened; the most recent `openedAt`; and the name
+ * of the most recently opened record that has one, so a stored name is never lost to a record whose name was not noted.
+ */
+function mergedFolderOf(group, lastRecord) {
+  const recent = group.slice().sort((a, b) => b.openedAt - a.openedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const pointed = lastRecord && lastRecord.id ? group.find((f) => f.id === lastRecord.id) : null;
+  const survivor = pointed || recent[0];
+  const named = recent.find((f) => f.name);
+  return { id: survivor.id, handle: survivor.handle, name: named ? named.name : '', openedAt: recent[0].openedAt };
+}
+
+/** Whether a stored record is still what the page read: same id, same name, same `openedAt`. */
+function isUnchangedFolderRecord(record, entry) {
+  if (!isFolderRecord(record) || record.id !== entry.id) return false;
+  const now = folderEntryOf(record);
+  return now.name === entry.name && now.openedAt === entry.openedAt;
+}
+
+/**
+ * Merges the records of one folder into `merged` (TDD-0023 DEC-5), in one transaction: only if every record of the
+ * group is still as it was read and the last-folder pointer names none of the records to delete; then the survivor's
+ * record takes the merged name and `openedAt` and the others are deleted. The 'workspace' record is never written.
+ * Rejects when nothing was written (something changed, or the transaction aborted): the records are then as they were.
+ */
+async function mergeSameFolder(group, merged) {
+  const others = group.filter((f) => f.id !== merged.id);
+  const out = await withArchicodeStore('readwrite', (store) => {
+    const state = { unchanged: true, left: group.length, survivor: null, merged: false };
+    store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (e) => {
+      const last = e.target.result;
+      if (last && last.id && others.some((f) => f.id === last.id)) state.unchanged = false;
+    };
+    for (const folder of group) {
+      store.get(folderKey(folder.id)).onsuccess = (e) => {
+        const record = e.target.result;
+        if (!isUnchangedFolderRecord(record, folder)) state.unchanged = false;
+        if (folder.id === merged.id) state.survivor = record;
+        if (--state.left > 0 || !state.unchanged) return;
+        // the last read of the group: everything is as it was read, so the merge is written, all of it or nothing
+        const kept = folderEntryOf(state.survivor);
+        if (kept.name !== merged.name || kept.openedAt !== merged.openedAt) {
+          store.put(Object.assign({}, state.survivor, { name: merged.name, openedAt: merged.openedAt }), folderKey(merged.id));
+        }
+        for (const other of others) store.delete(folderKey(other.id));
+        state.merged = true;
+      };
+    }
+    return state;
+  });
+  if (!out.merged) throw new Error('the records of the folder changed while they were being merged');
+}
+
+/**
+ * The remembered folders with one entry per folder (TDD-0023 DEC-5/DEC-6), and `merged`: the ids that are now another
+ * one's (`Map<id, id of its folder's entry>`). Each group of records of one folder is merged in its own transaction; a
+ * merge that fails, or finds the records changed, writes nothing and is logged: the folder is still one entry, which
+ * carries the ids of the other records (`others`) so that Remove forgets them all, and the next read tries again.
+ */
+async function mergeDuplicateFolders(folders, lastRecord) {
+  const out = [];
+  const merged = new Map();
+  for (const group of await groupSameFolders(folders)) {
+    if (group.length === 1) {
+      out.push(group[0]);
+      continue;
+    }
+    const entry = mergedFolderOf(group, lastRecord);
+    try {
+      await mergeSameFolder(group, entry);
+    } catch (e) {
+      console.error('ArchiCode: the records of one remembered folder could not be merged; it is listed once all the same', e);
+      entry.others = group.filter((f) => f.id !== entry.id).map((f) => f.id);
+    }
+    for (const f of group) if (f.id !== entry.id) merged.set(f.id, entry.id);
+    out.push(entry);
+  }
+  return { folders: out, merged };
+}
+
+/**
+ * The id under which a folder is stored now (TDD-0023 DEC-6): `id` while its record exists, else the id of the record
+ * of the same folder (another tab merged the records), else null (removed from the list). The page acts on ids it read
+ * earlier; this is what keeps it from acting on one that no longer exists.
+ */
+async function liveFolderId(handle, id) {
+  const records = await readArchicodeRecords();
+  if (id && records.folders.some((r) => r.id === id)) return id;
+  if (!records.complete) return id || null; // nothing better to go on
+  const same = await findSameFolder(handle, records.folders.map(folderEntryOf));
+  return same ? same.id : null;
 }
 
 /**
@@ -1728,15 +1859,19 @@ async function migrateLastFolder(lastRecord, folders) {
 async function readRememberedFolders() {
   if (isServedByArchiCode()) return { folders: [], last: null };
   const records = await readArchicodeRecords();
-  const folders = records.folders.map(folderEntryOf);
+  let folders = records.folders.map(folderEntryOf);
   const lastRecord = records.last && records.last.handle ? records.last : null;
-  if (!lastRecord) return { folders: sortRememberedFolders(folders), last: null };
+  let merged = new Map();
+  // one entry per folder, whatever two tabs wrote; merged first, so that a migration finds the folder once
+  if (records.complete) ({ folders, merged } = await mergeDuplicateFolders(folders, lastRecord));
+  if (!lastRecord) return { folders: sortRememberedFolders(folders), last: null, merged };
   if (!records.complete) {
     // the folders could not be read: the last one is all there is, and nothing is written from so partial a view
     const last = { id: lastRecord.id || null, handle: lastRecord.handle, name: '', openedAt: Date.now(), legacy: !lastRecord.id };
-    return { folders: [last], last };
+    return { folders: [last], last, merged };
   }
-  let last = folders.find((f) => f.id === lastRecord.id) || null;
+  // the pointer may name a record a failed merge left beside its folder's entry (`others`): it is that folder
+  let last = folders.find((f) => f.id === lastRecord.id || (lastRecord.id && (f.others || []).includes(lastRecord.id))) || null;
   if (!last) {
     try {
       last = await migrateLastFolder(lastRecord, folders);
@@ -1747,29 +1882,47 @@ async function readRememberedFolders() {
       folders.push(last);
     }
   }
-  return { folders: sortRememberedFolders(folders), last };
+  return { folders: sortRememberedFolders(folders), last, merged };
 }
 
 /**
- * Remembers a folder just opened with its permission as the last one (DEC-3): the entry it already is (`known`, with an
- * id), else the remembered folder that is the same, else a new one. One transaction writes its record (`openedAt` now,
- * its name kept) and the last-folder record. Resolves with the entry, null in served mode; the in-memory list follows.
+ * Remembers a folder just opened with its permission as the last one (DEC-3): the entry it already is (`known`, while
+ * its record is still stored), else the remembered folder that is the same, else a new one. One transaction writes its
+ * record (`openedAt` now, its name kept) and the last-folder record. Then the records are read again and the records of
+ * one folder merged (TDD-0023 DEC-3): of two tabs that picked the same folder at the same moment, the one whose write
+ * came last sees both. Resolves with the entry the folder is now, null in served mode; the in-memory list follows.
  */
 async function rememberFolder(handle, known) {
   if (isServedByArchiCode()) return null;
-  let entry = known && known.id ? known : null;
-  if (!entry) {
-    const records = await readArchicodeRecords();
-    if (records.complete) entry = await findSameFolder(handle, records.folders.map(folderEntryOf));
+  const records = await readArchicodeRecords();
+  let entry = null;
+  if (records.complete) {
+    const folders = records.folders.map(folderEntryOf);
+    // a known entry only while its record is there: another tab may have merged it away, and it must not come back
+    entry = (known && known.id ? folders.find((f) => f.id === known.id) : null) || await findSameFolder(handle, folders);
+  } else if (known && known.id) {
+    entry = known; // the records cannot all be read: the id the page knows
   }
   const fresh = { id: entry ? entry.id : newFolderId(), handle, name: entry ? entry.name : '', openedAt: Date.now() };
   await withArchicodeStore('readwrite', (store) => {
     store.put(folderRecordOf(fresh), folderKey(fresh.id));
     store.put({ handle, id: fresh.id }, ARCHICODE_LAST_FOLDER_KEY);
   });
-  const kept = rememberedFolders.filter((f) => f.id !== fresh.id && f !== known && !(f.legacy && known && known.legacy));
-  rememberedFolders = sortRememberedFolders(kept.concat([fresh]));
-  return fresh;
+  let kept = fresh;
+  let merged = new Map();
+  try {
+    const after = await readArchicodeRecords();
+    if (after.complete) {
+      const result = await mergeDuplicateFolders(after.folders.map(folderEntryOf), after.last);
+      merged = result.merged;
+      kept = result.folders.find((f) => f.id === (merged.get(fresh.id) || fresh.id)) || fresh;
+    }
+  } catch (e) {
+    console.error('ArchiCode: the remembered folders could not be checked for a second record of this folder', e);
+  }
+  const replaced = (f) => f.id === kept.id || f.id === fresh.id || merged.has(f.id) || f === known || !!(f.legacy && known && known.legacy);
+  rememberedFolders = sortRememberedFolders(rememberedFolders.filter((f) => !replaced(f)).concat([kept]));
+  return kept;
 }
 
 /**
@@ -1783,31 +1936,50 @@ async function noteWorkspaceName() {
   const entry = rememberedFolders.find((f) => f.id === folder.id);
   if (entry && entry.name === name) return;
   try {
-    await withArchicodeStore('readwrite', (store) => {
-      store.get(folderKey(folder.id)).onsuccess = (e) => {
-        const record = e.target.result;
-        if (isFolderRecord(record) && record.name !== name) store.put(Object.assign({}, record, { name }), folderKey(folder.id));
-      };
-    });
-    if (entry) entry.name = name;
+    let stored = await storeWorkspaceName(folder.id, name);
+    if (!stored) {
+      // its record is gone: merged into the record of the same folder by another tab (TDD-0023 DEC-6), or removed there
+      const live = await liveFolderId(folder.handle, null);
+      if (live) {
+        folder.id = live;
+        stored = await storeWorkspaceName(live, name);
+      }
+    }
+    for (const f of rememberedFolders) if (stored && f.id === folder.id) f.name = name;
   } catch (e) {
     console.error('ArchiCode: the name of the workspace could not be stored with its folder', e);
   }
 }
 
+/** Writes `name` into the record of folder `id`, in one transaction. Resolves false when there is no such record. */
+async function storeWorkspaceName(id, name) {
+  const out = await withArchicodeStore('readwrite', (store) => {
+    const found = { record: false };
+    store.get(folderKey(id)).onsuccess = (e) => {
+      const record = e.target.result;
+      if (!isFolderRecord(record)) return;
+      found.record = true;
+      if (record.name !== name) store.put(Object.assign({}, record, { name }), folderKey(id));
+    };
+    return found;
+  });
+  return out.record;
+}
+
 /**
- * Remove from the list (DEC-7): deletes the folder's record, and the last-folder record when it points at that folder.
- * A legacy entry is that last-folder record: it goes only while it is still that folder (same name), and if another tab
- * migrated it meanwhile its new folder record goes with it. Nothing else: no file, no other folder.
+ * Remove from the list (DEC-7): deletes the records `ids` (the folder's, and those of the same folder a failed merge left,
+ * TDD-0023 DEC-6), and the last-folder record when it points at one of them. A legacy entry (no id) is that last-folder
+ * record: it goes only while it is still that folder (same name), and if another tab migrated it meanwhile its new
+ * folder record goes with it. Nothing else: no file, no other folder.
  */
-async function forgetRememberedFolder(entry) {
+async function forgetRememberedFolder(entry, ids) {
   await withArchicodeStore('readwrite', (store) => {
-    if (entry.id) store.delete(folderKey(entry.id));
+    for (const id of ids) store.delete(folderKey(id));
     store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (e) => {
       const last = e.target.result;
       if (!last) return;
       if (entry.id) {
-        if (last.id === entry.id) store.delete(ARCHICODE_LAST_FOLDER_KEY);
+        if (ids.includes(last.id)) store.delete(ARCHICODE_LAST_FOLDER_KEY);
       } else if (last.handle && last.handle.name === entry.handle.name) {
         if (last.id) store.delete(folderKey(last.id));
         store.delete(ARCHICODE_LAST_FOLDER_KEY);
@@ -1816,12 +1988,16 @@ async function forgetRememberedFolder(entry) {
   });
 }
 
-/** Close folder (DEC-5): the next load does not reopen this folder, which stays remembered. Only if it is still the last. */
-async function clearLastFolder(id) {
+/**
+ * Close folder (DEC-5): the next load does not reopen this folder, which stays remembered. Only if it is still the last:
+ * the pointer names its id, or one of the records of the same folder a failed merge left (`others`, TDD-0023 DEC-6).
+ */
+async function clearLastFolder(id, others) {
+  const ids = [id].concat(others || []);
   await withArchicodeStore('readwrite', (store) => {
     store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (e) => {
       const last = e.target.result;
-      if (last && last.id === id) store.delete(ARCHICODE_LAST_FOLDER_KEY);
+      if (last && last.id && ids.includes(last.id)) store.delete(ARCHICODE_LAST_FOLDER_KEY);
     };
   });
 }
@@ -1868,7 +2044,8 @@ let rememberedFolders = [];
 // A line the landing card says once (a folder removed from the list, a permission refused); null otherwise.
 let landingNotice = null;
 
-// The control the next landing card focuses (after a Remove: the next folder of the list); null: its primary button.
+// The control the next landing card focuses (after a Remove: the next folder of the list); null: its primary button;
+// '': none (the card is drawn again under a focus that was not on it, which is left alone).
 let landingFocusSelector = null;
 
 /**
@@ -2583,16 +2760,51 @@ function folderOpenSelector(entry) {
   return '[data-action="open-remembered-folder"][data-folder-id="' + (entry.id || '') + '"]';
 }
 
-/** Reads the remembered folders again, keeping what the page found out about each (its problem line, DEC-9). */
+/**
+ * Reads the remembered folders again, keeping what the page found out about each (its problem line, DEC-9), also for a
+ * folder whose records were merged meanwhile (under the id it is now, TDD-0023 DEC-6).
+ */
 async function refreshRememberedFolders() {
   const problems = new Map(rememberedFolders.filter((f) => f.problem).map((f) => [f.id || '', f.problem]));
+  let remembered;
   try {
-    rememberedFolders = (await readRememberedFolders()).folders;
+    remembered = await readRememberedFolders();
   } catch (e) {
     console.error('ArchiCode: the remembered folders could not be read', e);
     return;
   }
-  for (const f of rememberedFolders) if (problems.has(f.id || '')) f.problem = problems.get(f.id || '');
+  rememberedFolders = remembered.folders;
+  const merged = remembered.merged || new Map();
+  for (const [id, problem] of problems) {
+    const now = merged.get(id) || id;
+    for (const f of rememberedFolders) if ((f.id || '') === now && !f.problem) f.problem = problem;
+  }
+}
+
+/** The state of the permission to read a folder, asked without any prompt (TDD-0023 DEC-1, CTR-2). Never rejects. */
+async function folderPermissionOf(handle) {
+  if (!handle || typeof handle.queryPermission !== 'function') return 'unknown';
+  try {
+    const state = await handle.queryPermission({ mode: 'read' });
+    return state === 'granted' || state === 'prompt' || state === 'denied' ? state : 'unknown';
+  } catch (e) {
+    return e && e.name === 'NotFoundError' ? 'unreachable' : 'unknown';
+  }
+}
+
+/**
+ * Says, next to each remembered folder, what a click on it will meet (TDD-0023 DEC-1): `queryPermission` needs no user
+ * gesture and shows no prompt. Called once the card is drawn, so it never delays it: every folder not yet known is asked
+ * at once, and the card is drawn again, once, if it still shows the list, with the focus where it was.
+ */
+async function checkFolderPermissions() {
+  const pending = rememberedFolders.filter((f) => !f.permission);
+  if (pending.length === 0) return;
+  await Promise.all(pending.map(async (f) => { f.permission = await folderPermissionOf(f.handle); }));
+  const landing = landingScreenConfig();
+  if (!landing || !landing.folders || !pending.some((f) => rememberedFolders.includes(f))) return; // the list is gone
+  if (landingFocusSelector === null) landingFocusSelector = landingControlSelector(document.activeElement) || '';
+  render();
 }
 
 /** "Remembered folders" on the error card: leaves the folder that did not open (storage untouched) for the list. */
@@ -2605,6 +2817,7 @@ async function showRememberedFolders() {
   render();
   await refreshRememberedFolders();
   render();
+  await checkFolderPermissions();
 }
 
 /** "Remove from the list" (TDD-0020 DEC-7): this browser forgets the folder; nothing is deleted on disk. */
@@ -2612,7 +2825,9 @@ async function forgetFolder(entry) {
   if (!entry) return;
   const title = rememberedFolderTitle(entry);
   try {
-    await forgetRememberedFolder(entry);
+    // the records the folder has now: another tab may have merged it under another id, or removed it (TDD-0023 DEC-6)
+    const ids = entry.id ? [await liveFolderId(entry.handle, entry.id)].concat(entry.others || []).filter(Boolean) : [];
+    await forgetRememberedFolder(entry, Array.from(new Set(ids)));
   } catch (e) {
     console.error('ArchiCode: a remembered folder could not be removed from the list', e);
     landingNotice = '“' + title + '” could not be removed from the list: ' + (e && e.message ? e.message : String(e));
@@ -2696,10 +2911,16 @@ async function closeFolder() {
   const folder = AppState.folder;
   if (folder && folder.handle && !isServedByArchiCode()) {
     try {
-      // a folder without id (stored by an earlier version, or not remembered when opened) is remembered first: its
-      // last-folder record may be the only trace of it, so it is cleared only once the folder has a record of its own
-      const id = folder.id || (await rememberFolder(folder.handle)).id;
-      await clearLastFolder(id);
+      if (folder.id) {
+        // under the id it has now: another tab may have merged its records, or removed it (then nothing to clear)
+        const id = await liveFolderId(folder.handle, folder.id);
+        const entry = rememberedFolderById(folder.id);
+        if (id) await clearLastFolder(id, entry && entry.others);
+      } else {
+        // a folder without id (stored by an earlier version, or not remembered when opened) is remembered first: its
+        // last-folder record may be the only trace of it, so it is cleared only once the folder has a record of its own
+        await clearLastFolder((await rememberFolder(folder.handle)).id);
+      }
     } catch (e) {
       console.error('ArchiCode: closeFolder failed to update the remembered folders', e);
     }
@@ -2710,6 +2931,7 @@ async function closeFolder() {
   render();
   await refreshRememberedFolders();
   render();
+  await checkFolderPermissions();
 }
 
 /** On every page load: try to silently reopen a stored handle (FLOW-2). */
@@ -2727,19 +2949,15 @@ async function tryAutoReopen() {
     landingBusy = null;
     AppState.permissionState = 'none';
     render();
+    await checkFolderPermissions(); // after the card is drawn: the list says what each folder will need
     return;
   }
   const handle = last.handle;
-  let permission;
-  try {
-    // No user gesture needed for queryPermission (FR-2/Q-1).
-    permission = await handle.queryPermission({ mode: 'read' });
-  } catch (e) {
-    permission = 'denied';
-    last.problem = e && e.name === 'NotFoundError' ? FOLDER_UNREACHABLE : null;
-  }
+  // No user gesture needed for queryPermission (FR-2/Q-1). The answer is the last folder's state in the list too, and a
+  // query that fails (a folder moved or deleted) says so there (TDD-0023 DEC-1).
+  last.permission = await folderPermissionOf(handle);
   AppState.folder = { handle, name: handle.name, id: last.id || null };
-  if (permission === 'granted') {
+  if (last.permission === 'granted') {
     AppState.permissionState = 'granted';
     landingBusy = openingMessage(handle.name, last.name);
     render();
@@ -2748,6 +2966,7 @@ async function tryAutoReopen() {
     landingBusy = null;
     AppState.permissionState = 'needs-click';
     render();
+    await checkFolderPermissions();
   }
 }
 
@@ -10589,30 +10808,60 @@ function landingScreenConfig() {
 }
 
 /**
- * The remembered folders as the landing card lists them (TDD-0020 CTR-2): `{ id, title, folder, problem }`, `id` being
- * the `data-folder-id` ('' for the legacy one), `title` the workspace's name or the folder's, `folder` the folder's name
- * when it is not the title. None in served mode, where the server's folder is the only one.
+ * The remembered folders as the landing card lists them (TDD-0020 CTR-2, TDD-0023 CTR-2): `{ id, title, folder,
+ * problem, permission }`, `id` being the `data-folder-id` ('' for the legacy one), `title` the workspace's name or the
+ * folder's, `folder` the folder's name when it is not the title, `permission` a key of FOLDER_PERMISSION_TEXT or null
+ * while not known yet. None in served mode, where the server's folder is the only one.
  */
 function landingFolderRows() {
   if (isServedByArchiCode()) return [];
   return rememberedFolders.map((f) => {
     const title = rememberedFolderTitle(f);
-    return { id: f.id || '', title, folder: title !== f.handle.name ? f.handle.name : null, problem: f.problem || null };
+    return {
+      id: f.id || '', title, folder: title !== f.handle.name ? f.handle.name : null, problem: f.problem || null,
+      permission: FOLDER_PERMISSION_TEXT[f.permission] ? f.permission : null
+    };
   });
 }
 
-/** The list of the remembered folders on the landing card: an Open and a Remove button each, both naming the folder. */
+// What a click on a remembered folder will meet, as the list says it (TDD-0023 DEC-2): in words, the icon adds nothing.
+const FOLDER_PERMISSION_TEXT = {
+  granted: 'Opens without asking',
+  prompt: 'Will ask for permission',
+  denied: 'Blocked by the browser',
+  unreachable: 'Could not be reached',
+  unknown: 'Could not be checked'
+};
+const FOLDER_PERMISSION_ICON = {
+  granted: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  prompt: '<rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  denied: '<circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/>',
+  unreachable: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7"/><path d="M12 17h.01"/>',
+  unknown: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7"/><path d="M12 17h.01"/>'
+};
+
+/**
+ * The list of the remembered folders on the landing card: an Open and a Remove button each, both naming the folder. The
+ * Open button says, under the names, what a click will meet (its permission), or the row says what went wrong the last
+ * time (its problem): that line is the button's accessible description.
+ */
 function renderLandingFoldersHtml(folders) {
-  const rows = folders.map((f) => {
+  const rows = folders.map((f, i) => {
     const named = '“' + f.title + '”' + (f.folder ? ' (folder ' + f.folder + ')' : '');
     const id = escapeHtml(f.id);
+    const state = !f.problem && f.permission ? 'landing-folder-state-' + i : null;
+    const problem = f.problem ? 'landing-folder-problem-' + i : null;
     return '<li class="landing-folder">' +
-      '<button type="button" class="landing-folder-open" data-action="open-remembered-folder" data-folder-id="' + id + '" aria-label="' + escapeHtml('Open ' + named) + '">' +
+      '<button type="button" class="landing-folder-open" data-action="open-remembered-folder" data-folder-id="' + id + '" aria-label="' + escapeHtml('Open ' + named) + '"' +
+        (state || problem ? ' aria-describedby="' + (state || problem) + '"' : '') + '>' +
         '<span class="landing-folder-name">' + escapeHtml(f.title) + '</span>' +
         (f.folder ? '<span class="landing-folder-dir">' + LANDING_ICON_FOLDER + '<span>' + escapeHtml(f.folder) + '</span></span>' : '') +
+        (state ? '<span class="landing-folder-state" id="' + state + '" data-permission="' + f.permission + '">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + FOLDER_PERMISSION_ICON[f.permission] + '</svg>' +
+          '<span>' + escapeHtml(FOLDER_PERMISSION_TEXT[f.permission]) + '</span></span>' : '') +
       '</button>' +
       '<button type="button" class="btn-ghost landing-folder-remove" data-action="forget-folder" data-folder-id="' + id + '" aria-label="' + escapeHtml('Remove ' + named + ' from the list') + '" title="This browser forgets the folder. Nothing is deleted on disk.">Remove from the list</button>' +
-      (f.problem ? '<p class="landing-folder-problem">' + escapeHtml(f.problem) + '</p>' : '') +
+      (f.problem ? '<p class="landing-folder-problem" id="' + problem + '">' + escapeHtml(f.problem) + '</p>' : '') +
     '</li>';
   }).join('');
   return '<section class="landing-folders" aria-labelledby="landing-folders-title">' +
@@ -10646,6 +10895,18 @@ function renderLandingHtml(cfg) {
   return '<main class="landing"><section class="landing-card" data-landing="' + cfg.kind + '">' + brand + body + '</section></main>';
 }
 
+/** The control of the landing card that has the focus, as a selector to find it after a redraw; null if none has it. */
+function landingControlSelector(el) {
+  const control = el && el.closest ? el.closest('.landing-card button, .landing-card a') : null;
+  if (!control) return null;
+  if (control.id) return '#' + control.id;
+  if (control.tagName === 'A') return '.landing-card a';
+  const action = control.getAttribute('data-action');
+  if (!action) return null;
+  const folder = control.getAttribute('data-folder-id');
+  return '[data-action="' + action + '"]' + (folder === null ? '' : '[data-folder-id="' + folder + '"]');
+}
+
 /** The title of the page: the editor, then the workspace that is loaded (its name, or its folder when it has none). */
 function pageTitle() {
   const label = workspaceLabel();
@@ -10672,12 +10933,19 @@ function render() {
   const landing = landingScreenConfig();
   if (landing) {
     document.title = 'ArchiCode Editor'; // no workspace is loaded yet, whatever folder is remembered
+    // a long list keeps where it was scrolled to when the card is drawn again (a Remove, the permissions)
+    const listBefore = app.querySelector ? app.querySelector('.landing-folder-list') : null;
+    const listTop = listBefore && listBefore.scrollTop > 0 ? listBefore.scrollTop : 0;
     app.innerHTML = renderLandingHtml(landing);
     app.addEventListener('click', handleAppClick);
-    // after a Remove the focus stays in the list (the next folder); else the primary button of the card
+    const listAfter = listTop && app.querySelector ? app.querySelector('.landing-folder-list') : null;
+    if (listAfter) listAfter.scrollTop = listTop;
+    // after a Remove the focus stays in the list (the next folder); drawn again for the permissions, it stays where it
+    // was ('' when that was not on the card); else the primary button of the card
+    const keep = landingFocusSelector === '';
     const wanted = landingFocusSelector && app.querySelector ? app.querySelector(landingFocusSelector) : null;
     landingFocusSelector = null;
-    const primary = wanted || document.getElementById('landing-primary');
+    const primary = wanted || (keep ? null : document.getElementById('landing-primary'));
     if (primary) primary.focus();
     return;
   }
