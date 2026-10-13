@@ -110,7 +110,7 @@ wave_manifest:
       slug: library-view-field-check
       phase: P3
       depends_on: [W-3]
-      run: null
+      run: '0030'
       delegation: standard
       likely_paths:
         - 'docs/wav/wav-006-library-view-editor/run/**'
@@ -140,7 +140,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-4 | — | `library-view-field-check` | W-3 | See the page of a real view in the real editor, light and dark, and fix what is clearly broken | `single-document`, evidence run, as run 0026 of wave 005. Copy `/home/tibo/syncthing/tibo-work/archi` outside the repository (never write there), build the CLI of the branch, run `archicode editor serve` on the copy and drive the page in the built-in browser. Check on `#/library/views?view=authentication_token_validation` and on a Map view: centre diagram, right panel, selection of a box and of a link, each edit, the *modified* mark, save and cancel, the manifest file before and after, the page after a reload, the pages of the Map and Elements after a visit, light and dark, three widths, no console error. Findings are recorded; a clear regression is fixed with a test; anything else is written up as a finding (not filed by the run). | The run document: each check with what was observed and how, the manifest before and after, each finding fixed (with its test) or open |
+| W-4 | 0030 | `library-view-field-check` | W-3 | See the page of a real view in the real editor, light and dark, and fix what is clearly broken | `single-document`, evidence run, as run 0026 of wave 005. Copy `/home/tibo/syncthing/tibo-work/archi` outside the repository (never write there), build the CLI of the branch, run `archicode editor serve` on the copy and drive the page in the built-in browser. Check on `#/library/views?view=authentication_token_validation` and on a Map view: centre diagram, right panel, selection of a box and of a link, each edit, the *modified* mark, save and cancel, the manifest file before and after, the page after a reload, the pages of the Map and Elements after a visit, light and dark, three widths, no console error. Findings are recorded; a clear regression is fixed with a test; anything else is written up as a finding (not filed by the run). | The run document: each check with what was observed and how, the manifest before and after, each finding fixed (with its test) or open |
 
 **Gate:** the checks listed under P3 in the manifest hold.
 

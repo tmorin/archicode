@@ -355,7 +355,7 @@ function setUp(page, perspective) {
 for (const perspective of ['map', 'elements']) {
   test('visiting the page of a view and coming back to ' + perspective + ' leaves what it shows, and its address, as they were', async () => {
     const page = await startPage();
-    const elementsView = addView(page, { id: 'e', name: 'E', viewpoint: 'detailed', properties: { element: 'shop', facet: 'rest-only', 'hide-unlinked': true, labels: false, wrap: true } });
+    const elementsView = addView(page, { id: 'e', name: 'E', viewpoint: 'detailed', properties: { element: 'shop', facet: 'rest-only', labels: false, wrap: true } });
     const mapView = addView(page, { id: 'm', name: 'M', viewpoint: 'map', properties: { pinned: ['shop.catalog'], hidden: ['mailer'], opened: ['shop.catalog'], facet: 'no-smtp', 'hide-unlinked': true, labels: true } });
     const broken = addView(page, { id: 'b', name: 'B', viewpoint: 'deep', properties: { element: 'removed' } });
     setUp(page, perspective);
@@ -373,9 +373,8 @@ for (const perspective of ['map', 'elements']) {
       // the tools of the page, used
       if (page.canvas()) {
         for (const attributes of [
-          { 'data-action': 'diagram-zoom', 'data-dir': 'in' }, { 'data-action': 'diagram-zoom', 'data-dir': 'fit' }, { 'data-action': 'diagram-recenter' },
-          { 'data-action': 'toggle-hide-unlinked' }, { 'data-action': 'toggle-show', 'data-show': 'labels' }, { 'data-action': 'toggle-show', 'data-show': 'wrap' }
-        ]) {
+          { 'data-action': 'diagram-zoom', 'data-dir': 'in' }, { 'data-action': 'diagram-zoom', 'data-dir': 'fit' }, { 'data-action': 'diagram-recenter' }
+        ]) { // (Hide unlinked and the texts are edits of the view since run 0029: library-view-edit.test.js)
           click(page.sandbox, attributes);
           await page.drawn().catch(() => null);
         }
@@ -461,50 +460,7 @@ test('the page is its own host: the Map and Elements globals are not even readab
   assert.ok((page.scene().html.match(/<text class="dg-label"/g) || []).length > 0, 'the captions of the view, not those the Map turned off');
 });
 
-// ============================================================ 6. The tools: a look of the page, not an edit
-
-test('Hide unlinked and the texts redraw the page only: no global changes, nothing is marked modified, the view is untouched', async () => {
-  const page = await startPage();
-  const view = addView(page, { id: 'look', name: 'Look', viewpoint: 'deep', layer: 'technology', properties: { element: 'prod.cluster', labels: true } });
-  await openView(page, view);
-  const unsaved = page.sandbox.countUnsavedChanges();
-  const manifest = JSON.stringify(plain(view));
-  const globals = snapshot(page);
-  const all = idsOf(page.scene());
-  const captions = (scene) => (scene.html.match(/<text class="dg-label"/g) || []).length;
-  const withCaptions = captions(page.scene());
-
-  click(page.sandbox, { 'data-action': 'toggle-hide-unlinked' });
-  await page.drawn();
-  assert.ok(idsOf(page.scene()).length < all.length, 'the unlinked boxes are out');
-  assert.match(page.html(), /data-action="toggle-hide-unlinked" aria-pressed="true"/);
-  click(page.sandbox, { 'data-action': 'toggle-show', 'data-show': 'labels' });
-  await page.drawn();
-  assert.ok(captions(page.scene()) < withCaptions || withCaptions === 0, 'the captions are out');
-  assert.match(page.html(), /data-show="labels" aria-pressed="false"/);
-
-  assert.equal(snapshot(page), globals, 'not one global of the Map and Elements changed');
-  assert.equal(page.sandbox.countUnsavedChanges(), unsaved);
-  assert.equal(JSON.stringify(plain(view)), manifest, 'the manifest in memory is what it was');
-
-  click(page.sandbox, { 'data-action': 'toggle-hide-unlinked' });
-  await page.drawn();
-  assert.deepEqual(idsOf(page.scene()), all, 'and back');
-});
-
-test('showing another view starts from that view, not from what was toggled on the last one', async () => {
-  const page = await startPage();
-  const a = addView(page, { id: 'a', name: 'A', viewpoint: 'deep', properties: { element: 'shop' } });
-  const b = addView(page, { id: 'b', name: 'B', viewpoint: 'deep', properties: { element: 'shop' } });
-  await openView(page, a);
-  click(page.sandbox, { 'data-action': 'toggle-hide-unlinked' });
-  await page.drawn();
-  assert.match(page.html(), /data-action="toggle-hide-unlinked" aria-pressed="true"/);
-  await openView(page, b);
-  assert.match(page.html(), /data-action="toggle-hide-unlinked" aria-pressed="false"/);
-  await openView(page, a);
-  assert.match(page.html(), /data-action="toggle-hide-unlinked" aria-pressed="false"/, 'a look is for one visit of one view');
-});
+// ============================================================ 6. The tools: the Map's and Elements' own are not taken over
 
 test('the Map and Elements still toggle their own texts and Hide unlinked (the page did not take the actions over)', async () => {
   const page = await startPage();
@@ -599,13 +555,11 @@ test('edit, edit, edit: only the last redraw reaches the canvas', async () => {
   await page.drawn();
   for (let i = 0; i < 40; i++) await new Promise((resolve) => setImmediate(resolve));
   assert.equal(shown.length, 1, 'the layouts of the first two were superseded: ' + shown.join(', '));
-  const look = plain(run(page.sandbox, 'libraryLook'));
-  assert.equal(look.hideUnlinked, true);
-  assert.equal(look.shows.labels, false);
-  assert.equal(look.shows.wrap, true);
+  assert.equal(view.properties['hide-unlinked'], true);
+  assert.equal(view.properties.labels, false);
+  assert.equal(view.properties.wrap, true);
   const expected = expectedElements(page, 'deep', 'shop', { hideUnlinked: true });
   assert.deepEqual(idsOf(page.scene()), expected.boxes, 'and it is the last state');
-  assert.equal(view.properties.wrap, undefined);
 });
 
 test('the Map keeps its drawing across a visit: the way back is a cache hit, not a new layout', async () => {
@@ -636,7 +590,7 @@ test('an address with frame=fit typed while on the page is the Map\'s framing, n
   assert.equal(run(page.sandbox, 'diagramScale'), 1.25, 'and the page kept its own zoom');
 });
 
-test('closing a folder forgets what the page remembered: the look, the camera and the Map\'s parked state', async () => {
+test('closing a folder forgets what the page remembered: the notice of an edit, the camera and the Map\'s parked state', async () => {
   const page = await startPage();
   const view = addView(page, { id: 'reset', name: 'Reset', viewpoint: 'deep', properties: { element: 'shop' } });
   await openView(page, view);
@@ -645,7 +599,7 @@ test('closing a folder forgets what the page remembered: the look, the camera an
   click(page.sandbox, { 'data-action': 'diagram-zoom', 'data-dir': 'in' });
   page.sandbox.resetUiState();
   assert.equal(run(page.sandbox, 'diagramScale'), 'auto');
-  assert.equal(run(page.sandbox, 'libraryLook.view'), null);
+  assert.equal(run(page.sandbox, 'viewEditNotice'), null);
   assert.equal(run(page.sandbox, 'diagramHost'), 'main');
   assert.equal(run(page.sandbox, 'parkedDiagramHost.scene'), null);
   assert.equal(run(page.sandbox, 'diagramScene'), null);

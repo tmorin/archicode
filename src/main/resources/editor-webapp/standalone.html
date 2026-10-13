@@ -355,6 +355,20 @@
   .library-panel .view-facts dt { margin-top: 0.4rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
   .library-panel .view-uses li { overflow-wrap: anywhere; }
   .library-selection { padding-top: 1rem; border-top: 1px solid var(--border); }
+  /* the attributes of a view as controls (run 0029): label over control, in the narrow panel and in the centre of a view that cannot be drawn */
+  .view-edit { display: flex; flex-direction: column; gap: 0.7rem; margin: 0.6rem 0 0.9rem; }
+  .story-body .view-edit { max-width: 30rem; }
+  .view-field { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; border: 0; padding: 0; margin: 0; }
+  .view-field > label, .view-field > legend { padding: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .view-field select, .view-field input[type="text"] { width: 100%; box-sizing: border-box; }
+  .view-field .inline-error { margin-left: 0; }
+  .view-field .view-element-name { font-size: 0.82rem; overflow-wrap: anywhere; }
+  .view-checks { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+  .view-check { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+  .view-pills { display: flex; flex-wrap: wrap; }
+  .view-pills:empty { display: none; }
+  .view-pills .pill { overflow-wrap: anywhere; }
+  .view-pills .pill-missing { border-style: dashed; color: var(--danger); }
   .inspection-open { align-self: flex-start; margin-top: 0.25rem; }
   .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
   .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
@@ -3031,8 +3045,8 @@ function resetUiState() {
   diagramLinkStop = null;
   diagramHost = 'main';
   parkedDiagramHost = newDiagramHostState();
-  libraryLook = libraryLookFor(null);
   libraryPick = { view: null, selection: null };
+  viewEditNotice = null;
   diagramSeq++; // a layout still being computed for the old folder is dropped when it ends
   helpOpen = false;
   headerMenuOpen = false;
@@ -5075,6 +5089,21 @@ function refreshSaveAllButton() {
   const holder = document.createElement('template');
   holder.innerHTML = renderSaveAllButtonHtml();
   if (holder.content && holder.content.firstElementChild) group.replaceWith(holder.content.firstElementChild);
+}
+
+/** Lights or dims the buttons of "Save all changes" where they are, without replacing them: a click that is being made on one must still land on it. */
+function syncSaveAllButtonsInPlace() {
+  const group = document.querySelector('[aria-label="Changes"]');
+  if (!group || !group.querySelectorAll) return;
+  const holder = document.createElement('template');
+  holder.innerHTML = renderSaveAllButtonHtml();
+  const fresh = holder.content ? holder.content.querySelectorAll('button') : [];
+  const current = group.querySelectorAll('button');
+  fresh.forEach((button, index) => {
+    if (!current[index]) return;
+    current[index].disabled = button.disabled;
+    current[index].title = button.title;
+  });
 }
 
 /**
@@ -8984,19 +9013,6 @@ function mainDiagramRecipe(canvas) {
 }
 
 /**
- * What the page of a view in the Library has been asked to look at, beyond the view itself: the unlinked boxes and the texts as
- * the toolbar of that page toggles them (null: as the view says). It is a way of looking at the view, like the zoom, and not an
- * edit: nothing is marked modified and the state of the Map and Elements is not touched. One view at a time: another view
- * starts from what it says.
- */
-let libraryLook = { view: null, hideUnlinked: null, shows: { labels: null, qualifiers: null, descriptions: null, wrap: null } };
-
-function libraryLookFor(viewId) {
-  if (libraryLook.view !== viewId) libraryLook = { view: viewId, hideUnlinked: null, shows: { labels: null, qualifiers: null, descriptions: null, wrap: null } };
-  return libraryLook;
-}
-
-/**
  * What is selected on the page of a view in the Library: a box (an element) or a link of its diagram, read in the panel on the right. It
  * is the page's own, with the shapes of the Map's selection so that the same panels render it, and it is never `AppState.selection`:
  * a click on this page selects here and leaves the Map, Elements, their tree and the address as they are. One view at a time (another
@@ -9017,22 +9033,17 @@ function diagramSelection() {
   return (libraryTab === 'views' && libraryPickFor(selectedViewId).selection) || NO_SELECTION;
 }
 
-/** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view, the model and the page's look, and nothing else. */
+/** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view and the model, and nothing else: an edit of the view is an edit of the entry. */
 function libraryDiagramRecipe(view) {
   if (!view || viewProblem(view)) return null;
   const properties = isPlainObject(view.properties) ? view.properties : {};
-  const look = libraryLookFor(view.id);
   const isMap = view.viewpoint === 'map';
   const layer = !isMap && view.layer === 'technology' ? 'technology' : 'application';
   const facet = typeof properties.facet === 'string' ? AppState.workspace.settings.facets.customs.find((candidate) => candidate.name === properties.facet) || null : null;
-  const defaults = DIAGRAM_SHOW_DEFAULTS[isMap ? 'map' : 'elements'];
-  const shows = {};
-  for (const name of DIAGRAM_SHOW_NAMES) {
-    shows[name] = typeof look.shows[name] === 'boolean' ? look.shows[name] : typeof properties[name] === 'boolean' ? properties[name] : defaults[name];
-  }
+  const shows = shownTextsOf(view);
   const recipe = {
     host: 'library', view, isMap, reference: '', record: null, layer, viewpoint: 'map', facet, mapState: null,
-    hideUnlinked: typeof look.hideUnlinked === 'boolean' ? look.hideUnlinked : properties['hide-unlinked'] === true,
+    hideUnlinked: properties['hide-unlinked'] === true,
     shows
   };
   if (isMap) {
@@ -9581,7 +9592,7 @@ function describeViewDefinition(view) {
     const pinned = stringList(definition.properties.pinned);
     text = pinned.length ? 'Map of ' + pinned.slice(0, 3).map((reference) => nameOf(reference, 'application')).join(', ') + (pinned.length > 3 ? ' and ' + (pinned.length - 3) + ' more' : '') : 'Map';
   } else {
-    text = nameOf(definition.properties.element, definition.layer) + ' — ' + capitalizeWord(definition.viewpoint);
+    text = (definition.properties.element ? nameOf(definition.properties.element, definition.layer) : '(no element)') + ' — ' + capitalizeWord(definition.viewpoint);
   }
   return text + (definition.properties.facet ? ' (facet ' + definition.properties.facet + ')' : '');
 }
@@ -9598,7 +9609,8 @@ function viewProblem(view) {
   }
   if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint)) return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
   const layer = view.layer === 'technology' ? 'technology' : 'application';
-  if (typeof properties.element !== 'string' || !AppState.index[layer].has(properties.element)) {
+  if (typeof properties.element !== 'string' || !properties.element) return 'This view has no element.';
+  if (!AppState.index[layer].has(properties.element)) {
     return 'The element “' + properties.element + '” does not exist any more.';
   }
   return null;
@@ -9739,6 +9751,203 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
     if (storyChanged) { markEntryChanged(story); changed = true; }
   }
   return changed;
+}
+
+// ---- Editing a view from its page in the Library ----
+// The attributes of a view are controls on its page (run 0029, TDD-0029). An edit changes the entry of the view in memory: it is marked
+// changed like any entry (its manifest is re-serialised, "modified" shows, "Save all changes" writes it, "Cancel" gives it up), the
+// page's recipe is built from that entry, so the diagram follows. Nothing the Map and Elements read is involved.
+
+/** The view the page of the Library shows now (the Views side, a view open), or null. */
+function libraryPageView() {
+  return currentPerspective === 'library' && libraryTab === 'views' ? findSavedView(selectedViewId) : null;
+}
+
+/** What the last refused edit says, under its field: { view, field, text }. Gone with the next edit, another view, or leaving the Library. */
+let viewEditNotice = null;
+
+function refuseViewEdit(view, field, text, typed) {
+  viewEditNotice = { view: view.id, field, text, typed: typed === undefined ? null : String(typed) };
+  return false;
+}
+
+/**
+ * Applies `change(view, properties)` to the view of the page. `change` returns false when nothing changed (the same value, or a refusal said with
+ * `refuseViewEdit`): then the view is not marked and the page is only redrawn to say the refusal. `later`: redraw a moment later. Returns whether the view changed.
+ */
+function editSavedView(change, later) {
+  const view = libraryPageView();
+  if (!view) return false;
+  if (!isPlainObject(view.properties)) view.properties = {};
+  viewEditNotice = null;
+  const changed = change(view, view.properties) !== false;
+  if (changed) markEntryChanged(view);
+  if (!changed && !viewEditNotice) return false;
+  if (later) { // see handleViewFieldChange: the button that is being pressed is still there, and "Save all changes" is already lit
+    if (changed) syncSaveAllButtonsInPlace();
+    setTimeout(() => { if (libraryPageView() === view) render(); }, 250);
+  } else {
+    render();
+  }
+  return changed;
+}
+
+/** The kind of diagram a viewpoint draws: it decides the defaults of the texts. */
+function viewKindOf(view) {
+  return view.viewpoint === 'map' ? 'map' : 'elements';
+}
+
+/** The layer an element viewpoint of the view draws. */
+function viewLayerOf(view) {
+  return view.layer === 'technology' ? 'technology' : 'application';
+}
+
+/** The texts a view draws: what it says, else the defaults of its kind of diagram. */
+function shownTextsOf(view) {
+  const properties = isPlainObject(view.properties) ? view.properties : {};
+  const defaults = DIAGRAM_SHOW_DEFAULTS[viewKindOf(view)];
+  const shows = {};
+  for (const name of DIAGRAM_SHOW_NAMES) shows[name] = typeof properties[name] === 'boolean' ? properties[name] : defaults[name];
+  return shows;
+}
+
+/** A text of a view: the default of its kind of diagram is no choice, so it is not kept (the canonical form of the view). */
+function setViewShow(view, name, value) {
+  const properties = view.properties;
+  if (value === DIAGRAM_SHOW_DEFAULTS[viewKindOf(view)][name]) {
+    if (!(name in properties)) return false;
+    delete properties[name];
+    return true;
+  }
+  if (properties[name] === value) return false;
+  properties[name] = value;
+  return true;
+}
+
+function setViewHideUnlinked(view, value) {
+  const properties = view.properties;
+  if (!value) {
+    if (!('hide-unlinked' in properties)) return false;
+    delete properties['hide-unlinked'];
+    return true;
+  }
+  if (properties['hide-unlinked'] === true) return false;
+  properties['hide-unlinked'] = true;
+  return true;
+}
+
+function setViewFacet(view, name) {
+  const properties = view.properties;
+  if (!name) {
+    if (!('facet' in properties)) return false;
+    delete properties.facet;
+    return true;
+  }
+  if (properties.facet === name) return false;
+  properties.facet = name;
+  return true;
+}
+
+/** The element a view is about (the element viewpoints). A reference that is not an element of the view's layer is refused. */
+function setViewElement(view, reference) {
+  if (view.viewpoint === 'map') return false;
+  const layer = viewLayerOf(view);
+  const wanted = String(reference).trim();
+  if (!wanted) return refuseViewEdit(view, 'element', 'Type the reference of an element.', reference);
+  if (!AppState.index[layer].has(wanted)) return refuseViewEdit(view, 'element', '“' + wanted + '” is not an element of the ' + layer + ' layer.', wanted);
+  if (view.properties.element === wanted) return false;
+  view.properties.element = wanted;
+  return true;
+}
+
+/** The layer of an element viewpoint. The element stays when it exists in the other layer, else the view needs one. */
+function setViewLayer(view, layer) {
+  if (view.viewpoint === 'map' || (layer !== 'application' && layer !== 'technology') || viewLayerOf(view) === layer) return false;
+  view.layer = layer;
+  if (typeof view.properties.element !== 'string' || !AppState.index[layer].has(view.properties.element)) delete view.properties.element;
+  return true;
+}
+
+/**
+ * The viewpoint. Between the three element viewpoints only the viewpoint changes. To the Map the element becomes the pinned element; back from
+ * it the first pinned element becomes the element and the Map's lists go. What the view showed of the texts is kept: the two kinds of diagram
+ * have other defaults.
+ */
+function setViewViewpoint(view, viewpoint) {
+  if (viewpoint !== 'map' && !STORY_DIAGRAM_VIEWPOINTS.includes(viewpoint)) return false;
+  if (view.viewpoint === viewpoint) return false;
+  const properties = view.properties;
+  const shows = shownTextsOf(view);
+  if (viewpoint === 'map' && view.viewpoint !== 'map') {
+    const element = properties.element;
+    const pinned = typeof element === 'string' && element && viewLayerOf(view) === 'application' ? [element] : [];
+    delete properties.element;
+    if (pinned.length) properties.pinned = pinned;
+    view.layer = 'application';
+  } else if (viewpoint !== 'map' && view.viewpoint === 'map') {
+    const first = stringList(properties.pinned).find((reference) => AppState.index.application.has(reference)); // the first pin that is still an element, in the order of the file
+    for (const key of ['pinned', 'hidden', 'opened']) delete properties[key];
+    if (first) properties.element = first; else delete properties.element;
+    view.layer = 'application';
+  }
+  view.viewpoint = viewpoint;
+  for (const name of DIAGRAM_SHOW_NAMES) setViewShow(view, name, shows[name]);
+  return true;
+}
+
+const VIEW_LISTS = ['pinned', 'hidden', 'opened'];
+
+/** Adds an application element to the pinned, hidden or opened elements of a Map view, or takes one out. A reference that is not an element is refused. */
+function setViewListItem(view, list, reference, add) {
+  if (view.viewpoint !== 'map' || !VIEW_LISTS.includes(list)) return false;
+  const items = stringList(view.properties[list]);
+  const wanted = String(reference).trim();
+  if (add) {
+    if (!wanted) return false;
+    if (!AppState.index.application.has(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is not an element of the application layer.', wanted);
+    if (items.includes(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is already there.', wanted);
+    view.properties[list] = items.concat(wanted);
+    return true;
+  }
+  if (!items.includes(wanted)) return false;
+  const rest = items.filter((item) => item !== wanted);
+  if (rest.length) view.properties[list] = rest; else delete view.properties[list];
+  return true;
+}
+
+/**
+ * A control of the form of a view was changed (a select, a checkbox, a text committed by Enter or by leaving it). A text committed by leaving
+ * it for another control is applied at once but redrawn a moment later: the redraw replaces the controls, and the click that made the text
+ * lose the focus (Save all changes, a tab, a button) must still land on the control it was made on. `immediate`: redraw now.
+ */
+function handleViewFieldChange(control, immediate) {
+  const field = control.getAttribute('data-view-field');
+  const list = control.getAttribute('data-view-list');
+  const active = typeof document !== 'undefined' ? document.activeElement : null;
+  const left = !!active && active !== control && active !== document.body; // the focus is on another control already
+  if (control.id && !left) pendingFocusSelector = '#' + control.id;
+  const isText = control.tagName === 'INPUT' && control.type === 'text';
+  const later = isText && left && !immediate;
+  let changed;
+  const apply = (change) => { changed = editSavedView(change, later); };
+  if (list) {
+    const reference = control.value;
+    control.value = '';
+    apply((view) => setViewListItem(view, list, reference, true));
+  }
+  else if (field === 'viewpoint') apply((view) => setViewViewpoint(view, control.value));
+  else if (field === 'layer') apply((view) => setViewLayer(view, control.value));
+  else if (field === 'element') apply((view) => setViewElement(view, control.value));
+  else if (field === 'facet') apply((view) => setViewFacet(view, control.value));
+  else if (field === 'hide-unlinked') apply((view) => setViewHideUnlinked(view, !!control.checked));
+  else if (field && field.startsWith('show:') && DIAGRAM_SHOW_NAMES.includes(field.slice(5))) apply((view) => setViewShow(view, field.slice(5), !!control.checked));
+  return changed;
+}
+
+/** Delegated `change` listener: the form of a view on its page. */
+function handleAppChange(e) {
+  const control = e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list]') : null;
+  if (control) handleViewFieldChange(control);
 }
 
 /** A text field of a story, typed in: the model follows at once (there is no form to apply), and "Save all changes" lights up. */
@@ -10284,19 +10493,64 @@ function entryFileLabel(entry) {
   return owner ? owner.relPath : 'workspace.yaml';
 }
 
-/** What a view draws, in words: its definition, then the properties that shape it. */
+/**
+ * The view as a form: what it draws and where it is kept as facts, then a control for each attribute (TDD-0029 DEC-1). A control changes
+ * the entry of the view (`editSavedView`) when it is committed: a select or a checkbox at once, a text by Enter or leaving it.
+ */
 function renderViewFactsHtml(view) {
-  const definition = canonicalViewDefinition(view);
-  const value = (v) => Array.isArray(v) ? v.join(', ') : String(v);
-  const properties = Object.keys(definition.properties).filter((key) => definition.properties[key] !== undefined && definition.properties[key] !== '' && !(Array.isArray(definition.properties[key]) && !definition.properties[key].length));
   const row = (name, content) => '<dt>' + name + '</dt><dd>' + content + '</dd>';
-  return '<dl class="view-facts">' +
+  const isMap = view.viewpoint === 'map';
+  const properties = isPlainObject(view.properties) ? view.properties : {};
+  const notice = (field) => viewEditNotice && viewEditNotice.view === view.id && viewEditNotice.field === field
+    ? '<div class="inline-error" role="alert">' + escapeHtml(viewEditNotice.text) + '</div>' : '';
+  const typedOr = (name, value) => viewEditNotice && viewEditNotice.view === view.id && viewEditNotice.field === name && viewEditNotice.typed !== null ? viewEditNotice.typed : value; // a refused text stays in its field, to be corrected
+  const field = (id, label, control, field) => '<div class="view-field"><label for="' + id + '">' + label + '</label>' + control + notice(field) + '</div>';
+  const option = (value, label, selected, extra) => '<option value="' + escapeHtml(value) + '"' + (selected ? ' selected' : '') + (extra || '') + '>' + escapeHtml(label) + '</option>';
+
+  const layer = viewLayerOf(view);
+  const record = typeof properties.element === 'string' ? AppState.index[layer].get(properties.element) : null;
+  const known = ['overview', 'detailed', 'deep', 'map'];
+  const labels = { overview: 'Overview', detailed: 'Detailed', deep: 'Deep', map: 'Map' };
+  const viewpoints = (known.includes(view.viewpoint) ? '' : option(String(view.viewpoint), view.viewpoint + ' (not drawn by the editor)', true, ' disabled')) +
+    known.map((value) => option(value, labels[value], value === view.viewpoint,
+      value === 'detailed' && view.viewpoint !== 'detailed' && record && LEAF_KINDS.includes(record.kind) ? ' disabled title="Only available for an element that can contain others."' : '')).join('');
+  let html = '<dl class="view-facts">' +
     row('Draws', escapeHtml(describeViewDefinition(view))) +
-    row('Viewpoint', escapeHtml(String(definition.viewpoint))) +
-    row('Layer', escapeHtml(String(definition.layer))) +
-    properties.map((key) => row(escapeHtml(key), escapeHtml(value(definition.properties[key])))).join('') +
     row('Kept in', '<code>' + escapeHtml(entryFileLabel(view)) + '</code>') +
-  '</dl>';
+  '</dl><div class="view-edit">';
+  html += field('view-edit-viewpoint', 'Viewpoint', '<select id="view-edit-viewpoint" data-view-field="viewpoint">' + viewpoints + '</select>', 'viewpoint');
+  if (isMap) {
+    for (const [list, label, hint] of [['pinned', 'Pinned', 'The elements the map is about'], ['hidden', 'Hidden', 'Elements the map leaves out'], ['opened', 'Open', 'Boxes drawn unfolded']]) {
+      const items = stringList(properties[list]);
+      html += field('view-edit-add-' + list, label,
+        '<div class="view-pills" role="list" aria-label="' + label + ' elements">' + items.map((reference) =>
+          '<span class="pill' + (AppState.index.application.has(reference) ? '' : ' pill-missing') + '" role="listitem"' + (AppState.index.application.has(reference) ? '' : ' title="This element does not exist any more"') + '>' + escapeHtml(reference) +
+          '<button type="button" class="pill-remove" data-action="view-list-remove" data-list="' + list + '" data-ref="' + escapeHtml(reference) + '" aria-label="Remove ' + escapeHtml(reference) + ' from ' + label.toLowerCase() + '" title="Remove">×</button></span>').join('') + '</div>' +
+        '<input type="text" id="view-edit-add-' + list + '" data-view-list="' + list + '" list="archicode-application-references" value="' + escapeHtml(typedOr(list, '')) + '" placeholder="Add an element…" autocomplete="off" spellcheck="false" title="' + escapeHtml(hint) + '. Press Enter to add it.">', list);
+    }
+  } else {
+    html += field('view-edit-layer', 'Layer', '<select id="view-edit-layer" data-view-field="layer">' + option('application', 'Application', layer === 'application') + option('technology', 'Technology', layer === 'technology') + '</select>', 'layer');
+    html += field('view-edit-element', 'Element',
+      '<input type="text" id="view-edit-element" data-view-field="element" list="archicode-' + layer + '-references" value="' + escapeHtml(typedOr('element', typeof properties.element === 'string' ? properties.element : '')) + '" placeholder="Reference of an element" autocomplete="off" spellcheck="false" title="Press Enter to apply it.">' +
+      (record ? '<div class="muted view-element-name">' + escapeHtml(record.name || record.id) + '</div>' : ''), 'element');
+  }
+  const facets = AppState.workspace.settings.facets.customs;
+  const facetName = typeof properties.facet === 'string' ? properties.facet : '';
+  if (facets.length || facetName) {
+    html += field('view-edit-facet', 'Facet', '<select id="view-edit-facet" data-view-field="facet">' + option('', 'None', !facetName) +
+      facets.map((facet) => option(facet.name, facet.name, facet.name === facetName)).join('') +
+      (facetName && !facets.some((facet) => facet.name === facetName) ? option(facetName, facetName + ' (not defined)', true) : '') + '</select>', 'facet');
+  }
+  const shows = shownTextsOf(view);
+  const check = (id, fieldName, label, checked, title) => '<label class="view-check" title="' + escapeHtml(title) + '"><input type="checkbox" id="' + id + '" data-view-field="' + fieldName + '"' + (checked ? ' checked' : '') + '> ' + label + '</label>';
+  html += '<fieldset class="view-field"><legend>Drawing</legend><div class="view-checks">' +
+    check('view-edit-hide-unlinked', 'hide-unlinked', 'Hide unlinked', properties['hide-unlinked'] === true, 'Leave out the boxes that no link reaches') +
+    check('view-edit-show-labels', 'show:labels', 'Labels', shows.labels, 'The caption of each link') +
+    check('view-edit-show-qualifiers', 'show:qualifiers', 'Qualifiers', shows.qualifiers, 'The qualifiers of each element, after its kind') +
+    check('view-edit-show-descriptions', 'show:descriptions', 'Descriptions', shows.descriptions, 'The description of each element that does not contain others') +
+    check('view-edit-show-wrap', 'show:wrap', 'Wrap', shows.wrap, 'Break long names, qualifiers and descriptions over several lines') +
+  '</div></fieldset></div>';
+  return html;
 }
 
 /** The steps that show a view, each a way into its story. */
@@ -10373,7 +10627,8 @@ function renderLibraryPerspectiveHtml() {
     const view = selectedViewId ? findSavedView(selectedViewId) : null;
     if (view) {
       const id = escapeHtml(view.id);
-      subject = '<span class="element-header-subject">' + escapeHtml(viewLabel(view)) + '</span>';
+      subject = '<span class="element-header-subject">' + escapeHtml(viewLabel(view)) + '</span>' +
+        (entryIsModified(view) ? '<span class="modified-badge" title="Changed, not saved yet">modified</span>' : '');
       const manage = '<button type="button" data-action="saved-view-rename" data-view="' + id + '">Rename</button>' +
         '<button type="button" data-action="saved-view-delete" data-view="' + id + '">Delete</button>';
       // the panel on the right narrows the centre: what is rarely used goes into the "⋯" menu of a narrow header, as on the Map (Maximize stays in the row)
@@ -10753,12 +11008,20 @@ function handleAppClick(e) {
     case 'saved-view-delete':
       deleteSavedView(target.getAttribute('data-view'));
       break;
+    case 'view-list-remove': {
+      const list = target.getAttribute('data-list');
+      const reference = target.getAttribute('data-ref');
+      pendingFocusSelector = '#view-edit-add-' + list;
+      editSavedView((view) => setViewListItem(view, list, reference, false));
+      break;
+    }
     case 'toggle-show': {
       const name = target.getAttribute('data-show');
       if (!DIAGRAM_SHOW_NAMES.includes(name)) break;
-      if (currentPerspective === 'library') { // the page of a view: a look of that page, not the Map's or Elements' choice, and not an edit of the view
-        const recipe = libraryDiagramRecipe(findSavedView(selectedViewId));
-        if (recipe) { libraryLook.shows[name] = !recipe.shows[name]; render(); }
+      if (currentPerspective === 'library') { // the page of a view: the button edits the view, as the box of its panel does
+        const view = libraryPageView();
+        const recipe = view ? libraryDiagramRecipe(view) : null;
+        if (recipe) editSavedView((entry) => setViewShow(entry, name, !recipe.shows[name]));
         break;
       }
       pushDiagramHistory();
@@ -10805,8 +11068,9 @@ function handleAppClick(e) {
     }
     case 'toggle-hide-unlinked':
       if (currentPerspective === 'library') { // see 'toggle-show'
-        const recipe = libraryDiagramRecipe(findSavedView(selectedViewId));
-        if (recipe) { libraryLook.hideUnlinked = !recipe.hideUnlinked; render(); }
+        const view = libraryPageView();
+        const recipe = view ? libraryDiagramRecipe(view) : null;
+        if (recipe) editSavedView((entry) => setViewHideUnlinked(entry, !recipe.hideUnlinked));
         break;
       }
       if (!mapIsShown() && !diagramTabShown()) break;
@@ -11566,6 +11830,7 @@ function render() {
 
   useDiagramHost(diagramHostOf(currentPerspective)); // before anything is drawn: the tree of the Map reads the scene of the Map
   settleLinkSelection(); // a link is selected only while the diagram it was made on is on screen
+  if (currentPerspective !== 'library' || (viewEditNotice && viewEditNotice.view !== selectedViewId)) viewEditNotice = null;
   const landing = landingScreenConfig();
   if (landing) {
     document.title = 'ArchiCode Editor'; // no workspace is loaded yet, whatever folder is remembered
@@ -11645,6 +11910,7 @@ function render() {
   app.addEventListener('pointerdown', handleAppPointerDown);
   app.addEventListener('dblclick', handleAppDblClick);
   app.addEventListener('input', handleAppInput);
+  app.addEventListener('change', handleAppChange);
   app.addEventListener('keydown', handleDiagramKeydown);
   app.addEventListener('keydown', handleNavKeydown);
   app.addEventListener('keydown', handleActivateKeydown);
