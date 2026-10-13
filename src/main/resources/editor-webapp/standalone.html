@@ -184,6 +184,9 @@
   .inspection-rel { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
   .inspection-rel-label { font-weight: 600; overflow-wrap: anywhere; }
   .inspection-rel-path { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+  /* the relationship of the link that was clicked, when several links join the same two boxes: said in words, the border only repeats it */
+  .inspection-rel-marked { border-color: var(--accent); }
+  .inspection-rel-mark { margin-left: 0.4rem; padding: 0 0.4rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; white-space: nowrap; }
 
   [data-resize] { background: var(--border); flex-shrink: 0; }
   [data-resize]:hover, [data-resize][data-active] { background: var(--accent); }
@@ -496,6 +499,9 @@
   }
   .element-header-label { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
   .element-header-label h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* the styled stereotypes of the element, after its kind. They are the first thing to give way (flex-shrink 100 against 1 for
+     the name): the group is one line high and clips the badges that do not fit as a whole, so the name keeps its room at every state */
+  .element-header-badges { display: flex; flex-wrap: wrap; gap: 0.25rem; align-content: flex-start; min-width: 0; max-height: 1.1rem; overflow: hidden; flex: 0 100 auto; margin-left: -0.5rem; }
   .element-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 
   /* ---- The header of the centre panel holds together at any width of the panel ----
@@ -540,6 +546,7 @@
   @container center (max-width: 46rem) {
     .element-header { height: auto; min-height: var(--header-h); flex-wrap: wrap; gap: 0.4rem 0.75rem; padding-top: 0.4rem; padding-bottom: 0.4rem; }
     .element-header-label { flex-wrap: wrap; row-gap: 0.25rem; }
+    .element-header-badges { max-height: none; max-width: 100%; flex: none; margin-left: 0; }
     .viewpoint-switch { flex-wrap: wrap; row-gap: 0.25rem; }
     .element-header-actions { margin-left: auto; }
   }
@@ -3077,7 +3084,50 @@ function applyDiagramParamsFromHash() {
   diagramFacet = facet && AppState.workspace.settings.facets.customs.some((f) => f.name === facet) ? facet : null;
 }
 
+/**
+ * The link the hash names, `link-from=` and `link-to=` (the two boxes of the drawing it joins: a reference, or the id of a
+ * folded or unknown box), or null. Two parameters rather than one with a separator: an id of the drawing can hold any
+ * character a reference can, and `URLSearchParams` already quotes each. Both or none: a lone one names nothing.
+ */
+function linkFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  if (queryIdx === -1) return null;
+  const params = new URLSearchParams(location.hash.slice(queryIdx + 1));
+  const from = params.get('link-from');
+  const to = params.get('link-to');
+  return from && to ? { from, to } : null;
+}
+
+/**
+ * The link the hash names becomes the selection, where a link can be selected: on the Map, or over the element the hash
+ * selects while a diagram tab of it is shown (the same places `settleLinkSelection` keeps one). Whether the drawing has
+ * that pair is not known yet (it is not drawn): the selection is made as a click would, the panel waits ("Reading the
+ * link…") and `reconcileLinkSelection` drops it, and the address with it, once the drawing is on screen and lacks it.
+ */
+function restoreLinkFromHash() {
+  const link = linkFromHash();
+  if (!link) return;
+  const id = perspectiveIdFromHash();
+  const key = link.from + ' -> ' + link.to;
+  const sel = AppState.selection;
+  if (id === 'map') {
+    AppState.selection = { kind: 'link', key, from: link.from, to: link.to, layer: 'application', mode: 'view' };
+  } else if (id === 'elements' && sel.kind === 'element' && sel.mode === 'view' && elementTab !== 'details' && findElementRecord(sel.key, sel.layer)) {
+    AppState.selection = { kind: 'link', key, from: link.from, to: link.to, layer: layerOfReference(sel.key, sel.layer) || 'application', mode: 'view', focal: sel.key };
+  } else {
+    return;
+  }
+  revealLinkAfterDrawing = { nth: null };
+}
+
+/** The hash's selection, whole: an element or a file, or a link over the element (see `restoreLinkFromHash`). */
 function applySelectionFromHashRef() {
+  selectFromHashRef();
+  restoreLinkFromHash();
+}
+
+/** The element or manifest file the hash's `ref=` names, else nothing selected. */
+function selectFromHashRef() {
   applyDiagramParamsFromHash();
   const ref = refFromHash();
   if (ref) {
@@ -3123,6 +3173,17 @@ function pushShowParams(params, isMap) {
   for (const name of DIAGRAM_SHOW_NAMES) if (name in overrides) params.push(name + '=' + (overrides[name] ? '1' : '0'));  if (diagramHideUnlinked) params.push('hide-unlinked=1');
 }
 
+/**
+ * The selected link, when the address should carry it: only where it is selected (the Map; a diagram tab of its element),
+ * since the address is written before a change of perspective is drawn and `settleLinkSelection` has not ended it yet.
+ * Selecting a link rewrites the current entry of the history, like a zoom: it refines the place and is not one.
+ */
+function linkInRoute() {
+  const sel = AppState.selection;
+  if (!sel || sel.kind !== 'link') return null;
+  return (sel.focal ? currentPerspective === 'elements' && diagramTabShown() : currentPerspective === 'map') ? sel : null;
+}
+
 /** The "#/perspective?ref=..." hash for the current perspective + selection — what the URL should read right now (UX review follow-up: the URL mirrors what's on screen). */
 function currentRouteHash() {
   const sel = elementSelection(); // a link selected in a diagram of Elements leaves the element, and so the URL, as it is
@@ -3151,6 +3212,8 @@ function currentRouteHash() {
   if ((currentPerspective === 'elements' || currentPerspective === 'map') && activeStory) {
     params.push('story=' + encodeURIComponent(activeStory.id), 'step=' + activeStory.step);
   }
+  const link = linkInRoute();
+  if (link) params.push('link-from=' + encodeURIComponent(link.from), 'link-to=' + encodeURIComponent(link.to));
   return '/' + currentPerspective + (currentPerspective === 'library' ? '/' + libraryTab : '') + (params.length ? '?' + params.join('&') : '');
 }
 
@@ -5718,9 +5781,13 @@ function renderElementRelationshipsHtml(record) {
   }));
 }
 
-/** A reference as a link to its element, in `layer` (the element itself, or one of the other layer's: a deployed application). */
-function renderReferenceLinkHtml(reference, layer) {
-  return '<button type="button" class="relationship-link" data-action="goto-element" data-ref="' + escapeHtml(reference) + '" data-layer="' + escapeHtml(layer || 'application') + '">' +
+/**
+ * A reference as a link to its element, in `layer` (the element itself, or one of the other layer's: a deployed application).
+ * `description`: what the button does, when the reference alone does not say (the accessible name and the tooltip).
+ */
+function renderReferenceLinkHtml(reference, layer, description) {
+  return '<button type="button" class="relationship-link" data-action="goto-element" data-ref="' + escapeHtml(reference) + '" data-layer="' + escapeHtml(layer || 'application') + '"' +
+           (description ? ' aria-label="' + escapeHtml('Open ' + reference + ', ' + description) + '" title="' + escapeHtml('Select ' + description) + '"' : '') + '>' +
            escapeHtml(reference) +
          '</button>';
 }
@@ -6421,8 +6488,34 @@ function dropLinkSelection() {
  */
 function settleLinkSelection() {
   const sel = AppState.selection;
-  if (!sel || sel.kind !== 'link') return;
-  if (!(sel.focal ? diagramTabShown() : currentPerspective === 'map')) dropLinkSelection();
+  if (!sel || sel.kind !== 'link') { revealLinkAfterDrawing = false; return; }
+  if (!(sel.focal ? diagramTabShown() : currentPerspective === 'map')) { dropLinkSelection(); revealLinkAfterDrawing = false; }
+}
+
+/**
+ * A link was just selected (a click on the Map, or an address that carries one): the next drawing brings it into view. Only
+ * then, never on a redraw (a facet, a fold) of a link that has been selected for a while: selecting must not move the view of
+ * someone who is reading it. `revealSelectedLink` consumes it. It is false, or `{ nth }`: the position (`data-nth`) of the
+ * link that was clicked among the twins of its pair, which is the one to show (positions are those of the drawing the click
+ * was made on, and the first drawing after it is that one), or null (an address does not say: the first link of the pair).
+ */
+let revealLinkAfterDrawing = false;
+
+/**
+ * After the drawing is on screen: pan the view, by the least it takes, so that the selected link is inside the canvas (the
+ * panel that appeared with the selection has narrowed it, and the link may now be behind its edge; an address can name a link
+ * the opening view does not show). A link already in view is left where it is. Several links between the two boxes: the one
+ * that was clicked (`data-nth`), else the first.
+ */
+function revealSelectedLink(canvas) {
+  const request = revealLinkAfterDrawing;
+  revealLinkAfterDrawing = false;
+  const sel = AppState.selection;
+  if (!request || sel.kind !== 'link' || !canvas || !canvas.querySelectorAll) return;
+  const links = Array.from(canvas.querySelectorAll('.dg-link')).filter((el) => el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to);
+  const clicked = request.nth === null || request.nth === undefined ? undefined : links.find((el) => el.getAttribute('data-nth') === String(request.nth));
+  const target = clicked || links[0];
+  if (target) revealDiagramNode(target);
 }
 
 /** What the drawing on screen drew for the selected link: the pair of boxes (ends, links), or null (nothing drawn yet, or not in it). */
@@ -6432,15 +6525,24 @@ function inspectionLinkFor(sel) {
   return (pairs && pairs.find((pair) => pair.from === sel.from && pair.to === sel.to)) || null;
 }
 
-/** The declared relationships of a pair, once each, in the order the kernel lists them (a link the kernel gives none for, a ghost, speaks for itself). */
+/** The declared relationships of one link of a pair, in the order the kernel lists them (a link the kernel gives none for, a ghost, speaks for itself). */
+function relationshipsOfLink(link, pair) {
+  const own = Array.isArray(link.relationships) ? link.relationships : [];
+  return own.length ? own : [{ from: pair.fromEnd.reference, destination: pair.toEnd.reference, label: link.label, qualifiers: link.qualifiers, tags: link.tags, unresolved: !!link.ghost }];
+}
+
+/** What makes two relationships the same one: who declares it, to whom, and what it says. */
+function relationshipKeyOf(rel) {
+  return JSON.stringify([rel.from, rel.destination, rel.label, rel.qualifiers, rel.tags]);
+}
+
+/** The declared relationships of a pair, once each, in the order the kernel lists them. */
 function relationshipsOfPair(pair) {
   const rels = [];
   const seen = new Set();
   for (const link of pair.links) {
-    const own = Array.isArray(link.relationships) ? link.relationships : [];
-    const list = own.length ? own : [{ from: pair.fromEnd.reference, destination: pair.toEnd.reference, label: link.label, qualifiers: link.qualifiers, tags: link.tags, unresolved: !!link.ghost }];
-    for (const rel of list) {
-      const key = JSON.stringify([rel.from, rel.destination, rel.label, rel.qualifiers, rel.tags]);
+    for (const rel of relationshipsOfLink(link, pair)) {
+      const key = relationshipKeyOf(rel);
       if (seen.has(key)) continue;
       seen.add(key);
       rels.push(rel);
@@ -6456,11 +6558,21 @@ function renderLinkEndHtml(end) {
   return html;
 }
 
-/** One declared relationship: its label, who declares it and to whom, its qualifiers and its tags. */
-function renderRelationshipInspectionHtml(rel) {
+/**
+ * The declaring element of a relationship, as a button that selects it like a box of the diagram does (`goto-element`, with the
+ * layer of the drawing). Plain text when the drawing's layer has no such element (the name stays readable, nothing to open).
+ */
+function renderDeclaringElementHtml(reference, layer) {
+  if (layerOfReference(reference, layer) !== layer) return escapeHtml(reference);
+  return renderReferenceLinkHtml(reference, layer, 'the element that declares this relationship');
+}
+
+/** One declared relationship: its label, who declares it (a button) and to whom, its qualifiers and its tags; `marked`: it belongs to the link that was clicked. */
+function renderRelationshipInspectionHtml(rel, layer, marked) {
   const label = rel.label !== undefined && rel.label !== null && String(rel.label).trim() ? escapeHtml(rel.label) : '<span class="muted">no label</span>';
-  return '<div class="inspection-rel"><div class="inspection-rel-label">' + label + '</div>' +
-    '<div class="inspection-rel-path">' + escapeHtml(rel.from) + ' &rarr; ' + escapeHtml(rel.destination) + '</div>' +
+  return '<div class="inspection-rel' + (marked ? ' inspection-rel-marked' : '') + '"><div class="inspection-rel-label">' + label +
+    (marked ? '<span class="inspection-rel-mark">Clicked link</span>' : '') + '</div>' +
+    '<div class="inspection-rel-path">' + renderDeclaringElementHtml(rel.from, layer) + ' &rarr; ' + escapeHtml(rel.destination) + '</div>' +
     renderFieldRowHtml('Qualifiers', renderQualifierPillsHtml(rel.qualifiers)) +
     renderFieldRowHtml('Tags', renderTagListHtml(rel.tags)) +
     (rel.unresolved ? '<p class="inspection-note">There is no element &ldquo;' + escapeHtml(rel.destination) + '&rdquo;: the relationship points at nothing.</p>' : '') +
@@ -6480,8 +6592,18 @@ function renderLinkInspectionHtml(sel) {
     if (end.collapsed) html += '<p class="inspection-note">&ldquo;' + escapeHtml(end.title) + '&rdquo; is folded: it stands for ' + end.hidden + ' hidden element' + (end.hidden === 1 ? '' : 's') + '. Open it to see their relationships one by one.</p>';
   }
   const rels = relationshipsOfPair(pair);
-  if (rels.length > 1) html += '<p class="inspection-note">' + rels.length + ' relationships are grouped in this link.</p>';
-  html += '<h4 class="inspection-subhead">Relationships <span class="field-count">' + rels.length + '</span></h4>' + rels.map(renderRelationshipInspectionHtml).join('');
+  // several links between the same two boxes: the relationships of the one that was clicked are marked (when they can be told from the others)
+  const clickedKeys = new Set(Array.isArray(sel.via) ? sel.via : []);
+  const marked = pair.links.length > 1 ? rels.map((rel) => clickedKeys.has(relationshipKeyOf(rel))) : rels.map(() => false);
+  const told = marked.some(Boolean) && !marked.every(Boolean);
+  if (pair.links.length > 1) {
+    html += '<p class="inspection-note">' + pair.links.length + ' links join these two boxes, with ' + rels.length + (rels.length === 1 ? ' relationship' : ' relationships') + ' in all.' +
+      (told ? ' The relationships of the link you clicked are marked.' : '') + '</p>';
+  } else if (rels.length > 1) {
+    html += '<p class="inspection-note">' + rels.length + ' relationships are grouped in this link.</p>';
+  }
+  html += '<h4 class="inspection-subhead">Relationships <span class="field-count">' + rels.length + '</span></h4>' +
+    rels.map((rel, i) => renderRelationshipInspectionHtml(rel, layer, told && marked[i])).join('');
   html += renderFieldRowHtml('Layer', escapeHtml(layer));
   return html + '</div>';
 }
@@ -7041,7 +7163,16 @@ function toggleDiagramMaximized() {
  */
 function renderElementTitleHtml(record) {
   return '<h2>' + escapeHtml(record.name || record.id) + '</h2><span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>' +
-         renderElementTabsHtml(record);
+         renderHeaderBadgesHtml(record) + renderElementTabsHtml(record);
+}
+
+/**
+ * The styled stereotypes of the element, as in the tree and the panel, after its kind (nothing when it has none). The group
+ * is named, since the badges are read one after the other; the same markup as everywhere, so a style cannot be told twice.
+ */
+function renderHeaderBadgesHtml(record) {
+  const badges = stereotypeBadgesHtml(stereotypesOfRecord(record));
+  return badges ? '<span class="element-header-badges" role="group" aria-label="Stereotypes">' + badges + '</span>' : '';
 }
 
 /**
@@ -7647,6 +7778,12 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const text = item ? diagramItemText(item) : { title: id, sub: '' };
     return { id, reference: item ? item.reference : id, title: text.title, sub: text.sub, ghost: !!(item && item.ghost), collapsed: !!(item && item.collapsed), hidden: item && item.hidden ? item.hidden : 0 };
   };
+  // the links drawn between the same two boxes, in order: the ones of a pair of several say which of them they are (`data-nth`)
+  const drawnPerPair = new Map();
+  for (const edge of layout.edges || []) {
+    const link = edge.sections && edge.sections[0] ? result.links[parseInt(edge.id.slice(1), 10)] : null;
+    if (link) drawnPerPair.set(link.from + '\u0000' + link.to, (drawnPerPair.get(link.from + '\u0000' + link.to) || 0) + 1);
+  }
   let edges = '';
   let labels = '';
   for (const edge of layout.edges || []) {
@@ -7659,9 +7796,9 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const ends = ' data-from="' + escapeHtml(link.from) + '" data-to="' + escapeHtml(link.to) + '"';
     const pairKey = link.from + '\u0000' + link.to;
     if (!pairs.has(pairKey)) pairs.set(pairKey, { from: link.from, to: link.to, fromEnd: endOf(link.from), toEnd: endOf(link.to), links: [] });
-    pairs.get(pairKey).links.push(link);
+    const nth = pairs.get(pairKey).links.push(link) - 1;
     const caption = diagramLinkText(link);
-    const select = ends + layerAttribute + ' data-action="select-link"';
+    const select = ends + (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') + layerAttribute + ' data-action="select-link"';
     edges += '<g class="dg-link"' + select + ' tabindex="0" role="button" aria-pressed="false" aria-label="' +
       escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById)) + '</title>' +
       '<path class="dg-hit-edge" d="' + d + '"/>' +
@@ -8065,6 +8202,7 @@ function showDiagramScene(scene) {
   reconcileLinkSelection();
   markMapSelection();
   markLinkSelection();
+  revealSelectedLink(canvas);
   markMapScope();
   markInspection();
   restoreDiagramFocus(canvas);
@@ -8350,12 +8488,18 @@ async function exportDiagramPng() {
   }
 }
 
-/** The pair of boxes joined by a link becomes the selection (with the element of the diagram it was made on, in Elements). */
-function selectLink(from, to, layer) {
+/**
+ * The pair of boxes joined by a link becomes the selection (with the element of the diagram it was made on, in Elements).
+ * `nth`: which of the links of the pair was clicked, when there are several (`data-nth`); the selection keeps the
+ * relationships of that link (`via`, their keys), not the position, which a redraw may change: the panel marks them.
+ */
+function selectLink(from, to, layer, nth) {
   const canvas = document.getElementById('diagram-canvas');
   const focal = mapIsShown() || !canvas ? null : canvas.getAttribute('data-ref');
   const sel = { kind: 'link', key: from + ' -> ' + to, from, to, layer: layer || 'application', mode: 'view' };
   if (focal) sel.focal = focal;
+  const pair = inspectionLinkFor(sel);
+  if (pair && pair.links.length > 1 && Number.isInteger(nth) && pair.links[nth]) sel.via = relationshipsOfLink(pair.links[nth], pair).map(relationshipKeyOf);
   AppState.selection = sel;
 }
 
@@ -10243,7 +10387,9 @@ function handleAppClick(e) {
         const canvas = document.getElementById('diagram-canvas');
         if (canvas) takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
       }
-      selectLink(target.getAttribute('data-from'), target.getAttribute('data-to'), target.getAttribute('data-layer'));
+      const nth = target.getAttribute('data-nth');
+      selectLink(target.getAttribute('data-from'), target.getAttribute('data-to'), target.getAttribute('data-layer'), nth === null ? null : parseInt(nth, 10));
+      if (mapIsShown()) revealLinkAfterDrawing = { nth: Number.isInteger(parseInt(nth, 10)) ? parseInt(nth, 10) : null }; // the panel narrows the Map: the link must not end up behind it
       render();
       break;
     }

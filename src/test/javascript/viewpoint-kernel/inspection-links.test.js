@@ -99,7 +99,8 @@ test('the panel of a natural link: its ends, its label, its qualifiers and its t
   assert.match(right, /<h3>Selected link<\/h3>/);
   assert.match(right, /<span class="field-label">From<\/span><span class="field-value"><span class="inspection-end-name">Frontend<\/span>/);
   assert.match(right, /<span class="field-label">To<\/span><span class="field-value"><span class="inspection-end-name">API<\/span>/);
-  assert.match(right, /<div class="inspection-rel-label">calls<\/div><div class="inspection-rel-path">shop\.web\.frontend &rarr; shop\.web\.api<\/div>/);
+  // the declaring element is a button (run 0024); the destination is text
+  assert.match(right, /<div class="inspection-rel-label">calls<\/div><div class="inspection-rel-path"><button [^>]*data-ref="shop\.web\.frontend"[^>]*>shop\.web\.frontend<\/button> &rarr; shop\.web\.api<\/div>/);
   assert.match(right, /<span class="field-label">Qualifiers<\/span><span class="field-value"><span class="pill">REST<\/span>/);
   assert.match(right, /<span class="tag-key">audited<\/span>: <span class="tag-value">no<\/span>/);
   assert.ok(!right.includes('are grouped'), 'a single relationship is not a group');
@@ -121,8 +122,8 @@ test('a link that groups several relationships lists them all and says so', asyn
   const right = regions().right;
   assert.match(right, /2 relationships are grouped in this link\./);
   assert.equal((right.match(/class="inspection-rel"/g) || []).length, 2);
-  assert.match(right, /customer &rarr; shop\.web\.edge\.gateway/);
-  assert.match(right, /<div class="inspection-rel-label">browses with<\/div><div class="inspection-rel-path">customer &rarr; shop\.web\.frontend/);
+  assert.match(right, />customer<\/button> &rarr; shop\.web\.edge\.gateway/);
+  assert.match(right, /<div class="inspection-rel-label">browses with<\/div><div class="inspection-rel-path"><button [^>]*data-ref="customer"[^>]*>customer<\/button> &rarr; shop\.web\.frontend/);
 });
 
 test('a link to a folded box names the folded end and what it hides', async () => {
@@ -131,7 +132,7 @@ test('a link to a folded box names the folded end and what it hides', async () =
   const right = regions().right;
   assert.match(right, /is folded: it stands for 2 hidden elements\. Open it to see their relationships one by one\./);
   assert.match(right, /3 relationships are grouped in this link\./);
-  assert.match(right, /shop\.catalog\.service\.indexer &rarr; shop\.catalog\.db/, 'the declaring elements are the ones inside the folded box');
+  assert.match(right, />shop\.catalog\.service\.indexer<\/button> &rarr; shop\.catalog\.db/, 'the declaring elements are the ones inside the folded box');
 });
 
 test('a link to an unknown element says it points at nothing', async () => {
@@ -192,7 +193,7 @@ test('in Elements the element stays the subject: centre, tree row, URL and tabs 
   const { sandbox, state } = await page('elements', 'overview', 'shop.web.api');
   state.selection = linkSelection('shop.web.frontend', 'shop.web.api', { focal: 'shop.web.api' });
   assert.deepEqual(plain(sandbox.elementSelection()), { kind: 'element', key: 'shop.web.api', layer: 'application', mode: 'view' });
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview');
+  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview&link-from=shop.web.frontend&link-to=shop.web.api', 'the element, its tab, and now the link (run 0024)');
   assert.equal(sandbox.diagramTabShown(), true);
   assert.match(sandbox.renderCenterPanelHtml(), /diagram-canvas/);
   sandbox.expandAncestorsOf('shop.web.api');
@@ -201,11 +202,11 @@ test('in Elements the element stays the subject: centre, tree row, URL and tabs 
   assert.ok(sandbox.renderElementsPerspectiveHtml().right.includes('inspection-link'));
 });
 
-test('on the Map a link selection is no element: no subject, no Open in Elements, no hash ref', async () => {
+test('on the Map a link selection is no element: no subject, no Open in Elements, no ref in the address (the link is)', async () => {
   const { sandbox, state, regions } = await page('map', 'map', null);
   state.selection = linkSelection('customer', 'shop');
   assert.equal(sandbox.elementSelection().kind, 'link');
-  assert.equal(sandbox.currentRouteHash(), '/map');
+  assert.equal(sandbox.currentRouteHash(), '/map?link-from=customer&link-to=shop');
   const center = regions().center;
   assert.ok(!center.includes('element-header-subject') && !center.includes('open-as-diagram'));
 });
