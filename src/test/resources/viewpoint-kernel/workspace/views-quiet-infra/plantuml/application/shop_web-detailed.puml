@@ -19,7 +19,7 @@ person customer <<person>> <<atomic>> [
 
 Someone who buys things.
 ]
-rectangle mailer <<external>> <<changed>> <<system>> <<atomic>> [
+rectangle mailer <<changed>> <<external>> <<system>> <<atomic>> [
 **Mail Provider**
 ""[system]""
 

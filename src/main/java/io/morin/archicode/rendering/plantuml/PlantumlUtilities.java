@@ -5,7 +5,9 @@ import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.experimental.UtilityClass;
@@ -83,9 +85,49 @@ class PlantumlUtilities {
         return buf.toString();
     }
 
-    /** The stereotypes of the element, as the kernel tells them, then the ones of the way it is drawn. */
+    /**
+     * The styles of the stereotypes, one per stereotype, in a stable order (by name).
+     *
+     * <p>A stereotype named in both maps is one style: {@code by-tags} overrides {@code by-qualifiers} property by
+     * property, as the editor does. The order has no bearing on the look of a box (PlantUML resolves it from the order
+     * of the stereotypes of the box, see {@link #generateStereotypes}), it only keeps the output identical from one run
+     * to the next.
+     */
+    List<Map.Entry<String, Styles.Style>> stereotypeStyles(@NonNull Styles styles) {
+        val merged = new TreeMap<String, Styles.Style>(styles.getByQualifiers());
+        styles.getByTags().forEach((stereotype, style) -> merged.merge(stereotype, style, PlantumlUtilities::override));
+        return List.copyOf(merged.entrySet());
+    }
+
+    /** The properties {@code top} sets, over the ones {@code base} sets. */
+    private Styles.Style override(@NonNull Styles.Style base, @NonNull Styles.Style top) {
+        return Styles.Style.builder()
+            .backgroundColor(pick(top.getBackgroundColor(), base.getBackgroundColor()))
+            .lineColor(pick(top.getLineColor(), base.getLineColor()))
+            .lineStyle(Optional.ofNullable(top.getLineStyle()).orElse(base.getLineStyle()))
+            .lineThickness(Optional.ofNullable(top.getLineThickness()).orElse(base.getLineThickness()))
+            .roundCorner(Optional.ofNullable(top.getRoundCorner()).orElse(base.getRoundCorner()))
+            .fontColor(pick(top.getFontColor(), base.getFontColor()))
+            .fontStyle(pick(top.getFontStyle(), base.getFontStyle()))
+            // `false` is the same as unset here, so a style cannot switch off the shadow another one switched on
+            .shadowing(top.isShadowing() || base.isShadowing())
+            .build();
+    }
+
+    private String pick(String top, String base) {
+        return top == null || top.isBlank() ? base : top;
+    }
+
+    /**
+     * The stereotypes of the element, then the ones of the way it is drawn.
+     *
+     * <p>PlantUML merges the styles of the stereotypes of a box property by property and the <em>first</em> stereotype
+     * of the box wins, whatever the order of the style blocks. The editor's rule is that the <em>later</em> stereotype
+     * of the box wins (the kernel tells them in the order the rule needs: qualifiers, then the words of the tag), so the
+     * stereotypes of the element are written in reverse. The ones of the way it is drawn stay last, the weakest.
+     */
     String generateStereotypes(@NonNull Item item, @NonNull String... types) {
-        val stereotypes = new LinkedHashSet<>(item.getStereotypes());
+        val stereotypes = new LinkedHashSet<>(item.getStereotypes().reversed());
         stereotypes.addAll(List.of(types));
         return stereotypes
             .stream()
