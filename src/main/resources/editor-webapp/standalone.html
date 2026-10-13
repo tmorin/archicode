@@ -382,16 +382,6 @@
   .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
   /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
   .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .maximize-button { display: inline-flex; align-items: center; gap: 0.35rem; }
-  .maximize-button svg { flex: none; }
-  @media (max-width: 1250px) { .maximize-label { display: none; } }
-  /* in a header too narrow for all of them, the controls scroll inside it rather than push the page sideways, and tighten up first */
-  .diagram-view .element-header-actions { min-width: 0; flex-shrink: 1; overflow-x: auto; scrollbar-width: none; }
-  @media (max-width: 1000px) {
-    .element-header-actions { gap: 0.25rem; }
-    .element-header button { padding: 0 0.5rem !important; }
-    .element-header select { min-width: 5.5rem; max-width: 8rem; }
-  }
   /* the drawing paints itself with the theme's tokens */
   .dg-box { fill: var(--bg); stroke: var(--border); stroke-width: 1.25; }
   .dg-stack { fill: var(--panel-bg); }
@@ -445,6 +435,53 @@
   .element-header-label { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
   .element-header-label h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .element-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+
+  /* ---- The header of the centre panel holds together at any width of the panel ----
+     The width the header gets is not the window's: the user resizes the left panel. So the panel itself is the container
+     (.center-panel) and the states below are container queries on its content width (rem, to follow the font size):
+       full     more than 85rem   everything, with its words
+       compact  up to 85rem       the controls of a diagram header that carry an icon show only the icon (title and aria-label say the rest)
+       minimal  up to 60rem       Show on map / Open in Elements, Story and Download move into the "⋯" menu; Facet and Maximize stay
+       tight    up to 46rem       the header takes two rows, and its label wraps
+     Each limit is where the longest header (Elements on a diagram: name, kind, four tabs, all the controls) would leave its
+     name less than 8rem: measured in a browser with a 40-character name, so a longer name is cut with an ellipsis, a
+     shorter one has room to spare. The controls are in the page once, in every state: only their look changes, so the
+     actions, the ids and the focus do not. */
+  .center-panel { container: center / inline-size; }
+  .with-icon { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .with-icon svg { flex: none; }
+  .header-more, .header-overflow { display: contents; }
+  .header-more-button { display: none; }
+  @container center (max-width: 85rem) {
+    .diagram-view .element-header-actions { gap: 0.25rem; }
+    .diagram-view .with-icon { width: 2rem; justify-content: center; padding: 0 !important; }
+    .diagram-view .with-icon .control-label { display: none; }
+    .diagram-view .element-header select { min-width: 5.5rem; max-width: 8rem; }
+  }
+  @container center (max-width: 60rem) {
+    .header-more { display: block; position: relative; }
+    .header-more-button { display: inline-flex; align-items: center; justify-content: center; width: 2rem; padding: 0 !important; }
+    .header-more-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+    /* the menu hangs from the "⋯" button like the help from the "?" (same box); it is open when the button says so, closed otherwise */
+    .header-overflow { display: none; position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; flex-direction: column; align-items: stretch; min-width: 13rem; max-width: calc(100vw - 2rem); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+    .header-overflow[data-open="true"] { display: flex; }
+    .header-overflow > * + * { border-top: 1px solid var(--border); margin-top: 0.3rem; padding-top: 0.3rem; }
+    .header-overflow .button-group { display: flex; flex-direction: column; }
+    .header-overflow .button-group[aria-label^="Download"]::before { content: "Download"; padding: 0.1rem 1rem 0.2rem; font-size: 0.75rem; color: var(--muted); }
+    .header-overflow button, .header-overflow .button-group button { width: 100%; height: 2rem; justify-content: flex-start; gap: 0.6rem; margin: 0; padding: 0 1rem !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; text-align: left; }
+    .header-overflow button:hover:not(:disabled), .header-overflow button:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent) !important; }
+    .header-overflow .control-label { display: inline !important; }
+    .header-overflow .with-icon { width: 100%; justify-content: flex-start; padding: 0 1rem !important; }
+    /* above the chips of the map, which sit just under the header */
+    .element-header:has(.header-overflow[data-open="true"]) { z-index: 5; }
+  }
+  @container center (max-width: 46rem) {
+    .element-header { height: auto; min-height: var(--header-h); flex-wrap: wrap; gap: 0.4rem 0.75rem; padding-top: 0.4rem; padding-bottom: 0.4rem; }
+    .element-header-label { flex-wrap: wrap; row-gap: 0.25rem; }
+    .viewpoint-switch { flex-wrap: wrap; row-gap: 0.25rem; }
+    .element-header-actions { margin-left: auto; }
+  }
+
   .element-kind-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0.1rem 0.4rem; }
   .element-qualitative { margin-top: 0.5rem; }
   .field-row { display: flex; gap: 0.75rem; padding: 0.35rem 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); align-items: flex-start; }
@@ -2262,6 +2299,7 @@ function resetUiState() {
   diagramShownView = null;
   diagramSeq++; // a layout still being computed for the old folder is dropped when it ends
   helpOpen = false;
+  headerMenuOpen = false;
   pendingDeleteConfirmation = null;
   rawYamlEditDraft = null;
   lastRenderedViewKey = null;
@@ -6110,11 +6148,95 @@ function anyDiagramShown() {
 /** Hides (or brings back) the panels around the diagram. */
 function renderMaximizeButtonHtml() {
   // the label says the state, so the button is not also "pressed"; in a narrow header the icon stays and the word goes (the title has it)
-  const icon = (d) => '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const label = diagramMaximized ? 'Restore' : 'Maximize';
-  return '<button type="button" class="maximize-button" data-action="toggle-maximize" aria-label="' + label + '" title="' +
+  return '<button type="button" class="maximize-button with-icon" data-action="toggle-maximize" aria-label="' + label + '" title="' +
     (diagramMaximized ? 'Bring back the element tree (Esc)' : 'Hide the element tree to give the diagram all the room (M)') + '">' +
-    icon(diagramMaximized ? 'M6 3v3H3M10 3v3h3M6 13v-3H3M10 13v-3h3' : 'M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3') + '<span class="maximize-label">' + label + '</span></button>';
+    controlIconHtml(diagramMaximized ? 'M6 3v3H3M10 3v3h3M6 13v-3H3M10 13v-3h3' : 'M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3') + '<span class="control-label">' + label + '</span></button>';
+}
+
+/** A 16px outline icon of a header control (decorative: the control has its own label). */
+function controlIconHtml(path) {
+  return '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="' + path + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
+/** The icons of the header controls that lose their words in a narrow header. */
+const CONTROL_ICON_PATHS = {
+  map: 'M8 14.2s4.3-3.7 4.3-7.2a4.3 4.3 0 0 0-8.6 0c0 3.5 4.3 7.2 4.3 7.2zM8 8.3a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8z',
+  elements: 'M2.5 3.5h11v9h-11zM5 8h5.5M8.5 5.8 10.7 8l-2.2 2.2',
+  nameView: 'M2.5 2.5h5.2l6 6-5.2 5.2-6-6zM5.2 5.2h.01',
+  addToStory: 'M2.5 4h7M2.5 8h4.5M2.5 12h4.5M11.5 8.5v5M9 11h5'
+};
+
+/**
+ * The header of a diagram (Elements on a diagram tab, the Map). What is rarely used (`rare`: the way to the other
+ * perspective, Story, Download) sits in `.header-overflow`, which is part of the row in a wide header and the menu of
+ * the "⋯" button in a narrow one (see the container queries of the stylesheet). The same buttons in both cases: they
+ * are in the page once, so their data-actions, the download state and the focus need no second copy to keep in step.
+ * Facet and Maximize stay in the row at every width.
+ */
+function renderDiagramHeaderActionsHtml(openerHtml) {
+  return renderFacetSelectHtml() +
+    '<span class="header-more">' +
+      '<button type="button" class="header-more-button" data-action="toggle-header-menu" aria-haspopup="true" aria-expanded="' + headerMenuOpen + '" aria-controls="header-overflow" aria-label="More actions" title="More actions: ' + (openerHtml ? 'the other perspective, ' : '') + 'story, download">' +
+        '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="3" cy="8" r="1.6" fill="currentColor"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><circle cx="13" cy="8" r="1.6" fill="currentColor"/></svg></button>' +
+      '<div class="header-overflow" id="header-overflow" role="group" aria-label="More actions" data-open="' + headerMenuOpen + '">' +
+        openerHtml + renderStoryButtonsHtml() + renderDiagramDownloadHtml() +
+      '</div>' +
+    '</span>' +
+    renderMaximizeButtonHtml();
+}
+
+let headerMenuOpen = false;
+
+/**
+ * Opens or closes the "⋯" menu of a diagram header WITHOUT render(), for the reason `setHelpOpen` gives: a redraw would
+ * lose whatever was typed and not committed. Only aria-expanded and data-open change. `focusMenu`: the focus goes to the
+ * first control of the menu (opened from the keyboard); `focusButton`: it goes back to the "⋯" button (closed from the
+ * keyboard, or because an item of the menu was used: the dialog an item opens then gives the focus back to the button,
+ * which is on screen, rather than to an item that is hidden again).
+ */
+function setHeaderMenuOpen(open, options = {}) {
+  headerMenuOpen = open;
+  const button = document.querySelector('.header-more-button');
+  if (button && button.setAttribute) button.setAttribute('aria-expanded', String(open));
+  const menu = document.querySelector('.header-overflow');
+  if (menu && menu.setAttribute) menu.setAttribute('data-open', String(open));
+  if (open && options.focusMenu) {
+    const first = document.querySelector('.header-overflow button:not(:disabled)');
+    if (first && first.focus) first.focus();
+  } else if (!open && options.focusButton && button && button.focus) {
+    button.focus();
+  }
+}
+
+/**
+ * Escape closes the menu of the header, and only that (not the maximized diagram): registered in capture, like the help's.
+ * The state can be left over when the panel grew wide again (the "⋯" button is then not drawn, the menu is the inline row):
+ * the key is then not the menu's, and the leftover is cleared.
+ */
+function handleHeaderMenuKeydown(e) {
+  if (!headerMenuOpen || e.key !== 'Escape') return;
+  const button = document.querySelector('.header-more-button');
+  if (button && button.getClientRects && button.getClientRects().length === 0) { headerMenuOpen = false; return; }
+  if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+  else if (e.stopPropagation) e.stopPropagation();
+  if (e.preventDefault) e.preventDefault();
+  setHeaderMenuOpen(false, { focusButton: true });
+}
+document.addEventListener('keydown', handleHeaderMenuKeydown, true);
+
+/**
+ * Gives the focus to a control of the page. One that is not drawn (an item of the "⋯" menu while the menu is closed or
+ * the header is wide again) gives it to the "⋯" button instead, when there is one, so that it is not lost.
+ */
+function focusControl(control) {
+  let target = control;
+  if (control.getClientRects && control.getClientRects().length === 0 && control.closest) {
+    const more = control.closest('.header-more');
+    const button = more && more.querySelector ? more.querySelector('.header-more-button') : null;
+    if (button && button.getClientRects && button.getClientRects().length > 0) target = button;
+  }
+  target.focus({ preventScroll: true });
 }
 
 function toggleDiagramMaximized() {
@@ -7374,14 +7496,15 @@ function mountDiagramIfNeeded() {
 function renderElementDiagramHtml(record) {
   return '<div class="diagram-view">' + renderStoryBarHtml() +
     renderElementHeaderHtml(renderElementTitleHtml(record),
-      renderShowOnMapButtonHtml(record) + renderStoryButtonsHtml() + renderFacetSelectHtml() + renderDiagramDownloadHtml() + renderMaximizeButtonHtml()) +
+      renderDiagramHeaderActionsHtml(renderShowOnMapButtonHtml(record))) +
     renderDiagramCanvasHtml(record) + '</div>';
 }
 
 /** Elements → Map: the same element, in the whole workspace. */
 function renderShowOnMapButtonHtml(record) {
   if (!AppState.index.application.has(record.reference)) return '';
-  return '<button type="button" data-action="show-on-map" data-ref="' + escapeHtml(record.reference) + '" title="Draw the map of the workspace keeping only what touches this element">Show on map</button>';
+  return '<button type="button" class="with-icon" data-action="show-on-map" data-ref="' + escapeHtml(record.reference) + '" aria-label="Show on map" title="Draw the map of the workspace keeping only what touches this element">' +
+    controlIconHtml(CONTROL_ICON_PATHS.map) + '<span class="control-label">Show on map</span></button>';
 }
 
 /**
@@ -7397,7 +7520,7 @@ function renderMapPerspectiveHtml() {
     left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml()),
     center: '<div class="diagram-view">' + renderStoryBarHtml() +
       renderElementHeaderHtml('<h2>Map</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
-        renderOpenAsDiagramButtonHtml(record) + renderStoryButtonsHtml() + renderFacetSelectHtml() + renderDiagramDownloadHtml() + renderMaximizeButtonHtml()) +
+        renderDiagramHeaderActionsHtml(renderOpenAsDiagramButtonHtml(record))) +
       renderDiagramCanvasHtml(null, renderMapChipsHtml()) + '</div>',
     right: null,
     bottom: null
@@ -7407,7 +7530,8 @@ function renderMapPerspectiveHtml() {
 /** Map → Diagram: the selected element, on its own. */
 function renderOpenAsDiagramButtonHtml(record) {
   if (!record) return '';
-  return '<button type="button" data-action="open-as-diagram" data-ref="' + escapeHtml(record.reference) + '" title="Open this element in Elements, on its diagram: its relationships, on their own">Open in Elements</button>';
+  return '<button type="button" class="with-icon" data-action="open-as-diagram" data-ref="' + escapeHtml(record.reference) + '" aria-label="Open in Elements" title="Open this element in Elements, on its diagram: its relationships, on their own">' +
+    controlIconHtml(CONTROL_ICON_PATHS.elements) + '<span class="control-label">Open in Elements</span></button>';
 }
 
 /** The application elements, each with what the map does with it: Pin keeps only what touches it, Hide leaves it out. */
@@ -8411,8 +8535,10 @@ function renderStoryBarHtml() {
 /** In the header of a diagram: keep it as a view, or put it in a story. */
 function renderStoryButtonsHtml() {
   return '<span class="button-group" role="group" aria-label="Story">' +
-    '<button type="button" data-action="name-view" title="Keep this diagram as a named view, to put in several stories (kept in memory until Save all changes)">Name view…</button>' +
-    '<button type="button" data-action="add-to-story" title="Add this diagram to a story as a step">Add to story…</button>' +
+    '<button type="button" class="with-icon" data-action="name-view" aria-label="Name view…" title="Keep this diagram as a named view, to put in several stories (kept in memory until Save all changes)">' +
+      controlIconHtml(CONTROL_ICON_PATHS.nameView) + '<span class="control-label">Name view…</span></button>' +
+    '<button type="button" class="with-icon" data-action="add-to-story" aria-label="Add to story…" title="Add this diagram to a story as a step">' +
+      controlIconHtml(CONTROL_ICON_PATHS.addToStory) + '<span class="control-label">Add to story…</span></button>' +
   '</span>';
 }
 
@@ -8707,6 +8833,12 @@ function handleAppClick(e) {
   if (helpOpen && action !== 'toggle-help' && !(e.target.closest && e.target.closest('.help-menu'))) {
     setHelpOpen(false); // a click anywhere else closes the help — no redraw: the action of this click reads the fields as they are
   }
+  if (headerMenuOpen && action !== 'toggle-header-menu') {
+    // a click on an item of the "⋯" menu closes it and leaves the focus on the button (so a dialog the item opens gives it back there); a click elsewhere only closes it
+    const inMenu = e.target.closest && e.target.closest('.header-overflow');
+    if (!inMenu) setHeaderMenuOpen(false);
+    else if (target) setHeaderMenuOpen(false, { focusButton: true });
+  }
   if (!target) return;
   // what an action said (a line over the story bar, the step that can be put back) lasts until the next one
   if (action !== 'dialog-submit') storyBarNotice = null;
@@ -8716,6 +8848,10 @@ function handleAppClick(e) {
     case 'toggle-help':
       // e.detail is 0 for a click made with the keyboard (Enter, Space): then the focus goes along
       setHelpOpen(!helpOpen, helpOpen ? { focusButton: e.detail === 0 } : { focusMenu: e.detail === 0 });
+      break;
+    case 'toggle-header-menu':
+      // e.detail is 0 for a click made with the keyboard (Enter, Space): then the focus goes along
+      setHeaderMenuOpen(!headerMenuOpen, headerMenuOpen ? { focusButton: e.detail === 0 } : { focusMenu: e.detail === 0 });
       break;
     case 'open-folder':
       openFolder();
@@ -9628,7 +9764,7 @@ function render() {
   app.innerHTML = renderShellHtml();
   if (focusedControl) {
     const control = app.querySelector(focusedControl);
-    if (control && !control.disabled) control.focus({ preventScroll: true });
+    if (control && !control.disabled) focusControl(control);
   }
   if (focusedPlain) {
     const control = Array.from(app.querySelectorAll(focusedPlain.selector)).find((el) => {
@@ -9647,7 +9783,7 @@ function render() {
     dialogFocus.focus();
   } else if (pendingFocusSelector) {
     const wanted = app.querySelector(pendingFocusSelector);
-    if (wanted && !wanted.disabled) wanted.focus({ preventScroll: true });
+    if (wanted && !wanted.disabled) focusControl(wanted);
   }
   pendingFocusSelector = null;
   app.addEventListener('click', handleAppClick);
