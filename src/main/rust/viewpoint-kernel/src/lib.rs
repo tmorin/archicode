@@ -55,8 +55,17 @@
 //!   input : { workspace, actions: [{operator: "REMOVE", json_path}] }
 //!   output: { version, workspace, warnings } | { error }
 //! Version 2: the paths of a facet are standard JSONPath, `apply_facet` exists, and `warnings` may be in the output.
+//!
+//! A third entry point compares two plateaus of an architecture, `compare` (see `compare.rs` for the rules):
+//!   input : { base: {application: [element], technology: [element]}, target: {application: [..], technology: [..]} }
+//!   output: { version, elements: [union element + change, natures], relationships: [.. + change, natures],
+//!             changes: [row of the table], counts } | { error }
+//! It was added to version 2 and changes neither the input nor the output of the other entry points, so the version stays
+//! 2. The views that carry `change` (a later change of `compute`) are what will move it.
+mod compare;
 mod facet;
 
+pub use compare::compare_json;
 pub use facet::apply_facet_json;
 
 use serde::{Deserialize, Serialize};
@@ -1139,6 +1148,12 @@ pub unsafe extern "C" fn compute(ptr: *const u8, len: usize) -> usize {
 #[no_mangle]
 pub unsafe extern "C" fn apply_facet(ptr: *const u8, len: usize) -> usize {
     respond(ptr, len, apply_facet_json)
+}
+
+/// The comparison of two plateaus: see `compare_json`.
+#[no_mangle]
+pub unsafe extern "C" fn compare(ptr: *const u8, len: usize) -> usize {
+    respond(ptr, len, compare_json)
 }
 
 #[no_mangle]
