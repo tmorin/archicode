@@ -617,6 +617,99 @@ test('typing in a text field of the form lights Save all changes where it is, be
   run(page.sandbox, 'saveInFlight = false;');
 });
 
+// ============================================================ 8b. Putting an edit back
+
+/** A view as a person writes it: the five properties in the order the editor writes them, with a comment above them. */
+const FIVE_FILE = `header:
+  kind: archicode.morin.io/view
+  version: "1"
+content:
+  id: five
+  name: Five
+  viewpoint: detailed
+  layer: application
+  properties:
+    # kept
+    element: shop.web
+    hide-unlinked: true
+    labels: false
+    wrap: true
+`;
+const FIVE_TEXT_OPTIONS = { 'manifests/view.five.yaml': FIVE_FILE };
+
+test('an edit that is put back leaves the view as saved: not modified, nothing to save, the file text as on disk', async () => {
+  const page = await startMem(FIVE_TEXT_OPTIONS);
+  const view = viewOf(page, 'five');
+  await openView(page, view);
+  await tick(page, 'hide-unlinked', false);
+  await tick(page, 'show-labels', true);
+  assert.equal(page.sandbox.countUnsavedChanges(), 1);
+  assert.match(page.html() + page.right(), /modified-badge/);
+  assert.equal(page.state.manifestFiles.find((f) => f.relPath === 'manifests/view.five.yaml').rawText.includes('hide-unlinked'), false);
+  await tick(page, 'hide-unlinked', true);
+  assert.equal(page.sandbox.countUnsavedChanges(), 1, 'one of the two is still different');
+  await tick(page, 'show-labels', false);
+  assert.equal(page.sandbox.countUnsavedChanges(), 0, 'both are back: nothing to save');
+  assert.deepEqual(dirtyFiles(page), []);
+  assert.doesNotMatch(page.right(), /modified-badge/);
+  assert.equal(page.state.manifestFiles.find((f) => f.relPath === 'manifests/view.five.yaml').rawText, FIVE_FILE, 'the text is the one on disk, comment and all');
+  // the viewpoint too
+  await pickViewpoint(page, 'deep');
+  assert.equal(page.sandbox.countUnsavedChanges(), 1);
+  await pickViewpoint(page, 'detailed');
+  assert.equal(page.sandbox.countUnsavedChanges(), 0);
+});
+
+test('"as saved" is what the last save wrote, not what the folder was opened with; a view that is not on disk yet stays modified', async () => {
+  const page = await startMem(FIVE_TEXT_OPTIONS);
+  const view = viewOf(page, 'five');
+  await openView(page, view);
+  await pickViewpoint(page, 'deep');
+  await page.sandbox.saveAllChanges();
+  assert.equal(page.sandbox.countUnsavedChanges(), 0);
+  await pickViewpoint(page, 'detailed'); // the value of the file when it was opened, but not the saved one now
+  assert.equal(page.sandbox.countUnsavedChanges(), 1);
+  await pickViewpoint(page, 'deep');
+  assert.equal(page.sandbox.countUnsavedChanges(), 0, 'equal to what was saved');
+  // a new view: there is no saved text to come back to
+  const fresh = addView(page, { id: 'fresh', name: 'Fresh', viewpoint: 'detailed', properties: { element: 'shop.web' } });
+  await openView(page, fresh);
+  await tick(page, 'show-labels', false);
+  await tick(page, 'show-labels', true);
+  assert.deepEqual(dirtyFiles(page), ['manifests/view.fresh.yaml'], 'its file is not on disk yet');
+});
+
+test('a property that an edit writes again goes back where the editor writes it, not after the ones that stayed', async () => {
+  const page = await startMem(FIVE_TEXT_OPTIONS);
+  const view = viewOf(page, 'five');
+  await openView(page, view);
+  await tick(page, 'hide-unlinked', false);
+  await tick(page, 'show-labels', true); // the two defaults go
+  await page.sandbox.saveAllChanges();
+  assert.deepEqual(Object.keys(plain(view.properties)), ['element', 'wrap']);
+  await tick(page, 'hide-unlinked', true);
+  await tick(page, 'show-labels', false);
+  assert.deepEqual(Object.keys(plain(view.properties)), ['element', 'hide-unlinked', 'labels', 'wrap'], 'the order of the original file');
+  await page.sandbox.saveAllChanges();
+  assert.equal(page.mem.files.get('manifests/view.five.yaml').text, FIVE_FILE, 'the file as it was');
+});
+
+test('a key the editor does not know keeps its place, and a known one is written before the first that follows it in the order of the editor', async () => {
+  const page = await startMem();
+  const view = viewOf(page, 'api_view');
+  const properties = view.properties;
+  const put = (key, value) => run(page.sandbox, 'putViewProperty').call(null, properties, key, value);
+  Object.keys(properties).forEach((key) => delete properties[key]);
+  Object.assign(properties, { facet: 'f', custom: 1, wrap: true });
+  put('element', 'x');
+  put('labels', false);
+  put('hide-unlinked', true);
+  put('wrap', false); // already there: its place stays
+  put('mystery', 2); // unknown: last
+  assert.deepEqual(Object.keys(plain(properties)), ['element', 'facet', 'custom', 'hide-unlinked', 'labels', 'wrap', 'mystery']);
+  assert.equal(properties.wrap, false);
+});
+
 // ============================================================ 9. Source pins
 
 test('the form is wired: a change listener on the page, a handler for each control, the page toolbar edits the view', () => {

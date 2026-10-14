@@ -2174,7 +2174,7 @@ function createInitialAppState() {
     folder: null, // { handle: FileSystemDirectoryHandle, name: string } | null
     permissionState: 'none', // 'granted' | 'needs-click' | 'none'
     workspace: null, // { application: {elements}, technology: {elements}, settings, styles, formatters, settingsDirty, settingsLastKnownDiskModified } | null
-    manifestFiles: [], // Array<{ relPath, rawText, header, content, error, dirty, existedOnDisk, lastKnownDiskModified }>
+    manifestFiles: [], // Array<{ relPath, rawText, header, content, error, dirty, existedOnDisk, lastKnownDiskModified, savedRawText }>
     unreadManifestFiles: [], // relPaths of the files the CLI reads as manifests (.toml, .json) and the editor does not: only YAML is
     index: { application: new Map(), technology: new Map() },
     relationshipStats: { total: 0, dangling: 0 },
@@ -2646,7 +2646,8 @@ async function loadWorkspace(dirHandle) {
       }
       manifestFiles.push({
         relPath, rawText, header, content, error,
-        dirty: false, existedOnDisk: true, lastKnownDiskModified
+        dirty: false, existedOnDisk: true, lastKnownDiskModified,
+        savedRawText: rawText // what the file holds on disk, as far as this editor knows: an edit that restores it is no change
       });
     }
   }
@@ -4380,6 +4381,7 @@ async function performSave() {
       if (live) {
         live.existedOnDisk = true;
         live.lastKnownDiskModified = modified;
+        live.savedRawText = writtenText;
         if (live.rawText === writtenText) { // only what was written is clean: a later edit stays to be saved
           live.dirty = false;
           clearDirtyReferencesForFile(f.relPath); // UX review follow-up
@@ -4482,7 +4484,7 @@ async function reloadManifestFile(relPath) {
   clearDirtyReferencesForFile(relPath); // before the index is rebuilt: it still knows this file's current elements
   AppState.manifestFiles = AppState.manifestFiles.map((f) =>
     f.relPath === relPath
-      ? { relPath, rawText, header, content, error, dirty: false, existedOnDisk: true, lastKnownDiskModified: lastModified }
+      ? { relPath, rawText, header, content, error, dirty: false, existedOnDisk: true, lastKnownDiskModified: lastModified, savedRawText: rawText }
       : f
   );
   if (rawYamlEditDraft && rawYamlEditDraft.relPath === relPath) rawYamlEditDraft = null;
@@ -9508,7 +9510,8 @@ function markEntryChanged(entry) {
   const owner = entryOwners.get(entry);
   if (!owner) { markWorkspaceYamlChanged(); return; }
   owner.rawText = reserializeManifestFile(owner);
-  owner.dirty = true;
+  // an edit that puts everything back leaves the file as it is on disk: it is not modified (a file that is not on disk yet always is)
+  owner.dirty = !(owner.existedOnDisk && typeof owner.savedRawText === 'string' && owner.rawText === owner.savedRawText);
   saveStatus = { state: 'idle' };
 }
 
@@ -9827,6 +9830,27 @@ function shownTextsOf(view) {
 }
 
 /** A text of a view: the default of its kind of diagram is no choice, so it is not kept (the canonical form of the view). */
+const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'facet', 'hide-unlinked'].concat(DIAGRAM_SHOW_NAMES);
+
+/**
+ * Writes a property of a view. One the view already has keeps its place; one it has not (a default that an earlier edit took out, written again)
+ * goes where the editor writes it, before the first property that follows it in that order, so that a property put back is not moved to the end
+ * of the file. A key the editor does not know goes last.
+ */
+function putViewProperty(properties, key, value) {
+  if (Object.prototype.hasOwnProperty.call(properties, key)) { properties[key] = value; return; }
+  const rank = VIEW_PROPERTY_ORDER.indexOf(key);
+  const keys = Object.keys(properties);
+  const before = rank < 0 ? undefined : keys.find((other) => VIEW_PROPERTY_ORDER.indexOf(other) > rank);
+  if (before === undefined) { properties[key] = value; return; }
+  const kept = keys.map((other) => [other, properties[other]]);
+  for (const other of keys) delete properties[other];
+  for (const [other, current] of kept) {
+    if (other === before) properties[key] = value;
+    properties[other] = current;
+  }
+}
+
 function setViewShow(view, name, value) {
   const properties = view.properties;
   if (value === DIAGRAM_SHOW_DEFAULTS[viewKindOf(view)][name]) {
@@ -9835,7 +9859,7 @@ function setViewShow(view, name, value) {
     return true;
   }
   if (properties[name] === value) return false;
-  properties[name] = value;
+  putViewProperty(properties, name, value);
   return true;
 }
 
@@ -9847,7 +9871,7 @@ function setViewHideUnlinked(view, value) {
     return true;
   }
   if (properties['hide-unlinked'] === true) return false;
-  properties['hide-unlinked'] = true;
+  putViewProperty(properties, 'hide-unlinked', true);
   return true;
 }
 
@@ -9859,7 +9883,7 @@ function setViewFacet(view, name) {
     return true;
   }
   if (properties.facet === name) return false;
-  properties.facet = name;
+  putViewProperty(properties, 'facet', name);
   return true;
 }
 
@@ -9871,7 +9895,7 @@ function setViewElement(view, reference) {
   if (!wanted) return refuseViewEdit(view, 'element', 'Type the reference of an element.', reference);
   if (!AppState.index[layer].has(wanted)) return refuseViewEdit(view, 'element', '“' + wanted + '” is not an element of the ' + layer + ' layer.', wanted);
   if (view.properties.element === wanted) return false;
-  view.properties.element = wanted;
+  putViewProperty(view.properties, 'element', wanted);
   return true;
 }
 
@@ -9897,12 +9921,12 @@ function setViewViewpoint(view, viewpoint) {
     const element = properties.element;
     const pinned = typeof element === 'string' && element && viewLayerOf(view) === 'application' ? [element] : [];
     delete properties.element;
-    if (pinned.length) properties.pinned = pinned;
+    if (pinned.length) putViewProperty(properties, 'pinned', pinned);
     view.layer = 'application';
   } else if (viewpoint !== 'map' && view.viewpoint === 'map') {
     const first = stringList(properties.pinned).find((reference) => AppState.index.application.has(reference)); // the first pin that is still an element, in the order of the file
     for (const key of ['pinned', 'hidden', 'opened']) delete properties[key];
-    if (first) properties.element = first; else delete properties.element;
+    if (first) putViewProperty(properties, 'element', first); else delete properties.element;
     view.layer = 'application';
   }
   view.viewpoint = viewpoint;
@@ -9921,7 +9945,7 @@ function setViewListItem(view, list, reference, add) {
     if (!wanted) return false;
     if (!AppState.index.application.has(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is not an element of the application layer.', wanted);
     if (items.includes(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is already there.', wanted);
-    view.properties[list] = items.concat(wanted);
+    putViewProperty(view.properties, list, items.concat(wanted));
     return true;
   }
   if (!items.includes(wanted)) return false;
