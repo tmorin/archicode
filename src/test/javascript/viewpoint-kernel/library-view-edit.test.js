@@ -559,6 +559,64 @@ test('a text left for another control is applied and lights Save at once, and re
   assert.deepEqual(focusAsked, ['#view-edit-element'], 'and the field keeps the focus');
 });
 
+test('a text left by a pointer press is redrawn a moment later even when the browser says the focus is on the body (Firefox): the click on Save must land', async () => {
+  const page = await startMem();
+  const view = viewOf(page, 'api_view');
+  await openView(page, view);
+  let renders = 0;
+  const focusAsked = [];
+  page.sandbox.document.getElementById('app').querySelector = (selector) => { focusAsked.push(selector); return null; };
+  run(page.sandbox, 'globalThis.__render = render; render = () => { __count(); __render(); };');
+  page.sandbox.__count = () => { renders++; };
+  const field = { id: 'view-edit-element', 'data-view-field': 'element' };
+  const text = (value) => control(field, { tagName: 'INPUT', type: 'text', value, contains: (node) => node === field });
+  const saveButton = { tagName: 'BUTTON' };
+  page.sandbox.document.activeElement = page.sandbox.document.body; // what Firefox reports while the field is losing the focus
+  // the button of Save is pressed: the field is left before the click is made
+  page.sandbox.notePointer({ type: 'pointerdown', target: saveButton });
+  page.sandbox.handleAppChange({ target: text('shop.web') });
+  assert.equal(view.properties.element, 'shop.web', 'the text is applied');
+  assert.equal(renders, 0, 'but the page is not drawn again under the pointer: the button that is being pressed stays');
+  assert.deepEqual(focusAsked, [], 'and the field does not take the focus back');
+  page.sandbox.notePointer({ type: 'pointerup', target: saveButton });
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  assert.equal(renders, 1, 'it is drawn a moment later');
+  // the same text committed with Enter, the pointer being up: at once, the field keeps the focus
+  page.sandbox.handleAppChange({ target: text('shop') });
+  assert.equal(renders, 2);
+  assert.deepEqual(focusAsked, ['#view-edit-element']);
+  // a press on the field itself is not leaving it
+  page.sandbox.notePointer({ type: 'pointerdown', target: field });
+  page.sandbox.handleAppChange({ target: text('shop.web') });
+  assert.equal(renders, 3);
+  page.sandbox.notePointer({ type: 'pointercancel', target: field });
+  // the press and the release are noted on the page itself
+  assert.match(HTML, /document\.addEventListener\('pointerdown', notePointer, true\);/);
+  assert.match(HTML, /document\.addEventListener\('pointerup', notePointer, true\);/);
+});
+
+test('typing in a text field of the form lights Save all changes where it is, before the field is left: a disabled button takes no click', async () => {
+  const page = await startMem();
+  await openView(page, viewOf(page, 'api_view'));
+  const save = { disabled: true, title: 'No changes to save.' };
+  page.sandbox.document.querySelector = (selector) => (selector === '[aria-label="Changes"] [data-action="save-all-changes"]' ? save : null);
+  const field = (tagName, type, closes) => ({ tagName, type, id: 'x', matches: () => false, closest: (selector) => (closes && /data-view-field/.test(selector) ? {} : null) });
+  page.sandbox.handleAppInput({ target: field('INPUT', 'text', false) });
+  assert.equal(save.disabled, true, 'a text elsewhere is not the form of a view');
+  page.sandbox.handleAppInput({ target: field('INPUT', 'checkbox', true) });
+  assert.equal(save.disabled, true, 'a checkbox applies at once: nothing to light early');
+  page.sandbox.handleAppInput({ target: field('INPUT', 'text', true) });
+  assert.equal(save.disabled, false, 'the first character typed in a field of the form of a view');
+  assert.match(save.title, /Applies what you typed/);
+  assert.equal(page.sandbox.countUnsavedChanges(), 0, 'nothing is applied before the field is left');
+  // a save that is running keeps its button disabled
+  save.disabled = true;
+  run(page.sandbox, 'saveInFlight = true;');
+  page.sandbox.handleAppInput({ target: field('INPUT', 'text', true) });
+  assert.equal(save.disabled, true);
+  run(page.sandbox, 'saveInFlight = false;');
+});
+
 // ============================================================ 9. Source pins
 
 test('the form is wired: a change listener on the page, a handler for each control, the page toolbar edits the view', () => {
