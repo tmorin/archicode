@@ -131,6 +131,66 @@ The editor reports the same thing, in the same words (see <<editor-folders>>).
 
 Incorporating workspaces and manifests into your architectural workflow within ArchiCode empowers you with an efficient and organized foundation for your projects. Let's explore further as we navigate through the various dimensions of the ArchiCode domain.
 
+[[plateaus]]
+==== Plateaus
+
+An architecture goes through states: how it is today, how it should be next year. A _plateau_ is one of these states, kept as a complete folder of manifests. `settings.plateaus` lists the plateaus of the architecture in one `workspace.yaml`, and the commands and the editor draw the one you choose.
+
+.A workspace with two plateaus: `workspace.yaml`
+[source,yaml]
+----
+include::examples/domain_plateaus/workspace.yaml[]
+----
+
+.The folders of that workspace
+----
+- project_dir/
+    - plateaus/
+        - 10_as-is/ <1>
+            - customer.yaml
+            - shop.yaml
+        - 20_to-be/ <2>
+            - customer.yaml
+            - shop.yaml
+    - workspace.yaml
+----
+<1> The manifests of the plateau `as-is`.
+<2> The manifests of the plateau `to-be`: a complete folder, not a list of differences.
+
+A plateau has these keys:
+
+[cols="1,3"]
+|===
+| `id` | Required. What `--plateau` and `current` name. Unique; letters, digits, `.`, `_` and `-`, starting with a letter, a digit or `_`, because the identifier is also used in folder names.
+| `path` | Required. The folder of the manifests, relative to the folder of `workspace.yaml` and below it: no `..` segment, not absolute (no leading `/` or `\`, no drive letter). Unique among the plateaus. `.`, the folder of `workspace.yaml` itself, is accepted for a single plateau and refused with several, because it would hold the others.
+| `name` | Optional. The name shown to people; the `id` when absent.
+| `horizon` | Optional. A free-text label for when the plateau is meant to hold, such as `2027-Q1`. ArchiCode never parses nor interprets it.
+| `from` | Reserved. It will mean "an increment on top of another plateau" in a later version and is refused for now, with a message.
+|===
+
+The list is ordered, and the order is the one you wrote: it is the order of the states, the last one is the latest. The numbers in the names of the folders (`10_`, `20_`) are only there to sort them in a file browser; they mean nothing to ArchiCode. `settings.current` is optional and names the plateau that is drawn when none is asked for; without it, it is the last plateau of the list. A reference is declared once *in a plateau* (see <<duplicate-references>>); the same reference in two plateaus is no duplicate, since it is the same element at two moments.
+
+To draw another plateau than the default one, the commands that load a workspace (`views generate`, `query views` and `query graph`) take `--plateau <id>`; the editor has a selector in its header (see <<editor-plateaus>>).
+
+[source,shell]
+----
+archicode views generate --plateau as-is
+----
+
+The views are written in the same folders as for a workspace without plateaus (`views`, and one folder per facet): generating another plateau writes over them, so give each its own folder with `--output` when you keep several.
+
+`settings.manifests.paths` stays the short form of a workspace that has a single set of manifests, a workspace with one implicit plateau. Writing both `manifests.paths` and `plateaus` is an error: with plateaus, remove `manifests.paths` and give each plateau its own `path`. The ordered list of plateaus is not a set: the order of `settings.manifests.paths` has never mattered, the order of `settings.plateaus` does.
+
+----
+the plateau `to-be` has a `from`: it is reserved for a later version of ArchiCode, [...]
+the path `../shared` of the plateau `to-be` contains `..`: it must be a folder below the one of workspace.yaml, [...]
+the plateaus `as-is` and `to-be` share the path `plateaus/10_as-is`: each plateau needs a folder of its own
+----
+
+Every rule is checked before anything is read or written, and every problem is reported, one per line.
+
+IMPORTANT: *Breaking change.* A path of `settings.manifests.paths` may no longer leave the folder of the workspace (`../shared`) nor be absolute (`/srv/manifests`, `C:\data`): the same rule as for the folder of a plateau, so that one folder holds a whole workspace, and so that the editor, which only reaches the folder it opened, reads what the command line reads. A workspace that used such a path stops with an error that says which path and what to change: move the folder below `workspace.yaml`, or move `workspace.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected, and neither is a workspace without `plateaus`: it is read, and generates its views, exactly as before.
+
 === Application Layer
 
 // - In ArchiCode, the Application Layer matches the Application Layer of ArchiMate.
@@ -592,7 +652,7 @@ ArchiCode embraces configurability as a cornerstone of its design, affording you
 
 - Tailored View Generation: ArchiCode's configurability extends to the very essence of view generation. You have the ability to redefine the output folder for generated views, as well as customize the labels utilized in the built-in viewpoints. This level of customization ensures that the generated views align harmoniously with your architectural narrative.
 
-The `settings` also accept a `name` for the workspace. It has no default, so the snippet below does not show it: see <<workspace>>.
+The `settings` also accept a `name` for the workspace (see <<workspace>>), and the `plateaus` of the architecture and the `current` one (see <<plateaus>>). They have no default, so the snippet below does not show them.
 
 .The default settings of a workspace
 [source,yaml]
@@ -735,6 +795,15 @@ A workspace can have a name, the optional `name` key of its `settings` (see <<wo
 
 When the workspace has a name, the editor shows it at the top left of the window, in place of the name of the folder, in the title of the page, in the <<editor-folders,list of remembered folders>> and in the "Opening" messages, which use the name the workspace had when its folder was last opened; the name of the folder is then the tooltip of the name. Without a name, or with a blank one, the editor shows the name of the folder, as before, and an emptied *Name* is left out of the file.
 
+[[editor-plateaus]]
+=== Plateaus
+
+When the workspace lists `settings.plateaus` (see <<plateaus>>), the header of the editor has a *Plateau* selector, a group of buttons like the one of the perspectives, in the order of the file: the pressed button is the plateau that Elements, the Map, the Library and the diagrams show. The editor opens the plateau that `settings.current` names, else the last of the list; the plateau you choose is remembered by this browser for this folder (like the sizes of the panels, not in the workspace), and is the one it opens next time as long as the workspace still has it. The buttons show the name of each plateau and its `horizon`, and a tooltip gives its id and its folder.
+
+Choosing another plateau reads its folder from the disk, so the editor asks first when something is not saved. The editor opens the folder of `workspace.yaml`, and that one folder covers every plateau below it: a manifest is saved into the folder of the plateau it was read from, and a new element is written to the folder of the plateau that is drawn. *Settings* lists the plateaus in place of the folders of the manifests: they are written in `workspace.yaml`, and `archicode plateau add` (see <<plateau-add>>) adds one. A save of the settings leaves `plateaus` and `current` exactly as they were written, comments included, and does not add `manifests.paths`.
+
+A `workspace.yaml` that breaks a rule of the plateaus, or a `manifests.paths` that leaves the folder, is not opened: the editor shows the same messages as the command line. A plateau whose folder does not exist is drawn empty, and the header says so.
+
 [[editor-theme]]
 === Theme
 
@@ -821,6 +890,14 @@ The "Generate Views" command within ArchiCode serves as a dynamic catalyst for c
 
 The command offers also customization Capabilities:
 
+- Plateau: when the workspace lists plateaus (see <<plateaus>>), `--plateau <id>` chooses the one that is read. Without it, it is the plateau `settings.current` names, else the last one. The views are written in the same folders in any case.
+
+.Generate Views - Plateau
+[source,shell]
+----
+archicode views generate --plateau to-be
+----
+
 - Selective View Rendering: The power of customization lies in your hands. The command can be tailored to render specific views based on their unique identifier, providing you with control over the scope of generated visualizations.
 
 .Generate Views - Selective View Rendering
@@ -876,6 +953,8 @@ The "Query Views" command within ArchiCode offers a versatile toolkit for precis
 
 The command offers also customization Capabilities:
 
+- Plateau: like `views generate`, the command takes `--plateau <id>` to choose the plateau that is read (see <<plateaus>>); so does `query graph`.
+
 - Dynamic Filtering: The command harnesses the power of JSON Path, enabling you to apply intricate filters that delve deep into the View model. This dynamic filtering mechanism facilitates targeted extraction of specific architectural insights.
 
 .Query Views - Dynamic Filtering
@@ -899,6 +978,22 @@ archicode query views -f toml
 ----
 archicode query views -f custom -t '$d.e("$.[*].id")'
 ----
+
+[[plateau-add]]
+=== Add a plateau
+
+.Add a plateau - The command line
+[source,shell]
+----
+archicode plateau add to-be-2028 --from to-be --name "To be 2028" --horizon 2028-Q1
+----
+
+Adds a plateau to the workspace: the folder of the plateau `--from` is copied (all of it, sub-folders included) into a new folder, and the new plateau is appended to the end of `settings.plateaus` in `workspace.yaml`. The file is edited where the list is, by inserting the lines of the new plateau in the style of the ones that are there: its comments, the order of its keys and its layout stay as you wrote them. The command stops, and writes nothing, if the file cannot be edited that way (a `plateaus` list written on one line, for example) and says so.
+
+- `--from`: the id of the plateau to copy. Required. A workspace with no `settings.plateaus` has nothing to copy from: list its folder as the first plateau by hand.
+- `--name` and `--horizon`: the optional `name` and `horizon` of the new plateau.
+- `--path`: the folder of the new plateau, below the folder of the workspace (the rules of the `path` of a plateau apply). By default the new folder is next to the copied one and named after the id. When the copied folder starts with a number, as `plateaus/10_as-is`, the new one gets the next multiple of ten above the highest number among the plateau folders that share its parent, so `plateaus/10_as-is` and `plateaus/20_to-be` give `plateaus/30_to-be-2028`; a folder with no number gives a folder with none. The number only sorts the folders; the order of the list is the one that counts.
+- The command refuses an `id` that exists, a folder that exists already (nothing is ever written over), a folder inside the copied one, and the plateau `.`.
 
 === Generate JSON Schemas
 

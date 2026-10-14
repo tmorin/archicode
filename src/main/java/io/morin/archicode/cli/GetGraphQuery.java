@@ -42,6 +42,9 @@ public class GetGraphQuery implements Runnable {
     @CommandLine.ParentCommand
     QueryGroup queryGroup;
 
+    @CommandLine.Mixin
+    PlateauOption plateauOption = new PlateauOption();
+
     @Inject
     QueryOutputWriter queryOutputWriter;
 
@@ -54,7 +57,11 @@ public class GetGraphQuery implements Runnable {
     @SneakyThrows
     @Override
     public void run() {
-        val workspace = workspaceFactory.create(queryGroup.archiCode.workspaceFilePath.toAbsolutePath());
+        val workspace = workspaceFactory.create(
+            queryGroup.archiCode.workspaceFilePath.toAbsolutePath(),
+            null,
+            plateauOption.plateauId
+        );
 
         val graph = buildGraph(workspace);
 

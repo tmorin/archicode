@@ -93,7 +93,7 @@ wave_manifest:
       slug: plateaus-setting
       phase: P1
       depends_on: []
-      run: null
+      run: '0035'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/resource/workspace/**'
@@ -182,7 +182,7 @@ wave_manifest:
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
 | W-1 | 0034 | `duplicate-reference-error` | — | learn at once, with the two file names, that a reference is declared twice | Today a reference declared twice is silent and the winner depends on the hash of the content (two identical copies merge; two different ones give an arbitrary winner); the editor keeps the last file in alphabetical order and shows both in its tree. Make the loader of the CLI fail with an error that names the reference and both files, and make the editor report the same instead of choosing. The check applies to one set of manifests (one plateau once W-2 lands). | A test with two different copies and one with two identical ones fail with the message naming both files, in the CLI loader and in the editor; a workspace without duplicates generates the same files as before; `./mvnw verify` and `node --test` pass |
-| W-2 | — | `plateaus-setting` | — | list the plateaus of an architecture in one workspace.yaml and draw the one I choose | `settings.plateaus`: an ordered list of `{id, name, horizon, path}` (`horizon` optional, free text, never parsed), `path` mandatory, relative, below the root, no `..`, no leading `/`, unique, `.` refused with several plateaus; `current` (last by default); `--plateau`; `from` refused with a message; `manifests.paths` stays as the sugar of one implicit plateau, with the same ban on `..` and absolute paths (a breaking change, said in the manual), an error if both keys are present; `plateaus` is a `List`, not a `Set`; `plateau add <id> --from <id>` copies a folder and adds the entry; the CLI loader, the editor's `loadWorkspace` (a root handle covers all plateaus) and a minimal plateau selector in the editor; saving keeps the comments of `workspace.yaml`. | The cases of the P1 gate refused with a clear message, each tested; a workspace without `plateaus` byte-identical; the plateau selector seen on the real page; the manual's settings section updated; `./mvnw verify` and `node --test` pass |
+| W-2 | 0035 | `plateaus-setting` | — | list the plateaus of an architecture in one workspace.yaml and draw the one I choose | `settings.plateaus`: an ordered list of `{id, name, horizon, path}` (`horizon` optional, free text, never parsed), `path` mandatory, relative, below the root, no `..`, no leading `/`, unique, `.` refused with several plateaus; `current` (last by default); `--plateau`; `from` refused with a message; `manifests.paths` stays as the sugar of one implicit plateau, with the same ban on `..` and absolute paths (a breaking change, said in the manual), an error if both keys are present; `plateaus` is a `List`, not a `Set`; `plateau add <id> --from <id>` copies a folder and adds the entry; the CLI loader, the editor's `loadWorkspace` (a root handle covers all plateaus) and a minimal plateau selector in the editor; saving keeps the comments of `workspace.yaml`. | The cases of the P1 gate refused with a clear message, each tested; a workspace without `plateaus` byte-identical; the plateau selector seen on the real page; the manual's settings section updated; `./mvnw verify` and `node --test` pass |
 
 **Gate:** the criteria of the manifest for P1.
 

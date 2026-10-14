@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web site"
+      relationships:
+        - destination: "shop.payments"
+          label: "pays with"
+    - kind: "container"
+      id: "payments"
+      name: "Payments"

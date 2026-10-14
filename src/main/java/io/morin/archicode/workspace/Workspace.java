@@ -38,6 +38,13 @@ public class Workspace {
     @Builder.Default
     boolean hideUnlinked = false;
 
+    /**
+     * The plateau this workspace was read from, or null for a workspace without plateaus (one set of manifests).
+     */
+    @JsonIgnore
+    @Getter
+    io.morin.archicode.resource.workspace.Settings.Plateau plateau;
+
     @Delegate
     io.morin.archicode.resource.workspace.Workspace resources;
 

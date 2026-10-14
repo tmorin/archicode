@@ -29,8 +29,18 @@ public class ManifestParser {
     /**
      * Read the manifests: the elements, by category, and the views and the stories that are manifests of their own.
      */
-    @SneakyThrows
     public Parsed parse(Path wksDir, Set<String> manifestsDirs) {
+        return parse(wksDir, manifestsDirs, null);
+    }
+
+    /**
+     * Read the manifests, leaving the workspace file out when a folder is the one it is in (a plateau, or a manifests
+     * folder, written as {@code .}).
+     *
+     * @param workspaceFile the workspace file, or null
+     */
+    @SneakyThrows
+    public Parsed parse(Path wksDir, Set<String> manifestsDirs, Path workspaceFile) {
         val map = new HashMap<Class<?>, Set<Candidate>>();
         val views = new LinkedHashSet<View>();
         val stories = new LinkedHashSet<Story>();
@@ -55,6 +65,12 @@ public class ManifestParser {
             for (Path manifestFile : Arrays.stream(manifestFilesAsArray)
                 .map(File::toPath)
                 .collect(Collectors.toSet())) {
+                if (
+                    workspaceFile != null &&
+                    manifestFile.toAbsolutePath().normalize().equals(workspaceFile.toAbsolutePath().normalize())
+                ) {
+                    continue; // the workspace is not a manifest of itself
+                }
                 log.info("parse the manifest {}", manifestFile);
 
                 val mapper = mapperFactory.create(manifestFile);

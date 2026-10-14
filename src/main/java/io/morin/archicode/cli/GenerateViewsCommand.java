@@ -44,6 +44,9 @@ public class GenerateViewsCommand implements Runnable {
     @Inject
     MapperFactory mapperFactory;
 
+    @CommandLine.Mixin
+    PlateauOption plateauOption = new PlateauOption();
+
     @CommandLine.Option(
         names = { "-i", "--view" },
         paramLabel = "VIEW_ID",
@@ -106,7 +109,11 @@ public class GenerateViewsCommand implements Runnable {
     public void run() {
         Logger.getGlobal().setLevel(Level.INFO);
 
-        val workspace = workspaceFactory.create(viewsGroup.archiCode.workspaceFilePath.toAbsolutePath(), viewsDirPath);
+        val workspace = workspaceFactory.create(
+            viewsGroup.archiCode.workspaceFilePath.toAbsolutePath(),
+            viewsDirPath,
+            plateauOption.plateauId
+        );
 
         if (workspace.getSettings().getFacets().isGlobalEnabled()) {
             renderWorkspace(workspace);

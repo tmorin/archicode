@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web site"
