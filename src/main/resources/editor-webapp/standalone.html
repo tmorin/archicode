@@ -10314,8 +10314,27 @@ function selectOnLibraryPage(selection) {
   const canvas = document.getElementById('diagram-canvas');
   if (canvas && diagramScale === 'auto') takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
   render();
-  const section = document.querySelector('.library-selection'); // the view comes first in the panel: the selection is brought into sight
-  if (section && section.scrollIntoView) section.scrollIntoView({ block: 'nearest' });
+  bringLibrarySelectionIntoSight();
+}
+
+/**
+ * The view comes first in the panel and the selection after it. The reader stays where he is when the top of the selection is already in the
+ * panel (room for a few lines of it). Otherwise the panel scrolls by as little as it takes to show the top of the selection: its first
+ * 120 px at the foot of the panel when it lies below (bringing the whole section to the top of the panel took the attributes of the view
+ * out of sight), its top edge at the head of the panel when it lies above.
+ */
+function bringLibrarySelectionIntoSight() {
+  const section = document.querySelector('.library-selection');
+  if (!section) return;
+  const panel = document.getElementById('panel-right');
+  if (panel && panel.getBoundingClientRect && section.getBoundingClientRect) {
+    const room = panel.getBoundingClientRect();
+    const top = section.getBoundingClientRect().top;
+    if (top >= room.top && top <= room.bottom - 64) return;
+    panel.scrollTop += top > room.bottom - 64 ? top - (room.bottom - 120) : top - room.top;
+  } else if (section.scrollIntoView) {
+    section.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 /** The selection of the page of a view is given up (the panel's cross, Escape): the panel keeps the view. */

@@ -100,11 +100,14 @@ async function startPage(options) {
     };
     return canvas;
   };
-  sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? canvasOf() : originalGet(id));
-  // the panel of the page, as `refreshInspection` and the scroll after a selection find it
-  const panel = { removed: false, scrolled: 0 };
+  // the panel of the page, as `refreshInspection` and the scroll after a selection find it; `sectionTop` is where the top of the selection
+  // sits in the window of the panel (800 px high): below it by default, so that the selection has to be brought into sight
+  const panel = { removed: false, scrolled: 0, sectionTop: 1500, right: null };
+  const rightPanel = { scrollTop: 0, getBoundingClientRect: () => ({ top: 0, bottom: 800, left: 0, right: 288, width: 288, height: 800 }) };
+  panel.right = rightPanel;
+  sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? canvasOf() : id === 'panel-right' ? rightPanel : originalGet(id));
   sandbox.document.querySelector = (selector) => {
-    if (selector === '.library-selection') return html.includes('class="library-selection"') ? { remove() { panel.removed = true; }, scrollIntoView() { panel.scrolled++; } } : null;
+    if (selector === '.library-selection') return html.includes('class="library-selection"') ? { remove() { panel.removed = true; }, scrollIntoView() { panel.scrolled++; }, getBoundingClientRect: () => ({ top: panel.sectionTop, bottom: panel.sectionTop + 400, left: 0, right: 288 }) } : null;
     if (selector === '.inspection') return html.includes('class="inspection') ? { set outerHTML(value) { panel.refreshed = value; } } : null;
     return originalQuery ? originalQuery.call(sandbox.document, selector) : null;
   };
