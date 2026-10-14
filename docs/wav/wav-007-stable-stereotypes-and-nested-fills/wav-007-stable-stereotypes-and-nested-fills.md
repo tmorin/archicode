@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 007
-status: proposed
+status: in-progress
 date: 2026-10-14
 related:
   - docs/wav/wav-007-stable-stereotypes-and-nested-fills/wbc-007-stable-stereotypes-and-nested-fills.md
@@ -39,7 +39,7 @@ stays near its link and does not run over its neighbours, and the exported SVG a
 wave_manifest:
   wave: 007
   slug: stable-stereotypes-and-nested-fills
-  status: proposed
+  status: in-progress
   sources: []
   phases:
     - id: P1
@@ -57,7 +57,7 @@ wave_manifest:
       slug: stable-stereotype-order
       phase: P1
       depends_on: []
-      run: null
+      run: '0031'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/rendering/**'
@@ -96,7 +96,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-1 | — | `stable-stereotype-order` | — | regenerate a workspace and see no changed file unless the workspace changed | Reproduce the report: generate the user's target workspace (a copy, in the scratchpad) with the current build and with the build before runs 0013 and 0021 (the 0.10.0 tag, or the parent of `cf642ad`), and compare. Find what orders the stereotypes, the tags, the facet folders and the file names (qualifiers vs `rendering-stereotypes`, map iteration, element order across manifests, JVM or OS). Fix what is unstable, or show that the report is the one-time reorder of runs 0013 and 0021. Add a determinism test and say in the manual what is guaranteed. | Names the cause or shows the report is explained by the earlier version; a test generates twice with inputs declared in different orders and compares bytes; no file generated from a copy of the user's target workspace differs between two generations; `./mvnw verify` passes |
+| W-1 | 0031 | `stable-stereotype-order` | — | regenerate a workspace and see no changed file unless the workspace changed | Reproduce the report: generate the user's target workspace (a copy, in the scratchpad) with the current build and with the build before runs 0013 and 0021 (the 0.10.0 tag, or the parent of `cf642ad`), and compare. Find what orders the stereotypes, the tags, the facet folders and the file names (qualifiers vs `rendering-stereotypes`, map iteration, element order across manifests, JVM or OS). Fix what is unstable, or show that the report is the one-time reorder of runs 0013 and 0021. Add a determinism test and say in the manual what is guaranteed. | Names the cause or shows the report is explained by the earlier version; a test generates twice with inputs declared in different orders and compares bytes; no file generated from a copy of the user's target workspace differs between two generations; `./mvnw verify` passes |
 | W-2 | — | `nested-fills-outline` | — | tell a box from the box of the same colour around it | In `styleLookOf` and the stylesheet (and the SVG export style, which repeats them), give a box with a `background-color` and no `line-color` an outline derived from the fill (same hue, darker), with `--st-stroke-opacity` at 1 for a compound box; an explicit `line-color` wins; the fill is untouched. Check both themes, a box inside a box of the same fill, the focal and selected outlines, and the badge. Check what the CLI's PlantUML draws for the same workspace and record it. Update the styles section of the manual. Look at the real page, in a copy of the user's baseline workspace (`external` on `hub` and its systems). | Tests on the generated markup and the export for: no `line-color`, `line-color` given, parent and child of the same fill; the real page in the built-in browser, both themes, with the `hub` solution; the manual describes the derived outline; `node --test` passes |
 | W-3 | — | `wrapped-link-labels` | — | read the label of a link without it running over the boxes next to it | The label of a link is one `<text>` line today (`renderDiagramSvg`, `dg-label`), sized by the layout from its full width, so a long label crosses the neighbouring boxes and links. The reference case, from the user's baseline: `staffer` to `platform.web.frontend`, label "manages catalogue entries, partner offers and banners, revokes shared coupons and consults order history with" (108 characters, about 600 px at 11 px) and the qualifier `https`, which the editor appends as `[https]` (`diagramLinkText`); the test uses a synthetic label of the same length, not the client's text. Break it at spaces to a maximum width (a constant, about 200 to 240 px, chosen by looking) into `<tspan>` lines, give the layout the wrapped width and height, keep the label centred on its link and clickable as one target (`select-link`), keep the accessible name and the tooltip whole, and draw the same in the SVG and PNG export. A word longer than the maximum is cut with an ellipsis, as names are. Decide whether the Wrap toggle can switch it off (the default is on: the user asked for a soft wrap of long labels). | Tests on the generated markup and the layout input for a short, a long, a very long (the 108-character case above, with its qualifier) and a one-long-word label, with and without qualifiers, checking that the qualifier is not cut off the last line; the export agrees; the real page in the built-in browser on the user's baseline (copy) with the long labels of `hub`; the manual says it; `node --test` passes |
 

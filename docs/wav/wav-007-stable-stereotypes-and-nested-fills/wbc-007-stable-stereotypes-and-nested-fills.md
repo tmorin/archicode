@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 007
-status: proposed
+status: in-progress
 date: 2026-10-14
 related:
   - docs/wav/wav-004-editor-workspace-experience/run/run-0013-kernel-stereotypes.md
