@@ -789,7 +789,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
       <span class="key">elements</span>:
         - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">CommandLineInterface</span><span class="delimiter">&quot;</span></span>
-          <span class="key">qualifier</span>:
+          <span class="key">qualifiers</span>:
             - <span class="string"><span class="delimiter">&quot;</span><span class="content">Quarkus</span><span class="delimiter">&quot;</span></span>
 <span class="key">technology</span>:
   <span class="key">elements</span>:
@@ -1096,10 +1096,10 @@ Node *--&gt; "*" Node
 <span class="key">content</span>:
   <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Laptop</span><span class="delimiter">&quot;</span></span>
   <span class="key">elements</span>:
-    - <span class="string"><span class="content">kind: &quot;Node&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;node&quot;</span></span>
       <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">OperatingSystem</span><span class="delimiter">&quot;</span></span>
       <span class="key">elements</span>:
-        - <span class="string"><span class="content">kind: &quot;Node&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;node&quot;</span></span>
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">TerminalSession</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
@@ -1269,20 +1269,21 @@ View o--&gt; "1" Layer
     - <span class="string"><span class="content">kind: &quot;environment&quot;</span></span>
       <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Reference</span><span class="delimiter">&quot;</span></span>
       <span class="key">elements</span>:
-        - <span class="string"><span class="content">kind: &quot;Node&quot;</span></span>
+        - <span class="string"><span class="content">kind: &quot;node&quot;</span></span>
           <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Laptop</span><span class="delimiter">&quot;</span></span>
           <span class="key">elements</span>:
-            - <span class="string"><span class="content">kind: &quot;Node&quot;</span></span>
+            - <span class="string"><span class="content">kind: &quot;node&quot;</span></span>
               <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">OperatingSystem</span><span class="delimiter">&quot;</span></span>
               <span class="key">elements</span>:
-                - <span class="string"><span class="content">kind: &quot;Node&quot;</span></span>
+                - <span class="string"><span class="content">kind: &quot;node&quot;</span></span>
                   <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">TerminalSession</span><span class="delimiter">&quot;</span></span>
 <span class="key">views</span>:
   - <span class="string"><span class="content">kind: &quot;view&quot;</span></span>
+    <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">terminal-session</span><span class="delimiter">&quot;</span></span>
     <span class="key">viewpoint</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">overview</span><span class="delimiter">&quot;</span></span>
     <span class="key">layer</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">technology</span><span class="delimiter">&quot;</span></span>
     <span class="key">properties</span>:
-      <span class="key">element</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Reference.Laptop.OperatingSystem.TechnicalSession</span><span class="delimiter">&quot;</span></span></code></pre>
+      <span class="key">element</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Reference.Laptop.OperatingSystem.TerminalSession</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1412,13 +1413,16 @@ A style sets any of <code>background-color</code>, <code>line-color</code>, <cod
 <div class="paragraph">
 <p><strong>In the editor.</strong> The editor draws a box with the style of the stereotypes it is drawn with: <code>background-color</code> is the fill, <code>line-color</code>, <code>line-thickness</code> and <code>line-style</code> the outline, and <code>round-corner</code>, <code>font-color</code>, <code>font-style</code> and <code>shadowing</code> the rest.
 A styled stereotype is also written on its box as a text badge with its name, so that a colour is never the only carrier.
-The same badge follows the name of the element in the <strong>Elements</strong> tree and in the tree of the <strong>Map</strong>, and the key under the diagram shows the badge of each styled stereotype drawn.
+The same badge follows the name of the element in the <strong>Elements</strong> tree and in the tree of the <strong>Map</strong>, and in the header of an element (after its kind, on <strong>Details</strong> and on the diagram tabs; when the header is narrow it shows the badges that fit and the name keeps its room), and the key under the diagram shows the badge of each styled stereotype drawn.
 The badges are part of the SVG and PNG exported from a diagram, while the key is not; a badge is not the dot that marks an element as modified and not yet saved.</p>
 </div>
 <div class="paragraph">
 <p>For the same stereotype, <code>by-tags</code> wins over <code>by-qualifiers</code>.
 When a box has several styled stereotypes, a later one overrides an earlier one property by property: with <code>rendering-stereotypes: "external changed"</code>, the fill of <code>changed</code> wins, and the properties it does not set come from <code>external</code>.
-The order is that of the stereotypes of the box, its qualifiers first and then the words of the tag; the command line defines no order for this case.</p>
+The order is that of the stereotypes of the box, its qualifiers first and then the words of the tag.
+The command line follows the same rule: it writes the stereotypes of a box last first, since PlantUML lets the first stereotype of a box win, property by property, whatever the order of the styles.
+The <code>.puml</code> of a box carrying <code>external changed</code> therefore says <code><a href="#changed">[changed]</a> <a href="#external">[external]</a></code>, and the same workspace always gives the same file, byte for byte.
+The one difference: <code>shadowing</code> is a flag that is only ever switched on, so a style cannot switch off the shadow another style of the same box switched on (the editor lets <code>shadowing: false</code> of a later stereotype do it).</p>
 </div>
 <div class="paragraph">
 <p>Colours are read as <code>#rgb</code>, <code>#rrggbb</code>, <code>rgb(r, g, b)</code>, <code>transparent</code> or a CSS colour name such as <code>lightgray</code>; a value the editor cannot read is ignored.
@@ -1427,7 +1431,7 @@ Numbers are whole numbers.</p>
 <div class="paragraph">
 <p>The fill is the colour written in <code>styles</code>, in both themes, as in the diagrams of the command line; <code>styles</code> has no separate dark colour.
 The editor chooses the colour of the text so that it reads on that fill, black or white with a contrast ratio of at least 4.5: the <code>font-color</code> of the style is kept when it reads well, and replaced otherwise.
-Without a <code>background-color</code>, the box and its text keep the colours of the theme, and <code>font-color</code> is not used.</p>
+Without a <code>background-color</code>, the box and its text keep the colours of the theme, and <code>font-color</code> is not used. Except that a box that contains others, with no <code>background-color</code> of its own, drawn inside one that has one, lets that fill show: its title is then black or white against that fill, in either theme, so that it never lands on a fill it cannot be read on.</p>
 </div>
 <div class="paragraph">
 <p>Compared with the command line, <code>line-style</code> and <code>round-corner</code> are an approximation of what PlantUML draws.
@@ -1531,7 +1535,7 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 </ul>
 </div>
 <div id="editor-folders" class="paragraph">
-<p>The published page remembers, in the browser, every folder it opened, with the name its workspace gives itself (see <a href="#editor-workspace-name">Name of the workspace</a>). When the page opens again, it opens the last folder directly if the browser still lets it read it; otherwise it asks for a click (<strong>Reopen</strong>), because a browser only gives that permission back on a click. <strong>Close folder</strong>, at the top right, closes the folder and shows the list of the remembered folders: the closed one stays in it, and the next visit does not open it by itself. When no folder is open, the list shows each folder by the name of its workspace, with the name of the folder below it when they differ, most recent first: a click on one opens it (the browser may ask for the permission again), <strong>Remove from the list</strong> makes the browser forget it, and nothing is deleted on disk. A folder picked again is not added twice. A folder that cannot be opened (the permission refused, the folder moved or deleted) stays in the list, which says why, until it is removed. Served by <code>archicode editor serve</code>, the editor has one folder, the one of the server: there is no list and no <strong>Close folder</strong>.</p>
+<p>The published page remembers, in the browser, every folder it opened, with the name its workspace gives itself (see <a href="#editor-workspace-name">Name of the workspace</a>). When the page opens again, it opens the last folder directly if the browser still lets it read it; otherwise it asks for a click (<strong>Reopen</strong>), because a browser only gives that permission back on a click. <strong>Close folder</strong>, at the top right, closes the folder and shows the list of the remembered folders: the closed one stays in it, and the next visit does not open it by itself. When no folder is open, the list shows each folder by the name of its workspace, with the name of the folder below it when they differ, most recent first: a click on one opens it, <strong>Remove from the list</strong> makes the browser forget it, and nothing is deleted on disk. Under each folder, the list says what a click will meet, as the browser answers without asking anything: <em>Opens without asking</em>, <em>Will ask for permission</em> (the browser shows its prompt), <em>Blocked by the browser</em>, or <em>Could not be reached</em> / <em>Could not be checked</em> (the folder may have been moved or deleted). A folder picked again is not added twice, even by two tabs at the same moment: the browser then holds two records for it for an instant, and the editor merges them into one, keeping the name of its workspace and its place in the list. A folder that cannot be opened (the permission refused, the folder moved or deleted) stays in the list, which says why, until it is removed. Served by <code>archicode editor serve</code>, the editor has one folder, the one of the server: there is no list and no <strong>Close folder</strong>.</p>
 </div>
 <div class="paragraph">
 <p>The editor loads <code>elkjs</code> (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.</p>
@@ -1559,7 +1563,7 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <p>The badges and colours of styled stereotypes, on the boxes and in the tree, are explained in <a href="#stereotypes-and-styles">Stereotypes and styles</a>.</p>
 </div>
 <div class="paragraph">
-<p>Changes stay in memory, with a mark on the tree for each modified element, until <strong>Save all changes</strong> writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one.</p>
+<p>Changes stay in memory, with a mark on the tree for each modified element, until <strong>Save all changes</strong> writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one. A file that is saved keeps what the changes did not touch: its comments, its blank lines, the quotes of the values and its final line break. Only the lines that changed are rewritten. When a file is laid out in a way the editor does not write (a list in square brackets, an indentation other than two spaces), it is written again entirely in the editor&#8217;s own layout, and its comments are lost.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1590,10 +1594,10 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <div class="sect2">
 <h3 id="editor-inspection">The inspection panel</h3>
 <div class="paragraph">
-<p>Beside a diagram, on the right, a panel shows the data of the selected element without leaving the view: its name and styled stereotypes, its kind, its layer, its id and reference, its description, qualifiers and tags, and the file that declares it. It is there on the <strong>Map</strong> and on the <strong>Overview</strong>, <strong>Detailed</strong> and <strong>Deep</strong> tabs of Elements (where a click on a box moves to that element, and the panel follows); it is not on <strong>Details</strong> and in the edit form, which show the same things themselves. Nothing is shown, and no room is kept, while nothing is selected. The panel is resized by dragging its edge (the width is remembered; a double click on the edge gives the default back), it goes away with <strong>Maximize</strong>, and on the Map its <strong>x</strong> button deselects the element. On the Map the panel says so when the selected element is not drawn (a pin, a hidden element or a folded box leaves it out), and when it is a technology element, which the Map never draws. A click does what it did before: on the Map it selects, in Elements it moves to the element.</p>
+<p>Beside a diagram, on the right, a panel shows the data of the selected element without leaving the view: its name and styled stereotypes, its kind, its layer, its id and reference, its description, qualifiers and tags, and the file that declares it. It is there on the <strong>Map</strong>, on the <strong>Overview</strong>, <strong>Detailed</strong> and <strong>Deep</strong> tabs of Elements (where a click on a box moves to that element, and the panel follows) and on the page of a view in the Library (where a click on a box selects it on the page only, see <a href="#editor-stories">Library: stories and views</a>); it is not on <strong>Details</strong> and in the edit form, which show the same things themselves. Nothing is shown, and no room is kept, while nothing is selected. The panel is resized by dragging its edge (the width is remembered; a double click on the edge gives the default back), it goes away with <strong>Maximize</strong>, and on the Map its <strong>x</strong> button deselects the element. On the Map the panel says so when the selected element is not drawn (a pin, a hidden element or a folded box leaves it out), and when it is a technology element, which the Map never draws. A click does what it did before: on the Map it selects, in Elements it moves to the element.</p>
 </div>
 <div class="paragraph">
-<p>A click on a link of the diagram, or on its caption, selects it instead, and the panel lists each relationship the link stands for: its label, its qualifiers and its tags (<code>tcp-port</code>, <code>doc-exchange</code>&#8230;&#8203;), with the element that declares it and the one it points at. What is selected is the pair of boxes the link joins, so a link that groups several relationships lists them all (and says so), a link between folded boxes names the folded end and how many elements it hides (open it to see the relationships one by one), and a link to an unknown element says it points at nothing. The links of that pair are outlined. The links can be reached with the Tab key and selected with Enter or Space; the arrow keys then go on from the box the link starts from. <strong>x</strong> or Escape deselects: on the Map the panel goes, in Elements the panel of the element comes back. Selecting a link changes neither the perspective nor the tab, and in Elements the element stays the one being looked at (the tree, the tabs and the URL keep it); the selection is not in the URL, and it ends as soon as the diagram it was made on is no longer the one on screen (another perspective, Details, another element, or a drawing that no longer has the link: a fold, a pin, a facet). A click on a box does what it did before and ends the link selection. A relationship the diagram does not draw (secondary links between deployed applications, unless a facet asks for them) cannot be selected.</p>
+<p>A click on a link of the diagram, or on its caption, selects it instead, and the panel lists each relationship the link stands for: its label, its qualifiers and its tags (<code>tcp-port</code>, <code>doc-exchange</code>&#8230;&#8203;), with the element that declares it (a button: it selects that element, in the layer of the drawing, as a click on its box does) and the one it points at. What is selected is the pair of boxes the link joins, so a link that groups several relationships lists them all (and says so), a link between folded boxes names the folded end and how many elements it hides (open it to see the relationships one by one), and a link to an unknown element says it points at nothing. The links of that pair are outlined. When several links join the same two boxes, the panel says how many, and marks (with the words <em>Clicked link</em>) the relationships of the one you clicked, unless they cannot be told from the others'. The links of a diagram are one stop of the Tab key, however many there are, and so are its boxes (Tab goes from one group to the other): once on a link, the arrow keys move to the next and the previous link, in the order the diagram draws them, and Home and End go to the first and the last. Enter or Space selects the link that has the focus. The stop is where the focus last was among the links, or else the selected link, or else the first one; for the boxes it is where the focus last was, or else the selected box, or else the one in focus of the diagram, or else the first one. <strong>x</strong> or Escape deselects: on the Map the panel goes, in Elements the panel of the element comes back. Selecting a link changes neither the perspective nor the tab, and in Elements the element stays the one being looked at (the tree, the tabs and the URL keep it). On the Map, if the panel that appears leaves the link behind its edge, the view moves by the least it takes to show it, once; a link already in view does not move the view. The selected link is in the URL, after the other parameters of the view (<code>link-from=customer&amp;link-to=shop</code>: the two boxes of the drawing), so a copied URL, a reload and Back or Forward bring it back, and bring the view to it if it is not in sight. Selecting a link rewrites the current entry of the history, like a zoom, and does not add one. A link the drawing does not have when the URL is opened (it was renamed, or the boxes it joins are folded differently, which the URL does not carry) is dropped, and the URL with it. The selection ends as soon as the diagram it was made on is no longer the one on screen (another perspective, Details, another element, or a drawing that no longer has the link: a fold, a pin, a facet). A click on a box does what it did before and ends the link selection. A relationship the diagram does not draw (secondary links between deployed applications, unless a facet asks for them) cannot be selected.</p>
 </div>
 <div class="paragraph">
 <p>Since the panel takes room from the center, the header of the diagram goes to its narrower states sooner (see <a href="#editor-header">The header of a diagram</a>): resize or close the panel to give it back.</p>
@@ -1665,7 +1669,38 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <p>While a story is being walked through, a bar over the diagram says where you are, with <strong>Previous</strong> and <strong>Next</strong>, and the words of the step, to read; <strong>Edit text</strong> turns them into a box to type in (it opens by itself right after <strong>Add to story&#8230;&#8203;</strong>, so that you can write as you go). <strong>Back to this step</strong> draws the saved view again when you moved away from it, and <strong>Leave story</strong> closes the bar. A step that cannot be drawn (its element was deleted) says why in the bar, which stays: <strong>Next</strong> and <strong>Previous</strong> still work. The story is in the URL, so a link or Back lands on the same step.</p>
 </div>
 <div class="paragraph">
-<p>On the Stories side, a story is open as soon as there is one, and edited in place: its name, its text, the order of its steps (<strong>Up</strong>, <strong>Down</strong>, <strong>Remove</strong>, which can be undone right away) and the words of each step. The step that is showing on the diagrams is marked. <strong>Play</strong> walks through the story from its first step, and <strong>Show on diagram</strong> draws one step. A step that carries its own view says so, and <strong>Keep as named view</strong> gives it a name and a file; a step whose view was deleted offers to point at another one. Renaming an element updates the views and steps that point at it. On the Views side, a view says what it draws (viewpoint, layer, properties), where it is kept and which steps show it; it can be opened on a diagram, renamed and deleted. A change that is not saved yet is marked <strong>modified</strong>.</p>
+<p>On the Stories side, a story is open as soon as there is one, and edited in place: its name, its text, the order of its steps (<strong>Up</strong>, <strong>Down</strong>, <strong>Remove</strong>, which can be undone right away) and the words of each step. The step that is showing on the diagrams is marked. <strong>Play</strong> walks through the story from its first step, and <strong>Show on diagram</strong> draws one step. A step that carries its own view says so, and <strong>Keep as named view</strong> gives it a name and a file; a step whose view was deleted offers to point at another one. Renaming an element updates the views and steps that point at it. A change that is not saved yet is marked <strong>modified</strong>.</p>
+</div>
+<div class="paragraph">
+<p>On the Views side, the page of a view that can be drawn draws it in the center, from the model, with the canvas and the tools of the Map and Elements: zoom, <strong>Center</strong>, <strong>Fit</strong>, <strong>Hide unlinked</strong>, the four texts (see <a href="#editor-texts">The texts of a diagram</a>), and <strong>PNG</strong> and <strong>SVG</strong> in the header. The facet of the view is applied: it is drawn here, not picked. There is no folding on this page, since the open boxes of a Map view are part of the view. The zoom and the moves are the page&#8217;s own and are not changes to the view, and the page changes nothing the Map and Elements show (selection, pins, tab, facet, texts, address). The header keeps <strong>Open on diagram</strong>, which draws the view on the Map or in Elements to explore it with their tools, <strong>Rename</strong> and <strong>Delete</strong>, and has <strong>Maximize</strong>, which hides the list of views and the right-hand panel (<code>M</code> maximizes, <code>Esc</code> restores; the Map is not touched).</p>
+</div>
+<div class="paragraph">
+<p>The panel on the right, resized and hidden as the one of the Map (see <a href="#editor-inspection">The inspection panel</a>), has the view first: what it draws and the file that keeps it, then a field for each attribute of the view, and the steps of the stories that show it, each a link to its story. Once something is selected, the inspection of the selection comes under it; the panel stays where it is when the top of the inspection is in sight, and otherwise scrolls by the least it takes to show its first lines, so that the fields of the view stay in sight as long as there is room. A click on a box, or Enter on the box that has the focus, selects the element and shows its panel, which has a <strong>Show in Elements</strong> button: it leaves the page and selects the element there, on the tab Elements was left on. A click on a link or on its caption shows the relationships it stands for, and the elements named in that panel select on the page too. The selected box is outlined, and <strong>x</strong> or <code>Esc</code> deselects. A box for a relationship that points at nothing cannot be clicked here. This selection is the page&#8217;s own: it does not select anything on the Map or in Elements, it is forgotten when another view is shown, and it is not in the URL, which carries no more than <code>#/library/views?view=&lt;id&gt;</code>.</p>
+</div>
+<div id="editor-view-edit" class="paragraph">
+<p>A view is changed by its fields, and the diagram follows at once:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Viewpoint</strong>: <strong>Overview</strong>, <strong>Detailed</strong>, <strong>Deep</strong> or <strong>Map</strong>. From an element viewpoint to the Map, the element becomes the pinned element (a technology element gives none: the Map draws the application layer); from the Map to an element viewpoint, the first pinned element that still exists becomes the element, and the hidden and open elements are dropped. What the view showed of the texts is kept. <strong>Cancel</strong> gives the change up as long as it has not been saved.</p>
+</li>
+<li>
+<p><strong>Layer</strong> and <strong>Element</strong> (the element viewpoints): the element is typed, with the references of the layer as suggestions, and applied with <code>Enter</code> or by leaving the field. A reference that is not an element of the layer is refused, with the reason under the field, and stays there to be corrected. Changing the layer keeps the element when the other layer has it, and otherwise leaves the view without one: it then says so and cannot be drawn until one is chosen.</p>
+</li>
+<li>
+<p><strong>Pinned</strong>, <strong>Hidden</strong> and <strong>Open</strong> (the Map): each is a list of elements, with a cross to take one out and a field to add one (<code>Enter</code>). The drawing of this page is not edited itself, on purpose: a click on a box selects it. To choose pins by clicking, use <strong>Open on diagram</strong>.</p>
+</li>
+<li>
+<p><strong>Facet</strong>: the facets of the workspace, or none. <strong>Hide unlinked</strong>, <strong>Labels</strong>, <strong>Qualifiers</strong>, <strong>Descriptions</strong> and <strong>Wrap</strong> are boxes to tick, and they are the same as the buttons of the tools over the diagram. A text that is what that kind of diagram draws by default is not written to the file, as for any view.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Nothing is written to the disk by an edit. The view gets the mark <strong>modified</strong>, in the header and in the list, and loses it when what you did is put back, as soon as the file of the view would be the one on disk (the last one written); <strong>Save all changes</strong> writes the file of the view and no other (the comments and the layout of the file stay, as for any manifest; a property that an edit takes out and puts back again is written where the editor writes it, element, facet, <strong>Hide unlinked</strong>, then the texts), and <strong>Cancel</strong> gives every unsaved change up: the view, and the diagram with it, are the saved ones again. A view that an edit left impossible to draw (no element, nothing that was pinned exists) says why in the center, with the same fields to correct it, and can still be saved. Renaming an element in Elements still rewrites the views that point at it; the steps of the stories point at the view, so they show the edited view, saved or not.</p>
+</div>
+<div class="paragraph">
+<p>A view that cannot be drawn (its element was deleted, nothing that was pinned exists any more, the viewpoint is unknown) keeps its message, what it draws, its fields and its steps in the center of the page, with no diagram and no panel.</p>
 </div>
 <div class="paragraph">
 <p>A story is a file (<code>story.&lt;id&gt;.yaml</code>) in the first manifests folder, and so is each named view. They wait in memory, like the other changes, with a mark on the file, for <strong>Save all changes</strong>, and <strong>Cancel</strong> gives them up: only the files that changed are written. When an older workspace still has views or stories in <code>workspace.yaml</code>, the Library says so, on both sides, with <strong>Move to manifests</strong>. The Map of a technology layer does not exist: to tell about environments, use views of Elements on the environments or the nodes.</p>
@@ -1721,10 +1756,13 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <p>The arrow keys move between boxes, and Enter opens the one that has the focus.</p>
 </li>
 <li>
+<p>The boxes are one Tab stop, and so are the links: a diagram takes two presses of Tab to cross, however many boxes and links it has. The arrow keys move from the box that has the focus to the neighbouring box, which becomes the stop. On a link, the arrow keys move to the next and the previous link (not to the neighbouring box), Home and End jump to the first and the last, Enter or Space selects it, and <code>Esc</code> deselects it. Tab goes from the boxes to the links and on, and Shift+Tab comes back.</p>
+</li>
+<li>
 <p><code>+</code>, <code>-</code> and <code>0</code> zoom in, out and back to the actual size. <code>F</code> fits the whole diagram and <code>C</code> goes back to how it opened.</p>
 </li>
 <li>
-<p><code>M</code> maximizes the diagram, <code>Esc</code> brings the tree back.</p>
+<p><code>M</code> maximizes the diagram, <code>Esc</code> brings the tree back. On the page of a view in the Library, <code>M</code> hides the list of views and the panel, and <code>Esc</code> restores them, or else deselects the box or the link (see <a href="#editor-stories">Library: stories and views</a>).</p>
 </li>
 </ul>
 </div>
@@ -4181,7 +4219,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-13 17:20:04 UTC
+Last updated 2026-10-14 06:17:05 UTC
 </div>
 </div>
 </body>

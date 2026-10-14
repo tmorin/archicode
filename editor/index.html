@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- Which ArchiCode this page belongs to: "dev" here, the release in the copies that are published and served. -->
-<meta name="archicode-version" content="0.10.0">
+<meta name="archicode-version" content="0.11.0">
 <title>ArchiCode Editor</title>
 <!-- The theme chosen in Settings, applied before the first paint so the page does not flash (the page script applies it again). Same key and values as the page script. -->
 <script id="theme-boot">
@@ -114,6 +114,8 @@
   .landing-folder-dir svg { flex: none; width: 0.8rem; height: 0.8rem; }
   .landing-folder-remove { flex: none; margin-left: auto; font-size: 0.8rem; }
   .landing-folder-problem { flex-basis: 100%; margin: 0; color: var(--danger); font-size: 0.8rem; line-height: 1.4; }
+  .landing-folder-state { display: flex; align-items: flex-start; gap: 0.3rem; max-width: 100%; color: var(--muted); font-size: 0.8rem; font-weight: 400; line-height: 1.4; }
+  .landing-folder-state svg { flex: none; width: 0.8rem; height: 0.8rem; margin-top: 0.15rem; }
   .landing-notice { margin: 0; padding: 0.5rem 0.75rem; border-left: 3px solid var(--accent); border-radius: 2px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 0.875rem; line-height: 1.5; }
   .landing-busy { display: flex; align-items: center; gap: 0.75rem; margin: 0; }
   .landing-spinner { flex: none; width: 1.1rem; height: 1.1rem; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: landing-spin 0.8s linear infinite; }
@@ -182,6 +184,9 @@
   .inspection-rel { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
   .inspection-rel-label { font-weight: 600; overflow-wrap: anywhere; }
   .inspection-rel-path { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+  /* the relationship of the link that was clicked, when several links join the same two boxes: said in words, the border only repeats it */
+  .inspection-rel-marked { border-color: var(--accent); }
+  .inspection-rel-mark { margin-left: 0.4rem; padding: 0 0.4rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; white-space: nowrap; }
 
   [data-resize] { background: var(--border); flex-shrink: 0; }
   [data-resize]:hover, [data-resize][data-active] { background: var(--accent); }
@@ -224,7 +229,9 @@
     background: var(--st-fill, transparent); border: 1px solid var(--st-stroke, var(--border)); color: var(--st-text, var(--muted)); }
   .tree-node-row.quiet .stereotype-badge, .map-scope-row.off-map .stereotype-badge, .map-scope-row.left-out .stereotype-badge { opacity: 0.45; }
   .map-scope-row .stereotype-badge { font-size: 0.6rem; padding: 0 0.3rem; max-width: 4.5rem; }
-  .tree-node-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* a narrow left panel: the badges give way first (down to an ellipsis) so that the name keeps a few letters */
+  .tree-node-row .stereotype-badge { flex-shrink: 8; min-width: 1.3rem; }
+  .tree-node-label { flex: 1 1 auto; min-width: 3.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* No vertical padding here on purpose — every view supplies its own top
      and bottom inset instead (see each below). A view with a sticky
@@ -339,14 +346,40 @@
   .map-chip button:hover { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; color: var(--fg); }
   .diagram-canvas > .dg-list { position: absolute; inset: 0; overflow: auto; padding: 0.75rem; cursor: auto; }
   .diagram-tools { position: absolute; right: 1.5rem; bottom: 1.5rem; display: flex; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 2rem); gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
+  /* the page of a view in the Library: the diagram of the Map in the centre; the right-hand panel holds the view, then what is selected */
+  .library-view-notices { flex: none; }
+  .library-panel { display: flex; flex-direction: column; gap: 1rem; }
+  .library-panel h3 { margin: 0.75rem 0 0.4rem; }
+  .library-panel > section > h3:first-child { margin-top: 0; }
+  .library-panel .view-facts { grid-template-columns: minmax(0, 1fr); gap: 0.05rem; margin: 0.25rem 0 0; }
+  .library-panel .view-facts dt { margin-top: 0.4rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .library-panel .view-uses li { overflow-wrap: anywhere; }
+  .library-selection { padding-top: 1rem; border-top: 1px solid var(--border); }
+  /* the attributes of a view as controls (run 0029): label over control, in the narrow panel and in the centre of a view that cannot be drawn */
+  .view-edit { display: flex; flex-direction: column; gap: 0.7rem; margin: 0.6rem 0 0.9rem; }
+  .story-body .view-edit { max-width: 30rem; }
+  .view-field { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; border: 0; padding: 0; margin: 0; }
+  .view-field > label, .view-field > legend { padding: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .view-field select, .view-field input[type="text"] { width: 100%; box-sizing: border-box; }
+  .view-field .inline-error { margin-left: 0; }
+  .view-field .view-element-name { font-size: 0.82rem; overflow-wrap: anywhere; }
+  .view-checks { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+  .view-check { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+  .view-pills { display: flex; flex-wrap: wrap; }
+  .view-pills:empty { display: none; }
+  .view-pills .pill { overflow-wrap: anywhere; }
+  .view-pills .pill-missing { border-style: dashed; color: var(--danger); }
+  .inspection-open { align-self: flex-start; margin-top: 0.25rem; }
   .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
+  /* a narrow centre: a group of the toolbar that is wider than the toolbar wraps inside it (it was cut on the left, and the buttons were out of reach) */
+  .diagram-tools .button-group { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; row-gap: 0.25rem; }
   .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
   .diagram-tools button[aria-pressed="true"], .diagram-tools button[data-lit="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
     color: var(--muted); font-size: 0.8rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
-  #diagram-hint { flex: none; color: var(--accent); }
+  #diagram-hint { flex: none; max-width: 100%; color: var(--accent); }
   .diagram-status > span:first-child { flex: 1 1 8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dg-legend { flex: none; display: inline-flex; gap: 0.35rem; align-items: center; }
+  .dg-legend { flex: none; max-width: 100%; display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.35rem; align-items: center; }
   .dg-legend svg { overflow: visible; }
   .dg-legend-stereotypes { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; }
   .diagram-note { margin: 0 0 0.5rem; color: var(--muted); }
@@ -385,6 +418,10 @@
   .app-dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
   .story-legacy { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.75rem 0; padding: 0.5rem 0.75rem; border: 1px solid var(--modified); border-radius: 6px; }
   .story-count { color: var(--muted); font-size: 0.8rem; flex-shrink: 0; margin-left: auto; padding-left: 0.5rem; }
+  /* a row of the Library list: the name keeps at least 6rem (then it is cut with an ellipsis); the badges and the count that do not fit
+     with it go on a second line instead of taking its room */
+  .story-row { flex-wrap: wrap; row-gap: 0.15rem; }
+  .story-row .file-relpath { flex: 1 1 6rem; min-width: 0; }
   .story-field { display: grid; grid-template-columns: 5rem 1fr; gap: 0.5rem; align-items: start; margin: 0.6rem 0; }
   .story-field > span { color: var(--muted); padding-top: 0.35rem; }
   .story-field input, .story-field textarea, .story-step textarea { width: 100%; box-sizing: border-box; }
@@ -446,6 +483,8 @@
   .dg-title { fill: var(--fg); font-size: 14px; font-weight: 600; }
   .dg-sub { fill: var(--muted); font-size: 12px; font-weight: 400; }
   .dg-desc { fill: var(--muted); font-size: 11px; font-weight: 400; }
+  /* a compound box with no fill of its own, drawn on the fill of the one around it: its text is computed from that fill (--ov-text), not themed */
+  .dg-over-fill .dg-title, .dg-over-fill .dg-sub { fill: var(--ov-text); }
   .download-button { display: inline-flex; align-items: center; gap: 0.3rem; }
   .dg-edge { fill: none; stroke: var(--muted); stroke-width: 1.4; }
   .dg-edge.dg-aggregated { stroke-dasharray: 7 4; }
@@ -494,6 +533,9 @@
   }
   .element-header-label { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
   .element-header-label h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* the styled stereotypes of the element, after its kind. They are the first thing to give way (flex-shrink 100 against 1 for
+     the name): the group is one line high and clips the badges that do not fit as a whole, so the name keeps its room at every state */
+  .element-header-badges { display: flex; flex-wrap: wrap; gap: 0.25rem; align-content: flex-start; min-width: 0; max-height: 1.1rem; overflow: hidden; flex: 0 100 auto; margin-left: -0.5rem; }
   .element-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
 
   /* ---- The header of the centre panel holds together at any width of the panel ----
@@ -520,7 +562,9 @@
   }
   @container center (max-width: 60rem) {
     .header-more { display: block; position: relative; }
-    .header-more-button { display: inline-flex; align-items: center; justify-content: center; width: 2rem; padding: 0 !important; }
+    /* "padding: 0" must beat the page's ".element-header button { padding: 0 0.8rem !important }" (the same !important, a higher
+       specificity): without the .element-header here, the 2rem button kept 0.8rem on each side and its icon was squeezed to a 4px sliver */
+    .element-header .header-more-button { display: inline-flex; align-items: center; justify-content: center; width: 2rem; padding: 0 !important; }
     .header-more-button[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
     /* the menu hangs from the "⋯" button like the help from the "?" (same box); it is open when the button says so, closed otherwise */
     .header-overflow { display: none; position: absolute; top: calc(100% + 0.25rem); right: 0; z-index: 30; flex-direction: column; align-items: stretch; min-width: 13rem; max-width: calc(100vw - 2rem); padding: 0.4rem 0; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
@@ -538,7 +582,9 @@
   @container center (max-width: 46rem) {
     .element-header { height: auto; min-height: var(--header-h); flex-wrap: wrap; gap: 0.4rem 0.75rem; padding-top: 0.4rem; padding-bottom: 0.4rem; }
     .element-header-label { flex-wrap: wrap; row-gap: 0.25rem; }
-    .viewpoint-switch { flex-wrap: wrap; row-gap: 0.25rem; }
+    .element-header-badges { max-height: none; max-width: 100%; flex: none; margin-left: 0; }
+    .viewpoint-switch { flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; row-gap: 0.25rem; }
+    .viewpoint-switch .button-group { flex-wrap: wrap; row-gap: 0.25rem; }
     .element-header-actions { margin-left: auto; }
   }
 
@@ -557,6 +603,7 @@
   .relationship-link { display: inline; background: none !important; border: none !important; padding: 0 !important; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
   .relationship-link:hover { border-color: transparent; }
   .relationship-dangling { color: var(--muted); }
+  button.relationship-dangling { color: var(--danger); text-decoration-style: dashed; }
   .dangling-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-accent); background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; margin-left: 0.3rem; }
   .field-count { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 0.4rem; margin-left: 0.25rem; }
 
@@ -1570,6 +1617,130 @@ function serializeManifestFile(header, content) {
   return serializeYamlValue({ header: header, content: content }, 0);
 }
 
+/**
+ * The text of a YAML file after an edit, that keeps of the file what the edit did not touch: its comments, its blank
+ * lines, its quotes and its final line break. `oldText` is the file as it is, `newValue` what it must now say.
+ *
+ * The emitter writes a value in one way only, so it cannot tell what a file looked like. This compares what it writes for
+ * the old value (read from `oldText`) with what it writes for the new one, line by line, and applies the difference to
+ * the lines of `oldText`: a line the edit did not touch stays as it was, the lines around it too. Each line the emitter
+ * wrote for the old value has to be found, in order, in `oldText` with the same indentation and the same words (the
+ * quotes and a trailing comment do not count); when one is not (a flow list, other indentation, a key written another
+ * way), the layout of the file is not one this can follow, and the text is the emitter's, as before.
+ */
+function patchYamlText(oldText, newValue) {
+  const emitted = serializeYamlValue(newValue, 0);
+  let oldValue;
+  try {
+    oldValue = parseYaml(oldText);
+  } catch (e) {
+    return emitted;
+  }
+  if (oldValue === null || typeof oldValue !== 'object') return emitted;
+  const eol = /\r\n/.test(oldText) ? '\r\n' : '\n';
+  const endsWithBreak = /\n$/.test(oldText);
+  const original = oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
+  if (endsWithBreak) original.pop();
+  const before = serializeYamlValue(oldValue, 0).split('\n');
+  const after = emitted.split('\n');
+
+  // the words of a line: no quote, no trailing comment, no space around it; its indentation is compared on its own
+  const indentOf = (line) => line.length - line.replace(/^ +/, '').length;
+  const wordsOf = (line) => stripYamlComment(line).replace(/["']/g, '').trim();
+  // where each emitted line of the old value sits in the original text
+  const place = [];
+  const spans = []; // the lines of a block scalar that follow its first line
+  let cursor = 0;
+  for (const line of before) {
+    let found = -1;
+    if (wordsOf(line) === '') { // a blank line or one that reads as a comment: inside a block scalar, where it is text, so it is the very next line
+      if (cursor < original.length && original[cursor].trim() === line.trim()) found = cursor;
+      if (found === -1) return emitted;
+      place.push(found);
+      spans.push(0);
+      cursor = found + 1;
+      continue;
+    }
+    let span = 0;
+    for (let j = cursor; j < original.length; j++) {
+      const candidate = original[j];
+      if (wordsOf(candidate) === '' ) continue; // a comment or a blank line
+      if (indentOf(candidate) === indentOf(line)) {
+        if (wordsOf(candidate) === wordsOf(line)) found = j;
+        else {
+          // a text over several lines is a block (| or >) in the file and a quoted string on one line for the emitter
+          const key = line.slice(0, line.indexOf(': ') + 1);
+          const header = stripYamlComment(candidate).replace(/["']/g, '').trim();
+          if (key.length > 1 && /^[|>][-+0-9]*$/.test(header.slice(key.replace(/["']/g, '').trim().length).trim()) && header.startsWith(key.replace(/["']/g, '').trim())) {
+            found = j;
+            const keyColumn = candidate.length - candidate.replace(/^ *(?:- +)*/, '').length;
+            for (let k = j + 1; k < original.length; k++) {
+              if (original[k].trim() === '') continue;
+              if (indentOf(original[k]) < keyColumn + 1) break;
+              span = k - j;
+            }
+          }
+        }
+      }
+      break; // the next line with words has to be it
+    }
+    if (found === -1) return emitted;
+    place.push(found);
+    spans.push(span);
+    cursor = found + 1 + span;
+  }
+
+  // the lines both have, in order (the common start and end first, which is nearly always most of it)
+  let start = 0;
+  while (start < before.length && start < after.length && before[start] === after[start]) start++;
+  let endBefore = before.length;
+  let endAfter = after.length;
+  while (endBefore > start && endAfter > start && before[endBefore - 1] === after[endAfter - 1]) { endBefore--; endAfter--; }
+  const middleBefore = before.slice(start, endBefore);
+  const middleAfter = after.slice(start, endAfter);
+  const rows = middleBefore.length + 1;
+  const cols = middleAfter.length + 1;
+  const table = new Array(rows * cols).fill(0);
+  for (let i = rows - 2; i >= 0; i--) {
+    for (let j = cols - 2; j >= 0; j--) {
+      table[i * cols + j] = middleBefore[i] === middleAfter[j] ? table[(i + 1) * cols + j + 1] + 1 : Math.max(table[(i + 1) * cols + j], table[i * cols + j + 1]);
+    }
+  }
+  // the edit as a list of steps over `before`: keep the line, drop it, or write a new line there
+  const steps = [];
+  for (let i = 0; i < start; i++) steps.push({ keep: i });
+  let i = 0;
+  let j = 0;
+  while (i < middleBefore.length || j < middleAfter.length) {
+    if (i < middleBefore.length && j < middleAfter.length && middleBefore[i] === middleAfter[j]) { steps.push({ keep: start + i }); i++; j++; }
+    else if (j < middleAfter.length && (i === middleBefore.length || table[i * cols + j + 1] >= table[(i + 1) * cols + j])) { steps.push({ add: middleAfter[j] }); j++; }
+    else { steps.push({ drop: start + i }); i++; }
+  }
+  for (let k = endBefore; k < before.length; k++) steps.push({ keep: k });
+
+  // the original lines, the ones that sit between two lines of the value (comments, blank lines) with the line before them
+  const out = [];
+  let next = 0; // the next original line not yet written
+  const copyUpTo = (index) => { // up to and including the original line `index`
+    while (next <= index) out.push(original[next++]);
+  };
+  for (const step of steps) {
+    if (step.keep !== undefined) copyUpTo(place[step.keep] + spans[step.keep]);
+    else if (step.drop !== undefined) {
+      // the comments above a dropped line are not its own: they stay, the line goes
+      while (next < place[step.drop]) out.push(original[next++]);
+      next = place[step.drop] + 1 + spans[step.drop];
+    } else out.push(step.add);
+  }
+  while (next < original.length) out.push(original[next++]); // what follows the last line of the value: a trailing comment, a blank line
+  return out.join(eol) + (endsWithBreak ? eol : '');
+}
+
+/** The manifest of a file that exists, rewritten after an edit of its `header` and `content` (see patchYamlText). */
+function reserializeManifestFile(mf) {
+  return patchYamlText(mf.rawText, { header: mf.header, content: mf.content });
+}
+
 // =====================================================================
 // IndexedDB: the remembered folders (run 0020, TDD-0020 DEC-1/DEC-2, CTR-1)
 //
@@ -1581,6 +1752,9 @@ function serializeManifestFile(header, content) {
 //                                    rewritten in place with its `id`, never deleted, so a failed migration loses nothing.
 //   'folder:<id>' -> { kind: 'folder', id, handle, name, openedAt }  one per remembered folder; `name` is what its
 //                                    workspace calls itself (settings.name, '' when none), `openedAt` orders the list.
+// Two tabs that pick the same folder at the same moment can each add a record for it: the records of one folder are
+// merged into one whenever the list is read and after each folder remembered (run 0023, TDD-0023 DEC-3..DEC-6), in one
+// transaction that never writes the 'workspace' record and writes nothing at all if it fails.
 // Never JSON.stringify a handle: it is structured-clone-native and `put` takes it as it is.
 // =====================================================================
 
@@ -1682,15 +1856,141 @@ async function readArchicodeRecords() {
   }
 }
 
+/** Whether two handles are the same folder (`isSameEntry`). A handle that cannot be compared is another folder. */
+async function isSameFolder(a, b) {
+  if (!a || !b || typeof a.isSameEntry !== 'function') return false;
+  try {
+    return (await a.isSameEntry(b)) === true;
+  } catch (e) {
+    return false;
+  }
+}
+
 /** The remembered folder that is the same folder as `handle` (`isSameEntry`, DEC-3), or null. */
 async function findSameFolder(handle, folders) {
   for (const folder of folders) {
-    if (!folder.handle || typeof folder.handle.isSameEntry !== 'function') continue;
-    try {
-      if (await folder.handle.isSameEntry(handle)) return folder;
-    } catch (e) { /* a handle that cannot be compared is another folder */ }
+    if (await isSameFolder(folder.handle, handle)) return folder;
   }
   return null;
+}
+
+/**
+ * The remembered folders grouped by folder (TDD-0023 DEC-4): a group of more than one holds records of one folder.
+ * Only records whose handles have the same name are compared (two handles of one folder have its name), so a list of
+ * distinct folders costs no `isSameEntry` call. Never in a transaction: `isSameEntry` is not IndexedDB.
+ */
+async function groupSameFolders(folders) {
+  const groups = [];
+  const byName = new Map();
+  for (const folder of folders) {
+    const name = folder.handle && typeof folder.handle.name === 'string' ? folder.handle.name : null;
+    let group = null;
+    for (const candidate of name === null ? [] : byName.get(name) || []) {
+      if (await isSameFolder(candidate[0].handle, folder.handle)) { group = candidate; break; }
+    }
+    if (group) {
+      group.push(folder);
+    } else {
+      group = [folder];
+      groups.push(group);
+      if (name !== null) byName.set(name, (byName.get(name) || []).concat([group]));
+    }
+  }
+  return groups;
+}
+
+/**
+ * The one entry the records of a folder become (TDD-0023 DEC-5): the record the last-folder pointer names if it is one
+ * of them (so the pointer never has to change), else the most recently opened; the most recent `openedAt`; and the name
+ * of the most recently opened record that has one, so a stored name is never lost to a record whose name was not noted.
+ */
+function mergedFolderOf(group, lastRecord) {
+  const recent = group.slice().sort((a, b) => b.openedAt - a.openedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const pointed = lastRecord && lastRecord.id ? group.find((f) => f.id === lastRecord.id) : null;
+  const survivor = pointed || recent[0];
+  const named = recent.find((f) => f.name);
+  return { id: survivor.id, handle: survivor.handle, name: named ? named.name : '', openedAt: recent[0].openedAt };
+}
+
+/** Whether a stored record is still what the page read: same id, same name, same `openedAt`. */
+function isUnchangedFolderRecord(record, entry) {
+  if (!isFolderRecord(record) || record.id !== entry.id) return false;
+  const now = folderEntryOf(record);
+  return now.name === entry.name && now.openedAt === entry.openedAt;
+}
+
+/**
+ * Merges the records of one folder into `merged` (TDD-0023 DEC-5), in one transaction: only if every record of the
+ * group is still as it was read and the last-folder pointer names none of the records to delete; then the survivor's
+ * record takes the merged name and `openedAt` and the others are deleted. The 'workspace' record is never written.
+ * Rejects when nothing was written (something changed, or the transaction aborted): the records are then as they were.
+ */
+async function mergeSameFolder(group, merged) {
+  const others = group.filter((f) => f.id !== merged.id);
+  const out = await withArchicodeStore('readwrite', (store) => {
+    const state = { unchanged: true, left: group.length, survivor: null, merged: false };
+    store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (e) => {
+      const last = e.target.result;
+      if (last && last.id && others.some((f) => f.id === last.id)) state.unchanged = false;
+    };
+    for (const folder of group) {
+      store.get(folderKey(folder.id)).onsuccess = (e) => {
+        const record = e.target.result;
+        if (!isUnchangedFolderRecord(record, folder)) state.unchanged = false;
+        if (folder.id === merged.id) state.survivor = record;
+        if (--state.left > 0 || !state.unchanged) return;
+        // the last read of the group: everything is as it was read, so the merge is written, all of it or nothing
+        const kept = folderEntryOf(state.survivor);
+        if (kept.name !== merged.name || kept.openedAt !== merged.openedAt) {
+          store.put(Object.assign({}, state.survivor, { name: merged.name, openedAt: merged.openedAt }), folderKey(merged.id));
+        }
+        for (const other of others) store.delete(folderKey(other.id));
+        state.merged = true;
+      };
+    }
+    return state;
+  });
+  if (!out.merged) throw new Error('the records of the folder changed while they were being merged');
+}
+
+/**
+ * The remembered folders with one entry per folder (TDD-0023 DEC-5/DEC-6), and `merged`: the ids that are now another
+ * one's (`Map<id, id of its folder's entry>`). Each group of records of one folder is merged in its own transaction; a
+ * merge that fails, or finds the records changed, writes nothing and is logged: the folder is still one entry, which
+ * carries the ids of the other records (`others`) so that Remove forgets them all, and the next read tries again.
+ */
+async function mergeDuplicateFolders(folders, lastRecord) {
+  const out = [];
+  const merged = new Map();
+  for (const group of await groupSameFolders(folders)) {
+    if (group.length === 1) {
+      out.push(group[0]);
+      continue;
+    }
+    const entry = mergedFolderOf(group, lastRecord);
+    try {
+      await mergeSameFolder(group, entry);
+    } catch (e) {
+      console.error('ArchiCode: the records of one remembered folder could not be merged; it is listed once all the same', e);
+      entry.others = group.filter((f) => f.id !== entry.id).map((f) => f.id);
+    }
+    for (const f of group) if (f.id !== entry.id) merged.set(f.id, entry.id);
+    out.push(entry);
+  }
+  return { folders: out, merged };
+}
+
+/**
+ * The id under which a folder is stored now (TDD-0023 DEC-6): `id` while its record exists, else the id of the record
+ * of the same folder (another tab merged the records), else null (removed from the list). The page acts on ids it read
+ * earlier; this is what keeps it from acting on one that no longer exists.
+ */
+async function liveFolderId(handle, id) {
+  const records = await readArchicodeRecords();
+  if (id && records.folders.some((r) => r.id === id)) return id;
+  if (!records.complete) return id || null; // nothing better to go on
+  const same = await findSameFolder(handle, records.folders.map(folderEntryOf));
+  return same ? same.id : null;
 }
 
 /**
@@ -1728,15 +2028,19 @@ async function migrateLastFolder(lastRecord, folders) {
 async function readRememberedFolders() {
   if (isServedByArchiCode()) return { folders: [], last: null };
   const records = await readArchicodeRecords();
-  const folders = records.folders.map(folderEntryOf);
+  let folders = records.folders.map(folderEntryOf);
   const lastRecord = records.last && records.last.handle ? records.last : null;
-  if (!lastRecord) return { folders: sortRememberedFolders(folders), last: null };
+  let merged = new Map();
+  // one entry per folder, whatever two tabs wrote; merged first, so that a migration finds the folder once
+  if (records.complete) ({ folders, merged } = await mergeDuplicateFolders(folders, lastRecord));
+  if (!lastRecord) return { folders: sortRememberedFolders(folders), last: null, merged };
   if (!records.complete) {
     // the folders could not be read: the last one is all there is, and nothing is written from so partial a view
     const last = { id: lastRecord.id || null, handle: lastRecord.handle, name: '', openedAt: Date.now(), legacy: !lastRecord.id };
-    return { folders: [last], last };
+    return { folders: [last], last, merged };
   }
-  let last = folders.find((f) => f.id === lastRecord.id) || null;
+  // the pointer may name a record a failed merge left beside its folder's entry (`others`): it is that folder
+  let last = folders.find((f) => f.id === lastRecord.id || (lastRecord.id && (f.others || []).includes(lastRecord.id))) || null;
   if (!last) {
     try {
       last = await migrateLastFolder(lastRecord, folders);
@@ -1747,29 +2051,47 @@ async function readRememberedFolders() {
       folders.push(last);
     }
   }
-  return { folders: sortRememberedFolders(folders), last };
+  return { folders: sortRememberedFolders(folders), last, merged };
 }
 
 /**
- * Remembers a folder just opened with its permission as the last one (DEC-3): the entry it already is (`known`, with an
- * id), else the remembered folder that is the same, else a new one. One transaction writes its record (`openedAt` now,
- * its name kept) and the last-folder record. Resolves with the entry, null in served mode; the in-memory list follows.
+ * Remembers a folder just opened with its permission as the last one (DEC-3): the entry it already is (`known`, while
+ * its record is still stored), else the remembered folder that is the same, else a new one. One transaction writes its
+ * record (`openedAt` now, its name kept) and the last-folder record. Then the records are read again and the records of
+ * one folder merged (TDD-0023 DEC-3): of two tabs that picked the same folder at the same moment, the one whose write
+ * came last sees both. Resolves with the entry the folder is now, null in served mode; the in-memory list follows.
  */
 async function rememberFolder(handle, known) {
   if (isServedByArchiCode()) return null;
-  let entry = known && known.id ? known : null;
-  if (!entry) {
-    const records = await readArchicodeRecords();
-    if (records.complete) entry = await findSameFolder(handle, records.folders.map(folderEntryOf));
+  const records = await readArchicodeRecords();
+  let entry = null;
+  if (records.complete) {
+    const folders = records.folders.map(folderEntryOf);
+    // a known entry only while its record is there: another tab may have merged it away, and it must not come back
+    entry = (known && known.id ? folders.find((f) => f.id === known.id) : null) || await findSameFolder(handle, folders);
+  } else if (known && known.id) {
+    entry = known; // the records cannot all be read: the id the page knows
   }
   const fresh = { id: entry ? entry.id : newFolderId(), handle, name: entry ? entry.name : '', openedAt: Date.now() };
   await withArchicodeStore('readwrite', (store) => {
     store.put(folderRecordOf(fresh), folderKey(fresh.id));
     store.put({ handle, id: fresh.id }, ARCHICODE_LAST_FOLDER_KEY);
   });
-  const kept = rememberedFolders.filter((f) => f.id !== fresh.id && f !== known && !(f.legacy && known && known.legacy));
-  rememberedFolders = sortRememberedFolders(kept.concat([fresh]));
-  return fresh;
+  let kept = fresh;
+  let merged = new Map();
+  try {
+    const after = await readArchicodeRecords();
+    if (after.complete) {
+      const result = await mergeDuplicateFolders(after.folders.map(folderEntryOf), after.last);
+      merged = result.merged;
+      kept = result.folders.find((f) => f.id === (merged.get(fresh.id) || fresh.id)) || fresh;
+    }
+  } catch (e) {
+    console.error('ArchiCode: the remembered folders could not be checked for a second record of this folder', e);
+  }
+  const replaced = (f) => f.id === kept.id || f.id === fresh.id || merged.has(f.id) || f === known || !!(f.legacy && known && known.legacy);
+  rememberedFolders = sortRememberedFolders(rememberedFolders.filter((f) => !replaced(f)).concat([kept]));
+  return kept;
 }
 
 /**
@@ -1783,31 +2105,50 @@ async function noteWorkspaceName() {
   const entry = rememberedFolders.find((f) => f.id === folder.id);
   if (entry && entry.name === name) return;
   try {
-    await withArchicodeStore('readwrite', (store) => {
-      store.get(folderKey(folder.id)).onsuccess = (e) => {
-        const record = e.target.result;
-        if (isFolderRecord(record) && record.name !== name) store.put(Object.assign({}, record, { name }), folderKey(folder.id));
-      };
-    });
-    if (entry) entry.name = name;
+    let stored = await storeWorkspaceName(folder.id, name);
+    if (!stored) {
+      // its record is gone: merged into the record of the same folder by another tab (TDD-0023 DEC-6), or removed there
+      const live = await liveFolderId(folder.handle, null);
+      if (live) {
+        folder.id = live;
+        stored = await storeWorkspaceName(live, name);
+      }
+    }
+    for (const f of rememberedFolders) if (stored && f.id === folder.id) f.name = name;
   } catch (e) {
     console.error('ArchiCode: the name of the workspace could not be stored with its folder', e);
   }
 }
 
+/** Writes `name` into the record of folder `id`, in one transaction. Resolves false when there is no such record. */
+async function storeWorkspaceName(id, name) {
+  const out = await withArchicodeStore('readwrite', (store) => {
+    const found = { record: false };
+    store.get(folderKey(id)).onsuccess = (e) => {
+      const record = e.target.result;
+      if (!isFolderRecord(record)) return;
+      found.record = true;
+      if (record.name !== name) store.put(Object.assign({}, record, { name }), folderKey(id));
+    };
+    return found;
+  });
+  return out.record;
+}
+
 /**
- * Remove from the list (DEC-7): deletes the folder's record, and the last-folder record when it points at that folder.
- * A legacy entry is that last-folder record: it goes only while it is still that folder (same name), and if another tab
- * migrated it meanwhile its new folder record goes with it. Nothing else: no file, no other folder.
+ * Remove from the list (DEC-7): deletes the records `ids` (the folder's, and those of the same folder a failed merge left,
+ * TDD-0023 DEC-6), and the last-folder record when it points at one of them. A legacy entry (no id) is that last-folder
+ * record: it goes only while it is still that folder (same name), and if another tab migrated it meanwhile its new
+ * folder record goes with it. Nothing else: no file, no other folder.
  */
-async function forgetRememberedFolder(entry) {
+async function forgetRememberedFolder(entry, ids) {
   await withArchicodeStore('readwrite', (store) => {
-    if (entry.id) store.delete(folderKey(entry.id));
+    for (const id of ids) store.delete(folderKey(id));
     store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (e) => {
       const last = e.target.result;
       if (!last) return;
       if (entry.id) {
-        if (last.id === entry.id) store.delete(ARCHICODE_LAST_FOLDER_KEY);
+        if (ids.includes(last.id)) store.delete(ARCHICODE_LAST_FOLDER_KEY);
       } else if (last.handle && last.handle.name === entry.handle.name) {
         if (last.id) store.delete(folderKey(last.id));
         store.delete(ARCHICODE_LAST_FOLDER_KEY);
@@ -1816,12 +2157,16 @@ async function forgetRememberedFolder(entry) {
   });
 }
 
-/** Close folder (DEC-5): the next load does not reopen this folder, which stays remembered. Only if it is still the last. */
-async function clearLastFolder(id) {
+/**
+ * Close folder (DEC-5): the next load does not reopen this folder, which stays remembered. Only if it is still the last:
+ * the pointer names its id, or one of the records of the same folder a failed merge left (`others`, TDD-0023 DEC-6).
+ */
+async function clearLastFolder(id, others) {
+  const ids = [id].concat(others || []);
   await withArchicodeStore('readwrite', (store) => {
     store.get(ARCHICODE_LAST_FOLDER_KEY).onsuccess = (e) => {
       const last = e.target.result;
-      if (last && last.id === id) store.delete(ARCHICODE_LAST_FOLDER_KEY);
+      if (last && last.id && ids.includes(last.id)) store.delete(ARCHICODE_LAST_FOLDER_KEY);
     };
   });
 }
@@ -1835,7 +2180,7 @@ function createInitialAppState() {
     folder: null, // { handle: FileSystemDirectoryHandle, name: string } | null
     permissionState: 'none', // 'granted' | 'needs-click' | 'none'
     workspace: null, // { application: {elements}, technology: {elements}, settings, styles, formatters, settingsDirty, settingsLastKnownDiskModified } | null
-    manifestFiles: [], // Array<{ relPath, rawText, header, content, error, dirty, existedOnDisk, lastKnownDiskModified }>
+    manifestFiles: [], // Array<{ relPath, rawText, header, content, error, dirty, existedOnDisk, lastKnownDiskModified, savedRawText }>
     unreadManifestFiles: [], // relPaths of the files the CLI reads as manifests (.toml, .json) and the editor does not: only YAML is
     index: { application: new Map(), technology: new Map() },
     relationshipStats: { total: 0, dangling: 0 },
@@ -1868,7 +2213,8 @@ let rememberedFolders = [];
 // A line the landing card says once (a folder removed from the list, a permission refused); null otherwise.
 let landingNotice = null;
 
-// The control the next landing card focuses (after a Remove: the next folder of the list); null: its primary button.
+// The control the next landing card focuses (after a Remove: the next folder of the list); null: its primary button;
+// '': none (the card is drawn again under a focus that was not on it, which is left alone).
 let landingFocusSelector = null;
 
 /**
@@ -2247,11 +2593,13 @@ async function loadWorkspace(dirHandle) {
   // FR-4 / DEC-10: workspace.yaml is fatal to the open attempt if missing/unparseable.
   let workspaceRaw;
   let workspaceLastKnownDiskModified = null; // TDD-0010 DEC-8
+  let workspaceText = ''; // the file as it is: the next Save keeps of it what the edit did not touch
   try {
     const fileHandle = await dirHandle.getFileHandle('workspace.yaml');
     const file = await fileHandle.getFile();
     workspaceLastKnownDiskModified = file.lastModified;
     const text = await file.text();
+    workspaceText = text;
     workspaceRaw = parseYaml(text) || {};
     // a workspace.yaml that is not a mapping is not one the editor can write back without losing it
     if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw)) throw new Error('the file is not a mapping of keys');
@@ -2304,7 +2652,8 @@ async function loadWorkspace(dirHandle) {
       }
       manifestFiles.push({
         relPath, rawText, header, content, error,
-        dirty: false, existedOnDisk: true, lastKnownDiskModified
+        dirty: false, existedOnDisk: true, lastKnownDiskModified,
+        savedRawText: rawText // what the file holds on disk, as far as this editor knows: an edit that restores it is no change
       });
     }
   }
@@ -2328,14 +2677,12 @@ async function loadWorkspace(dirHandle) {
     // so the other top-level keys (application, technology, views, ...) and the unknown settings survive a save.
     topLevel: workspaceRaw,
     settingsDirty: false, // TDD-0010 DEC-8
-    settingsLastKnownDiskModified: workspaceLastKnownDiskModified
+    settingsLastKnownDiskModified: workspaceLastKnownDiskModified,
+    rawText: workspaceText
   };
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   render();
   await noteWorkspaceName(); // the list of folders says it, and so does the next "Opening" of this folder (TDD-0020 DEC-4)
-
-  // eslint-disable-next-line no-console
-  console.log('ArchiCode standalone editor — AppState after load:', AppState);
 }
 
 // =====================================================================
@@ -2583,16 +2930,51 @@ function folderOpenSelector(entry) {
   return '[data-action="open-remembered-folder"][data-folder-id="' + (entry.id || '') + '"]';
 }
 
-/** Reads the remembered folders again, keeping what the page found out about each (its problem line, DEC-9). */
+/**
+ * Reads the remembered folders again, keeping what the page found out about each (its problem line, DEC-9), also for a
+ * folder whose records were merged meanwhile (under the id it is now, TDD-0023 DEC-6).
+ */
 async function refreshRememberedFolders() {
   const problems = new Map(rememberedFolders.filter((f) => f.problem).map((f) => [f.id || '', f.problem]));
+  let remembered;
   try {
-    rememberedFolders = (await readRememberedFolders()).folders;
+    remembered = await readRememberedFolders();
   } catch (e) {
     console.error('ArchiCode: the remembered folders could not be read', e);
     return;
   }
-  for (const f of rememberedFolders) if (problems.has(f.id || '')) f.problem = problems.get(f.id || '');
+  rememberedFolders = remembered.folders;
+  const merged = remembered.merged || new Map();
+  for (const [id, problem] of problems) {
+    const now = merged.get(id) || id;
+    for (const f of rememberedFolders) if ((f.id || '') === now && !f.problem) f.problem = problem;
+  }
+}
+
+/** The state of the permission to read a folder, asked without any prompt (TDD-0023 DEC-1, CTR-2). Never rejects. */
+async function folderPermissionOf(handle) {
+  if (!handle || typeof handle.queryPermission !== 'function') return 'unknown';
+  try {
+    const state = await handle.queryPermission({ mode: 'read' });
+    return state === 'granted' || state === 'prompt' || state === 'denied' ? state : 'unknown';
+  } catch (e) {
+    return e && e.name === 'NotFoundError' ? 'unreachable' : 'unknown';
+  }
+}
+
+/**
+ * Says, next to each remembered folder, what a click on it will meet (TDD-0023 DEC-1): `queryPermission` needs no user
+ * gesture and shows no prompt. Called once the card is drawn, so it never delays it: every folder not yet known is asked
+ * at once, and the card is drawn again, once, if it still shows the list, with the focus where it was.
+ */
+async function checkFolderPermissions() {
+  const pending = rememberedFolders.filter((f) => !f.permission);
+  if (pending.length === 0) return;
+  await Promise.all(pending.map(async (f) => { f.permission = await folderPermissionOf(f.handle); }));
+  const landing = landingScreenConfig();
+  if (!landing || !landing.folders || !pending.some((f) => rememberedFolders.includes(f))) return; // the list is gone
+  if (landingFocusSelector === null) landingFocusSelector = landingControlSelector(document.activeElement) || '';
+  render();
 }
 
 /** "Remembered folders" on the error card: leaves the folder that did not open (storage untouched) for the list. */
@@ -2605,6 +2987,7 @@ async function showRememberedFolders() {
   render();
   await refreshRememberedFolders();
   render();
+  await checkFolderPermissions();
 }
 
 /** "Remove from the list" (TDD-0020 DEC-7): this browser forgets the folder; nothing is deleted on disk. */
@@ -2612,7 +2995,9 @@ async function forgetFolder(entry) {
   if (!entry) return;
   const title = rememberedFolderTitle(entry);
   try {
-    await forgetRememberedFolder(entry);
+    // the records the folder has now: another tab may have merged it under another id, or removed it (TDD-0023 DEC-6)
+    const ids = entry.id ? [await liveFolderId(entry.handle, entry.id)].concat(entry.others || []).filter(Boolean) : [];
+    await forgetRememberedFolder(entry, Array.from(new Set(ids)));
   } catch (e) {
     console.error('ArchiCode: a remembered folder could not be removed from the list', e);
     landingNotice = '“' + title + '” could not be removed from the list: ' + (e && e.message ? e.message : String(e));
@@ -2668,6 +3053,11 @@ function resetUiState() {
   diagramCache = null;
   diagramScene = null;
   diagramShownView = null;
+  diagramLinkStop = null;
+  diagramHost = 'main';
+  parkedDiagramHost = newDiagramHostState();
+  libraryPick = { view: null, selection: null };
+  viewEditNotice = null;
   diagramSeq++; // a layout still being computed for the old folder is dropped when it ends
   helpOpen = false;
   headerMenuOpen = false;
@@ -2696,10 +3086,16 @@ async function closeFolder() {
   const folder = AppState.folder;
   if (folder && folder.handle && !isServedByArchiCode()) {
     try {
-      // a folder without id (stored by an earlier version, or not remembered when opened) is remembered first: its
-      // last-folder record may be the only trace of it, so it is cleared only once the folder has a record of its own
-      const id = folder.id || (await rememberFolder(folder.handle)).id;
-      await clearLastFolder(id);
+      if (folder.id) {
+        // under the id it has now: another tab may have merged its records, or removed it (then nothing to clear)
+        const id = await liveFolderId(folder.handle, folder.id);
+        const entry = rememberedFolderById(folder.id);
+        if (id) await clearLastFolder(id, entry && entry.others);
+      } else {
+        // a folder without id (stored by an earlier version, or not remembered when opened) is remembered first: its
+        // last-folder record may be the only trace of it, so it is cleared only once the folder has a record of its own
+        await clearLastFolder((await rememberFolder(folder.handle)).id);
+      }
     } catch (e) {
       console.error('ArchiCode: closeFolder failed to update the remembered folders', e);
     }
@@ -2710,6 +3106,7 @@ async function closeFolder() {
   render();
   await refreshRememberedFolders();
   render();
+  await checkFolderPermissions();
 }
 
 /** On every page load: try to silently reopen a stored handle (FLOW-2). */
@@ -2727,19 +3124,15 @@ async function tryAutoReopen() {
     landingBusy = null;
     AppState.permissionState = 'none';
     render();
+    await checkFolderPermissions(); // after the card is drawn: the list says what each folder will need
     return;
   }
   const handle = last.handle;
-  let permission;
-  try {
-    // No user gesture needed for queryPermission (FR-2/Q-1).
-    permission = await handle.queryPermission({ mode: 'read' });
-  } catch (e) {
-    permission = 'denied';
-    last.problem = e && e.name === 'NotFoundError' ? FOLDER_UNREACHABLE : null;
-  }
+  // No user gesture needed for queryPermission (FR-2/Q-1). The answer is the last folder's state in the list too, and a
+  // query that fails (a folder moved or deleted) says so there (TDD-0023 DEC-1).
+  last.permission = await folderPermissionOf(handle);
   AppState.folder = { handle, name: handle.name, id: last.id || null };
-  if (permission === 'granted') {
+  if (last.permission === 'granted') {
     AppState.permissionState = 'granted';
     landingBusy = openingMessage(handle.name, last.name);
     render();
@@ -2748,6 +3141,7 @@ async function tryAutoReopen() {
     landingBusy = null;
     AppState.permissionState = 'needs-click';
     render();
+    await checkFolderPermissions();
   }
 }
 
@@ -2858,7 +3252,51 @@ function applyDiagramParamsFromHash() {
   diagramFacet = facet && AppState.workspace.settings.facets.customs.some((f) => f.name === facet) ? facet : null;
 }
 
+/**
+ * The link the hash names, `link-from=` and `link-to=` (the two boxes of the drawing it joins: a reference, or the id of a
+ * folded or unknown box), or null. Two parameters rather than one with a separator: an id of the drawing can hold any
+ * character a reference can, and `URLSearchParams` already quotes each. Both or none: a lone one names nothing.
+ */
+function linkFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  if (queryIdx === -1) return null;
+  const params = new URLSearchParams(location.hash.slice(queryIdx + 1));
+  const from = params.get('link-from');
+  const to = params.get('link-to');
+  return from && to ? { from, to } : null;
+}
+
+/**
+ * The link the hash names becomes the selection, where a link can be selected: on the Map, or over the element the hash
+ * selects while a diagram tab of it is shown (the same places `settleLinkSelection` keeps one). Whether the drawing has
+ * that pair is not known yet (it is not drawn): the selection is made as a click would, the panel waits ("Reading the
+ * link…") and `reconcileLinkSelection` drops it, and the address with it, once the drawing is on screen and lacks it.
+ */
+function restoreLinkFromHash() {
+  const link = linkFromHash();
+  if (!link) return;
+  const id = perspectiveIdFromHash();
+  const key = link.from + ' -> ' + link.to;
+  const sel = AppState.selection;
+  if (id === 'map') {
+    AppState.selection = { kind: 'link', key, from: link.from, to: link.to, layer: 'application', mode: 'view' };
+  } else if (id === 'elements' && sel.kind === 'element' && sel.mode === 'view' && elementTab !== 'details' && findElementRecord(sel.key, sel.layer)) {
+    AppState.selection = { kind: 'link', key, from: link.from, to: link.to, layer: layerOfReference(sel.key, sel.layer) || 'application', mode: 'view', focal: sel.key };
+  } else {
+    return;
+  }
+  revealLinkAfterDrawing = { nth: null };
+  diagramLinkStop = null; // the selected link is the tab stop of the links then, not where the focus was
+}
+
+/** The hash's selection, whole: an element or a file, or a link over the element (see `restoreLinkFromHash`). */
 function applySelectionFromHashRef() {
+  selectFromHashRef();
+  restoreLinkFromHash();
+}
+
+/** The element or manifest file the hash's `ref=` names, else nothing selected. */
+function selectFromHashRef() {
   applyDiagramParamsFromHash();
   const ref = refFromHash();
   if (ref) {
@@ -2882,6 +3320,7 @@ function applySelectionFromHashRef() {
 /** Re-sync `currentPerspective` (and, once a workspace is loaded, the selection) from the URL — bootstrap and every 'hashchange' (back/forward, a hand-edited URL). */
 function syncPerspectiveFromHash() {
   currentPerspective = perspectiveIdFromHash();
+  useDiagramHost(diagramHostOf(currentPerspective)); // the framing an address carries (`frame=fit`) is that of the diagram it will draw
   if (AppState.workspace) applySelectionFromHashRef();
 }
 
@@ -2902,6 +3341,17 @@ function diagramFramingChanged() {
 function pushShowParams(params, isMap) {
   const overrides = diagramShowOverrides(isMap);
   for (const name of DIAGRAM_SHOW_NAMES) if (name in overrides) params.push(name + '=' + (overrides[name] ? '1' : '0'));  if (diagramHideUnlinked) params.push('hide-unlinked=1');
+}
+
+/**
+ * The selected link, when the address should carry it: only where it is selected (the Map; a diagram tab of its element),
+ * since the address is written before a change of perspective is drawn and `settleLinkSelection` has not ended it yet.
+ * Selecting a link rewrites the current entry of the history, like a zoom: it refines the place and is not one.
+ */
+function linkInRoute() {
+  const sel = AppState.selection;
+  if (!sel || sel.kind !== 'link') return null;
+  return (sel.focal ? currentPerspective === 'elements' && diagramTabShown() : currentPerspective === 'map') ? sel : null;
 }
 
 /** The "#/perspective?ref=..." hash for the current perspective + selection — what the URL should read right now (UX review follow-up: the URL mirrors what's on screen). */
@@ -2932,6 +3382,8 @@ function currentRouteHash() {
   if ((currentPerspective === 'elements' || currentPerspective === 'map') && activeStory) {
     params.push('story=' + encodeURIComponent(activeStory.id), 'step=' + activeStory.step);
   }
+  const link = linkInRoute();
+  if (link) params.push('link-from=' + encodeURIComponent(link.from), 'link-to=' + encodeURIComponent(link.to));
   return '/' + currentPerspective + (currentPerspective === 'library' ? '/' + libraryTab : '') + (params.length ? '?' + params.join('&') : '');
 }
 
@@ -2960,6 +3412,7 @@ function syncHashFromState() {
 function setPerspective(id) {
   if (!Object.prototype.hasOwnProperty.call(PERSPECTIVES, id)) return;
   currentPerspective = id;
+  useDiagramHost(diagramHostOf(id)); // the address below is written from the framing of the diagram it leads to
   if (rawYamlEditDraft) rawYamlEditDraft = null;
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
   location.hash = currentRouteHash();
@@ -3206,7 +3659,7 @@ function commitElementEdit(reference, mutatorFn, layer) {
     rewriteInboundReferences(from, to, elementLayer);
     dirtyReference = to;
   }
-  mf.rawText = serializeManifestFile(mf.header, mf.content);
+  mf.rawText = reserializeManifestFile(mf);
   mf.dirty = true; // TDD-0010 DEC-8 — every structural edit marks its file dirty for the next save
   AppState.dirtyReferences.add(nodeKey(dirtyReference, elementLayer)); // UX review follow-up — element-level "modified" tracking
   saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
@@ -3562,7 +4015,7 @@ function commitDeleteElement(reference, category, affected) {
   // reference held from before that reassignment.
   for (const mf of AppState.manifestFiles) {
     if (touchedRelPaths.has(mf.relPath)) {
-      mf.rawText = serializeManifestFile(mf.header, mf.content);
+      mf.rawText = reserializeManifestFile(mf);
       mf.dirty = true;
     }
   }
@@ -3782,11 +4235,12 @@ async function writeWorkspaceYaml() {
     if (Object.prototype.hasOwnProperty.call(raw, key)) continue;
     if (key === 'settings' || isYamlComplexValue(managed[key])) raw[key] = managed[key];
   }
-  const text = serializeYamlValue(raw, 0);
+  const text = typeof ws.rawText === 'string' && ws.rawText !== '' ? patchYamlText(ws.rawText, raw) : serializeYamlValue(raw, 0);
   const fileHandle = await AppState.folder.handle.getFileHandle('workspace.yaml');
   const writable = await fileHandle.createWritable();
   await writable.write(text);
   await writable.close();
+  ws.rawText = text;
 }
 
 /**
@@ -3933,6 +4387,7 @@ async function performSave() {
       if (live) {
         live.existedOnDisk = true;
         live.lastKnownDiskModified = modified;
+        live.savedRawText = writtenText;
         if (live.rawText === writtenText) { // only what was written is clean: a later edit stays to be saved
           live.dirty = false;
           clearDirtyReferencesForFile(f.relPath); // UX review follow-up
@@ -4035,7 +4490,7 @@ async function reloadManifestFile(relPath) {
   clearDirtyReferencesForFile(relPath); // before the index is rebuilt: it still knows this file's current elements
   AppState.manifestFiles = AppState.manifestFiles.map((f) =>
     f.relPath === relPath
-      ? { relPath, rawText, header, content, error, dirty: false, existedOnDisk: true, lastKnownDiskModified: lastModified }
+      ? { relPath, rawText, header, content, error, dirty: false, existedOnDisk: true, lastKnownDiskModified: lastModified, savedRawText: rawText }
       : f
   );
   if (rawYamlEditDraft && rawYamlEditDraft.relPath === relPath) rawYamlEditDraft = null;
@@ -4215,7 +4670,7 @@ function rewriteInboundReferences(oldRef, newRef, layer) {
       }
     });
     if (changed) {
-      mf.rawText = serializeManifestFile(mf.header, mf.content);
+      mf.rawText = reserializeManifestFile(mf);
       mf.dirty = true;
       changedFiles.push(mf.relPath);
     }
@@ -4648,6 +5103,21 @@ function refreshSaveAllButton() {
   if (holder.content && holder.content.firstElementChild) group.replaceWith(holder.content.firstElementChild);
 }
 
+/** Lights or dims the buttons of "Save all changes" where they are, without replacing them: a click that is being made on one must still land on it. */
+function syncSaveAllButtonsInPlace() {
+  const group = document.querySelector('[aria-label="Changes"]');
+  if (!group || !group.querySelectorAll) return;
+  const holder = document.createElement('template');
+  holder.innerHTML = renderSaveAllButtonHtml();
+  const fresh = holder.content ? holder.content.querySelectorAll('button') : [];
+  const current = group.querySelectorAll('button');
+  fresh.forEach((button, index) => {
+    if (!current[index]) return;
+    current[index].disabled = button.disabled;
+    current[index].title = button.title;
+  });
+}
+
 /**
  * Applies what the form on screen holds (an element, the settings or a manifest file) to the model, as the former
  * per-form Save did. False when it is invalid: the form shows its errors and the save must not go on.
@@ -4679,7 +5149,7 @@ function renderTopPanelHtml() {
   // the name of the workspace in place of the folder, which is then the tooltip; without one, the folder and its root slash
   const label = name
     ? '<span class="folder-name workspace-name" title="Folder: ' + escapeHtml(AppState.folder.name) + '">' + escapeHtml(name) + '</span>'
-    : '<span class="folder-name" title="Browsers do not expose an absolute filesystem path for a picked folder (ASM-1/DEC-11) — this shows the folder\'s own name and its position as the browsing root instead.">' +
+    : '<span class="folder-name" title="Folder: ' + escapeHtml(AppState.folder.name) + ' (a browser does not tell the full path of a folder)">' +
         escapeHtml(AppState.folder.name) + '<span class="folder-root-slash">/</span>' +
       '</span>';
   return '<header class="top-panel col-span-3 flex items-center px-4">' +
@@ -4906,7 +5376,7 @@ const SETTINGS_HELP = {
   facetsGlobalEnabled: 'Also generate the unfiltered views into the Views path. Turn off to generate only facet views. Default: on.',
   facetsTemplate: 'Folder name for each facet\'s views, as a Java format string: the first `%s` is the Views path, the second is the facet name. Default `%s-%s` gives `views-main` for a facet named `main`.',
   facetsCustoms: 'Each facet needs a unique name. Its actions run in order on the workspace model.',
-  facetsAction: '`REMOVE` deletes every node matched by the JSONPath, e.g. `$.application..relationships[?(@.qualifiers anyof [\'oidc\'])]`.'
+  facetsAction: '`REMOVE` deletes every node matched by the JSONPath, e.g. `$.application..relationships[?(@.qualifiers[?(@ == \'oidc\')])]`.'
 };
 
 /** The default view title per viewpoint (Overview/Detailed/DeepViewpointService), shown as the empty-label placeholder. */
@@ -5476,10 +5946,14 @@ function renderItemListHtml(itemsHtml) {
  * A reference as an item: a link to its element, in `layer` (the element itself, or one of the other layer's: a deployed
  * application), followed by the kind of that element; or, when nothing answers to it, its name flagged as dangling.
  */
-function renderReferenceItemHtml(reference, layer) {
+function renderReferenceItemHtml(reference, layer, owner) {
   const target = AppState.index[layer || 'application'].get(String(reference));
   if (!target) {
-    return '<span class="relationship-dangling">' + escapeHtml(String(reference)) + '<span class="dangling-badge">dangling</span></span>';
+    const badge = '<span class="dangling-badge">dangling</span>';
+    // a relationship that points at nothing is repaired where it is declared, as from the box of the diagram: a button to its owner's edit form
+    if (owner === undefined) return '<span class="relationship-dangling">' + escapeHtml(String(reference)) + badge + '</span>';
+    return '<button type="button" class="relationship-link relationship-dangling" data-action="fix-dangling" data-ref="' + escapeHtml(String(owner)) + '"' +
+      (layer ? ' data-layer="' + escapeHtml(layer) + '"' : '') + ' title="Edit the relationship of ' + escapeHtml(String(owner)) + ' that points at nothing">' + escapeHtml(String(reference)) + '</button>' + badge;
   }
   return renderReferenceLinkHtml(String(reference), layer) + ' <span class="element-kind-badge">' + escapeHtml(target.kind) + '</span>';
 }
@@ -5495,13 +5969,17 @@ function renderElementRelationshipsHtml(record) {
   const layer = record.layer || 'application';
   return renderItemListHtml(record.relationships.map((rel) => {
     const qualifiersText = (rel.qualifiers && rel.qualifiers.length) ? ' (' + rel.qualifiers.map((q) => escapeHtml(q)).join(', ') + ')' : '';
-    return escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + renderReferenceItemHtml(rel.destination, layer);
+    return escapeHtml(rel.label) + qualifiersText + ' &rarr; ' + renderReferenceItemHtml(rel.destination, layer, record.reference);
   }));
 }
 
-/** A reference as a link to its element, in `layer` (the element itself, or one of the other layer's: a deployed application). */
-function renderReferenceLinkHtml(reference, layer) {
-  return '<button type="button" class="relationship-link" data-action="goto-element" data-ref="' + escapeHtml(reference) + '" data-layer="' + escapeHtml(layer || 'application') + '">' +
+/**
+ * A reference as a link to its element, in `layer` (the element itself, or one of the other layer's: a deployed application).
+ * `description`: what the button does, when the reference alone does not say (the accessible name and the tooltip).
+ */
+function renderReferenceLinkHtml(reference, layer, description) {
+  return '<button type="button" class="relationship-link" data-action="goto-element" data-ref="' + escapeHtml(reference) + '" data-layer="' + escapeHtml(layer || 'application') + '"' +
+           (description ? ' aria-label="' + escapeHtml('Open ' + reference + ', ' + description) + '" title="' + escapeHtml('Select ' + description) + '"' : '') + '>' +
            escapeHtml(reference) +
          '</button>';
 }
@@ -5687,6 +6165,7 @@ function handleAppInput(e) {
     setThemeChoice(e.target.value);
     return;
   }
+  if (e.target.tagName === 'INPUT' && e.target.type === 'text' && e.target.closest && e.target.closest('[data-view-field], [data-view-list]')) lightSaveForTypedViewText();
   if (!draftTyped && e.target.closest && e.target.closest('.element-edition-form, .settings-view, .file-view')) {
     draftTyped = true;
     refreshSaveAllButton();
@@ -6139,14 +6618,26 @@ function inspectionRecordFor(sel) {
  */
 function renderInspectionHtml(onMap) {
   if (diagramMaximized) return null;
-  if (AppState.selection.kind === 'link') return renderLinkInspectionHtml(AppState.selection);
-  const record = inspectionRecordFor(AppState.selection);
+  return inspectionPanelHtml(AppState.selection, onMap ? 'map' : 'elements');
+}
+
+/**
+ * The panel of a selection, whoever holds it. `mode` is where it stands: 'map' (it can be closed, and says when the element is
+ * not drawn), 'elements' (nothing deselects there: it has no close button), or 'library' (the page of a view: it can be closed, and
+ * leads to the element in Elements). The Map and Elements pass their own selection (`AppState.selection`), the page of a view the one of the page.
+ */
+function inspectionPanelHtml(sel, mode) {
+  if (sel.kind === 'link') return renderLinkInspectionHtml(sel);
+  const onMap = mode === 'map';
+  const record = inspectionRecordFor(sel);
   if (!record) return null;
   const layer = record.layer || 'application';
   let html = '<div class="inspection" data-inspection-ref="' + escapeHtml(record.reference) + '" data-inspection-layer="' + escapeHtml(layer) + '">';
   html += '<div class="inspection-head"><h3>Selected element</h3>' + (onMap
     ? '<button type="button" class="inspection-close" data-action="close-inspection" aria-label="Close the panel" title="Deselect the element and give the map its whole width back">&times;</button>'
-    : '') + '</div>';
+    : mode === 'library'
+      ? '<button type="button" class="inspection-close" data-action="close-inspection" aria-label="Close the panel" title="Deselect the element (Esc)">&times;</button>'
+      : '') + '</div>';
   html += '<div class="inspection-name"><span>' + escapeHtml(record.name || record.id) + '</span>' + stereotypeBadgesHtml(stereotypesOfRecord(record)) + '</div>';
   if (onMap) {
     html += layer === 'technology'
@@ -6157,6 +6648,10 @@ function renderInspectionHtml(onMap) {
   html += renderFieldRowHtml('Layer', escapeHtml(layer));
   html += renderElementPropertiesHtml(record);
   html += renderFieldRowHtml('Source file', record.sourceFile ? escapeHtml(record.sourceFile) : renderNoneHtml());
+  if (mode === 'library') {
+    html += '<button type="button" class="inspection-open with-icon" data-action="library-open-element" data-ref="' + escapeHtml(record.reference) + '" data-layer="' + escapeHtml(layer) + '"' +
+      ' title="Leave this page for the element: select it in Elements, on the tab you left there">' + controlIconHtml(CONTROL_ICON_PATHS.elements) + '<span>Show in Elements</span></button>';
+  }
   return html + '</div>';
 }
 
@@ -6202,8 +6697,34 @@ function dropLinkSelection() {
  */
 function settleLinkSelection() {
   const sel = AppState.selection;
-  if (!sel || sel.kind !== 'link') return;
-  if (!(sel.focal ? diagramTabShown() : currentPerspective === 'map')) dropLinkSelection();
+  if (!sel || sel.kind !== 'link') { revealLinkAfterDrawing = false; return; }
+  if (!(sel.focal ? diagramTabShown() : currentPerspective === 'map')) { dropLinkSelection(); revealLinkAfterDrawing = false; }
+}
+
+/**
+ * A link was just selected (a click on the Map, or an address that carries one): the next drawing brings it into view. Only
+ * then, never on a redraw (a facet, a fold) of a link that has been selected for a while: selecting must not move the view of
+ * someone who is reading it. `revealSelectedLink` consumes it. It is false, or `{ nth }`: the position (`data-nth`) of the
+ * link that was clicked among the twins of its pair, which is the one to show (positions are those of the drawing the click
+ * was made on, and the first drawing after it is that one), or null (an address does not say: the first link of the pair).
+ */
+let revealLinkAfterDrawing = false;
+
+/**
+ * After the drawing is on screen: pan the view, by the least it takes, so that the selected link is inside the canvas (the
+ * panel that appeared with the selection has narrowed it, and the link may now be behind its edge; an address can name a link
+ * the opening view does not show). A link already in view is left where it is. Several links between the two boxes: the one
+ * that was clicked (`data-nth`), else the first.
+ */
+function revealSelectedLink(canvas) {
+  const request = revealLinkAfterDrawing;
+  revealLinkAfterDrawing = false;
+  const sel = AppState.selection;
+  if (!request || sel.kind !== 'link' || !canvas || !canvas.querySelectorAll) return;
+  const links = Array.from(canvas.querySelectorAll('.dg-link')).filter((el) => el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to);
+  const clicked = request.nth === null || request.nth === undefined ? undefined : links.find((el) => el.getAttribute('data-nth') === String(request.nth));
+  const target = clicked || links[0];
+  if (target) revealDiagramNode(target);
 }
 
 /** What the drawing on screen drew for the selected link: the pair of boxes (ends, links), or null (nothing drawn yet, or not in it). */
@@ -6213,15 +6734,24 @@ function inspectionLinkFor(sel) {
   return (pairs && pairs.find((pair) => pair.from === sel.from && pair.to === sel.to)) || null;
 }
 
-/** The declared relationships of a pair, once each, in the order the kernel lists them (a link the kernel gives none for, a ghost, speaks for itself). */
+/** The declared relationships of one link of a pair, in the order the kernel lists them (a link the kernel gives none for, a ghost, speaks for itself). */
+function relationshipsOfLink(link, pair) {
+  const own = Array.isArray(link.relationships) ? link.relationships : [];
+  return own.length ? own : [{ from: pair.fromEnd.reference, destination: pair.toEnd.reference, label: link.label, qualifiers: link.qualifiers, tags: link.tags, unresolved: !!link.ghost }];
+}
+
+/** What makes two relationships the same one: who declares it, to whom, and what it says. */
+function relationshipKeyOf(rel) {
+  return JSON.stringify([rel.from, rel.destination, rel.label, rel.qualifiers, rel.tags]);
+}
+
+/** The declared relationships of a pair, once each, in the order the kernel lists them. */
 function relationshipsOfPair(pair) {
   const rels = [];
   const seen = new Set();
   for (const link of pair.links) {
-    const own = Array.isArray(link.relationships) ? link.relationships : [];
-    const list = own.length ? own : [{ from: pair.fromEnd.reference, destination: pair.toEnd.reference, label: link.label, qualifiers: link.qualifiers, tags: link.tags, unresolved: !!link.ghost }];
-    for (const rel of list) {
-      const key = JSON.stringify([rel.from, rel.destination, rel.label, rel.qualifiers, rel.tags]);
+    for (const rel of relationshipsOfLink(link, pair)) {
+      const key = relationshipKeyOf(rel);
       if (seen.has(key)) continue;
       seen.add(key);
       rels.push(rel);
@@ -6237,11 +6767,21 @@ function renderLinkEndHtml(end) {
   return html;
 }
 
-/** One declared relationship: its label, who declares it and to whom, its qualifiers and its tags. */
-function renderRelationshipInspectionHtml(rel) {
+/**
+ * The declaring element of a relationship, as a button that selects it like a box of the diagram does (`goto-element`, with the
+ * layer of the drawing). Plain text when the drawing's layer has no such element (the name stays readable, nothing to open).
+ */
+function renderDeclaringElementHtml(reference, layer) {
+  if (layerOfReference(reference, layer) !== layer) return escapeHtml(reference);
+  return renderReferenceLinkHtml(reference, layer, 'the element that declares this relationship');
+}
+
+/** One declared relationship: its label, who declares it (a button) and to whom, its qualifiers and its tags; `marked`: it belongs to the link that was clicked. */
+function renderRelationshipInspectionHtml(rel, layer, marked) {
   const label = rel.label !== undefined && rel.label !== null && String(rel.label).trim() ? escapeHtml(rel.label) : '<span class="muted">no label</span>';
-  return '<div class="inspection-rel"><div class="inspection-rel-label">' + label + '</div>' +
-    '<div class="inspection-rel-path">' + escapeHtml(rel.from) + ' &rarr; ' + escapeHtml(rel.destination) + '</div>' +
+  return '<div class="inspection-rel' + (marked ? ' inspection-rel-marked' : '') + '"><div class="inspection-rel-label">' + label +
+    (marked ? '<span class="inspection-rel-mark">Clicked link</span>' : '') + '</div>' +
+    '<div class="inspection-rel-path">' + renderDeclaringElementHtml(rel.from, layer) + ' &rarr; ' + escapeHtml(rel.destination) + '</div>' +
     renderFieldRowHtml('Qualifiers', renderQualifierPillsHtml(rel.qualifiers)) +
     renderFieldRowHtml('Tags', renderTagListHtml(rel.tags)) +
     (rel.unresolved ? '<p class="inspection-note">There is no element &ldquo;' + escapeHtml(rel.destination) + '&rdquo;: the relationship points at nothing.</p>' : '') +
@@ -6261,8 +6801,18 @@ function renderLinkInspectionHtml(sel) {
     if (end.collapsed) html += '<p class="inspection-note">&ldquo;' + escapeHtml(end.title) + '&rdquo; is folded: it stands for ' + end.hidden + ' hidden element' + (end.hidden === 1 ? '' : 's') + '. Open it to see their relationships one by one.</p>';
   }
   const rels = relationshipsOfPair(pair);
-  if (rels.length > 1) html += '<p class="inspection-note">' + rels.length + ' relationships are grouped in this link.</p>';
-  html += '<h4 class="inspection-subhead">Relationships <span class="field-count">' + rels.length + '</span></h4>' + rels.map(renderRelationshipInspectionHtml).join('');
+  // several links between the same two boxes: the relationships of the one that was clicked are marked (when they can be told from the others)
+  const clickedKeys = new Set(Array.isArray(sel.via) ? sel.via : []);
+  const marked = pair.links.length > 1 ? rels.map((rel) => clickedKeys.has(relationshipKeyOf(rel))) : rels.map(() => false);
+  const told = marked.some(Boolean) && !marked.every(Boolean);
+  if (pair.links.length > 1) {
+    html += '<p class="inspection-note">' + pair.links.length + ' links join these two boxes, with ' + rels.length + (rels.length === 1 ? ' relationship' : ' relationships') + ' in all.' +
+      (told ? ' The relationships of the link you clicked are marked.' : '') + '</p>';
+  } else if (rels.length > 1) {
+    html += '<p class="inspection-note">' + rels.length + ' relationships are grouped in this link.</p>';
+  }
+  html += '<h4 class="inspection-subhead">Relationships <span class="field-count">' + rels.length + '</span></h4>' +
+    rels.map((rel, i) => renderRelationshipInspectionHtml(rel, layer, told && marked[i])).join('');
   html += renderFieldRowHtml('Layer', escapeHtml(layer));
   return html + '</div>';
 }
@@ -6271,8 +6821,11 @@ function renderLinkInspectionHtml(sel) {
 function refreshInspection() {
   const holder = document.querySelector('.inspection');
   if (!holder) return; // nothing on screen to refresh (maximized)
-  const html = renderInspectionHtml(mapIsShown());
-  if (html === null) removeInspectionPanel(); else holder.outerHTML = html;
+  const onPage = currentPerspective === 'library';
+  const html = diagramMaximized ? null : inspectionPanelHtml(diagramSelection(), onPage ? 'library' : mapIsShown() ? 'map' : 'elements');
+  if (html !== null) holder.outerHTML = html;
+  else if (onPage) { const section = document.querySelector('.library-selection'); if (section) section.remove(); } // the panel of the page stays: only its selection goes
+  else removeInspectionPanel();
 }
 
 /**
@@ -6282,11 +6835,15 @@ function refreshInspection() {
  * Elements goes back to the panel of its element. Anything added to the Map that depends on a link selection must be undone here.
  */
 function reconcileLinkSelection() {
-  const sel = AppState.selection;
+  const sel = diagramSelection();
   if (sel.kind !== 'link') return;
   if (!inspectionLinkFor(sel)) {
-    dropLinkSelection();
-    syncHashFromState();
+    if (currentPerspective === 'library') {
+      libraryPickFor(selectedViewId).selection = null; // the page's own selection: nothing of the Map's, nor the address, is involved
+    } else {
+      dropLinkSelection();
+      syncHashFromState();
+    }
   }
   refreshInspection();
 }
@@ -6295,7 +6852,7 @@ function reconcileLinkSelection() {
 function markLinkSelection() {
   const canvas = document.getElementById('diagram-canvas');
   if (!canvas) return;
-  const sel = AppState.selection;
+  const sel = diagramSelection();
   canvas.querySelectorAll('.dg-link, .dg-label').forEach((el) => {
     const selected = sel.kind === 'link' && el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to;
     el.classList.toggle('dg-link-selected', selected);
@@ -6415,6 +6972,43 @@ let diagramPanned = false;
 let pendingDiagramFocus = null;
 let viewpointKernelPromise = null;
 let elkPromise = null;
+
+/**
+ * The diagram on screen is not the model: the camera, the scene, the cache, the tab stop of the links and whether it is maximized
+ * belong to the host that draws them. The Map and the diagrams of Elements ('main') have always shared one set of them (the same diagram keeps
+ * the view the user chose, whichever of the two shows it); the page of a view in the Library ('library') has its own. The live
+ * globals (`diagramScale`, `diagramCenter`, `diagramShownView`, `diagramScene`, `diagramCache`, `diagramLinkStop`, `diagramMaximized`) are those of
+ * `diagramHost`; the other host's are parked here, and `useDiagramHost` swaps them. Nothing a host does to its own diagram can
+ * then show on the other.
+ */
+let diagramHost = 'main';
+let parkedDiagramHost = newDiagramHostState();
+
+function newDiagramHostState() {
+  return { scale: 'auto', center: { x: 0, y: 0 }, shownView: null, scene: null, cache: null, linkStop: null, maximized: false };
+}
+
+/** The host a perspective draws its diagram for: the page of a view in the Library, else the Map and Elements. */
+function diagramHostOf(perspective) {
+  return perspective === 'library' ? 'library' : 'main';
+}
+
+/** Makes `host` the one whose diagram state the live globals hold. Idempotent. */
+function useDiagramHost(host) {
+  if (host === diagramHost) return;
+  const live = { scale: diagramScale, center: diagramCenter, shownView: diagramShownView, scene: diagramScene, cache: diagramCache, linkStop: diagramLinkStop, maximized: diagramMaximized };
+  const parked = parkedDiagramHost;
+  diagramScale = parked.scale;
+  diagramCenter = parked.center;
+  diagramShownView = parked.shownView;
+  diagramScene = parked.scene;
+  diagramCache = parked.cache;
+  diagramLinkStop = parked.linkStop;
+  diagramMaximized = parked.maximized;
+  parkedDiagramHost = live;
+  diagramHost = host;
+  pendingDiagramFocus = null; // a box that had the focus on the other host is not a box of this one
+}
 
 /** The version of the kernel's input/output contract this editor was written for. */
 const KERNEL_CONTRACT_VERSION = 2;
@@ -6699,9 +7293,14 @@ function currentDiagramFacet() {
   return AppState.workspace.settings.facets.customs.find((facet) => facet.name === diagramFacet) || null;
 }
 
-/** The viewpoint actually shown: 'detailed' only makes sense for an element that can contain others. */
+/** The viewpoint actually drawn for an element: 'detailed' only makes sense for an element that can contain others. */
+function leafSafeViewpoint(viewpoint, record) {
+  return viewpoint === 'detailed' && LEAF_KINDS.includes(record.kind) ? 'overview' : viewpoint;
+}
+
+/** The viewpoint actually shown by the tabs of Elements. */
 function effectiveDiagramViewpoint(record) {
-  return elementTab === 'detailed' && LEAF_KINDS.includes(record.kind) ? 'overview' : elementTab;
+  return leafSafeViewpoint(elementTab, record);
 }
 
 /** A diagram of the selected element is what the Elements perspective shows now (not its page, not a form). */
@@ -6715,12 +7314,18 @@ function anyDiagramShown() {
   return diagramTabShown() || currentPerspective === 'map';
 }
 
-/** Hides (or brings back) the panels around the diagram. */
-function renderMaximizeButtonHtml() {
+/** Whether the page of a view in the Library is drawing its view: the other place a diagram can be, with its own selection and its own Maximize. */
+function libraryDiagramShown() {
+  return currentPerspective === 'library' && libraryTab === 'views' && !!selectedViewId && !!libraryDiagramRecipe(findSavedView(selectedViewId));
+}
+
+/** Hides (or brings back) the panels around the diagram; `panels`: what it hides (the element tree of the Map and Elements). */
+function renderMaximizeButtonHtml(panels) {
   // the label says the state, so the button is not also "pressed"; in a narrow header the icon stays and the word goes (the title has it)
   const label = diagramMaximized ? 'Restore' : 'Maximize';
+  const what = panels || 'the element tree';
   return '<button type="button" class="maximize-button with-icon" data-action="toggle-maximize" aria-label="' + label + '" title="' +
-    (diagramMaximized ? 'Bring back the element tree (Esc)' : 'Hide the element tree to give the diagram all the room (M)') + '">' +
+    (diagramMaximized ? 'Bring back ' + what + ' (Esc)' : 'Hide ' + what + ' to give the diagram all the room (M)') + '">' +
     controlIconHtml(diagramMaximized ? 'M6 3v3H3M10 3v3h3M6 13v-3H3M10 13v-3h3' : 'M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3') + '<span class="control-label">' + label + '</span></button>';
 }
 
@@ -6822,7 +7427,16 @@ function toggleDiagramMaximized() {
  */
 function renderElementTitleHtml(record) {
   return '<h2>' + escapeHtml(record.name || record.id) + '</h2><span class="element-kind-badge">' + escapeHtml(record.kind) + '</span>' +
-         renderElementTabsHtml(record);
+         renderHeaderBadgesHtml(record) + renderElementTabsHtml(record);
+}
+
+/**
+ * The styled stereotypes of the element, as in the tree and the panel, after its kind (nothing when it has none). The group
+ * is named, since the badges are read one after the other; the same markup as everywhere, so a style cannot be told twice.
+ */
+function renderHeaderBadgesHtml(record) {
+  const badges = stereotypeBadgesHtml(stereotypesOfRecord(record));
+  return badges ? '<span class="element-header-badges" role="group" aria-label="Stereotypes">' + badges + '</span>' : '';
 }
 
 /**
@@ -7062,7 +7676,7 @@ function stereotypeBadgesHtml(names) {
 }
 
 /** What a diagram box says about its element. `show` (qualifiers) puts the qualifiers of the element in the line of its kind, as the command line does. */
-function diagramItemText(item, show) {
+function diagramItemText(item, show, layer) {
   if (item.ghost) {
     return {
       title: item.reference,
@@ -7073,7 +7687,9 @@ function diagramItemText(item, show) {
       look: styleLookOf(null)
     };
   }
-  const record = findElementRecord(item.reference);
+  // `layer` (the page of a view names it; the Map and Elements leave it out and keep letting the selection decide): the box of the
+  // diagram's own layer is the one whose id is its reference, the others are the applications hosted on it
+  const record = findElementRecord(item.reference, layer ? (item.id === item.reference ? layer : 'application') : undefined);
   const hidden = item.collapsed ? ' · ' + item.hidden + ' hidden' : '';
   const qualifiers = record && Array.isArray(record.qualifiers) ? record.qualifiers.filter((q) => typeof q === 'string' && q) : [];
   const description = record && record.description ? String(record.description).replace(/\s+/g, ' ').trim() : '';
@@ -7222,8 +7838,8 @@ function diagramLeafLayout(text, width, show) {
 }
 
 /** What a link stands for, for its tooltip: each declared relationship, and a note when it groups several. */
-function diagramLinkTitle(link, itemById) {
-  const name = (id) => { const item = itemById.get(id); return item ? diagramItemText(item).title : id; };
+function diagramLinkTitle(link, itemById, layer) {
+  const name = (id) => { const item = itemById.get(id); return item ? diagramItemText(item, undefined, layer).title : id; };
   const caption = diagramLinkText(link);
   const lines = [name(link.from) + ' → ' + name(link.to) + (caption ? ' : ' + caption : '')];
   const rels = link.relationships || [];
@@ -7281,7 +7897,7 @@ function buildElkGraph(result, options) {
     childrenOf.get(parent).push(item);
   }
   const toNode = (item) => {
-    const text = diagramItemText(item, show);
+    const text = diagramItemText(item, show, options && options.itemLayer);
     const kids = childrenOf.get(item.id) || [];
     if (kids.length) {
       const minWidth = Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS), 12)) + 60 +
@@ -7340,30 +7956,36 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const openedByUser = new Set(options && options.opened ? options.opened : (isMap ? currentMapOpened() : []));
   const pinnedOnMap = options && options.pinned ? options.pinned : (isMap ? mapPinned : []);
   const show = options && options.show ? options.show : {};
+  // the page of a view in the Library offers no way to change what it draws: nothing folds, a box that points at nothing is not a way
+  // to its owner's form; a box and a link still select (on that page, in its panel: `handleAppClick` decides where)
+  const readonly = !!(options && options.readonly);
   // every box of a drawing belongs to the layer it was computed for: a link must say it, two layers can share a reference
   const layerAttribute = options && options.layer ? ' data-layer="' + escapeHtml(options.layer) + '"' : '';
   const itemById = new Map(result.items.map((item) => [item.id, item]));
   const origin = new Map([['root', { x: 0, y: 0 }]]);
   const boxes = [];
-  const walk = (node, ox, oy, depth) => {
+  const walk = (node, ox, oy, depth, parentId) => {
     const x = ox + (node.x || 0);
     const y = oy + (node.y || 0);
     origin.set(node.id, { x, y });
-    if (node.id !== 'root') boxes.push({ node, x, y, depth, compound: !!(node.children && node.children.length) });
-    (node.children || []).forEach((child) => walk(child, x, y, depth + 1));
+    if (node.id !== 'root') boxes.push({ node, x, y, depth, parentId, compound: !!(node.children && node.children.length) });
+    (node.children || []).forEach((child) => walk(child, x, y, depth + 1, node.id));
   };
-  walk(layout, 0, 0, 0);
+  walk(layout, 0, 0, 0, 'root');
+  // the fill actually drawn behind a box: its own when the workspace gave it one, else the one of the box around it (a compound box
+  // without a fill lets the one behind it show). A title is read against that fill, not against the theme.
+  const fillBehind = new Map();
 
   let focal = null;
   const boxesById = {};
   // the map only (the viewpoints of an element are not folded): one button, two meanings — open a box that hides children, close an open one.
   // It is a sibling of the box, not inside it: a button nested in a link is not valid ARIA, and Enter on one must not act as the other.
-  const foldButton = (item, text, x, y) => {
+  const foldButton = (item, text, x, y, overText) => {
     const mode = item.expandable ? 'expand' : 'close';
     const verb = { expand: 'Expand', close: 'Close' }[mode];
     const glyph = mode === 'expand' ? 'M-2.5,-4.5 L2.5,0 L-2.5,4.5' : 'M-4.5,-2.5 L0,2.5 L4.5,-2.5';
     // the chevron is drawn in the colour the text of the box takes, so that it reads on the fill of a styled box
-    const textColor = text.look && text.look.vars['--st-text'];
+    const textColor = overText || (text.look && text.look.vars['--st-text']);
     return '<g class="dg-fold"' + (textColor ? ' style="--st-text:' + textColor + '"' : '') + ' data-action="toggle-fold" data-mode="' + mode + '" data-id="' + escapeHtml(item.id) + '" tabindex="0" role="button" aria-label="' +
       escapeHtml(verb + ' ' + text.title) + '"><title>' + verb + '</title>' +
       // a button that looks like one (the chevron alone was too small to hit), with a hit area larger than what is drawn
@@ -7374,38 +7996,53 @@ function renderDiagramSvg(layout, result, focalReference, options) {
 
   let compounds = '';
   let leaves = '';
+  // the boxes are one tab stop (roving tabindex, `syncNodeTabStop` moves it): the focal box, else the first one drawn, until the page says otherwise.
+  // A box that points at nothing (a ghost) is not part of it: it keeps its own stop.
+  const stopId = (() => {
+    const drawn = boxes.filter((box) => itemById.get(box.node.id) && !itemById.get(box.node.id).ghost);
+    const focalBox = drawn.find((box) => itemById.get(box.node.id).reference === focalReference && box.node.id === itemById.get(box.node.id).reference);
+    const first = drawn.slice().sort((a, b) => a.depth - b.depth).find((box) => box.compound) || drawn.slice().sort((a, b) => a.depth - b.depth)[0]; // the first in the markup: the boxes that contain others come first
+    return focalBox ? focalBox.node.id : first ? first.node.id : null;
+  })();
   for (const box of boxes.sort((a, b) => a.depth - b.depth)) {
     const item = itemById.get(box.node.id);
     if (!item) continue;
-    const text = diagramItemText(item, show);
+    const text = diagramItemText(item, show, options && options.itemLayer);
+    const ownFill = parseCssColor(text.look.vars['--st-fill']);
+    const behind = ownFill && ownFill.a !== 0 ? ownFill : (fillBehind.get(box.parentId) || null);
+    fillBehind.set(box.node.id, behind);
+    // a compound box with no fill of its own, inside one that has: its title and sub-title take the better of black and white on that fill
+    const overFill = box.compound && !(ownFill && ownFill.a !== 0) && behind ? cssColorOf(readableTextColor(behind, null)) : null;
     const { x, y } = box;
     const w = box.node.width;
     const h = box.node.height;
     const isFocal = !item.ghost && item.reference === focalReference && item.id === item.reference;
     if (isFocal) focal = { x: x + w / 2 + 4, y: y + h / 2 + 4, w, h };
     if (!item.ghost) boxesById[item.id] = { x: x + w / 2 + 4, y: y + h / 2 + 4, w, h };
-    const action = item.ghost
+    const inert = readonly && item.ghost;
+    const action = inert ? '' : item.ghost
       ? ' data-action="fix-dangling" data-ref="' + escapeHtml(item.owner) + '"'
       : ' data-action="goto-element" data-ref="' + escapeHtml(item.reference) + '"' + layerAttribute;
-    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="0" role="link" aria-label="' + escapeHtml(text.title + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
+    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="' + (item.ghost || item.id === stopId ? '0' : '-1') + '" role="' + (inert ? 'img' : 'link') + '" aria-label="' + escapeHtml(text.title + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
     if (box.compound) {
       // Close is offered when it changes something: the user opened this box, and nothing pinned inside it keeps it open
       // (the kernel opens what encloses a pin), nor the focal element (a box around it cannot be folded)
-      const closable = isMap && !item.ghost && openedByUser.has(item.id) && !pinnedOnMap.some((pin) => pin.startsWith(item.reference + '.')) &&
+      const closable = isMap && !readonly && !item.ghost && openedByUser.has(item.id) && !pinnedOnMap.some((pin) => pin.startsWith(item.reference + '.')) &&
         !(focalReference && focalReference.startsWith(item.reference + '.'));
       const look = diagramLookAttributes(text.look);
+      const lookStyle = overFill ? ' style="' + escapeHtml(styleVarsText(Object.assign({}, text.look.vars, { '--ov-text': overFill }))) + '"' : look.style;
       const badgeRow = text.badges.length ? diagramBadgeRow(text.badges, Math.floor((w - 48) / 2)) : null; // right-aligned in the header
-      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + look.classes + '"' + look.style + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
+      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + look.classes + (overFill ? ' dg-over-fill' : '') + '"' + lookStyle + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
         '<rect class="dg-group" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (text.look.rx === null ? 8 : text.look.rx) + '"/>' +
         '<rect class="dg-header" x="' + x + '" y="' + y + '" width="' + w + '" height="36"/>' +
         '<text class="dg-title" x="' + (x + 34) + '" y="' + (y + 22) + '">' + escapeHtml(diagramTruncate(text.title, Math.max(8, Math.floor((w - 48 - (badgeRow ? badgeRow.width : 0)) / 8)))) +
         ' <tspan class="dg-sub">' + escapeHtml(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS)) + '</tspan></text>' +
         (badgeRow ? diagramBadgesSvg(badgeRow, x + w - 8 - badgeRow.width, y + 10) : '') + '</g>' +
-        (closable ? foldButton(Object.assign({}, item, { expandable: false }), text, x + 6, y + 6) : '');
+        (closable ? foldButton(Object.assign({}, item, { expandable: false }), text, x + 6, y + 6, overFill) : '');
     } else {
       const folded = item.collapsed;
       // a box the kernel says opening would change (and only that: a button that does nothing is not drawn)
-      const expandable = isMap && !item.ghost && item.expandable;
+      const expandable = isMap && !readonly && !item.ghost && item.expandable;
       const lines = diagramLeafLayout(text, w, show);
       const linesAt = (cls, anchorLines, ys) => anchorLines.map((line, i) =>
         '<text class="' + cls + '" x="' + (x + w / 2) + '" y="' + (y + ys[i]) + '" text-anchor="middle">' + escapeHtml(line) + '</text>').join('');
@@ -7425,9 +8062,15 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const pairs = new Map();
   const endOf = (id) => {
     const item = itemById.get(id);
-    const text = item ? diagramItemText(item) : { title: id, sub: '' };
+    const text = item ? diagramItemText(item, undefined, options && options.itemLayer) : { title: id, sub: '' };
     return { id, reference: item ? item.reference : id, title: text.title, sub: text.sub, ghost: !!(item && item.ghost), collapsed: !!(item && item.collapsed), hidden: item && item.hidden ? item.hidden : 0 };
   };
+  // the links drawn between the same two boxes, in order: the ones of a pair of several say which of them they are (`data-nth`)
+  const drawnPerPair = new Map();
+  for (const edge of layout.edges || []) {
+    const link = edge.sections && edge.sections[0] ? result.links[parseInt(edge.id.slice(1), 10)] : null;
+    if (link) drawnPerPair.set(link.from + '\u0000' + link.to, (drawnPerPair.get(link.from + '\u0000' + link.to) || 0) + 1);
+  }
   let edges = '';
   let labels = '';
   for (const edge of layout.edges || []) {
@@ -7440,11 +8083,12 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const ends = ' data-from="' + escapeHtml(link.from) + '" data-to="' + escapeHtml(link.to) + '"';
     const pairKey = link.from + '\u0000' + link.to;
     if (!pairs.has(pairKey)) pairs.set(pairKey, { from: link.from, to: link.to, fromEnd: endOf(link.from), toEnd: endOf(link.to), links: [] });
-    pairs.get(pairKey).links.push(link);
+    const nth = pairs.get(pairKey).links.push(link) - 1;
     const caption = diagramLinkText(link);
-    const select = ends + layerAttribute + ' data-action="select-link"';
-    edges += '<g class="dg-link"' + select + ' tabindex="0" role="button" aria-pressed="false" aria-label="' +
-      escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById)) + '</title>' +
+    const select = ends + (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') + layerAttribute + ' data-action="select-link"';
+    // the links are one tab stop (roving tabindex, `syncLinkTabStop` moves it): the first one until the page says otherwise
+    edges += '<g class="dg-link"' + select + ' tabindex="' + (edges ? '-1' : '0') + '" role="button" aria-pressed="false" aria-label="' +
+      escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer)) + '</title>' +
       '<path class="dg-hit-edge" d="' + d + '"/>' +
       '<path class="dg-edge' + (link.synthetic ? ' dg-aggregated' : '') + (link.ghost ? ' dg-ghost-edge' : '') + '" marker-end="url(#dg-arrow)" d="' + d + '"/></g>';
     const label = edge.labels && edge.labels[0];
@@ -7457,18 +8101,20 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const height = Math.ceil(layout.height || 0) + 8;
   const html = '<svg xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Diagram" viewBox="-4 -4 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' +
     '<defs><marker id="dg-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead" d="M0,0 L10,4 L0,8 z"/></marker></defs>' +
-    compounds + edges + leaves + labels + '</svg>';
+    compounds + (edges ? '<g class="dg-links" role="group" aria-label="Links: one tab stop, the arrow keys move between them">' + edges + '</g>' : '') + leaves + labels + '</svg>';
   return { html, width, height, focal, boxes: boxesById, links: Array.from(pairs.values()) };
 }
 
 /** No layout engine (offline): the same information as a plain, still clickable, list. */
-function renderDiagramFallbackHtml(result, layer) {
+function renderDiagramFallbackHtml(result, layer, readonly) {
   const itemById = new Map(result.items.map((item) => [item.id, item]));
   const nameOf = (id) => {
     const item = itemById.get(id);
+    // the page of a view selects an element but sends nothing to the form of the owner of a dangling relationship
+    if (readonly && !(item && !item.ghost)) return '<span class="relationship-name">' + escapeHtml(item ? diagramItemText(item, undefined, layer).title : id) + '</span>';
     return '<button type="button" class="relationship-link" data-action="' + (item && item.ghost ? 'fix-dangling' : 'goto-element') + '" data-ref="' +
       escapeHtml(item ? (item.ghost ? item.owner : item.reference) : id) + '"' + (layer && !(item && item.ghost) ? ' data-layer="' + escapeHtml(layer) + '"' : '') + '>' +
-      escapeHtml(item ? diagramItemText(item).title : id) + '</button>';
+      escapeHtml(item ? diagramItemText(item, undefined, readonly ? layer : undefined).title : id) + '</button>';
   };
   const links = result.links.filter((link) => !link.secondary);
   if (!links.length) return '<span class="muted">No relationships to show.</span>';
@@ -7477,8 +8123,8 @@ function renderDiagramFallbackHtml(result, layer) {
 }
 
 /** The diagram of an element fails through the facet and not without it: the facet removes the element itself (a rule that takes a whole layer away, for one). */
-function facetRemovesElement(kernel, viewpoint, reference) {
-  const plain = kernel.compute(buildKernelInput(viewpoint, reference).input);
+function facetRemovesElement(kernel, viewpoint, reference, layer) {
+  const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer }).input);
   return !plain.error;
 }
 
@@ -7543,14 +8189,15 @@ function diagramStatusText(viewpoint, reference, facet, result, ghosts) {
  * What the canvas says when there is nothing to draw. Through a facet that is usually the facet's doing, not the
  * element's: say so, count what it removed, and offer the diagram without it.
  */
-function diagramEmptyHtml(kernel, viewpoint, reference, facet, hint) {
+function diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, options) {
+  const readonly = !!(options && options.readonly); // the page of a view offers no way to change what it draws
   if (facet) {
-    const plain = kernel.compute(buildKernelInput(viewpoint, reference).input);
+    const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer: options && options.layer }).input);
     const removed = plain.error ? 0 : plain.links.filter((link) => !link.secondary).length;
     if (removed) {
       return '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes the ' +
-        (removed === 1 ? 'link' : removed + ' links') + ' of this element' + hint + '. ' +
-        '<button type="button" data-action="clear-facet">Show it without the facet</button></div>';
+        (removed === 1 ? 'link' : removed + ' links') + ' of this element' + hint + '.' +
+        (readonly ? '' : ' <button type="button" data-action="clear-facet">Show it without the facet</button>') + '</div>';
     }
   }
   return '<div class="muted diagram-empty">Nothing to show: this element has no relationships' + hint + '.</div>';
@@ -7774,7 +8421,7 @@ function revealDiagramNode(node) {
 /** What identifies the box (or fold button) of the diagram that `el` is, to find it again once the drawing is rebuilt; null for anything else. */
 function diagramFocusTargetOf(el) {
   const part = el && el.closest ? el.closest('#diagram-canvas .dg-node, #diagram-canvas .dg-fold, #diagram-canvas .dg-link') : null;
-  if (part && part.classList.contains('dg-link')) return { link: true, from: part.getAttribute('data-from'), to: part.getAttribute('data-to') };
+  if (part && part.classList.contains('dg-link')) return diagramLinkKeyOf(part);
   return part ? { fold: part.classList.contains('dg-fold'), id: part.getAttribute('data-id') } : null;
 }
 
@@ -7788,12 +8435,81 @@ function diagramNodeOf(el) {
   return Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).find((n) => n.getAttribute('data-id') === id) || null;
 }
 
-/** The box a focused link starts from: the arrow keys go on from it. */
-function diagramLinkStartOf(el) {
-  const link = el && el.closest ? el.closest('.dg-link') : null;
-  if (!link) return null;
-  const from = link.getAttribute('data-from');
-  return Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).find((n) => n.getAttribute('data-id') === from) || null;
+/** What tells a link of the drawing from the others: its pair of boxes and, when it has a twin, its position among them (`data-nth`, else null). */
+function diagramLinkKeyOf(link) {
+  return { link: true, from: link.getAttribute('data-from'), to: link.getAttribute('data-to'), nth: diagramLinkNth(link) };
+}
+
+/** The position (`data-nth`) of a link among the links of its pair, as text; null for a link that has no twin. */
+function diagramLinkNth(link) {
+  const nth = link.getAttribute('data-nth');
+  return nth === null || nth === undefined ? null : nth;
+}
+
+/** The link of the drawing that `key` (see `diagramLinkKeyOf`) names; with a twin that is gone, the first link of the pair; else null. */
+function findDiagramLink(links, key) {
+  const ofPair = links.filter((el) => el.getAttribute('data-from') === key.from && el.getAttribute('data-to') === key.to);
+  return ofPair.find((el) => diagramLinkNth(el) === key.nth) || ofPair[0] || null;
+}
+
+/**
+ * The links of a diagram are one tab stop (roving tabindex): `tabindex="0"` on one of them, `-1` on the others, and the arrow
+ * keys move among them (`handleDiagramKeydown`). The stop is where the focus last rested in the group; this is that link's
+ * key, or null (nothing remembered yet, or the selection came from elsewhere, an address).
+ */
+let diagramLinkStop = null;
+
+/**
+ * After the drawing is on screen: exactly one link is the tab stop. The one the focus last rested on if the drawing still has it,
+ * else the first link of the selected pair, else the first link drawn; what is kept is what was chosen, so it is never a link the
+ * drawing lacks. A drawing with no link has no stop.
+ */
+function syncLinkTabStop(canvas) {
+  if (!canvas || !canvas.querySelectorAll) return;
+  const links = Array.from(canvas.querySelectorAll('.dg-link'));
+  if (!links.length) { diagramLinkStop = null; return; }
+  const sel = diagramSelection();
+  const remembered = diagramLinkStop ? findDiagramLink(links, diagramLinkStop) : null;
+  const selected = sel.kind === 'link' ? links.find((el) => el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to) : null;
+  setLinkTabStop(links, remembered || selected || links[0]);
+}
+
+/**
+ * The boxes of a diagram are one tab stop too (roving tabindex): `tabindex="0"` on one of them, `-1` on the others, the arrow keys move between them
+ * (`handleDiagramKeydown`) and the stop follows the focus. This is the id of the box where the focus last rested, or null. A ghost box keeps its own stop.
+ */
+let diagramNodeStop = null;
+
+/** After the drawing is on screen: the box the focus last rested on if the drawing still has it, else the selected one, else the focal one, else the first. */
+function syncNodeTabStop(canvas) {
+  if (!canvas || !canvas.querySelectorAll) return;
+  const nodes = Array.from(canvas.querySelectorAll('.dg-node')).filter((el) => !el.classList.contains('dg-ghost'));
+  if (!nodes.length) { diagramNodeStop = null; return; }
+  const remembered = diagramNodeStop ? nodes.find((el) => el.getAttribute('data-id') === diagramNodeStop) : null;
+  const named = (cls) => nodes.find((el) => el.classList.contains(cls));
+  setNodeTabStop(nodes, remembered || named('dg-selected') || named('dg-focal') || nodes[0]);
+}
+
+/** `stop` is the one box of `nodes` that Tab reaches; its id is remembered. */
+function setNodeTabStop(nodes, stop) {
+  for (const el of nodes) el.setAttribute('tabindex', el === stop ? '0' : '-1');
+  diagramNodeStop = stop.getAttribute('data-id');
+}
+
+/** `stop` is the one link of `links` that Tab reaches; its key is remembered. */
+function setLinkTabStop(links, stop) {
+  for (const el of links) el.setAttribute('tabindex', el === stop ? '0' : '-1');
+  diagramLinkStop = diagramLinkKeyOf(stop);
+}
+
+/** Arrow keys, Home and End on a focused link: the link to go to in the order of the drawing (no wrap-around), or null. */
+function diagramLinkTarget(links, current, key) {
+  const index = links.indexOf(current);
+  if (index < 0) return null;
+  if (key === 'Home') return links[0];
+  if (key === 'End') return links[links.length - 1];
+  const step = key === 'ArrowRight' || key === 'ArrowDown' ? 1 : -1;
+  return links[Math.min(links.length - 1, Math.max(0, index + step))];
 }
 
 /**
@@ -7807,7 +8523,7 @@ function restoreDiagramFocus(canvas) {
   const active = document.activeElement;
   if (active && active !== document.body && !(canvas.contains && canvas.contains(active))) return;
   const find = (selector) => Array.from(canvas.querySelectorAll(selector)).find((el) => el.getAttribute('data-id') === wanted.id);
-  const link = wanted.link ? Array.from(canvas.querySelectorAll('.dg-link')).find((el) => el.getAttribute('data-from') === wanted.from && el.getAttribute('data-to') === wanted.to) : null;
+  const link = wanted.link ? findDiagramLink(Array.from(canvas.querySelectorAll('.dg-link')), wanted) : null;
   const target = link || (wanted.link ? null : ((wanted.fold ? find('.dg-fold') : null) || find('.dg-node'))) || canvas;
   if (target.focus) target.focus({ preventScroll: true });
 }
@@ -7846,6 +8562,9 @@ function showDiagramScene(scene) {
   reconcileLinkSelection();
   markMapSelection();
   markLinkSelection();
+  syncLinkTabStop(canvas);
+  syncNodeTabStop(canvas);
+  revealSelectedLink(canvas);
   markMapScope();
   markInspection();
   restoreDiagramFocus(canvas);
@@ -7856,14 +8575,18 @@ function showDiagramScene(scene) {
   }
 }
 
-/** On the map, the element selected by a click on a box is outlined. (The tree of the map selects nothing: it only folds and unfolds.) */
+/** On the map and on the page of a view, the element selected by a click on a box is outlined. (The tree of the map selects nothing: it only folds and unfolds.) */
 function markMapSelection() {
   const canvas = document.getElementById('diagram-canvas');
-  if (!canvas || !canvas.hasAttribute('data-map')) return;
+  if (!canvas || !(canvas.hasAttribute('data-map') || canvas.getAttribute('data-host') === 'library')) return;
   canvas.querySelectorAll('.dg-selected').forEach((el) => el.classList.remove('dg-selected'));
-  const sel = AppState.selection;
+  const sel = diagramSelection();
   if (sel.kind !== 'element') return;
-  const node = Array.from(canvas.querySelectorAll('.dg-node')).find((el) => el.getAttribute('data-id') === sel.key);
+  // the Map's boxes are the elements themselves (id = reference); on the page of a view a box can be an element hosted by another (id differs): its reference and layer say which
+  const onPage = canvas.getAttribute('data-host') === 'library';
+  const node = Array.from(canvas.querySelectorAll('.dg-node')).find((el) => onPage
+    ? el.getAttribute('data-ref') === sel.key && (!sel.layer || el.getAttribute('data-layer') === sel.layer)
+    : el.getAttribute('data-id') === sel.key);
   if (node) node.classList.add('dg-selected');
 }
 
@@ -7909,6 +8632,9 @@ function handleDiagramFocus(e) {
   const node = e.type === 'focusin' ? e.target.closest('.dg-node, .dg-fold, .dg-link') : null;
   highlightDiagram(node);
   if (node) revealDiagramNode(node);
+  // the stop of the links goes where their focus is (a click, an arrow key, Tab coming back, the focus given back after a redraw)
+  if (node && node.classList.contains('dg-link')) setLinkTabStop(Array.from(document.querySelectorAll('#diagram-canvas .dg-link')), node);
+  if (node && node.classList.contains('dg-node') && !node.classList.contains('dg-ghost')) setNodeTabStop(Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).filter((el) => !el.classList.contains('dg-ghost')), node);
 }
 
 /**
@@ -8006,8 +8732,16 @@ function handleDiagramKeydown(e) {
     }
     return;
   }
+  // on a link the arrow keys, Home and End move among the links (they are one tab stop); on a box they move between boxes
+  const onLink = e.target.closest('.dg-link');
+  if (onLink && canvas && (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End')) {
+    e.preventDefault();
+    const next = diagramLinkTarget(Array.from(canvas.querySelectorAll('.dg-link')), onLink, e.key);
+    if (next && next !== onLink) next.focus({ preventScroll: true }); // the focus handler pans to it and moves the stop
+    return;
+  }
   if (e.key.startsWith('Arrow')) {
-    const current = diagramNodeOf(e.target) || diagramLinkStartOf(e.target);
+    const current = diagramNodeOf(e.target);
     const next = current ? diagramNeighbor(current, e.key) : canvas && canvas.querySelector('.dg-focal, .dg-node');
     if (next) {
       e.preventDefault();
@@ -8020,9 +8754,10 @@ function handleDiagramKeydown(e) {
   else if (e.key === '0') { e.preventDefault(); setDiagramScale(1); }
   else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); setDiagramScale('fit'); }
   else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); resetDiagramView(); }
-  else if ((e.key === 'm' || e.key === 'M') && !diagramMaximized && anyDiagramShown()) { e.preventDefault(); toggleDiagramMaximized(); }
-  else if (e.key === 'Escape' && diagramMaximized) { e.preventDefault(); toggleDiagramMaximized(); }
-  else if (e.key === 'Escape' && AppState.selection.kind === 'link') { e.preventDefault(); dropLinkSelection(); render(); }
+  else if ((e.key === 'm' || e.key === 'M') && !diagramMaximized && (anyDiagramShown() || libraryDiagramShown())) { e.preventDefault(); toggleDiagramMaximized(); }
+  else if (e.key === 'Escape' && diagramMaximized && (anyDiagramShown() || libraryDiagramShown())) { e.preventDefault(); toggleDiagramMaximized(); } // the maximized state is that of the diagram on screen (it is parked with the host)
+  else if (e.key === 'Escape' && AppState.selection.kind === 'link' && anyDiagramShown()) { e.preventDefault(); dropLinkSelection(); render(); }
+  else if (e.key === 'Escape' && libraryDiagramShown() && libraryPickFor(selectedViewId).selection) { e.preventDefault(); closeLibrarySelection(); }
 }
 
 /** The styles of the diagram with real colors, for an SVG that must look right outside this page. */
@@ -8042,6 +8777,7 @@ function diagramExportCss() {
     '.dg-title{fill:' + c('--fg') + ';font:600 14px sans-serif}.dg-sub{fill:' + c('--muted') + ';font:12px sans-serif}.dg-desc{fill:' + c('--muted') + ';font:11px sans-serif}' +
     '.dg-styled .dg-title{fill:var(--st-text,' + c('--fg') + ');font-weight:var(--st-weight,600);font-style:var(--st-fstyle,normal)}' +
     '.dg-styled .dg-sub,.dg-styled .dg-desc{fill:var(--st-text,' + c('--muted') + ');font-weight:var(--st-weight,400);font-style:var(--st-fstyle,normal)}' +
+    '.dg-over-fill .dg-title,.dg-over-fill .dg-sub{fill:var(--ov-text)}' +
     '.dg-badge rect{fill:var(--st-fill,' + c('--panel-bg') + ');stroke:var(--st-stroke,' + c('--border') + ');stroke-width:1}.dg-badge text{fill:var(--st-text,' + c('--fg') + ');font:600 10.5px sans-serif}' +
     '.dg-edge{fill:none;stroke:' + c('--muted') + ';stroke-width:1.4}.dg-aggregated{stroke-dasharray:7 4}' +
     '.dg-ghost-edge{stroke:' + c('--danger') + ';stroke-dasharray:3 4}' +
@@ -8066,6 +8802,7 @@ function diagramExportDocument() {
   clone.querySelectorAll('.dg-on').forEach((el) => el.classList.remove('dg-on'));
   for (const el of clone.querySelectorAll('[tabindex],[data-action]')) { el.removeAttribute('tabindex'); el.removeAttribute('data-action'); }
   for (const el of clone.querySelectorAll('[aria-pressed]')) el.removeAttribute('aria-pressed');
+  for (const el of clone.querySelectorAll('.dg-links')) { el.removeAttribute('role'); el.removeAttribute('aria-label'); } // it describes keys of the page
   for (const el of clone.querySelectorAll('.dg-link-selected')) el.classList.remove('dg-link-selected');
   const ns = 'http://www.w3.org/2000/svg';
   const style = document.createElementNS(ns, 'style');
@@ -8082,7 +8819,7 @@ function diagramExportDocument() {
     xml: '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone),
     width: diagramScene.width,
     height: diagramScene.height,
-    name: (canvas.getAttribute('data-ref') || 'diagram').replace(/[^\w.-]+/g, '_') + '-' + (diagramShownView ? diagramShownView.split('|')[1] : 'diagram')
+    name: (canvas.getAttribute('data-ref') || canvas.getAttribute('data-view') || 'diagram').replace(/[^\w.-]+/g, '_') + '-' + (diagramShownView ? diagramShownView.split('|')[1] : 'diagram')
   };
 }
 
@@ -8131,13 +8868,24 @@ async function exportDiagramPng() {
   }
 }
 
-/** The pair of boxes joined by a link becomes the selection (with the element of the diagram it was made on, in Elements). */
-function selectLink(from, to, layer) {
+/**
+ * The pair of boxes joined by a link becomes the selection (with the element of the diagram it was made on, in Elements).
+ * `nth`: which of the links of the pair was clicked, when there are several (`data-nth`); the selection keeps the
+ * relationships of that link (`via`, their keys), not the position, which a redraw may change: the panel marks them.
+ */
+function selectLink(from, to, layer, nth) {
   const canvas = document.getElementById('diagram-canvas');
   const focal = mapIsShown() || !canvas ? null : canvas.getAttribute('data-ref');
+  AppState.selection = linkSelectionFor(from, to, layer, nth, focal);
+}
+
+/** The selection a click on a link makes (the drawing on screen says which relationships the link stands for); `focal`: the element of an Elements diagram. */
+function linkSelectionFor(from, to, layer, nth, focal) {
   const sel = { kind: 'link', key: from + ' -> ' + to, from, to, layer: layer || 'application', mode: 'view' };
   if (focal) sel.focal = focal;
-  AppState.selection = sel;
+  const pair = inspectionLinkFor(sel);
+  if (pair && pair.links.length > 1 && Number.isInteger(nth) && pair.links[nth]) sel.via = relationshipsOfLink(pair.links[nth], pair).map(relationshipKeyOf);
+  return sel;
 }
 
 /** Moving to another element or viewpoint is a step the browser's Back button should be able to undo. */
@@ -8147,20 +8895,28 @@ function pushDiagramHistory() {
 
 // ---- Diagram: the perspective's markup and the computation behind it ----
 
-/** The canvas, its tools and the status line; `mountDiagramIfNeeded` fills the canvas once render() has put it in the page. */
-function renderDiagramCanvasHtml(record, overlayHtml) {
+/**
+ * The canvas, its tools and the status line; `mountDiagramIfNeeded` fills the canvas once render() has put it in the page.
+ * `host` is only given by the page of a view in the Library ({ view, isMap, hideUnlinked, shows }, see `libraryDiagramRecipe`): its
+ * canvas names the view, its tools show what that page draws and offer no folding (a Map view's open boxes are part of the view).
+ */
+function renderDiagramCanvasHtml(record, overlayHtml, host) {
   // no record: the map of the whole workspace
-  const subject = record ? escapeHtml(record.name || record.id) : 'the workspace';
-  return '<div class="diagram-stage">' + (overlayHtml || '') + '<div class="diagram-canvas" id="diagram-canvas"' + (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
-    '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' + (record ? escapeHtml(record.reference) : '') + '"><span class="muted">Computing the diagram…</span></div>' +
+  const subject = host ? 'the view ' + escapeHtml(viewLabel(host.view)) : record ? escapeHtml(record.name || record.id) : 'the workspace';
+  const canvasAttributes = host
+    ? ' data-host="library" data-view="' + escapeHtml(host.view.id) + '" tabindex="0" aria-label="Diagram of ' + subject + '. Arrow keys move between boxes, Enter selects one, plus and minus zoom."'
+    : (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
+      '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' + (record ? escapeHtml(record.reference) : '') + '"';
+  const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
+  return '<div class="diagram-stage">' + (overlayHtml || '') + '<div class="diagram-canvas" id="diagram-canvas"' + canvasAttributes + '><span class="muted">Computing the diagram…</span></div>' +
     '<div class="diagram-tools" role="toolbar" aria-label="Diagram tools">' +
       // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
-      (record ? '' : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
+      (record || host ? '' : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
           '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
           '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>') +
-      '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + diagramHideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
+      '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + hideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
       '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
-      renderDiagramShowGroupHtml(!record) +
+      renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
       '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
       '<span class="button-group" role="group" aria-label="Zoom">' +
         '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
@@ -8188,8 +8944,8 @@ function renderDiagramDownloadHtml() {
 }
 
 /** The texts the diagram draws, each one a button that is lit while it is shown. */
-function renderDiagramShowGroupHtml(isMap) {
-  const shows = diagramShows(isMap);
+function renderDiagramShowGroupHtml(isMap, drawn) {
+  const shows = drawn || diagramShows(isMap); // `drawn`: what the page of a view in the Library draws
   const tool = (name, label, title) => '<button type="button" data-action="toggle-show" data-show="' + name + '" aria-pressed="' + shows[name] + '" title="' + escapeHtml(title) + '">' + label + '</button>';
   return '<span class="button-group" role="group" aria-label="Show">' +
     tool('labels', 'Labels', 'The caption of each link: its label, and its qualifiers in brackets') +
@@ -8285,9 +9041,88 @@ async function markTreeThroughFacet() {
 }
 
 /**
+ * What a diagram draws, and nothing else the pipeline needs to decide: the one argument of `mountDiagramIfNeeded`. A host builds
+ * it from the state it owns and the pipeline never reads that state itself, so a host cannot disturb another one:
+ *   host      'main' (the Map and the diagrams of Elements, which read the page's state) or 'library' (the page of a view);
+ *   view      the saved view, for 'library';
+ *   isMap, reference, record   the map of the workspace, or the element drawn (`record` is its model);
+ *   layer     the layer of the element (undefined: `layerOfReference` picks it, as the Map and Elements always did);
+ *   viewpoint 'map', or the viewpoint actually drawn; facet: the facet of the settings, or null;
+ *   mapState  { opened, pinned, hidden } of a map, else null;
+ *   hideUnlinked, shows   whether the boxes no link reaches are left out; the texts drawn (the four, as booleans).
+ */
+function mainDiagramRecipe(canvas) {
+  const isMap = canvas.hasAttribute('data-map');
+  const reference = isMap ? '' : canvas.getAttribute('data-ref');
+  const record = isMap ? null : findElementRecord(reference);
+  if (!isMap && !record) return null;
+  return {
+    host: 'main', view: null, isMap, reference, record, layer: undefined,
+    // the diagram of the Elements perspective is always the overview of the element, whatever the Diagram perspective shows
+    viewpoint: isMap ? 'map' : effectiveDiagramViewpoint(record),
+    facet: currentDiagramFacet(),
+    mapState: isMap ? currentMapState() : null,
+    hideUnlinked: diagramHideUnlinked,
+    shows: diagramShows(isMap)
+  };
+}
+
+/**
+ * What is selected on the page of a view in the Library: a box (an element) or a link of its diagram, read in the panel on the right. It
+ * is the page's own, with the shapes of the Map's selection so that the same panels render it, and it is never `AppState.selection`:
+ * a click on this page selects here and leaves the Map, Elements, their tree and the address as they are. One view at a time (another
+ * view starts with nothing selected); kept while the reader is on the Map and comes back to the same view.
+ */
+let libraryPick = { view: null, selection: null };
+
+function libraryPickFor(viewId) {
+  if (libraryPick.view !== viewId) libraryPick = { view: viewId, selection: null };
+  return libraryPick;
+}
+
+const NO_SELECTION = Object.freeze({ kind: 'none', key: null, mode: 'view' });
+
+/** The selection of the diagram on screen: the page's own on the page of a view in the Library, else the one of the Map and Elements. */
+function diagramSelection() {
+  if (currentPerspective !== 'library') return AppState.selection;
+  return (libraryTab === 'views' && libraryPickFor(selectedViewId).selection) || NO_SELECTION;
+}
+
+/** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view and the model, and nothing else: an edit of the view is an edit of the entry. */
+function libraryDiagramRecipe(view) {
+  if (!view || viewProblem(view)) return null;
+  const properties = isPlainObject(view.properties) ? view.properties : {};
+  const isMap = view.viewpoint === 'map';
+  const layer = !isMap && view.layer === 'technology' ? 'technology' : 'application';
+  const facet = typeof properties.facet === 'string' ? AppState.workspace.settings.facets.customs.find((candidate) => candidate.name === properties.facet) || null : null;
+  const shows = shownTextsOf(view);
+  const recipe = {
+    host: 'library', view, isMap, reference: '', record: null, layer, viewpoint: 'map', facet, mapState: null,
+    hideUnlinked: properties['hide-unlinked'] === true,
+    shows
+  };
+  if (isMap) {
+    const known = (list) => stringList(list).filter((reference) => AppState.index.application.has(reference));
+    recipe.mapState = { opened: known(properties.opened), pinned: known(properties.pinned), hidden: known(properties.hidden) };
+  } else {
+    recipe.reference = properties.element;
+    recipe.record = AppState.index[layer].get(properties.element);
+    recipe.viewpoint = leafSafeViewpoint(view.viewpoint, recipe.record);
+  }
+  return recipe;
+}
+
+/** The recipe of the diagram in `canvas`, from the host that wrote it; null when there is nothing to draw (the element is gone). */
+function diagramRecipeOf(canvas) {
+  if (canvas.getAttribute('data-host') === 'library') return libraryDiagramRecipe(findSavedView(canvas.getAttribute('data-view')));
+  return mainDiagramRecipe(canvas);
+}
+
+/**
  * Called at the end of every render(): when the Diagram canvas is on screen, compute its viewpoint and draw it.
  * The computation is asynchronous (WebAssembly instantiation, ELK), so `diagramSeq` drops the answer of any request
  * that a newer render superseded, and an identical request is served from `diagramCache` without a flash.
+ * What to draw comes from the recipe of the host that wrote the canvas (`diagramRecipeOf`), never from the page's state.
  */
 function mountDiagramIfNeeded() {
   // every call supersedes the layouts still being computed, also when there is nothing to draw now: a layout started on
@@ -8295,19 +9130,14 @@ function mountDiagramIfNeeded() {
   const seq = ++diagramSeq;
   const canvas = document.getElementById('diagram-canvas');
   if (!canvas) { diagramScene = null; pendingDiagramFocus = null; return; }
-  const isMap = canvas.hasAttribute('data-map');
-  const reference = isMap ? '' : canvas.getAttribute('data-ref');
-  const record = isMap ? null : findElementRecord(reference);
-  if (!isMap && !record) return;
-  // the diagram of the Elements perspective is always the overview of the element, whatever the Diagram perspective shows
-  const viewpoint = isMap ? 'map' : effectiveDiagramViewpoint(record);
-  const facet = currentDiagramFacet();
-  const mapState = isMap ? currentMapState() : null;
-  const shows = diagramShows(isMap);
-  const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, opened: mapState.opened, pinned: mapState.pinned } : { facet });
+  const recipe = diagramRecipeOf(canvas);
+  if (!recipe) return;
+  const { isMap, reference, record, viewpoint, facet, mapState, shows, hideUnlinked } = recipe;
+  const readonly = recipe.host === 'library'; // the page of a view only shows the drawing
+  const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, layer: recipe.layer, opened: mapState.opened, pinned: mapState.pinned } : { facet, layer: recipe.layer });
   if (isMap) input.hidden = mapState.hidden;
-  const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].join('|');
-  const key = JSON.stringify(input) + '|' + diagramHideUnlinked + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint() + '|' + JSON.stringify(AppState.workspace.styles || null);
+  const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].concat(readonly ? ['view:' + recipe.view.id] : []).join('|');
+  const key = JSON.stringify(input) + '|' + hideUnlinked + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint() + '|' + JSON.stringify(AppState.workspace.styles || null) + '|' + viewKey;
   if (diagramCache && diagramCache.key === key) {
     showDiagramScene(Object.assign({}, diagramCache.scene));
     return;
@@ -8318,9 +9148,9 @@ function mountDiagramIfNeeded() {
       const result = kernel.compute(input);
       if (seq !== diagramSeq) return;
       if (result.error) {
-        const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference);
+        const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference, recipe.layer);
         showDiagramScene(buildDiagramScene(viewKey, removed
-          ? '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes this element. <button type="button" data-action="clear-facet">Show it without the facet</button></div>'
+          ? '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes this element.' + (readonly ? '' : ' <button type="button" data-action="clear-facet">Show it without the facet</button>') + '</div>'
           : '<div class="error-panel">' + escapeHtml(result.error) + '</div>', '', '', { width: 0, height: 0 }, null));
         return;
       }
@@ -8328,7 +9158,7 @@ function mountDiagramIfNeeded() {
       let drawn = { items: result.items.concat(ghosts.items), links: result.links.concat(ghosts.links) };
       let shownResult = result;
       let hiddenCount = 0;
-      if (diagramHideUnlinked) {
+      if (hideUnlinked) {
         const kept = hideUnlinkedItems(drawn.items, drawn.links, isMap ? mapState.pinned : reference);
         hiddenCount = kept.hidden;
         drawn = { items: kept.items, links: kept.links };
@@ -8343,24 +9173,25 @@ function mountDiagramIfNeeded() {
       const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes);
       let scene;
       if (!elk) {
-        scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer), status, '', { width: 0, height: 0 }, null);
+        scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer, readonly), status, '', { width: 0, height: 0 }, null);
         scene.drawnIds = new Set(drawn.items.filter((item) => !item.ghost).map((item) => item.id));
       } else if (isMap && !drawn.items.length) {
-        scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no application element' + (mapState.hidden.length ? ' left once the hidden ones are out: show some again with their eye, or with the chips above the map.' : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
+        scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no application element' +
+          (mapState.hidden.length ? ' left once the hidden ones are out' + (readonly ? '.' : ': show some again with their eye, or with the chips above the map.') : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
         scene.drawnIds = new Set();
       } else if (!isMap && diagramHasNothingToDraw(drawn)) {
-        const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? ' (try Deep to include what is inside it)' : '';
-        scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint), status, '', { width: 0, height: 0 }, null);
+        const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? (readonly ? ' (the deep viewpoint includes what is inside it)' : ' (try Deep to include what is inside it)') : '';
+        scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, { readonly, layer: recipe.layer }), status, '', { width: 0, height: 0 }, null);
       } else {
         // the Map starts without captions on its links (they take most of its room): the tooltip says what a link stands for
-        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap })), drawn, reference, { map: isMap, layer: input.layer, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [], show: shows });
+        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap, itemLayer: recipe.layer })), drawn, reference, { map: isMap, layer: input.layer, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [], show: shows, readonly, itemLayer: recipe.layer });
         scene = buildDiagramScene(viewKey, drawing.html, status, legend, drawing, drawing.focal);
         scene.boxes = drawing.boxes;
         scene.links = drawing.links;
         scene.drawnIds = new Set(Object.keys(drawing.boxes));
       }
       if (seq !== diagramSeq) return;
-      if (isMap) Object.assign(scene, diagramFoldTargets(shownResult, reference));
+      if (isMap && !readonly) Object.assign(scene, diagramFoldTargets(shownResult, reference));
       diagramCache = { key, scene };
       showDiagramScene(Object.assign({}, scene));
     } catch (e) {
@@ -8716,8 +9547,9 @@ function markWorkspaceYamlChanged() {
 function markEntryChanged(entry) {
   const owner = entryOwners.get(entry);
   if (!owner) { markWorkspaceYamlChanged(); return; }
-  owner.rawText = serializeManifestFile(owner.header, owner.content);
-  owner.dirty = true;
+  owner.rawText = reserializeManifestFile(owner);
+  // an edit that puts everything back leaves the file as it is on disk: it is not modified (a file that is not on disk yet always is)
+  owner.dirty = !(owner.existedOnDisk && typeof owner.savedRawText === 'string' && owner.rawText === owner.savedRawText);
   saveStatus = { state: 'idle' };
 }
 
@@ -8816,7 +9648,7 @@ function describeViewDefinition(view) {
     const pinned = stringList(definition.properties.pinned);
     text = pinned.length ? 'Map of ' + pinned.slice(0, 3).map((reference) => nameOf(reference, 'application')).join(', ') + (pinned.length > 3 ? ' and ' + (pinned.length - 3) + ' more' : '') : 'Map';
   } else {
-    text = nameOf(definition.properties.element, definition.layer) + ' — ' + capitalizeWord(definition.viewpoint);
+    text = (definition.properties.element ? nameOf(definition.properties.element, definition.layer) : '(no element)') + ' — ' + capitalizeWord(definition.viewpoint);
   }
   return text + (definition.properties.facet ? ' (facet ' + definition.properties.facet + ')' : '');
 }
@@ -8833,7 +9665,8 @@ function viewProblem(view) {
   }
   if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint)) return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
   const layer = view.layer === 'technology' ? 'technology' : 'application';
-  if (typeof properties.element !== 'string' || !AppState.index[layer].has(properties.element)) {
+  if (typeof properties.element !== 'string' || !properties.element) return 'This view has no element.';
+  if (!AppState.index[layer].has(properties.element)) {
     return 'The element “' + properties.element + '” does not exist any more.';
   }
   return null;
@@ -8855,6 +9688,7 @@ function applySavedView(view) {
     mapPinned.forEach(expandParentsOf);
     mapSelectionCheck = true;
     currentPerspective = 'map';
+    useDiagramHost('main');
   } else {
     const layer = view.layer === 'technology' ? 'technology' : 'application';
     AppState.selection = { kind: 'element', key: properties.element, layer, mode: 'view' };
@@ -8862,6 +9696,7 @@ function applySavedView(view) {
     expandAncestorsOf(properties.element, layer);
     scrollNavToSelection = true;
     currentPerspective = 'elements';
+    useDiagramHost('main');
   }
   if (rawYamlEditDraft) rawYamlEditDraft = null;
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
@@ -8972,6 +9807,246 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
     if (storyChanged) { markEntryChanged(story); changed = true; }
   }
   return changed;
+}
+
+// ---- Editing a view from its page in the Library ----
+// The attributes of a view are controls on its page (run 0029, TDD-0029). An edit changes the entry of the view in memory: it is marked
+// changed like any entry (its manifest is re-serialised, "modified" shows, "Save all changes" writes it, "Cancel" gives it up), the
+// page's recipe is built from that entry, so the diagram follows. Nothing the Map and Elements read is involved.
+
+/** The view the page of the Library shows now (the Views side, a view open), or null. */
+function libraryPageView() {
+  return currentPerspective === 'library' && libraryTab === 'views' ? findSavedView(selectedViewId) : null;
+}
+
+/** What the last refused edit says, under its field: { view, field, text }. Gone with the next edit, another view, or leaving the Library. */
+let viewEditNotice = null;
+
+function refuseViewEdit(view, field, text, typed) {
+  viewEditNotice = { view: view.id, field, text, typed: typed === undefined ? null : String(typed) };
+  return false;
+}
+
+/**
+ * Applies `change(view, properties)` to the view of the page. `change` returns false when nothing changed (the same value, or a refusal said with
+ * `refuseViewEdit`): then the view is not marked and the page is only redrawn to say the refusal. `later`: redraw a moment later. Returns whether the view changed.
+ */
+function editSavedView(change, later) {
+  const view = libraryPageView();
+  if (!view) return false;
+  if (!isPlainObject(view.properties)) view.properties = {};
+  viewEditNotice = null;
+  const changed = change(view, view.properties) !== false;
+  if (changed) markEntryChanged(view);
+  if (!changed && !viewEditNotice) return false;
+  if (later) { // see handleViewFieldChange: the button that is being pressed is still there, and "Save all changes" is already lit
+    if (changed) syncSaveAllButtonsInPlace();
+    setTimeout(() => { if (libraryPageView() === view) render(); }, 250);
+  } else {
+    render();
+  }
+  return changed;
+}
+
+/** The kind of diagram a viewpoint draws: it decides the defaults of the texts. */
+function viewKindOf(view) {
+  return view.viewpoint === 'map' ? 'map' : 'elements';
+}
+
+/** The layer an element viewpoint of the view draws. */
+function viewLayerOf(view) {
+  return view.layer === 'technology' ? 'technology' : 'application';
+}
+
+/** The texts a view draws: what it says, else the defaults of its kind of diagram. */
+function shownTextsOf(view) {
+  const properties = isPlainObject(view.properties) ? view.properties : {};
+  const defaults = DIAGRAM_SHOW_DEFAULTS[viewKindOf(view)];
+  const shows = {};
+  for (const name of DIAGRAM_SHOW_NAMES) shows[name] = typeof properties[name] === 'boolean' ? properties[name] : defaults[name];
+  return shows;
+}
+
+/** A text of a view: the default of its kind of diagram is no choice, so it is not kept (the canonical form of the view). */
+const VIEW_PROPERTY_ORDER = ['element', 'pinned', 'hidden', 'opened', 'facet', 'hide-unlinked'].concat(DIAGRAM_SHOW_NAMES);
+
+/**
+ * Writes a property of a view. One the view already has keeps its place; one it has not (a default that an earlier edit took out, written again)
+ * goes where the editor writes it, before the first property that follows it in that order, so that a property put back is not moved to the end
+ * of the file. A key the editor does not know goes last.
+ */
+function putViewProperty(properties, key, value) {
+  if (Object.prototype.hasOwnProperty.call(properties, key)) { properties[key] = value; return; }
+  const rank = VIEW_PROPERTY_ORDER.indexOf(key);
+  const keys = Object.keys(properties);
+  const before = rank < 0 ? undefined : keys.find((other) => VIEW_PROPERTY_ORDER.indexOf(other) > rank);
+  if (before === undefined) { properties[key] = value; return; }
+  const kept = keys.map((other) => [other, properties[other]]);
+  for (const other of keys) delete properties[other];
+  for (const [other, current] of kept) {
+    if (other === before) properties[key] = value;
+    properties[other] = current;
+  }
+}
+
+function setViewShow(view, name, value) {
+  const properties = view.properties;
+  if (value === DIAGRAM_SHOW_DEFAULTS[viewKindOf(view)][name]) {
+    if (!(name in properties)) return false;
+    delete properties[name];
+    return true;
+  }
+  if (properties[name] === value) return false;
+  putViewProperty(properties, name, value);
+  return true;
+}
+
+function setViewHideUnlinked(view, value) {
+  const properties = view.properties;
+  if (!value) {
+    if (!('hide-unlinked' in properties)) return false;
+    delete properties['hide-unlinked'];
+    return true;
+  }
+  if (properties['hide-unlinked'] === true) return false;
+  putViewProperty(properties, 'hide-unlinked', true);
+  return true;
+}
+
+function setViewFacet(view, name) {
+  const properties = view.properties;
+  if (!name) {
+    if (!('facet' in properties)) return false;
+    delete properties.facet;
+    return true;
+  }
+  if (properties.facet === name) return false;
+  putViewProperty(properties, 'facet', name);
+  return true;
+}
+
+/** The element a view is about (the element viewpoints). A reference that is not an element of the view's layer is refused. */
+function setViewElement(view, reference) {
+  if (view.viewpoint === 'map') return false;
+  const layer = viewLayerOf(view);
+  const wanted = String(reference).trim();
+  if (!wanted) return refuseViewEdit(view, 'element', 'Type the reference of an element.', reference);
+  if (!AppState.index[layer].has(wanted)) return refuseViewEdit(view, 'element', '“' + wanted + '” is not an element of the ' + layer + ' layer.', wanted);
+  if (view.properties.element === wanted) return false;
+  putViewProperty(view.properties, 'element', wanted);
+  return true;
+}
+
+/** The layer of an element viewpoint. The element stays when it exists in the other layer, else the view needs one. */
+function setViewLayer(view, layer) {
+  if (view.viewpoint === 'map' || (layer !== 'application' && layer !== 'technology') || viewLayerOf(view) === layer) return false;
+  view.layer = layer;
+  if (typeof view.properties.element !== 'string' || !AppState.index[layer].has(view.properties.element)) delete view.properties.element;
+  return true;
+}
+
+/**
+ * The viewpoint. Between the three element viewpoints only the viewpoint changes. To the Map the element becomes the pinned element; back from
+ * it the first pinned element becomes the element and the Map's lists go. What the view showed of the texts is kept: the two kinds of diagram
+ * have other defaults.
+ */
+function setViewViewpoint(view, viewpoint) {
+  if (viewpoint !== 'map' && !STORY_DIAGRAM_VIEWPOINTS.includes(viewpoint)) return false;
+  if (view.viewpoint === viewpoint) return false;
+  const properties = view.properties;
+  const shows = shownTextsOf(view);
+  if (viewpoint === 'map' && view.viewpoint !== 'map') {
+    const element = properties.element;
+    const pinned = typeof element === 'string' && element && viewLayerOf(view) === 'application' ? [element] : [];
+    delete properties.element;
+    if (pinned.length) putViewProperty(properties, 'pinned', pinned);
+    view.layer = 'application';
+  } else if (viewpoint !== 'map' && view.viewpoint === 'map') {
+    const first = stringList(properties.pinned).find((reference) => AppState.index.application.has(reference)); // the first pin that is still an element, in the order of the file
+    for (const key of ['pinned', 'hidden', 'opened']) delete properties[key];
+    if (first) putViewProperty(properties, 'element', first); else delete properties.element;
+    view.layer = 'application';
+  }
+  view.viewpoint = viewpoint;
+  for (const name of DIAGRAM_SHOW_NAMES) setViewShow(view, name, shows[name]);
+  return true;
+}
+
+const VIEW_LISTS = ['pinned', 'hidden', 'opened'];
+
+/** Adds an application element to the pinned, hidden or opened elements of a Map view, or takes one out. A reference that is not an element is refused. */
+function setViewListItem(view, list, reference, add) {
+  if (view.viewpoint !== 'map' || !VIEW_LISTS.includes(list)) return false;
+  const items = stringList(view.properties[list]);
+  const wanted = String(reference).trim();
+  if (add) {
+    if (!wanted) return false;
+    if (!AppState.index.application.has(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is not an element of the application layer.', wanted);
+    if (items.includes(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is already there.', wanted);
+    putViewProperty(view.properties, list, items.concat(wanted));
+    return true;
+  }
+  if (!items.includes(wanted)) return false;
+  const rest = items.filter((item) => item !== wanted);
+  if (rest.length) view.properties[list] = rest; else delete view.properties[list];
+  return true;
+}
+
+/**
+ * A control of the form of a view was changed (a select, a checkbox, a text committed by Enter or by leaving it). A text committed by leaving
+ * it for another control is applied at once but redrawn a moment later: the redraw replaces the controls, and the click that made the text
+ * lose the focus (Save all changes, a tab, a button) must still land on the control it was made on. `immediate`: redraw now.
+ */
+function handleViewFieldChange(control, immediate) {
+  const field = control.getAttribute('data-view-field');
+  const list = control.getAttribute('data-view-list');
+  const active = typeof document !== 'undefined' ? document.activeElement : null;
+  // the focus is on another control already, or a pointer button is down on something else: the text is being left by a click that is not over
+  // yet (Firefox says the focus is on the body while the field loses it, and a redraw then replaces the button before its click)
+  const pressed = !!pointerPressedOn && pointerPressedOn !== control && !(control.contains && control.contains(pointerPressedOn));
+  const left = pressed || (!!active && active !== control && active !== document.body);
+  if (control.id && !left) pendingFocusSelector = '#' + control.id;
+  const isText = control.tagName === 'INPUT' && control.type === 'text';
+  const later = isText && left && !immediate;
+  let changed;
+  const apply = (change) => { changed = editSavedView(change, later); };
+  if (list) {
+    const reference = control.value;
+    control.value = '';
+    apply((view) => setViewListItem(view, list, reference, true));
+  }
+  else if (field === 'viewpoint') apply((view) => setViewViewpoint(view, control.value));
+  else if (field === 'layer') apply((view) => setViewLayer(view, control.value));
+  else if (field === 'element') apply((view) => setViewElement(view, control.value));
+  else if (field === 'facet') apply((view) => setViewFacet(view, control.value));
+  else if (field === 'hide-unlinked') apply((view) => setViewHideUnlinked(view, !!control.checked));
+  else if (field && field.startsWith('show:') && DIAGRAM_SHOW_NAMES.includes(field.slice(5))) apply((view) => setViewShow(view, field.slice(5), !!control.checked));
+  return changed;
+}
+
+/**
+ * A text typed in a field of the form of a view is applied when the field is left, and the click that leaves it may be on Save all changes:
+ * a disabled button takes no click, and the edit lights it only after the click is lost. So Save is lit, where it is, as soon as something is
+ * typed. If the text turns out to be refused or unchanged, the next redraw dims it again.
+ */
+function lightSaveForTypedViewText() {
+  const button = document.querySelector('[aria-label="Changes"] [data-action="save-all-changes"]');
+  if (!button || !button.disabled || saveInFlight) return;
+  button.disabled = false;
+  button.title = 'Applies what you typed, then writes it to disk.';
+}
+
+/** What a pointer button is down on, from its press to its release (null otherwise): a field that loses its focus to a click says so by it. */
+let pointerPressedOn = null;
+function notePointer(e) { pointerPressedOn = e.type === 'pointerdown' ? e.target : null; }
+document.addEventListener('pointerdown', notePointer, true);
+document.addEventListener('pointerup', notePointer, true);
+document.addEventListener('pointercancel', notePointer, true);
+
+/** Delegated `change` listener: the form of a view on its page. */
+function handleAppChange(e) {
+  const control = e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list]') : null;
+  if (control) handleViewFieldChange(control);
 }
 
 /** A text field of a story, typed in: the model follows at once (there is no form to apply), and "Save all changes" lights up. */
@@ -9195,7 +10270,7 @@ function goToStoryStep(storyId, index) {
   if (!story || index < 0 || index >= steps.length) return;
   selectedStoryId = storyId;
   const problem = stepProblem(steps[index]) || applySavedView(stepView(steps[index]));
-  if (problem && currentPerspective !== 'map' && currentPerspective !== 'elements') currentPerspective = 'map'; // somewhere to show the bar
+  if (problem && currentPerspective !== 'map' && currentPerspective !== 'elements') { currentPerspective = 'map'; useDiagramHost('main'); } // somewhere to show the bar
   activeStory = { id: storyId, step: index };
   storyBarEditing = false;
   storyBarNotice = null;
@@ -9312,6 +10387,45 @@ function keepStepAsNamedView(storyId, index) {
     markEntryChanged(target);
     render();
   });
+}
+
+/**
+ * A box or a link of the page of a view was clicked (or an element named in its panel): it becomes the selection of the page, which the
+ * panel on the right shows. The page, its perspective and its address stay; nothing the Map and Elements read is written. The drawing is
+ * redrawn from its cache, so that what is on screen does not jump.
+ */
+function selectOnLibraryPage(selection) {
+  libraryPickFor(selectedViewId).selection = selection;
+  const canvas = document.getElementById('diagram-canvas');
+  if (canvas && diagramScale === 'auto') takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
+  render();
+  bringLibrarySelectionIntoSight();
+}
+
+/**
+ * The view comes first in the panel and the selection after it. The reader stays where he is when the top of the selection is already in the
+ * panel (room for a few lines of it). Otherwise the panel scrolls by as little as it takes to show the top of the selection: its first
+ * 120 px at the foot of the panel when it lies below (bringing the whole section to the top of the panel took the attributes of the view
+ * out of sight), its top edge at the head of the panel when it lies above.
+ */
+function bringLibrarySelectionIntoSight() {
+  const section = document.querySelector('.library-selection');
+  if (!section) return;
+  const panel = document.getElementById('panel-right');
+  if (panel && panel.getBoundingClientRect && section.getBoundingClientRect) {
+    const room = panel.getBoundingClientRect();
+    const top = section.getBoundingClientRect().top;
+    if (top >= room.top && top <= room.bottom - 64) return;
+    panel.scrollTop += top > room.bottom - 64 ? top - (room.bottom - 120) : top - room.top;
+  } else if (section.scrollIntoView) {
+    section.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+/** The selection of the page of a view is given up (the panel's cross, Escape): the panel keeps the view. */
+function closeLibrarySelection() {
+  libraryPickFor(selectedViewId).selection = null;
+  render();
 }
 
 function openSavedView(viewId) {
@@ -9497,19 +10611,64 @@ function entryFileLabel(entry) {
   return owner ? owner.relPath : 'workspace.yaml';
 }
 
-/** What a view draws, in words: its definition, then the properties that shape it. */
+/**
+ * The view as a form: what it draws and where it is kept as facts, then a control for each attribute (TDD-0029 DEC-1). A control changes
+ * the entry of the view (`editSavedView`) when it is committed: a select or a checkbox at once, a text by Enter or leaving it.
+ */
 function renderViewFactsHtml(view) {
-  const definition = canonicalViewDefinition(view);
-  const value = (v) => Array.isArray(v) ? v.join(', ') : String(v);
-  const properties = Object.keys(definition.properties).filter((key) => definition.properties[key] !== undefined && definition.properties[key] !== '' && !(Array.isArray(definition.properties[key]) && !definition.properties[key].length));
   const row = (name, content) => '<dt>' + name + '</dt><dd>' + content + '</dd>';
-  return '<dl class="view-facts">' +
+  const isMap = view.viewpoint === 'map';
+  const properties = isPlainObject(view.properties) ? view.properties : {};
+  const notice = (field) => viewEditNotice && viewEditNotice.view === view.id && viewEditNotice.field === field
+    ? '<div class="inline-error" role="alert">' + escapeHtml(viewEditNotice.text) + '</div>' : '';
+  const typedOr = (name, value) => viewEditNotice && viewEditNotice.view === view.id && viewEditNotice.field === name && viewEditNotice.typed !== null ? viewEditNotice.typed : value; // a refused text stays in its field, to be corrected
+  const field = (id, label, control, field) => '<div class="view-field"><label for="' + id + '">' + label + '</label>' + control + notice(field) + '</div>';
+  const option = (value, label, selected, extra) => '<option value="' + escapeHtml(value) + '"' + (selected ? ' selected' : '') + (extra || '') + '>' + escapeHtml(label) + '</option>';
+
+  const layer = viewLayerOf(view);
+  const record = typeof properties.element === 'string' ? AppState.index[layer].get(properties.element) : null;
+  const known = ['overview', 'detailed', 'deep', 'map'];
+  const labels = { overview: 'Overview', detailed: 'Detailed', deep: 'Deep', map: 'Map' };
+  const viewpoints = (known.includes(view.viewpoint) ? '' : option(String(view.viewpoint), view.viewpoint + ' (not drawn by the editor)', true, ' disabled')) +
+    known.map((value) => option(value, labels[value], value === view.viewpoint,
+      value === 'detailed' && view.viewpoint !== 'detailed' && record && LEAF_KINDS.includes(record.kind) ? ' disabled title="Only available for an element that can contain others."' : '')).join('');
+  let html = '<dl class="view-facts">' +
     row('Draws', escapeHtml(describeViewDefinition(view))) +
-    row('Viewpoint', escapeHtml(String(definition.viewpoint))) +
-    row('Layer', escapeHtml(String(definition.layer))) +
-    properties.map((key) => row(escapeHtml(key), escapeHtml(value(definition.properties[key])))).join('') +
     row('Kept in', '<code>' + escapeHtml(entryFileLabel(view)) + '</code>') +
-  '</dl>';
+  '</dl><div class="view-edit">';
+  html += field('view-edit-viewpoint', 'Viewpoint', '<select id="view-edit-viewpoint" data-view-field="viewpoint">' + viewpoints + '</select>', 'viewpoint');
+  if (isMap) {
+    for (const [list, label, hint] of [['pinned', 'Pinned', 'The elements the map is about'], ['hidden', 'Hidden', 'Elements the map leaves out'], ['opened', 'Open', 'Boxes drawn unfolded']]) {
+      const items = stringList(properties[list]);
+      html += field('view-edit-add-' + list, label,
+        '<div class="view-pills" role="list" aria-label="' + label + ' elements">' + items.map((reference) =>
+          '<span class="pill' + (AppState.index.application.has(reference) ? '' : ' pill-missing') + '" role="listitem"' + (AppState.index.application.has(reference) ? '' : ' title="This element does not exist any more"') + '>' + escapeHtml(reference) +
+          '<button type="button" class="pill-remove" data-action="view-list-remove" data-list="' + list + '" data-ref="' + escapeHtml(reference) + '" aria-label="Remove ' + escapeHtml(reference) + ' from ' + label.toLowerCase() + '" title="Remove">×</button></span>').join('') + '</div>' +
+        '<input type="text" id="view-edit-add-' + list + '" data-view-list="' + list + '" list="archicode-application-references" value="' + escapeHtml(typedOr(list, '')) + '" placeholder="Add an element…" autocomplete="off" spellcheck="false" title="' + escapeHtml(hint) + '. Press Enter to add it.">', list);
+    }
+  } else {
+    html += field('view-edit-layer', 'Layer', '<select id="view-edit-layer" data-view-field="layer">' + option('application', 'Application', layer === 'application') + option('technology', 'Technology', layer === 'technology') + '</select>', 'layer');
+    html += field('view-edit-element', 'Element',
+      '<input type="text" id="view-edit-element" data-view-field="element" list="archicode-' + layer + '-references" value="' + escapeHtml(typedOr('element', typeof properties.element === 'string' ? properties.element : '')) + '" placeholder="Reference of an element" autocomplete="off" spellcheck="false" title="Press Enter to apply it.">' +
+      (record ? '<div class="muted view-element-name">' + escapeHtml(record.name || record.id) + '</div>' : ''), 'element');
+  }
+  const facets = AppState.workspace.settings.facets.customs;
+  const facetName = typeof properties.facet === 'string' ? properties.facet : '';
+  if (facets.length || facetName) {
+    html += field('view-edit-facet', 'Facet', '<select id="view-edit-facet" data-view-field="facet">' + option('', 'None', !facetName) +
+      facets.map((facet) => option(facet.name, facet.name, facet.name === facetName)).join('') +
+      (facetName && !facets.some((facet) => facet.name === facetName) ? option(facetName, facetName + ' (not defined)', true) : '') + '</select>', 'facet');
+  }
+  const shows = shownTextsOf(view);
+  const check = (id, fieldName, label, checked, title) => '<label class="view-check" title="' + escapeHtml(title) + '"><input type="checkbox" id="' + id + '" data-view-field="' + fieldName + '"' + (checked ? ' checked' : '') + '> ' + label + '</label>';
+  html += '<fieldset class="view-field"><legend>Drawing</legend><div class="view-checks">' +
+    check('view-edit-hide-unlinked', 'hide-unlinked', 'Hide unlinked', properties['hide-unlinked'] === true, 'Leave out the boxes that no link reaches') +
+    check('view-edit-show-labels', 'show:labels', 'Labels', shows.labels, 'The caption of each link') +
+    check('view-edit-show-qualifiers', 'show:qualifiers', 'Qualifiers', shows.qualifiers, 'The qualifiers of each element, after its kind') +
+    check('view-edit-show-descriptions', 'show:descriptions', 'Descriptions', shows.descriptions, 'The description of each element that does not contain others') +
+    check('view-edit-show-wrap', 'show:wrap', 'Wrap', shows.wrap, 'Break long names, qualifiers and descriptions over several lines') +
+  '</div></fieldset></div>';
+  return html;
 }
 
 /** The steps that show a view, each a way into its story. */
@@ -9524,12 +10683,16 @@ function renderViewUsesHtml(view) {
     ' <span class="muted">— step ' + (index + 1) + '</span></li>').join('') + '</ul>';
 }
 
+/** The attributes of a view and the steps that show it: the centre of the page of a view that cannot be drawn, the right-hand panel of one that can. */
+function renderViewAttributesHtml(view) {
+  return renderViewFactsHtml(view) + '<h3>Shown in</h3>' + renderViewUsesHtml(view);
+}
+
 function renderViewDetailHtml(view) {
   const problem = viewProblem(view);
   return '<section class="story-editor" aria-label="View">' +
     (problem ? '<div class="story-step-problem" role="status">' + escapeHtml(problem) + '</div>' : '') +
-    renderViewFactsHtml(view) +
-    '<h3>Shown in</h3>' + renderViewUsesHtml(view) +
+    renderViewAttributesHtml(view) +
   '</section>';
 }
 
@@ -9582,10 +10745,19 @@ function renderLibraryPerspectiveHtml() {
     const view = selectedViewId ? findSavedView(selectedViewId) : null;
     if (view) {
       const id = escapeHtml(view.id);
-      subject = '<span class="element-header-subject">' + escapeHtml(viewLabel(view)) + '</span>';
-      actions = (viewProblem(view) ? '' : '<button type="button" data-action="saved-view-open" data-view="' + id + '" title="Draw this view on the Map or in Elements">Open on diagram</button>') +
-        '<button type="button" data-action="saved-view-rename" data-view="' + id + '">Rename</button>' +
+      subject = '<span class="element-header-subject">' + escapeHtml(viewLabel(view)) + '</span>' +
+        (entryIsModified(view) ? '<span class="modified-badge" title="Changed, not saved yet">modified</span>' : '');
+      const manage = '<button type="button" data-action="saved-view-rename" data-view="' + id + '">Rename</button>' +
         '<button type="button" data-action="saved-view-delete" data-view="' + id + '">Delete</button>';
+      // the panel on the right narrows the centre: what is rarely used goes into the "⋯" menu of a narrow header, as on the Map (Maximize stays in the row)
+      actions = viewProblem(view) ? manage
+        : '<span class="header-more">' +
+            '<button type="button" class="header-more-button" data-action="toggle-header-menu" aria-haspopup="true" aria-expanded="' + headerMenuOpen + '" aria-controls="header-overflow" aria-label="More actions" title="More actions: download, open on a diagram, rename, delete">' +
+              '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="3" cy="8" r="1.6" fill="currentColor"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><circle cx="13" cy="8" r="1.6" fill="currentColor"/></svg></button>' +
+            '<div class="header-overflow" id="header-overflow" role="group" aria-label="More actions" data-open="' + headerMenuOpen + '">' +
+              renderDiagramDownloadHtml() +
+              '<button type="button" data-action="saved-view-open" data-view="' + id + '" title="Draw this view on the Map or in Elements">Open on diagram</button>' + manage +
+            '</div></span>' + renderMaximizeButtonHtml('the list of views and the panel');
     }
     body = view ? renderViewDetailHtml(view)
       : '<p class="muted story-intro">A view is a diagram kept under a name, to be a step in as many stories as you like. To keep one, open a diagram on the Map or in Elements and press “Name view…” in its header.</p>';
@@ -9599,14 +10771,32 @@ function renderLibraryPerspectiveHtml() {
     body = story ? renderStoryEditorHtml(story)
       : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. To start, open a diagram on the Map or in Elements and press “Add to story…”, or create an empty story with “New story…”.</p>';
   }
+  const header = renderElementHeaderHtml('<h2>Library</h2>' + renderLibraryTabsHtml() + subject, actions);
+  const notices = (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') + renderLegacyEntriesNoticeHtml();
+  // a view that can be drawn is drawn: the diagram of the Map under the header, and the panel on the right says what the view is and
+  // what is selected in it; Maximize gives the diagram the room of both, as on the Map. One that cannot be drawn keeps its message and its facts.
+  const recipe = onViews && selectedViewId ? libraryDiagramRecipe(findSavedView(selectedViewId)) : null;
+  const center = recipe
+    ? '<div class="diagram-view library-view">' + header + (notices ? '<div class="library-view-notices">' + notices + '</div>' : '') +
+        renderDiagramCanvasHtml(null, '', recipe) + '</div>'
+    : '<div class="story-view">' + header + '<div class="story-body">' + notices + body + '</div></div>';
   return {
-    left: renderLeftPanelWrapperHtml(onViews ? renderViewsNavHtml() : renderStoriesNavHtml()),
-    center: '<div class="story-view">' + renderElementHeaderHtml('<h2>Library</h2>' + renderLibraryTabsHtml() + subject, actions) + '<div class="story-body">' +
-      (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') +
-      renderLegacyEntriesNoticeHtml() + body + '</div></div>',
-    right: null,
+    left: recipe && diagramMaximized ? null : renderLeftPanelWrapperHtml(onViews ? renderViewsNavHtml() : renderStoriesNavHtml()),
+    center,
+    right: recipe && !diagramMaximized ? renderLibraryPanelHtml(recipe.view) : null,
+    rightLabel: 'View and selection',
     bottom: null
   };
+}
+
+/** The right-hand panel of the page of a view: what the view is, then — once a box or a link of its diagram is selected — the inspection of the selection. */
+function renderLibraryPanelHtml(view) {
+  const selection = libraryPickFor(view.id).selection;
+  const inspection = selection ? inspectionPanelHtml(selection, 'library') : null;
+  if (selection && !inspection) libraryPickFor(view.id).selection = null; // the element was renamed or deleted since (in Elements, or by a save): nothing to show
+  return '<div class="library-panel"><section class="library-view-section" aria-label="The view">' +
+    '<h3>View</h3>' + renderViewAttributesHtml(view) + '</section>' +
+    (inspection ? '<section class="library-selection" aria-label="The selection">' + inspection + '</section>' : '') + '</div>';
 }
 
 /** Dispatch to the active perspective's region content. */
@@ -9652,7 +10842,7 @@ function renderShellHtml() {
         html += '<div class="grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_auto_auto]">';
         html += '<main id="panel-center" class="center-panel min-h-0 min-w-0">' + p.center + '</main>';
         html += renderResizeHandleHtml('panel-right', 'x', '-1');
-        html += '<aside id="panel-right" class="right-panel min-w-56 w-72 max-w-[40vw]" aria-label="Inspection" style="' + savedPanelSizeStyle('panel-right', 'width') + '">' + p.right + '</aside>';
+        html += '<aside id="panel-right" class="right-panel min-w-56 w-72 max-w-[40vw]" aria-label="' + (p.rightLabel || 'Inspection') + '" style="' + savedPanelSizeStyle('panel-right', 'width') + '">' + p.right + '</aside>';
         html += '</div>';
       } else {
         html += '<main id="panel-center" class="center-panel min-h-0 min-w-0">' + p.center + '</main>';
@@ -9689,7 +10879,7 @@ const ACTIONS_LEAVING_THE_FORM = new Set([
   'set-perspective', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
   'select-link', 'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
   'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
-  'library-tab', 'select-view', 'library-go-story', 'library-go-view'
+  'library-tab', 'select-view', 'library-go-story', 'library-go-view', 'library-open-element'
 ]);
 
 /** Asks before throwing away what was typed in a form and not applied. True when the user accepts (the draft is then gone). */
@@ -9936,9 +11126,22 @@ function handleAppClick(e) {
     case 'saved-view-delete':
       deleteSavedView(target.getAttribute('data-view'));
       break;
+    case 'view-list-remove': {
+      const list = target.getAttribute('data-list');
+      const reference = target.getAttribute('data-ref');
+      pendingFocusSelector = '#view-edit-add-' + list;
+      editSavedView((view) => setViewListItem(view, list, reference, false));
+      break;
+    }
     case 'toggle-show': {
       const name = target.getAttribute('data-show');
       if (!DIAGRAM_SHOW_NAMES.includes(name)) break;
+      if (currentPerspective === 'library') { // the page of a view: the button edits the view, as the box of its panel does
+        const view = libraryPageView();
+        const recipe = view ? libraryDiagramRecipe(view) : null;
+        if (recipe) editSavedView((entry) => setViewShow(entry, name, !recipe.shows[name]));
+        break;
+      }
       pushDiagramHistory();
       diagramShow[name] = !diagramShows(mapIsShown())[name];
       // back to the default is "no choice": the URL and the saved views then say nothing
@@ -9974,13 +11177,20 @@ function handleAppClick(e) {
     case 'fix-dangling': {
       // a relationship that points at nothing is repaired where it is declared: in its owner's edit form
       const owner = target.getAttribute('data-ref');
-      AppState.selection = { kind: 'element', key: owner, mode: 'edit' };
-      expandAncestorsOf(owner);
+      const ownerLayer = target.getAttribute('data-layer');
+      AppState.selection = ownerLayer ? { kind: 'element', key: owner, layer: ownerLayer, mode: 'edit' } : { kind: 'element', key: owner, mode: 'edit' };
+      expandAncestorsOf(owner, ownerLayer || undefined);
       scrollNavToSelection = true;
       setPerspective('elements');
       break;
     }
     case 'toggle-hide-unlinked':
+      if (currentPerspective === 'library') { // see 'toggle-show'
+        const view = libraryPageView();
+        const recipe = view ? libraryDiagramRecipe(view) : null;
+        if (recipe) editSavedView((entry) => setViewHideUnlinked(entry, !recipe.hideUnlinked));
+        break;
+      }
       if (!mapIsShown() && !diagramTabShown()) break;
       pushDiagramHistory();
       diagramHideUnlinked = !diagramHideUnlinked;
@@ -10002,6 +11212,10 @@ function handleAppClick(e) {
     }
     case 'goto-element': {
       const destinationRef = target.getAttribute('data-ref');
+      if (currentPerspective === 'library') { // a box of the page of a view (or an element named in its panel): selected here, the page and its address stay
+        selectOnLibraryPage({ kind: 'element', key: destinationRef, layer: target.getAttribute('data-layer') || 'application', mode: 'view' });
+        break;
+      }
       if (AppState.selection.key !== destinationRef) pushDiagramHistory();
       if (mapIsShown() && diagramScale === 'auto') {
         const canvas = document.getElementById('diagram-canvas');
@@ -10017,6 +11231,12 @@ function handleAppClick(e) {
       break;
     }
     case 'select-link': {
+      if (currentPerspective === 'library') { // the page of a view: the link is selected in its panel, the Map's selection is not touched
+        const pageNth = target.getAttribute('data-nth');
+        diagramLinkStop = diagramLinkKeyOf(target);
+        selectOnLibraryPage(linkSelectionFor(target.getAttribute('data-from'), target.getAttribute('data-to'), target.getAttribute('data-layer'), pageNth === null ? null : parseInt(pageNth, 10), null));
+        break;
+      }
       // a link is not a place: no history entry, no change of perspective, tab or box; the drafts go like for any other selection
       if (rawYamlEditDraft) rawYamlEditDraft = null;
       if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
@@ -10024,14 +11244,30 @@ function handleAppClick(e) {
         const canvas = document.getElementById('diagram-canvas');
         if (canvas) takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
       }
-      selectLink(target.getAttribute('data-from'), target.getAttribute('data-to'), target.getAttribute('data-layer'));
+      const nth = target.getAttribute('data-nth');
+      diagramLinkStop = diagramLinkKeyOf(target); // a click moves the stop of the links to its link, whether or not the browser focuses it
+      selectLink(target.getAttribute('data-from'), target.getAttribute('data-to'), target.getAttribute('data-layer'), nth === null ? null : parseInt(nth, 10));
+      if (mapIsShown()) revealLinkAfterDrawing = { nth: Number.isInteger(parseInt(nth, 10)) ? parseInt(nth, 10) : null }; // the panel narrows the Map: the link must not end up behind it
       render();
       break;
     }
     case 'close-inspection': // nothing else deselects on the Map; in Elements a link goes back to its element
+      if (currentPerspective === 'library') { closeLibrarySelection(); break; }
       if (AppState.selection.kind === 'link') dropLinkSelection(); else AppState.selection = { kind: 'none', key: null, mode: 'view' };
       render();
       break;
+    case 'library-open-element': {
+      // the one way out of the page from its panel: the element is selected in Elements, as the Map's "Open in Elements" does for its selection
+      const openedRef = target.getAttribute('data-ref');
+      const openedLayer = target.getAttribute('data-layer');
+      if (rawYamlEditDraft) rawYamlEditDraft = null;
+      if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
+      AppState.selection = openedLayer ? { kind: 'element', key: openedRef, layer: openedLayer, mode: 'view' } : { kind: 'element', key: openedRef, mode: 'view' };
+      expandAncestorsOf(openedRef, openedLayer || undefined);
+      scrollNavToSelection = true;
+      setPerspective('elements');
+      break;
+    }
     case 'toggle-element-edit':
       if (AppState.selection.kind === 'element') {
         AppState.selection.mode = AppState.selection.mode === 'edit' ? 'view' : 'edit';
@@ -10589,30 +11825,60 @@ function landingScreenConfig() {
 }
 
 /**
- * The remembered folders as the landing card lists them (TDD-0020 CTR-2): `{ id, title, folder, problem }`, `id` being
- * the `data-folder-id` ('' for the legacy one), `title` the workspace's name or the folder's, `folder` the folder's name
- * when it is not the title. None in served mode, where the server's folder is the only one.
+ * The remembered folders as the landing card lists them (TDD-0020 CTR-2, TDD-0023 CTR-2): `{ id, title, folder,
+ * problem, permission }`, `id` being the `data-folder-id` ('' for the legacy one), `title` the workspace's name or the
+ * folder's, `folder` the folder's name when it is not the title, `permission` a key of FOLDER_PERMISSION_TEXT or null
+ * while not known yet. None in served mode, where the server's folder is the only one.
  */
 function landingFolderRows() {
   if (isServedByArchiCode()) return [];
   return rememberedFolders.map((f) => {
     const title = rememberedFolderTitle(f);
-    return { id: f.id || '', title, folder: title !== f.handle.name ? f.handle.name : null, problem: f.problem || null };
+    return {
+      id: f.id || '', title, folder: title !== f.handle.name ? f.handle.name : null, problem: f.problem || null,
+      permission: FOLDER_PERMISSION_TEXT[f.permission] ? f.permission : null
+    };
   });
 }
 
-/** The list of the remembered folders on the landing card: an Open and a Remove button each, both naming the folder. */
+// What a click on a remembered folder will meet, as the list says it (TDD-0023 DEC-2): in words, the icon adds nothing.
+const FOLDER_PERMISSION_TEXT = {
+  granted: 'Opens without asking',
+  prompt: 'Will ask for permission',
+  denied: 'Blocked by the browser',
+  unreachable: 'Could not be reached',
+  unknown: 'Could not be checked'
+};
+const FOLDER_PERMISSION_ICON = {
+  granted: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  prompt: '<rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  denied: '<circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/>',
+  unreachable: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7"/><path d="M12 17h.01"/>',
+  unknown: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7"/><path d="M12 17h.01"/>'
+};
+
+/**
+ * The list of the remembered folders on the landing card: an Open and a Remove button each, both naming the folder. The
+ * Open button says, under the names, what a click will meet (its permission), or the row says what went wrong the last
+ * time (its problem): that line is the button's accessible description.
+ */
 function renderLandingFoldersHtml(folders) {
-  const rows = folders.map((f) => {
+  const rows = folders.map((f, i) => {
     const named = '“' + f.title + '”' + (f.folder ? ' (folder ' + f.folder + ')' : '');
     const id = escapeHtml(f.id);
+    const state = !f.problem && f.permission ? 'landing-folder-state-' + i : null;
+    const problem = f.problem ? 'landing-folder-problem-' + i : null;
     return '<li class="landing-folder">' +
-      '<button type="button" class="landing-folder-open" data-action="open-remembered-folder" data-folder-id="' + id + '" aria-label="' + escapeHtml('Open ' + named) + '">' +
+      '<button type="button" class="landing-folder-open" data-action="open-remembered-folder" data-folder-id="' + id + '" aria-label="' + escapeHtml('Open ' + named) + '"' +
+        (state || problem ? ' aria-describedby="' + (state || problem) + '"' : '') + '>' +
         '<span class="landing-folder-name">' + escapeHtml(f.title) + '</span>' +
         (f.folder ? '<span class="landing-folder-dir">' + LANDING_ICON_FOLDER + '<span>' + escapeHtml(f.folder) + '</span></span>' : '') +
+        (state ? '<span class="landing-folder-state" id="' + state + '" data-permission="' + f.permission + '">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + FOLDER_PERMISSION_ICON[f.permission] + '</svg>' +
+          '<span>' + escapeHtml(FOLDER_PERMISSION_TEXT[f.permission]) + '</span></span>' : '') +
       '</button>' +
       '<button type="button" class="btn-ghost landing-folder-remove" data-action="forget-folder" data-folder-id="' + id + '" aria-label="' + escapeHtml('Remove ' + named + ' from the list') + '" title="This browser forgets the folder. Nothing is deleted on disk.">Remove from the list</button>' +
-      (f.problem ? '<p class="landing-folder-problem">' + escapeHtml(f.problem) + '</p>' : '') +
+      (f.problem ? '<p class="landing-folder-problem" id="' + problem + '">' + escapeHtml(f.problem) + '</p>' : '') +
     '</li>';
   }).join('');
   return '<section class="landing-folders" aria-labelledby="landing-folders-title">' +
@@ -10646,6 +11912,18 @@ function renderLandingHtml(cfg) {
   return '<main class="landing"><section class="landing-card" data-landing="' + cfg.kind + '">' + brand + body + '</section></main>';
 }
 
+/** The control of the landing card that has the focus, as a selector to find it after a redraw; null if none has it. */
+function landingControlSelector(el) {
+  const control = el && el.closest ? el.closest('.landing-card button, .landing-card a') : null;
+  if (!control) return null;
+  if (control.id) return '#' + control.id;
+  if (control.tagName === 'A') return '.landing-card a';
+  const action = control.getAttribute('data-action');
+  if (!action) return null;
+  const folder = control.getAttribute('data-folder-id');
+  return '[data-action="' + action + '"]' + (folder === null ? '' : '[data-folder-id="' + folder + '"]');
+}
+
 /** The title of the page: the editor, then the workspace that is loaded (its name, or its folder when it has none). */
 function pageTitle() {
   const label = workspaceLabel();
@@ -10668,16 +11946,25 @@ function render() {
   for (const view of Object.values(activeJsonEditorViews)) view.destroy();
   activeJsonEditorViews = {};
 
+  useDiagramHost(diagramHostOf(currentPerspective)); // before anything is drawn: the tree of the Map reads the scene of the Map
   settleLinkSelection(); // a link is selected only while the diagram it was made on is on screen
+  if (currentPerspective !== 'library' || (viewEditNotice && viewEditNotice.view !== selectedViewId)) viewEditNotice = null;
   const landing = landingScreenConfig();
   if (landing) {
     document.title = 'ArchiCode Editor'; // no workspace is loaded yet, whatever folder is remembered
+    // a long list keeps where it was scrolled to when the card is drawn again (a Remove, the permissions)
+    const listBefore = app.querySelector ? app.querySelector('.landing-folder-list') : null;
+    const listTop = listBefore && listBefore.scrollTop > 0 ? listBefore.scrollTop : 0;
     app.innerHTML = renderLandingHtml(landing);
     app.addEventListener('click', handleAppClick);
-    // after a Remove the focus stays in the list (the next folder); else the primary button of the card
+    const listAfter = listTop && app.querySelector ? app.querySelector('.landing-folder-list') : null;
+    if (listAfter) listAfter.scrollTop = listTop;
+    // after a Remove the focus stays in the list (the next folder); drawn again for the permissions, it stays where it
+    // was ('' when that was not on the card); else the primary button of the card
+    const keep = landingFocusSelector === '';
     const wanted = landingFocusSelector && app.querySelector ? app.querySelector(landingFocusSelector) : null;
     landingFocusSelector = null;
-    const primary = wanted || document.getElementById('landing-primary');
+    const primary = wanted || (keep ? null : document.getElementById('landing-primary'));
     if (primary) primary.focus();
     return;
   }
@@ -10694,7 +11981,8 @@ function render() {
     const el = document.getElementById(id);
     if (el) scrollBefore[id] = { top: el.scrollTop, left: el.scrollLeft };
   }
-  const viewKey = currentPerspective + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '') + '|' + (AppState.selection.focal || '');
+  const viewKey = currentPerspective + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '') + '|' + (AppState.selection.focal || '') +
+    (currentPerspective === 'library' && libraryTab === 'views' ? '|' + selectedViewId : ''); // another view opens at the top of its panel
   const sameView = viewKey === lastRenderedViewKey;
   lastRenderedViewKey = viewKey;
 
@@ -10740,6 +12028,7 @@ function render() {
   app.addEventListener('pointerdown', handleAppPointerDown);
   app.addEventListener('dblclick', handleAppDblClick);
   app.addEventListener('input', handleAppInput);
+  app.addEventListener('change', handleAppChange);
   app.addEventListener('keydown', handleDiagramKeydown);
   app.addEventListener('keydown', handleNavKeydown);
   app.addEventListener('keydown', handleActivateKeydown);
