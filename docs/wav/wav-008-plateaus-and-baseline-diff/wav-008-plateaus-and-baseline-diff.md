@@ -108,7 +108,7 @@ wave_manifest:
       slug: compare-kernel
       phase: P2
       depends_on: [W-2]
-      run: null
+      run: '0036'
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
@@ -190,7 +190,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-3 | — | `compare-kernel` | W-2 | get, for two plateaus, the same list of new, changed and removed things in the CLI and in the editor | A pure function `compare` in the Rust kernel, a second entry point like `apply_facet`, additive contract (bump `CONTRACT_VERSION` if the caller must know). Match by reference; new and removed; changed from normalised properties (ignore `rendering-*` tags and the order of qualifiers, tags and relationships), with the nature of the change (name, description as wording, qualifiers, tags, applications and `uses`, relationships added or removed); relationships keyed by (source, destination, label), a pair with one removed and one new label read as "label changed"; a union model where every element and relationship carries `change`, and a sorted, byte-stable table of changes. Moved and split elements stay removed plus new. | `cargo test` on an invented pair covers each rule; the comparison of a plateau with itself is empty; `embed.sh --check` passes; the same input twice gives the same bytes |
+| W-3 | 0036 | `compare-kernel` | W-2 | get, for two plateaus, the same list of new, changed and removed things in the CLI and in the editor | A pure function `compare` in the Rust kernel, a second entry point like `apply_facet`, additive contract (bump `CONTRACT_VERSION` if the caller must know). Match by reference; new and removed; changed from normalised properties (ignore `rendering-*` tags and the order of qualifiers, tags and relationships), with the nature of the change (name, description as wording, qualifiers, tags, applications and `uses`, relationships added or removed); relationships keyed by (source, destination, label), a pair with one removed and one new label read as "label changed"; a union model where every element and relationship carries `change`, and a sorted, byte-stable table of changes. Moved and split elements stay removed plus new. | `cargo test` on an invented pair covers each rule; the comparison of a plateau with itself is empty; `embed.sh --check` passes; the same input twice gives the same bytes |
 | W-4 | — | `views-carry-change` | W-3 | every box and link of a view knows what changed, and a view can show only the changes with their context | The views carry `change` on items and links, aggregated for a grouped link (all new, all removed, a mix is changed); computed stereotypes `new`, `changed`, `removed` are added last (a hand-written tag of the same name does not duplicate); a container whose only descendants changed carries a discreet computed marker, not `changed`; an `only_changes` view option keeps the changes, their ancestors and the ends of changed links as context, and respects the facets; adapt `KernelViewpointFactory`; a facet can read `change` like any field. | Fixtures and tests for each rule, including a view with no comparison byte-identical to wave 007's; a determinism test on a pair; `cargo test`, `embed.sh --check`, `./mvnw verify`, `node --test` pass |
 
 **Gate:** the criteria of the manifest for P2.

@@ -10,6 +10,9 @@ that reached it among its children. `pinned` keeps the relationships that touch 
 elements out. Pinned on one element with nothing open it draws that element's overview, which the tests check against
 the views the CLI generates.
 
+A second and a third entry point sit next to `compute`: `apply_facet` (the facets, see below) and `compare`, which says what
+changed between two plateaus of an architecture (see "Comparing two plateaus").
+
 It is written once and runs in both places that draw views, so they cannot disagree:
 
 | Where | How |
@@ -87,3 +90,56 @@ Two things worth knowing before touching the code:
   `@.qualifiers noneof ['a']` and `@.field == null` / `!= null` are rewritten to
   `@.qualifiers[?(@ == 'a')]`, `(@.qualifiers && !@.qualifiers[?(@ == 'a')])` and `!@.field` / `@.field`. Anything
   else Jayway accepted and the standard does not is an error that names the path.
+
+## Comparing two plateaus
+
+`compare` (`src/compare.rs`, the exported function `compare`, `compare_json` in Rust) takes the elements of two plateaus,
+a `base` and a `target`, each one list per layer, in the shape `compute` already takes, and answers the same list of new,
+changed and removed things to the CLI and to the editor. The rules are written at the top of `src/compare.rs` and each has
+its tests there; a JS test (`src/test/javascript/viewpoint-kernel/compare.test.js`) calls it through the embedded WebAssembly.
+
+```
+input : { base:   { application: [element], technology: [element] },
+          target: { application: [element], technology: [element] } }            (a missing or null list is empty)
+output: { version,
+          elements:      [ { layer, reference, parent, parent_reference?, kind?, name?, description?, qualifiers, tags,
+                             applications, uses, change, natures?, wording_only?, ...the other fields of the element } ],
+          relationships: [ { layer, from, destination, label, qualifiers, tags, change, natures? } ],
+          changes:       [ row ],
+          counts:        { elements: { new, changed, removed, wording_only },
+                           relationships: { new, changed, removed } } }
+        | { error }
+```
+
+- **Identity is the dotted reference**, per layer. In the target only: `new`; in the base only: `removed`. A moved, renamed
+  or split element is a `removed` and a `new` (a later change may add a hint to say otherwise).
+- **The union.** `elements` and `relationships` hold everything the target has, plus what only the base has (kept whole, so
+  that it can be drawn as removed, under its parent, which is itself in the union, removed too if the base had it alone).
+  Each carries `change`: `none`, `new`, `changed` or `removed` (always present). What is shown is the target's version, and
+  the base's for a removed one. `parent` is as sent (can it contain others); `parent_reference` is read from the dotted
+  reference. A field the kernel does not compare travels with the element (the other fields of the side that is shown);
+  `change`, `natures` and the other names the union writes cannot be overridden by one.
+- **Changed elements** are judged on their own properties and their own outgoing relationships, never on their children.
+  The natures are a closed list, always in this order: `kind`, `name`, `description`, `qualifiers`, `tags`, `deployment`
+  (`applications` and `uses`), `relationships-added`, `relationships-removed`, `relationships-changed`. `qualifiers`,
+  `applications` and `uses` are compared as sets, `tags` as a map without the `rendering-*` ones, text trimmed with its
+  line ends unified (an empty text is none). An element whose description is the only thing that changed has
+  `wording_only: true` (and is counted apart: `counts.elements.wording_only` is a part of `changed`, not in addition to it).
+  A difference in a `rendering-*` tag or in the order of a list is no change.
+- **Relationships** are keyed by (layer, source, destination, label), an empty label being none. In both plateaus: `none`,
+  or `changed` (natures `qualifiers`, `tags`) when those differ. When, for one (source, destination), one label was removed
+  and one is new, they are one `changed` relationship with the nature `label` (the union shows the new label; the row says
+  the old one); with two or more on either side they stay `removed` and `new`. Relationships that share a key (they differ
+  by their tags) are matched when equal, then in order.
+- **The table** `changes`: one row per changed thing, the elements then the relationships, sorted. A row is
+  `{ thing: "element"|"relationship", layer, reference (the source, for a relationship), destination and label (relationship),
+  kind and name (element), change, natures?, wording_only?, before?, after? }`; a `changed` row says `before` and `after` for
+  the properties that differ only (the sets sorted).
+- **Sorted and byte-stable.** Same input, same bytes, whatever the order of the lists. The one order that is kept is the
+  one of `qualifiers`, as declared on the side that is shown, because it is the order a box is drawn in.
+- **Errors**, in `{ error }` like `compute`: `dangling reference: x` (a relationship or `uses` entry that points at an
+  element its own plateau does not have), `dangling application reference: x`, `duplicate reference: x`, `invalid input: ..`.
+  The message says which plateau. A base relationship that ends on an element only the base has is not one.
+- **The contract version stays 2.** `compare` is a new entry point and changes neither the input nor the output of the others,
+  and the kernel and its callers are one build. The views that carry `change` will change `compute`'s output: that is what
+  will bump it.
