@@ -83,7 +83,7 @@
   .landing-card h1 { margin: 0; font-size: 1.35rem; font-weight: 600; }
   .landing-text, .landing-note, .landing-hint { margin: 0; line-height: 1.5; }
   .landing-note, .landing-hint { color: var(--muted); font-size: 0.875rem; }
-  .landing-card .error-panel { margin: 0; overflow-wrap: anywhere; }
+  .landing-card .error-panel { margin: 0; overflow-wrap: anywhere; white-space: pre-line; }
   .landing-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.25rem; }
   .landing-actions button { display: inline-flex; align-items: center; gap: 0.5rem; }
   button.btn-primary { background: var(--accent) !important; border-color: var(--accent) !important; color: var(--on-accent); font-weight: 600; }
@@ -143,7 +143,12 @@
 
   /* Both headers share one control size (2rem) so buttons line up from the top bar down to the center header. */
   .top-panel button, .element-header button { height: 2rem; padding: 0 0.8rem !important; font-size: 0.875rem; line-height: 1.25; white-space: nowrap; }
-  .top-panel .perspective-tabs { flex-shrink: 0; }
+  .top-panel .perspective-tabs, .top-panel .plateau-switch { flex-shrink: 0; }
+  .plateau-switch { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .plateau-label { font-size: 0.8rem; color: var(--muted); }
+  .plateau-horizon { margin-left: 0.4rem; font-size: 0.75rem; opacity: 0.75; }
+  .plateau-problem { font-size: 0.8rem; color: var(--danger); }
+  .plateau-list { margin: 0.25rem 0 0 1.5rem; list-style: decimal; line-height: 1.7; }
   .top-panel > .folder-name { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .help-wrap { position: relative; flex-shrink: 0; }
   .top-actions { display: flex; align-items: center; gap: 1rem; margin-left: auto; min-width: 0; max-width: 100%; }
@@ -246,7 +251,7 @@
   .center-panel { overflow-y: auto; padding: 0 1.75rem; }
   .center-panel > .center-placeholder { padding: 1.25rem 0; }
   .center-placeholder { color: var(--muted); }
-  .shell-error-panel { margin: 1rem; }
+  .shell-error-panel { margin: 1rem; white-space: pre-line; }
 
   .settings-view h2, .file-view h2, .element-header h2, .create-element-form h2 { margin-top: 0; }
   /* These two have no sticky header of their own (unlike element/file
@@ -460,7 +465,7 @@
   .button-group button[aria-pressed="true"] { position: relative; z-index: 1; }
   /* The neighbours overlap by one border (margin -1px): the hovered or focused button rises above them, so none of its borders is hidden. */
   .button-group button:hover, .button-group button:focus-visible { position: relative; z-index: 2; }
-  .perspective-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .perspective-tabs button[aria-pressed="true"], .plateau-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
   /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
   .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -2187,6 +2192,9 @@ function createInitialAppState() {
     index: { application: new Map(), technology: new Map() },
     relationshipStats: { total: 0, dangling: 0 },
     duplicateReferences: [], // [{ layer, reference, sources, message }]: a reference declared twice is reported, never chosen (see buildIndex)
+    plateau: null, // { id, name, horizon, path } of the plateau read; null for a workspace without `settings.plateaus` (see selectPlateau)
+    plateaus: [], // every plateau of settings.plateaus, in the order of the file: what the selector of the header lists
+    plateauProblem: null, // a line, when the folder of the plateau read cannot be found
     selection: { kind: 'none', key: null, mode: 'view' },
     expanded: new Set(),
     fatalError: null,
@@ -2262,6 +2270,167 @@ function readAliased(obj, camelKey, kebabKey, fallback) {
   return fallback;
 }
 
+// =====================================================================
+// Plateaus (run 0035): `settings.plateaus` is an ordered list of folders of manifests, one of which is read. The rules
+// and their words are the ones of the command line (`Plateaus.java`): keep them alike.
+// =====================================================================
+
+const PLATEAU_KEYS = ['id', 'name', 'horizon', 'path'];
+const PLATEAU_ID_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/;
+
+/** A scalar of the file as the command line reads it into a String (a number or a boolean is its text); '' for anything else. */
+function plateauText(value) {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : '';
+}
+
+/** Why a path may not name the folder of a plateau or of manifests, or null when it may: empty, absolute, or going up with `..`. */
+function plateauPathProblem(path) {
+  if (typeof path !== 'string' || path.trim() === '') return 'is empty';
+  if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:/.test(path)) return 'is absolute';
+  if (path.split(/[/\\]/).includes('..')) return 'contains `..`';
+  return null;
+}
+
+/** A relative path as the editor compares it: the segments joined with `/`, the empty and `.` ones dropped (`.` is the folder itself, ''). */
+function normalizePlateauPath(path) {
+  return String(path).split(/[/\\]/).filter((seg) => seg !== '' && seg !== '.').join('/');
+}
+
+/** What the keys of the plateaus say before they are read as a model: a mapping of `id`, `name`, `horizon` and `path`; `from` is reserved. */
+function checkPlateauStructure(plateaus) {
+  const problems = [];
+  if (plateaus === undefined || plateaus === null) return problems;
+  if (!Array.isArray(plateaus)) return ['`settings.plateaus` must be a list of plateaus, each with an `id` and a `path`'];
+  plateaus.forEach((plateau, index) => {
+    const number = index + 1;
+    if (!plateau || typeof plateau !== 'object' || Array.isArray(plateau)) {
+      problems.push('the plateau number ' + number + ' of `settings.plateaus` must be a mapping with an `id` and a `path`');
+      return;
+    }
+    const id = plateauText(plateau.id);
+    const label = id.trim() === '' ? 'the plateau number ' + number : 'the plateau `' + id + '`';
+    for (const key of Object.keys(plateau)) {
+      if (key === 'from') {
+        problems.push(label + ' has a `from`: it is reserved for a later version of ArchiCode, where a plateau will be an increment on top of another one, and is not accepted yet. ' +
+          'Remove it and give the plateau its own `path`, holding all its manifests (`archicode plateau add` copies a plateau into a new folder)');
+      } else if (!PLATEAU_KEYS.includes(key)) {
+        problems.push(label + ' has the key `' + key + '`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon` and `path`');
+      }
+    }
+  });
+  return problems;
+}
+
+/**
+ * Check every rule on the plateaus and choose the one to read: `requested` (an id), else `settings.current`, else the last
+ * one. `{ problems }` when a rule is broken (one message each, the words of the command line); else `{ plateau, path }`,
+ * both null for a workspace that has no plateaus (one set of manifests, `manifests.paths`).
+ */
+function selectPlateau(settings, requested) {
+  const structure = checkPlateauStructure(settings.plateaus);
+  if (structure.length) return { problems: structure };
+  const plateaus = settings.plateaus || [];
+  const current = settings.current === '' || settings.current === undefined ? null : settings.current;
+  const problems = [];
+  if (plateaus.length === 0) {
+    for (const path of settings.manifests.paths.slice().sort()) {
+      const problem = plateauPathProblem(path);
+      if (problem !== null) {
+        problems.push('the path `' + path + '` of `settings.manifests.paths` ' + problem + ': a manifests folder must be below the folder of workspace.yaml, written relative to it, without `..`. ' +
+          'Move the folder below workspace.yaml (or move workspace.yaml up, to a folder that holds both) and change the path to match');
+      }
+    }
+    if (current !== null) problems.push('`settings.current` is `' + current + '` but the workspace declares no `settings.plateaus`');
+    if (requested !== null && requested !== undefined) problems.push('`--plateau ' + requested + '` cannot be used: the workspace declares no `settings.plateaus`');
+    return problems.length ? { problems } : { plateau: null, path: null };
+  }
+  if (settings.manifestsPathsWritten) {
+    problems.push('`settings.manifests.paths` and `settings.plateaus` are both written: choose one. `manifests.paths` is the short form of a workspace with a single set of manifests; ' +
+      'with `settings.plateaus`, give each plateau its own `path` and remove `manifests.paths`');
+  }
+  const ids = new Map();
+  const paths = new Map();
+  const repeated = [];
+  plateaus.forEach((plateau, index) => {
+    const id = plateauText(plateau.id);
+    const label = id.trim() === '' ? 'the plateau number ' + (index + 1) : 'the plateau `' + id + '`';
+    if (id.trim() === '') {
+      problems.push(label + ' has no `id`');
+    } else if (!PLATEAU_ID_PATTERN.test(id)) {
+      problems.push('the plateau id `' + id + '` is not valid: use letters, digits, `.`, `_` and `-`, starting with a letter, a digit or `_`');
+    } else {
+      ids.set(id, (ids.get(id) || 0) + 1);
+      if (ids.get(id) === 2) repeated.push(id);
+    }
+    const path = plateauText(plateau.path);
+    const example = 'plateaus/' + (id.trim() === '' ? 'p1' : id);
+    if (path.trim() === '') {
+      problems.push(label + ' has no `path`: write the folder of its manifests, relative to the folder of workspace.yaml (for example `' + example + '`)');
+      return;
+    }
+    const problem = plateauPathProblem(path);
+    if (problem !== null) {
+      problems.push('the path `' + path + '` of ' + label + ' ' + problem + ': it must be a folder below the one of workspace.yaml, written relative to it, without `..` (for example `' + example + '`)');
+      return;
+    }
+    const normalised = normalizePlateauPath(path);
+    if (normalised === '' && plateaus.length > 1) {
+      problems.push(label + ' has the path `' + path + '`, which is the folder of workspace.yaml itself and holds the others: with several plateaus, give each one a folder of its own');
+    }
+    if (paths.has(normalised) && normalised !== '') {
+      problems.push('the plateaus `' + paths.get(normalised) + '` and `' + id + '` share the path `' + normalised + '`: each plateau needs a folder of its own');
+    } else if (!paths.has(normalised)) {
+      paths.set(normalised, id);
+    }
+  });
+  repeated.sort().forEach((id) => problems.push('the plateau id `' + id + '` is used more than once'));
+  if (problems.length) return { problems };
+
+  const idList = plateaus.map((p) => '`' + plateauText(p.id) + '`').join(', ');
+  if (current !== null && !plateaus.some((p) => plateauText(p.id) === current)) {
+    return { problems: ['`settings.current` names the plateau `' + current + '`, which is not in `settings.plateaus` (' + idList + ')'] };
+  }
+  const wanted = requested !== null && requested !== undefined ? requested : current;
+  const chosen = wanted === null ? plateaus[plateaus.length - 1] : plateaus.find((p) => plateauText(p.id) === wanted);
+  if (!chosen) return { problems: ['unknown plateau `' + wanted + '`: the plateaus of this workspace are ' + idList] };
+  return { plateau: plateauModel(chosen), path: normalizePlateauPath(plateauText(chosen.path)) };
+}
+
+/** A plateau as the editor holds it: `{ id, name, horizon, path }`, the texts the file gave (an unknown key stays in the file, not here). */
+function plateauModel(raw) {
+  return { id: plateauText(raw.id), name: plateauText(raw.name), horizon: plateauText(raw.horizon), path: plateauText(raw.path) };
+}
+
+/** What the page calls a plateau: its name, else its id. */
+function plateauTitle(plateau) {
+  return plateau.name.trim() !== '' ? plateau.name : plateau.id;
+}
+
+// The plateau drawn is remembered per folder, in this browser, like the sizes of the panels: not in the workspace (it is
+// a choice of whoever looks, not a fact of the architecture), and the page works the same when the storage is refused.
+const PLATEAU_STORAGE_PREFIX = 'archicode-standalone-editor:plateau:';
+
+function plateauStorageKey() {
+  const folder = AppState.folder;
+  return folder ? PLATEAU_STORAGE_PREFIX + (folder.id || 'name:' + folder.name) : null;
+}
+
+// what was chosen in this page, for a browser that refuses its storage: the choice then lasts as long as the page
+const chosenPlateaus = new Map();
+
+function recalledPlateauId() {
+  const key = plateauStorageKey();
+  if (key === null) return null;
+  return chosenPlateaus.has(key) ? chosenPlateaus.get(key) : panelSizeStorage.get(key);
+}
+
+function rememberPlateauId(id) {
+  const key = plateauStorageKey();
+  if (key === null) return;
+  chosenPlateaus.set(key, id);
+  panelSizeStorage.set(key, id);
+}
+
 function parseSettings(rawSettings) {
   const raw = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
   const manifestsRaw = raw.manifests && typeof raw.manifests === 'object' ? raw.manifests : {};
@@ -2293,6 +2462,11 @@ function parseSettings(rawSettings) {
     manifests: {
       paths: Array.isArray(manifestsRaw.paths) ? manifestsRaw.paths : ['manifests']
     },
+    // run 0035: the plateaus as the file has them (checked by `selectPlateau`, kept as they are in the file when it is saved)
+    plateaus: raw.plateaus === undefined || raw.plateaus === null ? [] : raw.plateaus,
+    current: plateauText(raw.current),
+    // whether `manifests.paths` is written: its default is not, and does not count against `plateaus`
+    manifestsPathsWritten: Object.prototype.hasOwnProperty.call(manifestsRaw, 'paths'),
     relationships: {
       defaultSyntheticLabel: readAliased(relationshipsRaw, 'defaultSyntheticLabel', 'default-synthetic-label', 'uses')
     },
@@ -2597,6 +2771,15 @@ function normalizeRelDir(relDir) {
   return segments.includes('..') ? null : segments.join('/');
 }
 
+/**
+ * The folder a new manifest is written to: the folder of the plateau read, else the first manifests directory of the
+ * workspace (as loadWorkspace reads it: `./manifests` is `manifests`); undefined when there is none.
+ */
+function firstManifestsDir() {
+  if (AppState.plateau) return normalizeRelDir(AppState.plateau.path) || '';
+  return AppState.workspace.settings.manifests.paths.map(normalizeRelDir).find((p) => p !== null);
+}
+
 /** Resolve a (possibly multi-segment) relative directory path from a root handle; `options.create` makes the missing directories. */
 async function getDirectoryHandleByRelativePath(rootHandle, relPath, options) {
   const normalized = normalizeRelDir(String(relPath));
@@ -2636,6 +2819,9 @@ async function loadWorkspace(dirHandle) {
   AppState.index = { application: new Map(), technology: new Map() };
   AppState.relationshipStats = { total: 0, dangling: 0 };
   AppState.duplicateReferences = [];
+  AppState.plateau = null;
+  AppState.plateaus = [];
+  AppState.plateauProblem = null;
   AppState.dirtyReferences = new Set();
   AppState.pendingFileRemovals = []; // a reload starts from the disk: a removal queued before it must not delete a file later
   AppState.removedFileBaselines = new Map();
@@ -2662,11 +2848,26 @@ async function loadWorkspace(dirHandle) {
 
   const settings = parseSettings(workspaceRaw.settings);
 
-  // FR-5: direct (non-recursive) children of each settings.manifests.paths dir.
+  // run 0035: the plateau to read. The one this browser last drew in this folder when it is still there, else
+  // `settings.current`, else the last of the list; a rule broken by the plateaus (or by a manifests path that leaves the
+  // folder) is refused like the command line refuses it, with its words.
+  const remembered = recalledPlateauId();
+  const stillThere = remembered !== null && Array.isArray(settings.plateaus) && settings.plateaus.some((p) => p && typeof p === 'object' && plateauText(p.id) === remembered);
+  const selection = selectPlateau(settings, stillThere ? remembered : null);
+  if (selection.problems) {
+    AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + selection.problems.join('\n');
+    AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    render();
+    return;
+  }
+  AppState.plateau = selection.plateau;
+  AppState.plateaus = selection.plateau ? settings.plateaus.map(plateauModel) : [];
+
+  // FR-5: direct (non-recursive) children of each settings.manifests.paths dir, or of the folder of the plateau read.
   const manifestFiles = [];
   const unreadManifestFiles = [];
   const seenManifestDirs = new Set(); // `manifests` and `./manifests/` are one directory: read it once
-  for (const rawDirPath of settings.manifests.paths) {
+  for (const rawDirPath of selection.plateau ? [selection.path] : settings.manifests.paths) {
     const relDirPath = normalizeRelDir(rawDirPath);
     if (relDirPath === null) {
       console.warn('ArchiCode: manifests path "' + rawDirPath + '" is not a path inside the folder; skipped.');
@@ -2679,11 +2880,13 @@ async function loadWorkspace(dirHandle) {
       manifestsDirHandle = await getDirectoryHandleByRelativePath(dirHandle, relDirPath);
     } catch (e) {
       console.warn('ArchiCode: manifests path "' + relDirPath + '" not found/readable:', e);
+      if (selection.plateau) AppState.plateauProblem = 'The folder `' + relDirPath + '` of the plateau `' + selection.plateau.id + '` does not exist.';
       continue;
     }
     for await (const [name, entryHandle] of manifestsDirHandle.entries()) {
       if (entryHandle.kind !== 'file') continue;
       const relPath = (relDirPath ? relDirPath + '/' : '') + name;
+      if (relDirPath === '' && /^workspace\.(ya?ml|json|toml)$/.test(name)) continue; // the workspace is not a manifest of itself (a folder written `.`)
       // like the CLI (String.endsWith): `.YAML` is not a manifest. The CLI reads .toml and .json too; the editor writes YAML only
       if (/\.(toml|json)$/.test(name)) unreadManifestFiles.push(relPath);
       if (!/\.(ya?ml)$/.test(name)) continue;
@@ -3817,8 +4020,7 @@ function commitCreateTopLevelElement({ category, headerKind, attachUnderReferenc
   const content = { id };
   if (name) content.name = name;
   if (description) content.description = description;
-  // the first manifests directory of the workspace (as loadWorkspace reads it: `./manifests` is `manifests`), else `manifests`
-  const manifestsDir = AppState.workspace.settings.manifests.paths.map(normalizeRelDir).find((p) => p !== null);
+  const manifestsDir = firstManifestsDir();
   const relPath = allocateManifestRelPath(manifestsDir === undefined ? 'manifests' : manifestsDir, category === 'application' ? 'app.' : 'env.', reference);
   const mf = {
     relPath, header, content, error: null,
@@ -4239,8 +4441,9 @@ function serializeSettingsToRaw(settings, rawSettings) {
 
 function serializeManagedSettings(settings) {
   const name = typeof settings.name === 'string' ? settings.name.trim() : '';
-  return Object.assign(name === '' ? {} : { name }, {
-    manifests: { paths: settings.manifests.paths },
+  // a workspace with plateaus has no `manifests.paths` (it is an error to have both): the editor does not write the default
+  const manifests = Array.isArray(settings.plateaus) && settings.plateaus.length > 0 && !settings.manifestsPathsWritten ? {} : { manifests: { paths: settings.manifests.paths } };
+  return Object.assign(name === '' ? {} : { name }, manifests, {
     relationships: { 'default-synthetic-label': settings.relationships.defaultSyntheticLabel },
     views: { path: settings.views.path, labels: settings.views.labels, properties: settings.views.properties },
     facets: {
@@ -4997,7 +5200,8 @@ function readSettingsDraft() {
   const defaultLabelInput = byId('settings-default-label-input');
   const globalEnabledInput = byId('settings-facets-global-enabled-input');
 
-  const pathsResult = validateManifestsPaths(pathsInput ? pathsInput.value : '');
+  // a workspace with plateaus has no field for the paths (its Settings page lists the plateaus, which workspace.yaml holds)
+  const pathsResult = pathsInput ? validateManifestsPaths(pathsInput.value) : { valid: true, paths: null };
   const viewsPathResult = validateViewsPath(viewsPathInput ? viewsPathInput.value : '');
   const templateResult = validateDirectoryNameTemplate(templateInput ? templateInput.value : '');
   if (!pathsResult.valid) fail('settings-manifests-paths-error', pathsResult.error);
@@ -5036,7 +5240,7 @@ function readSettingsDraft() {
     valid: true,
     apply(settings) {
       if (nameInput) settings.name = nameInput.value.trim();
-      settings.manifests.paths = pathsResult.paths;
+      if (pathsResult.paths) settings.manifests.paths = pathsResult.paths;
       settings.relationships.defaultSyntheticLabel = defaultLabelInput ? defaultLabelInput.value : '';
       settings.views.path = viewsPathResult.path;
       settings.views.labels = labels;
@@ -5115,6 +5319,45 @@ function renderPerspectiveTabsHtml() {
   }
   html += '</span>';
   return html;
+}
+
+/**
+ * The plateau switch (header, between the name of the workspace and the perspectives): a button group, the plateau
+ * drawn is the pressed one. Only a workspace with `settings.plateaus` has it. The choice is remembered per folder in this
+ * browser; switching reads the folder again, so it asks before it drops changes that are not saved.
+ */
+function renderPlateauTabsHtml() {
+  if (!AppState.plateau || AppState.plateaus.length === 0) return '';
+  const busy = saveInFlight ? ' disabled' : '';
+  let html = '<span class="plateau-switch"><span class="plateau-label" id="plateau-label">Plateau</span>' +
+    '<span class="plateau-tabs button-group" role="group" aria-labelledby="plateau-label">';
+  for (const plateau of AppState.plateaus) {
+    const title = plateau.id + (plateau.horizon ? ' · ' + plateau.horizon : '') + ' · ' + plateau.path;
+    html += '<button type="button" data-action="set-plateau" data-plateau="' + escapeHtml(plateau.id) + '" aria-pressed="' + (plateau.id === AppState.plateau.id) + '"' + busy +
+              ' title="' + escapeHtml(title) + '">' + escapeHtml(plateauTitle(plateau)) +
+              (plateau.horizon ? '<span class="plateau-horizon">' + escapeHtml(plateau.horizon) + '</span>' : '') +
+            '</button>';
+  }
+  html += '</span>';
+  if (AppState.plateauProblem) html += '<span class="plateau-problem" role="alert">' + escapeHtml(AppState.plateauProblem) + '</span>';
+  return html + '</span>';
+}
+
+/** Draw another plateau: the folder is read again. Asks first when something is not saved, since the reload drops it. */
+async function switchPlateau(id) {
+  if (saveInFlight || !AppState.folder || !AppState.folder.handle || !AppState.workspace || !AppState.plateau) return;
+  if (AppState.plateau.id === id || !AppState.plateaus.some((p) => p.id === id)) return;
+  const count = countUnsavedChanges();
+  if (count > 0 || draftTyped) {
+    const what = count === 0 ? 'what you typed in this form' : count + ' modified item' + (count === 1 ? '' : 's') + (draftTyped ? ' and what you typed in this form' : '');
+    if (!confirm('Switch to the plateau “' + id + '” and discard ' + what + '?\n\nThe folder is read again from disk. This cannot be undone.')) return;
+  }
+  draftTyped = false;
+  rawYamlEditDraft = null;
+  pendingDeleteConfirmation = null;
+  saveStatus = { state: 'idle' };
+  rememberPlateauId(id);
+  await loadWorkspace(AppState.folder.handle);
 }
 
 /**
@@ -5206,6 +5449,7 @@ function renderTopPanelHtml() {
       '</span>';
   return '<header class="top-panel col-span-3 flex items-center px-4">' +
       label +
+      renderPlateauTabsHtml() +
       renderPerspectiveTabsHtml() +
       // one group, pushed to the right: when the bar wraps it moves as a whole, and the status gives way before the buttons do;
       // the folder of `archicode editor serve` is the one the server was started on: there is no other to pick, so no Close folder
@@ -5454,7 +5698,8 @@ function renderLeftPanelWrapperHtml(innerHtml) {
  */
 const SETTINGS_HELP = {
   name: 'The name of the workspace. The editor shows it in place of the name of the folder, which then becomes a tooltip. Leave empty to show the folder name.',
-  manifestsPaths: 'Folders scanned for manifest files, relative to the folder containing `workspace.yaml`. One per line. Default: `manifests`.',
+  manifestsPaths: 'Folders scanned for manifest files, relative to the folder containing `workspace.yaml` and below it (no `..`, not absolute). One per line. Default: `manifests`.',
+  plateaus: 'The states of the architecture, each one a folder of manifests below the folder of `workspace.yaml`. The order of the list is the order of the states; the last one is drawn unless `settings.current` names another, and the header chooses the one this browser draws. They are written in `workspace.yaml` (`settings.plateaus`); `archicode plateau add` copies a plateau into a new folder and adds it.',
   defaultLabel: 'Label for a relationship that declares none, and for a link merged from several relationships. Default: `uses`.',
   viewsPath: 'Folder where generated views are written, relative to `workspace.yaml`. Facets write to sibling folders (see Facets). Default: `views`.',
   viewsLabels: 'Title of the generated view for each viewpoint. Leave empty to use the default shown in the field.',
@@ -5705,6 +5950,32 @@ function renderFacetsEditorHtml(customs) {
  * structural, so it keeps its own button — but applies the rest of the
  * form first (see readSettingsDraft), so nothing typed is lost.
  */
+/**
+ * The Manifests section of Settings. A workspace with plateaus lists them (read-only: they are written in workspace.yaml,
+ * where the order of the list and `current` are the author's); one without has the folders of its manifests to edit.
+ */
+function renderManifestsSettingsHtml(settings) {
+  if (AppState.plateau && AppState.plateaus.length > 0) {
+    const items = AppState.plateaus.map((plateau) =>
+      '<li class="plateau-item"><strong>' + escapeHtml(plateauTitle(plateau)) + '</strong> <code>' + escapeHtml(plateau.id) + '</code>' +
+      (plateau.horizon ? ' · ' + escapeHtml(plateau.horizon) : '') + ' · <code>' + escapeHtml(plateau.path) + '</code>' +
+      (plateau.id === AppState.plateau.id ? ' · <em>drawn</em>' : '') +
+      (settings.current === plateau.id ? ' · <em>current</em>' : '') + '</li>'
+    ).join('');
+    return '<div class="edition-section" id="settings-plateaus"><h3>Plateaus</h3>' +
+      renderHelpHtml('plateaus', 'settings-group-help') +
+      '<ol class="plateau-list">' + items + '</ol>' +
+    '</div>';
+  }
+  return '<div class="edition-section"><h3>Manifests</h3>' +
+    '<div class="field-row"><label class="field-label" for="settings-manifests-paths-input">Paths</label><span class="field-value">' +
+      '<textarea id="settings-manifests-paths-input" class="auto-grow-textarea" placeholder="manifests"' + describedBy('manifestsPaths') + '>' + escapeHtml(settings.manifests.paths.join('\n')) + '</textarea>' +
+      '<span class="inline-error" id="settings-manifests-paths-error"></span>' +
+      renderHelpHtml('manifestsPaths') +
+    '</span></div>' +
+  '</div>';
+}
+
 function renderSettingsViewHtml() {
   const settings = AppState.workspace && AppState.workspace.settings;
   if (!settings) return '<div class="center-placeholder">No settings available.</div>';
@@ -5718,13 +5989,7 @@ function renderSettingsViewHtml() {
           renderHelpHtml('name') +
         '</span></div>' +
       '</div>' +
-      '<div class="edition-section"><h3>Manifests</h3>' +
-        '<div class="field-row"><label class="field-label" for="settings-manifests-paths-input">Paths</label><span class="field-value">' +
-          '<textarea id="settings-manifests-paths-input" class="auto-grow-textarea" placeholder="manifests"' + describedBy('manifestsPaths') + '>' + escapeHtml(settings.manifests.paths.join('\n')) + '</textarea>' +
-          '<span class="inline-error" id="settings-manifests-paths-error"></span>' +
-          renderHelpHtml('manifestsPaths') +
-        '</span></div>' +
-      '</div>' +
+      renderManifestsSettingsHtml(settings) +
       '<div class="edition-section"><h3>Relationships</h3>' +
         '<div class="field-row"><label class="field-label" for="settings-default-label-input">Default synthetic label</label><span class="field-value">' +
           '<input type="text" id="settings-default-label-input" value="' + escapeHtml(settings.relationships.defaultSyntheticLabel) + '" placeholder="uses"' + describedBy('defaultLabel') + '>' +
@@ -9884,7 +10149,7 @@ function applySavedView(view) {
 /** A new manifest of the editor's own kinds, in the first manifests folder, as the manifest of a new element is. */
 function createManifestEntry(kind, content) {
   const header = { kind: ARCHICODE_KIND_PREFIX + kind, version: '1' };
-  const manifestsDir = AppState.workspace.settings.manifests.paths.map(normalizeRelDir).find((p) => p !== null);
+  const manifestsDir = firstManifestsDir();
   const relPath = allocateManifestRelPath(manifestsDir === undefined ? 'manifests' : manifestsDir, kind + '.', content.id);
   const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
   adoptRemovedFile(mf);
@@ -11123,6 +11388,9 @@ function handleAppClick(e) {
       break;
     case 'set-perspective':
       setPerspective(target.getAttribute('data-perspective'));
+      break;
+    case 'set-plateau':
+      switchPlateau(target.getAttribute('data-plateau'));
       break;
     case 'select-file': {
       const relPath = target.getAttribute('data-relpath');

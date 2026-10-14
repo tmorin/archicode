@@ -82,10 +82,31 @@ public class WorkspaceFactory {
 
     @SneakyThrows
     public io.morin.archicode.workspace.Workspace create(Path path, Path viewsDirPath) {
+        return create(path, viewsDirPath, null);
+    }
+
+    /**
+     * Read a workspace file and its manifests.
+     *
+     * @param path         the workspace file
+     * @param viewsDirPath the folder the views are written to, or null for the one of the settings
+     * @param plateauId    the plateau to read ({@code --plateau}), or null for {@code settings.current}, else the last
+     *                     one of {@code settings.plateaus}; it must be null for a workspace that has no plateaus
+     */
+    @SneakyThrows
+    public io.morin.archicode.workspace.Workspace create(Path path, Path viewsDirPath, String plateauId) {
         log.info("parse the resources {}", path);
 
         // create the RawWorkspace
         val workspaceMapper = mapperFactory.create(path);
+        // what the author wrote: the plateaus are checked on it, and so is whether `manifests.paths` is written (its
+        // default is not, and does not count)
+        val tree = workspaceMapper.readTree(path.toFile());
+        val structure = Plateaus.checkStructure(tree.path("settings").path("plateaus"));
+        if (!structure.isEmpty()) {
+            throw new ArchiCodeException("%s", String.join("\n", structure));
+        }
+        val manifestsPathsWritten = tree.path("settings").path("manifests").has("paths");
         val rawWorkspace = workspaceMapper.readValue(path.toFile(), Workspace.class);
 
         val fixedRawWorkspace = Optional.ofNullable(viewsDirPath)
@@ -105,17 +126,36 @@ public class WorkspaceFactory {
             )
             .orElse(rawWorkspace);
 
+        // the plateau to read; none for a workspace that has one set of manifests (manifests.paths)
+        val wksDir = path.toFile().getParentFile().toPath();
+        val selection = Plateaus.select(fixedRawWorkspace.getSettings(), manifestsPathsWritten, plateauId);
+        val manifestsDirs =
+            selection == null
+                ? fixedRawWorkspace.getSettings().getManifests().getPaths()
+                : Set.of(selection.path().isEmpty() ? "." : selection.path());
+        if (selection != null && !wksDir.resolve(manifestsDirs.iterator().next()).toFile().isDirectory()) {
+            throw new ArchiCodeException(
+                "the folder `%s` of the plateau `%s` does not exist",
+                selection.path(),
+                selection.plateau().getId()
+            );
+        }
+        if (selection != null) {
+            log.info("read the plateau {} from {}", selection.plateau().getId(), selection.path());
+        }
+
         // parse the manifests: the elements, and the views and the stories that are manifests of their own, which join
-        // the ones of workspace.yaml
-        val manifests = manifestParser.parse(
-            path.toFile().getParentFile().toPath(),
-            fixedRawWorkspace.getSettings().getManifests().getPaths()
-        );
+        // the ones of workspace.yaml. One call per plateau: a reference declared twice is an error inside a plateau,
+        // and the same reference in two plateaus is the very point of having two
+        val manifests = manifestParser.parse(wksDir, manifestsDirs, path);
 
         return create(
             fixedRawWorkspace.toBuilder().views(manifests.views()).stories(manifests.stories()).build(),
             manifests.elements()
-        );
+        )
+            .toBuilder()
+            .plateau(selection == null ? null : selection.plateau())
+            .build();
     }
 
     @SneakyThrows
@@ -182,6 +222,11 @@ public class WorkspaceFactory {
 
         val facetWorkspace = jsonMapper.treeToValue(answer.get("workspace"), Workspace.class);
 
-        return create(facetWorkspace, Map.of()).toBuilder().faceted(true).hideUnlinked(facet.isHideUnlinked()).build();
+        return create(facetWorkspace, Map.of())
+            .toBuilder()
+            .faceted(true)
+            .hideUnlinked(facet.isHideUnlinked())
+            .plateau(workspace.getPlateau())
+            .build();
     }
 }

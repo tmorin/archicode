@@ -29,6 +29,9 @@ public class GetViewsQuery implements Runnable {
     @CommandLine.ParentCommand
     QueryGroup queryGroup;
 
+    @CommandLine.Mixin
+    PlateauOption plateauOption = new PlateauOption();
+
     @Inject
     QueryOutputWriter queryOutputWriter;
 
@@ -76,7 +79,11 @@ public class GetViewsQuery implements Runnable {
     @SneakyThrows
     @Override
     public void run() {
-        val workspace = workspaceFactory.create(queryGroup.archiCode.workspaceFilePath.toAbsolutePath());
+        val workspace = workspaceFactory.create(
+            queryGroup.archiCode.workspaceFilePath.toAbsolutePath(),
+            null,
+            plateauOption.plateauId
+        );
         val allViews = new HashSet<>(workspace.getViews());
         allViews.addAll(getBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION));
         allViews.addAll(getBuiltinViews(workspace, workspace.techIndex, View.Layer.TECHNOLOGY));
