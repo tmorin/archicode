@@ -217,6 +217,8 @@
   .modified-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--modified); flex-shrink: 0; }
   .nav-facet-note { padding: 0.2rem 1rem 0.4rem; font-size: 0.8rem; color: var(--muted); }
   .nav-unread-note ul { margin: 0.2rem 0 0; padding-left: 1rem; }
+  .nav-duplicate-note { margin: 0.2rem 0.75rem 0.5rem; padding: 0.4rem 0.6rem; font-size: 0.8rem; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); overflow-wrap: anywhere; }
+  .nav-duplicate-note ul { margin: 0.2rem 0 0; padding-left: 1rem; }
   .nav-facet-note button { padding: 0 !important; border: none !important; background: none !important; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
   .tree-node-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
   .tree-node-row.active { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
@@ -2184,6 +2186,7 @@ function createInitialAppState() {
     unreadManifestFiles: [], // relPaths of the files the CLI reads as manifests (.toml, .json) and the editor does not: only YAML is
     index: { application: new Map(), technology: new Map() },
     relationshipStats: { total: 0, dangling: 0 },
+    duplicateReferences: [], // [{ layer, reference, sources, message }]: a reference declared twice is reported, never chosen (see buildIndex)
     selection: { kind: 'none', key: null, mode: 'view' },
     expanded: new Set(),
     fatalError: null,
@@ -2353,7 +2356,7 @@ function stripArchicodeKindPrefix(fullKind) {
  * the manifest root's own `level` once, from its un-generalized
  * `bareKind`, before ever calling this function for that root.
  */
-function indexElementRecursive(node, kind, reference, sourceFile, category, index, settings, level) {
+function indexElementRecursive(node, kind, reference, sourceFile, category, index, settings, level, declarations) {
   const rawRelationships = Array.isArray(node.relationships) ? node.relationships : [];
   const relationships = rawRelationships.map((r) => {
     const rel = r && typeof r === 'object' ? r : {};
@@ -2388,6 +2391,10 @@ function indexElementRecursive(node, kind, reference, sourceFile, category, inde
   };
 
   index[category].set(reference, record);
+  if (declarations) {
+    if (!declarations[category].has(reference)) declarations[category].set(reference, []);
+    declarations[category].get(reference).push(sourceFile);
+  }
 
   const childNodes = Array.isArray(node.elements) ? node.elements : [];
   for (const childNode of childNodes) {
@@ -2399,7 +2406,7 @@ function indexElementRecursive(node, kind, reference, sourceFile, category, inde
     // DEC-3: a 'group' has no level of its own — it always inherits its
     // caller's level; every other kind's level is simply its own kind.
     const childLevel = (childKind === 'group') ? level : childKind;
-    const childRecord = indexElementRecursive(childNode, childKind, childReference, sourceFile, category, index, settings, childLevel);
+    const childRecord = indexElementRecursive(childNode, childKind, childReference, sourceFile, category, index, settings, childLevel, declarations);
     record.children.push(childRecord);
   }
 
@@ -2464,6 +2471,7 @@ function reducedLevelForKind(kind) {
 function buildIndex(manifestFiles, settings) {
   const index = { application: new Map(), technology: new Map() };
   const candidateRoots = { application: [], technology: [] }; // { record, parentReference }
+  const declarations = { application: new Map(), technology: new Map(), view: new Map(), story: new Map() }; // reference (id, for a view and a story) -> the files that declare it, by layer
 
   for (const mf of manifestFiles) {
     if (mf.error) continue;
@@ -2472,7 +2480,12 @@ function buildIndex(manifestFiles, settings) {
       continue;
     }
     const bareKind = stripArchicodeKindPrefix(mf.header.kind);
-    if (bareKind === 'view' || bareKind === 'story') continue; // manifests, but not elements: see "Stories"
+    if (bareKind === 'view' || bareKind === 'story') { // manifests, but not elements: see "Stories"
+      const id = String(mf.content.id);
+      if (!declarations[bareKind].has(id)) declarations[bareKind].set(id, []);
+      declarations[bareKind].get(id).push(mf.relPath);
+      continue;
+    }
     const mapping = ARCHICODE_KIND_MAP[bareKind];
     if (!mapping) {
       mf.error = 'Unrecognized header.kind "' + mf.header.kind + '"';
@@ -2491,7 +2504,7 @@ function buildIndex(manifestFiles, settings) {
     const rootReference = mf.header.parent
       ? (mf.header.parent + '.' + mf.content.id)
       : String(mf.content.id);
-    const rootRecord = indexElementRecursive(mf.content, rootKind, rootReference, mf.relPath, category, index, settings, rootLevel);
+    const rootRecord = indexElementRecursive(mf.content, rootKind, rootReference, mf.relPath, category, index, settings, rootLevel, declarations);
     candidateRoots[category].push({ record: rootRecord, parentReference: mf.header.parent || null });
   }
 
@@ -2509,7 +2522,43 @@ function buildIndex(manifestFiles, settings) {
     }
   }
 
-  return { index, rootsByCategory };
+  return { index, rootsByCategory, duplicates: findDuplicateReferences(declarations) };
+}
+
+/**
+ * The message for a reference declared more than once, naming the reference and the files. The wording is the one of the
+ * command line (`ManifestParser.duplicateMessage`): keep them alike. Files are in code-unit order, as Java sorts them.
+ */
+function duplicateReferenceMessage(reference, sources, noun) {
+  noun = noun || 'reference';
+  const counts = new Map();
+  for (const source of sources) counts.set(source, (counts.get(source) || 0) + 1);
+  const times = sources.length === 2 ? 'twice' : sources.length + ' times';
+  if (counts.size === 1) return 'the ' + noun + ' `' + reference + '` is declared ' + times + ' in `' + sources[0] + '`';
+  const files = Array.from(counts.keys()).sort().map((file) => {
+    const n = counts.get(file);
+    return '`' + file + '`' + (n === 1 ? '' : n === 2 ? ' (twice)' : ' (' + n + ' times)');
+  });
+  return 'the ' + noun + ' `' + reference + '` is declared ' + times + ': in ' + files.slice(0, -1).join(', ') + ' and ' + files[files.length - 1];
+}
+
+/**
+ * The references declared more than once in a layer (by two files, by a file and an element nested in another, or twice in
+ * one file), and the views and stories (`layer` is then `view` or `story`) that share an id, as `[{ layer, reference, sources, message }]`, by reference. A reference may exist in both
+ * layers: that is no duplicate. The command line fails on the same set.
+ */
+function findDuplicateReferences(declarations) {
+  const found = [];
+  for (const layer of ['application', 'technology', 'view', 'story']) {
+    const noun = layer === 'view' || layer === 'story' ? layer : 'reference'; // a view and a story have an id of their own
+    for (const [reference, sources] of declarations[layer]) {
+      if (sources.length > 1) found.push({ layer, reference, sources: sources.slice(), message: duplicateReferenceMessage(reference, sources, noun) });
+    }
+  }
+  const before = (a, b) => (a < b ? -1 : a > b ? 1 : 0); // code units, as Java orders a String
+  found.sort((a, b) => before(a.reference, b.reference) || before(a.message, b.message));
+  // the same reference told twice, with the same files, in both layers: said once, as the command line does
+  return found.filter((d, i) => i === 0 || d.message !== found[i - 1].message);
 }
 
 /**
@@ -2586,6 +2635,7 @@ async function loadWorkspace(dirHandle) {
   AppState.unreadManifestFiles = [];
   AppState.index = { application: new Map(), technology: new Map() };
   AppState.relationshipStats = { total: 0, dangling: 0 };
+  AppState.duplicateReferences = [];
   AppState.dirtyReferences = new Set();
   AppState.pendingFileRemovals = []; // a reload starts from the disk: a removal queued before it must not delete a file later
   AppState.removedFileBaselines = new Map();
@@ -2662,9 +2712,10 @@ async function loadWorkspace(dirHandle) {
   AppState.unreadManifestFiles = unreadManifestFiles.sort((a, b) => a.localeCompare(b));
 
   // DEC-5 / FR-6 / FR-7: index + resolve (per-file parse errors do not abort this).
-  const { index, rootsByCategory } = buildIndex(manifestFiles, settings);
+  const { index, rootsByCategory, duplicates } = buildIndex(manifestFiles, settings);
   const relationshipStats = resolveRelationships(index);
   AppState.index = index;
+  AppState.duplicateReferences = duplicates;
   AppState.relationshipStats = relationshipStats;
 
   AppState.workspace = {
@@ -3623,8 +3674,9 @@ function locateContentNode(reference, layer) {
  * of every commit path below.
  */
 function rebuildIndexAndRender() {
-  const { index, rootsByCategory } = buildIndex(AppState.manifestFiles, AppState.workspace.settings);
+  const { index, rootsByCategory, duplicates } = buildIndex(AppState.manifestFiles, AppState.workspace.settings);
   AppState.index = index;
+  AppState.duplicateReferences = duplicates;
   AppState.workspace.application.elements = rootsByCategory.application;
   AppState.workspace.technology.elements = rootsByCategory.technology;
   AppState.relationshipStats = resolveRelationships(index);
@@ -5296,7 +5348,7 @@ function renderElementsNavHtml(showAddButton) {
   const note = facet
     ? '<div class="nav-facet-note">Greyed: nothing to draw through “' + escapeHtml(facet.name) + '”. <button type="button" data-action="clear-facet">Clear facet</button></div>'
     : '';
-  return note + renderUnreadManifestsHtml(false) +
+  return note + renderDuplicateReferencesHtml() + renderUnreadManifestsHtml(false) +
          renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
          renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments, showAddButton);
 }
@@ -5323,6 +5375,39 @@ function referencesWithChildren(layer) {
   return found;
 }
 
+/** A message of `duplicateReferenceMessage` as HTML: the reference and the files in `<code>`. */
+function duplicateMessageHtml(message) {
+  return escapeHtml(message).replace(/`([^`]*)`/g, '<code>$1</code>');
+}
+
+/**
+ * A reference declared twice is never chosen between: it is told here (Elements and Files), on the files that declare it,
+ * and the diagrams are not drawn while it lasts (`mountDiagramIfNeeded`). The command line fails on the same references.
+ * Nothing is blocked otherwise: the editor still opens, edits and saves, so that the duplicate can be fixed in it.
+ */
+function renderDuplicateReferencesHtml() {
+  const duplicates = AppState.duplicateReferences || [];
+  if (!duplicates.length) return '';
+  return '<div class="nav-duplicate-note" role="alert"><strong>' + duplicatesCountText(duplicates) + ' declared more than once.</strong> ' +
+    'The command line refuses to load the workspace until each is declared once.' +
+    (elementDuplicates().length ? ' The diagrams are not drawn meanwhile.' : '') +
+    '<ul>' + duplicates.map((d) => '<li>' + duplicateMessageHtml(d.message) + '</li>').join('') + '</ul></div>';
+}
+
+function duplicatesCountText(duplicates) {
+  return duplicates.length === 1 ? 'One reference, view or story is' : duplicates.length + ' references, views or stories are';
+}
+
+/** The duplicates that are references of elements: the model has no single answer, so nothing is drawn from it. */
+function elementDuplicates() {
+  return (AppState.duplicateReferences || []).filter((d) => d.layer === 'application' || d.layer === 'technology');
+}
+
+/** The duplicates a file takes part in (its relPath is one of their sources). */
+function duplicatesOfFile(relPath) {
+  return (AppState.duplicateReferences || []).filter((d) => d.sources.includes(relPath));
+}
+
 /**
  * The files the CLI reads as manifests and the editor does not (TOML, JSON): what they declare is missing from the trees and
  * the diagrams, and nothing else says so. `list`: name them (Files), else only count them (Elements).
@@ -5342,15 +5427,17 @@ function renderFilesNavHtml() {
   html += renderNavHeaderHtml('Files');
   for (const mf of AppState.manifestFiles) {
     const active = (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) ? ' active' : '';
-    const errorClass = mf.error ? ' has-error' : '';
+    const duplicates = duplicatesOfFile(mf.relPath);
+    const errorClass = mf.error || duplicates.length ? ' has-error' : '';
     html += '<div class="nav-row file-row' + active + errorClass + '" role="button" tabindex="0"' + (active ? ' aria-current="true"' : '') + ' data-action="select-file" data-relpath="' + escapeHtml(mf.relPath) + '">' +
               '<span class="file-relpath">' + escapeHtml(mf.relPath) + '</span>' +
               (mf.dirty ? '<span class="modified-badge" title="Unsaved changes">modified</span>' : '') +
               (mf.error ? '<span class="error-badge" title="' + escapeHtml(mf.error) + '">error</span>' : '') +
+              (duplicates.length ? '<span class="error-badge" title="' + escapeHtml(duplicates.map((d) => d.message).join('\n')) + '">duplicate</span>' : '') +
             '</div>';
   }
   html += '</div>';
-  return html + renderUnreadManifestsHtml(true);
+  return renderDuplicateReferencesHtml() + html + renderUnreadManifestsHtml(true);
 }
 
 /** The left panel's `<nav>` shell — one resizable panel id shared by every perspective that uses it. */
@@ -5728,6 +5815,9 @@ function renderFileViewHtml(relPath) {
     html += '<div class="error-panel"><strong>Parse error:</strong> ' + escapeHtml(draftError) + '</div>';
   } else if (mf.error) {
     html += '<div class="error-panel"><strong>Parse error:</strong> ' + escapeHtml(mf.error) + '</div>';
+  }
+  for (const d of duplicatesOfFile(relPath)) {
+    html += '<div class="error-panel" role="alert"><strong>Duplicate reference:</strong> ' + duplicateMessageHtml(d.message) + '</div>';
   }
   if (window.CM) {
     html += '<div id="file-edit-codemirror-host" class="raw-yaml" data-relpath="' + escapeHtml(relPath) + '" aria-label="Raw YAML content of ' + escapeHtml(relPath) + '"></div>';
@@ -9216,6 +9306,14 @@ function mountDiagramIfNeeded() {
   if (isMap) input.hidden = mapState.hidden;
   const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].concat(readonly ? ['view:' + recipe.view.id] : []).join('|');
   const key = JSON.stringify(input) + '|' + hideUnlinked + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint() + '|' + JSON.stringify(AppState.workspace.styles || null) + '|' + viewKey;
+  const duplicates = elementDuplicates();
+  if (duplicates.length) {
+    // a reference declared twice is not chosen between: nothing is drawn from a model that has no single answer
+    showDiagramScene(buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' +
+      (duplicates.length === 1 ? 'a reference is' : duplicates.length + ' references are') + ' declared more than once.</strong><ul>' +
+      duplicates.map((d) => '<li>' + duplicateMessageHtml(d.message) + '</li>').join('') + '</ul></div>', '', '', { width: 0, height: 0 }, null));
+    return;
+  }
   if (diagramCache && diagramCache.key === key) {
     showDiagramScene(Object.assign({}, diagramCache.scene));
     return;

@@ -120,6 +120,15 @@ The following snippet describes a manifest designing the `User` person and is re
 include::examples/domain_workspace/manifests/user.yaml[]
 ----
 
+[[duplicate-references]]
+A reference is declared once. The reference of an element is its `id` placed under its parent, whether that parent is the element that contains it in its file or the `parent` of the manifest's header, so `shop.web` is the same reference for an element nested in `shop`'s file and for a manifest with `parent: shop` and `id: web`. When two declarations share a reference, in two files, in a file and in a manifest placed under its parent, or twice in one file, the command line stops with an error that names the reference and the files, and generates nothing; two identical copies are as much an error as two different ones, because nothing says which file is meant. The same goes for two views, or two stories, that share an `id`. A reference may exist in both layers (an application and a node of the same name): they are not the same element.
+
+----
+the reference `shop` is declared twice: in `manifests/a.yaml` and `manifests/b.yaml`
+----
+
+The editor reports the same thing, in the same words (see <<editor-folders>>).
+
 Incorporating workspaces and manifests into your architectural workflow within ArchiCode empowers you with an efficient and organized foundation for your projects. Let's explore further as we navigate through the various dimensions of the ArchiCode domain.
 
 === Application Layer
@@ -624,6 +633,8 @@ The published page remembers, in the browser, every folder it opened, with the n
 The editor loads `elkjs` (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.
 
 The editor reads and writes YAML manifests (`.yaml` and `.yml`) only. The command line also reads TOML and JSON manifests: the editor does not, so what such a file declares is missing from its trees and diagrams, and relationships that point at it show as dangling. It says so, in *Files* (which names the files) and above the trees of *Elements* (which counts them).
+
+A reference declared more than once is reported, not chosen: a red note above the trees of *Elements* and of *Files* gives the same message as the command line, each file that takes part is marked _duplicate_ in *Files* and says so when opened, and no diagram is drawn until each reference is declared once (a view or a story with a duplicated `id` is reported too, and does not stop the diagrams). Nothing else is blocked: the editor still edits and saves, so that the duplicate can be fixed in it.
 
 [[editor-elements]]
 === Elements
