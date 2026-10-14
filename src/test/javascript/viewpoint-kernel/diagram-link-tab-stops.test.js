@@ -91,7 +91,7 @@ function wireFocus(page, elements, log) {
 
 // ============================================================ the markup
 
-test('the drawing gives one link the tab stop and every other link none, twins included; boxes and fold buttons keep theirs', async () => {
+test('the drawing gives one link the tab stop and every other link none, twins included; the boxes are a roving stop of their own (diagram-box-tab-stops.test.js)', async () => {
   const { sandbox } = await openFixture();
   const drawing = drawnWithTwins(sandbox);
   const links = drawing.html.match(/<g class="dg-link"[^>]*>/g);
@@ -101,7 +101,7 @@ test('the drawing gives one link the tab stop and every other link none, twins i
   const captions = drawing.html.match(/<text class="dg-label"[^>]*>/g);
   assert.ok(captions.length > 0 && captions.every((t) => !t.includes('tabindex')), 'a caption is clickable, never a stop');
   const boxes = drawing.html.match(/<g class="dg-node[^>]*>/g);
-  assert.ok(boxes.length === 3 && boxes.every((g) => g.includes('tabindex="0"')), 'a box is one tab stop each, as before');
+  assert.ok(boxes.length === 3 && boxes.filter((g) => g.includes('tabindex="0"')).length === 1 && boxes.filter((g) => g.includes('tabindex="-1"')).length === 2, 'the boxes are one stop together, like the links');
 });
 
 test('a drawing with a single link, and one with none, are well formed', async () => {
