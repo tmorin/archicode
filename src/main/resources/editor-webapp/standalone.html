@@ -7859,6 +7859,45 @@ function diagramLeafLayout(text, width, show) {
   return { titleLines, titleY, subLines, subY, descLines, descY, height, badgeRow, badgeY };
 }
 
+/**
+ * The caption of a link, broken into lines (soft wrap, always on: a long caption read as one line runs over the boxes and
+ * the links next to it). A line is at most DIAGRAM_LABEL_MAX_WIDTH px wide at 11px, cut at the spaces; a word wider than a
+ * line is cut with an ellipsis, as a name is. The qualifiers (`[https]`) stay in one piece and are never what is cut: they
+ * share the last line of the label when they fit, or take a line (or two) of their own. Without "Wrap" the caption has at most
+ * DIAGRAM_LABEL_LINES lines (the end of the label is replaced by an ellipsis, the tooltip of the link has it whole); with it
+ * nothing is cut. The layout asks for the size, the drawing for the lines: one function, so that they agree.
+ */
+const DIAGRAM_LABEL_MAX_WIDTH = 220;
+const DIAGRAM_LABEL_LINES = 4;
+const DIAGRAM_LABEL_LINE_HEIGHT = 13;
+const DIAGRAM_LABEL_PADDING = 10;
+
+function diagramLabelLayout(link, wrap) {
+  const measure = (line) => diagramMeasureText(line, 11);
+  const max = DIAGRAM_LABEL_MAX_WIDTH;
+  const cap = wrap ? 0 : DIAGRAM_LABEL_LINES;
+  // a word wider than a line is cut with an ellipsis, not spread over several lines
+  const fit = (text) => String(text).split(/\s+/).filter(Boolean).map((word) => {
+    if (measure(word) <= max) return word;
+    let cut = word;
+    while (cut.length > 1 && measure(cut + '…') > max) cut = cut.slice(0, -1);
+    return cut + '…';
+  }).join(' ');
+  const labelText = link.label && link.label.trim() ? fit(link.label) : '';
+  const qualifiers = Array.from(link.qualifiers || []);
+  const qualifierLines = qualifiers.length ? diagramWrapText(fit('[' + qualifiers.join(', ') + ']'), max, cap ? 2 : 0, measure) : [];
+  let lines = labelText ? diagramWrapText(labelText, max, cap, measure) : [];
+  if (qualifierLines.length === 1 && lines.length && measure(lines[lines.length - 1] + ' ' + qualifierLines[0]) <= max) {
+    lines[lines.length - 1] += ' ' + qualifierLines[0];
+  } else if (qualifierLines.length) {
+    // the qualifiers take their own lines, and the label gives way to them rather than the other way round
+    if (cap && lines.length + qualifierLines.length > cap) lines = diagramWrapText(labelText, max, Math.max(1, cap - qualifierLines.length), measure);
+    lines = lines.concat(qualifierLines);
+  }
+  const width = Math.ceil(Math.max(0, ...lines.map(measure)));
+  return { lines, width: width + DIAGRAM_LABEL_PADDING, height: lines.length * DIAGRAM_LABEL_LINE_HEIGHT + 2 };
+}
+
 /** What a link stands for, for its tooltip: each declared relationship, and a note when it groups several. */
 function diagramLinkTitle(link, itemById, layer) {
   const name = (id) => { const item = itemById.get(id); return item ? diagramItemText(item, undefined, layer).title : id; };
@@ -7946,7 +7985,10 @@ function buildElkGraph(result, options) {
     if (link.secondary || !ids.has(link.from) || !ids.has(link.to)) return;
     const caption = diagramLinkText(link);
     const edge = { id: 'e' + index, sources: [link.from], targets: [link.to] };
-    if (caption && captions) edge.labels = [{ text: caption, width: diagramTextWidth(caption, 11) + 10, height: 15 }];
+    if (caption && captions) {
+      const label = diagramLabelLayout(link, show.wrap);
+      edge.labels = [{ text: caption, width: label.width, height: label.height }];
+    }
     edges.push(edge);
   });
   return {
@@ -8115,7 +8157,16 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       '<path class="dg-edge' + (link.synthetic ? ' dg-aggregated' : '') + (link.ghost ? ' dg-ghost-edge' : '') + '" marker-end="url(#dg-arrow)" d="' + d + '"/></g>';
     const label = edge.labels && edge.labels[0];
     if (label) {
-      labels += '<text class="dg-label"' + select + ' text-anchor="middle" x="' + (o.x + label.x + label.width / 2) + '" y="' + (o.y + label.y + label.height - 3) + '">' + escapeHtml(label.text) + '</text>';
+      // one line: as it always was. Several: one <tspan> per line under the same <text> (one click target, centred on the link),
+      // the first baseline where the single line sat, and the tooltip of the link on the whole of it
+      const lines = diagramLabelLayout(link, !!(options && options.show && options.show.wrap)).lines;
+      const cx = o.x + label.x + label.width / 2;
+      const top = o.y + label.y + DIAGRAM_LABEL_LINE_HEIGHT - 1;
+      labels += '<text class="dg-label"' + select + ' text-anchor="middle" x="' + cx + '" y="' + top + '">' +
+        (lines.length > 1
+          ? '<title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer)) + '</title>' +
+            lines.map((line, i) => '<tspan x="' + cx + '" y="' + (top + i * DIAGRAM_LABEL_LINE_HEIGHT) + '">' + escapeHtml(line) + '</tspan>').join('')
+          : escapeHtml(lines.length ? lines[0] : label.text)) + '</text>';
     }
   }
 
@@ -8973,7 +9024,7 @@ function renderDiagramShowGroupHtml(isMap, drawn) {
     tool('labels', 'Labels', 'The caption of each link: its label, and its qualifiers in brackets') +
     tool('qualifiers', 'Qualifiers', 'The qualifiers of each element, after its kind') +
     tool('descriptions', 'Descriptions', 'The description of each element that does not contain others, up to ' + DIAGRAM_DESCRIPTION_LINES + ' lines (all of it with Wrap)') +
-    tool('wrap', 'Wrap', 'Break long names, qualifiers and descriptions over several lines instead of cutting them with an ellipsis (a box that contains others still cuts its kind)') +
+    tool('wrap', 'Wrap', 'Break long names, qualifiers and descriptions over several lines instead of cutting them with an ellipsis (a box that contains others still cuts its kind), and show the whole of a long link label (otherwise cut after four lines)') +
   '</span>';
 }
 
@@ -10688,7 +10739,7 @@ function renderViewFactsHtml(view) {
     check('view-edit-show-labels', 'show:labels', 'Labels', shows.labels, 'The caption of each link') +
     check('view-edit-show-qualifiers', 'show:qualifiers', 'Qualifiers', shows.qualifiers, 'The qualifiers of each element, after its kind') +
     check('view-edit-show-descriptions', 'show:descriptions', 'Descriptions', shows.descriptions, 'The description of each element that does not contain others') +
-    check('view-edit-show-wrap', 'show:wrap', 'Wrap', shows.wrap, 'Break long names, qualifiers and descriptions over several lines') +
+    check('view-edit-show-wrap', 'show:wrap', 'Wrap', shows.wrap, 'Break long names, qualifiers and descriptions over several lines, and show the whole of a long link label') +
   '</div></fieldset></div>';
   return html;
 }
