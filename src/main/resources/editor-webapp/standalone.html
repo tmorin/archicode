@@ -477,6 +477,8 @@
   .dg-title { fill: var(--fg); font-size: 14px; font-weight: 600; }
   .dg-sub { fill: var(--muted); font-size: 12px; font-weight: 400; }
   .dg-desc { fill: var(--muted); font-size: 11px; font-weight: 400; }
+  /* a compound box with no fill of its own, drawn on the fill of the one around it: its text is computed from that fill (--ov-text), not themed */
+  .dg-over-fill .dg-title, .dg-over-fill .dg-sub { fill: var(--ov-text); }
   .download-button { display: inline-flex; align-items: center; gap: 0.3rem; }
   .dg-edge { fill: none; stroke: var(--muted); stroke-width: 1.4; }
   .dg-edge.dg-aggregated { stroke-dasharray: 7 4; }
@@ -7953,25 +7955,28 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const itemById = new Map(result.items.map((item) => [item.id, item]));
   const origin = new Map([['root', { x: 0, y: 0 }]]);
   const boxes = [];
-  const walk = (node, ox, oy, depth) => {
+  const walk = (node, ox, oy, depth, parentId) => {
     const x = ox + (node.x || 0);
     const y = oy + (node.y || 0);
     origin.set(node.id, { x, y });
-    if (node.id !== 'root') boxes.push({ node, x, y, depth, compound: !!(node.children && node.children.length) });
-    (node.children || []).forEach((child) => walk(child, x, y, depth + 1));
+    if (node.id !== 'root') boxes.push({ node, x, y, depth, parentId, compound: !!(node.children && node.children.length) });
+    (node.children || []).forEach((child) => walk(child, x, y, depth + 1, node.id));
   };
-  walk(layout, 0, 0, 0);
+  walk(layout, 0, 0, 0, 'root');
+  // the fill actually drawn behind a box: its own when the workspace gave it one, else the one of the box around it (a compound box
+  // without a fill lets the one behind it show). A title is read against that fill, not against the theme.
+  const fillBehind = new Map();
 
   let focal = null;
   const boxesById = {};
   // the map only (the viewpoints of an element are not folded): one button, two meanings — open a box that hides children, close an open one.
   // It is a sibling of the box, not inside it: a button nested in a link is not valid ARIA, and Enter on one must not act as the other.
-  const foldButton = (item, text, x, y) => {
+  const foldButton = (item, text, x, y, overText) => {
     const mode = item.expandable ? 'expand' : 'close';
     const verb = { expand: 'Expand', close: 'Close' }[mode];
     const glyph = mode === 'expand' ? 'M-2.5,-4.5 L2.5,0 L-2.5,4.5' : 'M-4.5,-2.5 L0,2.5 L4.5,-2.5';
     // the chevron is drawn in the colour the text of the box takes, so that it reads on the fill of a styled box
-    const textColor = text.look && text.look.vars['--st-text'];
+    const textColor = overText || (text.look && text.look.vars['--st-text']);
     return '<g class="dg-fold"' + (textColor ? ' style="--st-text:' + textColor + '"' : '') + ' data-action="toggle-fold" data-mode="' + mode + '" data-id="' + escapeHtml(item.id) + '" tabindex="0" role="button" aria-label="' +
       escapeHtml(verb + ' ' + text.title) + '"><title>' + verb + '</title>' +
       // a button that looks like one (the chevron alone was too small to hit), with a hit area larger than what is drawn
@@ -7986,6 +7991,11 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const item = itemById.get(box.node.id);
     if (!item) continue;
     const text = diagramItemText(item, show, options && options.itemLayer);
+    const ownFill = parseCssColor(text.look.vars['--st-fill']);
+    const behind = ownFill && ownFill.a !== 0 ? ownFill : (fillBehind.get(box.parentId) || null);
+    fillBehind.set(box.node.id, behind);
+    // a compound box with no fill of its own, inside one that has: its title and sub-title take the better of black and white on that fill
+    const overFill = box.compound && !(ownFill && ownFill.a !== 0) && behind ? cssColorOf(readableTextColor(behind, null)) : null;
     const { x, y } = box;
     const w = box.node.width;
     const h = box.node.height;
@@ -8003,14 +8013,15 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       const closable = isMap && !readonly && !item.ghost && openedByUser.has(item.id) && !pinnedOnMap.some((pin) => pin.startsWith(item.reference + '.')) &&
         !(focalReference && focalReference.startsWith(item.reference + '.'));
       const look = diagramLookAttributes(text.look);
+      const lookStyle = overFill ? ' style="' + escapeHtml(styleVarsText(Object.assign({}, text.look.vars, { '--ov-text': overFill }))) + '"' : look.style;
       const badgeRow = text.badges.length ? diagramBadgeRow(text.badges, Math.floor((w - 48) / 2)) : null; // right-aligned in the header
-      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + look.classes + '"' + look.style + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
+      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + look.classes + (overFill ? ' dg-over-fill' : '') + '"' + lookStyle + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
         '<rect class="dg-group" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (text.look.rx === null ? 8 : text.look.rx) + '"/>' +
         '<rect class="dg-header" x="' + x + '" y="' + y + '" width="' + w + '" height="36"/>' +
         '<text class="dg-title" x="' + (x + 34) + '" y="' + (y + 22) + '">' + escapeHtml(diagramTruncate(text.title, Math.max(8, Math.floor((w - 48 - (badgeRow ? badgeRow.width : 0)) / 8)))) +
         ' <tspan class="dg-sub">' + escapeHtml(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS)) + '</tspan></text>' +
         (badgeRow ? diagramBadgesSvg(badgeRow, x + w - 8 - badgeRow.width, y + 10) : '') + '</g>' +
-        (closable ? foldButton(Object.assign({}, item, { expandable: false }), text, x + 6, y + 6) : '');
+        (closable ? foldButton(Object.assign({}, item, { expandable: false }), text, x + 6, y + 6, overFill) : '');
     } else {
       const folded = item.collapsed;
       // a box the kernel says opening would change (and only that: a button that does nothing is not drawn)
@@ -8725,6 +8736,7 @@ function diagramExportCss() {
     '.dg-title{fill:' + c('--fg') + ';font:600 14px sans-serif}.dg-sub{fill:' + c('--muted') + ';font:12px sans-serif}.dg-desc{fill:' + c('--muted') + ';font:11px sans-serif}' +
     '.dg-styled .dg-title{fill:var(--st-text,' + c('--fg') + ');font-weight:var(--st-weight,600);font-style:var(--st-fstyle,normal)}' +
     '.dg-styled .dg-sub,.dg-styled .dg-desc{fill:var(--st-text,' + c('--muted') + ');font-weight:var(--st-weight,400);font-style:var(--st-fstyle,normal)}' +
+    '.dg-over-fill .dg-title,.dg-over-fill .dg-sub{fill:var(--ov-text)}' +
     '.dg-badge rect{fill:var(--st-fill,' + c('--panel-bg') + ');stroke:var(--st-stroke,' + c('--border') + ');stroke-width:1}.dg-badge text{fill:var(--st-text,' + c('--fg') + ');font:600 10.5px sans-serif}' +
     '.dg-edge{fill:none;stroke:' + c('--muted') + ';stroke-width:1.4}.dg-aggregated{stroke-dasharray:7 4}' +
     '.dg-ghost-edge{stroke:' + c('--danger') + ';stroke-dasharray:3 4}' +

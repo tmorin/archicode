@@ -871,3 +871,44 @@ test('the chevron of a styled box is drawn in the colour of its text, so that it
   const plainSvg = sandbox.renderDiagramSvg(fakeLayout(sandbox.buildElkGraph(kernel.compute(sandbox.buildKernelInput('map', '', { opened: [], pinned: [], hidden: [] }).input))), result, '', { map: true }).html;
   assert.ok(!plainSvg.includes('class="dg-fold" style='), 'no variable without a style');
 });
+
+// ---- 15. The title of a box with no fill, drawn on the fill of the box around it ----
+
+test('a compound box with no fill of its own, inside one that has, reads its title against that fill, not against the theme', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  state.workspace.styles = { 'by-tags': { pale: { 'background-color': '#DCF3E3' }, night: { 'background-color': '#1b2a41' } } };
+  state.index.application.get('shop').tags = { 'rendering-stereotypes': 'pale' };
+  const classOf = (svg, id) => attributeOf(openingTag(nodeOf(svg, id)), 'class').split(' ');
+  const styleOf = (svg, id) => attributeOf(openingTag(nodeOf(svg, id)), 'style') || '';
+  let svg = draw(sandbox, kernel, 'deep', 'shop').svg;
+  assert.ok(!classOf(svg, 'shop').includes('dg-over-fill'), 'the box that has the fill reads its own text (--st-text)');
+  assert.ok(classOf(svg, 'shop.catalog').includes('dg-over-fill'), 'an unstyled box inside it');
+  assert.match(styleOf(svg, 'shop.catalog'), /--ov-text:#000000/, 'black on the pale fill, in the dark theme too');
+  assert.match(styleOf(svg, 'shop.catalog.service'), /--ov-text:#000000/, 'and the one inside that, two boxes down');
+  assert.ok(!classOf(svg, 'shop.catalog.db').includes('dg-over-fill'), 'a box without children keeps its own fill');
+  // the same rule for the dark fill (the light theme would otherwise write its dark text on it)
+  state.workspace.styles['by-tags'].pale = { 'background-color': '#1b2a41' };
+  svg = draw(sandbox, kernel, 'deep', 'shop').svg;
+  assert.match(styleOf(svg, 'shop.catalog'), /--ov-text:#ffffff/);
+  // a box in between that has a fill of its own is the one behind its children
+  state.workspace.styles['by-tags'].pale = { 'background-color': '#DCF3E3' };
+  state.index.application.get('shop.catalog').tags = { 'rendering-stereotypes': 'night' };
+  svg = draw(sandbox, kernel, 'deep', 'shop').svg;
+  assert.ok(!classOf(svg, 'shop.catalog').includes('dg-over-fill'));
+  assert.match(styleOf(svg, 'shop.catalog.service'), /--ov-text:#ffffff/, 'white on the dark fill of shop.catalog, not black on the pale one of shop');
+  // no fill anywhere around: the theme's own text, byte for byte what it was
+  state.workspace.styles = {};
+  svg = draw(sandbox, kernel, 'deep', 'shop').svg;
+  assert.doesNotMatch(svg, /dg-over-fill|--ov-text/);
+});
+
+test('the title of a box on a fill is drawn from --ov-text on the page and in the export, after the rules it must win over', async () => {
+  const { sandbox } = await openFixture();
+  assert.match(CSS, /\.dg-over-fill \.dg-title, \.dg-over-fill \.dg-sub \{ fill: var\(--ov-text\); \}/);
+  assert.ok(CSS.indexOf('.dg-over-fill .dg-title') > CSS.indexOf('.dg-styled .dg-title'), 'after the styled rule of the same specificity');
+  assert.ok(CSS.indexOf('.dg-over-fill .dg-title') > CSS.indexOf('.dg-title { fill: var(--fg)'));
+  sandbox.getComputedStyle = () => ({ getPropertyValue: () => ' #123456 ' });
+  const css = sandbox.diagramExportCss();
+  assert.ok(css.includes('.dg-over-fill .dg-title,.dg-over-fill .dg-sub{fill:var(--ov-text)}'));
+  assert.ok(css.indexOf('.dg-over-fill') > css.indexOf('.dg-styled .dg-title'));
+});
