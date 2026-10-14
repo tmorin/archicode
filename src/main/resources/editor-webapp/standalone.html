@@ -7573,6 +7573,25 @@ function readableTextColor(fill, preferred) {
   return contrastRatio(STYLE_TEXT_DARK, fill) >= contrastRatio(STYLE_TEXT_LIGHT, fill) ? STYLE_TEXT_DARK : STYLE_TEXT_LIGHT;
 }
 
+/**
+ * The outline of a box that has a fill and no `line-color` of its own: the fill, darker, same hue (each channel scaled by
+ * this factor, so the proportions of the colour, hence its hue, are kept). Without it the outline would be the theme's
+ * border, which is lost on the fill (light theme: grey on grey), and a box inside a box of the same fill would vanish
+ * into it. 0.6 was chosen by looking at the page in both themes: at 0.8 the line of `lightgray` on `lightgray` is a
+ * whisper, at 0.4 it turns into a heavy black frame around every system; 0.6 reads as a firm edge without shouting.
+ */
+const STYLE_OUTLINE_DARKEN = 0.6;
+/** A fill this dark (relative luminance below this) has no room to go darker and still be seen against itself (black on black is nothing, navy on navy a shadow): its outline is lightened instead, by the same factor towards white. */
+const STYLE_OUTLINE_DARK_FILL = 0.05;
+
+/** The outline derived from a fill (a parsed, opaque colour): darker, same hue; lighter for a fill too dark to darken. */
+function derivedOutlineOf(fill) {
+  const linear = [fill.r, fill.g, fill.b].map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); });
+  const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  const channel = (v) => Math.round(luminance < STYLE_OUTLINE_DARK_FILL ? v + (255 - v) * (1 - STYLE_OUTLINE_DARKEN) : v * STYLE_OUTLINE_DARKEN);
+  return { r: channel(fill.r), g: channel(fill.g), b: channel(fill.b), a: 1 };
+}
+
 const STYLE_KEYS = ['background-color', 'line-color', 'line-style', 'line-thickness', 'round-corner', 'font-color', 'font-style', 'shadowing'];
 
 function isPlainObject(value) {
@@ -7616,7 +7635,10 @@ function styleLookOf(style) {
   const fill = parseCssColor(source['background-color']);
   if (fill) vars['--st-fill'] = cssColorOf(fill);
   const stroke = parseCssColor(source['line-color']);
+  // the outline: the author's `line-color` always wins; with a fill and none, it is derived from the fill, and as opaque as a chosen one
+  // (the faded outline of a compound box is the fallback of a box with no colour at all, not of one the workspace painted)
   if (stroke) { vars['--st-stroke'] = cssColorOf(stroke); vars['--st-stroke-opacity'] = '1'; }
+  else if (fill && fill.a !== 0) { vars['--st-stroke'] = cssColorOf(derivedOutlineOf(fill)); vars['--st-stroke-opacity'] = '1'; }
   const thickness = styleWholeNumber(source['line-thickness'], 20);
   if (thickness !== null) vars['--st-width'] = thickness + 'px';
   const dash = styleWholeNumber(source['line-style'], 50);
