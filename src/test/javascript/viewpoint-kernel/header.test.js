@@ -609,3 +609,17 @@ test('the dialog returns the focus to the item itself when the menu is not in us
   click('add-to-story', { inside: true });
   assert.equal(run(sandbox, 'appDialog').returnFocus, '[data-action="add-to-story"]', 'no menu open: the control that opened the dialog');
 });
+
+// ============================================================ the toolbar and the status line of a diagram in a narrow centre
+
+test('a narrow centre: the groups of the diagram toolbar wrap inside it, and the hint and the legend of the status line never exceed it', () => {
+  const rule = (selector) => { const m = new RegExp('\\n\\s*' + selector.replace(/[.#]/g, '\\$&') + ' \\{([^}]*)\\}').exec(CSS_NO_COMMENTS); assert.ok(m, selector + ' has a rule'); return m[1]; };
+  const group = rule('.diagram-tools .button-group');
+  assert.match(group, /flex-wrap: wrap/, 'four buttons of "Show" were 262 px in a toolbar of 238');
+  assert.match(group, /max-width: 100%/, 'a group is never wider than the toolbar');
+  assert.match(rule('.diagram-tools'), /flex-wrap: wrap/, 'the toolbar itself wraps (unchanged)');
+  assert.match(rule('#diagram-hint'), /max-width: 100%/, 'the hint (flex: none) wraps its text in a status line narrower than it');
+  const legend = rule('.dg-legend');
+  assert.match(legend, /max-width: 100%/);
+  assert.match(legend, /flex-wrap: wrap/, 'and so does the legend');
+});

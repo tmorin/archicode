@@ -523,3 +523,23 @@ test('nothing the page does writes AppState.selection but the one explicit way o
   const library = HTML.slice(HTML.indexOf('function renderLibraryPanelHtml('), HTML.indexOf('/** Dispatch to the active perspective'));
   assert.ok(!library.includes('AppState.selection'));
 });
+
+// ============================================================ 9. A row of the list of views
+
+test('in the list of views the name keeps a width of its own and the badges wrap under it instead of taking its room', async () => {
+  const css = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+  const rule = (selector) => { const m = new RegExp('\\n\\s*' + selector.replace(/[.]/g, '\\.') + ' \\{([^}]*)\\}').exec(css); assert.ok(m, selector + ' has a rule'); return m[1]; };
+  assert.match(rule('.story-row'), /flex-wrap: wrap/, 'what does not fit goes on a second line');
+  assert.match(rule('.story-row .file-relpath'), /flex: 1 1 6rem/, 'the name asks for 6rem, and takes what the line leaves');
+  assert.match(rule('.story-row .file-relpath'), /min-width: 0/, 'and is still cut with an ellipsis beyond');
+  // the badges keep their size (a shrinking name was the cause: `broken`, `modified` and `unused` do not give way)
+  assert.match(rule('.modified-badge'), /flex-shrink: 0/);
+  assert.match(rule('.story-count'), /flex-shrink: 0/);
+  // the row of a view is made of the name, then the badges and the count, in that order
+  const page = await startPage();
+  const view = await viewWith(page, { id: 'a_long_named_view', name: 'A view whose name is long enough to need a cut', viewpoint: 'deep', properties: { element: 'shop' } });
+  page.sandbox.markEntryChanged(view);
+  const nav = page.sandbox.renderViewsNavHtml();
+  const row = nav.slice(nav.indexOf('data-view="a_long_named_view"'));
+  assert.ok(row.indexOf('file-relpath') < row.indexOf('modified-badge') && row.indexOf('modified-badge') < row.indexOf('story-count'));
+});

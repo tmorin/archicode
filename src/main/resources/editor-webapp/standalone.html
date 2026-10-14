@@ -371,13 +371,15 @@
   .view-pills .pill-missing { border-style: dashed; color: var(--danger); }
   .inspection-open { align-self: flex-start; margin-top: 0.25rem; }
   .diagram-tools-sep { width: 1px; margin: 0.15rem 0.1rem; background: var(--border); }
+  /* a narrow centre: a group of the toolbar that is wider than the toolbar wraps inside it (it was cut on the left, and the buttons were out of reach) */
+  .diagram-tools .button-group { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; row-gap: 0.25rem; }
   .diagram-tools button { height: 1.75rem; min-width: 1.75rem; padding: 0 0.5rem !important; font-size: 0.8rem; white-space: nowrap; }
   .diagram-tools button[aria-pressed="true"], .diagram-tools button[data-lit="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .diagram-status { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0 -1.75rem; padding: 0.35rem 1.75rem; min-height: 2rem;
     color: var(--muted); font-size: 0.8rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
-  #diagram-hint { flex: none; color: var(--accent); }
+  #diagram-hint { flex: none; max-width: 100%; color: var(--accent); }
   .diagram-status > span:first-child { flex: 1 1 8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dg-legend { flex: none; display: inline-flex; gap: 0.35rem; align-items: center; }
+  .dg-legend { flex: none; max-width: 100%; display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.35rem; align-items: center; }
   .dg-legend svg { overflow: visible; }
   .dg-legend-stereotypes { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; }
   .diagram-note { margin: 0 0 0.5rem; color: var(--muted); }
@@ -416,6 +418,10 @@
   .app-dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
   .story-legacy { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.75rem 0; padding: 0.5rem 0.75rem; border: 1px solid var(--modified); border-radius: 6px; }
   .story-count { color: var(--muted); font-size: 0.8rem; flex-shrink: 0; margin-left: auto; padding-left: 0.5rem; }
+  /* a row of the Library list: the name keeps at least 6rem (then it is cut with an ellipsis); the badges and the count that do not fit
+     with it go on a second line instead of taking its room */
+  .story-row { flex-wrap: wrap; row-gap: 0.15rem; }
+  .story-row .file-relpath { flex: 1 1 6rem; min-width: 0; }
   .story-field { display: grid; grid-template-columns: 5rem 1fr; gap: 0.5rem; align-items: start; margin: 0.6rem 0; }
   .story-field > span { color: var(--muted); padding-top: 0.35rem; }
   .story-field input, .story-field textarea, .story-step textarea { width: 100%; box-sizing: border-box; }
