@@ -17,7 +17,7 @@ import lombok.val;
 public final class ViewpointKernel {
 
     /** The version of the input/output contract this class and {@link KernelViewpointFactory} were written for. */
-    public static final int CONTRACT_VERSION = 2;
+    public static final int CONTRACT_VERSION = 3;
 
     private static final class Holder {
 
@@ -54,6 +54,18 @@ public final class ViewpointKernel {
      */
     public synchronized String applyFacet(String json) {
         return call("apply_facet", json);
+    }
+
+    /**
+     * Compare two plateaus of an architecture: what is new, changed and removed from one to the other.
+     *
+     * @param json {@code {"base": {"application": [element], "technology": [element]}, "target": {...}}}, the elements
+     *             being the ones {@link #compute} takes, with {@code kind}, {@code name}, {@code description},
+     *             {@code qualifiers} and {@code tags}
+     * @return {@code {"version", "elements", "relationships", "changes", "counts"}}, or {@code {"error": "..."}}
+     */
+    public synchronized String compare(String json) {
+        return call("compare", json);
     }
 
     private String call(String function, String json) {

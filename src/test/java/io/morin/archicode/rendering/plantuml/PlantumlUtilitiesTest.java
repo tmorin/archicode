@@ -1,5 +1,7 @@
 package io.morin.archicode.rendering.plantuml;
 
+import io.morin.archicode.ViewpointFixtures;
+import io.morin.archicode.resource.element.application.Container;
 import io.morin.archicode.resource.workspace.Styles;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +83,26 @@ class PlantumlUtilitiesTest {
         Assertions.assertEquals(
             first.stream().map(Map.Entry::getKey).sorted().toList(),
             first.stream().map(Map.Entry::getKey).toList()
+        );
+    }
+
+    @Test
+    void shouldWriteTheStateOfAComparisonFirstSoThatItWinsOverTheStereotypesTheAuthorWrote() {
+        // the kernel ends the stereotypes of a box with its computed state (also when the author wrote the same word);
+        // PlantUML lets the first stereotype win, so it is written first, and the kind and the shape stay last
+        val element = Container.builder().id("api").build();
+        val item = ViewpointFixtures.createItemBuilder(element)
+            .stereotypes(List.of("Spring Boot", "external", "changed", "new"))
+            .build();
+
+        Assertions.assertEquals(
+            "<<new>> <<changed>> <<external>> <<Spring Boot>> <<container>> <<atomic>>",
+            PlantumlUtilities.generateStereotypes(item, "container", "atomic")
+        );
+        val marker = ViewpointFixtures.createItemBuilder(element).stereotypes(List.of("contains-changes")).build();
+        Assertions.assertEquals(
+            "<<contains-changes>> <<composite>>",
+            PlantumlUtilities.generateStereotypes(marker, "composite")
         );
     }
 }

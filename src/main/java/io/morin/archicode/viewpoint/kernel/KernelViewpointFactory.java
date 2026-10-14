@@ -5,12 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.ArchiCodeException;
-import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.application.Relationship;
-import io.morin.archicode.resource.element.technology.Environment;
-import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.resource.workspace.Settings;
+import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
@@ -28,12 +26,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.WeakHashMap;
 import lombok.AccessLevel;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +46,6 @@ import lombok.val;
  * ({@code app_elements}), and {@code application_links} and {@code hide_unlinked} for the workspace of a facet. See {@code src/main/rust/viewpoint-kernel/src/lib.rs} for the whole contract.
  */
 @Slf4j
-@RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class KernelViewpointFactory implements ViewpointFactory {
 
@@ -64,43 +58,39 @@ public class KernelViewpointFactory implements ViewpointFactory {
     @NonNull
     ObjectMapper objectMapper;
 
-    private static synchronized ArrayNode graphOf(ElementIndex index, ObjectMapper objectMapper) {
-        return GRAPHS.computeIfAbsent(index, i -> toGraph(i, objectMapper));
+    /** The comparison the views are about, or null: the views are then those of the workspace, as they always were. */
+    Comparison comparison;
+
+    /** Keep only what changed, and its context. Without a comparison, nothing changed. */
+    boolean onlyChanges;
+
+    /** The views of a workspace. */
+    public KernelViewpointFactory(@NonNull String viewpoint, @NonNull ObjectMapper objectMapper) {
+        this(viewpoint, objectMapper, null, false);
     }
 
-    private static ArrayNode toGraph(ElementIndex index, ObjectMapper objectMapper) {
-        val elements = objectMapper.createArrayNode();
-        new TreeMap<>(index.elementByReferenceIndex).forEach((reference, element) -> {
-            val node = elements.addObject();
-            node.put("reference", reference);
-            node.put("parent", element instanceof Parent<?>);
-            if (element instanceof Node technologyNode) {
-                val applications = node.putArray("applications");
-                new TreeSet<>(Optional.ofNullable(technologyNode.getApplications()).orElseGet(Set::of)).forEach(
-                    applications::add
-                );
-            }
-            if (element instanceof Environment environment) {
-                val uses = node.putArray("uses");
-                new TreeSet<>(Optional.ofNullable(environment.getUses()).orElseGet(Set::of)).forEach(uses::add);
-            }
-            // the kernel tells the stereotypes of the element from its qualifiers and its tags
-            val elementQualifiers = node.putArray("qualifiers");
-            Optional.ofNullable(element.getQualifiers()).ifPresent(q -> q.forEach(elementQualifiers::add));
-            val elementTags = node.putObject("tags");
-            Optional.ofNullable(element.getTags()).ifPresent(t -> t.forEach(elementTags::put));
-            val relationships = node.putArray("relationships");
-            for (val relationship : Optional.ofNullable(element.getRelationships()).orElseGet(Set::of)) {
-                val rel = relationships.addObject();
-                rel.put("destination", relationship.getDestination());
-                rel.put("label", relationship.getLabel());
-                val qualifiers = rel.putArray("qualifiers");
-                Optional.ofNullable(relationship.getQualifiers()).ifPresent(q -> q.forEach(qualifiers::add));
-                val tags = rel.putObject("tags");
-                Optional.ofNullable(relationship.getTags()).ifPresent(t -> t.forEach(tags::put));
-            }
-        });
-        return elements;
+    /**
+     * The views of a comparison.
+     *
+     * @param viewpoint {@code overview}, {@code detailed} or {@code deep}
+     * @param objectMapper to speak JSON with the kernel
+     * @param comparison what the kernel said of two plateaus, or null for the views of the workspace
+     * @param onlyChanges draw only what changed, with the context it needs
+     */
+    public KernelViewpointFactory(
+        @NonNull String viewpoint,
+        @NonNull ObjectMapper objectMapper,
+        Comparison comparison,
+        boolean onlyChanges
+    ) {
+        this.viewpoint = viewpoint;
+        this.objectMapper = objectMapper;
+        this.comparison = comparison;
+        this.onlyChanges = onlyChanges;
+    }
+
+    private static synchronized ArrayNode graphOf(ElementIndex index, ObjectMapper objectMapper) {
+        return GRAPHS.computeIfAbsent(index, i -> KernelGraph.of(i, objectMapper, false));
     }
 
     @SneakyThrows
@@ -127,9 +117,20 @@ public class KernelViewpointFactory implements ViewpointFactory {
                 Settings.Relationships.builder().build().getDefaultSyntheticLabel()
             )
         );
-        input.set("elements", graphOf(mainIndex, objectMapper));
+        input.set(
+            "elements",
+            comparison == null ? graphOf(mainIndex, objectMapper) : comparison.unionElements(view.getLayer())
+        );
+        if (onlyChanges) {
+            input.put("only_changes", true);
+        }
         if (technology) {
-            input.set("app_elements", graphOf(workspace.appIndex, objectMapper));
+            input.set(
+                "app_elements",
+                comparison == null
+                    ? graphOf(workspace.appIndex, objectMapper)
+                    : comparison.unionElements(View.Layer.APPLICATION)
+            );
             // the facets are applied to the workspace before the views are asked for: the kernel is told a view is about a flow
             if (workspace.isFaceted()) {
                 input.put("application_links", true);
@@ -191,6 +192,9 @@ public class KernelViewpointFactory implements ViewpointFactory {
                 .element(element)
                 .kind(Item.Kind.from(element))
                 .stereotypes(stereotypesOf(node))
+                .change(changeOf(node))
+                .natures(stringsOf(node.path("natures")))
+                .context(node.path("context").asBoolean(false))
                 .build();
             val previous = itemById.putIfAbsent(id, item);
             if (previous != null) {
@@ -214,9 +218,18 @@ public class KernelViewpointFactory implements ViewpointFactory {
     }
 
     private static List<String> stereotypesOf(JsonNode item) {
-        val stereotypes = new ArrayList<String>();
-        item.path("stereotypes").forEach(stereotype -> stereotypes.add(stereotype.asText()));
-        return List.copyOf(stereotypes);
+        return stringsOf(item.path("stereotypes"));
+    }
+
+    private static List<String> stringsOf(JsonNode list) {
+        val strings = new ArrayList<String>();
+        list.forEach(string -> strings.add(string.asText()));
+        return List.copyOf(strings);
+    }
+
+    /** What the kernel said of an item or a link; none when it said nothing (a view that does not compare). */
+    private static Change changeOf(JsonNode node) {
+        return Change.of(node.path("change").asText("none"));
     }
 
     private static int depth(String id, Map<String, String> parentById) {
@@ -275,6 +288,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
                         node.get("secondary").asBoolean() ? Map.of("rendering-secondary", "no") : new LinkedHashMap<>()
                     )
                     .relationships(relationships)
+                    .change(changeOf(node))
                     .build()
             );
         }
@@ -303,6 +317,15 @@ public class KernelViewpointFactory implements ViewpointFactory {
             ) {
                 return candidate;
             }
+        }
+        if (rel.path("change").asText("none").equals("removed")) {
+            // a relationship only the base had: the elements of the target do not declare it, the comparison knows it
+            return Relationship.builder()
+                .destination(destination)
+                .label(label)
+                .qualifiers(qualifiers)
+                .tags(tags)
+                .build();
         }
         throw new ArchiCodeException(
             "unable to find the relationship from %s to %s",

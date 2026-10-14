@@ -5,16 +5,17 @@
 //! ApplicationDeepViewpointFactory, TechnologyDeepViewpointFactory, MetaLinkFinderFor*, MetaLinkGroomer, Level), and
 //! is checked against what the Java code generates (see src/test/javascript/viewpoint-kernel).
 //!
-//! Contract (version 2)
+//! Contract (version 3)
 //!   input : { viewpoint: "overview"|"detailed"|"deep"|"map", layer: "application"|"technology", focal,
 //!             default_synthetic_label, elements: [{reference, parent, applications, uses, relationships}],
 //!             app_elements (technology deep only), collapsed: [item id], expanded: [item id],
 //!             facet: {name, actions: [{operator: "REMOVE", json_path}]} }
 //!           an element may carry more than `reference` and the rest above (kind, name, description, qualifiers, tags):
 //!           a facet reads it, as a JSONPath can select on it, and so do the `stereotypes` of an item (below)
-//!   output: { version, items: [{id, reference, parent, collapsed, hidden, expandable, stereotypes}],
+//!   output: { version, items: [{id, reference, parent, collapsed, hidden, expandable, stereotypes,
+//!                                change?, natures?, context?}],
 //!             links: [{from, to, label, synthetic, qualifiers, tags, secondary,
-//!                      relationships: [{from, destination, label, qualifiers, tags, application}]}] }
+//!                      relationships: [{from, destination, label, qualifiers, tags, application, change?}], change?}] }
 //!                      + warnings: [text] when there is something to say (omitted otherwise) }
 //!         | { error }
 //! `stereotypes` of an item are what the diagram says about its element: the `qualifiers` of the element (declared order),
@@ -56,12 +57,28 @@
 //!   output: { version, workspace, warnings } | { error }
 //! Version 2: the paths of a facet are standard JSONPath, `apply_facet` exists, and `warnings` may be in the output.
 //!
+//! What changed (version 3). An element, and a relationship, may carry `change`: `none`, `new`, `changed` or `removed` (what
+//! `compare` gives, see below; `natures` of an element travel with it). Nothing else is needed: the fields of the union
+//! of `compare` are free-form fields like `kind` or `qualifiers`, so a facet reads them as it reads any field, and the
+//! caller hands the union to `compute` as the elements of the layer, each with the union relationships of its `from`.
+//! As soon as one element or one relationship carries `change`, the view is a *comparison*: every item has `change`
+//! (and `natures` when the element has them), every link has `change` (its relationships' changes, aggregated: all new is
+//! new, all removed is removed, all `none` is `none`, any other mixture is `changed`), and the relationships listed in a
+//! link have the `change` they were given. A view of an input without any `change` is what it was in version 2, byte for byte.
+//! The `stereotypes` of a comparison item end with the state of its element: `new`, `changed` or `removed` (the author's
+//! own tag of the same name is not repeated, it moves last, so the computed state is the one that wins in the CLI and in the
+//! editor), or, for an element that did not change but has a new, changed or removed element below it in the reference
+//! tree, `contains-changes`.
+//! `only_changes` keeps the items and links whose `change` is not `none`, the ends of those links and the focal item, and what
+//! encloses them; an item kept for no change of its own has `context: true`. It runs after the facets, `hide_unlinked`
+//! and the folds, on the items and links as drawn.
+//!
 //! A third entry point compares two plateaus of an architecture, `compare` (see `compare.rs` for the rules):
 //!   input : { base: {application: [element], technology: [element]}, target: {application: [..], technology: [..]} }
 //!   output: { version, elements: [union element + change, natures], relationships: [.. + change, natures],
 //!             changes: [row of the table], counts } | { error }
-//! It was added to version 2 and changes neither the input nor the output of the other entry points, so the version stays
-//! 2. The views that carry `change` (a later change of `compute`) are what will move it.
+//! It was added to version 2 and changed neither the input nor the output of the other entry points; the views that carry
+//! `change` (above) are what moved the version to 3.
 mod compare;
 mod facet;
 
@@ -72,7 +89,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Bumped when the shape of the input or output changes in a way a caller must know about.
-pub const CONTRACT_VERSION: u32 = 2;
+pub const CONTRACT_VERSION: u32 = 3;
 
 /// Qualifiers: a set — two of them are equal whatever the order — that remembers the order they were declared in,
 /// because that is the order the CLI draws them in.
@@ -144,7 +161,54 @@ fn null_as_default_label<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Strin
     Ok(Option::<String>::deserialize(d)?.unwrap_or_else(default_label))
 }
 
-#[derive(Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// What happened to an element or a relationship between two plateaus (what `compare` says), as a caller gives it in `change`.
+#[derive(Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[serde(rename_all = "lowercase")]
+enum Change {
+    None,
+    New,
+    Changed,
+    Removed,
+}
+
+impl Change {
+    fn parse(text: &str) -> Option<Change> {
+        match text {
+            "none" => Some(Change::None),
+            "new" => Some(Change::New),
+            "changed" => Some(Change::Changed),
+            "removed" => Some(Change::Removed),
+            _ => None,
+        }
+    }
+
+    /// New, changed or removed.
+    fn is_change(self) -> bool {
+        self != Change::None
+    }
+
+    /// The stereotype that tells the state, for the three states that are drawn.
+    fn stereotype(self) -> Option<&'static str> {
+        match self {
+            Change::None => None,
+            Change::New => Some("new"),
+            Change::Changed => Some("changed"),
+            Change::Removed => Some("removed"),
+        }
+    }
+}
+
+/// The change of an optional value: none when not given.
+fn is_change(change: Option<Change>) -> bool {
+    change.is_some_and(Change::is_change)
+}
+
+/// The stereotype of a container whose own state is `none` but that has a new, changed or removed element below it.
+const STEREOTYPE_CONTAINS_CHANGES: &str = "contains-changes";
+
+/// A relationship. Two of them are the same when they read the same (`change` is what happened to it, not what it says), so
+/// that a view groups, counts and captions them as it does without any comparison.
+#[derive(Deserialize, Clone)]
 struct Rel {
     destination: String,
     #[serde(default)]
@@ -153,6 +217,37 @@ struct Rel {
     qualifiers: QSet,
     #[serde(default, deserialize_with = "null_as_default")]
     tags: BTreeMap<String, String>,
+    /// `none`, `new`, `changed` or `removed`: what `compare` says of this relationship (checked by `compute_json`)
+    #[serde(default)]
+    change: Option<String>,
+}
+
+impl Rel {
+    fn key(&self) -> (&String, &Option<String>, &QSet, &BTreeMap<String, String>) {
+        (&self.destination, &self.label, &self.qualifiers, &self.tags)
+    }
+
+    /// The change the relationship carries; none when it does not, or when `compute_json` would have refused it.
+    fn change(&self) -> Option<Change> {
+        self.change.as_deref().and_then(Change::parse)
+    }
+}
+
+impl PartialEq for Rel {
+    fn eq(&self, other: &Self) -> bool {
+        self.key() == other.key()
+    }
+}
+impl Eq for Rel {}
+impl PartialOrd for Rel {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Rel {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.key().cmp(&other.key())
+    }
 }
 
 #[derive(Deserialize)]
@@ -174,6 +269,19 @@ struct Elem {
     /// whatever else the caller knows of the element (kind, name, description, qualifiers, tags): only a facet reads it
     #[serde(flatten)]
     other: serde_json::Map<String, serde_json::Value>,
+}
+
+impl Elem {
+    /// What `compare` says of the element (`change` among its free-form fields); none when it does not, or when
+    /// `compute_json` would have refused it.
+    fn change(&self) -> Option<Change> {
+        self.other.get("change").and_then(|c| c.as_str()).and_then(Change::parse)
+    }
+
+    /// The `natures` of the change, as `compare` lists them (free-form: they only travel).
+    fn natures(&self) -> Vec<String> {
+        self.other.get("natures").and_then(|n| n.as_array()).into_iter().flatten().filter_map(|n| n.as_str()).map(str::to_string).collect()
+    }
 }
 
 #[derive(Deserialize)]
@@ -218,6 +326,14 @@ struct Input {
     /// map: references of the elements left out, with what is inside them
     #[serde(default, deserialize_with = "null_as_default")]
     hidden: Vec<String>,
+    /// show only what changed: the items and links whose `change` is new, changed or removed, the ends of those links and the
+    /// focal item, and what encloses them (those kept for no change of their own are `context`). Without any `change` in
+    /// the input, nothing changed: only the focal item and what encloses it stay.
+    #[serde(default, deserialize_with = "null_as_default")]
+    only_changes: bool,
+    /// some element or relationship of the input carries `change`: the view is a comparison. Read before the facets run.
+    #[serde(skip)]
+    compared: bool,
 }
 
 fn default_label() -> String {
@@ -236,6 +352,9 @@ struct OutRel {
     /// layer (the applications deployed on its nodes): the caller finds it in the other layer
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     application: bool,
+    /// what happened to the relationship, when the input said
+    #[serde(skip_serializing_if = "Option::is_none")]
+    change: Option<Change>,
 }
 
 impl OutRel {
@@ -247,6 +366,7 @@ impl OutRel {
             qualifiers: rel.qualifiers.clone(),
             tags: rel.tags.clone(),
             application: false,
+            change: rel.change(),
         }
     }
 
@@ -268,6 +388,9 @@ struct OutLink {
     /// "rendering-secondary" tag: application links drawn between deployed applications
     secondary: bool,
     relationships: BTreeSet<OutRel>,
+    /// comparison only: what the relationships the link stands for add up to (see `aggregate`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    change: Option<Change>,
 }
 
 /// One box of the diagram. `id` is what links refer to; `reference` is the element behind it (they differ for the
@@ -282,13 +405,26 @@ struct OutItem {
     hidden: usize,
     /// true when the item has children in the model that the view does not show: it can be opened with `expanded`
     expandable: bool,
-    /// the qualifiers of the element, then the words of its `rendering-stereotypes` tag (see `stereotypes_of`)
+    /// the qualifiers of the element, then the words of its `rendering-stereotypes` tag (see `stereotypes_of`), then, in a
+    /// comparison, the state of the element (see `add_stereotypes`)
     stereotypes: Vec<String>,
+    /// comparison only: what happened to the element (the element itself, whatever is inside it)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    change: Option<Change>,
+    /// comparison only: why the element changed, as the input says
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    natures: Vec<String>,
+    /// `only_changes`: the item is kept to give the changes their place, it has no change of its own
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    context: bool,
+    /// comparison only: the element did not change, an element below it did (the `contains-changes` stereotype)
+    #[serde(skip)]
+    contains_changes: bool,
 }
 
 impl OutItem {
     fn new(id: &str, reference: &str, parent: Option<String>) -> OutItem {
-        OutItem { id: id.to_string(), reference: reference.to_string(), parent, collapsed: false, hidden: 0, expandable: false, stereotypes: Vec::new() }
+        OutItem { id: id.to_string(), reference: reference.to_string(), parent, collapsed: false, hidden: 0, expandable: false, stereotypes: Vec::new(), change: None, natures: Vec::new(), context: false, contains_changes: false }
     }
 }
 
@@ -309,8 +445,20 @@ fn stereotypes_of(element: &Elem) -> Vec<String> {
     out
 }
 
+/// `name` is the last stereotype of the list, once: if the list already has it, it moves there.
+fn push_last(stereotypes: &mut Vec<String>, name: &str) {
+    stereotypes.retain(|known| known != name);
+    stereotypes.push(name.to_string());
+}
+
 /// Tells each item what its element is drawn with. A deployed application (an item whose id is not its reference) is an
 /// element of the application layer.
+///
+/// In a comparison the list ends with what the comparison says of the element: `new`, `changed` or `removed`, or
+/// `contains-changes` for an element that did not change and has something below it that did. It goes last because the
+/// last stereotype of a box is the one that wins, property by property, in the editor and in the CLI (which writes them
+/// in reverse): the computed state has the last word over the same word written by hand, and over any other. A word
+/// that was already there is not repeated, it moves.
 fn add_stereotypes(items: &mut [OutItem], input: &Input) {
     let main: HashMap<&str, &Elem> = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
     let apps: HashMap<&str, &Elem> = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
@@ -318,6 +466,12 @@ fn add_stereotypes(items: &mut [OutItem], input: &Input) {
         let layer = if item.id == item.reference { &main } else { &apps };
         if let Some(element) = layer.get(item.reference.as_str()) {
             item.stereotypes = stereotypes_of(element);
+        }
+        if let Some(state) = item.change.and_then(Change::stereotype) {
+            push_last(&mut item.stereotypes, state);
+        }
+        if item.contains_changes {
+            push_last(&mut item.stereotypes, STEREOTYPE_CONTAINS_CHANGES);
         }
     }
 }
@@ -562,6 +716,7 @@ fn emit_links(groomed: &[Groomed], default_label: &str, refs: &mut Vec<String>) 
                 tags: BTreeMap::new(),
                 secondary: false,
                 relationships: g.synthetic_src.clone(),
+                change: None,
             });
         } else {
             for r in &g.natural {
@@ -579,6 +734,7 @@ fn emit_links(groomed: &[Groomed], default_label: &str, refs: &mut Vec<String>) 
                         .filter(|o| o.destination == r.destination && o.label == r.label && o.qualifiers == r.qualifiers && o.tags == r.tags)
                         .cloned()
                         .collect(),
+                    change: None,
                 });
             }
         }
@@ -735,6 +891,7 @@ fn deep(input: &Input, known: &Known) -> Result<(Content, Vec<String>), String> 
             tags: m.rel.tags.clone(),
             secondary: false,
             relationships: BTreeSet::from([OutRel::of(&m.from, &m.rel)]),
+            change: None,
         });
     }
     let item_refs = with_ancestors(refs);
@@ -901,6 +1058,7 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
                             tags: rel.tags.clone(),
                             secondary: !input.application_links,
                             relationships: BTreeSet::from([OutRel::of_application(app, rel)]),
+                            change: None,
                         });
                     }
                 }
@@ -923,6 +1081,7 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
             tags: d.rel.tags.clone(),
             secondary: false,
             relationships: BTreeSet::from([OutRel::of_application(d.from_app, d.rel)]),
+            change: None,
         });
     }
     Ok((items, links))
@@ -1023,6 +1182,7 @@ fn collapse(items: BTreeSet<OutItem>, links: Vec<OutLink>, input: &Input) -> (Ve
             tags: BTreeMap::new(),
             secondary: group.iter().all(|(l, _)| l.secondary),
             relationships,
+            change: None,
         });
     }
     (kept, merge_links(out))
@@ -1044,7 +1204,93 @@ fn keep_the_flow(items: BTreeSet<OutItem>, links: BTreeSet<OutLink>, focal: &str
     (kept, links)
 }
 
-/// The view of the input: the viewpoint, then the folds.
+/// What a link says of what changed: the changes of the relationships it stands for. All new is new, all removed is removed,
+/// all `none` (or no change given) is `none`, and any other mixture is `changed`: a link that groups a new relationship
+/// and an unchanged one has grown, and one that groups a new and a removed one has been replaced by something else.
+fn aggregate(relationships: &BTreeSet<OutRel>) -> Change {
+    let all = |wanted: Change| relationships.iter().all(|r| r.change.unwrap_or(Change::None) == wanted);
+    if relationships.is_empty() || all(Change::None) {
+        Change::None
+    } else if all(Change::New) {
+        Change::New
+    } else if all(Change::Removed) {
+        Change::Removed
+    } else {
+        Change::Changed
+    }
+}
+
+/// The references that have an element below them (in the reference tree, not only the elements that are listed) that is new,
+/// changed or removed.
+fn above_changes(elements: &[Elem]) -> HashSet<String> {
+    let mut out = HashSet::new();
+    for element in elements.iter().filter(|e| is_change(e.change())) {
+        let p = parts(&element.reference);
+        for i in 1..p.len() {
+            out.insert(p[..i].join("."));
+        }
+    }
+    out
+}
+
+/// A comparison: tells each item and each link what changed (`change`, `natures`, `contains-changes`). Then, for `only_changes`,
+/// leaves out the rest.
+fn annotate(mut items: Vec<OutItem>, mut links: Vec<OutLink>, input: &Input) -> (Vec<OutItem>, Vec<OutLink>) {
+    if input.compared {
+        let main: HashMap<&str, &Elem> = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+        let apps: HashMap<&str, &Elem> = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+        let (main_above, apps_above) = (above_changes(&input.elements), above_changes(&input.app_elements));
+        for item in items.iter_mut() {
+            let main_layer = item.id == item.reference;
+            let element = if main_layer { &main } else { &apps }.get(item.reference.as_str());
+            let change = element.and_then(|e| e.change()).unwrap_or(Change::None);
+            item.change = Some(change);
+            item.natures = element.map(|e| e.natures()).unwrap_or_default();
+            // an element that changed says so itself; a container is not `changed` because of what is inside it
+            item.contains_changes = change == Change::None && if main_layer { &main_above } else { &apps_above }.contains(&item.reference);
+        }
+        for link in links.iter_mut() {
+            link.change = Some(aggregate(&link.relationships));
+        }
+    }
+    if input.only_changes {
+        return keep_changes(items, links, input);
+    }
+    (items, links)
+}
+
+/// `only_changes`: what changed, with its context. Kept: the items and the links whose change is new, changed or removed, the
+/// ends of the links that are drawn, a folded item that hides changes, the focal item, and what encloses all of them. An
+/// item kept for none of its own changes is `context`. A link is kept for its own change only: the unchanged links between
+/// the items that stay are left out.
+fn keep_changes(items: Vec<OutItem>, links: Vec<OutLink>, input: &Input) -> (Vec<OutItem>, Vec<OutLink>) {
+    let parents: HashMap<&str, &str> = items.iter().filter_map(|i| i.parent.as_deref().map(|p| (i.id.as_str(), p))).collect();
+    let mut keep: HashSet<String> = HashSet::new();
+    let mut pending: Vec<&str> = Vec::new();
+    pending.extend(items.iter().filter(|i| is_change(i.change) || (i.collapsed && i.contains_changes)).map(|i| i.id.as_str()));
+    pending.extend(links.iter().filter(|l| is_change(l.change) && !l.secondary).flat_map(|l| [l.from.as_str(), l.to.as_str()]));
+    if input.viewpoint != "map" {
+        pending.extend(items.iter().filter(|i| i.id == input.focal).map(|i| i.id.as_str()));
+    }
+    while let Some(id) = pending.pop() {
+        if keep.insert(id.to_string()) {
+            pending.extend(parents.get(id).copied());
+        }
+    }
+    let kept: Vec<OutItem> = items
+        .iter()
+        .filter(|i| keep.contains(&i.id))
+        .cloned()
+        .map(|mut i| {
+            i.context = !is_change(i.change);
+            i
+        })
+        .collect();
+    let links = links.into_iter().filter(|l| is_change(l.change) && keep.contains(&l.from) && keep.contains(&l.to)).collect();
+    (kept, links)
+}
+
+/// The view of the input: the viewpoint, then the folds, then what changed.
 fn build(input: &Input) -> Result<(Vec<OutItem>, Vec<OutLink>), String> {
     let known: Known = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
     let (items, links) = match input.viewpoint.as_str() {
@@ -1060,7 +1306,8 @@ fn build(input: &Input) -> Result<(Vec<OutItem>, Vec<OutLink>), String> {
     } else {
         (items, links)
     };
-    Ok(collapse(items, merge_links(links), input))
+    let (items, links) = collapse(items, merge_links(links), input);
+    Ok(annotate(items, links, input))
 }
 
 /// Flags the items that hide children of the model, and whose opening changes the view: a leaf of the view whose element
@@ -1084,10 +1331,36 @@ fn mark_expandable(items: &mut [OutItem], links: &[OutLink], input: &mut Input) 
     }
 }
 
+/// Every `change` of the input must be one of the four words; a view is a comparison when any element or relationship has one.
+/// Read before the facets run, so that a facet that removes everything that changed does not turn the comparison into a view.
+fn check_changes(input: &mut Input) -> Result<(), String> {
+    for element in input.elements.iter().chain(input.app_elements.iter()) {
+        match element.other.get("change") {
+            None | Some(serde_json::Value::Null) => {}
+            Some(value) => {
+                if !value.as_str().is_some_and(|c| Change::parse(c).is_some()) {
+                    return Err(format!("invalid change: {value} in {}", element.reference));
+                }
+                input.compared = true;
+            }
+        }
+        for rel in &element.relationships {
+            if let Some(change) = &rel.change {
+                if Change::parse(change).is_none() {
+                    return Err(format!("invalid change: \"{change}\" in a relationship of {}", element.reference));
+                }
+                input.compared = true;
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn compute_json(input: &str) -> String {
     let result = serde_json::from_str::<Input>(input)
         .map_err(|e| format!("invalid input: {e}"))
         .and_then(|mut input| {
+            check_changes(&mut input)?;
             let warnings = match input.facet.take() {
                 Some(facet) => {
                     input.application_links = true;
@@ -1161,6 +1434,9 @@ pub unsafe extern "C" fn result_ptr() -> *const u8 {
     #[allow(static_mut_refs)]
     RESULT.as_ptr()
 }
+
+#[cfg(test)]
+mod change_tests;
 
 #[cfg(test)]
 mod tests {

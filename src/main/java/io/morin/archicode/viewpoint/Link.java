@@ -39,6 +39,13 @@ public class Link implements Comparable<Link> {
     @Singular
     Set<Relationship> relationships;
 
+    /**
+     * What the relationships the link stands for add up to in a comparison: all new is new, all removed is removed, all
+     * unchanged is {@link Change#NONE} (also for a view that does not compare), any other mixture is changed.
+     */
+    @Builder.Default
+    Change change = Change.NONE;
+
     private static final String SEPARATOR = "\0";
 
     /**

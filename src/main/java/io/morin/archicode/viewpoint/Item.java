@@ -41,6 +41,26 @@ public class Item implements Comparable<Item> {
     @Builder.Default
     List<String> stereotypes = List.of();
 
+    /**
+     * What happened to the element between the two plateaus of a comparison (the element itself, not what is inside it);
+     * {@link Change#NONE} for a view that does not compare. The kernel has already put the matching word last in
+     * {@link #getStereotypes()}: {@code new}, {@code changed} or {@code removed}, or {@code contains-changes} for an
+     * element that did not change and has a new, changed or removed one below it.
+     */
+    @Builder.Default
+    Change change = Change.NONE;
+
+    /** Why the element changed, as the comparison lists it ({@code name}, {@code relationships-added}, ...). */
+    @Builder.Default
+    List<String> natures = List.of();
+
+    /**
+     * True when the view shows only the changes and this item is there to give them their place (it encloses a change, or
+     * is the end of a changed link, or is the focal element) and has no change of its own.
+     */
+    @Builder.Default
+    boolean context = false;
+
     public Stream<Item> stream() {
         return Stream.concat(Stream.of(this), this.children.stream().flatMap(Item::stream));
     }

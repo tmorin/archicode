@@ -11,7 +11,8 @@ elements out. Pinned on one element with nothing open it draws that element's ov
 the views the CLI generates.
 
 A second and a third entry point sit next to `compute`: `apply_facet` (the facets, see below) and `compare`, which says what
-changed between two plateaus of an architecture (see "Comparing two plateaus").
+changed between two plateaus of an architecture (see "Comparing two plateaus"). What `compare` says can be drawn: `compute`
+tells every box and link of a view what changed (see "Views of a comparison").
 
 It is written once and runs in both places that draw views, so they cannot disagree:
 
@@ -140,6 +141,59 @@ output: { version,
 - **Errors**, in `{ error }` like `compute`: `dangling reference: x` (a relationship or `uses` entry that points at an
   element its own plateau does not have), `dangling application reference: x`, `duplicate reference: x`, `invalid input: ..`.
   The message says which plateau. A base relationship that ends on an element only the base has is not one.
-- **The contract version stays 2.** `compare` is a new entry point and changes neither the input nor the output of the others,
-  and the kernel and its callers are one build. The views that carry `change` will change `compute`'s output: that is what
-  will bump it.
+- **The contract version.** `compare` itself added nothing to version 2; the views of a comparison (below) changed what `compute`
+  gives, and moved the contract to 3.
+
+## Views of a comparison
+
+`compute` draws what `compare` says. There is no second input and no new entry point: **the caller merges `change` into the
+elements and the relationships it gives**, because a field like that is a free-form field of the element, and a facet, the
+stereotypes and the folds already read free-form fields. Two ways of giving it were weighed:
+
+- *`change` on the elements and the relationships (taken).* `compare`'s union elements are already drop-in elements (`reference`,
+  `parent`, `applications`, `uses`, `kind`, `name`, `qualifiers`, `tags`, `change`, `natures`; `layer` and `parent_reference` are
+  ignored). The one piece of glue is that `compare` lists its relationships apart, so the caller nests each one under the element
+  that declares it (`relationships.filter(r => r.layer == layer && r.from == element.reference)`, ten lines in JavaScript, and
+  `Comparison` does it in Java). A removed element stays whole and takes part in the layout under its parent, a removed
+  relationship is a relationship.
+- *The compare result as a second input* was left: it would need a second lookup in every viewpoint, its own checks, and a facet
+  could not read `change` (a facet sees the elements, not a side table).
+
+```
+element      : { reference, ..., change?: "none"|"new"|"changed"|"removed", natures?: [text], relationships: [rel] }
+relationship : { destination, label, qualifiers, tags, change?: "none"|"new"|"changed"|"removed" }
+option       : only_changes?: bool
+output item  : { ..., stereotypes, change?, natures?, context? }
+output link  : { ..., relationships: [{ ..., change? }], change? }
+```
+
+- **Comparison or not.** As soon as one element or one relationship of the input has a `change` (it is read before the facets
+  run), the view is a comparison: every item and every link says its `change` (`none` when it did not change), an item says the
+  `natures` its element has, and a relationship of a link says the `change` it was given. Without any `change`, nothing is added and
+  the view is what it was in version 2, byte for byte (checked on the fixtures, on the workspaces of the manual and on a real one).
+  A `change` that is not one of the four words is an `error`; `null` is not given.
+- **What an item says** is the change of its own element, whatever is inside it. A box that is folded says the change of its own
+  element too, not of what it hides.
+- **A grouped link** says what the relationships it stands for add up to: all `new` is `new`, all `removed` is `removed`, all
+  `none` is `none`, any other mixture (a new one with an unchanged one, a new one with a removed one, a changed one, a label that
+  changed) is `changed`. A natural link, one relationship, says its own. What a change is does not change how links are grouped or
+  captioned: two relationships that read the same still count once, whatever happened to each.
+- **Computed stereotypes.** The stereotypes of an item (qualifiers, then the words of `rendering-stereotypes`) end with the state of
+  its element: `new`, `changed` or `removed`, so that `styles.by-tags` gives them a look with no other work. The word is never
+  twice in the list: one the author wrote by hand moves to the end. The last stereotype of a box wins, property by property, in the
+  editor (a later one overrides) and in the CLI (it writes them last first, and PlantUML lets the first win), so the computed state
+  has the last word over a hand-written `new` or `changed`, and over any other stereotype. The author's `new` or `changed` keep
+  working on an element that did not change in the comparison: nothing is removed from the list.
+- **A container with changes inside.** A container is not `changed` because a child is. When its own state is `none` and some
+  element below it in the reference tree is new, changed or removed, its stereotypes end with `contains-changes`, a name of its
+  own that a style can give a line, a glyph or a badge (a relationship that changed counts through the element that declares it,
+  which `compare` marks `changed`). A container that is itself new, changed or removed says that, and has no marker. The
+  marker is computed from the elements the view is given (after the facets), also for a box that is folded.
+- **`only_changes`** keeps, of the view as it is drawn (after the facets, `hide_unlinked` and the folds), the items and the links
+  whose `change` is new, changed or removed; the ends of those links; a folded item that hides changes; the focal item (so that a
+  view without changes is not empty; the map has none); and what encloses all of them. An item kept for no change of its own has
+  `context: true`, so that a renderer can grey it. A link is kept only for its own change: an unchanged link between two kept
+  items is left out. Without any `change` in the input nothing changed, and only the focal item and what encloses it stay.
+  The facets run first, on the union, and read `change` like any field: `$..relationships[?(@.change=='removed')]`.
+- **Contract version 3.** The output of `compute` gained fields (`change`, `natures`, `context` on items, `change` on links and on
+  their relationships) and a stereotype; nothing of it appears without a `change` in the input. Callers check the version as before.
