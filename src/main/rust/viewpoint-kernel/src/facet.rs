@@ -5,11 +5,12 @@
 //! ([`apply_facet_json`]), the editor hands it the elements of the view ([`apply_to_input`], which builds the same
 //! document from them) — so the two cannot read a facet differently.
 //!
-//! The document a path is evaluated against is the one the CLI writes for a workspace, with the empty values left out:
+//! The document a path is evaluated against is the one the CLI writes for a workspace, with the empty values left out (`change` and
+//! `natures` are there when the input of a comparison has them, on an element and, `change`, on a relationship):
 //!
 //! ```text
-//! { application: { elements: [ { id, kind, name, description, qualifiers, tags, relationships: [
-//!                                 { destination, label, qualifiers, tags } ], elements: [ … ] } ] },
+//! { application: { elements: [ { id, kind, name, description, qualifiers, tags, change, natures, relationships: [
+//!                                 { destination, label, qualifiers, tags, change } ], elements: [ … ] } ] },
 //!   technology:  { elements: [ { … applications: [reference], uses: [reference] … } ] } }
 //! ```
 //!
@@ -258,6 +259,10 @@ fn rel_to_value(rel: &Rel) -> Value {
     }
     if !rel.tags.is_empty() {
         out.insert("tags".into(), json!(rel.tags));
+    }
+    // what `compare` says of the relationship: a path reads it as it reads the label
+    if let Some(change) = &rel.change {
+        out.insert("change".into(), json!(change));
     }
     Value::Object(out)
 }
