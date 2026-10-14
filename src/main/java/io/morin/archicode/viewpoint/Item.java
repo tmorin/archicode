@@ -45,9 +45,15 @@ public class Item implements Comparable<Item> {
         return Stream.concat(Stream.of(this), this.children.stream().flatMap(Item::stream));
     }
 
+    /**
+     * The order the views are written in: by reference, then by id. The id is needed because an application deployed
+     * on several nodes is one item per node, all with the reference of the application: without it two items tie, and
+     * a tie is left to the order of the {@code Set} they come from, which depends on the identity hash of the JVM.
+     */
     @Override
     public int compareTo(Item o) {
-        return this.reference.compareTo(o.reference);
+        val byReference = this.reference.compareTo(o.reference);
+        return byReference != 0 ? byReference : this.itemId.compareTo(o.itemId);
     }
 
     @RequiredArgsConstructor
