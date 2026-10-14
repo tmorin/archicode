@@ -381,7 +381,8 @@ test('the box of a styled element carries the look of its stereotypes and one pi
   assert.deepEqual(pills.map((p) => p.text), ['external', 'changed']);
   assert.ok(pills[0].style.includes('--st-fill:#d3d3d3') && pills[0].style.includes('--st-text:#000000'), 'external\'s own fill: ' + pills[0].style);
   assert.ok(!pills[0].style.includes('#faecdd'), 'not the fill of the box');
-  assert.ok(pills[0].style.includes('--st-stroke:initial'), 'external says nothing of its line: the pill does not inherit the box\'s');
+  assert.ok(!pills[0].style.includes('#a2501c'), 'external says nothing of its line: the pill does not inherit the box\'s');
+  assert.ok(pills[0].style.includes('--st-stroke:#7f7f7f'), 'it has the outline derived from its own fill: ' + pills[0].style);
   assert.ok(pills[1].style.includes('--st-fill:#faecdd') && pills[1].style.includes('--st-stroke:#a2501c'), 'changed\'s own: ' + pills[1].style);
   assert.ok(pills.every((p) => !p.more));
 
@@ -911,4 +912,153 @@ test('the title of a box on a fill is drawn from --ov-text on the page and in th
   const css = sandbox.diagramExportCss();
   assert.ok(css.includes('.dg-over-fill .dg-title,.dg-over-fill .dg-sub{fill:var(--ov-text)}'));
   assert.ok(css.indexOf('.dg-over-fill') > css.indexOf('.dg-styled .dg-title'));
+});
+
+// ---- 13. The outline derived from a fill (run 0032) ----
+
+/** The channels of a CSS colour as [r, g, b]. */
+const channelsOf = (text) => [1, 3, 5].map((i) => parseInt(text.slice(i, i + 2), 16));
+
+test('a fill and no line-color: the outline is the fill, darker, same hue, as opaque as a chosen one; the fill is untouched', async () => {
+  const { sandbox } = await openFixture();
+  const look = (style) => plain(sandbox.styleLookOf(style));
+  const factor = run(sandbox, 'STYLE_OUTLINE_DARKEN');
+  assert.equal(factor, 0.6, 'the value chosen by looking at the page in both themes');
+  const vars = look({ 'background-color': 'lightgray' }).vars;
+  assert.equal(vars['--st-fill'], '#d3d3d3', 'the fill is the author\'s own');
+  assert.equal(vars['--st-stroke'], '#7f7f7f');
+  assert.equal(vars['--st-stroke-opacity'], '1', 'also for a compound box: its faded fallback is for a box with no colour');
+  // same hue: every channel scaled by the same factor, so the proportions of the colour are kept
+  const mint = look({ 'background-color': '#DAF2E6' }).vars;
+  assert.equal(mint['--st-fill'], '#daf2e6');
+  assert.deepEqual(channelsOf(mint['--st-stroke']), channelsOf('#daf2e6').map((v) => Math.round(v * factor)));
+  assert.ok(channelsOf(mint['--st-stroke']).every((v, i) => v < channelsOf('#daf2e6')[i]), 'darker');
+  // the text is still computed from the fill, never from the outline
+  assert.equal(vars['--st-text'], '#000000');
+});
+
+test('an explicit line-color always wins, and the fill is untouched; no fill, no outline is derived', async () => {
+  const { sandbox } = await openFixture();
+  const look = (style) => plain(sandbox.styleLookOf(style));
+  const own = look({ 'background-color': 'lightgray', 'line-color': '#2A6A4B' }).vars;
+  assert.equal(own['--st-stroke'], '#2a6a4b');
+  assert.equal(own['--st-fill'], '#d3d3d3');
+  assert.equal(look({ 'background-color': '#DAF2E6', 'line-color': '#DAF2E6' }).vars['--st-stroke'], '#daf2e6', 'even one that is the colour of the fill: the author said so');
+  assert.deepEqual(look({ 'line-color': 'navy' }).vars, { '--st-stroke': '#000080', '--st-stroke-opacity': '1' }, 'a line alone is what it was');
+  // a fill that is `transparent` is no fill: the box keeps the colours of the theme
+  assert.deepEqual(look({ 'background-color': 'transparent' }).vars, { '--st-fill': 'transparent' });
+  // an unreadable colour is ignored, as before: no fill, no derived line
+  assert.deepEqual(look({ 'background-color': 'not-a-colour' }).vars, {});
+  assert.deepEqual(look({ 'line-thickness': 3 }).vars, { '--st-width': '3px' });
+  // the other properties are as they were
+  const full = look({ 'background-color': 'lightgray', 'line-thickness': 3, 'line-style': 4 }).vars;
+  assert.equal(full['--st-width'], '3px');
+  assert.equal(full['--st-dash'], '4 4');
+});
+
+test('every CSS colour name gets an outline that can be told from its fill, and the outline is never the theme\'s border', async () => {
+  const { sandbox } = await openFixture();
+  const names = run(sandbox, "CSS_COLOR_TABLE.split(' ').filter(Boolean).map((e) => e.slice(0, e.indexOf(':')))");
+  assert.ok(names.length >= 140);
+  for (const name of names) {
+    const vars = plain(sandbox.styleLookOf({ 'background-color': name }).vars);
+    const fill = sandbox.parseCssColor(vars['--st-fill']);
+    const stroke = sandbox.parseCssColor(vars['--st-stroke']);
+    assert.ok(stroke, name + ' has an outline');
+    assert.ok(sandbox.contrastRatio(fill, stroke) >= 1.5, name + ': the outline stands out of the fill: ' + sandbox.contrastRatio(fill, stroke));
+  }
+});
+
+test('a fill too dark to be darkened is outlined lighter: a black box inside a black box is still told apart', async () => {
+  const { sandbox } = await openFixture();
+  const stroke = (color) => plain(sandbox.styleLookOf({ 'background-color': color }).vars)['--st-stroke'];
+  assert.equal(stroke('black'), '#666666');
+  const navy = channelsOf(stroke('#1b2a41'));
+  const navyFill = channelsOf('#1b2a41');
+  assert.ok(navy.every((v, i) => v > navyFill[i]), 'lighter, not darker');
+  assert.ok(sandbox.contrastRatio(sandbox.parseCssColor('#1b2a41'), sandbox.parseCssColor(stroke('#1b2a41'))) >= 3);
+  assert.equal(stroke('#808080'), '#4d4d4d', 'a mid fill is darkened');
+});
+
+test('with several stereotypes the outline is derived from the merged style: a later line-color wins, a later fill is outlined', async () => {
+  const { sandbox, state } = await openFixture();
+  state.workspace.styles = userStyles();
+  state.workspace.styles['by-tags'].dark = { 'background-color': '#1b2a41' };
+  const vars = (names) => plain(sandbox.stereotypeLookOf(names).vars);
+  assert.equal(vars(['external'])['--st-stroke'], '#7f7f7f');
+  assert.equal(vars(['external', 'changed'])['--st-stroke'], '#a2501c', 'changed has a line: it is the author\'s');
+  assert.equal(vars(['changed', 'external'])['--st-stroke'], '#a2501c', 'the line of changed still wins, as nothing else says one: external has none to override it');
+  assert.equal(vars(['changed', 'external'])['--st-fill'], '#d3d3d3', 'and the fill is the later one\'s');
+  assert.ok(channelsOf(vars(['changed', 'dark'])['--st-fill']).join() === channelsOf('#1b2a41').join());
+  assert.equal(vars(['changed', 'dark'])['--st-stroke'], '#a2501c');
+});
+
+test('a box inside a box of the same fill: both carry an outline derived from that fill, not the border of the theme', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  state.workspace.styles = { 'by-tags': { external: { 'background-color': 'lightgray' } } };
+  state.index.application.get('shop').tags = { 'rendering-stereotypes': 'external' };
+  state.index.application.get('shop.catalog').tags = { 'rendering-stereotypes': 'external' };
+  const { svg } = draw(sandbox, kernel, 'deep', 'shop');
+  for (const id of ['shop', 'shop.catalog']) {
+    const tag = openingTag(nodeOf(svg, id));
+    assert.ok(attributeOf(tag, 'class').split(' ').includes('dg-styled'), id);
+    const style = attributeOf(tag, 'style');
+    assert.match(style, /--st-fill:#d3d3d3/, id);
+    assert.match(style, /--st-stroke:#7f7f7f/, id + ': ' + style);
+    assert.match(style, /--st-stroke-opacity:1/, id + ': a compound box is outlined as firmly as a leaf');
+  }
+  // the leaf (no children) inside them
+  assert.equal(attributeOf(openingTag(nodeOf(svg, 'shop.catalog.db')), 'style'), null, 'an unstyled leaf has no variable: the theme\'s look');
+  state.index.application.get('shop.catalog.db').tags = { 'rendering-stereotypes': 'external' };
+  const again = draw(sandbox, kernel, 'deep', 'shop').svg;
+  assert.match(attributeOf(openingTag(nodeOf(again, 'shop.catalog.db')), 'style'), /--st-stroke:#7f7f7f/);
+});
+
+test('a box with no styled stereotype, or a style with no fill, is drawn with no outline variable: byte for byte what it was', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  state.workspace.styles = { 'by-tags': { thick: { 'line-thickness': 3 } } };
+  state.index.application.get('shop').tags = { 'rendering-stereotypes': 'thick' };
+  const { svg } = draw(sandbox, kernel, 'deep', 'shop');
+  assert.equal(attributeOf(openingTag(nodeOf(svg, 'shop')), 'style'), '--st-width:3px');
+  const plainSvg = draw(sandbox, kernel, 'deep', 'shop.catalog').svg;
+  assert.equal(attributeOf(openingTag(nodeOf(plainSvg, 'shop.catalog.db')), 'style'), null);
+  assert.doesNotMatch(plainSvg.replace(/<g class="dg-badge"[^>]*>/g, ''), /--st-stroke/, 'only the pill of a styled stereotype says initial');
+});
+
+test('the pill of a stereotype is outlined from its own fill unless its style has a line of its own', async () => {
+  const { sandbox, state } = await openFixture();
+  state.workspace.styles = userStyles();
+  assert.equal(plain(sandbox.stereotypeBadgeVarsOf('external'))['--st-stroke'], '#7f7f7f');
+  assert.equal(plain(sandbox.stereotypeBadgeVarsOf('changed'))['--st-stroke'], '#a2501c');
+  state.workspace.styles['by-tags'].line = { 'line-color': 'navy' };
+  const only = plain(sandbox.stereotypeBadgeVarsOf('line'));
+  assert.equal(only['--st-stroke'], '#000080');
+  assert.equal(only['--st-fill'], 'initial', 'a line alone: no fill to derive from, none made up');
+  state.workspace.styles['by-tags'].empty = {};
+  assert.equal(plain(sandbox.stereotypeBadgeVarsOf('empty'))['--st-stroke'], 'initial');
+});
+
+test('the derived outline is a variable of the box: the page and the export read it the same way, and the focal and selected outlines still win', async () => {
+  const { sandbox } = await openFixture();
+  // the page
+  assert.match(CSS, /\.dg-styled > \.dg-box \{[^}]*stroke: var\(--st-stroke, var\(--border\)\)/);
+  assert.match(CSS, /\.dg-styled > \.dg-group \{[^}]*stroke: var\(--st-stroke, var\(--muted\)\); stroke-opacity: var\(--st-stroke-opacity, 0\.55\)/, 'the faded outline is the fallback of a compound box with no colour');
+  assert.ok(CSS.indexOf('.dg-styled > .dg-group') < CSS.indexOf('.dg-focal .dg-box'));
+  assert.match(CSS, /\.dg-focal \.dg-box, \.dg-focal \.dg-group, \.dg-selected \.dg-box, \.dg-selected \.dg-group \{ stroke: var\(--accent\)/);
+  // the export: the same rules (it has no stylesheet of the page), the variable inline on the box
+  sandbox.getComputedStyle = () => ({ getPropertyValue: () => ' #123456 ' });
+  const css = sandbox.diagramExportCss();
+  assert.ok(css.includes('.dg-styled>.dg-group{fill:var(--st-fill,none);stroke:var(--st-stroke,#123456);stroke-opacity:var(--st-stroke-opacity,.55);'));
+  assert.ok(css.includes('.dg-styled>.dg-box{fill:var(--st-fill,#123456);stroke:var(--st-stroke,#123456);'));
+  assert.ok(css.indexOf('.dg-styled>.dg-group') < css.indexOf('.dg-focal .dg-box'), 'the focal outline wins in the export too');
+});
+
+test('the drawing that the export is made from holds the derived outline inline on each box', async () => {
+  const { sandbox, state, kernel } = await openFixture();
+  state.workspace.styles = { 'by-tags': { external: { 'background-color': 'lightgray' } } };
+  state.index.application.get('shop').tags = { 'rendering-stereotypes': 'external' };
+  state.index.application.get('shop.catalog').tags = { 'rendering-stereotypes': 'external' };
+  const { svg } = draw(sandbox, kernel, 'deep', 'shop');
+  // `diagramExportDocument` keeps the style attribute of every box (the test above); the markup it clones has the outline in it
+  assert.equal((svg.match(/--st-stroke:#7f7f7f;--st-stroke-opacity:1/g) || []).length, 4, 'two boxes and the pill of each');
 });
