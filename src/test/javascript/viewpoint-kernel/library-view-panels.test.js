@@ -128,8 +128,25 @@ test('a click on a box shows the inspection of that element in the panel, on the
   assert.deepEqual(plain(page.state.selection), { kind: 'element', key: 'customer', mode: 'view' }, 'the selection of the Map and Elements');
   assert.equal(run(page.sandbox, 'revealLinkAfterDrawing'), false);
   assert.equal(page.sandbox.countUnsavedChanges(), 1, 'the new view is the only change: selecting is not an edit');
-  assert.ok(page.panel.scrolled > 0, 'the selection is brought into sight under the view');
+  assert.ok(page.panel.right.scrollTop > 0, 'the selection is brought into sight under the view');
   assert.equal(view.properties.element, 'shop');
+});
+
+test('a selection whose top is already in the panel leaves the panel where it is; one out of sight is brought into it by as little as it takes (the view\'s attributes stay in sight)', async () => {
+  const page = await startPage();
+  await viewWith(page, { viewpoint: 'deep', properties: { element: 'shop' } });
+  const [first, second, third] = boxesOf(page).filter((box) => box['data-ref'] !== 'shop');
+  const scroll = () => page.panel.right.scrollTop;
+  page.panel.sectionTop = 380; // under the attributes of the view, in the window of the panel
+  click(page.sandbox, first);
+  assert.equal(scroll(), 0, 'in sight: no scroll');
+  page.panel.sectionTop = 790; // its first line would be cut by the foot of the panel: not in sight
+  click(page.sandbox, second);
+  assert.equal(scroll(), 790 - (800 - 120), 'too low: its first 120 px are shown at the foot of the panel, not the whole of it at the top');
+  page.panel.sectionTop = -300; // the reader scrolled past it
+  click(page.sandbox, third);
+  assert.equal(scroll(), 110 - 300, 'above: its top edge comes to the head of the panel');
+  assert.equal(page.panel.scrolled, 0, 'the section itself is never scrolled to the top of the panel');
 });
 
 test('a click on a box of a technology view selects the element of the technology layer', async () => {
