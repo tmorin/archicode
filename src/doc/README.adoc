@@ -828,6 +828,14 @@ archicode views generate --engine=kubernetes-network-policies
 archicode views generate --properties='{ "key" : "value" }'
 ----
 
+*The same workspace gives the same files.*
+Generating the views of a workspace twice gives the same files, byte for byte, so that a workspace kept in git only shows a change when the workspace changed.
+This does not depend on the folder the workspace is in, on the order a file system lists the manifests in, on the JVM that runs the command, nor on the order in which the author wrote the elements of a list, the relationships of an element or its tags.
+Inside a file, the boxes come by reference and then by identifier, the links by their ends, their label, their qualifiers and their tags, and the styles by the name of the stereotype.
+What the author writes in an order keeps it: the qualifiers of an element and the words of `rendering-stereotypes` are the order of the stereotypes of its box (see <<stereotypes-and-styles>>), so reordering them is a change of the workspace.
+Only a new version of ArchiCode rewrites files that the workspace did not change: the order of the stereotypes of a box changed in 0.10.0 and in 0.11.0, and the order of two links that only differ by the node they end on changed in 0.12.0 (it used to depend on the JVM).
+A test (`DeterministicGenerationTest`) generates a workspace twice, with the manifests, the elements, the relationships and the tags declared in the reverse order and in another folder, and compares the files.
+
 === Query views
 
 .Query Views - The command line
