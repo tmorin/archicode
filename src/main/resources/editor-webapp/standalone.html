@@ -7996,6 +7996,14 @@ function renderDiagramSvg(layout, result, focalReference, options) {
 
   let compounds = '';
   let leaves = '';
+  // the boxes are one tab stop (roving tabindex, `syncNodeTabStop` moves it): the focal box, else the first one drawn, until the page says otherwise.
+  // A box that points at nothing (a ghost) is not part of it: it keeps its own stop.
+  const stopId = (() => {
+    const drawn = boxes.filter((box) => itemById.get(box.node.id) && !itemById.get(box.node.id).ghost);
+    const focalBox = drawn.find((box) => itemById.get(box.node.id).reference === focalReference && box.node.id === itemById.get(box.node.id).reference);
+    const first = drawn.slice().sort((a, b) => a.depth - b.depth).find((box) => box.compound) || drawn.slice().sort((a, b) => a.depth - b.depth)[0]; // the first in the markup: the boxes that contain others come first
+    return focalBox ? focalBox.node.id : first ? first.node.id : null;
+  })();
   for (const box of boxes.sort((a, b) => a.depth - b.depth)) {
     const item = itemById.get(box.node.id);
     if (!item) continue;
@@ -8015,7 +8023,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const action = inert ? '' : item.ghost
       ? ' data-action="fix-dangling" data-ref="' + escapeHtml(item.owner) + '"'
       : ' data-action="goto-element" data-ref="' + escapeHtml(item.reference) + '"' + layerAttribute;
-    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="0" role="' + (inert ? 'img' : 'link') + '" aria-label="' + escapeHtml(text.title + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
+    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="' + (item.ghost || item.id === stopId ? '0' : '-1') + '" role="' + (inert ? 'img' : 'link') + '" aria-label="' + escapeHtml(text.title + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
     if (box.compound) {
       // Close is offered when it changes something: the user opened this box, and nothing pinned inside it keeps it open
       // (the kernel opens what encloses a pin), nor the focal element (a box around it cannot be folded)
@@ -8466,6 +8474,28 @@ function syncLinkTabStop(canvas) {
   setLinkTabStop(links, remembered || selected || links[0]);
 }
 
+/**
+ * The boxes of a diagram are one tab stop too (roving tabindex): `tabindex="0"` on one of them, `-1` on the others, the arrow keys move between them
+ * (`handleDiagramKeydown`) and the stop follows the focus. This is the id of the box where the focus last rested, or null. A ghost box keeps its own stop.
+ */
+let diagramNodeStop = null;
+
+/** After the drawing is on screen: the box the focus last rested on if the drawing still has it, else the selected one, else the focal one, else the first. */
+function syncNodeTabStop(canvas) {
+  if (!canvas || !canvas.querySelectorAll) return;
+  const nodes = Array.from(canvas.querySelectorAll('.dg-node')).filter((el) => !el.classList.contains('dg-ghost'));
+  if (!nodes.length) { diagramNodeStop = null; return; }
+  const remembered = diagramNodeStop ? nodes.find((el) => el.getAttribute('data-id') === diagramNodeStop) : null;
+  const named = (cls) => nodes.find((el) => el.classList.contains(cls));
+  setNodeTabStop(nodes, remembered || named('dg-selected') || named('dg-focal') || nodes[0]);
+}
+
+/** `stop` is the one box of `nodes` that Tab reaches; its id is remembered. */
+function setNodeTabStop(nodes, stop) {
+  for (const el of nodes) el.setAttribute('tabindex', el === stop ? '0' : '-1');
+  diagramNodeStop = stop.getAttribute('data-id');
+}
+
 /** `stop` is the one link of `links` that Tab reaches; its key is remembered. */
 function setLinkTabStop(links, stop) {
   for (const el of links) el.setAttribute('tabindex', el === stop ? '0' : '-1');
@@ -8533,6 +8563,7 @@ function showDiagramScene(scene) {
   markMapSelection();
   markLinkSelection();
   syncLinkTabStop(canvas);
+  syncNodeTabStop(canvas);
   revealSelectedLink(canvas);
   markMapScope();
   markInspection();
@@ -8603,6 +8634,7 @@ function handleDiagramFocus(e) {
   if (node) revealDiagramNode(node);
   // the stop of the links goes where their focus is (a click, an arrow key, Tab coming back, the focus given back after a redraw)
   if (node && node.classList.contains('dg-link')) setLinkTabStop(Array.from(document.querySelectorAll('#diagram-canvas .dg-link')), node);
+  if (node && node.classList.contains('dg-node') && !node.classList.contains('dg-ghost')) setNodeTabStop(Array.from(document.querySelectorAll('#diagram-canvas .dg-node')).filter((el) => !el.classList.contains('dg-ghost')), node);
 }
 
 /**
