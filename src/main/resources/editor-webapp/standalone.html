@@ -3049,6 +3049,8 @@ function parseManifestText(text) {
   }
 }
 
+const WORKSPACE_FILE_NAME = 'workspace.yaml'; // the only workspace file the editor opens (and writes)
+
 /**
  * The manifests of one folder below the root handle (run 0039: the reading loop of `loadWorkspace` as a function of a folder, so that a
  * second plateau, the baseline, is read by the same code): the direct children of `relDir` that are YAML, as the records
@@ -3068,7 +3070,8 @@ async function readManifestFolder(rootHandle, relDir) {
   for await (const [name, entryHandle] of folderHandle.entries()) {
     if (entryHandle.kind !== 'file') continue;
     const relPath = (relDir ? relDir + '/' : '') + name;
-    if (relDir === '' && /^workspace\.(ya?ml|json|toml)$/.test(name)) continue; // the workspace is not a manifest of itself (a folder written `.`)
+    // the workspace is not a manifest of itself (a folder written `.`): the file the editor opened, like the CLI, which leaves out the workspace file it read and nothing else
+    if (relDir === '' && name === WORKSPACE_FILE_NAME) continue;
     // like the CLI (String.endsWith): `.YAML` is not a manifest. The CLI reads .toml and .json too; the editor writes YAML only
     if (/\.(toml|json)$/.test(name)) result.unread.push(relPath);
     if (!/\.(ya?ml)$/.test(name)) continue;
@@ -3116,7 +3119,7 @@ async function loadWorkspace(dirHandle) {
   let workspaceLastKnownDiskModified = null; // TDD-0010 DEC-8
   let workspaceText = ''; // the file as it is: the next Save keeps of it what the edit did not touch
   try {
-    const fileHandle = await dirHandle.getFileHandle('workspace.yaml');
+    const fileHandle = await dirHandle.getFileHandle(WORKSPACE_FILE_NAME);
     const file = await fileHandle.getFile();
     workspaceLastKnownDiskModified = file.lastModified;
     const text = await file.text();
