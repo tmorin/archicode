@@ -1,11 +1,13 @@
 package io.morin.archicode.viewpoint;
 
 import io.morin.archicode.resource.element.application.Relationship;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import lombok.*;
 
@@ -51,17 +53,35 @@ public class Link implements Comparable<Link> {
         .thenComparing(link -> link.from.getItemId())
         .thenComparing(link -> link.to.getItemId())
         .thenComparing(Link::isSynthetic)
-        .thenComparing(link -> String.join(SEPARATOR, link.qualifiers))
-        .thenComparing(link -> String.valueOf(link.tags))
-        .thenComparing(link -> link.relationships.stream().map(Link::describe).collect(Collectors.joining(SEPARATOR)));
+        .thenComparing(link -> qualifiersOf(link.qualifiers))
+        .thenComparing(link -> tagsOf(link.tags))
+        .thenComparing(link ->
+            link.relationships.stream().map(Link::describe).sorted().collect(Collectors.joining(SEPARATOR))
+        );
+
+    /** The qualifiers, in a fixed order: the order an author wrote them in does not decide the order of the links. */
+    private static String qualifiersOf(Collection<String> qualifiers) {
+        return qualifiers == null ? "" : qualifiers.stream().sorted().collect(Collectors.joining(SEPARATOR));
+    }
+
+    /** The tags, in a fixed order. */
+    private static String tagsOf(Map<String, String> tags) {
+        return tags == null
+            ? ""
+            : new TreeMap<>(tags)
+                  .entrySet()
+                  .stream()
+                  .map(entry -> entry.getKey() + "=" + entry.getValue())
+                  .collect(Collectors.joining(SEPARATOR));
+    }
 
     private static String describe(Relationship relationship) {
         return String.join(
             SEPARATOR,
             relationship.getDestination(),
             String.valueOf(relationship.getLabel()),
-            String.valueOf(relationship.getQualifiers()),
-            String.valueOf(relationship.getTags())
+            qualifiersOf(relationship.getQualifiers()),
+            tagsOf(relationship.getTags())
         );
     }
 

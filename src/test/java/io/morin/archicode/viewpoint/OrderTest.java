@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.morin.archicode.resource.element.application.Container;
+import io.morin.archicode.resource.element.application.Relationship;
 import java.util.LinkedHashSet;
 import java.util.List;
 import lombok.val;
@@ -72,5 +73,57 @@ class OrderTest {
         val tagged = Link.builder().from(a).to(b).label("calls").tags(java.util.Map.of("audited", "yes")).build();
         assertNotEquals(0, tagged.compareTo(link(a, b, "calls")));
         assertEquals(0, link(a, b, "calls", "gRPC").compareTo(link(a, b, "calls", "gRPC")));
+    }
+
+    @Test
+    void shouldNotDependOnTheOrderTheQualifiersAndTheTagsAreWrittenIn() {
+        val a = item("a", "app:a");
+        val b = item("b", "app:b");
+        assertEquals(0, link(a, b, "calls", "gRPC", "HTTPS").compareTo(link(a, b, "calls", "HTTPS", "gRPC")));
+        val ab = new java.util.LinkedHashMap<String, String>();
+        ab.put("a", "1");
+        ab.put("b", "2");
+        val ba = new java.util.LinkedHashMap<String, String>();
+        ba.put("b", "2");
+        ba.put("a", "1");
+        assertEquals(
+            0,
+            Link.builder()
+                .from(a)
+                .to(b)
+                .label("calls")
+                .tags(ab)
+                .build()
+                .compareTo(Link.builder().from(a).to(b).label("calls").tags(ba).build())
+        );
+        val one = Relationship.builder().destination("app:b").label("calls").qualifier("x").qualifier("y").build();
+        val two = Relationship.builder().destination("app:b").label("calls").qualifier("y").qualifier("x").build();
+        assertEquals(
+            0,
+            Link.builder()
+                .from(a)
+                .to(b)
+                .label("calls")
+                .relationship(one)
+                .build()
+                .compareTo(Link.builder().from(a).to(b).label("calls").relationship(two).build())
+        );
+        assertNotEquals(
+            0,
+            Link.builder()
+                .from(a)
+                .to(b)
+                .label("calls")
+                .relationship(one)
+                .build()
+                .compareTo(
+                    Link.builder()
+                        .from(a)
+                        .to(b)
+                        .label("calls")
+                        .relationship(Relationship.builder().destination("app:b").label("calls").qualifier("z").build())
+                        .build()
+                )
+        );
     }
 }
