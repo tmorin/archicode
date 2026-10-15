@@ -508,6 +508,11 @@
   .app-dialog-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.4); }
   .app-dialog { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; width: min(26rem, calc(100vw - 2rem)); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); }
   .app-dialog h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+  .app-dialog-wide { width: min(36rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow-y: auto; }
+  .move-parents { max-height: 14rem; overflow-y: auto; margin-top: 0.4rem; border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.5rem; }
+  .move-parent[hidden], .move-empty[hidden] { display: none; }
+  .move-parent small { display: block; }
+  .move-impact, .move-replaces, .move-note { margin: 0.6rem 0 0; font-size: 0.9rem; }
   .app-dialog-subject { margin: 0 0 0.75rem; color: var(--muted); }
   .app-dialog-field { display: block; margin-bottom: 0.4rem; color: var(--muted); font-size: 0.9rem; }
   .app-dialog input[type="text"] { width: 100%; box-sizing: border-box; }
@@ -1815,28 +1820,23 @@ function closeFlowLists(text, lists) {
   return lines.join(eol);
 }
 
-/**
- * `patchYamlText` for a layout it can follow: the text of `oldText` with the difference between what the emitter writes for the old value and `emitted`
- * (what it writes for `newValue`) applied; `null` when a line the emitter writes for the old value cannot be found in `oldText`.
- */
-function patchYamlLines(oldText, emitted, newValue) {
-  let oldValue;
-  try {
-    oldValue = parseYaml(oldText);
-  } catch (e) {
-    return null;
-  }
-  if (oldValue === null || typeof oldValue !== 'object') return null;
-  const eol = /\r\n/.test(oldText) ? '\r\n' : '\n';
-  const endsWithBreak = /\n$/.test(oldText);
-  const original = oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
-  if (endsWithBreak) original.pop();
-  const before = serializeYamlValue(oldValue, 0).split('\n');
-  const after = emitted.split('\n');
+/** The indentation of a YAML line, in spaces. */
+function yamlIndentOf(line) {
+  return line.length - line.replace(/^ +/, '').length;
+}
 
-  // the words of a line: no quote, no trailing comment, no space around it; its indentation is compared on its own
-  const indentOf = (line) => line.length - line.replace(/^ +/, '').length;
-  const wordsOf = (line) => stripYamlComment(line).replace(/["']/g, '').trim();
+/** The words of a line: no quote, no trailing comment, no space around it (its indentation is compared on its own). */
+function yamlWordsOf(line) {
+  return stripYamlComment(line).replace(/["']/g, '').trim();
+}
+
+/**
+ * Where each line of `before` (what the emitter writes for the old value) sits in the original lines: `{ place, spans }` (`spans`: the lines of a block scalar
+ * that follow the first one), or `null` when a line cannot be found in order, with the same indentation and the same words.
+ */
+function locateEmittedLines(original, before) {
+  const indentOf = yamlIndentOf;
+  const wordsOf = yamlWordsOf;
   // where each emitted line of the old value sits in the original text
   const place = [];
   const spans = []; // the lines of a block scalar that follow its first line
@@ -1879,6 +1879,35 @@ function patchYamlLines(oldText, emitted, newValue) {
     spans.push(span);
     cursor = found + 1 + span;
   }
+  return { place, spans };
+}
+
+/**
+ * `patchYamlText` for a layout it can follow: the text of `oldText` with the difference between what the emitter writes for the old value and `emitted`
+ * (what it writes for `newValue`) applied; `null` when a line the emitter writes for the old value cannot be found in `oldText`.
+ */
+function patchYamlLines(oldText, emitted, newValue) {
+  let oldValue;
+  try {
+    oldValue = parseYaml(oldText);
+  } catch (e) {
+    return null;
+  }
+  if (oldValue === null || typeof oldValue !== 'object') return null;
+  const eol = /\r\n/.test(oldText) ? '\r\n' : '\n';
+  const endsWithBreak = /\n$/.test(oldText);
+  const original = oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
+  if (endsWithBreak) original.pop();
+  const before = serializeYamlValue(oldValue, 0).split('\n');
+  const after = emitted.split('\n');
+
+  // the words of a line: no quote, no trailing comment, no space around it; its indentation is compared on its own
+  const indentOf = yamlIndentOf;
+  const wordsOf = yamlWordsOf;
+  // where each emitted line of the old value sits in the original text
+  const located = locateEmittedLines(original, before);
+  if (located === null) return null;
+  const { place, spans } = located;
 
   // the lines both have, in order (the common start and end first, which is nearly always most of it)
   let start = 0;
@@ -1924,6 +1953,116 @@ function patchYamlLines(oldText, emitted, newValue) {
   }
   while (next < original.length) out.push(original[next++]); // what follows the last line of the value: a trailing comment, a blank line
   return out.join(eol) + (endsWithBreak ? eol : '');
+}
+
+/** The path of `node` in the tree of elements under `root`, by identity (`['elements', 0, 'elements', 2]`), or null when it is not there. */
+function pathOfElementNode(root, node) {
+  if (root === node) return [];
+  const list = root && Array.isArray(root.elements) ? root.elements : [];
+  for (let i = 0; i < list.length; i++) {
+    const inner = pathOfElementNode(list[i], node);
+    if (inner !== null) return ['elements', i].concat(inner);
+  }
+  return null;
+}
+
+/** The element at `path` (see `pathOfElementNode`) under `root`. */
+function elementNodeAt(root, path) {
+  let current = root;
+  for (const key of path) current = current[key];
+  return current;
+}
+
+/**
+ * The lines the emitter writes for `value`, and the range `[start, end)` of those of the element at `path` under `value.content` (its list item: the `- ` line to the
+ * line before the next one at the same depth). The element is found by writing the value again with a mark in its id.
+ */
+function emittedBlockOf(value, path) {
+  const mark = 'moved-block-mark';
+  const lines = serializeYamlValue(value, 0).split('\n');
+  const copy = JSON.parse(JSON.stringify(value));
+  elementNodeAt(copy.content, path).id = mark;
+  const marked = serializeYamlValue(copy, 0).split('\n');
+  const at = marked.map((line, i) => (line.indexOf(mark) !== -1 ? i : -1)).filter((i) => i !== -1);
+  if (marked.length !== lines.length || at.length !== 1) return null;
+  let start = at[0];
+  if (!/^ *- /.test(marked[start])) {
+    const depth = yamlIndentOf(marked[start]);
+    while (start > 0 && yamlIndentOf(marked[start]) >= depth) start--;
+    if (!/^ *- /.test(marked[start])) return null;
+  }
+  const itemIndent = yamlIndentOf(marked[start]);
+  let end = start + 1;
+  while (end < marked.length && yamlIndentOf(marked[end]) > itemIndent) end++;
+  return { lines, start, end };
+}
+
+/**
+ * The text of a manifest after an element was put under another parent of the same file, with the block of the element carried over as it was written: its comments,
+ * its quotes and its blank lines, re-indented, and the comments just above it with it. `oldValue`/`newValue` are `{ header, content }` before and after the move
+ * (nothing else changed between them), `oldPath`/`newPath` where the element was and is (see `pathOfElementNode`). The other lines are the author's. `null` when the
+ * layout of the file is not one this can follow, or when re-reading the result does not give what the emitter writes for `newValue`: the caller then keeps the
+ * ordinary patch, which writes the moved lines as the emitter does.
+ */
+function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
+  try {
+    if (!oldPath || !newPath || !oldPath.length || !newPath.length) return null;
+    const eol = /\r\n/.test(oldText) ? '\r\n' : '\n';
+    const endsWithBreak = /\n$/.test(oldText);
+    const original = oldText.replace(/^﻿/, '').split(/\r\n|\r|\n/);
+    if (endsWithBreak) original.pop();
+    const before = emittedBlockOf(oldValue, oldPath);
+    const after = emittedBlockOf(newValue, newPath);
+    if (before === null || after === null) return null;
+    if (serializeYamlValue(parseYaml(oldText), 0) !== before.lines.join('\n')) return null; // the model is not what the file says: no guess
+    // the value without the element (and without its parent's `elements` if that was the last one)
+    const without = JSON.parse(JSON.stringify(oldValue));
+    const parent = elementNodeAt(without.content, oldPath.slice(0, -2));
+    parent.elements.splice(oldPath[oldPath.length - 1], 1);
+    if (parent.elements.length === 0) delete parent.elements;
+    const middle = serializeYamlValue(without, 0).split('\n');
+    const same = (a, b) => a.length === b.length && a.every((line, i) => line === b[i]);
+    // what the move takes out of the old lines, and what it puts in
+    let cutFrom = before.start;
+    if (!same(before.lines.slice(0, cutFrom).concat(before.lines.slice(before.end)), middle)) {
+      cutFrom = before.start - 1;
+      if (cutFrom < 0 || !same(before.lines.slice(0, cutFrom).concat(before.lines.slice(before.end)), middle)) return null;
+    }
+    let putAt = after.start;
+    if (!same(after.lines.slice(0, putAt).concat(after.lines.slice(after.end)), middle)) {
+      putAt = after.start - 1;
+      if (putAt < 1 || !same(after.lines.slice(0, putAt).concat(after.lines.slice(after.end)), middle)) return null;
+    }
+    const located = locateEmittedLines(original, before.lines);
+    if (located === null) return null;
+    const { place, spans } = located;
+    const first = place[before.start];
+    const last = place[before.end - 1] + spans[before.end - 1];
+    // the comments just above the element are its own; the lines before them are not
+    const floor = place[before.start - 1] + spans[before.start - 1];
+    let carryFrom = first;
+    while (carryFrom - 1 > floor && original[carryFrom - 1].trim().startsWith('#')) carryFrom--;
+    const delta = yamlIndentOf(after.lines[after.start]) - yamlIndentOf(before.lines[before.start]);
+    const carried = original.slice(carryFrom, last + 1).map((line) => {
+      if (line.trim() === '' || delta === 0) return line;
+      if (delta > 0) return ' '.repeat(delta) + line;
+      return yamlIndentOf(line) >= -delta ? line.slice(-delta) : line.replace(/^ +/, '');
+    });
+    const removeFrom = cutFrom < before.start ? place[cutFrom] : carryFrom;
+    // the new lines go after the line of the old text that comes before them in the new one
+    const previous = putAt - 1 < cutFrom ? putAt - 1 : putAt - 1 + (before.end - cutFrom);
+    const insertAfter = place[previous] + spans[previous];
+    const inserted = after.lines.slice(putAt, after.start).concat(carried);
+    const out = [];
+    for (let i = 0; i < original.length; i++) {
+      if (i < removeFrom || i > last) out.push(original[i]);
+      if (i === insertAfter) out.push.apply(out, inserted);
+    }
+    const text = out.join(eol) + (endsWithBreak ? eol : '');
+    return serializeYamlValue(parseYaml(text), 0) === after.lines.join('\n') ? text : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 /** The manifest of a file that exists, rewritten after an edit of its `header` and `content` (see patchYamlText). */
@@ -5376,6 +5515,331 @@ function rewriteInboundReferences(oldRef, newRef, layer) {
 }
 
 // =====================================================================
+// Move an element under another parent (wave 009, run 0047). The element and everything inside it follow; its reference
+// changes (the parent's reference, then its id), and every reference that pointed at it or inside it follows, by the
+// machinery of an id rename (`commitElementEdit` with `renamedTo`: `rewriteInboundReferences` and `rewriteUiReferences`).
+// The places rewritten are therefore the ones a rename rewrites: the `destination` of relationships, the `applications`
+// of technology nodes (for an application element), the `uses` of environments (for a technology element), the
+// `header.parent` of the manifests attached to the element or below it, the saved views and stories of the workspace,
+// and what the page remembers (selection, unfolded rows, the Map). Facets (JSONPath) are not references and are not read.
+//
+// How a move is written depends on how the manifest model holds the element:
+//   - it is the root of a manifest file (its own `app.*.yaml`): only `header.parent` changes (one line); the file stays;
+//   - it is nested in a manifest: its block moves to the `elements` of the new parent, which has to be in the same file;
+//     a parent declared in another file would mean cutting the block out of one file and pasting it into another, which
+//     the editor does not do (it refuses and says so; issue tmorin/archicode#43).
+// The save is the line-preserving one: a line the move does not touch is the author's, with its comments and quotes.
+// =====================================================================
+
+/** Whether `parentRecord` may hold `record`, by the rules that create an element under a parent (`childKindOptionsForLevel`; a group takes the level of its parent). */
+function moveKindFits(record, parentRecord) {
+  const options = childKindOptionsForLevel(parentRecord.level);
+  if (record.kind === 'group') return record.level === parentRecord.level && options.indexOf('group') !== -1;
+  return options.indexOf(record.kind) !== -1;
+}
+
+/** The reference of the parent an element of `located` is under now (a nested element: the reference minus its id; a manifest root: its `header.parent`), or null at the top. */
+function currentParentOf(reference, located) {
+  if (located.parentArray === null) return located.mf.header && located.mf.header.parent ? String(located.mf.header.parent) : null;
+  return reference.slice(0, reference.length - String(located.node.id).length - 1);
+}
+
+/**
+ * The elements `reference` can be moved under, as `{ parents, otherFile }`: same layer, able to hold its kind, not the element nor anything inside it, not its
+ * parent now, with no element of the same id under them, and, for an element nested in a manifest, in that same manifest (`otherFile` counts the ones that would
+ * need another file). Sorted by reference.
+ */
+function moveParentCandidates(reference, layer) {
+  const result = { parents: [], otherFile: 0 };
+  const index = AppState.index && AppState.index[layer];
+  const record = index ? index.get(reference) : null;
+  const located = record ? locateContentNode(reference, layer) : null;
+  if (!located) return result;
+  const parentNow = currentParentOf(reference, located);
+  const nested = located.parentArray !== null;
+  for (const parent of index.values()) {
+    if (parent.reference === reference || parent.reference.indexOf(reference + '.') === 0 || parent.reference === parentNow) continue;
+    if (!moveKindFits(record, parent)) continue;
+    if (index.has(parent.reference + '.' + String(record.id))) continue;
+    if (nested && parent.sourceFile !== record.sourceFile) { result.otherFile++; continue; }
+    result.parents.push(parent);
+  }
+  result.parents.sort((a, b) => a.reference.localeCompare(b.reference));
+  return result;
+}
+
+/** Whether the Move button is offered: there is a parent to go under, or a reason to tell (parents in another file). */
+function moveIsPossible(reference, layer) {
+  const candidates = moveParentCandidates(reference, layer || layerOfReference(reference));
+  return candidates.parents.length > 0 || candidates.otherFile > 0;
+}
+
+/** Whether a typed search finds a parent: every word of the search is somewhere in `haystack` (name, id, reference, kind), whatever the case. */
+function moveParentMatches(haystack, query) {
+  const words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const text = String(haystack || '').toLowerCase();
+  return words.every((word) => text.indexOf(word) !== -1);
+}
+
+/**
+ * Every place that points at `oldRef` or inside it, and would follow it: how many, in which files, how many saved views, and what could NOT be rewritten
+ * safely. A reference is rewritten as text; one written as a number or a boolean (`destination: 8080` for an element called `8080`) is read as the element but
+ * cannot be rewritten as the reference of another one, so it is listed in `unsafe` and the move is refused.
+ */
+function scanMoveReferences(oldRef, layer) {
+  const result = { count: 0, files: [], views: 0, unsafe: [] };
+  const files = new Set();
+  const inside = (text) => text === oldRef || text.indexOf(oldRef + '.') === 0;
+  const look = (value, what, file) => {
+    if (value === undefined || value === null || typeof value === 'object') return;
+    if (typeof value === 'string') { if (inside(value)) { result.count++; files.add(file); } return; }
+    if (inside(String(value))) result.unsafe.push(what + ' in ' + file + ' is written as ' + typeof value + ' ' + String(value));
+  };
+  for (const mf of AppState.manifestFiles) {
+    const mfLayer = manifestLayer(mf);
+    if (mfLayer === null) continue;
+    if (mfLayer === layer) look(mf.header.parent, 'the parent of ' + manifestRootReference(mf), mf.relPath);
+    walkContentNodes(mf, (node, ownerRef) => {
+      if (mfLayer === layer && Array.isArray(node.relationships)) {
+        for (const rel of node.relationships) if (rel && typeof rel === 'object') look(rel.destination, 'a destination of ' + ownerRef, mf.relPath);
+      }
+      if (layer === 'technology' && mfLayer === 'technology' && Array.isArray(node.uses)) for (const used of node.uses) look(used, 'a use of ' + ownerRef, mf.relPath);
+      if (layer === 'application' && mfLayer === 'technology' && Array.isArray(node.applications)) for (const application of node.applications) look(application, 'an application of ' + ownerRef, mf.relPath);
+    });
+  }
+  // the saved views and the steps of stories: rewritten on a copy to count them
+  const copy = (entry) => JSON.parse(JSON.stringify(entry));
+  for (const view of savedViews()) if (rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
+  for (const story of storiesList()) {
+    for (const step of Array.isArray(story.steps) ? story.steps : []) {
+      if (isPlainObject(step) && !step.view && rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer)) result.views++;
+    }
+  }
+  result.files = Array.from(files).sort();
+  return result;
+}
+
+/**
+ * What a move writes as `replaces`: for the element and for each element inside it, its old reference on its new one, so that the comparison reads one moved
+ * element with its children instead of removed and new (a container whose children are not told reads as moved with its children removed). Only when the
+ * workspace has plateaus and a comparison is on (the key names references of the baseline); an old reference the baseline does not have is not written.
+ * `{ offered, reason, entries: [{ from, to }], skipped: [from] }`.
+ */
+function planMoveReplaces(reference, layer, newReference) {
+  const none = (reason) => ({ offered: false, reason, entries: [], skipped: [] });
+  if (AppState.plateau === null || AppState.plateaus.length < 2) return none(null);
+  if (!AppState.baseline) return none('To write replaces, choose the plateau to compare with in Compare to: it names references of that plateau.');
+  const direction = replacesDirectionProblem();
+  if (direction) return none(direction);
+  const entries = [];
+  const skipped = [];
+  const subtree = Array.from(computeDeletedReferenceSet(reference, layer)).sort((a, b) => (a === reference ? -1 : b === reference ? 1 : a.localeCompare(b)));
+  for (const from of subtree) {
+    if (AppState.baseline.index[layer].has(from)) entries.push({ from, to: newReference + from.slice(reference.length) });
+    else skipped.push(from);
+  }
+  return { offered: entries.length > 0, reason: entries.length ? null : 'None of these elements is in “' + plateauTitle(AppState.baseline.plateau) + '”: there is nothing to replace.', entries, skipped };
+}
+
+/**
+ * Judge a move before anything is touched: `{ valid: false, error }` with the reason in words, or `{ valid: true, plan }`. Refused: an element or a parent that
+ * belongs to the baseline (only read), the element itself or something inside it as the new parent, the parent it already has, a parent that cannot hold the
+ * kind, an id the new parent already holds, a reference declared twice, a manifest that cannot be read (a reference in it could not be rewritten), a nested element
+ * whose new parent is in another file, a reference that cannot be rewritten as text, and (when asked) a `replaces` that is not a list.
+ */
+function validateMove(reference, layer, newParentReference, options) {
+  const refuse = (error) => ({ valid: false, error: error + ' Nothing was changed.' });
+  layer = layer === 'technology' || layer === 'application' ? layer : (layerOfReference(reference) || 'application');
+  const index = AppState.index[layer];
+  const drawn = AppState.plateau;
+  const base = AppState.baseline ? AppState.baseline.plateau : null;
+  const inBaseline = (ref) => !!AppState.baseline && AppState.baseline.index[layer].has(ref);
+  const readOnly = (ref) => '“' + ref + '” belongs to “' + plateauTitle(base) + '”, which is only read to compare and is never written; a move happens in “' + plateauTitle(drawn) + '”, the plateau drawn.';
+  if (!index.has(reference)) return refuse(inBaseline(reference) ? readOnly(reference) : '“' + reference + '” is not an element of the workspace.');
+  if (!index.has(newParentReference)) return refuse(inBaseline(newParentReference) ? readOnly(newParentReference) : '“' + newParentReference + '” is not an element of the workspace.');
+  if (newParentReference === reference) return refuse('An element cannot be moved into itself.');
+  if (newParentReference.indexOf(reference + '.') === 0) return refuse('“' + newParentReference + '” is inside “' + reference + '”: an element cannot be moved into what it contains.');
+  const record = index.get(reference);
+  const parentRecord = index.get(newParentReference);
+  const located = locateContentNode(reference, layer);
+  if (!located) return refuse('“' + reference + '” cannot be found in the manifests.');
+  const parentNow = currentParentOf(reference, located);
+  if (newParentReference === parentNow) return refuse('“' + reference + '” is already under “' + newParentReference + '”.');
+  if (!moveKindFits(record, parentRecord)) {
+    const holds = childKindOptionsFor(parentRecord);
+    return refuse('A ' + record.kind + ' cannot be put under “' + newParentReference + '”, ' + (holds.length ? 'which holds ' + holds.join(' and ') + ' only' : 'a ' + parentRecord.kind + ' that holds nothing') + '.');
+  }
+  const newReference = newParentReference + '.' + String(located.node.id);
+  if (index.has(newReference)) return refuse('“' + newParentReference + '” already holds an element with the id “' + String(located.node.id) + '” (“' + newReference + '”); rename one of the two first.');
+  const subtree = computeDeletedReferenceSet(reference, layer);
+  const twice = (AppState.duplicateReferences || []).filter((d) => d.layer === layer && (subtree.has(d.reference) || d.reference === newParentReference));
+  if (twice.length) return refuse('“' + twice[0].reference + '” is declared twice (' + twice[0].sources.join(', ') + '): which of the two moves is not for the editor to guess.');
+  const unreadable = AppState.manifestFiles.filter((f) => f.error);
+  if (unreadable.length) return refuse('A manifest cannot be read (' + unreadable.map((f) => f.relPath).join(', ') + '): a reference in it could not be rewritten.');
+  const parentLocated = locateContentNode(newParentReference, layer);
+  if (!parentLocated) return refuse('“' + newParentReference + '” cannot be found in the manifests.');
+  if (located.parentArray !== null && parentLocated.mf !== located.mf) {
+    return refuse('“' + reference + '” is written inside “' + located.mf.relPath + '” and “' + newParentReference + '” is declared in “' + parentLocated.mf.relPath + '”: moving it would cut its block out of one file and paste it into the other, which the editor does not do. Move it by hand, or give it a manifest of its own first.');
+  }
+  const references = scanMoveReferences(reference, layer);
+  if (references.unsafe.length) return refuse('A reference cannot be rewritten safely: ' + references.unsafe[0] + '.');
+  const replaces = planMoveReplaces(reference, layer, newReference);
+  if (options && options.writeReplaces) {
+    if (!replaces.offered) return refuse(replaces.reason || 'There is nothing to write as replaces.');
+    for (const entry of replaces.entries) {
+      const owner = locateContentNode(entry.from, layer);
+      if (!owner || (owner.node.replaces !== undefined && owner.node.replaces !== null && !Array.isArray(owner.node.replaces))) {
+        return refuse('The replaces of “' + entry.from + '” is not a list; fix it by hand.');
+      }
+    }
+  }
+  return { valid: true, plan: { layer, reference, newParentReference, newReference, parentNow, subtree, references, replaces, nested: located.parentArray !== null } };
+}
+
+/**
+ * Move `reference` under `newParentReference`. Everything is judged first (`validateMove`); a refused move changes nothing. The edit itself is
+ * `commitElementEdit` with `renamedTo` (the machinery of a rename: the references that pointed at the element and at what it holds follow, in every file), so
+ * it ends in `rebuildIndexAndRender` (the cache of the comparison is told), marks the files as modified and is given up with the other edits ("Cancel").
+ * With `options.writeReplaces`, `replaces` is written, in the same edit, on the element and on each element inside it (`planMoveReplaces`), through `replacesWith`.
+ * Returns `{ ok: true, reference, replaces }` or `{ ok: false, message }`.
+ */
+function commitMoveElement(reference, layer, newParentReference, options) {
+  const check = validateMove(reference, layer, newParentReference, options);
+  if (!check.valid) return { ok: false, message: check.error };
+  const plan = check.plan;
+  const withReplaces = !!(options && options.writeReplaces);
+  let written = 0;
+  try {
+    commitElementEdit(reference, (node, parentArray, indexInParent) => {
+      // the nodes that get a replaces are found now, while the old references still lead to them
+      const owners = withReplaces ? plan.replaces.entries.map((entry) => ({ entry, node: locateContentNode(entry.from, plan.layer).node })) : [];
+      const located = locateContentNode(reference, plan.layer);
+      if (parentArray !== null) {
+        const mf = located.mf;
+        const oldValue = JSON.parse(JSON.stringify({ header: mf.header, content: mf.content }));
+        const oldPath = pathOfElementNode(mf.content, node);
+        const oldText = mf.rawText;
+        const oldParent = locateContentNode(plan.parentNow, plan.layer).node;
+        const target = locateContentNode(plan.newParentReference, plan.layer).node;
+        parentArray.splice(indexInParent, 1);
+        if (parentArray.length === 0) delete oldParent.elements;
+        if (!Array.isArray(target.elements)) target.elements = [];
+        target.elements.push(node);
+        // the block of the element goes as it was written, with its comments and quotes; if the layout of the file does not allow it, the ordinary save writes it
+        const movedText = moveBlockInText(oldText, oldValue, oldPath, { header: mf.header, content: mf.content }, pathOfElementNode(mf.content, node));
+        if (movedText !== null) mf.rawText = movedText;
+      } else {
+        located.mf.header.parent = plan.newParentReference;
+      }
+      for (const owner of owners) {
+        owner.node.replaces = replacesWith(owner.node.replaces, owner.entry.from);
+        AppState.dirtyReferences.add(nodeKey(owner.entry.to, plan.layer));
+        written++;
+      }
+      return { renamedTo: { from: reference, to: plan.newReference } };
+    }, plan.layer);
+  } catch (e) {
+    return { ok: false, message: e && e.message ? e.message : String(e) };
+  }
+  expandAncestorsOf(plan.newReference, plan.layer);
+  render();
+  return { ok: true, reference: plan.newReference, replaces: written };
+}
+
+/** The Move dialog (an `appDialog` of kind 'move'): a search over the parents the element can go under, what the move rewrites, and what it offers to write as `replaces`. */
+function renderMoveDialogBodyHtml(dialog) {
+  const record = AppState.index[dialog.layer].get(dialog.reference);
+  if (!record) return { title: 'Move', body: '<p>This element does not exist any more.</p>', actions: '' };
+  const { parents, otherFile } = moveParentCandidates(dialog.reference, dialog.layer);
+  const inside = computeDeletedReferenceSet(dialog.reference, dialog.layer).size - 1;
+  const references = scanMoveReferences(dialog.reference, dialog.layer);
+  const label = record.name || record.id;
+  let body = '<p class="app-dialog-subject"><code>' + escapeHtml(dialog.reference) + '</code> · ' + escapeHtml(record.kind) +
+    (inside ? ' · the ' + inside + ' element' + (inside === 1 ? '' : 's') + ' inside it follow' + (inside === 1 ? 's' : '') : '') + '</p>';
+  body += '<label class="app-dialog-field" for="move-filter">New parent</label>' +
+    '<input type="text" id="move-filter" data-dialog-filter data-dialog-autofocus autocomplete="off" placeholder="Search by name, id or reference" aria-label="Search the new parent" value="' + escapeHtml(dialog.query || '') + '">';
+  body += '<div class="move-parents" role="radiogroup" aria-label="New parent">' + parents.map((parent) => {
+    const search = [parent.name || '', parent.id, parent.reference, parent.kind].join(' ');
+    return '<label class="app-dialog-choice move-parent" data-search="' + escapeHtml(search) + '"' + (moveParentMatches(search, dialog.query) ? '' : ' hidden') + '><input type="radio" name="move-parent" value="' + escapeHtml(parent.reference) + '"' + (dialog.chosen === parent.reference ? ' checked' : '') + '>' +
+      '<span>' + escapeHtml(parent.name || parent.id) + ' <small><code>' + escapeHtml(parent.reference) + '</code> · ' + escapeHtml(parent.kind) + '</small></span></label>';
+  }).join('') + '</div>';
+  body += '<p class="move-empty muted"' + (parents.length === 0 || parents.some((parent) => moveParentMatches([parent.name || '', parent.id, parent.reference, parent.kind].join(' '), dialog.query)) ? ' hidden' : '') + '>No parent matches.</p>';
+  if (otherFile > 0) {
+    body += '<p class="muted move-note">' + otherFile + ' more parent' + (otherFile === 1 ? ' is' : 's are') + ' not listed: “' + escapeHtml(dialog.reference) + '” is written inside “' + escapeHtml(record.sourceFile) + '”, and the editor does not cut a block out of one file into another.</p>';
+  }
+  body += '<p class="move-impact">Its reference changes (the parent’s reference, then <code>' + escapeHtml(String(record.id)) + '</code>)' +
+    (references.count ? ', and ' + references.count + ' reference' + (references.count === 1 ? '' : 's') + ' to it or inside it ' + (references.count === 1 ? 'is' : 'are') + ' rewritten in ' + references.files.length + ' file' + (references.files.length === 1 ? '' : 's') : '; no other file points at it') +
+    (references.views ? ', and ' + references.views + ' saved view' + (references.views === 1 ? '' : 's') + ' of the workspace follow' + (references.views === 1 ? 's' : '') : '') + '.</p>';
+  const preview = planMoveReplaces(dialog.reference, dialog.layer, dialog.reference); // only to know what is offered: the target does not change the entries' count
+  let actions = '<button type="button" data-action="dialog-cancel">Cancel</button>';
+  if (preview.offered) {
+    const baseTitle = plateauTitle(AppState.baseline.plateau);
+    const written = preview.entries.length;
+    body += '<p class="move-replaces">“Move and write replaces” also writes <code>replaces</code> on ' + written + ' element' + (written === 1 ? '' : 's') + (inside ? ' (this one and the ones inside it)' : '') +
+      ', each with its old reference, so that the comparison with “' + escapeHtml(baseTitle) + '” reads one moved element with what it holds, not removed and new.' +
+      (preview.skipped.length ? ' ' + preview.skipped.length + ' element' + (preview.skipped.length === 1 ? ' is' : 's are') + ' not in “' + escapeHtml(baseTitle) + '” and get' + (preview.skipped.length === 1 ? 's' : '') + ' none.' : '') + '</p>';
+    actions += '<button type="button" data-action="move-confirm" data-replaces="0">Move only</button>' +
+      '<button type="button" class="btn-primary" data-action="move-confirm" data-replaces="1">Move and write replaces</button>';
+  } else {
+    if (preview.reason) body += '<p class="move-replaces muted">' + escapeHtml(preview.reason) + '</p>';
+    actions += '<button type="button" class="btn-primary" data-action="move-confirm" data-replaces="0">Move</button>';
+  }
+  return { title: 'Move “' + label + '”', body, actions };
+}
+
+/** Narrows the parents of the Move dialog to the ones that match what is typed (in place: the dialog is not redrawn, the focus stays in the field). */
+function applyMoveFilter(query) {
+  if (appDialog && appDialog.kind === 'move') appDialog.query = query; // kept when the dialog is drawn again (a refusal)
+  const options = Array.from(document.querySelectorAll('.move-parent'));
+  let shown = 0;
+  for (const option of options) {
+    const match = moveParentMatches(option.getAttribute('data-search'), query);
+    option.hidden = !match;
+    if (match) shown++;
+    else { const radio = option.querySelector('input'); if (radio) radio.checked = false; }
+  }
+  const empty = document.querySelector('.move-empty');
+  if (empty) empty.hidden = shown > 0 || options.length === 0;
+}
+
+/** "Move" in the element's panel: applies what was typed in the form, then opens the dialog for the element selected. */
+function openMoveDialog() {
+  if (!flushPendingDraft()) return;
+  const sel = AppState.selection;
+  if (!sel || sel.kind !== 'element') return;
+  const layer = layerOfReference(sel.key, sel.layer);
+  if (!layer) return;
+  openAppDialog({ kind: 'move', reference: sel.key, layer });
+}
+
+/**
+ * The two buttons of the Move dialog: does the move the dialog asked for, with or without `replaces`. The parent is the one chosen in the dialog unless `values.parent`
+ * says it. A refusal is told in the dialog, which stays open with what was chosen and typed; nothing is changed. Returns the result of the move, or null.
+ */
+function submitMoveDialog(writeReplaces, values) {
+  const dialog = appDialog;
+  if (!dialog || dialog.kind !== 'move') return null;
+  const chosen = values && values.parent !== undefined ? values.parent : ((document.querySelector('input[name="move-parent"]:checked') || {}).value || '');
+  const fail = (message) => {
+    dialog.error = message;
+    dialog.chosen = chosen || null;
+    render();
+    return null;
+  };
+  if (!chosen) return fail('Choose the new parent.');
+  const check = validateMove(dialog.reference, dialog.layer, chosen, { writeReplaces });
+  if (!check.valid) return fail(check.error);
+  appDialog = null;
+  pendingFocusSelector = dialog.returnFocus;
+  const result = commitMoveElement(dialog.reference, dialog.layer, chosen, { writeReplaces });
+  if (!result.ok) {
+    saveStatus = { state: 'error', failedFile: dialog.reference, message: result.message };
+    render();
+  }
+  return result;
+}
+
+// =====================================================================
 // Structured-form validation rules (TDD-0009 DEC-9, resolves FR-20) —
 // one small, independently-callable function per rule. Every function
 // here is pure (reads AppState only where a rule needs it, e.g. the id-
@@ -7037,6 +7501,10 @@ function handleAppInput(e) {
     setThemeChoice(e.target.value);
     return;
   }
+  if (e.target.matches && e.target.matches('[data-dialog-filter]')) { // the search of the Move dialog
+    applyMoveFilter(e.target.value);
+    return;
+  }
   if (e.target.tagName === 'INPUT' && e.target.type === 'text' && e.target.closest && e.target.closest('[data-view-field], [data-view-list]')) lightSaveForTypedViewText();
   if (!draftTyped && e.target.closest && e.target.closest('.element-edition-form, .settings-view, .file-view')) {
     draftTyped = true;
@@ -7249,6 +7717,9 @@ function renderElementEditionFormHtml(reference) {
     // TDD-0010 DEC-4: Delete is always present — even a leaf can be the
     // destination of a relationship elsewhere.
     '<button type="button" class="btn-danger" data-action="request-delete-element" data-ref="' + refAttr + '">Delete</button>' +
+    (moveIsPossible(reference, record.layer)
+      ? '<button type="button" data-action="open-move-dialog" data-ref="' + refAttr + '" title="Put this element, and everything inside it, under another parent. The references to it follow.">Move</button>'
+      : '') +
     (childKindOptionsFor(record).length > 0
       ? '<button type="button" data-action="open-create-child-form" data-ref="' + refAttr + '">Add child</button>'
       : '') +
@@ -7952,10 +8423,8 @@ function acceptCandidate(candidate) {
   if (!state || !state.records) return refuse('Nothing is compared: choose a plateau in Compare to first.');
   const layer = candidate.layer || 'application';
   const drawn = AppState.plateau, base = AppState.baseline.plateau;
-  const positions = AppState.plateaus.map((plateau) => plateau.id);
-  if (positions.indexOf(base.id) > positions.indexOf(drawn.id)) {
-    return refuse('“' + plateauTitle(drawn) + '” comes before “' + plateauTitle(base) + '” in the plateaus of this workspace. replaces is written on the element of the more recent plateau: draw “' + plateauTitle(base) + '” and compare it with “' + plateauTitle(drawn) + '”.');
-  }
+  const direction = replacesDirectionProblem();
+  if (direction) return refuse(direction);
   if (!AppState.index[layer].has(candidate.to)) {
     return refuse(AppState.baseline.index[layer].has(candidate.to)
       ? '“' + candidate.to + '” belongs to “' + plateauTitle(base) + '”, which is only read to compare and is never written. replaces goes on an element of “' + plateauTitle(drawn) + '”, the plateau drawn.'
@@ -7977,6 +8446,17 @@ function acceptCandidate(candidate) {
     return { ok: false, message: candidateMessage };
   }
   return { ok: true };
+}
+
+/** Why `replaces` cannot be written for the comparison on screen (the baseline comes after the plateau drawn), or null. The key goes on the more recent plateau. */
+function replacesDirectionProblem() {
+  const drawn = AppState.plateau, base = AppState.baseline ? AppState.baseline.plateau : null;
+  if (!drawn || !base) return null;
+  const positions = AppState.plateaus.map((plateau) => plateau.id);
+  if (positions.indexOf(base.id) > positions.indexOf(drawn.id)) {
+    return '“' + plateauTitle(drawn) + '” comes before “' + plateauTitle(base) + '” in the plateaus of this workspace. replaces is written on the element of the more recent plateau: draw “' + plateauTitle(base) + '” and compare it with “' + plateauTitle(drawn) + '”.';
+  }
+  return null;
 }
 
 /** The list `replaces` becomes when `reference` is added to it: appended, and not twice. */
@@ -12065,7 +12545,13 @@ function renderAppDialogHtml() {
   let title = appDialog.title;
   let body;
   let confirmLabel = appDialog.confirmLabel;
-  if (appDialog.kind === 'story-picker') {
+  let actions = null;
+  if (appDialog.kind === 'move') {
+    const move = renderMoveDialogBodyHtml(appDialog);
+    title = move.title;
+    body = move.body;
+    actions = move.actions;
+  } else if (appDialog.kind === 'story-picker') {
     const stories = storiesSorted();
     const preferred = (activeStory && stories.find((story) => story.id === activeStory.id)) || stories.find((story) => story.id === selectedStoryId) || stories[0] || null;
     const definition = currentViewDefinition();
@@ -12085,11 +12571,12 @@ function renderAppDialogHtml() {
     body = '<label class="app-dialog-field" for="app-dialog-text">' + escapeHtml(appDialog.label) + '</label>' +
       '<input type="text" id="app-dialog-text" data-dialog-text data-dialog-autofocus value="' + escapeHtml(appDialog.value || '') + '">';
   }
-  return '<div class="app-dialog-backdrop"><div class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
+  return '<div class="app-dialog-backdrop"><div class="app-dialog' + (appDialog.kind === 'move' ? ' app-dialog-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
     '<h2 id="app-dialog-title">' + escapeHtml(title) + '</h2>' + body +
-    '<div class="app-dialog-error" id="app-dialog-error" role="alert"></div>' +
-    '<div class="app-dialog-actions"><button type="button" data-action="dialog-cancel">Cancel</button>' +
-    '<button type="button" class="btn-primary" data-action="dialog-submit">' + escapeHtml(confirmLabel || 'OK') + '</button></div>' +
+    '<div class="app-dialog-error" id="app-dialog-error" role="alert">' + (appDialog.error ? escapeHtml(appDialog.error) : '') + '</div>' +
+    '<div class="app-dialog-actions">' + (actions !== null ? actions :
+      '<button type="button" data-action="dialog-cancel">Cancel</button>' +
+      '<button type="button" class="btn-primary" data-action="dialog-submit">' + escapeHtml(confirmLabel || 'OK') + '</button>') + '</div>' +
   '</div></div>';
 }
 
@@ -12103,7 +12590,7 @@ function readAppDialogValues() {
 /** Does what the dialog asked for, with the values typed in it (read from the page unless they are given). */
 function submitAppDialog(values) {
   const dialog = appDialog;
-  if (!dialog) return;
+  if (!dialog || dialog.kind === 'move') return;
   const v = values || readAppDialogValues();
   const fail = (message) => {
     const line = document.getElementById('app-dialog-error');
@@ -12134,7 +12621,7 @@ function handleAppDialogKeydown(e) {
   }
   if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('input[type="text"]')) {
     e.preventDefault();
-    submitAppDialog();
+    if (appDialog.kind !== 'move') submitAppDialog(); // the search of the Move dialog does not move anything by itself
     return;
   }
   if (e.key === 'Tab') { // the page behind the dialog is not reachable: the focus goes round
@@ -13712,6 +14199,12 @@ function handleAppClick(e) {
       // confirmation overlay is discarded.
       pendingDeleteConfirmation = null;
       render();
+      break;
+    case 'open-move-dialog':
+      openMoveDialog();
+      break;
+    case 'move-confirm':
+      submitMoveDialog(target.getAttribute('data-replaces') === '1');
       break;
     case 'cancel-changes':
       cancelChanges();

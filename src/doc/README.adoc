@@ -814,7 +814,7 @@ warning: the element `customer` carries `new` (`rendering-stereotypes` tag), but
 [[plateau-replaces]]
 === Saying what an element replaces
 
-A comparison finds an element by its reference. An element that moves under another parent, or is renamed, has another reference: the comparison reads it as one removed element and one new one, with nothing that links them. ArchiCode never guesses that two elements are the same thing; _you_ say it, on the element of the more recent plateau, with the key `replaces`: a list of the full references, in the baseline, of what the element replaces. It is the same hint as the `moved` block of Terraform.
+A comparison finds an element by its reference. An element that moves under another parent, or is renamed, has another reference: the comparison reads it as one removed element and one new one, with nothing that links them. ArchiCode never guesses that two elements are the same thing; _you_ say it, on the element of the more recent plateau, with the key `replaces`: a list of the full references, in the baseline, of what the element replaces. It is the same hint as the `moved` block of Terraform. The editor can write it for you when it moves an element (see <<editor-move>>).
 
 [source,yaml]
 .The stock system of the invented warehouse, in the plateau `after` (`src/test/resources/plateau-comparison/replaces` of the repository)
@@ -1029,7 +1029,7 @@ A reference declared more than once is reported, not chosen: a red note above th
 
 The *Elements* perspective is the tree of the workspace on the left, and the selected element in the center. The center has four tabs:
 
-- *Details*: the fields, qualifiers, tags and relationships of the element, with *Edit* to change them, and *Delete* (the relationships of other elements that pointed at it are listed first, so that none is left dangling by surprise).
+- *Details*: the fields, qualifiers, tags and relationships of the element, with *Edit* to change them (change its id and every reference to it follows; *Move*, in the edit form, puts it under another parent, see <<editor-move>>), and *Delete* (the relationships of other elements that pointed at it are listed first, so that none is left dangling by surprise).
 - *Overview*, *Detailed* and *Deep*: the viewpoints of the same names, drawn live from the model, as the command line generates them. *Detailed* is for an element that can contain others. Clicking a box in a diagram selects that element.
 
 The badges and colours of styled stereotypes, on the boxes and in the tree, are explained in <<stereotypes-and-styles>>.
@@ -1213,6 +1213,36 @@ Only the plateau that is drawn is written, and the plateau compared with never i
 *By hand.* The edit form of an element has a *Replaces* section as soon as the workspace has several plateaus: the list, each reference with a button to remove it, and a field to add one (it completes with the references of the plateau compared with). A reference the plateau compared with does not have is accepted and flagged ("not in “Base”", with the name of that plateau), because you may have written it for another baseline; one that the plateau drawn still has is flagged "still in this plateau: ignored". An element cannot replace itself, and a reference is listed once. The details of an element that replaces something list it too.
 
 *Warnings.* What the comparison ignored in the `replaces` it was given (see <<plateau-replaces-warnings>>) is a short list in the *Changes* panel, under the candidates, with the sentences of the command line; the editor does not write them to the console.
+
+*Moving an element.* An element that you put under another parent in the editor has another reference: *Move and write replaces* writes the `replaces` for you, for the element and for each element inside it (see <<editor-move>>).
+
+[[editor-move]]
+==== Moving an element under another parent
+
+In the edit form of an element, *Move* (after *Delete*, before *Add child*) puts the element, and everything inside it, under another parent, without breaking a reference. It is offered for the elements that can have a parent: a system, a container, a component, a group, a node. A solution, a person or an environment is never put under anything, and has no *Move*; a system can go under a solution, and has no *Move* when the workspace has none. It works on the plateau that is drawn, and never on the one it is compared with, which is read-only.
+
+The dialog has a search field (it keeps the parents that have every word you type in their name, id, reference or kind) and the list of the *valid parents*, in the layer of the element: an element that may hold the kind of this one (the rules that create an element under a parent: a system holds containers and groups, a container holds components and groups, an environment or a node holds nodes), but not the element itself, nor anything inside it, nor the parent it already has, nor a parent that already holds an element with the same id. It says how many elements follow, how many references will be rewritten in how many files, and how many saved views follow.
+
+*What follows.* The reference of the element becomes the reference of the new parent followed by its id, and so does the reference of each element inside it. Every reference to the element or to something inside it is rewritten, in every file of the workspace, by the machinery of an id change:
+
+* the `destination` of the relationships of any element of the same layer;
+* the `applications` of the nodes of the technology layer (for an application element) and the `uses` of the environments (for a technology element);
+* the `header.parent` of the manifests attached to the element or below it;
+* the saved views and the steps of stories of the workspace (the `element` of a view, the pinned, hidden and open elements of a Map view);
+* what the page remembers: the selection, the unfolded rows, the modified marks, the pins of the Map.
+
+The facets (their JSONPath is not a reference) are not read, as when an id changes. Nothing else of a file is touched.
+
+*What is written.* How a move is written depends on how the manifest holds the element, and the lines that are not part of it stay as the author wrote them (comments, blank lines, quotes), as for any other edit:
+
+* An element that has a manifest of its own (`app.shop.till.yaml`, with its `header.parent`) stays in its file: only the `header.parent` line changes, and the manifests attached below it follow by their own `header.parent`. The new parent can be in any file.
+* An element that is nested in the manifest of another one (in its `content.elements`) is moved as a block inside that manifest: its lines, with the comments just above it and those at the end of its lines, go to the `elements` of the new parent, one level deeper or shallower, and the `elements` it leaves is dropped when it was the last element. The new parent has to be in the same file. A parent in another file would mean cutting the block out of one file and pasting it into another, which the editor does not do: the dialog says how many parents it leaves out for that reason, and the move is refused if you ask for one. Give the element a manifest of its own first, or move it by hand. The comments on lines of their own inside the block go with it. A comment after the last line of the block, before the next element, is the next element's and stays where it was.
+
+*Replaces.* When the workspace has plateaus and a comparison is on (see <<editor-compare>>), the dialog has two buttons: *Move and write replaces* and *Move only*. The first also writes `replaces` (see <<plateau-replaces>>) in the same edit, on the moved element and on each element inside it, each naming its old reference: the comparison then reads one moved element with what it holds, not a removed element and a new one for each. Without the key on the children, a container that moved would be `moved` and its children `removed` and `new`. An element that the plateau compared with does not have (it was added in this plateau) gets none, and the dialog says how many. Without a comparison, or with a plateau compared with that comes after the one drawn, the dialog offers *Move* alone and says why `replaces` is not offered (see <<editor-replaces>>). In a workspace without plateaus there is no mention of it. The key is written to the manifests like the rest of the move; it is a normal edit, so the comparison is made again at once.
+
+*A move that is refused* changes nothing at all, and the reason is told in the dialog, which stays open with what you chose: the new parent is the element or something inside it, it is its parent already, it cannot hold that kind, it already holds an element with that id, the element or the parent is declared twice or belongs to the plateau compared with, a manifest cannot be read (a reference in it could not be rewritten), a reference is written as a number (`destination: 8080`) and cannot be rewritten as the reference of another element, a nested element is asked to go to another file, or (with *Move and write replaces*) an element has a `replaces` that is not a list.
+
+Like every edit, a move is not written until *Save all changes*, and *Cancel* gives it up with the others (the folder is read again). The files it changed are marked as modified, and so is the moved element.
 
 [[editor-theme]]
 === Theme
