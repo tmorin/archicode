@@ -46,8 +46,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 const LAYERS: [&str; 2] = ["application", "technology"];
 const RENDERING_PREFIX: &str = "rendering-";
 /// What `OutElement` writes itself: an extra field of that name never reaches the union.
-const RESERVED: [&str; 14] = [
-    "layer", "reference", "parent", "parent_reference", "kind", "name", "description", "qualifiers", "tags", "applications", "uses", "relationships", "change", "natures",
+const RESERVED: [&str; 15] = [
+    "layer", "reference", "parent", "parent_reference", "kind", "name", "description", "qualifiers", "tags", "applications", "uses", "relationships", "change", "natures", "wording_only",
 ];
 
 const NEW: &str = "new";
@@ -837,6 +837,27 @@ mod tests {
         assert_eq!(e["file"], "b.yaml");
         assert!(e.get("natures").is_none(), "an extra field cannot pose as the answer");
         assert!(compare_json(&json!({ "base": plateau(vec![el("a", json!({ "extra": { "z": 1, "a": 2 } }))], vec![]), "target": plateau(vec![], vec![]) }).to_string()).contains(r#""extra":{"a":2,"z":1}"#), "keys of a free-form object are sorted");
+    }
+
+    #[test]
+    fn a_free_form_field_cannot_pose_as_a_field_of_the_answer() {
+        // every field `OutElement` writes is reserved, `wording_only` included: it would be a second key of the same name
+        let base = plateau(vec![el("a", json!({ "description": "one", "wording_only": "base" }))], vec![]);
+        let target = plateau(vec![el("a", json!({ "description": "two", "wording_only": "target" }))], vec![]);
+        let raw = compare_json(&json!({ "base": base, "target": target }).to_string());
+        let text = raw.to_string();
+        let out: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(out["elements"].to_string().matches("\"wording_only\":").count(), 1, "one key of that name in the element: {}", text);
+        assert_eq!(element(&out, "a")["wording_only"], json!(true));
+        let unchanged = one(json!({ "wording_only": "x", "natures": ["fake"] }), json!({ "wording_only": "y" }));
+        assert!(element(&unchanged, "a").get("wording_only").is_none(), "a field of the answer that is not set is not written, and not borrowed");
+        // and the fields of the answer, one by one, are not let through from the input
+        for name in ["layer", "parent_reference", "change", "natures", "wording_only"] {
+            assert!(RESERVED.contains(&name), "{} is reserved", name);
+            let out = one(json!({}), json!({ name: "free" }));
+            let e = element(&out, "a");
+            assert_ne!(e.get(name), Some(&json!("free")), "{} is the answer's own", name);
+        }
     }
 
     #[test]
