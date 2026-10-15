@@ -697,4 +697,64 @@ class PlateauComparisonTest {
         // each folder has what its facet leaves, in the template of the facets
         assertTrue(files("views-to-be-vs-as-is-no-orders").contains("plantuml/application/shop_legacy-overview.puml"));
     }
+
+    // ---- a label that is written with spaces around it, or left empty, is the same label for the kernel
+
+    @SneakyThrows
+    private void replaceIn(String file, String from, String to) {
+        val path = dir.resolve(file);
+        val text = Files.readString(path);
+        assertTrue(text.contains(from), file + " has no " + from);
+        Files.writeString(path, text.replace(from, to));
+    }
+
+    @Test
+    @SneakyThrows
+    void aLabelWithSpacesAroundItOrLeftEmptyIsTheLabelTheKernelCompares() {
+        val workspace = workspace();
+        // the target says "calls " where the baseline says "calls" (nothing changed), says "orders on " for a new link, and
+        // leaves the label of another new link empty (a label that is empty is no label); the baseline says "delegates to " for a link the target removed
+        replaceIn(
+            "plateaus/20_to-be/shop.yaml",
+            "id: \"web\"\n      name: \"Web site\"\n      qualifiers:\n        - \"React\"\n        - \"SPA\"\n      relationships:\n        - destination: \"shop.api\"\n          label: \"calls\"",
+            "id: \"web\"\n      name: \"Web site\"\n      qualifiers:\n        - \"React\"\n        - \"SPA\"\n      relationships:\n        - destination: \"shop.api\"\n          label: \"calls \""
+        );
+        replaceIn(
+            "plateaus/20_to-be/shop.yaml",
+            "id: \"mobile\"\n      name: \"Mobile app\"\n      relationships:\n        - destination: \"shop.api\"\n          label: \"calls\"",
+            "id: \"mobile\"\n      name: \"Mobile app\"\n      relationships:\n        - destination: \"shop.api\"\n          label: \"\""
+        );
+        replaceIn(
+            "plateaus/20_to-be/customer.yaml",
+            "- destination: \"shop.mobile\"\n      label: \"orders on\"",
+            "- destination: \"shop.mobile\"\n      label: \"orders on \""
+        );
+        replaceIn("plateaus/10_as-is/shop.yaml", "label: \"delegates to\"", "label: \"delegates to \"");
+        replaceIn(
+            "workspace.yaml",
+            "    customs:\n",
+            "    customs:\n      - name: \"without-new\"\n        actions:\n          - operator: \"REMOVE\"\n            json-path: \"$..relationships[?(@.change == 'new')]\"\n"
+        );
+        val result = generate(workspace, "--plateau", "to-be", "--baseline", "as-is");
+        assertEquals(0, result.exit, result.err);
+        // the same comparison as without the spaces
+        val diff = diff(workspace, "--plateau", "to-be", "--baseline", "as-is", "-f", "json");
+        assertEquals(0, diff.exit, diff.err);
+        assertEquals(diff.out, read("views-to-be-vs-as-is/gap.json"));
+        val counts = new ObjectMapper().readTree(diff.out).at("/counts/relationships");
+        assertEquals(2, counts.get("new").asInt());
+        assertEquals(1, counts.get("changed").asInt());
+        assertEquals(2, counts.get("removed").asInt());
+        val puml = read("views-to-be-vs-as-is/plantuml/application/shop-detailed.puml");
+        assertTrue(puml.contains("customer -[thickness=3,#009E73]-> shop.mobile : **+** orders on"), puml);
+        assertTrue(puml.contains("shop.api -[dashed,#7F7F7F]-> shop.legacy : **<U+2212>** delegates to"), puml);
+        assertFalse(puml.contains("shop.web -[thickness=3"), "the label with spaces is not a new link: " + puml);
+        assertTrue(puml.contains("shop.mobile -[thickness=3,#009E73]-> shop.api : **+**"), puml);
+        // a facet that selects on `change` sees the new link whose label has a space, and the removed one is there once
+        val without = read("views-to-be-vs-as-is-without-new/plantuml/application/shop-detailed.puml");
+        assertFalse(without.contains("shop.mobile : "), without);
+        assertFalse(without.contains("> shop.mobile"), without);
+        assertTrue(without.contains("customer --> shop.web : orders on"), without);
+        assertEquals(1, without.split("-> shop.legacy", -1).length - 1, without);
+    }
 }

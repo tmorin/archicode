@@ -113,15 +113,15 @@ public class KernelViewpointFactory implements ViewpointFactory {
         View.Layer layer,
         ObjectMapper objectMapper
     ) {
-        val union = comparison.unionElements(layer);
         if (!workspace.isFaceted()) {
-            return union;
+            return comparison.unionElements(layer);
         }
         val index = layer == View.Layer.APPLICATION ? workspace.appIndex : workspace.techIndex;
         val known = FACETED_UNIONS.get(index);
         if (known != null && known.comparison == comparison) {
             return known.elements;
         }
+        val union = comparison.unionElements(layer);
         val kept = objectMapper.createArrayNode();
         for (val node : union) {
             val model = index.searchElement(node.path("reference").asText());
@@ -370,7 +370,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
     ) {
         return (
             candidate.getDestination().equals(destination) &&
-            Objects.equals(candidate.getLabel(), label) &&
+            RelationshipLabel.same(candidate.getLabel(), label) &&
             new HashSet<>(Optional.ofNullable(candidate.getQualifiers()).orElseGet(Set::of)).equals(qualifiers) &&
             new HashMap<>(Optional.ofNullable(candidate.getTags()).orElseGet(Map::of)).equals(tags)
         );
@@ -404,7 +404,16 @@ public class KernelViewpointFactory implements ViewpointFactory {
         rel.path("tags")
             .fields()
             .forEachRemaining(tag -> tags.put(tag.getKey(), tag.getValue().asText()));
-        for (val candidate : Optional.ofNullable(owner.getRelationships()).orElseGet(Set::of)) {
+        val candidates = Optional.ofNullable(owner.getRelationships()).orElseGet(Set::of);
+        // the label as written first, so that a workspace without a comparison is read as it always was
+        for (val candidate : candidates) {
+            if (
+                Objects.equals(candidate.getLabel(), label) && matches(candidate, destination, label, qualifiers, tags)
+            ) {
+                return candidate;
+            }
+        }
+        for (val candidate : candidates) {
             if (matches(candidate, destination, label, qualifiers, tags)) {
                 return candidate;
             }
