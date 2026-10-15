@@ -15,6 +15,7 @@ import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.PlateauComparer;
 import io.morin.archicode.workspace.ElementIndex;
 import io.morin.archicode.workspace.Plateaus;
+import io.morin.archicode.workspace.StateTags;
 import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
@@ -52,6 +53,9 @@ public class GenerateViewsCommand implements Runnable {
 
     @Inject
     MapperFactory mapperFactory;
+
+    @CommandLine.Spec
+    CommandLine.Model.CommandSpec spec;
 
     @CommandLine.Mixin
     PlateauOption plateauOption = new PlateauOption();
@@ -143,6 +147,9 @@ public class GenerateViewsCommand implements Runnable {
         renderWorkspaces(workspace, null);
 
         if (baseline == null) {
+            // a state written by hand on a plateau that is not compared: said on the error output, which the log level
+            // `ERROR` of the application does not hide
+            StateTagReport.print(spec, StateTags.warnings(workspace, null));
             return;
         }
         val base = workspaceFactory.create(workspacePath, viewsDirPath, baseline.getId());
@@ -151,6 +158,7 @@ public class GenerateViewsCommand implements Runnable {
             workspaceFactory.createUnion(workspacePath, viewsDirPath, plateau.getId(), base, comparison),
             workspace.getSettings().getViews().getPath() + "-vs-" + baseline.getId()
         );
+        StateTagReport.print(spec, StateTags.warnings(union, comparison));
         writeGap(union, comparison);
         renderWorkspaces(union, comparison);
     }

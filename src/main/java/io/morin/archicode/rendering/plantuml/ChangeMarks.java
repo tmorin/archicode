@@ -6,9 +6,12 @@ import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeSet;
 import lombok.NonNull;
 import lombok.experimental.UtilityClass;
@@ -34,6 +37,11 @@ import lombok.val;
  * <p>The look of a box is the style of its stereotype, the stereotype that the kernel put last in the stereotypes of the
  * item. The styles below are the default: the author's {@code styles.by-tags} (or {@code by-qualifiers}) entry of the
  * same name wins, property by property.
+ *
+ * <p>The default look belongs to the box that has the state <em>computed</em>, and to no other (the rule of the editor,
+ * wave 009 D-5). A stereotype that is the name of a state but is not the state of its box (a tag written by hand on an
+ * element that did not change, or that changed otherwise) is written as {@code written-<name>} in the box, and that
+ * stereotype has the author's own style of the name and nothing of the default.
  */
 @UtilityClass
 class ChangeMarks {
@@ -44,6 +52,16 @@ class ChangeMarks {
 
     /** What the kernel adds to an element that did not change and has something that did below it. */
     static final String CONTAINS_CHANGES = "contains-changes";
+
+    static final String MOVED = "moved";
+    static final String SPLIT = "split";
+    static final String MERGED = "merged";
+
+    /** Every word that is a state of a comparison. */
+    static final Set<String> STATES = Set.of(NEW, CHANGED, REMOVED, CONTAINS_CHANGES, MOVED, SPLIT, MERGED);
+
+    /** What is put before the name of a state that the author wrote and the box does not have. */
+    static final String WRITTEN = "written-";
 
     private static final String GLYPH_NEW = "+";
     private static final String GLYPH_CHANGED = "<U+007E>";
@@ -68,6 +86,41 @@ class ChangeMarks {
                 ? Optional.empty()
                 : Optional.of(CONTAINS_CHANGES);
         };
+    }
+
+    /**
+     * The stereotypes of a box, as they are written in the view. In a comparison, a stereotype that is the name of a state
+     * but not the state of the box keeps its place and is written {@code written-<name>}: the default look of the state
+     * is the style of {@code <name>}, and it is for the box that has the state. Without a comparison, nothing changes.
+     */
+    List<String> stereotypes(@NonNull Viewpoint viewpoint, @NonNull Item item) {
+        val computed = stateOf(viewpoint, item);
+        val out = new ArrayList<String>(item.getStereotypes().size());
+        for (val stereotype : item.getStereotypes()) {
+            out.add(isWritten(viewpoint, stereotype, computed) ? WRITTEN + stereotype : stereotype);
+        }
+        return out;
+    }
+
+    private boolean isWritten(Viewpoint viewpoint, String stereotype, Optional<String> computed) {
+        return viewpoint.isCompared() && STATES.contains(stereotype) && !computed.equals(Optional.of(stereotype));
+    }
+
+    /** The names of the states that the author wrote on a box of the view that does not have them, sorted. */
+    Set<String> writtenStates(@NonNull Viewpoint viewpoint) {
+        val used = new TreeSet<String>();
+        if (viewpoint.isCompared()) {
+            viewpoint.getItems().forEach(root ->
+                root.stream().forEach(item -> {
+                    val computed = stateOf(viewpoint, item);
+                    item.getStereotypes()
+                        .stream()
+                        .filter(stereotype -> isWritten(viewpoint, stereotype, computed))
+                        .forEach(used::add);
+                })
+            );
+        }
+        return used;
     }
 
     /** The state a link says, or empty for a link that did not change. */

@@ -1,0 +1,30 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "office"
+  name: "Ticket office"
+  elements:
+    - kind: "container"
+      id: "counter"
+      name: "Counter"
+      tags:
+        rendering-stereotypes: "new"
+    - kind: "container"
+      id: "queue"
+      name: "Queue"
+      tags:
+        rendering-stereotypes: "changed"
+    - kind: "container"
+      id: "printer"
+      name: "Ticket printer"
+      tags:
+        rendering-stereotypes: "new"
+    - kind: "container"
+      id: "kiosk"
+      name: "Kiosk"
+    - kind: "container"
+      id: "window"
+      name: "Window"
+      tags:
+        rendering-stereotypes: "new"

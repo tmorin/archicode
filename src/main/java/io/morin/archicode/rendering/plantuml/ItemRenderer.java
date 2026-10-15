@@ -63,7 +63,13 @@ class ItemRenderer {
             buf.append(" ");
             buf.append(item.getItemId());
             buf.append(" ");
-            buf.append(PlantumlUtilities.generateStereotypes(item, item.getKind().name().toLowerCase(), "atomic"));
+            buf.append(
+                PlantumlUtilities.generateStereotypes(
+                    ChangeMarks.stereotypes(viewpoint, item),
+                    item.getKind().name().toLowerCase(),
+                    "atomic"
+                )
+            );
             buf.append(" [");
             buf.append(System.lineSeparator());
 
@@ -132,7 +138,7 @@ class ItemRenderer {
             buf.append("\\n");
             buf.append(String.format(compositeFormatter.getQualifiers(), PlantumlUtilities.generateQualifiers(item)));
             buf.append("\" ");
-            buf.append(PlantumlUtilities.generateStereotypes(item, "composite"));
+            buf.append(PlantumlUtilities.generateStereotypes(ChangeMarks.stereotypes(viewpoint, item), "composite"));
             buf.append(" {");
             buf.append(System.lineSeparator());
 
