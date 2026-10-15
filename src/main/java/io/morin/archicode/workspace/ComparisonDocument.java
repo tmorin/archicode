@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.kernel.Comparison;
+import io.morin.archicode.viewpoint.kernel.RelationshipLabel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -126,13 +127,16 @@ class ComparisonDocument {
         }
     }
 
-    /** What makes two relationships of an element the same one: its destination, label, qualifiers and tags. */
+    /**
+     * What makes two relationships of an element the same one: its destination, label, qualifiers and tags. The label is
+     * compared as the kernel does (trimmed, empty being none): the comparison answers with that form.
+     */
     private static String key(Comparison.RelationshipChange rel) {
         val qualifiers = new TreeSet<>(rel.qualifiers());
         return String.join(
             "\0",
             rel.destination(),
-            String.valueOf(rel.label()),
+            String.valueOf(RelationshipLabel.normalize(rel.label())),
             qualifiers.toString(),
             new TreeMap<>(rel.tags()).toString()
         );
@@ -146,7 +150,7 @@ class ComparisonDocument {
         return String.join(
             "\0",
             destination,
-            String.valueOf(label),
+            String.valueOf(RelationshipLabel.normalize(label)),
             sortedQualifiers.toString(),
             sortedTags.toString()
         );
