@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.resource.workspace.Settings;
@@ -306,5 +307,38 @@ class PlateauAdderTest {
                 .getMessage()
                 .contains("edits a YAML workspace file")
         );
+    }
+
+    @Test
+    @SneakyThrows
+    void aCopyThatStopsHalfwayLeavesNothingBehindSoThatTheNextTryCanWork() {
+        val before = "settings:\n  plateaus:\n    - id: a\n      path: p/10_a\n";
+        val path = workspace(before, "p/10_a");
+        Files.createDirectories(dir.resolve("p/10_a/inner"));
+        val unreadable = dir.resolve("p/10_a/inner/secret.yaml");
+        Files.writeString(unreadable, "content: {}");
+        Files.setPosixFilePermissions(unreadable, java.util.Set.of());
+        try {
+            assumeTrue(!Files.isReadable(unreadable), "the files are readable whatever their mode (root)");
+            assertThrows(java.io.IOException.class, () -> plateauAdder.add(path, "b", "a", null, null, null));
+            assertFalse(Files.exists(dir.resolve("p/20_b")), "the half copy is removed");
+            assertEquals(before, text(), "and the workspace is as it was");
+            // once the file can be read again, the same command works: it is not stopped by a folder that exists already
+            Files.setPosixFilePermissions(
+                unreadable,
+                java.util.Set.of(java.nio.file.attribute.PosixFilePermission.OWNER_READ)
+            );
+            val added = plateauAdder.add(path, "b", "a", null, null, null);
+            assertEquals("p/20_b", added.path());
+            assertTrue(Files.exists(dir.resolve("p/20_b/inner/secret.yaml")));
+        } finally {
+            Files.setPosixFilePermissions(
+                unreadable,
+                java.util.Set.of(
+                    java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+                    java.nio.file.attribute.PosixFilePermission.OWNER_WRITE
+                )
+            );
+        }
     }
 }
