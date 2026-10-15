@@ -104,22 +104,26 @@ input : { base:   { application: [element], technology: [element] },
           target: { application: [element], technology: [element] } }            (a missing or null list is empty)
 output: { version,
           elements:      [ { layer, reference, parent, parent_reference?, kind?, name?, description?, qualifiers, tags,
-                             applications, uses, change, natures?, wording_only?, ...the other fields of the element } ],
+                             applications, uses, change, natures?, wording_only?, replaces?, replaced_by?,
+                             ...the other fields of the element } ],
           relationships: [ { layer, from, destination, label, qualifiers, tags, change, natures? } ],
           changes:       [ row ],
-          counts:        { elements: { new, changed, removed, wording_only },
-                           relationships: { new, changed, removed } } }
+          counts:        { elements: { new, changed, removed, wording_only, moved?, split?, merged? },
+                           relationships: { new, changed, removed } },
+          candidates:    [ { layer, from, to, reasons } ],
+          warnings?:     [ text ] }
         | { error }
 ```
 
 - **Identity is the dotted reference**, per layer. In the target only: `new`; in the base only: `removed`. A moved, renamed
-  or split element is a `removed` and a `new` (a later change may add a hint to say otherwise).
+  or split element is a `removed` and a `new`, unless its author says otherwise with `replaces` (below).
 - **The union.** `elements` and `relationships` hold everything the target has, plus what only the base has (kept whole, so
   that it can be drawn as removed, under its parent, which is itself in the union, removed too if the base had it alone).
-  Each carries `change`: `none`, `new`, `changed` or `removed` (always present). What is shown is the target's version, and
+  Each carries `change`: `none`, `new`, `changed`, `removed`, or for an element that replaces others `moved`, `split` or `merged`
+  (always present). What is shown is the target's version, and
   the base's for a removed one. `parent` is as sent (can it contain others); `parent_reference` is read from the dotted
   reference. A field the kernel does not compare travels with the element (the other fields of the side that is shown);
-  `change`, `natures` and the other names the union writes cannot be overridden by one.
+  `change`, `natures`, `replaces` and the other names the union writes cannot be overridden by one.
 - **Changed elements** are judged on their own properties and their own outgoing relationships, never on their children.
   The natures are a closed list, always in this order: `kind`, `name`, `description`, `qualifiers`, `tags`, `deployment`
   (`applications` and `uses`), `relationships-added`, `relationships-removed`, `relationships-changed`. `qualifiers`,
@@ -141,8 +145,32 @@ output: { version,
 - **Errors**, in `{ error }` like `compute`: `dangling reference: x` (a relationship or `uses` entry that points at an
   element its own plateau does not have), `dangling application reference: x`, `duplicate reference: x`, `invalid input: ..`.
   The message says which plateau. A base relationship that ends on an element only the base has is not one.
+- **`replaces`, the author's word on the identity of an element** (contract 4). An element of the target may list
+  `replaces: [reference, ...]`, the references of the base that it is the new place of. It is read from the target only (a
+  `replaces` on a base element is not read) and never guessed. A reference counts when the base has it, the target no longer
+  does, and the element does not list it twice; any other is ignored and told in `warnings` (it is no error: the author may
+  have compared with another baseline). There is no recursion, so a cycle cannot happen: an element that is replaced is not in
+  the target, so it cannot replace anything. Then the element says what it is in `change`:
+  - `moved`: it replaces one element that nothing else replaces (another place, another name);
+  - `split`: what it replaces is replaced by others too (an element became several);
+  - `merged`: it replaces several elements, or one while being in the base itself (several became one).
+
+  It carries `replaces` (the valid references, sorted), keeps its own changes in `natures` (and the row in `before`/`after`), and
+  is counted in `counts.elements.moved|split|merged`, never also as `changed` (the three counts are left out when zero, so that
+  a comparison without `replaces` has the counts it had). `wording_only` is never set for them. What an element is compared
+  with: its own version in the base if it had one (`merged`), the element it replaces if it is `moved`, nothing if it is
+  `split` or `merged` and is new, so that only its relationships are compared. The relationships and the deployment
+  (`applications`, `uses`) of what was replaced follow it when exactly one element replaces it; those of an element that was
+  split are not compared (which half would own them is a guess). Elements that are replaced are not `removed`: they have no
+  row and no count and are not in the union, with one exception: what a replaced element held is removed unless it is replaced
+  too, and a view cannot place a removed child without its parent, so such a replaced element is in the union as `removed` with
+  `replaced_by` (the elements that replace it), still without row or count.
+- **Candidates** are listed in `candidates`, never applied, never drawn: pairs (an element only the base has and nothing replaces,
+  an element only the target has that replaces nothing) of the same layer and kind, with the reasons `name` (same name, ignoring
+  case), `description` (at least 60 percent of the words in common, three words or more on each side) and `parent` (the only two
+  of that kind under the same parent). Sorted by (layer, from, to). The author turns one into a `replaces` or leaves it.
 - **The contract version.** `compare` itself added nothing to version 2; the views of a comparison (below) changed what `compute`
-  gives, and moved the contract to 3.
+  gives, and moved the contract to 3; `replaces` (new words of `change`, `replaces`, `candidates`, `warnings`) moved it to 4.
 
 ## Views of a comparison
 
@@ -160,7 +188,7 @@ stereotypes and the folds already read free-form fields. Two ways of giving it w
   could not read `change` (a facet sees the elements, not a side table).
 
 ```
-element      : { reference, ..., change?: "none"|"new"|"changed"|"removed", natures?: [text], relationships: [rel] }
+element      : { reference, ..., change?: "none"|"new"|"changed"|"removed"|"moved"|"split"|"merged", natures?: [text], relationships: [rel] }
 relationship : { destination, label, qualifiers, tags, change?: "none"|"new"|"changed"|"removed" }
 option       : only_changes?: bool
 output item  : { ..., stereotypes, change?, natures?, context? }
@@ -171,7 +199,7 @@ output link  : { ..., relationships: [{ ..., change? }], change? }
   run), the view is a comparison: every item and every link says its `change` (`none` when it did not change), an item says the
   `natures` its element has, and a relationship of a link says the `change` it was given. Without any `change`, nothing is added and
   the view is what it was in version 2, byte for byte (checked on the fixtures, on the workspaces of the manual and on a real one).
-  A `change` that is not one of the four words is an `error`; `null` is not given.
+  A `change` that is not one of the words (the four of version 3, and for an element `moved`, `split`, `merged`) is an `error`; `null` is not given.
 - **What an item says** is the change of its own element, whatever is inside it. A box that is folded says the change of its own
   element too, not of what it hides.
 - **A grouped link** says what the relationships it stands for add up to: all `new` is `new`, all `removed` is `removed`, all
@@ -197,3 +225,7 @@ output link  : { ..., relationships: [{ ..., change? }], change? }
   The facets run first, on the union, and read `change` like any field: `$..relationships[?(@.change=='removed')]`.
 - **Contract version 3.** The output of `compute` gained fields (`change`, `natures`, `context` on items, `change` on links and on
   their relationships) and a stereotype; nothing of it appears without a `change` in the input. Callers check the version as before.
+- **Contract version 4.** `change` of an element may also be `moved`, `split` or `merged` (what `compare` says of an element that
+  replaces others): they are states like `new`, they end the stereotypes (`moved`, `split`, `merged`), make the containers above
+  say `contains-changes`, and `only_changes` keeps them. A relationship says only `none`, `new`, `changed` or `removed`: the others
+  are an `error` there, as is any other word. Nothing changes for an input without those words.

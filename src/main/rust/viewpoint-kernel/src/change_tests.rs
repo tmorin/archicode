@@ -65,9 +65,9 @@ fn union() -> Vec<Value> {
 }
 
 #[test]
-fn the_contract_is_version_3() {
-    assert_eq!(CONTRACT_VERSION, 3);
-    assert_eq!(view("deep", "sys", union(), json!({}))["version"], 3);
+fn the_contract_is_version_4() {
+    assert_eq!(CONTRACT_VERSION, 4);
+    assert_eq!(view("deep", "sys", union(), json!({}))["version"], 4);
 }
 
 #[test]
@@ -549,7 +549,7 @@ fn an_input_without_change_gives_the_bytes_of_a_call_without_the_new_options() {
         for field in ["\"change\"", "\"natures\"", "\"context\"", "contains-changes"] {
             assert!(!plain_call.contains(field), "{viewpoint}: {field} in {plain_call}");
         }
-        assert!(plain_call.contains("\"version\":3"));
+        assert!(plain_call.contains("\"version\":4"));
     }
 }
 
@@ -603,9 +603,10 @@ fn the_same_comparison_gives_the_same_bytes_whatever_the_order_of_its_elements()
 // ---- mistakes ----
 
 #[test]
-fn a_change_that_is_not_one_of_the_four_words_is_an_error() {
+fn a_change_that_is_not_one_of_the_words_is_an_error() {
     for (element, expected) in [
-        (json!({ "reference": "a", "change": "moved" }), "invalid change"),
+        (json!({ "reference": "a", "change": "teleported" }), "invalid change"),
+        (json!({ "reference": "a", "relationships": [{ "destination": "a", "change": "moved" }] }), "invalid change"),
         (json!({ "reference": "a", "change": 3 }), "invalid change"),
         (json!({ "reference": "a", "relationships": [{ "destination": "a", "change": "gone" }] }), "invalid change"),
     ] {
@@ -647,4 +648,55 @@ fn the_union_of_compare_is_a_view_input() {
     assert_eq!(link(&out, "a", "old")["change"], "removed");
     assert_eq!(link(&out, "a", "fresh")["change"], "new");
     assert_eq!(stereotypes(&out, "a"), json!(["changed"]));
+}
+
+// ---- what an element that replaces others says (version 4) ----
+
+#[test]
+fn moved_split_and_merged_are_states_of_an_element_drawn_like_the_others() {
+    for word in ["moved", "split", "merged"] {
+        let out = view("overview", "a", vec![json!({ "reference": "a", "parent": false, "change": word, "replaces": ["old"] })], json!({}));
+        assert!(out.get("error").is_none(), "{word}: {out}");
+        assert_eq!(item(&out, "a")["change"], word);
+        assert_eq!(stereotypes(&out, "a"), json!([word]), "the state ends the stereotypes, as `new` does");
+    }
+}
+
+#[test]
+fn an_element_that_replaces_another_is_a_change_for_the_container_above_and_for_only_changes() {
+    let elements = vec![
+        json!({ "reference": "sys", "parent": true, "change": "none" }),
+        json!({ "reference": "sys.a", "parent": false, "change": "moved" }),
+        json!({ "reference": "sys.b", "parent": false, "change": "none" }),
+    ];
+    let out = view("map", "", elements.clone(), json!({ "opened": ["sys"] }));
+    assert_eq!(stereotypes(&out, "sys"), json!(["contains-changes"]));
+    let out = view("map", "", elements, json!({ "opened": ["sys"], "only_changes": true }));
+    let kept = ids(&out);
+    assert!(kept.contains(&"sys.a".to_string()) && !kept.contains(&"sys.b".to_string()), "{kept:?}");
+}
+
+#[test]
+fn the_union_of_a_pair_with_replaces_is_a_view_input_in_every_viewpoint() {
+    // `old` is replaced by `fresh` but its child `old.gone` is not: the union keeps `old` as the place where `old.gone` was removed
+    let side = |elements: Vec<Value>| json!({ "application": elements });
+    let leaf = |r: &str| json!({ "reference": r, "parent": false });
+    let base = side(vec![json!({ "reference": "old", "parent": true }), leaf("old.gone"), leaf("old.kept"), leaf("other")]);
+    let target = side(vec![
+        json!({ "reference": "fresh", "parent": true, "replaces": ["old"] }),
+        json!({ "reference": "fresh.kept", "parent": false, "replaces": ["old.kept"] }),
+        leaf("other"),
+    ]);
+    let union: Value = serde_json::from_str(&compare_json(&json!({ "base": base, "target": target }).to_string())).unwrap();
+    assert!(union.get("error").is_none(), "{union}");
+    let elements: Vec<Value> = union["elements"].as_array().unwrap().iter().map(|e| { let mut e = e.clone(); e["relationships"] = json!([]); e }).collect();
+    for (viewpoint, focal, extra) in [("deep", "fresh", json!({})), ("deep", "old", json!({})), ("overview", "other", json!({})), ("detailed", "old", json!({})), ("map", "", json!({ "opened": ["fresh", "old"] }))] {
+        let out = view(viewpoint, focal, elements.clone(), extra);
+        assert!(out.get("error").is_none(), "{viewpoint} {focal}: {out}");
+    }
+    let out = view("map", "", elements, json!({ "opened": ["fresh", "old"] }));
+    assert_eq!(item(&out, "fresh")["change"], "moved");
+    assert_eq!(item(&out, "fresh.kept")["change"], "moved");
+    assert_eq!(item(&out, "old")["change"], "removed");
+    assert_eq!(item(&out, "old.gone")["change"], "removed");
 }

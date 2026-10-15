@@ -17,7 +17,7 @@ import lombok.val;
 public final class ViewpointKernel {
 
     /** The version of the input/output contract this class and {@link KernelViewpointFactory} were written for. */
-    public static final int CONTRACT_VERSION = 3;
+    public static final int CONTRACT_VERSION = 4;
 
     private static final class Holder {
 
@@ -61,8 +61,10 @@ public final class ViewpointKernel {
      *
      * @param json {@code {"base": {"application": [element], "technology": [element]}, "target": {...}}}, the elements
      *             being the ones {@link #compute} takes, with {@code kind}, {@code name}, {@code description},
-     *             {@code qualifiers} and {@code tags}
-     * @return {@code {"version", "elements", "relationships", "changes", "counts"}}, or {@code {"error": "..."}}
+     *             {@code qualifiers} and {@code tags}, and for an element of the target that says what it
+     *             replaces, {@code replaces}
+     * @return {@code {"version", "elements", "relationships", "changes", "counts", "candidates", "warnings"?}}, or
+     *         {@code {"error": "..."}}
      */
     public synchronized String compare(String json) {
         return call("compare", json);

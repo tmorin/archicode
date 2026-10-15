@@ -1,0 +1,28 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web site"
+      relationships:
+        - destination: "stock.till"
+          label: "takes payments with"
+    - kind: "container"
+      id: "report-a"
+      name: "Sales report"
+      replaces:
+        - "shop.report"
+    - kind: "container"
+      id: "report-b"
+      name: "Stock report"
+      replaces:
+        - "shop.report"
+        - "shop.nowhere"
+    - kind: "container"
+      id: "postman"
+      name: "Postman"
+      description: "Sends the order confirmations and the delivery notices to the customers by mail and by text."

@@ -1,0 +1,31 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web site"
+      relationships:
+        - destination: "shop.till"
+          label: "takes payments with"
+    - kind: "container"
+      id: "till"
+      name: "Till"
+      description: "Takes the payment of a basket at the counter and prints the receipt."
+      relationships:
+        - destination: "stock.bin"
+          label: "reserves"
+    - kind: "container"
+      id: "report"
+      name: "Report"
+      elements:
+        - kind: "component"
+          id: "chart"
+          name: "Chart"
+    - kind: "container"
+      id: "mailer"
+      name: "Mailer"
+      description: "Sends the order confirmations and the delivery notices to the customers by mail."

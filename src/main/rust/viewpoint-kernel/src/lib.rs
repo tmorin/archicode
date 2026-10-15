@@ -57,8 +57,9 @@
 //!   output: { version, workspace, warnings } | { error }
 //! Version 2: the paths of a facet are standard JSONPath, `apply_facet` exists, and `warnings` may be in the output.
 //!
-//! What changed (version 3). An element, and a relationship, may carry `change`: `none`, `new`, `changed` or `removed` (what
-//! `compare` gives, see below; `natures` of an element travel with it). Nothing else is needed: the fields of the union
+//! What changed (version 3). An element, and a relationship, may carry `change`: `none`, `new`, `changed` or `removed`, and an
+//! element also `moved`, `split` or `merged` (version 4: it replaces others, see `compare.rs`) (what `compare` gives, see below;
+//! `natures` of an element travel with it). Nothing else is needed: the fields of the union
 //! of `compare` are free-form fields like `kind` or `qualifiers`, so a facet reads them as it reads any field, and the
 //! caller hands the union to `compute` as the elements of the layer, each with the union relationships of its `from`.
 //! As soon as one element or one relationship carries `change`, the view is a *comparison*: every item has `change`
@@ -79,6 +80,8 @@
 //!             changes: [row of the table], counts } | { error }
 //! It was added to version 2 and changed neither the input nor the output of the other entry points; the views that carry
 //! `change` (above) are what moved the version to 3.
+//! Version 4 added what an element can say it replaces (`replaces`), the words `moved`, `split` and `merged`, the `candidates` and
+//! `warnings` of `compare`; nothing of it appears without a `replaces` in the input (but the empty list of candidates).
 mod compare;
 mod facet;
 
@@ -89,7 +92,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Bumped when the shape of the input or output changes in a way a caller must know about.
-pub const CONTRACT_VERSION: u32 = 3;
+pub const CONTRACT_VERSION: u32 = 4;
 
 /// Qualifiers: a set — two of them are equal whatever the order — that remembers the order they were declared in,
 /// because that is the order the CLI draws them in.
@@ -169,6 +172,12 @@ enum Change {
     New,
     Changed,
     Removed,
+    /// an element that replaces one other (`replaces`): it moved or was renamed
+    Moved,
+    /// an element that replaces one that others replace too
+    Split,
+    /// an element that replaces several
+    Merged,
 }
 
 impl Change {
@@ -178,22 +187,33 @@ impl Change {
             "new" => Some(Change::New),
             "changed" => Some(Change::Changed),
             "removed" => Some(Change::Removed),
+            "moved" => Some(Change::Moved),
+            "split" => Some(Change::Split),
+            "merged" => Some(Change::Merged),
             _ => None,
         }
     }
 
-    /// New, changed or removed.
+    /// Anything but none: new, changed, removed, moved, split or merged.
     fn is_change(self) -> bool {
         self != Change::None
     }
 
-    /// The stereotype that tells the state, for the three states that are drawn.
+    /// Moved, split or merged: what an element says that replaces others (`replaces`).
+    fn is_identity(self) -> bool {
+        matches!(self, Change::Moved | Change::Split | Change::Merged)
+    }
+
+    /// The stereotype that tells the state, for the states that are drawn.
     fn stereotype(self) -> Option<&'static str> {
         match self {
             Change::None => None,
             Change::New => Some("new"),
             Change::Changed => Some("changed"),
             Change::Removed => Some("removed"),
+            Change::Moved => Some("moved"),
+            Change::Split => Some("split"),
+            Change::Merged => Some("merged"),
         }
     }
 }
@@ -1346,7 +1366,8 @@ fn check_changes(input: &mut Input) -> Result<(), String> {
         }
         for rel in &element.relationships {
             if let Some(change) = &rel.change {
-                if Change::parse(change).is_none() {
+                // a relationship is new, changed or removed; moved, split and merged are for elements
+                if Change::parse(change).is_none_or(Change::is_identity) {
                     return Err(format!("invalid change: \"{change}\" in a relationship of {}", element.reference));
                 }
                 input.compared = true;

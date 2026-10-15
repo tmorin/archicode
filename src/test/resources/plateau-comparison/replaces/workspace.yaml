@@ -1,0 +1,11 @@
+# An invented warehouse in two states, used to test `replaces` (see PlateauComparerTest and PlateauComparisonTest).
+# before -> after: the till moved from the shop to the stock system; the report was split in two; the bin and the shelf were
+# merged into a place; the mailer was rewritten under another name and nobody said so (a candidate, never applied); and one
+# `replaces` points at a reference the base does not have.
+settings:
+  name: "Warehouse"
+  plateaus:
+    - id: "before"
+      path: "plateaus/10_before"
+    - id: "after"
+      path: "plateaus/20_after"
