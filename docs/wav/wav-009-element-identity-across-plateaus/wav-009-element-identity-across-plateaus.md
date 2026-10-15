@@ -51,6 +51,9 @@ None. The decisions below are made by this wave and recorded in the runs that ap
 - **D-5** For #28 the rule is the editor's: a box gets the default look of a state only when the state is computed for
   it. A hand-written tag that contradicts the computed state is reported with a warning that the user sees (the log
   level `ERROR` of the application hides `log.warn`, so the run must check where the message goes).
+- **D-7** (made after run 0044, issue #39) The CLI lists candidates only for a plateau that already uses `replaces`, so that
+  the files of every other workspace stay byte-identical. The editor, which is interactive and writes no generated file,
+  proposes candidates for any comparison: that is how an author starts using `replaces`.
 - **D-6** For #32 the cache of the comparison is keyed on a version counter of the two models, bumped by loads and
   edits, not on their serialised content.
 
@@ -150,7 +153,7 @@ wave_manifest:
       slug: replaces-editor
       phase: P3
       depends_on: [W-1, W-4]
-      run: null
+      run: '0046'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -204,7 +207,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-5 | — | `replaces-editor` | W-1, W-4 | see in the Changes panel what moved, split or merged, and accept a proposed match in one click | Changes panel rows and filters for the new states, candidates with "Write replaces" and "Not related", `replaces` written through the line-preserving save, the inspector shows what an element replaces | JS tests on the markup and on the saved file (one line changed), the manual's editor section |
+| W-5 | 0046 | `replaces-editor` | W-1, W-4 | see in the Changes panel what moved, split or merged, and accept a proposed match in one click | Changes panel rows and filters for the new states, candidates with "Write replaces" and "Not related", `replaces` written through the line-preserving save, the inspector shows what an element replaces | JS tests on the markup and on the saved file (one line changed), the manual's editor section |
 | W-6 | — | `move-element-editor` | W-5 | move an element under another parent without breaking a reference, and say what it replaces | a Move action in the element panel (children follow, inbound references rewritten in every file, a clash of ids refused), offering to write `replaces`; works on the plateau being edited only | JS tests on the files after a move (nothing else changes), a refused move, the offer of `replaces` |
 
 **Gate:** see the manifest.
