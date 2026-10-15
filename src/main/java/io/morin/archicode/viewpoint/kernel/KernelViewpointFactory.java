@@ -212,7 +212,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
             );
         }
 
-        val itemById = createItems(workspace, mainIndex, output.get("items"));
+        val itemById = createItems(workspace, mainIndex, output.get("items"), identities(workspace, mainIndex));
         val links = createLinks(workspace, mainIndex, output.get("links"), itemById);
         val childIds = new HashSet<String>();
         for (val item : output.get("items")) {
@@ -241,7 +241,12 @@ public class KernelViewpointFactory implements ViewpointFactory {
      * so that an item is complete (its own children inside) before it is put in the set of its parent: an item's hash
      * depends on its children.
      */
-    private Map<String, Item> createItems(Workspace workspace, ElementIndex mainIndex, JsonNode items) {
+    private Map<String, Item> createItems(
+        Workspace workspace,
+        ElementIndex mainIndex,
+        JsonNode items,
+        Map<String, Comparison.ElementChange> identities
+    ) {
         val itemById = new LinkedHashMap<String, Item>();
         val parentById = new HashMap<String, String>();
         for (val node : items) {
@@ -252,6 +257,8 @@ public class KernelViewpointFactory implements ViewpointFactory {
             val element = deployedApplication
                 ? workspace.appIndex.getElementByReference(reference)
                 : mainIndex.getElementByReference(reference);
+            // what an element replaces, or what replaces it, is told by the comparison and by nothing else
+            val identity = identities.get(deployedApplication ? "application\0" + reference : reference);
             val item = Item.builder()
                 .itemId(id)
                 .reference(deployedApplication ? "app:" + reference.replace(".", "_") : reference)
@@ -260,6 +267,8 @@ public class KernelViewpointFactory implements ViewpointFactory {
                 .stereotypes(stereotypesOf(node))
                 .change(changeOf(node))
                 .natures(stringsOf(node.path("natures")))
+                .replaces(identity == null ? List.of() : identity.replaces())
+                .replacedBy(identity == null ? List.of() : identity.replacedBy())
                 .context(node.path("context").asBoolean(false))
                 .build();
             val previous = itemById.putIfAbsent(id, item);
@@ -281,6 +290,30 @@ public class KernelViewpointFactory implements ViewpointFactory {
             itemById.get(parentById.get(id)).getChildren().add(itemById.get(id));
         }
         return itemById;
+    }
+
+    /**
+     * The elements of the layer being drawn that replace others (or are replaced and still drawn), by reference; the
+     * applications deployed on a node are told apart by the prefix {@code application\0}. Empty without a comparison.
+     */
+    private Map<String, Comparison.ElementChange> identities(Workspace workspace, ElementIndex mainIndex) {
+        val identities = new HashMap<String, Comparison.ElementChange>();
+        if (comparison == null) {
+            return identities;
+        }
+        val mainLayer = mainIndex == workspace.techIndex ? "technology" : "application";
+        for (val element : comparison.getElements()) {
+            if (element.replaces().isEmpty() && element.replacedBy().isEmpty()) {
+                continue;
+            }
+            if (element.layer().equals(mainLayer)) {
+                identities.put(element.reference(), element);
+            }
+            if (element.layer().equals("application")) {
+                identities.put("application\0" + element.reference(), element);
+            }
+        }
+        return identities;
     }
 
     private static List<String> stereotypesOf(JsonNode item) {

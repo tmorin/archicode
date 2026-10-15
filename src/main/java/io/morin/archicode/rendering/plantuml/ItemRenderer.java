@@ -79,7 +79,8 @@ class ItemRenderer {
                     atomicFormatter.getName(),
                     ChangeMarks.title(
                         ChangeMarks.stateOf(viewpoint, item),
-                        Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId())
+                        Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId()),
+                        item
                     )
                 )
             );
@@ -131,7 +132,8 @@ class ItemRenderer {
                     compositeFormatter.getName(),
                     ChangeMarks.title(
                         ChangeMarks.stateOf(viewpoint, item),
-                        Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId())
+                        Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId()),
+                        item
                     )
                 )
             );

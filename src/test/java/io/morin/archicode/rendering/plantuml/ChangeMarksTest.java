@@ -276,4 +276,101 @@ class ChangeMarksTest {
 
         assertEquals(Optional.empty(), ChangeMarks.stateOf(plain, removed));
     }
+
+    private Item identity(
+        String id,
+        Change change,
+        List<String> replaces,
+        List<String> replacedBy,
+        String... stereotypes
+    ) {
+        return item(id, change, stereotypes).toBuilder().replaces(replaces).replacedBy(replacedBy).build();
+    }
+
+    @Test
+    void anElementThatReplacesOthersHasItsOwnGlyphAndSaysWhereItCameFrom() {
+        assertEquals(
+            "rectangle a <<moved>> <<solution>> <<atomic>> [\n<U+2192> A (from shop.till)\n[solution]\n]\n",
+            atomic(compared, identity("a", Change.MOVED, List.of("shop.till"), List.of(), "moved"))
+        );
+        assertTrue(
+            atomic(compared, identity("a", Change.SPLIT, List.of("shop.report"), List.of(), "split")).contains(
+                "\n<U+22D4> A (from shop.report)\n"
+            )
+        );
+        assertTrue(
+            atomic(
+                compared,
+                identity("a", Change.MERGED, List.of("stock.bin", "stock.shelf"), List.of(), "merged")
+            ).contains("\n<U+2295> A (from stock.bin, stock.shelf)\n")
+        );
+        // a replaced element that is only drawn as the place of what was removed from it says what replaces it
+        assertTrue(
+            atomic(
+                compared,
+                identity("a", Change.REMOVED, List.of(), List.of("shop.report-a", "shop.report-b"), "removed")
+            ).contains("\n<U+2212> --A-- (replaced by shop.report-a, shop.report-b)\n")
+        );
+        // a removed or a new element that replaces nothing is what it was
+        assertTrue(atomic(compared, item("a", Change.REMOVED, "removed")).contains("\n<U+2212> --A--\n[solution]"));
+        // and a view that compares nothing says nothing of it
+        assertTrue(
+            atomic(plain, identity("a", Change.MOVED, List.of("shop.till"), List.of(), "moved")).contains("\nA\n[")
+        );
+    }
+
+    @Test
+    void theThreeIdentityStatesAreToldApartFromTheOthersAndFromOneAnotherWithoutColour() {
+        val seen = new java.util.HashSet<String>();
+        for (val state : List.of("new", "changed", "removed", "contains-changes", "moved", "split", "merged")) {
+            val style = ChangeMarks.style(state);
+            assertTrue(
+                seen.add(style.getLineStyle() + "/" + style.getLineThickness()),
+                state + " has a look of its own"
+            );
+            assertTrue(seen.add("glyph " + ChangeMarks.glyph(state)), state + " has a glyph of its own");
+        }
+        // the fill is left to the author, as for new and changed
+        for (val state : List.of("moved", "split", "merged")) {
+            assertEquals(null, ChangeMarks.style(state).getBackgroundColor(), state);
+            assertEquals(2, ChangeMarks.style(state).getLineThickness(), state);
+        }
+    }
+
+    @Test
+    void theAuthorsStyleOfAnIdentityStateWinsPropertyByPropertyAndAHandWrittenWordIsTheAuthorsOwn() {
+        val defaults = Map.of("moved", ChangeMarks.style("moved"));
+        val styles = Styles.builder()
+            .byTag("moved", Styles.Style.builder().lineColor("black").backgroundColor("white").build())
+            .build();
+        val merged = PlantumlUtilities.stereotypeStyles(styles, defaults, Set.of("split"))
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        assertEquals("black", merged.get("moved").getLineColor());
+        assertEquals("white", merged.get("moved").getBackgroundColor());
+        assertEquals(12, merged.get("moved").getLineStyle(), "the dashes of the default stay");
+        assertEquals(2, merged.get("moved").getLineThickness());
+        // a `split` tag on a box that is not split: nothing of the default, and no style when the author has none
+        assertFalse(merged.containsKey("written-split"));
+        assertEquals(List.of("written-split"), ChangeMarks.stereotypes(compared, item("a", Change.MOVED, "split")));
+    }
+
+    @Test
+    void theLegendListsTheStatesOfIdentityTheViewUsesAndOnlyThose() {
+        val moved = identity("m", Change.MOVED, List.of("shop.till"), List.of(), "moved");
+        val merged = identity("g", Change.MERGED, List.of("a", "b"), List.of(), "merged");
+        Mockito.when(compared.getLinks()).thenReturn(Set.of());
+        Mockito.when(compared.getItems()).thenReturn(Set.of(item("n", Change.NEW, "new")));
+        val without = ChangeMarks.legend(compared);
+        assertFalse(
+            without.contains("<U+2192>") || without.contains("<U+22D4>") || without.contains("<U+2295>"),
+            without
+        );
+        Mockito.when(compared.getItems()).thenReturn(Set.of(moved, merged));
+        val legend = ChangeMarks.legend(compared);
+        assertTrue(legend.contains("| **<U+2192>** | moved or renamed, replaces one element: long dashes | |"), legend);
+        assertTrue(legend.contains("| **<U+2295>** | merged, replaces several elements: short dashes | |"), legend);
+        assertFalse(legend.contains("split"), legend);
+        assertEquals(List.of("merged", "moved"), List.copyOf(ChangeMarks.styles(compared).keySet()));
+    }
 }

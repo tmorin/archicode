@@ -82,8 +82,9 @@ public class DiffCommand implements Runnable {
 
         val comparison = new PlateauComparer(mapperFactory.createLazy(MapperFormat.JSON)).compare(base, target);
 
-        // a state written by hand that the comparison does not give the element: on the error output, so that the table on
-        // the standard output is what it was
+        // what the comparison ignored in the `replaces` of the plateau, then a state written by hand that the comparison does
+        // not give the element: on the error output, so that the table on the standard output is what it was
+        StateTagReport.print(spec, StateTagReport.replaces(comparison.getWarnings()));
         StateTagReport.print(spec, StateTags.warnings(target, comparison));
 
         // printed to System.out: application.properties sets quarkus.log.level=ERROR

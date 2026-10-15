@@ -158,6 +158,7 @@ public class GenerateViewsCommand implements Runnable {
             workspaceFactory.createUnion(workspacePath, viewsDirPath, plateau.getId(), base, comparison),
             workspace.getSettings().getViews().getPath() + "-vs-" + baseline.getId()
         );
+        StateTagReport.print(spec, StateTagReport.replaces(comparison.getWarnings()));
         StateTagReport.print(spec, StateTags.warnings(union, comparison));
         writeGap(union, comparison);
         renderWorkspaces(union, comparison);

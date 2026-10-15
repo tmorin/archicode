@@ -50,6 +50,21 @@ public class Item implements Comparable<Item> {
     @Builder.Default
     Change change = Change.NONE;
 
+    /**
+     * The references of the plateau before that this element replaces, for an element that {@link Change#MOVED},
+     * {@link Change#SPLIT} or {@link Change#MERGED} (the valid ones, sorted, as the comparison lists them); empty for
+     * any other.
+     */
+    @Builder.Default
+    List<String> replaces = List.of();
+
+    /**
+     * The references that replace this element, for a replaced element that a view still draws as a place because
+     * something inside it was removed; empty for any other.
+     */
+    @Builder.Default
+    List<String> replacedBy = List.of();
+
     /** Why the element changed, as the comparison lists it ({@code name}, {@code relationships-added}, ...). */
     @Builder.Default
     List<String> natures = List.of();

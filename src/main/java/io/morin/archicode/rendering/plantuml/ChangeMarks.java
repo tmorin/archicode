@@ -22,17 +22,24 @@ import lombok.val;
  * of the box or of the link, a line style, and for a removed box a struck title and a grey one.
  *
  * <table>
- *   <caption>The four states</caption>
+ *   <caption>The states</caption>
  *   <tr><th>State</th><th>Glyph</th><th>Box</th><th>Link</th></tr>
  *   <tr><td>{@code new}</td><td>+</td><td>thick solid outline</td><td>thick solid line</td></tr>
  *   <tr><td>{@code changed}</td><td>~</td><td>dotted outline</td><td>dotted line</td></tr>
  *   <tr><td>{@code removed}</td><td>&minus;</td><td>dashed grey outline, grey struck title</td><td>dashed grey line</td></tr>
  *   <tr><td>{@code contains-changes}</td><td>&plusmn;</td><td>thin dashed outline</td><td>-</td></tr>
+ *   <tr><td>{@code moved}</td><td>&rarr;</td><td>long dashes, blue, "(from ...)" after the title</td><td>-</td></tr>
+ *   <tr><td>{@code split}</td><td>&#x22D4;</td><td>medium dashes, purple, "(from ...)" after the title</td><td>-</td></tr>
+ *   <tr><td>{@code merged}</td><td>&oplus;</td><td>short dashes, light blue, "(from ..., ...)" after the title</td><td>-</td></tr>
  * </table>
+ *
+ * The three last ones say that an element is the same thing as one of the plateau before ({@code replaces}): the title tells
+ * what it replaces. A removed box that is only there to hold what was removed from it, because the element was replaced,
+ * says what replaces it: "(replaced by ...)".
  *
  * The glyphs are written as PlantUML escapes ({@code <U+2212>}), so that a file is plain ASCII whatever the encoding of
  * the machine, and {@code ~}, which Creole takes for an escape, is a character like another. What PlantUML 1.2024.7 draws
- * for them was looked at on a file written by hand (see run 0038).
+ * for them was looked at on a file written by hand (see run 0038 and run 0044).
  *
  * <p>The look of a box is the style of its stereotype, the stereotype that the kernel put last in the stereotypes of the
  * item. The styles below are the default: the author's {@code styles.by-tags} (or {@code by-qualifiers}) entry of the
@@ -67,6 +74,9 @@ class ChangeMarks {
     private static final String GLYPH_CHANGED = "<U+007E>";
     private static final String GLYPH_REMOVED = "<U+2212>";
     private static final String GLYPH_CONTAINS = "<U+00B1>";
+    private static final String GLYPH_MOVED = "<U+2192>";
+    private static final String GLYPH_SPLIT = "<U+22D4>";
+    private static final String GLYPH_MERGED = "<U+2295>";
 
     private static final String GREY = "#7F7F7F";
 
@@ -79,8 +89,6 @@ class ChangeMarks {
             case NEW -> Optional.of(NEW);
             case CHANGED -> Optional.of(CHANGED);
             case REMOVED -> Optional.of(REMOVED);
-            // the look of an element that replaces others is the work of the run that draws them; until then the word
-            // is the state, with the default look of a state that has none
             case MOVED, SPLIT, MERGED -> Optional.of(item.getChange().word());
             case NONE -> item.getStereotypes().isEmpty() || !item.getStereotypes().getLast().equals(CONTAINS_CHANGES)
                 ? Optional.empty()
@@ -142,6 +150,9 @@ class ChangeMarks {
             case NEW -> GLYPH_NEW;
             case CHANGED -> GLYPH_CHANGED;
             case REMOVED -> GLYPH_REMOVED;
+            case MOVED -> GLYPH_MOVED;
+            case SPLIT -> GLYPH_SPLIT;
+            case MERGED -> GLYPH_MERGED;
             default -> GLYPH_CONTAINS;
         };
     }
@@ -157,6 +168,28 @@ class ChangeMarks {
             return name;
         }
         return glyph(state.get()) + " " + (state.get().equals(REMOVED) ? "--" + name + "--" : name);
+    }
+
+    /**
+     * The title of a box, with where the element comes from when it replaces others ("(from shop.till)"), or what
+     * replaces it when the box is only the place of what was removed from it ("(replaced by shop.report-a)").
+     *
+     * @param state the state of the box, or empty
+     * @param name  the name
+     * @param item  the box
+     */
+    String title(@NonNull Optional<String> state, @NonNull String name, @NonNull Item item) {
+        val title = title(state, name);
+        if (state.isEmpty()) {
+            return title;
+        }
+        if (!item.getReplaces().isEmpty()) {
+            return title + " (from " + String.join(", ", item.getReplaces()) + ")";
+        }
+        if (!item.getReplacedBy().isEmpty()) {
+            return title + " (replaced by " + String.join(", ", item.getReplacedBy()) + ")";
+        }
+        return title;
     }
 
     /** The arrow of a link; a link that did not change keeps the one it always had. */
@@ -197,6 +230,11 @@ class ChangeMarks {
                 .lineThickness(2)
                 .fontColor(GREY)
                 .build();
+            // an element that is the same thing as one of the plateau before: a blue or a purple outline of dashes of its
+            // own, medium thick, the fill left to the author (the glyph and the title say which of the three it is)
+            case MOVED -> Styles.Style.builder().lineColor("#0072B2").lineStyle(12).lineThickness(2).build();
+            case SPLIT -> Styles.Style.builder().lineColor("#CC79A7").lineStyle(6).lineThickness(2).build();
+            case MERGED -> Styles.Style.builder().lineColor("#56B4E9").lineStyle(5).lineThickness(2).build();
             default -> Styles.Style.builder().lineColor("#5B7C99").lineStyle(4).lineThickness(1).build();
         };
     }
@@ -219,10 +257,12 @@ class ChangeMarks {
 
     /**
      * The legend of a view of a comparison: what the glyphs and the lines mean. It is there when the view says at least
-     * one change; it lists the four states, so that a reader learns the language.
+     * one change; it lists the four states, so that a reader learns the language, and the states of identity (moved, split,
+     * merged) that the view uses, so that the legend of a view that has none is what it always was.
      */
     String legend(@NonNull Viewpoint viewpoint) {
-        if (styles(viewpoint).isEmpty()) {
+        val used = styles(viewpoint);
+        if (used.isEmpty()) {
             return "";
         }
         val buf = new StringBuilder();
@@ -255,6 +295,24 @@ class ChangeMarks {
             .append(GLYPH_CONTAINS)
             .append("** | something inside changed: thin dashed outline | |")
             .append(nl);
+        if (used.containsKey(MOVED)) {
+            buf.append("| **")
+                .append(GLYPH_MOVED)
+                .append("** | moved or renamed, replaces one element: long dashes | |")
+                .append(nl);
+        }
+        if (used.containsKey(SPLIT)) {
+            buf.append("| **")
+                .append(GLYPH_SPLIT)
+                .append("** | split, one of several that replace one element: medium dashes | |")
+                .append(nl);
+        }
+        if (used.containsKey(MERGED)) {
+            buf.append("| **")
+                .append(GLYPH_MERGED)
+                .append("** | merged, replaces several elements: short dashes | |")
+                .append(nl);
+        }
         buf.append("endlegend").append(nl);
         return buf.toString();
     }
