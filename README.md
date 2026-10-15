@@ -24,6 +24,26 @@ docker run \
   --rm ghcr.io/tmorin/archicode views generate
 ```
 
+**Compare two plateaus**
+
+A workspace can list its states, the plateaus, in `settings.plateaus`, each a complete folder of manifests.
+`diff` tells what is new, changed and removed from the plateau before to the last one; `--baseline` also
+draws the comparison next to the views. See "States of an architecture (plateaus)" in the manual.
+
+```shell
+docker run \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/workdir" -w "/workdir" \
+  --rm ghcr.io/tmorin/archicode diff
+```
+
+```shell
+docker run \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/workdir" -w "/workdir" \
+  --rm ghcr.io/tmorin/archicode views generate --baseline as-is
+```
+
 **Get the JSON schema for the Workspace resource**
 
 ```shell

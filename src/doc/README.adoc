@@ -57,6 +57,9 @@ Customize and extend ArchiCode's functionality by plugging in renderer engines t
 .Diverse Viewpoint Providers
 ArchiCode's extensibility goes further by integrating viewpoint providers to enhance your architectural perspectives with specialized viewpoints.
 
+.States of an Architecture
+A plateau is a complete folder of manifests, the architecture as it is or as it should be. ArchiCode computes what is new, changed and removed from one plateau to the next and draws it, in the views and in the editor, with marks that never rely on colour (see <<plateaus-overview>>).
+
 .Unraveling Clarity Through Facets
 The facet feature in Archicode elegantly simplifies complex architectural views, offering tailored visualizations focused on specific model elements and relationships for enhanced clarity and comprehension.
 
@@ -96,6 +99,8 @@ In ArchiCode, a workspace is a fundamental construct that orchestrates the found
 
 - Optional Name: a workspace can be given a name with `settings.name`. The editor shows it in place of the name of the folder (see <<editor-workspace-name>>); the command line does not need it. A workspace without a name stays valid.
 
+- Optional Plateaus: a workspace can list the states of the architecture, each a complete folder of manifests, with `settings.plateaus` (see <<plateaus-overview>>). A workspace that does not, keeps the one set of manifests it always had.
+
 The following snippet describes a workspace named `ArchiCode`, designing the `CommandLineInterface` container of the `ArchiCode` system and its localization in the `Reference` environment.
 
 .The content of `workspace.yaml`
@@ -134,7 +139,7 @@ Incorporating workspaces and manifests into your architectural workflow within A
 [[plateaus]]
 ==== Plateaus
 
-An architecture goes through states: how it is today, how it should be next year. A _plateau_ is one of these states, kept as a complete folder of manifests. `settings.plateaus` lists the plateaus of the architecture in one `workspace.yaml`, and the commands and the editor draw the one you choose.
+An architecture goes through states: how it is today, how it should be next year. (<<plateaus-overview>> tells the story in one place, with a tutorial.) A _plateau_ is one of these states, kept as a complete folder of manifests. `settings.plateaus` lists the plateaus of the architecture in one `workspace.yaml`, and the commands and the editor draw the one you choose.
 
 .A workspace with two plateaus: `workspace.yaml`
 [source,yaml]
@@ -190,7 +195,7 @@ the plateaus `as-is` and `to-be` share the path `plateaus/10_as-is`: each platea
 
 Every rule is checked before anything is read or written, and every problem is reported, one per line.
 
-IMPORTANT: *Breaking change.* A path of `settings.manifests.paths` may no longer leave the folder of the workspace (`../shared`) nor be absolute (`/srv/manifests`, `C:\data`): the same rule as for the folder of a plateau, so that one folder holds a whole workspace, and so that the editor, which only reaches the folder it opened, reads what the command line reads. A workspace that used such a path stops with an error that says which path and what to change: move the folder below `workspace.yaml`, or move `workspace.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected, and neither is a workspace without `plateaus`: it is read, and generates its views, exactly as before.
+IMPORTANT: *Breaking change* (see <<plateaus-upgrade>>). A path of `settings.manifests.paths` may no longer leave the folder of the workspace (`../shared`) nor be absolute (`/srv/manifests`, `C:\data`): the same rule as for the folder of a plateau, so that one folder holds a whole workspace, and so that the editor, which only reaches the folder it opened, reads what the command line reads. A workspace that used such a path stops with an error that says which path and what to change: move the folder below `workspace.yaml`, or move `workspace.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected, and neither is a workspace without `plateaus`: it is read, and generates its views, exactly as before.
 
 [[plateau-comparison]]
 ==== Comparing two plateaus
@@ -665,7 +670,7 @@ For the same stereotype, `by-tags` wins over `by-qualifiers`.
 When a box has several styled stereotypes, a later one overrides an earlier one property by property: with `rendering-stereotypes: "external changed"`, the fill of `changed` wins, and the properties it does not set come from `external`.
 The order is that of the stereotypes of the box, its qualifiers first and then the words of the tag.
 The command line follows the same rule: it writes the stereotypes of a box last first, since PlantUML lets the first stereotype of a box win, property by property, whatever the order of the styles.
-The `.puml` of a box carrying `external changed` therefore says `<<changed>> <<external>>`, and the same workspace always gives the same file, byte for byte.
+The `.puml` of a box carrying `external changed` therefore says `+<<changed>> <<external>>+`, and the same workspace always gives the same file, byte for byte.
 The one difference: `shadowing` is a flag that is only ever switched on, so a style cannot switch off the shadow another style of the same box switched on (the editor lets `shadowing: false` of a later stereotype do it).
 
 Colours are read as `#rgb`, `#rrggbb`, `rgb(r, g, b)`, `transparent` or a CSS colour name such as `lightgray`; a value the editor cannot read is ignored.
@@ -724,6 +729,205 @@ include::examples/domain_configuration/default_formatters.yaml[]
 ----
 
 By affording you the capability to tailor the configuration of ArchiCode, the tool seamlessly integrates with your architectural process, providing a personalized and adaptable framework.
+
+[[plateaus-overview]]
+== States of an architecture (plateaus)
+
+An architecture is never finished: it is how it runs today, how it should run next year, and what the year after may bring. ArchiCode calls each of these states a _plateau_ and tells you what changes from one to the next. This section is the story in one place, from the idea to a review of the changes; the rules are in <<plateaus,Plateaus>> and <<plateau-comparison,Comparing two plateaus>> (in the Domain section), the commands in <<plateau-add,Add a plateau>>, <<diff,Compare plateaus>> and <<generate-views,Generate views>>, and the editor in <<editor-plateaus,Plateaus in the editor>> and <<editor-compare,Comparing two plateaus in the editor>>.
+
+IMPORTANT: *Breaking change.* A path of `settings.manifests.paths` may no longer contain `..` nor be absolute, and a reference declared twice is now an error. Read <<plateaus-upgrade>> before you upgrade a workspace; a workspace that does neither is read and drawn exactly as before.
+
+=== The idea
+
+A plateau is a _complete_ folder of manifests: the whole architecture in that state, not a list of differences. You edit the plateau of the future as you would edit any workspace, and nothing has to be kept in sync by hand. The difference between two plateaus is _computed_ from the references of the elements and the relationships, never typed: ArchiCode tells what is new, what changed and what was removed, and the views, the table of changes and the editor all draw the same answer.
+
+=== The layout
+
+The folder of the architecture holds one `workspace.yaml`, with the settings, the styles and the facets that every plateau shares, and one folder per plateau.
+
+.The folders of an architecture with two plateaus
+----
+- architecture/
+    - plateaus/
+        - 10_as-is/ <1>
+            - customer.yaml
+            - shop.yaml
+        - 20_to-be/ <2>
+            - customer.yaml
+            - shop.yaml
+    - workspace.yaml <3>
+----
+<1> The manifests of the first plateau, directly in the folder (a plateau folder is read like a `manifests` folder: its files, not its sub-folders).
+<2> The manifests of the second one: the whole architecture, as it should be.
+<3> Lists the plateaus in `settings.plateaus`. This is the example `domain_plateaus` of this manual.
+
+=== The settings in short
+
+[cols="1,3"]
+|===
+| `settings.plateaus` | The ordered list of plateaus, the oldest first. Each entry has an `id` and a `path` (both required), and optionally a `name`, a `horizon` (free text, never interpreted) and a `baseline` (the id of the plateau it is compared with; by default the plateau before it in the list).
+| `settings.current` | The plateau that is drawn when none is asked for; the last one by default.
+| `from` | Reserved for a later version and refused for now, with a message.
+|===
+
+A `path` is mandatory, relative to the folder of `workspace.yaml`, below it (no `..`) and not absolute. The ids and the paths are unique, and `.` is accepted for a single plateau only. Every rule is checked before anything is read, and each problem is reported. The details, with the messages, are in <<plateaus>>.
+
+=== The four states
+
+What a plateau changes is told with four states, computed, on elements and on relationships (the fourth is for boxes only):
+
+[cols="1,1,3"]
+|===
+| State | Mark | Means
+
+| `new` | `+` | the reference is only in the plateau
+| `changed` | `~` | the reference is in both and something differs: a property, or a relationship the element declares (an element whose description is the only difference is _wording only_)
+| `removed` | `−` | the reference is only in the baseline
+| `contains-changes` | `±` | the element did not change by itself, but something inside it did
+|===
+
+Each state has a mark, a line style and a legend, so that nothing relies on colour: see <<plateau-comparison,Comparing two plateaus>> for the command line and <<editor-compare,Comparing two plateaus in the editor>> for the editor.
+
+*The states and the tags you wrote by hand.* The four states are stereotypes of the boxes, the same ones that a `styles.by-tags` entry or a `rendering-stereotypes` tag names (see <<stereotypes-and-styles>>). If you used to mark the boxes of a target by hand with `rendering-stereotypes: "new"` or `"changed"`, nothing breaks. A tag is a stereotype like another and keeps its style: the computed state of the same name is not written twice, and a state is always the _last_ stereotype of a box, so its look overrides the look of the other stereotypes as a later stereotype always does. Your `styles.by-tags` entry named like a state wins, property by property, over the default look of ArchiCode: a `new` with only a `background-color` keeps the thick outline of the default. The tags themselves are not read by the comparison (a `rendering-*` tag is never a change), so you can drop them when you like: the computed states say the same, and say it only where it is true. One small difference remains between the tools. On an element that did not change, the editor leaves your hand-written `new` as you wrote it, while the command line gives it the default look of `new` in a view that has something new, because the look is a style of the stereotype.
+
+=== A tutorial: from one workspace to a review of the changes
+
+The tutorial builds the example `domain_plateaus` of this manual, an invented bookshop. Its commands run in the folder of `workspace.yaml`; the output quoted is the one the commands print.
+
+*Step 1. Start from the architecture you have.* An existing workspace is your first plateau. Create the folder of the plateau under the folder of `workspace.yaml` and move the manifests in it. The files that were in the folder named by `manifests.paths` are the ones to move.
+
+----
+mkdir -p plateaus/10_as-is
+mv manifests/* plateaus/10_as-is/
+----
+
+A plateau is _one_ folder: if `manifests.paths` listed several folders, put their files together in the folder of the plateau (a reference declared twice is an error, see <<duplicate-references>>).
+
+If you already have the two states as two workspaces, a baseline and a target, each with its own `workspace.yaml` and `manifests` folder, make each manifests folder a plateau (`plateaus/10_as-is` and `plateaus/20_to-be`, the oldest first) and keep a single `workspace.yaml`, the one of the target if it is the one you keep working in. Its `settings`, `styles`, `formatters` and facets then apply to every plateau, and the other `workspace.yaml` is not read any more: move into the one you keep what you still need of it. Then list both plateaus as in step 2: `archicode plateau add` is for a new plateau, it never adopts a folder that exists already.
+
+*Step 2. List the plateau.* In `workspace.yaml`, delete `manifests.paths`, the key and its list (a workspace has either that or plateaus, not both, and an empty list counts as written), and list the plateau. The names and the horizon are for people.
+
+.The first plateau, in `workspace.yaml`
+[source,yaml]
+----
+settings:
+  name: "Bookshop"
+  plateaus:
+    - id: "as-is"
+      name: "As is"
+      horizon: "2026-Q3"
+      path: "plateaus/10_as-is"
+----
+
+The workspace is read as before, with one visible difference: the commands read the only plateau, and the views of a workspace that has plateaus go to a folder named after the plateau, `views-as-is`, in place of `views` (and `views-as-is-<facet>` for the facets). Move or update what reads the old folder. An unknown `--plateau` is refused with the list of the plateaus that the workspace has, and the editor lists them in its header.
+
+*Step 3. Add the plateau of the future.* `archicode plateau add` copies a plateau into a new folder and appends it to the list, comments of `workspace.yaml` included (see <<plateau-add>>):
+
+[source,shell]
+----
+archicode plateau add to-be --from as-is --name "To be" --horizon 2027-Q1
+----
+
+----
+plateau `to-be` added: `plateaus/10_as-is` copied to `plateaus/20_to-be`, and the plateau appended to settings.plateaus
+----
+
+The folder `plateaus/20_to-be` is a copy of the first one. Edit it as the architecture should be, with an editor or in the editor of ArchiCode: in the example, `shop.payments` is added, `shop.mailer` is removed, the relationships of `shop.web` change, a description is reworded.
+
+.`plateaus/10_as-is/shop.yaml`
+[source,yaml]
+----
+include::examples/domain_plateaus/plateaus/10_as-is/shop.yaml[]
+----
+
+.`plateaus/20_to-be/shop.yaml`
+[source,yaml]
+----
+include::examples/domain_plateaus/plateaus/20_to-be/shop.yaml[]
+----
+
+Two things to see in `plateaus/20_to-be/shop.yaml`. The wording of the description of `shop.catalog` is the only change of that element. And `shop.payments` still carries the tag `rendering-stereotypes: "new"` that this author wrote by hand: it works as before, and the comparison does not need it.
+
+*Step 4. Ask what changed.* `archicode diff` compares the plateau that is drawn by default, the last one, with the plateau before it:
+
+[source,shell]
+----
+archicode diff
+----
+
+----
+comparing to-be (To be) with as-is (As is)
+elements      +1 ~2 -1
+relationships +1 ~1 -1
+wording only  1 of the 2 changed elements
+
+CHANGE   THING         LAYER        REFERENCE                                   NATURES                                                                     DETAILS
+changed  element       application  shop.catalog                                description (wording only)                                                  description: "The books on sale." -> "The books that are on sale."
+removed  element       application  shop.mailer                                 -                                                                           name: "Mailer"
+new      element       application  shop.payments                               -                                                                           name: "Payments"
+changed  element       application  shop.web                                    qualifiers,relationships-added,relationships-removed,relationships-changed  qualifiers: +React
+changed  relationship  application  shop.web -> shop.catalog (browses)          label                                                                       label: "reads" -> "browses"
+removed  relationship  application  shop.web -> shop.mailer (sends mails with)  -
+new      relationship  application  shop.web -> shop.payments (pays with)       -
+----
+
+Two elements changed, one only by its wording, and the table says in each row what changed (see <<diff>> for the options and the other formats). Nothing is written, and a difference is not an error.
+
+*Step 5. Draw the comparison.* `views generate` writes the views of a plateau, and, with `--baseline`, the views of the comparison next to them:
+
+[source,shell]
+----
+archicode views generate --baseline as-is
+----
+
+----
+$ ls
+plateaus
+views-to-be
+views-to-be-vs-as-is
+workspace.yaml
+$ ls views-to-be-vs-as-is
+gap.json
+gap.md
+plantuml
+----
+
+(The `ls` shows what a clean folder shows; a folder that already had `manifests`, `views` or `views-as-is` still has them: they are not removed.) `views-to-be` holds the views of the plateau, as for any workspace. `views-to-be-vs-as-is` holds the views of the comparison, and `gap.md` and `gap.json`, the table of changes of step 4 in a file that a pull request can carry. Every box and every link of these views says its state with a mark and a line style, and the views that have a change have a legend. The overview of the container `shop.web`:
+
+.The overview of `shop.web` in `views-to-be-vs-as-is`
+[plantuml, plateaus_shop_web_overview]
+----
+include::examples/domain_plateaus/views-to-be-vs-as-is/plantuml/application/shop_web-overview.puml[]
+----
+
+`shop.web` and `shop.catalog` are changed (dotted outline, `~`), `shop.payments` is new (thick outline, `+`), `shop.mailer` is removed (dashed, struck title, `−`), and the system `shop`, which did not change by itself, _contains changes_ (`±`). The links say it the same way: `+ pays with` is new, `− sends mails with` is removed, and the label of `shop.web` to `shop.catalog` changed, from `reads` to `browses`.
+
+*Step 6. Look at it in the editor.* `archicode editor serve` opens the folder in your browser (see <<serve-the-editor>>):
+
+. The *Plateau* selector of the header chooses the plateau that is drawn (see <<editor-plateaus,Plateaus in the editor>>).
+. *Compare to* draws it together with another plateau. Choose *Baseline: As is*: the Map shows the four states, and the key under the drawing is the legend (see <<editor-compare,Comparing two plateaus in the editor>>).
+. With nothing selected, the panel on the right is the *Changes* panel: the counts, then every element and relationship that changed, new first (see <<editor-changes-panel>>). A click on a row shows it on the Map.
+. Select a changed element: the block *What changed* gives each property _Before_ and _After_ and its relationships that changed (see <<editor-what-changed>>).
+. *Changes only* keeps what changed and the boxes needed to place it, and *Hide wording-only changes* sets the rewording aside (see <<editor-changes-only>>).
+
+The editor never writes the plateau it compares with.
+
+*Step 7. Go on.* `archicode plateau add` again copies the plateau you name with `--from`, to prepare the state after it. The new plateau is the last of the list, so it becomes the plateau that is drawn by default and the one that `archicode diff` compares; give it a `--baseline` when the plateau that comes before it in the list is not the one it should be compared with:
+
+[source,shell]
+----
+archicode plateau add later --from to-be --baseline as-is
+----
+
+[[plateaus-upgrade]]
+=== Upgrading: what breaks, and what does not
+
+Two things that used to pass now stop with an error that says what to change. Everything else about a workspace that has no `settings.plateaus` is unchanged: it is read, and generates its views in the same folders, byte for byte as before (checked on the views of this repository's workspaces and on a copy of a real workspace of 3,411 views).
+
+. *A path of `settings.manifests.paths` with `..` or an absolute path.* `../shared`, `/srv/manifests` and `C:\data` are refused: one folder holds a whole workspace, so that the editor, which only reaches the folder it opened, reads what the command line reads. Move the folder below the folder of `workspace.yaml`, or move `workspace.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected.
+. *A reference declared twice.* Two manifests, a manifest and an element nested in another one, or two elements of one file that share a reference used to pass silently, and which of them was drawn depended on chance. The command line now stops, names the reference and the two files, and writes nothing, and the editor reports the same in the same words (see <<duplicate-references>>). Remove one of the declarations, or give one of them another `id`. Two identical copies count too. This check applies to workspaces without plateaus as well; with plateaus, the same reference in two plateaus is no duplicate, it is what the comparison is about.
+
+Nothing is to be changed in the manifests themselves: their format is the one it always was.
 
 [[editor]]
 == Editor
@@ -1010,7 +1214,7 @@ The command offers also customization Capabilities:
 archicode views generate --plateau to-be
 ----
 
-- Comparison: `--baseline <id>` compares the plateau with another one (see <<plateau-comparison>>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in `views-<plateau>-vs-<baseline>` (and one folder per facet, `views-<plateau>-vs-<baseline>-<facet>`), next to two files that tell the same in text: `gap.md` and `gap.json`, the table of changes that `archicode diff` prints (see <<diff>>). A plateau that has a `baseline` key is compared without `--baseline`; a plateau that has none is not, even though the plateau before it is its baseline for `archicode diff`, because a comparison doubles the number of views and is not generated by surprise. An unknown baseline, or `--baseline` on a workspace that has no plateaus, stops the command before anything is written. `--output` is, with plateaus, the beginning of the name of these folders.
+- Comparison: `--baseline <id>` compares the plateau with another one (see <<plateau-comparison>>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in `views-<plateau>-vs-<baseline>` (and one folder per facet, `views-<plateau>-vs-<baseline>-<facet>`), next to two files that tell the same in text: `gap.md` and `gap.json`, the table of changes that `archicode diff` prints (see <<diff>>). A workspace that sets `settings.facets.global-enabled: false` has nothing but these two files in `views-<plateau>-vs-<baseline>`: its views are in the folders of its facets. A plateau that has a `baseline` key is compared without `--baseline`; a plateau that has none is not, even though the plateau before it is its baseline for `archicode diff`, because a comparison doubles the number of views, and so about the time it takes (a workspace of 3,400 views goes from about 40 to about 90 seconds), and is not generated by surprise. An unknown baseline, or `--baseline` on a workspace that has no plateaus, stops the command before anything is written. `--output` is, with plateaus, the beginning of the name of these folders.
 
 .Generate Views - Comparison
 [source,shell]
@@ -1132,19 +1336,23 @@ Tells what a plateau changes: the elements and the relationships that are new, c
 [source,text]
 ----
 comparing to-be (To be) with as-is (As is)
-elements      +1 ~1 -0
-relationships +1 ~0 -0
-wording only  0 of the 1 changed elements
+elements      +1 ~2 -1
+relationships +1 ~1 -1
+wording only  1 of the 2 changed elements
 
-CHANGE   THING         LAYER        REFERENCE                              NATURES              DETAILS
-new      element       application  shop.payments                          -                    name: "Payments"
-changed  element       application  shop.web                               relationships-added
-new      relationship  application  shop.web -> shop.payments (pays with)  -
+CHANGE   THING         LAYER        REFERENCE                                   NATURES                                                                     DETAILS
+changed  element       application  shop.catalog                                description (wording only)                                                  description: "The books on sale." -> "The books that are on sale."
+removed  element       application  shop.mailer                                 -                                                                           name: "Mailer"
+new      element       application  shop.payments                               -                                                                           name: "Payments"
+changed  element       application  shop.web                                    qualifiers,relationships-added,relationships-removed,relationships-changed  qualifiers: +React
+changed  relationship  application  shop.web -> shop.catalog (browses)          label                                                                       label: "reads" -> "browses"
+removed  relationship  application  shop.web -> shop.mailer (sends mails with)  -
+new      relationship  application  shop.web -> shop.payments (pays with)       -
 ----
 
 - `--plateau`: the plateau that is compared, as for `views generate`: `settings.current`, else the last one.
 - `--baseline`: the plateau it is compared with: the one named, else the `baseline` key of the plateau, else the plateau before it in the list (see <<plateau-comparison>>).
-- `--format` (`-f`): `text` (the default), `markdown` (a table to paste in a pull request) or `json` (the counts and one object per change, with `before` and `after` for a changed element).
+- `--format` (`-f`): `text` (the default; its lines are as long as the longest reference, several hundred characters on a large workspace, so read them with `less -S` or take `markdown`), `markdown` (a table to paste in a pull request) or `json` (the counts and one object per change, with `before` and `after` for a changed element).
 - `--no-wording`: leaves the elements whose description is the only thing that changed out of the table, and says how many are left out. The counts still include them.
 
 The table lists the elements, then the relationships, sorted by layer and reference: the same output for the same two plateaus, byte for byte, whatever the machine. A difference is not an error: the exit code is 0. The command stops with an error (exit code 1) that says what to do when the workspace has no `settings.plateaus`, when the plateau is the first one and has no baseline to compare with, and when the baseline is unknown or is the plateau itself.
