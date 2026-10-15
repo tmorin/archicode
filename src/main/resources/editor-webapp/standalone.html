@@ -31,7 +31,10 @@
     --chg-changed: #a85d00;
     --chg-removed: #6b6b6b;
     --chg-removed-text: #595959;
-    --chg-contains: #4f6f8f; /* the four states of a comparison (run 0039): a line and a tint, never the only way a state is told (a glyph, a line style and the word are too) */
+    --chg-moved: #0072b2;
+    --chg-split: #a8467f;
+    --chg-merged: #2d86b8;
+    --chg-contains: #4f6f8f; /* the states of a comparison (run 0039; moved, split and merged: wave 009, the blue, the purple and the light blue of the command line, darkened where a line on white needs it): a line and a tint, never the only way a state is told (a glyph, a line style and the word are too) */
   }
   /* The scheme is the system's, unless Settings forces one: data-theme="light" or "dark" on the root element (no attribute
      is "system"). The dark variables are written twice, for the system's dark and for the forced one: test-checked to match. */
@@ -52,6 +55,9 @@
       --chg-removed: #a0a0a0;
       --chg-removed-text: #b0b0b0;
       --chg-contains: #8db4d8;
+      --chg-moved: #56b4e9;
+      --chg-split: #e69ac4;
+      --chg-merged: #9fd3f2;
     }
   }
   :root[data-theme="light"] { color-scheme: light; }
@@ -72,6 +78,9 @@
     --chg-removed: #a0a0a0;
     --chg-removed-text: #b0b0b0;
     --chg-contains: #8db4d8;
+    --chg-moved: #56b4e9;
+    --chg-split: #e69ac4;
+    --chg-merged: #9fd3f2;
   }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   #app { min-height: 100vh; display: flex; flex-direction: column; }
@@ -254,6 +263,23 @@
   .tree-change { flex: none; min-width: 1rem; text-align: center; font-weight: 800; font-size: 0.8rem; line-height: 1.2; padding: 0 0.15rem; border: 1px solid var(--chg-new); border-radius: 3px; color: var(--fg); }
   .tree-change[data-state="changed"] { border-color: var(--chg-changed); border-style: dotted; }
   .tree-change[data-state="contains-changes"] { border-color: var(--chg-contains); border-style: dashed; font-weight: 600; }
+  .tree-change[data-state="moved"] { border-color: var(--chg-moved); border-style: dashed; border-width: 2px; }
+  .tree-change[data-state="split"] { border-color: var(--chg-split); border-style: dashed; border-width: 2px; border-top-style: dotted; border-bottom-style: dotted; }
+  .tree-change[data-state="merged"] { border-color: var(--chg-merged); border-style: double; border-width: 3px; }
+  /* what an element replaces (wave 009), the candidates the kernel proposes and the warnings it gives, in the Changes panel and the form */
+  .change-from { color: var(--muted); font-size: 0.75rem; flex: 0 0 100%; overflow-wrap: anywhere; }
+  .change-candidates { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .change-candidate { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.4rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .change-candidate-pair { display: flex; flex-direction: column; gap: 0.1rem; }
+  .change-candidate-side { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.4rem; }
+  .change-candidate-role { flex: 0 0 4.2rem; font-size: 0.72rem; font-weight: 600; color: var(--muted); }
+  .change-candidate-reasons { color: var(--muted); font-size: 0.75rem; }
+  .change-candidate-actions { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .change-candidate-actions button { padding: 0.2rem 0.6rem !important; font-size: 0.8rem; }
+  .changes-message { margin: 0; padding: 0.4rem 0.5rem; border: 1px solid var(--danger); border-radius: 4px; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .changes-warnings { margin: 0; padding-left: 1.1rem; font-size: 0.8rem; overflow-wrap: anywhere; list-style: disc; }
+  .changes-warnings li + li { margin-top: 0.3rem; }
+  .replaces-flag { margin-left: 0.3rem; font-size: 0.72rem; color: var(--muted); font-style: italic; }
 
   [data-resize] { background: var(--border); flex-shrink: 0; }
   [data-resize]:hover, [data-resize][data-active] { background: var(--accent); }
@@ -1719,16 +1745,88 @@ function serializeManifestFile(header, content) {
  * wrote for the old value has to be found, in order, in `oldText` with the same indentation and the same words (the
  * quotes and a trailing comment do not count); when one is not (a flow list, other indentation, a key written another
  * way), the layout of the file is not one this can follow, and the text is the emitter's, as before.
+ *
+ * A list written on one line (`qualifiers: [Redis, Cache]`) is the one layout that is followed since wave 009 (a `replaces` is often written so): it is
+ * read as the block the emitter writes, and goes back to its line when the edit did not touch it (see `openFlowLists`).
  */
 function patchYamlText(oldText, newValue) {
   const emitted = serializeYamlValue(newValue, 0);
+  const strict = patchYamlLines(oldText, emitted, newValue);
+  if (strict !== null) return strict;
+  const opened = openFlowLists(oldText);
+  if (opened === null) return emitted;
+  const patched = patchYamlLines(opened.text, emitted, newValue);
+  if (patched === null) return emitted;
+  const closed = closeFlowLists(patched, opened.lists);
+  // what is written must say what the edit says, in the emitter's own terms; if it does not, the emitter's text is the safe one
+  try {
+    if (serializeYamlValue(parseYaml(closed), 0) !== emitted) return emitted;
+  } catch (e) {
+    return emitted;
+  }
+  return closed;
+}
+
+/**
+ * The text with every list written on one line, as the value of a plain key (`  tags: [a, b]  # why`), written as the block the emitter writes for it
+ * (the comment goes on the key's line), and the lists as they were, to put back by `closeFlowLists`. `null` when the text has none, or one that cannot be read.
+ */
+function openFlowLists(text) {
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n';
+  const lines = text.split(/\r\n|\r|\n/);
+  const lists = [];
+  let found = false;
+  const out = lines.map((line) => {
+    const m = line.match(/^( *)([A-Za-z0-9_][A-Za-z0-9_.-]*): *\[(.*)\] *(#.*)?$/);
+    if (!m || m[3].trim() === '') return line;
+    let value;
+    try {
+      value = parseYaml(m[2] + ': [' + m[3] + ']');
+    } catch (e) {
+      return line;
+    }
+    const items = value && typeof value === 'object' ? value[m[2]] : null;
+    if (!Array.isArray(items) || !items.length || items.some((item) => item !== null && typeof item === 'object')) return line;
+    found = true;
+    const expanded = [m[1] + m[2] + ':' + (m[4] ? '  ' + m[4] : '')].concat(serializeYamlValue(items, m[1].length + 2).split('\n'));
+    lists.push({ expanded, original: line });
+    return expanded.join('\n');
+  });
+  return found ? { text: out.join(eol), lists } : null;
+}
+
+/** The text after the edit with the lists that `openFlowLists` opened and the edit left alone put back on their line; a list the edit changed stays a block. */
+function closeFlowLists(text, lists) {
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n';
+  let lines = text.split(/\r\n|\r|\n/);
+  let from = 0;
+  for (const list of lists) {
+    for (let i = from; i + list.expanded.length <= lines.length; i++) {
+      const keyIndent = list.original.length - list.original.replace(/^ +/, '').length;
+      const next = lines[i + list.expanded.length];
+      const continues = next !== undefined && /^ *- /.test(next) && next.length - next.replace(/^ +/, '').length > keyIndent; // the edit added an item after the last one
+      if (!continues && list.expanded.every((line, k) => lines[i + k] === line)) {
+        lines = lines.slice(0, i).concat(list.original, lines.slice(i + list.expanded.length));
+        from = i + 1;
+        break;
+      }
+    }
+  }
+  return lines.join(eol);
+}
+
+/**
+ * `patchYamlText` for a layout it can follow: the text of `oldText` with the difference between what the emitter writes for the old value and `emitted`
+ * (what it writes for `newValue`) applied; `null` when a line the emitter writes for the old value cannot be found in `oldText`.
+ */
+function patchYamlLines(oldText, emitted, newValue) {
   let oldValue;
   try {
     oldValue = parseYaml(oldText);
   } catch (e) {
-    return emitted;
+    return null;
   }
-  if (oldValue === null || typeof oldValue !== 'object') return emitted;
+  if (oldValue === null || typeof oldValue !== 'object') return null;
   const eol = /\r\n/.test(oldText) ? '\r\n' : '\n';
   const endsWithBreak = /\n$/.test(oldText);
   const original = oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
@@ -1747,7 +1845,7 @@ function patchYamlText(oldText, newValue) {
     let found = -1;
     if (wordsOf(line) === '') { // a blank line or one that reads as a comment: inside a block scalar, where it is text, so it is the very next line
       if (cursor < original.length && original[cursor].trim() === line.trim()) found = cursor;
-      if (found === -1) return emitted;
+      if (found === -1) return null;
       place.push(found);
       spans.push(0);
       cursor = found + 1;
@@ -1776,7 +1874,7 @@ function patchYamlText(oldText, newValue) {
       }
       break; // the next line with words has to be it
     }
-    if (found === -1) return emitted;
+    if (found === -1) return null;
     place.push(found);
     spans.push(span);
     cursor = found + 1 + span;
@@ -6768,6 +6866,13 @@ function renderElementHierarchyHtml(record) {
   html += renderFieldRowHtml('Children', children.length
     ? renderItemListHtml(children.map((child) => renderReferenceItemHtml(child.reference, layer)))
     : renderNoneHtml(), children.length);
+  if (Array.isArray(record.replaces) && record.replaces.length) {
+    // wave 009: what this element says it replaces, each flagged when the plateau compared with does not have it or this plateau still does
+    html += renderFieldRowHtml('Replaces', renderItemListHtml(record.replaces.map((entry) => {
+      const flag = replacesFlagOf(record, entry);
+      return '<span class="change-ref">' + escapeHtml(entry) + '</span>' + (flag ? '<span class="replaces-flag">' + escapeHtml(flag) + '</span>' : '');
+    })), record.replaces.length);
+  }
   if (record.kind === 'environment') {
     const uses = record.uses || [];
     html += renderFieldRowHtml('Uses', uses.length
@@ -7239,6 +7344,9 @@ function renderElementEditionFormHtml(reference) {
   html += renderRelationshipEditRowHtml(reference, null, null);
   html += '</div>';
 
+  // replaces (wave 009): the elements of the other plateau this one is the new place of
+  if (replacesSectionShown(record)) html += renderReplacesEditionHtml(record, refAttr);
+
   // applications (node only — DEC-2a)
   if (record.kind === 'node') {
     html += '<div class="edition-section"><h3>Applications</h3>';
@@ -7277,6 +7385,51 @@ function renderElementEditionFormHtml(reference) {
 
   html += '</div>'; // .element-edition-form
   return html;
+}
+
+// ---- `replaces` by hand (wave 009) ----
+
+/** The Replaces section is offered when there is a plateau to replace elements of (the workspace has several), or the element already says something: a workspace without plateaus has a form as it always had. */
+function replacesSectionShown(record) {
+  return (AppState.plateau !== null && AppState.plateaus.length > 1) || (Array.isArray(record.replaces) && record.replaces.length > 0);
+}
+
+/**
+ * What the plateau compared with thinks of a reference written in `replaces`, for the element `record`: '' when it is an element of that plateau, else the reason it
+ * will be ignored or is not checked. An unknown reference is allowed (the author may have compared with another baseline), but it is flagged, as the kernel warns about it.
+ */
+function replacesFlagOf(record, reference) {
+  const layer = record.layer || 'application';
+  if (AppState.index[layer].has(String(reference))) return 'still in this plateau: ignored';
+  if (!AppState.baseline) return '';
+  return AppState.baseline.index[layer].has(String(reference)) ? '' : 'not in “' + plateauTitle(AppState.baseline.plateau) + '”';
+}
+
+/** The Replaces section of the edit form: the list, each with its flag and a remove button, and a field to add one. */
+function renderReplacesEditionHtml(record, refAttr) {
+  const replaces = Array.isArray(record.replaces) ? record.replaces : [];
+  let html = '<div class="edition-section" data-section="replaces"><h3>Replaces</h3>' +
+    '<p class="muted">The elements of the plateau this one is compared with that this element is the new place of (moved, renamed, split or merged). Written by you, never guessed.</p>';
+  html += replaces.map((entry, i) => {
+    const flag = replacesFlagOf(record, entry);
+    return '<span class="pill">' + escapeHtml(entry) + (flag ? '<span class="replaces-flag">' + escapeHtml(flag) + '</span>' : '') +
+      ' <button type="button" class="pill-remove" data-action="remove-replaces" data-ref="' + refAttr + '" data-index="' + i + '">&times;</button></span>';
+  }).join('');
+  html += '<div class="edition-add-row">' +
+    '<input type="text" id="add-replaces-input" placeholder="reference of the element it replaces" aria-label="Reference of the element this one replaces"' + (AppState.baseline ? ' list="archicode-baseline-references"' : '') + '>' +
+    '<button type="button" data-action="add-replaces" data-ref="' + refAttr + '">Add</button>' +
+    '<span class="inline-error" id="add-replaces-error"></span></div></div>';
+  return html;
+}
+
+/** A reference to add to `replaces` of `record`: not empty, not the element itself, not already listed. Unknown to the other plateau is allowed (it is flagged afterwards). */
+function validateNewReplaces(record, value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (trimmed === '') return { valid: false, error: 'Value is required.' };
+  if (/\s/.test(trimmed)) return { valid: false, error: 'A reference has no spaces.' };
+  if (trimmed === record.reference) return { valid: false, error: 'An element cannot replace itself.' };
+  if ((record.replaces || []).some((entry) => String(entry) === trimmed)) return { valid: false, error: '“' + trimmed + '” is already listed.' };
+  return { valid: true, value: trimmed };
 }
 
 /**
@@ -7342,10 +7495,13 @@ function renderReferenceDatalistsHtml() {
   const appRefs = Array.from(AppState.index.application.keys());
   const techRefs = Array.from(AppState.index.technology.keys());
   const optionsHtml = (refs) => refs.map((r) => '<option value="' + escapeHtml(r) + '">').join('');
+  // wave 009: what `replaces` can name is in the plateau compared with (only offered while one is read; an unknown reference can be typed all the same)
+  const baseline = AppState.baseline ? Array.from(AppState.baseline.index.application.keys()).concat(Array.from(AppState.baseline.index.technology.keys())) : null;
   return (
     '<datalist id="archicode-all-references">' + optionsHtml(appRefs.concat(techRefs)) + '</datalist>' +
     '<datalist id="archicode-application-references">' + optionsHtml(appRefs) + '</datalist>' +
-    '<datalist id="archicode-technology-references">' + optionsHtml(techRefs) + '</datalist>'
+    '<datalist id="archicode-technology-references">' + optionsHtml(techRefs) + '</datalist>' +
+    (baseline ? '<datalist id="archicode-baseline-references">' + optionsHtml(baseline) + '</datalist>' : '')
   );
 }
 
@@ -7540,8 +7696,21 @@ function renderChangedRelationshipHtml(state, layer, rel, withSource) {
 function changedRelationshipsOf(state, layer, reference) {
   const element = (state.layers[layer] || []).find((candidate) => candidate.reference === reference);
   const order = { new: 0, changed: 1, removed: 2 };
-  return ((element && element.relationships) || []).map((rel, i) => [rel, i]).filter(([rel]) => CHANGE_STATES.includes(rel.change))
+  return ((element && element.relationships) || []).map((rel, i) => [rel, i]).filter(([rel]) => RELATIONSHIP_STATES.includes(rel.change))
     .sort((a, b) => order[a[0].change] - order[b[0].change] || a[1] - b[1]).map(([rel]) => rel);
+}
+
+/** An element of the other plateau that the element replaces: its name and its reference, and whether the other plateau has it (an unknown reference is told, not hidden). */
+function replacedElementHtml(reference, layer) {
+  const record = AppState.baseline && AppState.baseline.index[layer] ? AppState.baseline.index[layer].get(String(reference)) : null;
+  return '<span class="change-name">' + escapeHtml(record && record.name ? record.name : String(reference).split('.').pop()) + '</span> <span class="change-ref">' + escapeHtml(reference) + '</span>' +
+    (record ? '' : '<span class="replaces-flag">not in the other plateau</span>');
+}
+
+/** An element of the plateau drawn that replaces the one being read (`replaced_by`): its name and its reference. */
+function replacingElementHtml(reference, layer) {
+  const record = AppState.index[layer] ? AppState.index[layer].get(String(reference)) : null;
+  return '<span class="change-name">' + escapeHtml(record && record.name ? record.name : String(reference).split('.').pop()) + '</span> <span class="change-ref">' + escapeHtml(reference) + '</span>';
 }
 
 /**
@@ -7556,10 +7725,27 @@ function renderWhatChangedHtml(layer, reference, removedPanel) {
   if (!element || !CHANGE_STATES.includes(element.change)) return '';
   const other = plateauTitle(state.base);
   let html = '<section class="what-changed" aria-label="What changed" data-state="' + element.change + '"><h4 class="inspection-subhead">What changed ' + changeChipHtml(element.change) + '</h4>';
-  if (element.change === 'new') {
+  if (IDENTITY_STATES.includes(element.change)) {
+    // wave 009: the element says which elements of the other plateau it is the new place of; its own changes, if any, are told next to that
+    const replaced = (element.replaces || []).map((ref) => replacedElementHtml(ref, layer));
+    const sentence = element.change === 'moved' ? 'Moved or renamed: it replaces an element of “' + other + '”.'
+      : element.change === 'split' ? 'Split: it is one of several elements that replace an element of “' + other + '”.'
+      : 'Merged: it replaces several elements of “' + other + '”.';
+    html += '<p class="inspection-note">' + escapeHtml(sentence) + '</p>' +
+      (replaced.length ? '<div class="change-diff" data-property="replaces"><div class="change-diff-label">Replaces</div>' + renderItemListHtml(replaced) + '</div>' : '');
+    const row = (state.changes || []).find((candidate) => candidate.thing === 'element' && candidate.layer === layer && candidate.reference === reference);
+    if (row && Array.isArray(row.natures) && row.natures.length) {
+      html += '<p class="change-natures">Also changed: ' + escapeHtml(natureWordsText(row.natures)) + '. Compared with “' + escapeHtml(other) + '”.</p>' + renderChangeDiffsHtml(row.before, row.after);
+    }
+  } else if (element.change === 'new') {
     html += '<p class="inspection-note">Whole element is new: it is not in “' + escapeHtml(other) + '”. Its properties are the ones below.</p>';
   } else if (element.change === 'removed') {
     html += '<p class="inspection-note">Whole element is removed' + (removedPanel ? '. Its properties and its relationships are the ones below.' : ': it is only in “' + escapeHtml(other) + '”.') + '</p>';
+    if (Array.isArray(element.replaced_by) && element.replaced_by.length) {
+      // wave 009: it is drawn only as the place of what was inside it; the elements that replace it are the ones to read
+      html += '<div class="change-diff" data-property="replaced_by"><div class="change-diff-label">Replaced by</div>' +
+        renderItemListHtml(element.replaced_by.map((ref) => replacingElementHtml(ref, layer))) + '</div>';
+    }
   } else {
     const row = (state.changes || []).find((candidate) => candidate.thing === 'element' && candidate.layer === layer && candidate.reference === reference);
     html += '<p class="change-natures">Changed: ' + escapeHtml(natureWordsText(element.natures)) + '. Compared with “' + escapeHtml(other) + '”.</p>';
@@ -7599,7 +7785,7 @@ function renderLinkChangeHtml(rels) {
 /** The detail of a changed relationship of a link: what it was and what it is, from the table. '' when it did not change. */
 function renderRelationshipChangeHtml(rel, layer) {
   const state = comparisonState();
-  if (!state || !state.records || !CHANGE_STATES.includes(rel.change)) return '';
+  if (!state || !state.records || !RELATIONSHIP_STATES.includes(rel.change)) return '';
   const row = rel.change === 'changed' ? relationshipRowOf(state, layer, rel.from, rel.destination, rel.label) : null;
   return '<div class="rel-change" data-state="' + rel.change + '">' + changeChipHtml(rel.change) +
     (row ? ' <span class="change-natures">Changed: ' + escapeHtml(natureWordsText(row.natures)) + '</span>' + renderChangeDiffsHtml(row.before, row.after) : '') + '</div>';
@@ -7607,31 +7793,48 @@ function renderRelationshipChangeHtml(rel, layer) {
 
 // ---- The list ----
 
-const CHANGE_STATE_ORDER = { new: 0, changed: 1, removed: 2 };
+const CHANGE_STATE_ORDER = { new: 0, changed: 1, moved: 2, split: 3, merged: 4, removed: 5 };
 
 /** The rows of the table in the order a reviewer reads them: what is new, what changed, what was removed; inside a state, the kernel's order (by reference). */
 function sortedChangeRows(rows) {
   return rows.map((row, i) => [row, i]).sort((a, b) => CHANGE_STATE_ORDER[a[0].change] - CHANGE_STATE_ORDER[b[0].change] || a[1] - b[1]).map(([row]) => row);
 }
 
-/** One row of the list: a button that selects the thing (state chip, name and reference, what changed in it). `selected`: it is the selection of the page. */
-function renderChangeRowHtml(row, selected) {
+/**
+ * What a moved, split or merged row says of where the element came from, as `diff` does: `from shop.till`, and for a split `split with shop.report-b`
+ * (the other rows of the same layer that replace one of the same references).
+ */
+function identityTextOf(row, rows) {
+  const replaces = Array.isArray(row.replaces) ? row.replaces : [];
+  let text = replaces.length ? 'from ' + replaces.join(', ') : '';
+  if (row.change === 'split') {
+    const others = rows.filter((other) => other !== row && other.thing === 'element' && other.layer === row.layer && other.change === 'split' && Array.isArray(other.replaces) && other.replaces.some((ref) => replaces.includes(ref)))
+      .map((other) => other.reference);
+    if (others.length) text += (text ? '; ' : '') + 'split with ' + others.join(', ');
+  }
+  return text;
+}
+
+/** One row of the list: a button that selects the thing (state chip, name and reference, what changed in it). `selected`: it is the selection of the page. `rows`: the whole table (a split names the other halves). */
+function renderChangeRowHtml(row, selected, rows) {
   const element = row.thing === 'element';
   const attributes = ' data-action="select-change" data-thing="' + row.thing + '" data-change="' + row.change + '" data-layer="' + escapeHtml(row.layer) + '" data-ref="' + escapeHtml(row.reference) + '"' +
     (element ? '' : ' data-to="' + escapeHtml(row.destination) + '" data-label="' + escapeHtml(row.label || '') + '"');
   const layer = row.layer === 'technology' ? ' <span class="change-layer">technology</span>' : '';
   let main;
   let natures = '';
+  let from = '';
   if (element) {
     const name = row.name || String(row.reference).split('.').pop();
     main = '<span class="change-name">' + escapeHtml(name) + '</span> <span class="change-ref">' + escapeHtml(row.reference) + '</span>' + layer;
-    if (row.change === 'changed') natures = natureWordsText(row.natures);
+    if (row.change === 'changed' || (IDENTITY_STATES.includes(row.change) && Array.isArray(row.natures) && row.natures.length)) natures = natureWordsText(row.natures);
+    if (IDENTITY_STATES.includes(row.change)) from = identityTextOf(row, rows || []);
   } else {
     main = relationshipTextHtml({ from: row.reference, destination: row.destination, label: row.label }, true) + layer;
     if (row.change === 'changed') natures = natureWordsText(row.natures) + (row.before && 'label' in row.before ? ': “' + (row.before.label || '') + '” → “' + (row.after.label || '') + '”' : '');
   }
   return '<li><button type="button" class="change-row' + (selected ? ' selected' : '') + '"' + attributes + (selected ? ' aria-current="true"' : '') + '>' +
-    changeChipHtml(row.change) + '<span class="change-main">' + main + '</span>' + (natures ? '<span class="change-natures">' + escapeHtml(natures) + '</span>' : '') + '</button></li>';
+    changeChipHtml(row.change) + '<span class="change-main">' + main + '</span>' + (from ? '<span class="change-from">' + escapeHtml(from) + '</span>' : '') + (natures ? '<span class="change-natures">' + escapeHtml(natures) + '</span>' : '') + '</button></li>';
 }
 
 /** Is this row the selection of the page: the element selected, the removed box picked, or the link selected. */
@@ -7653,12 +7856,12 @@ function renderChangesPanelHtml(state) {
   const group = (thing, title) => {
     const list = rows.filter((row) => row.thing === thing);
     return '<h4 class="inspection-subhead">' + title + ' <span class="field-count">' + list.length + '</span></h4>' +
-      (list.length ? '<ul class="change-list" aria-label="' + title + ' that differ">' + list.map((row) => renderChangeRowHtml(row, changeRowIsSelected(row, pick))).join('') + '</ul>'
+      (list.length ? '<ul class="change-list" aria-label="' + title + ' that differ">' + list.map((row) => renderChangeRowHtml(row, changeRowIsSelected(row, pick), rows)).join('') + '</ul>'
         : '<p class="muted change-none">None.</p>');
   };
   const counts = state.counts;
   const countRow = (title, c) => '<div class="changes-count-row"><span class="changes-count-label">' + title + '</span>' +
-    CHANGE_STATES.map((name) => changeChipHtml(name, c[name])).join('') + '</div>';
+    CHANGE_STATES.filter((name) => c[name] !== undefined).map((name) => changeChipHtml(name, c[name])).join('') + '</div>'; // moved, split and merged are counted only when there is one: the kernel leaves them out of a comparison that has none
   const wording = AppState.hideWording
     ? (state.wordingHidden ? '<p class="changes-note" data-wording="hidden">' + state.wordingHidden + ' wording-only ' + (state.wordingHidden === 1 ? 'change' : 'changes') + ' hidden.</p>' : '')
     : (state.wordingOnly ? '<p class="changes-note" data-wording="shown">' + state.wordingOnly + ' of the changed elements ' + (state.wordingOnly === 1 ? 'is a change' : 'are changes') + ' of wording only (the description is all that changed).</p>' : '');
@@ -7668,8 +7871,138 @@ function renderChangesPanelHtml(state) {
     '<div class="changes-counts" role="group" aria-label="Counts">' + countRow('Elements', counts.elements) + countRow('Relationships', counts.relationships) + '</div>' +
     '<label class="changes-toggle" title="A change of the description alone is wording, not structure: leave it out of the drawing, the list and the counts"><input type="checkbox" data-action="toggle-hide-wording"' + (AppState.hideWording ? ' checked' : '') + '> Hide wording-only changes</label>' +
     wording +
+    (candidateMessage ? '<p class="changes-message" role="alert">' + escapeHtml(candidateMessage) + '</p>' : '') +
+    renderCandidatesHtml(state) + renderWarningsHtml(state) +
     (rows.length ? '' : '<p class="inspection-note">Nothing differs between the two plateaus.</p>') +
     group('element', 'Elements') + group('relationship', 'Relationships') + '</div>';
+}
+
+// ---- Candidates and warnings (wave 009) ----
+// The kernel proposes pairs it takes for one thing said twice (an element only the other plateau has, and an element only this one has, of the same kind and the
+// same place, name or description). It never applies one. The editor, which is interactive and writes no generated file, lists them for any comparison (D-7):
+// "Write replaces" writes `replaces: [from]` on the new element, through the same edit as any other; "Not related" sets the pair aside for this page.
+
+/** The pairs set aside with "Not related": remembered in this page only, for the pair of plateaus they were set aside in. No storage. */
+const dismissedCandidates = new Set();
+/** Why a candidate could not be written, told in the panel; null otherwise. Cleared by the next thing done with a candidate. */
+let candidateMessage = null;
+
+function candidateKey(state, candidate) {
+  return [state.base.id, state.target.id, candidate.layer, candidate.from, candidate.to].join('|');
+}
+
+/** The reasons the kernel gives, in words. */
+const CANDIDATE_REASON_WORDS = { name: 'same name', description: 'close description', parent: 'the only two of their kind under the same parent' };
+
+/** The candidates of the comparison that were not set aside, in the kernel's order. */
+function openCandidatesOf(state) {
+  return (state.candidates || []).filter((candidate) => !dismissedCandidates.has(candidateKey(state, candidate)));
+}
+
+/** One side of a candidate: its name and its reference (the union knows both elements, one from each plateau). */
+function candidateSideHtml(role, state, layer, reference) {
+  const record = state.records && state.records.get(layer + '|' + reference);
+  const name = record && record.name ? record.name : String(reference).split('.').pop();
+  return '<div class="change-candidate-side"><span class="change-candidate-role">' + role + '</span><span class="change-name">' + escapeHtml(name) + '</span> <span class="change-ref">' + escapeHtml(reference) + '</span>' +
+    (layer === 'technology' ? ' <span class="change-layer">technology</span>' : '') + '</div>';
+}
+
+/** The Candidates section of the Changes panel: '' when the kernel proposes none (or all were set aside and none can be brought back). */
+function renderCandidatesHtml(state) {
+  const open = openCandidatesOf(state);
+  const setAside = (state.candidates || []).length - open.length;
+  if (!open.length && !setAside) return '';
+  let html = '<section class="changes-candidates" aria-label="Candidates"><h4 class="inspection-subhead changes-subhead">Candidates <span class="field-count">' + open.length + '</span></h4>';
+  if (open.length) {
+    html += '<p class="changes-note">Each pair looks like one thing said twice. Nothing is applied: “Write replaces” writes <code>replaces</code> on the new element (saved with the rest), “Not related” sets the pair aside.</p>' +
+      '<ul class="change-candidates">' + open.map((candidate) => {
+        const attributes = ' data-layer="' + escapeHtml(candidate.layer) + '" data-from="' + escapeHtml(candidate.from) + '" data-to="' + escapeHtml(candidate.to) + '"';
+        const reasons = (candidate.reasons || []).map((reason) => CANDIDATE_REASON_WORDS[reason] || reason).join(', ');
+        return '<li class="change-candidate"' + attributes + '><div class="change-candidate-pair">' +
+          candidateSideHtml('Removed', state, candidate.layer, candidate.from) + candidateSideHtml('New', state, candidate.layer, candidate.to) + '</div>' +
+          (reasons ? '<div class="change-candidate-reasons">' + escapeHtml(reasons) + '</div>' : '') +
+          '<div class="change-candidate-actions"><button type="button" data-action="accept-candidate"' + attributes + '>Write replaces</button>' +
+          '<button type="button" data-action="dismiss-candidate"' + attributes + '>Not related</button></div></li>';
+      }).join('') + '</ul>';
+  }
+  if (setAside) {
+    html += '<p class="changes-note">' + setAside + ' set aside. <button type="button" class="link-button" data-action="restore-candidates">Show again</button></p>';
+  }
+  return html + '</section>';
+}
+
+/** What the kernel ignored in the `replaces` it was given, as it says it. */
+function renderWarningsHtml(state) {
+  const warnings = state.warnings || [];
+  if (!warnings.length) return '';
+  return '<section class="changes-warnings-section" aria-label="Warnings"><h4 class="inspection-subhead changes-subhead">Warnings <span class="field-count">' + warnings.length + '</span></h4>' +
+    '<ul class="changes-warnings">' + warnings.map((warning) => '<li>' + escapeHtml(warning) + '</li>').join('') + '</ul></section>';
+}
+
+/**
+ * "Write replaces": add `from` to the `replaces` of the element `to`, which is in the plateau drawn, and only there. The comparison is made with the
+ * plateau drawn as the more recent one and the baseline is only read, so a candidate whose new element is not in the plateau drawn, or a baseline that
+ * comes after it in the list of plateaus, is refused with the reason (in the panel), and nothing is changed. The edit is `commitElementEdit` like every
+ * other edit of an element: it keeps the comments and the lines it does not touch, marks the file as modified (saved with the rest), and ends in
+ * `rebuildIndexAndRender`, which tells the cache of the comparison that the model changed. Returns `{ ok: true }` or `{ ok: false, message }`.
+ */
+function acceptCandidate(candidate) {
+  const refuse = (message) => { candidateMessage = message; render(); return { ok: false, message }; };
+  const state = comparisonState();
+  if (!state || !state.records) return refuse('Nothing is compared: choose a plateau in Compare to first.');
+  const layer = candidate.layer || 'application';
+  const drawn = AppState.plateau, base = AppState.baseline.plateau;
+  const positions = AppState.plateaus.map((plateau) => plateau.id);
+  if (positions.indexOf(base.id) > positions.indexOf(drawn.id)) {
+    return refuse('“' + plateauTitle(drawn) + '” comes before “' + plateauTitle(base) + '” in the plateaus of this workspace. replaces is written on the element of the more recent plateau: draw “' + plateauTitle(base) + '” and compare it with “' + plateauTitle(drawn) + '”.');
+  }
+  if (!AppState.index[layer].has(candidate.to)) {
+    return refuse(AppState.baseline.index[layer].has(candidate.to)
+      ? '“' + candidate.to + '” belongs to “' + plateauTitle(base) + '”, which is only read to compare and is never written. replaces goes on an element of “' + plateauTitle(drawn) + '”, the plateau drawn.'
+      : '“' + candidate.to + '” is not an element of “' + plateauTitle(drawn) + '” any more; nothing was written.');
+  }
+  if (!AppState.baseline.index[layer].has(candidate.from)) return refuse('“' + candidate.from + '” is not an element of “' + plateauTitle(base) + '”; nothing was written.');
+  if (AppState.index[layer].has(candidate.from)) return refuse('“' + candidate.from + '” is still an element of “' + plateauTitle(drawn) + '”: a replaces that names it would be ignored.');
+  const located = locateContentNode(candidate.to, layer);
+  if (!located) return refuse('“' + candidate.to + '” cannot be found in the manifests of “' + plateauTitle(drawn) + '”; nothing was written.');
+  if (located.node.replaces !== undefined && located.node.replaces !== null && !Array.isArray(located.node.replaces)) {
+    return refuse('The replaces of “' + candidate.to + '” is not a list; fix it by hand, nothing was written.');
+  }
+  candidateMessage = null;
+  try {
+    commitElementEdit(candidate.to, (node) => { node.replaces = replacesWith(node.replaces, candidate.from); }, layer);
+  } catch (e) {
+    candidateMessage = e && e.message ? e.message : String(e);
+    render();
+    return { ok: false, message: candidateMessage };
+  }
+  return { ok: true };
+}
+
+/** The list `replaces` becomes when `reference` is added to it: appended, and not twice. */
+function replacesWith(current, reference) {
+  if (current !== undefined && current !== null && !Array.isArray(current)) throw new Error('The replaces of this element is not a list; fix it in the file, nothing was written.');
+  const list = Array.isArray(current) ? current.slice() : [];
+  if (!list.some((entry) => String(entry) === String(reference))) list.push(reference);
+  return list;
+}
+
+/** "Not related": the pair is set aside for this page (memory only; the kernel is not told and nothing is written). */
+function dismissCandidate(candidate) {
+  const state = comparisonState();
+  if (!state || !state.records) return;
+  candidateMessage = null;
+  dismissedCandidates.add(candidateKey(state, candidate));
+  render();
+}
+
+/** "Show again": the pairs set aside for the plateaus compared come back. */
+function restoreCandidates() {
+  const state = comparisonState();
+  if (!state || !state.records) return;
+  candidateMessage = null;
+  for (const candidate of state.candidates || []) dismissedCandidates.delete(candidateKey(state, candidate));
+  render();
 }
 
 /** The Changes tab while the comparison is still being read (the kernel loads with the first drawing): the panel is there, the list follows. */
@@ -7747,6 +8080,7 @@ function selectChange(row) {
   if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4: a selection is never the draft's file
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
   changesTabPick = null; // the new selection is what the panel shows; the Changes tab is one click away
+  candidateMessage = null;
   const onMap = mapIsShown();
   if (onMap) diagramScale = 'auto'; // Center: the thing is put in the middle
   const layer = row.layer || 'application';
@@ -8459,6 +8793,7 @@ function setWordingAside(value) {
  *   { pending: true }   a comparison is asked for and the kernel is not loaded yet (the drawing loads it, then asks again);
  *   { problems }        it cannot be drawn: the baseline declares a reference twice, or the kernel refused the pair (the messages);
  *   { base, target, layers, records, counts, changes, above, wordingOnly, wordingHidden }   the answer, `layers` being the union of each layer ready for `compute`.
+ * `candidates` and `warnings` (wave 009) are the kernel's, as it gave them: the pairs it proposes (`{ layer, from, to, reasons }`, none applied) and the sentences about a `replaces` it ignored.
  * `counts` and `changes` are the kernel's table (run 0036); with `AppState.hideWording` the wording-only changes are out of `layers`, `records`, `counts`
  * and `changes` (`wordingHidden` says how many), else they are all in and `wordingOnly` says how many of the changed elements they are. `above`: the
  * references (per layer) that have a change below them.
@@ -8486,7 +8821,8 @@ function comparisonState() {
     const quiet = setWordingAside(value);
     value.shown.quiet = Object.assign(quiet, { above: referencesAboveChanges(quiet.layers), wordingOnly: value.answer.counts.elements.wording_only });
   }
-  return Object.assign({ base: AppState.baseline.plateau, target: AppState.plateau }, value.shown[AppState.hideWording ? 'quiet' : 'full']);
+  // wave 009: the pairs the kernel proposes as one thing said twice (never applied) and what it ignored in the `replaces` it was given; neither depends on the wording toggle
+  return Object.assign({ base: AppState.baseline.plateau, target: AppState.plateau, candidates: value.answer.candidates || [], warnings: value.answer.warnings || [] }, value.shown[AppState.hideWording ? 'quiet' : 'full']);
 }
 
 /** Whether the references of the union (the elements of both plateaus) include this one in the application layer: the map can open a removed box. */
@@ -8921,17 +9257,25 @@ function styledStereotypesOf(names) {
   return (Array.isArray(names) ? names : []).filter((name) => stereotypeStyleOf(name) !== null);
 }
 
-// ---- The four states of a comparison (run 0039). The kernel puts the state of a box last in its stereotypes (`new`, `changed`, `removed`, or
-// `contains-changes` for a box that did not change and holds something that did); these are the glyph, the words and the default look of each. The
-// glyphs and the words are the ones of the command line (`ChangeMarks.java`). ----
+// ---- The states of a comparison (run 0039, wave 009). The kernel puts the state of a box last in its stereotypes (`new`, `changed`, `removed`, the three
+// states of identity `moved`, `split`, `merged`, or `contains-changes` for a box that did not change and holds something that did); these are the glyph,
+// the words and the default look of each. The glyphs and the words are the ones of the command line (`ChangeMarks.java`). ----
 
-const CHANGE_STATES = ['new', 'changed', 'removed'];
-const CHANGE_GLYPHS = { new: '+', changed: '~', removed: '\u2212', 'contains-changes': '\u00B1' };
+/** What a relationship can be: a relationship is never moved, split or merged (the kernel refuses the words for it). */
+const RELATIONSHIP_STATES = ['new', 'changed', 'removed'];
+/** The states of identity of an element (wave 009): it replaces one element of the other plateau (`moved`), is one of several that replace one (`split`), or replaces several (`merged`). */
+const IDENTITY_STATES = ['moved', 'split', 'merged'];
+/** Every state an element of the union can have besides `contains-changes` (which is the marker of a box above a change, not a change). Anything that lists the states reads this. */
+const CHANGE_STATES = RELATIONSHIP_STATES.concat(IDENTITY_STATES);
+const CHANGE_GLYPHS = { new: '+', changed: '~', removed: '\u2212', moved: '\u2192', split: '\u22D4', merged: '\u2295', 'contains-changes': '\u00B1' };
 /** What the key says of each state, in a few words that do not rest on colour: the line of its box, the line of its link. */
 const CHANGE_WORDS = {
   new: { word: 'new', box: 'thick solid outline', link: 'thick solid line' },
   changed: { word: 'changed', box: 'dotted outline', link: 'dotted line' },
   removed: { word: 'removed', box: 'dashed grey outline, struck title', link: 'dashed grey line' },
+  moved: { word: 'moved', box: 'long dashed outline', link: '' },
+  split: { word: 'split', box: 'dash-dot outline', link: '' },
+  merged: { word: 'merged', box: 'short dashed outline', link: '' },
   'contains-changes': { word: 'contains changes', box: 'thin dashed outline', link: '' }
 };
 
@@ -8944,6 +9288,10 @@ const CHANGE_DEFAULT_LOOK = {
   new: { '--st-stroke': 'var(--chg-new)', '--st-width': '3px', '--st-dash': 'none', '--st-tint': 'var(--chg-new)' },
   changed: { '--st-stroke': 'var(--chg-changed)', '--st-width': '2px', '--st-dash': '2 3', '--st-tint': 'var(--chg-changed)' },
   removed: { '--st-stroke': 'var(--chg-removed)', '--st-width': '2px', '--st-dash': '7 4', '--st-tint': 'var(--chg-removed)', '--st-text': 'var(--chg-removed-text)' },
+  // identity (wave 009): a width and a dash pattern that no other state has, as the command line gives each its own line style
+  moved: { '--st-stroke': 'var(--chg-moved)', '--st-width': '2px', '--st-dash': '14 4', '--st-tint': 'var(--chg-moved)' },
+  split: { '--st-stroke': 'var(--chg-split)', '--st-width': '2px', '--st-dash': '9 3 2 3', '--st-tint': 'var(--chg-split)' },
+  merged: { '--st-stroke': 'var(--chg-merged)', '--st-width': '2px', '--st-dash': '4 2', '--st-tint': 'var(--chg-merged)' },
   'contains-changes': { '--st-stroke': 'var(--chg-contains)', '--st-width': '1px', '--st-dash': '4 3' }
 };
 
@@ -9056,13 +9404,17 @@ function diagramItemText(item, show, layer, focalReference) {
     state === 'new' ? 'this element is not in the plateau it is compared with.' :
     state === 'removed' ? 'this element is only in the plateau it is compared with, not in the one drawn.' :
     state === 'changed' ? 'it differs from the plateau it is compared with' + (Array.isArray(item.natures) && item.natures.length ? ' (' + item.natures.join(', ') + ')' : '') + '.' :
-    'it did not change by itself, but something inside it did.');
+    state === 'moved' ? 'it replaces ' + (item.replaces || []).join(', ') + ' of the plateau it is compared with' + (Array.isArray(item.natures) && item.natures.length ? ' and differs from it (' + item.natures.join(', ') + ')' : '') + '.' :
+    state === 'split' ? 'it is one of several elements that replace ' + (item.replaces || []).join(', ') + ' of the plateau it is compared with.' :
+    state === 'merged' ? 'it replaces several elements of the plateau it is compared with (' + (item.replaces || []).join(', ') + ').' :
+    'it did not change by itself, but something inside it did.') + (item.replacedBy ? '\nThis element is replaced by ' + item.replacedBy.join(', ') + '; it is drawn because something that was inside it is removed.' : '');
   return {
     badges: look.styled,
     look,
     state,
     name,
-    title: state === null ? name : CHANGE_GLYPHS[state] + ' ' + name,
+    title: state === null ? name : CHANGE_GLYPHS[state] + ' ' + name + identitySuffix(item, state),
+    suffix: state === null ? '' : identitySuffix(item, state),
     sub: (record ? '[' + record.kind + (show && show.qualifiers && qualifiers.length ? ': ' + qualifiers.join(', ') : '') + ']' : '') + hidden,
     description,
     tooltip: item.reference + (qualifiers.length ? ' [' + qualifiers.join(', ') + ']' : '') + (record && record.description ? ' — ' + record.description : '') +
@@ -9071,26 +9423,43 @@ function diagramItemText(item, show, layer, focalReference) {
   };
 }
 
+/** Where a box came from, after its title, as the views of the command line say it: `(from shop.till)` for what a box replaces, `(replaced by a, b)` for the place of what it replaced. */
+function identitySuffix(item, state) {
+  if (IDENTITY_STATES.includes(state) && item.replaces && item.replaces.length) return ' (from ' + item.replaces.join(', ') + ')';
+  if (state === 'removed' && item.replacedBy && item.replacedBy.length) return ' (replaced by ' + item.replacedBy.join(', ') + ')';
+  return '';
+}
+
 /** The lines of a title as SVG text: the glyph of a state in bold, the title of a removed box struck (the glyph stays clear of the strike). Without a state: the text, as it always was. */
 function diagramTitleHtml(line, text) {
   if (!text.state) return escapeHtml(line);
   const glyph = CHANGE_GLYPHS[text.state];
   const lead = line.startsWith(glyph + ' ');
   const rest = lead ? line.slice(glyph.length + 1) : line;
-  const body = text.state === 'removed' ? '<tspan class="dg-struck">' + escapeHtml(rest) + '</tspan>' : escapeHtml(rest);
+  const struck = (part) => (part === '' ? '' : '<tspan class="dg-struck">' + escapeHtml(part) + '</tspan>');
+  let body;
+  if (text.state !== 'removed') body = escapeHtml(rest);
+  else if (text.suffix && text.suffix.includes(rest.trim())) body = escapeHtml(rest); // a line of a long title that is wholly the place-of note (`(replaced by ...)`): the name above it is struck, the note is not
+  else if (text.suffix && rest.includes(' (replaced by ')) body = struck(rest.slice(0, rest.indexOf(' (replaced by '))) + escapeHtml(rest.slice(rest.indexOf(' (replaced by ')));
+  else body = struck(rest);
   return lead ? '<tspan class="dg-glyph">' + escapeHtml(glyph) + '</tspan> ' + body : body;
 }
 
 /**
  * A comparison is on: the boxes the kernel calls removed are elements of the baseline, not of the plateau drawn. Tell each what it was (name, kind,
  * description, qualifiers) from the union, so that it is drawn like the others and a click on it can say more. `layer`: the layer of the drawing.
+ * Wave 009: the answer of `compute` does not say what a box replaces, the union does. A moved, split or merged box is told what it replaces
+ * (`item.replaces`), and a removed box that is only the place of what was replaced is told what replaced it (`item.replacedBy`), for the title.
  */
 function tellRemovedItems(result, comparison, layer) {
   for (const item of result.items) {
-    if (item.change !== 'removed') continue;
+    if (item.change !== 'removed' && !IDENTITY_STATES.includes(item.change)) continue;
     const itemLayer = item.id === item.reference ? layer : 'application';
     const element = comparison.records.get(itemLayer + '|' + item.reference);
     if (!element) continue;
+    if (Array.isArray(element.replaces) && element.replaces.length && IDENTITY_STATES.includes(item.change)) item.replaces = element.replaces.slice();
+    if (Array.isArray(element.replaced_by) && element.replaced_by.length && item.change === 'removed') item.replacedBy = element.replaced_by.slice();
+    if (item.change !== 'removed') continue;
     item.removed = {
       layer: itemLayer,
       id: String(item.reference).split('.').pop(),
@@ -9112,9 +9481,10 @@ function comparisonCountsOf(drawn, focalReference) {
     // Changes only (run 0040): a box kept only to place the changes is faded and has no state (the focal box is never faded and keeps its state: it is not context)
     if (item.context === true && !item.ghost && !(item.reference === focalReference && item.id === item.reference)) { context++; continue; }
     const state = changeStateOfItem(item);
+    if (state && !counts[state]) counts[state] = { boxes: 0 }; // moved, split, merged (wave 009): only when the drawing has one, so that the counts of every other drawing are what they were; a relationship is never one of them
     if (state) counts[state].boxes++;
   }
-  for (const link of drawn.links) if (!link.secondary && CHANGE_STATES.includes(link.change)) counts[link.change].links++;
+  for (const link of drawn.links) if (!link.secondary && RELATIONSHIP_STATES.includes(link.change)) counts[link.change].links++;
   if (context) counts.context = { boxes: context }; // only when there is some: a drawing that keeps everything has none
   return counts;
 }
@@ -9297,7 +9667,7 @@ function diagramLabelLayout(link, wrap, markOnly) {
 
 /** The glyph of the state of a link of a comparison (`+`, `~`, `−`), or '' for a link that did not change or a drawing that compares nothing. */
 function diagramLinkMark(link) {
-  return CHANGE_STATES.includes(link.change) ? CHANGE_GLYPHS[link.change] : '';
+  return RELATIONSHIP_STATES.includes(link.change) ? CHANGE_GLYPHS[link.change] : '';
 }
 
 /** What a link stands for, for its tooltip: each declared relationship, and a note when it groups several. */
@@ -9564,7 +9934,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     if (!pairs.has(pairKey)) pairs.set(pairKey, { from: link.from, to: link.to, fromEnd: endOf(link.from), toEnd: endOf(link.to), links: [] });
     const nth = pairs.get(pairKey).links.push(link) - 1;
     const caption = diagramLinkText(link);
-    const state = CHANGE_STATES.includes(link.change) ? link.change : null; // a comparison: the link says what happened to it
+    const state = RELATIONSHIP_STATES.includes(link.change) ? link.change : null; // a comparison: the link says what happened to it
     if (state) statesUsed.add(state);
     const select = ends + (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') + layerAttribute + ' data-action="select-link"';
     // the links are one tab stop (roving tabindex, `syncLinkTabStop` moves it): the first one until the page says otherwise
@@ -9594,7 +9964,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const height = Math.ceil(layout.height || 0) + 8;
   const html = '<svg xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Diagram" viewBox="-4 -4 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' +
     '<defs><marker id="dg-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead" d="M0,0 L10,4 L0,8 z"/></marker>' +
-    CHANGE_STATES.filter((state) => statesUsed.has(state)).map((state) => '<marker id="dg-arrow-' + state + '" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="11" refX="13" refY="5.5" orient="auto"><path class="dg-arrowhead dg-chg-' + state + '" d="M0,0 L14,5.5 L0,11 z"/></marker>').join('') + '</defs>' +
+    RELATIONSHIP_STATES.filter((state) => statesUsed.has(state)).map((state) => '<marker id="dg-arrow-' + state + '" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="11" refX="13" refY="5.5" orient="auto"><path class="dg-arrowhead dg-chg-' + state + '" d="M0,0 L14,5.5 L0,11 z"/></marker>').join('') + '</defs>' +
     compounds + (edges ? '<g class="dg-links" role="group" aria-label="Links: one tab stop, the arrow keys move between them">' + edges + '</g>' : '') + leaves + labels + '</svg>';
   return { html, width, height, focal, boxes: boxesById, links: Array.from(pairs.values()) };
 }
@@ -9740,14 +10110,22 @@ function diagramLegendHtml(hasGhosts, stereotypes) {
  */
 function diagramComparisonLegendHtml(comparison, counts) {
   const noun = (n, one, many) => n + ' ' + (n === 1 ? one : many);
-  const how = { new: 'thick solid', changed: 'dotted', removed: 'dashed, struck title', 'contains-changes': 'thin dashed: something inside changed' };
-  const entries = ['new', 'changed', 'removed', 'contains-changes'].map((state) => {
+  const how = {
+    new: 'thick solid', changed: 'dotted', removed: 'dashed, struck title', 'contains-changes': 'thin dashed: something inside changed',
+    moved: 'long dashes: replaces one element',
+    split: 'dash-dot: one of several that replace one',
+    merged: 'short dashes: replaces several'
+  };
+  // the three states of identity are in the key only when the drawing shows one, so that the key of every other drawing is what it was
+  const shown = ['new', 'changed', 'removed'].concat(IDENTITY_STATES.filter((state) => counts && counts[state] && counts[state].boxes > 0), 'contains-changes');
+  const entries = shown.map((state) => {
     const look = stereotypeLookOf([state], state);
     const box = '<svg width="28" height="16" aria-hidden="true"><g class="dg-styled dg-chg-' + state + '" style="' + escapeHtml(styleVarsText(look.vars)) + '">' +
       '<rect class="dg-box" x="2" y="2" width="24" height="12" rx="3"/>' + (look.vars['--st-tint'] ? '<rect class="dg-tint" x="2" y="2" width="24" height="12" rx="3"/>' : '') + '</g></svg>';
-    const link = state === 'contains-changes' ? '' : '<svg width="26" height="8" aria-hidden="true"><line class="dg-edge dg-chg-' + state + '" x1="0" y1="4" x2="26" y2="4"/></svg>';
+    const hasLink = RELATIONSHIP_STATES.includes(state); // a relationship is never moved, split or merged: only a box has these states
+    const link = hasLink ? '<svg width="26" height="8" aria-hidden="true"><line class="dg-edge dg-chg-' + state + '" x1="0" y1="4" x2="26" y2="4"/></svg>' : '';
     // what this drawing shows of the state, when it is told: boxes, and links for the states that have a line
-    const count = counts ? ' <span class="dg-legend-count">' + noun(counts[state].boxes, 'box', 'boxes') + (state === 'contains-changes' ? '' : ', ' + noun(counts[state].links, 'link', 'links')) + '</span>' : '';
+    const count = counts ? ' <span class="dg-legend-count">' + noun(counts[state].boxes, 'box', 'boxes') + (hasLink ? ', ' + noun(counts[state].links, 'link', 'links') : '') + '</span>' : '';
     return '<span class="dg-legend-state" data-state="' + state + '">' + box + link + '<b class="dg-glyph">' + escapeHtml(CHANGE_GLYPHS[state]) + '</b> ' +
       escapeHtml(CHANGE_WORDS[state].word) + ' <span class="dg-legend-how">' + escapeHtml(how[state]) + '</span>' + count + '</span>';
   });
@@ -10314,6 +10692,7 @@ function diagramExportCss() {
     '.dg-ghost-edge{stroke:' + c('--danger') + ';stroke-dasharray:3 4}' +
     // the comparison of two plateaus: the colours of the states in the theme of the page (the boxes carry var(--chg-*) in their --st-* variables), the tint, the strike, the lines of the links
     'svg{--chg-new:' + c('--chg-new') + ';--chg-changed:' + c('--chg-changed') + ';--chg-removed:' + c('--chg-removed') + ';--chg-removed-text:' + c('--chg-removed-text') + ';--chg-contains:' + c('--chg-contains') + '}' +
+    'svg{--chg-moved:' + c('--chg-moved') + ';--chg-split:' + c('--chg-split') + ';--chg-merged:' + c('--chg-merged') + '}' + // the three states of identity (wave 009), for the boxes that carry them
     '.dg-tint{fill:var(--st-tint,none);fill-opacity:.16;stroke:none}.dg-compound .dg-tint{fill-opacity:.08}' +
     '.dg-struck{text-decoration:line-through}.dg-glyph{font-weight:700}.dg-label .dg-glyph{font-size:14px}' +
     '.dg-edge.dg-chg-new{stroke:' + c('--chg-new') + ';stroke-width:3;stroke-dasharray:none}' +
@@ -12544,6 +12923,15 @@ function handleAppClick(e) {
     case 'set-right-tab':
       setRightTab(target.getAttribute('data-tab'));
       break;
+    case 'accept-candidate':
+      acceptCandidate({ layer: target.getAttribute('data-layer'), from: target.getAttribute('data-from'), to: target.getAttribute('data-to') });
+      break;
+    case 'dismiss-candidate':
+      dismissCandidate({ layer: target.getAttribute('data-layer'), from: target.getAttribute('data-from'), to: target.getAttribute('data-to') });
+      break;
+    case 'restore-candidates':
+      restoreCandidates();
+      break;
     case 'select-change':
       selectChange({ thing: target.getAttribute('data-thing'), change: target.getAttribute('data-change'), layer: target.getAttribute('data-layer'), ref: target.getAttribute('data-ref'), to: target.getAttribute('data-to') });
       break;
@@ -12970,6 +13358,31 @@ function handleAppClick(e) {
         const applications = Array.isArray(node.applications) ? node.applications.slice() : [];
         applications.splice(index, 1);
         node.applications = applications;
+      });
+      break;
+    }
+    case 'add-replaces': { // wave 009: the same writer as "Write replaces" (`replacesWith`), through the same edit as the other lists
+      const reference = target.getAttribute('data-ref');
+      const record = findElementRecord(reference);
+      const input = document.getElementById('add-replaces-input');
+      const result = record ? validateNewReplaces(record, input ? input.value : '') : { valid: false, error: 'Element not found.' };
+      if (!result.valid) {
+        setInlineErrorText('add-replaces-error', result.error);
+        break;
+      }
+      commitElementWithDraft(reference, (node) => {
+        node.replaces = replacesWith(node.replaces, result.value);
+      });
+      break;
+    }
+    case 'remove-replaces': {
+      if (!confirm('Remove this reference from replaces?')) break;
+      const reference = target.getAttribute('data-ref');
+      const index = parseInt(target.getAttribute('data-index'), 10);
+      commitElementWithDraft(reference, (node) => {
+        const replaces = Array.isArray(node.replaces) ? node.replaces.slice() : [];
+        replaces.splice(index, 1);
+        if (replaces.length > 0) node.replaces = replaces; else delete node.replaces;
       });
       break;
     }
