@@ -64,7 +64,8 @@ public class PlantumlViewRenderer implements ViewRenderer {
 
                 for (val entry : PlantumlUtilities.stereotypeStyles(
                     viewpoint.getWorkspace().getStyles(),
-                    ChangeMarks.styles(viewpoint)
+                    ChangeMarks.styles(viewpoint),
+                    ChangeMarks.writtenStates(viewpoint)
                 )) {
                     outputStreamWriter.write(styleShapeRenderer.render("actor", entry));
                     outputStreamWriter.write(styleShapeRenderer.render("card", entry));

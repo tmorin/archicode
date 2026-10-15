@@ -7,6 +7,7 @@ import io.morin.archicode.rendering.gap.GapFormat;
 import io.morin.archicode.rendering.gap.GapReport;
 import io.morin.archicode.viewpoint.kernel.PlateauComparer;
 import io.morin.archicode.workspace.Plateaus;
+import io.morin.archicode.workspace.StateTags;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,9 @@ public class DiffCommand implements Runnable {
 
     @Inject
     MapperFactory mapperFactory;
+
+    @CommandLine.Spec
+    CommandLine.Model.CommandSpec spec;
 
     @CommandLine.Mixin
     PlateauOption plateauOption = new PlateauOption();
@@ -77,6 +81,10 @@ public class DiffCommand implements Runnable {
         val base = workspaceFactory.create(path, null, baseline.getId());
 
         val comparison = new PlateauComparer(mapperFactory.createLazy(MapperFormat.JSON)).compare(base, target);
+
+        // a state written by hand that the comparison does not give the element: on the error output, so that the table on
+        // the standard output is what it was
+        StateTagReport.print(spec, StateTags.warnings(target, comparison));
 
         // printed to System.out: application.properties sets quarkus.log.level=ERROR
         System.out.print(GapReport.render(comparison, format, noWording));

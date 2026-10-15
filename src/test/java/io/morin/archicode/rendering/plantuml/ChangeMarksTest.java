@@ -200,6 +200,59 @@ class ChangeMarksTest {
     }
 
     @Test
+    void aStateWrittenByHandOnABoxThatDoesNotHaveItKeepsItsPlaceUnderAnotherNameAndTheStateComputedDoesNot() {
+        // did not change: the word is the author's
+        assertEquals(List.of("written-new"), ChangeMarks.stereotypes(compared, item("a", Change.NONE, "new")));
+        // the state of the box is the last stereotype, and is not renamed; the word of the author before it is
+        assertEquals(
+            List.of("Redis", "written-new", "changed"),
+            ChangeMarks.stereotypes(compared, item("a", Change.CHANGED, "Redis", "new", "changed"))
+        );
+        // the author wrote the state the box has: one word, the state
+        assertEquals(List.of("new"), ChangeMarks.stereotypes(compared, item("a", Change.NEW, "new")));
+        // the states of the identity too
+        assertEquals(List.of("written-moved"), ChangeMarks.stereotypes(compared, item("a", Change.NONE, "moved")));
+        assertEquals(List.of("moved"), ChangeMarks.stereotypes(compared, item("a", Change.MOVED, "moved")));
+        // a word that is no state is left alone, and so is everything in a view that compares nothing
+        assertEquals(List.of("external"), ChangeMarks.stereotypes(compared, item("a", Change.NONE, "external")));
+        assertEquals(List.of("new"), ChangeMarks.stereotypes(plain, item("a", Change.NONE, "new")));
+        assertEquals(List.of("new"), ChangeMarks.stereotypes(plain, item("a", Change.NEW, "new")));
+    }
+
+    @Test
+    void theAuthorsStyleOfAWrittenStateIsTheirOwnWithoutTheDefaultLook() {
+        val defaults = Map.of("new", ChangeMarks.style("new"));
+        val styles = Styles.builder()
+            .byQualifier("new", Styles.Style.builder().backgroundColor("lightgreen").build())
+            .byTag("new", Styles.Style.builder().lineColor("green").build())
+            .build();
+        val entries = PlantumlUtilities.stereotypeStyles(styles, defaults, Set.of("new", "changed"))
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        // the state keeps the default look under the author's
+        assertEquals(3, entries.get("new").getLineThickness());
+        // the written word has the author's style, both maps merged, and nothing of the default
+        val written = entries.get("written-new");
+        assertEquals("green", written.getLineColor());
+        assertEquals("lightgreen", written.getBackgroundColor());
+        assertEquals(null, written.getLineThickness());
+        assertEquals(null, written.getLineStyle());
+        // no style of the author, no style for the written word
+        assertFalse(entries.containsKey("written-changed"));
+    }
+
+    @Test
+    void aViewKnowsTheStatesItHasWrittenByHand() {
+        val counter = item("c", Change.NONE, "new");
+        val kiosk = item("k", Change.NEW, "new");
+        val printer = item("p", Change.CHANGED, "new", "changed");
+        Mockito.when(compared.getItems()).thenReturn(Set.of(counter, kiosk, printer));
+        assertEquals(Set.of("new"), ChangeMarks.writtenStates(compared));
+        Mockito.when(plain.getItems()).thenReturn(Set.of(counter));
+        assertTrue(ChangeMarks.writtenStates(plain).isEmpty());
+    }
+
+    @Test
     void onlyTheStatesAViewUsesGetADefaultStyleAndALegend() {
         val none = ViewpointFixtures.createItem(Solution.builder().id("a").build());
         Mockito.when(compared.getItems()).thenReturn(Set.of(none));

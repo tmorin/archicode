@@ -1,0 +1,17 @@
+# An invented ticket office in two states, used to test what a state written by hand looks like (see StateTagRuleTest and
+# state-tags.test.js, which read the same files). before -> after: the kiosk is new, the printer is renamed. The counter and
+# the queue did not change, and still carry the tags their author wrote by hand, `new` and `changed`; the printer carries
+# `new` and has changed; the window is new and carries `new` too (the tag agrees with the comparison).
+styles:
+  by-tags:
+    new:
+      line-color: "#7B3FA0"
+settings:
+  name: "Ticket office"
+  plateaus:
+    - id: "before"
+      name: "Before"
+      path: "plateaus/10_before"
+    - id: "after"
+      name: "After"
+      path: "plateaus/20_after"

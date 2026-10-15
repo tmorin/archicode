@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import lombok.NonNull;
@@ -111,11 +112,41 @@ class PlantumlUtilities {
         @NonNull Styles styles,
         @NonNull Map<String, Styles.Style> defaults
     ) {
+        return stereotypeStyles(styles, defaults, Set.of());
+    }
+
+    /**
+     * The styles of the stereotypes, with the default styles of the states of a comparison under the author's, and the
+     * author's own style for the states they wrote on a box that does not have them.
+     *
+     * <p>A state written by hand on a box that does not have it is the stereotype {@code written-<name>} (see
+     * {@link ChangeMarks#stereotypes}): its style is the one the author gave to {@code <name>}, without the default look
+     * of the state, which is for the boxes that have the state computed.
+     *
+     * @param styles   the styles of the workspace
+     * @param defaults the default styles, by stereotype (empty for a view that compares nothing)
+     * @param written  the states the view has written by hand on a box that does not have them
+     */
+    List<Map.Entry<String, Styles.Style>> stereotypeStyles(
+        @NonNull Styles styles,
+        @NonNull Map<String, Styles.Style> defaults,
+        @NonNull Set<String> written
+    ) {
         val merged = new TreeMap<String, Styles.Style>(defaults);
         styles
             .getByQualifiers()
             .forEach((stereotype, style) -> merged.merge(stereotype, style, PlantumlUtilities::override));
         styles.getByTags().forEach((stereotype, style) -> merged.merge(stereotype, style, PlantumlUtilities::override));
+        for (val state : written) {
+            val own = new TreeMap<String, Styles.Style>();
+            Optional.ofNullable(styles.getByQualifiers().get(state)).ifPresent(style -> own.put(state, style));
+            Optional.ofNullable(styles.getByTags().get(state)).ifPresent(style ->
+                own.merge(state, style, PlantumlUtilities::override)
+            );
+            if (own.containsKey(state)) {
+                merged.put(ChangeMarks.WRITTEN + state, own.get(state));
+            }
+        }
         return List.copyOf(merged.entrySet());
     }
 
@@ -147,7 +178,12 @@ class PlantumlUtilities {
      * stereotypes of the element are written in reverse. The ones of the way it is drawn stay last, the weakest.
      */
     String generateStereotypes(@NonNull Item item, @NonNull String... types) {
-        val stereotypes = new LinkedHashSet<>(item.getStereotypes().reversed());
+        return generateStereotypes(item.getStereotypes(), types);
+    }
+
+    /** The same, for the stereotypes of an element as a view writes them (see {@link ChangeMarks#stereotypes}). */
+    String generateStereotypes(@NonNull List<String> elementStereotypes, @NonNull String... types) {
+        val stereotypes = new LinkedHashSet<>(elementStereotypes.reversed());
         stereotypes.addAll(List.of(types));
         return stereotypes
             .stream()
