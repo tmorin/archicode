@@ -175,7 +175,7 @@ wave_manifest:
       slug: identity-proof
       phase: P4
       depends_on: [W-3, W-6]
-      run: null
+      run: '0048'
       delegation: standard
       likely_paths:
         - 'src/doc/**'
@@ -216,7 +216,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-7 | — | `identity-proof` | W-3, W-6 | see the whole story work on an invented architecture, in the CLI and in the real editor page, and have it documented | the example `domain_plateaus` extended with a move, a split and a merge; the manual, README.md and the CLAUDE.md paragraph; the final report | generated views committed, the editor looked at in light and dark in the built-in browser, all test suites and prettier, "not verified" listed |
+| W-7 | 0048 | `identity-proof` | W-3, W-6 | see the whole story work on an invented architecture, in the CLI and in the real editor page, and have it documented | the example `domain_plateaus` extended with a move, a split and a merge; the manual, README.md and the CLAUDE.md paragraph; the final report | generated views committed, the editor looked at in light and dark in the built-in browser, all test suites and prettier, "not verified" listed |
 
 **Gate:** see the manifest.
 
