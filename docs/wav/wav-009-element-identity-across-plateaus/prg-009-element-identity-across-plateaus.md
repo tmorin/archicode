@@ -56,6 +56,14 @@ wave: 009
 - 2026-10-16: decision D-7 added to the plan (editor proposes candidates always, CLI only for a plateau that uses `replaces`).
 - 2026-10-16: batch 3, phase P3: W-5 `replaces-editor` (run 0046), tier `standard`, `run-executor` at the default model, 1 run in
   flight (W-6 depends on it).
+- 2026-10-16: W-5 `replaces-editor` (run 0046) returned `completed`, commit a7ba873; status file `completed`. Verified by the
+  orchestrator: `node --test` 809/809, `embed.sh --check` ok (651,048 bytes). Reported by the run: `./mvnw -o -q verify` exit 0
+  (273 tests), `cargo test` 160, prettier clean, the wasm block of `standalone.html` unchanged, a look at the page in the built-in
+  browser (light and dark) on an invented library copy in the scratchpad. It fixed a defect of the editor's save (a list written
+  on one line made the whole file be rewritten) because accepting a candidate would otherwise have broken the "one line changed"
+  requirement, and filed #41 and #42.
+- 2026-10-16: batch 4, phase P3: W-6 `move-element-editor` (run 0047), tier `standard`, `run-executor` at the default model, 1 run
+  in flight.
 
 ## Findings
 
