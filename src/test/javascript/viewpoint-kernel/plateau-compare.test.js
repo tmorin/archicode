@@ -369,7 +369,7 @@ test('compare is called through the embedded module, once for a pair that does n
   assert.equal(first.base.id, 'as-is');
   assert.equal(first.target.id, 'to-be');
   assert.equal(sandbox.comparisonState().layers, first.layers, 'the same answer while the models are the same');
-  state.index.application.get('shop.db').name = 'Database, renamed';
+  sandbox.commitElementEdit('shop.db', (node) => { node.name = 'Database, renamed'; }); // an edit as the page makes it: it ends in a rebuild of the model (run 0045: that is what the comparison is kept by)
   assert.notEqual(sandbox.comparisonState().layers, first.layers, 'an edit of the plateau is compared at once');
   assert.equal(sandbox.comparisonState().counts.elements.changed, 2, 'the database too');
 });

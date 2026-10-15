@@ -2267,7 +2267,25 @@ async function clearLastFolder(id, others) {
 // AppState (TDD CTR-1) — the single in-memory source of truth.
 // =====================================================================
 
+/**
+ * The version of the two models the comparison reads (run 0045): the plateau drawn (`AppState.index`) and the one it is compared with
+ * (`AppState.baseline.index`). `comparisonState()` keeps the answer of the kernel's `compare` for as long as this number, and the two models
+ * it was computed from, are what they were: it does not serialise the models to find out (issue #32).
+ *
+ * THE RULE: any new way to change one of the two models calls `modelsChanged()` once the change is made and before anything is drawn from it.
+ * That is every place that assigns `AppState.index` or `AppState.baseline` (a load, a reload, a change of plateau or of Compare to, a rebuild
+ * after an edit), and every place that changes a record of either model without replacing it. A bump that was not needed costs one more `compare`;
+ * a bump that is missing shows an answer that is out of date. `rebuildIndexAndRender` is the path of every edit of the plateau drawn:
+ * an edit that ends there needs nothing more. The baseline is read-only: only a load changes it.
+ */
+let modelVersion = 0;
+
+function modelsChanged() {
+  modelVersion++;
+}
+
 function createInitialAppState() {
+  modelsChanged(); // a new state holds new models (a folder closed, another one opened)
   return {
     folder: null, // { handle: FileSystemDirectoryHandle, name: string } | null
     permissionState: 'none', // 'granted' | 'needs-click' | 'none'
@@ -2625,7 +2643,7 @@ function compareTargetPlateau() {
  */
 async function loadBaseline(rootHandle, settings) {
   const target = compareTargetPlateau();
-  if (!target) { AppState.baseline = null; return; }
+  if (!target) { AppState.baseline = null; modelsChanged(); return; }
   const relDir = normalizePlateauPath(target.path);
   const folder = await readManifestFolder(rootHandle, relDir);
   folder.files.sort((a, b) => a.relPath.localeCompare(b.relPath)); // as the plateau's own files are: the order of a listing is the file system's
@@ -2637,6 +2655,7 @@ async function loadBaseline(rootHandle, settings) {
   if (folder.missing) problems.push('The folder `' + relDir + '` of the plateau `' + target.id + '` does not exist.');
   if (unreadable.length) problems.push((unreadable.length === 1 ? 'The manifest ' : unreadable.length + ' manifests, ') + unreadable.slice(0, 3).join(', ') + (unreadable.length > 3 ? ' and more' : '') + ' of the plateau `' + target.id + '` could not be read, so what ' + (unreadable.length === 1 ? 'it declares' : 'they declare') + ' is not compared.');
   AppState.baseline = { plateau: target, files: folder.files, index, duplicates, problem: problems.length ? problems.join(' ') : null };
+  modelsChanged();
 }
 
 /** `loadBaseline` that never throws: a folder the browser cannot read is the baseline's problem, said in the header, not an error of the page. */
@@ -2647,6 +2666,7 @@ async function loadBaselineSafely(rootHandle, settings) {
     console.error('ArchiCode: the baseline could not be read', e);
     const target = compareTargetPlateau();
     AppState.baseline = target ? { plateau: target, files: [], index: { application: new Map(), technology: new Map() }, duplicates: [], problem: 'The plateau `' + target.id + '` could not be read: ' + (e && e.message ? e.message : String(e)) } : null;
+    modelsChanged();
   }
 }
 
@@ -3111,6 +3131,7 @@ async function loadWorkspace(dirHandle) {
   AppState.plateaus = [];
   AppState.plateauProblem = null;
   AppState.baseline = null;
+  modelsChanged(); // the models are emptied here, and a load that stops on an error leaves them so
   AppState.dirtyReferences = new Set();
   AppState.pendingFileRemovals = []; // a reload starts from the disk: a removal queued before it must not delete a file later
   AppState.removedFileBaselines = new Map();
@@ -3187,6 +3208,7 @@ async function loadWorkspace(dirHandle) {
   const { index, rootsByCategory, duplicates } = buildIndex(manifestFiles, settings);
   const relationshipStats = resolveRelationships(index);
   AppState.index = index;
+  modelsChanged();
   AppState.duplicateReferences = duplicates;
   AppState.relationshipStats = relationshipStats;
 
@@ -4204,6 +4226,7 @@ function rebuildIndexAndRender() {
   AppState.workspace.application.elements = rootsByCategory.application;
   AppState.workspace.technology.elements = rootsByCategory.technology;
   AppState.relationshipStats = resolveRelationships(index);
+  modelsChanged(); // every edit of the plateau drawn ends here (see `modelVersion`)
   render();
 }
 
@@ -8396,7 +8419,7 @@ function unionLayersOf(union) {
   return { layers, records };
 }
 
-let comparisonCache = null; // { key, value }: the last answer of `compare`, kept while the two models are what they were
+let comparisonCache = null; // { version, index, baselineIndex, value }: the last answer of `compare`, kept while the two models are what they were (see `modelVersion`)
 
 /** The references above a change, per layer: every proper prefix of the reference of a new, changed or removed element (the kernel's `contains-changes` rule). */
 function referencesAboveChanges(layers) {
@@ -8447,11 +8470,11 @@ function comparisonState() {
     return { problems: ['The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, has references declared more than once:'].concat(AppState.baseline.duplicates.map((d) => d.message)) };
   }
   if (!loadedKernel) return { pending: true };
-  const input = comparisonInput();
-  const key = JSON.stringify(input);
-  if (!comparisonCache || comparisonCache.key !== key) {
-    const answer = loadedKernel.compare(input);
-    comparisonCache = { key, value: answer.error ? { error: answer.error } : Object.assign({ answer }, unionLayersOf(answer)) };
+  // run 0045: the answer is kept while the version of the models is the one it was computed at (the two models themselves are compared too, a net
+  // under a replacement that forgot `modelsChanged()`): a plain render serialises nothing and builds no input
+  if (!comparisonCache || comparisonCache.version !== modelVersion || comparisonCache.index !== AppState.index || comparisonCache.baselineIndex !== AppState.baseline.index) {
+    const answer = loadedKernel.compare(comparisonInput());
+    comparisonCache = { version: modelVersion, index: AppState.index, baselineIndex: AppState.baseline.index, value: answer.error ? { error: answer.error } : Object.assign({ answer }, unionLayersOf(answer)) };
   }
   const value = comparisonCache.value;
   if (value.error) return { problems: ['The comparison with “' + plateauTitle(target) + '” could not be made: ' + value.error] };
