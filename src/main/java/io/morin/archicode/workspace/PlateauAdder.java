@@ -81,8 +81,8 @@ public class PlateauAdder {
      * @param horizon       the horizon of the new plateau, or null for none
      * @param pathOverride  the folder of the new plateau, or null for the folder the naming rule gives
      * @param baseline      the id of the plateau the new one is compared with, written as its {@code baseline}, or null
-     *                      to leave the default (the plateau before it, which is the one it is copied from, or the
-     *                      last one)
+     *                      to leave the default (the plateau before it: the new plateau is always appended at the end of
+     *                      the list, so that is the last plateau, not necessarily the one it is copied from)
      */
     @SneakyThrows
     public Added add(
@@ -216,8 +216,12 @@ public class PlateauAdder {
         val edited = appendEntry(text, entry);
         verify(mapper.readTree(edited), tree, entry);
 
-        copyFolder(sourceDir, targetDir);
+        // the folder is created by this call (it fails when another one made it since the test above), so that what is
+        // removed on a failure is only what this call wrote: a copy that stops halfway must not make every retry fail
+        Files.createDirectories(targetDir.getParent());
+        Files.createDirectory(targetDir);
         try {
+            copyFolder(sourceDir, targetDir);
             Files.writeString(workspaceFile, edited);
         } catch (IOException | RuntimeException e) {
             deleteFolder(targetDir);
