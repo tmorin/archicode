@@ -217,9 +217,9 @@ settings:
 
 Two commands show the comparison: `archicode diff` writes the table of changes (see <<diff>>), and `archicode views generate` draws the views of the comparison (see <<generate-views>>).
 
-*What counts as a change.* An element is the same element in both plateaus when it has the same reference (a reference includes the path of the element, so an element that moves under another parent is a removed one and a new one). It is _new_ when its reference is only in the plateau, _removed_ when it is only in the baseline, and _changed_ when something differs in the element itself or in the relationships it declares: its kind, its name, its description, its qualifiers, its tags (the `rendering-*` ones do not count), its deployment (`applications` and `uses`), or a relationship that was added, removed or changed. A child is judged on its own: a system whose only change is a new container is not _changed_, it _contains changes_. The table lists what changed in each element (`natures`) and tells a change of wording apart: an element whose description is the only thing that differs is _wording only_. A relationship is identified by its source, its destination and its label; it is _new_ or _removed_ when it is only on one side, and _changed_ when its qualifiers, its tags or, when it is the only one between the two elements, its label differ. The order of a list and the order of the keys of a file are no change.
+*What counts as a change.* An element is the same element in both plateaus when it has the same reference (a reference includes the path of the element, so an element that moves under another parent is a removed one and a new one, unless the new one says that it replaces the old one, see <<plateau-replaces>>). It is _new_ when its reference is only in the plateau, _removed_ when it is only in the baseline, and _changed_ when something differs in the element itself or in the relationships it declares: its kind, its name, its description, its qualifiers, its tags (the `rendering-*` ones do not count), its deployment (`applications` and `uses`), or a relationship that was added, removed or changed. A child is judged on its own: a system whose only change is a new container is not _changed_, it _contains changes_. The table lists what changed in each element (`natures`) and tells a change of wording apart: an element whose description is the only thing that differs is _wording only_. A relationship is identified by its source, its destination and its label; it is _new_ or _removed_ when it is only on one side, and _changed_ when its qualifiers, its tags or, when it is the only one between the two elements, its label differ. The order of a list and the order of the keys of a file are no change.
 
-*How the views say it.* The views of a comparison draw the union of the two plateaus (what was removed is drawn too), and every box and every link says its state with the same four marks, never by colour alone:
+*How the views say it.* The views of a comparison draw the union of the two plateaus (what was removed is drawn too), and every box and every link says its state with the same marks, never by colour alone (the last three are for an element that says what it replaces, see <<plateau-replaces>>, and are only in the legend of a view that has one):
 
 [cols="1,1,2,2"]
 |===
@@ -229,13 +229,16 @@ Two commands show the comparison: `archicode diff` writes the table of changes (
 | changed | `~` | dotted outline | dotted line
 | removed | `−` | dashed grey outline, grey and struck title | dashed grey line
 | contains changes | `±` | thin dashed outline | (none)
+| moved | `→` | long dashes, blue; the title ends with `(from <the reference it replaces>)` | (none)
+| split | `⋔` | medium dashes, purple; the title ends with `(from <the reference it replaces>)` | (none)
+| merged | `⊕` | short dashes, light blue; the title ends with `(from <the references it replaces>)` | (none)
 |===
 
 The mark is written in front of the title of the box and of the label of the link. A box that did not change is drawn as it always was, and so is a link. `contains changes` is for a box that did not change by itself and holds something that did (a system whose container is new, for instance): the reader can see where to look inside. A link between two boxes that are drawn as one group (a view draws the relationships of the elements below it as one link) is new when all of them are, removed when all of them are, changed when they are mixed, and unchanged when none changed. A view that says at least one change has a legend that explains the marks.
 
-The four states are stereotypes of the boxes (`new`, `changed`, `removed` and `contains-changes`), so a `styles.by-tags` entry of the same name gives them your own look, as it does for every stereotype (see <<stereotypes-and-styles>>). ArchiCode brings a default style for a state only when the workspace has none, and the style you write wins property by property: write `new` with a `background-color` and the box keeps the thick outline of the default.
+The states are stereotypes of the boxes (`new`, `changed`, `removed`, `contains-changes`, `moved`, `split` and `merged`), so a `styles.by-tags` entry of the same name gives them your own look, as it does for every stereotype (see <<stereotypes-and-styles>>). ArchiCode brings a default style for a state only when the workspace has none, and the style you write wins property by property: write `new` with a `background-color` and the box keeps the thick outline of the default.
 
-The default look of a state belongs to the boxes that _have_ the state, computed: it is never given to a box because of a word it carries. If you wrote `rendering-stereotypes: "new"` (or `changed`, `removed`, `contains-changes`) on an element that does not have that state, the box is drawn with your own `styles` entry named `new` and nothing else, no thick outline, no mark, no struck title, in a view that has something new as in one that has not, and the command says so (see <<plateau-state-tags>>).
+The default look of a state belongs to the boxes that _have_ the state, computed: it is never given to a box because of a word it carries. If you wrote `rendering-stereotypes: "new"` (or `changed`, `removed`, `contains-changes`, `moved`, `split`, `merged`) on an element that does not have that state, the box is drawn with your own `styles` entry named `new` and nothing else, no thick outline, no mark, no struck title, in a view that has something new as in one that has not, and the command says so (see <<plateau-state-tags>>).
 
 [source,yaml]
 ----
@@ -774,9 +777,9 @@ The folder of the architecture holds one `workspace.yaml`, with the settings, th
 
 A `path` is mandatory, relative to the folder of `workspace.yaml`, below it (no `..`) and not absolute. The ids and the paths are unique, and `.` is accepted for a single plateau only. Every rule is checked before anything is read, and each problem is reported. The details, with the messages, are in <<plateaus>>.
 
-=== The four states
+=== The states
 
-What a plateau changes is told with four states, computed, on elements and on relationships (the fourth is for boxes only):
+What a plateau changes is told with four states, computed, on elements and on relationships (the fourth is for boxes only), and three more for the elements that say what they replace (see <<plateau-replaces>>):
 
 [cols="1,1,3"]
 |===
@@ -786,12 +789,15 @@ What a plateau changes is told with four states, computed, on elements and on re
 | `changed` | `~` | the reference is in both and something differs: a property, or a relationship the element declares (an element whose description is the only difference is _wording only_)
 | `removed` | `−` | the reference is only in the baseline
 | `contains-changes` | `±` | the element did not change by itself, but something inside it did
+| `moved` | `→` | the element says that it replaces one element of the baseline (elements only)
+| `split` | `⋔` | the element says that it replaces an element that another element replaces too (elements only)
+| `merged` | `⊕` | the element says that it replaces several elements (elements only)
 |===
 
 Each state has a mark, a line style and a legend, so that nothing relies on colour: see <<plateau-comparison,Comparing two plateaus>> for the command line and <<editor-compare,Comparing two plateaus in the editor>> for the editor.
 
 [[plateau-state-tags]]
-*The states and the tags you wrote by hand.* The four states are stereotypes of the boxes, the same ones that a `styles.by-tags` entry or a `rendering-stereotypes` tag names (see <<stereotypes-and-styles>>). If you used to mark the boxes of a target by hand with `rendering-stereotypes: "new"` or `"changed"`, nothing breaks, and the command line and the editor draw such a tag the same way. One rule decides it: _a box gets the default look of a state (its mark, its outline, its tint, its struck title) only when the comparison computes that state for it._
+*The states and the tags you wrote by hand.* The states are stereotypes of the boxes, the same ones that a `styles.by-tags` entry or a `rendering-stereotypes` tag names (see <<stereotypes-and-styles>>). If you used to mark the boxes of a target by hand with `rendering-stereotypes: "new"` or `"changed"`, nothing breaks, and the command line and the editor draw such a tag the same way. One rule decides it: _a box gets the default look of a state (its mark, its outline, its tint, its struck title) only when the comparison computes that state for it._
 
 * A word you wrote that is the state the box has (a `new` tag on a new element) is one stereotype: the computed state is not written twice, it is the _last_ stereotype of the box, so its look overrides the look of the other stereotypes as a later stereotype always does. Your `styles.by-tags` entry named like the state wins, property by property, over the default look of ArchiCode: a `new` with only a `background-color` keeps the thick outline of the default.
 * A word you wrote that is _not_ the state the box has (a `new` tag on an element that did not change, a `new` tag on an element that changed, any state word when no comparison is made) is only your stereotype. The box has the style you gave to that name in `styles.by-tags` or `styles.by-qualifiers`, if any, and nothing of the default look, whatever else the view shows. On an element that changed, the computed state, which is last, has the last word over it.
@@ -804,6 +810,58 @@ warning: the element `customer` carries `new` (`rendering-stereotypes` tag), but
 ----
 
 `archicode diff` and `archicode views generate --baseline` check the plateau they compare. `archicode views generate` of a plateau that is not compared says that a state word is a state of a comparison and that nothing is compared here. A workspace without `settings.plateaus` has no comparison to disagree with, and is never told anything: there the words are your own stereotypes, as they always were. A word that agrees with the comparison is never reported. The editor draws the same: a hand-written word is a badge and a style, and the look of a state only where the state is computed.
+
+[[plateau-replaces]]
+=== Saying what an element replaces
+
+A comparison finds an element by its reference. An element that moves under another parent, or is renamed, has another reference: the comparison reads it as one removed element and one new one, with nothing that links them. ArchiCode never guesses that two elements are the same thing; _you_ say it, on the element of the more recent plateau, with the key `replaces`: a list of the full references, in the baseline, of what the element replaces. It is the same hint as the `moved` block of Terraform.
+
+[source,yaml]
+.The stock system of the invented warehouse, in the plateau `after` (`src/test/resources/plateau-comparison/replaces` of the repository)
+----
+content:
+  id: "stock"
+  name: "Stock"
+  elements:
+    - kind: "container"
+      id: "till"
+      name: "Cash desk"
+      replaces:
+        - "shop.till" # it was the till of the shop, under another name
+    - kind: "container"
+      id: "place"
+      name: "Place"
+      replaces:
+        - "stock.shelf" # the bin and the shelf are one place now
+        - "stock.bin"
+----
+
+The key is optional, and a tool that does not know it ignores it. The comparison turns the elements that say what they replace into three states, and the replaced elements are no longer _removed_:
+
+* *moved*: the element replaces one element, which no other element replaces. It is in another place or has another name, and it is the same thing. Whatever else it changes, it keeps it: a name, a description and the relationships it declares are compared with the element it replaces, and the table says which (the `natures`), next to `moved`. A moved element is counted as `moved`, not also as `changed`.
+* *split*: several elements replace the same element (`shop.report` became `shop.report-a` and `shop.report-b`). Each of them is `split`, and the table names the other ones.
+* *merged*: the element replaces two elements or more, or an element that is in the baseline and in the plateau at the same time. When an element is both split and merged, it is `merged`.
+
+What the replaced elements held is not carried by itself: a container that moved takes none of its children with it, so each child needs its own `replaces`, or it is read as removed (the box of the replaced container is then drawn as the place it was removed from, with the words "replaced by"). What points at a replaced element follows it when exactly one element replaces it: a relationship to `shop.till` that now points at `stock.till` is not a change of the element that declares it, and nor is a node that deployed `shop.till` and now deploys `stock.till`. What points at a split element is not rewritten, because which half would own it is a guess.
+
+[[plateau-candidates]]
+*Candidates.* When an element is only in the baseline and another one of the same kind and the same layer is only in the plateau, and nothing replaces or is replaced by either of them, the comparison may find that they look like one thing that was said twice: the same name (ignoring the case), a description with most of its words in common, or the only two elements of that kind under the same parent. It lists them as candidates and it never applies one. To accept one, write `replaces` on the new element; to refuse it, do nothing. `archicode diff`, `gap.md` and `gap.json` list the candidates once the plateau uses `replaces` (a workspace that does not is written as it always was), each with its reasons. The candidates are not drawn in the views.
+
+[[plateau-replaces-warnings]]
+*Warnings.* The comparison does not fail on a `replaces` that it cannot use: it ignores it, and says so on the error output of `archicode diff` and of `archicode views generate --baseline` (not in the log, which hides warnings by default), one line per entry:
+
+* a reference that is not an element of the baseline (you may be comparing with another baseline than the one you wrote it for);
+* a reference that is still an element of the plateau (what is there is not replaced, and an element cannot replace itself);
+* a reference listed twice, which counts once;
+* an entry that is not a reference, or a `replaces` that is not a list.
+
+----
+warning: replaces of shop.report-b (application layer): shop.nowhere is not an element of the base plateau, ignored
+----
+
+`replaces` is read from the elements of the plateau that is compared; a `replaces` on an element of the baseline is not read. A plateau that is not compared does not use it.
+
+*What the command line shows.* `archicode diff` has the three states in its table, with the counts of `moved`, `split` and `merged` on a line of their own (`replacing`), and says in the details of each row what the element replaces (see <<diff>>). The views of the comparison draw them with the marks above (see <<plateau-comparison>>). The editor does not draw these three states yet.
 
 === A tutorial: from one workspace to a review of the changes
 
@@ -1229,7 +1287,7 @@ The command offers also customization Capabilities:
 archicode views generate --plateau to-be
 ----
 
-- Comparison: `--baseline <id>` compares the plateau with another one (see <<plateau-comparison>>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in `views-<plateau>-vs-<baseline>` (and one folder per facet, `views-<plateau>-vs-<baseline>-<facet>`), next to two files that tell the same in text: `gap.md` and `gap.json`, the table of changes that `archicode diff` prints (see <<diff>>). A workspace that sets `settings.facets.global-enabled: false` has nothing but these two files in `views-<plateau>-vs-<baseline>`: its views are in the folders of its facets. A plateau that has a `baseline` key is compared without `--baseline`; a plateau that has none is not, even though the plateau before it is its baseline for `archicode diff`, because a comparison doubles the number of views, and so about the time it takes (a workspace of 3,400 views goes from about 40 to about 90 seconds), and is not generated by surprise. An unknown baseline, or `--baseline` on a workspace that has no plateaus, stops the command before anything is written. `--output` is, with plateaus, the beginning of the name of these folders.
+- Comparison: `--baseline <id>` compares the plateau with another one (see <<plateau-comparison>>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in `views-<plateau>-vs-<baseline>` (and one folder per facet, `views-<plateau>-vs-<baseline>-<facet>`), next to two files that tell the same in text: `gap.md` and `gap.json`, the table of changes that `archicode diff` prints (see <<diff>>), with the elements that moved, split or merged and the candidates (see <<plateau-replaces>>), and the same warnings about `replaces` on the error output. A workspace that sets `settings.facets.global-enabled: false` has nothing but these two files in `views-<plateau>-vs-<baseline>`: its views are in the folders of its facets. A plateau that has a `baseline` key is compared without `--baseline`; a plateau that has none is not, even though the plateau before it is its baseline for `archicode diff`, because a comparison doubles the number of views, and so about the time it takes (a workspace of 3,400 views goes from about 40 to about 90 seconds), and is not generated by surprise. An unknown baseline, or `--baseline` on a workspace that has no plateaus, stops the command before anything is written. `--output` is, with plateaus, the beginning of the name of these folders.
 
 .Generate Views - Comparison
 [source,shell]
@@ -1346,7 +1404,7 @@ Adds a plateau to the workspace: the folder of the plateau `--from` is copied (a
 archicode diff --plateau to-be --baseline as-is
 ----
 
-Tells what a plateau changes: the elements and the relationships that are new, changed or removed compared with the baseline, and what changed in each. It prints a table to read in a terminal, to paste in a pull request or to feed to a script, and writes nothing to disk (`views generate --baseline` writes the same table next to the views, see <<generate-views>>).
+Tells what a plateau changes: the elements and the relationships that are new, changed or removed compared with the baseline, and what changed in each. An element that says what it replaces (see <<plateau-replaces>>) is `moved`, `split` or `merged`. It prints a table to read in a terminal, to paste in a pull request or to feed to a script, and writes nothing to disk (`views generate --baseline` writes the same table next to the views, see <<generate-views>>).
 
 [source,text]
 ----
@@ -1368,9 +1426,41 @@ new      relationship  application  shop.web -> shop.payments (pays with)       
 - `--plateau`: the plateau that is compared, as for `views generate`: `settings.current`, else the last one.
 - `--baseline`: the plateau it is compared with: the one named, else the `baseline` key of the plateau, else the plateau before it in the list (see <<plateau-comparison>>).
 - `--format` (`-f`): `text` (the default; its lines are as long as the longest reference, several hundred characters on a large workspace, so read them with `less -S` or take `markdown`), `markdown` (a table to paste in a pull request) or `json` (the counts and one object per change, with `before` and `after` for a changed element).
-- `--no-wording`: leaves the elements whose description is the only thing that changed out of the table, and says how many are left out. The counts still include them.
+- `--no-wording`: leaves the elements whose description is the only thing that changed out of the table, and says how many are left out. The counts still include them. It changes nothing to the elements that moved, split or merged, nor to the candidates.
 
-The table lists the elements, then the relationships, sorted by layer and reference: the same output for the same two plateaus, byte for byte, whatever the machine. A difference is not an error: the exit code is 0. The command stops with an error (exit code 1) that says what to do when the workspace has no `settings.plateaus`, when the plateau is the first one and has no baseline to compare with, and when the baseline is unknown or is the plateau itself.
+The table lists the elements, then the relationships, sorted by layer and reference (the reference of an element that moved, split or merged is its own, not the one it replaces): the same output for the same two plateaus, byte for byte, whatever the machine.
+
+*When elements replace others.* The invented warehouse of `src/test/resources/plateau-comparison/replaces` has a till that moved to the stock system and was renamed, a report that was split in two (and its chart, which nothing replaces, so it is removed), a bin and a shelf that were merged into a place, a mailer that was rewritten as a postman without a word about it, and a `replaces` that names an element the baseline never had. `archicode diff --plateau after` prints:
+
+[source,text]
+----
+warning: replaces of shop.report-b (application layer): shop.nowhere is not an element of the base plateau, ignored
+comparing after with before
+elements      +1 ~0 -2
+replacing     1 moved, 2 split, 1 merged
+relationships +0 ~0 -0
+wording only  0 of the 0 changed elements
+
+CHANGE   THING    LAYER        REFERENCE          NATURES  DETAILS
+removed  element  application  shop.mailer        -        name: "Mailer"
+new      element  application  shop.postman       -        name: "Postman"
+split    element  application  shop.report-a      -        from shop.report; name: "Sales report"; split with shop.report-b
+split    element  application  shop.report-b      -        from shop.report; name: "Stock report"; split with shop.report-a
+removed  element  application  shop.report.chart  -        name: "Chart"
+merged   element  application  stock.place        -        from stock.bin, stock.shelf; name: "Place"
+moved    element  application  stock.till         name     from shop.till; name: "Till" -> "Cash desk"
+
+candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)
+LAYER        FROM         TO            REASONS
+application  shop.mailer  shop.postman  description, parent
+----
+
+- The first line is a warning, on the error output; the rest is the table, on the standard output.
+- The `replacing` line, and in the Markdown form the line "Replacing elements: ...", exist only when an element replaces another. The elements that replaced others are in the `replacing` counts and not in the `new`, `changed` or `removed` ones, and the elements they replace have no row and no count: they are not removed.
+- The details of a row begin with `from` what the element replaces, then its name, then what differs from what it replaces (`name: "Till" -> "Cash desk"`), and for a split the other elements that replace the same one.
+- The candidates are listed after the table, marked _not applied_: write `replaces` on the element in the `TO` column to accept one (see <<plateau-candidates>>). The mailer and the postman are still removed and new.
+- In JSON, a row of an element that replaces others has a `replaces` list (the references, sorted), the counts of `elements` have `moved`, `split` and `merged` when there are some, and `candidates` is a list of `layer`, `from`, `to`, `reasons` and `"applied": false`. In Markdown, the candidates are a section, `## Candidates, not applied`.
+- A plateau that does not use `replaces` gets the table it always had, byte for byte. A difference is not an error: the exit code is 0. The command stops with an error (exit code 1) that says what to do when the workspace has no `settings.plateaus`, when the plateau is the first one and has no baseline to compare with, and when the baseline is unknown or is the plateau itself.
 
 === Generate JSON Schemas
 

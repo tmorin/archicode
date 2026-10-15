@@ -31,6 +31,14 @@ import lombok.val;
  *
  * <p>Wording-only changes (a description that was reworded and nothing else) can be left out of the listing. The counts
  * still say them: the report tells how many were left out.
+ *
+ * <p>An element that says what it replaces ({@code replaces}) is a {@code moved}, {@code split} or {@code merged} row, at
+ * its own reference (the table stays sorted by it), and its details begin with {@code from} what it replaces (several
+ * references for a merge; a split is one row per replacing element, each with the same {@code from}, and the details
+ * name the others). The replaced elements have no row: they are not removed. What the comparison finds that looks like one thing said twice is listed apart, as
+ * candidates that are <em>not applied</em>: the author accepts one by writing {@code replaces}. A comparison without any of
+ * it is written as it always was, byte for byte: the new lines and keys exist only when there is something to say, and
+ * the candidates only for a plateau that uses {@code replaces} (see {@link #listsCandidates}).
  */
 @UtilityClass
 public class GapReport {
@@ -76,6 +84,27 @@ public class GapReport {
         return String.format(Locale.ROOT, "%-13s +%d ~%d -%d", name, added, changed, removed);
     }
 
+    /**
+     * Whether the report lists the candidates: there are some, and the plateau uses {@code replaces} (an element replaces
+     * another, or a {@code replaces} was ignored and said so). A plateau that does not use it is written as it always was,
+     * byte for byte; the candidates are for the author who has begun to say what replaces what, to tell what is left.
+     */
+    private static boolean listsCandidates(Comparison comparison) {
+        val c = comparison.getCounts().elements();
+        return (
+            !comparison.getCandidates().isEmpty() &&
+            (c.moved() + c.split() + c.merged() > 0 || !comparison.getWarnings().isEmpty())
+        );
+    }
+
+    /** "1 moved, 2 split, 1 merged", or null when no element replaces another. */
+    private static String replacing(Comparison.ElementCounts counts) {
+        if (counts.moved() + counts.split() + counts.merged() == 0) {
+            return null;
+        }
+        return counts.moved() + " moved, " + counts.split() + " split, " + counts.merged() + " merged";
+    }
+
     // ---- text ----
 
     private static String text(Comparison comparison, boolean hideWording) {
@@ -89,6 +118,9 @@ public class GapReport {
         out.append(counts("elements", c.elements().added(), c.elements().changed(), c.elements().removed())).append(
             '\n'
         );
+        if (replacing(c.elements()) != null) {
+            out.append(String.format(Locale.ROOT, "%-13s %s", "replacing", replacing(c.elements()))).append('\n');
+        }
         out.append(
             counts("relationships", c.relationships().added(), c.relationships().changed(), c.relationships().removed())
         ).append('\n');
@@ -125,7 +157,7 @@ public class GapReport {
                     row.layer(),
                     reference(row),
                     natures(row),
-                    String.join("; ", details(row))
+                    String.join("; ", details(row, rows))
                 )
             )
         );
@@ -144,7 +176,40 @@ public class GapReport {
             line.append(cells.get(5));
             out.append(line.toString().stripTrailing()).append('\n');
         }
+        textCandidates(out, comparison);
         return out.toString();
+    }
+
+    private static void textCandidates(StringBuilder out, Comparison comparison) {
+        if (!listsCandidates(comparison)) {
+            return;
+        }
+        out.append(
+            "\ncandidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)\n"
+        );
+        val table = new ArrayList<List<String>>();
+        table.add(List.of("LAYER", "FROM", "TO", "REASONS"));
+        comparison
+            .getCandidates()
+            .forEach(candidate ->
+                table.add(
+                    List.of(candidate.layer(), candidate.from(), candidate.to(), String.join(", ", candidate.reasons()))
+                )
+            );
+        val widths = new int[3];
+        table.forEach(cells -> {
+            for (int i = 0; i < widths.length; i++) {
+                widths[i] = Math.max(widths[i], cells.get(i).length());
+            }
+        });
+        for (val cells : table) {
+            val line = new StringBuilder();
+            for (int i = 0; i < widths.length; i++) {
+                line.append(String.format(Locale.ROOT, "%-" + widths[i] + "s  ", cells.get(i)));
+            }
+            line.append(cells.get(3));
+            out.append(line.toString().stripTrailing()).append('\n');
+        }
     }
 
     // ---- markdown ----
@@ -177,6 +242,9 @@ public class GapReport {
                     " |\n"
             )
             .append('\n');
+        if (replacing(c.elements()) != null) {
+            out.append("Replacing elements: ").append(replacing(c.elements())).append(".\n\n");
+        }
         out.append("Wording only: ")
             .append(c.elements().wordingOnly())
             .append(" of the ")
@@ -208,10 +276,32 @@ public class GapReport {
                 .append(" | ")
                 .append(cell(natures(row)))
                 .append(" | ")
-                .append(cell(String.join("; ", details(row))))
+                .append(cell(String.join("; ", details(row, rows))))
                 .append(" |\n");
         }
+        markdownCandidates(out, comparison);
         return out.toString();
+    }
+
+    private static void markdownCandidates(StringBuilder out, Comparison comparison) {
+        if (!listsCandidates(comparison)) {
+            return;
+        }
+        out.append(
+            "\n## Candidates, not applied\n\nEach pair looks like one thing said twice. To accept one, write `replaces: [FROM]` on the element TO.\n\n"
+        );
+        out.append("| Layer | From | To | Reasons |\n|---|---|---|---|\n");
+        for (val candidate : comparison.getCandidates()) {
+            out.append("| ")
+                .append(cell(candidate.layer()))
+                .append(" | ")
+                .append(cell(candidate.from()))
+                .append(" | ")
+                .append(cell(candidate.to()))
+                .append(" | ")
+                .append(cell(String.join(", ", candidate.reasons())))
+                .append(" |\n");
+        }
     }
 
     /** A value in a cell of a Markdown table: no line end, no bar. */
@@ -238,6 +328,12 @@ public class GapReport {
         relationships.put("new", c.relationships().added());
         relationships.put("changed", c.relationships().changed());
         relationships.put("removed", c.relationships().removed());
+        if (replacing(c.elements()) != null) {
+            // next to new, changed and removed, only when an element replaces another
+            elements.put("moved", c.elements().moved());
+            elements.put("split", c.elements().split());
+            elements.put("merged", c.elements().merged());
+        }
         root.put("hidden_wording_only", hidden(comparison, hideWording));
         val changes = root.putArray("changes");
         for (val row : listed(comparison, hideWording)) {
@@ -261,11 +357,28 @@ public class GapReport {
             val natures = node.putArray("natures");
             row.natures().forEach(natures::add);
             node.put("wording_only", row.wordingOnly());
+            if (!row.replaces().isEmpty()) {
+                val replaces = node.putArray("replaces");
+                row.replaces().forEach(replaces::add);
+            }
             if (!row.before().isEmpty() || !row.after().isEmpty()) {
                 val before = node.putObject("before");
                 row.before().forEach(before::set);
                 val after = node.putObject("after");
                 row.after().forEach(after::set);
+            }
+        }
+        if (listsCandidates(comparison)) {
+            // not applied: the author accepts one by writing `replaces` on `to`
+            val candidates = root.putArray("candidates");
+            for (val candidate : comparison.getCandidates()) {
+                val node = candidates.addObject();
+                node.put("layer", candidate.layer());
+                node.put("from", candidate.from());
+                node.put("to", candidate.to());
+                val reasons = node.putArray("reasons");
+                candidate.reasons().forEach(reasons::add);
+                node.put("applied", false);
             }
         }
         // two spaces and a line feed on every machine
@@ -310,15 +423,27 @@ public class GapReport {
 
     /**
      * What changed in a changed row: each property that differs, with what it was and what it is. A new or a removed row
-     * has no details (the thing is the change), but for the name of an element.
+     * has no details (the thing is the change), but for the name of an element. An element that moved, split or merged
+     * has its name, what differs from the element it replaces, and for a split the other elements that replace the same
+     * one.
      */
-    private static List<String> details(Comparison.Row row) {
+    private static List<String> details(Comparison.Row row, List<Comparison.Row> rows) {
         val details = new ArrayList<String>();
+        if (!row.replaces().isEmpty()) {
+            details.add("from " + String.join(", ", row.replaces()));
+        }
         if (row.change() != Change.CHANGED) {
-            if (row.thing().equals("element") && row.name() != null && !row.name().isBlank()) {
+            if (
+                row.thing().equals("element") &&
+                row.name() != null &&
+                !row.name().isBlank() &&
+                !row.before().containsKey("name")
+            ) {
                 details.add("name: " + quoted(row.name()));
             }
-            return details;
+            if (row.replaces().isEmpty()) {
+                return details;
+            }
         }
         val keys = new LinkedHashSet<String>(row.before().keySet());
         keys.addAll(row.after().keySet());
@@ -326,6 +451,23 @@ public class GapReport {
             val before = row.before().get(key);
             val after = row.after().get(key);
             details.add(key + ": " + difference(before, after));
+        }
+        if (row.change() == Change.SPLIT) {
+            // the other elements that replace the same ones: the table is sorted by reference, the halves may be far apart
+            val others = new TreeSet<String>();
+            for (val other : rows) {
+                if (
+                    other != row &&
+                    other.thing().equals("element") &&
+                    other.layer().equals(row.layer()) &&
+                    other.replaces().stream().anyMatch(row.replaces()::contains)
+                ) {
+                    others.add(other.reference());
+                }
+            }
+            if (!others.isEmpty()) {
+                details.add("split with " + String.join(", ", others));
+            }
         }
         return details;
     }

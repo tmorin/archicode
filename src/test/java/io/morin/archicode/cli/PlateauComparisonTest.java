@@ -44,7 +44,8 @@ class PlateauComparisonTest {
 
     /** The invented warehouse of {@code replaces}: a workspace of its own, apart from the bookshop. */
     private Path replacesWorkspace() {
-        return copy(REPLACES, dir.resolve("replaces"));
+        val workspace = dir.resolve("replaces").resolve("workspace.yaml");
+        return Files.exists(workspace) ? workspace : copy(REPLACES, dir.resolve("replaces"));
     }
 
     @SneakyThrows
@@ -137,18 +138,279 @@ class PlateauComparisonTest {
     new      relationship  application  shop.mobile -> shop.api (calls)         -
     """;
 
+    // ---- replaces: an element that says what it replaces is moved, split or merged, never removed and new
+
+    private static final String REPLACES_WARNING =
+        "warning: replaces of shop.report-b (application layer): shop.nowhere is not an element of the base plateau, ignored";
+
+    private static final String REPLACES_AFTER_BEFORE = """
+    comparing after with before
+    elements      +1 ~0 -2
+    replacing     1 moved, 2 split, 1 merged
+    relationships +0 ~0 -0
+    wording only  0 of the 0 changed elements
+
+    CHANGE   THING    LAYER        REFERENCE          NATURES  DETAILS
+    removed  element  application  shop.mailer        -        name: "Mailer"
+    new      element  application  shop.postman       -        name: "Postman"
+    split    element  application  shop.report-a      -        from shop.report; name: "Sales report"; split with shop.report-b
+    split    element  application  shop.report-b      -        from shop.report; name: "Stock report"; split with shop.report-a
+    removed  element  application  shop.report.chart  -        name: "Chart"
+    merged   element  application  stock.place        -        from stock.bin, stock.shelf; name: "Place"
+    moved    element  application  stock.till         name     from shop.till; name: "Till" -> "Cash desk"
+
+    candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)
+    LAYER        FROM         TO            REASONS
+    application  shop.mailer  shop.postman  description, parent
+    """;
+
     @Test
-    void diffAndViewsDoNotFailOnPlateausWhoseElementsSayWhatTheyReplace() {
-        // the wording of the table and of the views for them is the work of the next runs; here: nothing breaks, the replaced are not removed
+    void diffTellsWhatMovedWasSplitAndMergedAndWhereItCameFromInASortedTable() {
+        val result = diff(replacesWorkspace(), "--plateau", "after");
+        assertEquals(0, result.exit, result.err);
+        assertEquals(REPLACES_AFTER_BEFORE, result.out);
+        // the replaced elements are not removed: no row, no count
+        for (val replaced : List.of("shop.till ", "shop.report ", "stock.bin", "stock.shelf")) {
+            assertFalse(
+                result.out.lines().anyMatch(line -> line.startsWith("removed") && line.contains(replaced)),
+                replaced + "\n" + result.out
+            );
+        }
+        // the rows are sorted by the reference of the element itself, and the same bytes come again
+        assertEquals(REPLACES_AFTER_BEFORE, diff(replacesWorkspace(), "--plateau", "after").out);
+    }
+
+    @Test
+    @SneakyThrows
+    void theManualShowsWhatTheCommandPrintsOnTheWarehouse() {
+        val manual = Files.readString(Path.of("src/doc/README.adoc"));
+        assertTrue(
+            manual.contains(REPLACES_WARNING + "\n" + REPLACES_AFTER_BEFORE),
+            "the sample of `diff` in the manual"
+        );
+    }
+
+    @Test
+    void markdownTellsTheIdentityAndListsTheCandidatesApartAndNotApplied() {
+        val result = diff(replacesWorkspace(), "--plateau", "after", "--format", "markdown");
+        assertEquals(0, result.exit, result.err);
+        val lines = result.out.lines().toList();
+        assertTrue(lines.contains("| elements | 1 | 0 | 2 |"), result.out);
+        assertTrue(lines.contains("Replacing elements: 1 moved, 2 split, 1 merged."), result.out);
+        assertTrue(
+            lines.contains(
+                "| moved | element | application | stock.till | name | from shop.till; name: \"Till\" -> \"Cash desk\" |"
+            ),
+            result.out
+        );
+        assertTrue(
+            lines.contains(
+                "| merged | element | application | stock.place | - | from stock.bin, stock.shelf; name: \"Place\" |"
+            ),
+            result.out
+        );
+        assertTrue(
+            lines.contains(
+                "| split | element | application | shop.report-a | - | from shop.report; name: \"Sales report\"; split with shop.report-b |"
+            ),
+            result.out
+        );
+        val heading = lines.indexOf("## Candidates, not applied");
+        assertTrue(heading > lines.indexOf("| Change | Thing | Layer | Reference | Natures | Details |"), result.out);
+        assertTrue(lines.contains("| application | shop.mailer | shop.postman | description, parent |"), result.out);
+        assertTrue(
+            lines.contains(
+                "Each pair looks like one thing said twice. To accept one, write `replaces: [FROM]` on the element TO."
+            ),
+            result.out
+        );
+        // the candidate is not applied: the mailer is still removed and the postman still new
+        assertTrue(lines.contains("| removed | element | application | shop.mailer | - | name: \"Mailer\" |"));
+        assertTrue(lines.contains("| new | element | application | shop.postman | - | name: \"Postman\" |"));
+    }
+
+    @Test
+    @SneakyThrows
+    void jsonHasTheIdentityOfEachRowAndTheCandidatesMarkedNotApplied() {
+        val result = diff(replacesWorkspace(), "--plateau", "after", "--format", "json");
+        assertEquals(0, result.exit, result.err);
+        val json = new ObjectMapper().readTree(result.out);
+        assertEquals(1, json.at("/counts/elements/moved").asInt());
+        assertEquals(2, json.at("/counts/elements/split").asInt());
+        assertEquals(1, json.at("/counts/elements/merged").asInt());
+        assertEquals(1, json.at("/counts/elements/new").asInt());
+        assertEquals(2, json.at("/counts/elements/removed").asInt());
+        assertEquals(7, json.get("changes").size());
+        val till = rowOf(json, "stock.till");
+        assertEquals("moved", till.get("change").asText());
+        assertEquals(List.of("shop.till"), strings(till.get("replaces")));
+        assertEquals("Till", till.at("/before/name").asText());
+        assertEquals("Cash desk", till.at("/after/name").asText());
+        val place = rowOf(json, "stock.place");
+        assertEquals("merged", place.get("change").asText());
+        assertEquals(List.of("stock.bin", "stock.shelf"), strings(place.get("replaces")));
+        assertEquals(List.of("shop.report"), strings(rowOf(json, "shop.report-a").get("replaces")));
+        assertEquals(List.of("shop.report"), strings(rowOf(json, "shop.report-b").get("replaces")));
+        assertFalse(rowOf(json, "shop.mailer").has("replaces"));
+        assertEquals(1, json.get("candidates").size());
+        val candidate = json.at("/candidates/0");
+        assertEquals("application", candidate.get("layer").asText());
+        assertEquals("shop.mailer", candidate.get("from").asText());
+        assertEquals("shop.postman", candidate.get("to").asText());
+        assertEquals(List.of("description", "parent"), strings(candidate.get("reasons")));
+        assertFalse(candidate.get("applied").asBoolean(), "a candidate is never applied");
+    }
+
+    private static List<String> strings(JsonNode list) {
+        val out = new java.util.ArrayList<String>();
+        list.forEach(item -> out.add(item.asText()));
+        return out;
+    }
+
+    @Test
+    void noWordingLeavesTheIdentityAndTheCandidatesAlone() {
         val workspace = replacesWorkspace();
+        val all = diff(workspace, "--plateau", "after");
+        val quiet = diff(workspace, "--plateau", "after", "--no-wording");
+        assertEquals(0, quiet.exit, quiet.err);
+        // nothing here is wording only: the same table, and the line that says how many are hidden
+        assertEquals(
+            all.out.replace(
+                "wording only  0 of the 0 changed elements\n",
+                "wording only  0 of the 0 changed elements\n0 wording-only changes hidden (--no-wording)\n"
+            ),
+            quiet.out
+        );
+        assertTrue(quiet.out.contains("replacing     1 moved, 2 split, 1 merged\n"), quiet.out);
+        assertTrue(quiet.out.contains("application  shop.mailer  shop.postman"), quiet.out);
+    }
+
+    @Test
+    void aPlateauThatDoesNotUseReplacesIsToldAsItAlwaysWasEvenWhenTheKernelFindsACandidate() {
+        // the example of the manual: the mailer is removed and the payments are new, the only two containers of the shop, which the
+        // kernel lists as a candidate; the plateau says nothing of `replaces`, so the table does not change
+        val workspace = copy(Path.of("src/doc/examples/domain_plateaus"), dir.resolve("example"));
+        for (val format : List.of("text", "markdown", "json")) {
+            val result = diff(workspace, "--plateau", "to-be", "--format", format);
+            assertEquals(0, result.exit, result.err);
+            assertFalse(result.out.contains("andidate"), format + "\n" + result.out);
+            assertFalse(result.out.contains("replacing") || result.out.contains("Replacing"), format);
+            assertEquals("", result.err, format);
+        }
+    }
+
+    @Test
+    void theWarningsOfTheComparisonAreOnTheErrorOutputOfDiffAndTheTableIsStillAlone() {
+        val result = diff(replacesWorkspace(), "--plateau", "after");
+        assertEquals(0, result.exit, result.err);
+        // seen by the user: the error output of the real command line, not the log (which the level of the application hides)
+        assertEquals(REPLACES_WARNING + "\n", result.err);
+        assertFalse(result.out.contains("warning"), result.out);
+        for (val format : List.of("markdown", "json")) {
+            val other = diff(replacesWorkspace(), "--plateau", "after", "--format", format);
+            assertEquals(REPLACES_WARNING + "\n", other.err, format);
+            assertFalse(other.out.contains("shop.nowhere"), format);
+        }
+    }
+
+    @Test
+    void theWarningsOfTheComparisonAreOnTheErrorOutputOfViewsGenerateWithABaselineAndOnlyThere() {
+        val workspace = replacesWorkspace();
+        val result = generate(workspace, "--plateau", "after", "--baseline", "before");
+        assertEquals(0, result.exit, result.err);
+        assertEquals(REPLACES_WARNING + "\n", result.err);
+        assertEquals("", result.out);
+        // without a comparison nothing is compared, so there is nothing to say about what a plateau replaces
+        val plain = generate(replacesWorkspace(), "--plateau", "after");
+        assertEquals(0, plain.exit, plain.err);
+        assertEquals("", plain.err);
+    }
+
+    @Test
+    @SneakyThrows
+    void everyReplacesTheComparisonIgnoresIsToldWithTheElementThatSaidIt() {
+        val workspace = replacesWorkspace();
+        val shop = workspace.getParent().resolve("plateaus/20_after/shop.yaml");
+        // the web site is still in the plateau, and 12 is no reference of the baseline
+        Files.writeString(
+            shop,
+            Files.readString(shop).replace(
+                "      name: \"Postman\"\n",
+                "      name: \"Postman\"\n      replaces:\n        - \"shop.web\"\n        - \"shop.mailer\"\n        - \"shop.mailer\"\n"
+            )
+        );
         val result = diff(workspace, "--plateau", "after");
         assertEquals(0, result.exit, result.err);
-        assertTrue(result.out.contains("moved"), result.out);
-        assertTrue(result.out.contains("merged"), result.out);
-        assertTrue(result.out.contains("split"), result.out);
-        assertFalse(result.out.contains("removed  element       application  shop.till"), result.out);
-        val views = run("-w", workspace.toString(), "views", "generate", "--plateau", "after", "--baseline", "before");
-        assertEquals(0, views.exit, views.err);
+        assertEquals(
+            List.of(
+                "warning: replaces of shop.postman (application layer): shop.web is still an element of the target plateau, ignored",
+                REPLACES_WARNING
+            ),
+            result.err.lines().toList()
+        );
+        // the postman replaces the mailer now: the mailer is no longer removed, and there is no candidate left
+        assertTrue(result.out.contains("moved    element  application  shop.postman"), result.out);
+        assertTrue(result.out.contains("from shop.mailer"), result.out);
+        assertFalse(result.out.contains("candidates"), result.out);
+    }
+
+    @Test
+    void theViewsOfTheComparisonDrawTheThreeStatesWithAGlyphAndTheirOwnLine() {
+        val workspace = replacesWorkspace();
+        val result = generate(workspace, "--plateau", "after", "--baseline", "before");
+        assertEquals(0, result.exit, result.err);
+        val stock = read("replaces/views-after-vs-before/plantuml/application/stock-detailed.puml");
+        assertTrue(
+            stock.contains("<<moved>> <<container>> <<atomic>> [\n<U+2192> Cash desk (from shop.till)\n"),
+            stock
+        );
+        assertTrue(
+            stock.contains("<<merged>> <<container>> <<atomic>> [\n<U+2295> Place (from stock.bin, stock.shelf)\n"),
+            stock
+        );
+        assertTrue(
+            stock.contains(".moved {\nrectangle {\nLineColor: #0072B2\nLineStyle: 12\nLineThickness: 2\n}\n}\n"),
+            stock
+        );
+        assertTrue(
+            stock.contains(".merged {\nrectangle {\nLineColor: #56B4E9\nLineStyle: 5\nLineThickness: 2\n}\n}\n"),
+            stock
+        );
+        // the legend explains the two the view uses
+        assertTrue(stock.contains("| **<U+2192>** | moved or renamed, replaces one element: long dashes | |"), stock);
+        assertTrue(stock.contains("| **<U+2295>** | merged, replaces several elements: short dashes | |"), stock);
+        assertFalse(stock.contains("split"), stock);
+        val shop = read("replaces/views-after-vs-before/plantuml/application/shop-detailed.puml");
+        assertTrue(
+            shop.contains("<<split>> <<container>> <<atomic>> [\n<U+22D4> Sales report (from shop.report)\n"),
+            shop
+        );
+        assertTrue(
+            shop.contains("<<split>> <<container>> <<atomic>> [\n<U+22D4> Stock report (from shop.report)\n"),
+            shop
+        );
+        // the replaced element that only holds what was removed from it says what replaces it, and is not drawn as a plain removed box
+        assertTrue(shop.contains("<U+2212> --Report-- (replaced by shop.report-a, shop.report-b)\n"), shop);
+        // the moved till is not drawn as removed, nor is the bin
+        assertFalse(shop.contains("--Till--"), shop);
+        assertFalse(stock.contains("--Bin--"), stock);
+        // an element that replaces nothing is what it was: the unrelated mailer is removed, the postman new
+        assertTrue(shop.contains("<<removed>> <<container>> <<atomic>> [\n<U+2212> --Mailer--\n"), shop);
+        assertTrue(shop.contains("<<new>> <<container>> <<atomic>> [\n+ Postman\n"), shop);
+    }
+
+    @Test
+    @SneakyThrows
+    void theGapFilesNextToTheViewsTellTheSameAsTheTableAndTheCandidates() {
+        val workspace = replacesWorkspace();
+        assertEquals(0, generate(workspace, "--plateau", "after", "--baseline", "before").exit);
+        val markdown = read("replaces/views-after-vs-before/gap.md");
+        assertEquals(diff(workspace, "--plateau", "after", "--format", "markdown").out, markdown);
+        val json = read("replaces/views-after-vs-before/gap.json");
+        assertEquals(diff(workspace, "--plateau", "after", "--format", "json").out, json);
+        assertTrue(markdown.contains("## Candidates, not applied"), markdown);
+        assertTrue(json.contains("\"applied\": false"), json);
+        assertTrue(json.contains("\"replaces\": ["), json);
     }
 
     @Test

@@ -7,7 +7,7 @@ content:
   elements:
     - kind: "container"
       id: "till"
-      name: "Till"
+      name: "Cash desk"
       description: "Takes the payment of a basket at the counter and prints the receipt."
       replaces:
         - "shop.till"
