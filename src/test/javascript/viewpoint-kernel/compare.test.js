@@ -132,3 +132,29 @@ test('adding compare changed neither the answer of compute nor the contract vers
   assert.equal(out.version, expected);
   assert.equal(kernel.compare({ base: plateau(), target: plateau() }).version, expected);
 });
+
+test('replaces: moved, split and merged elements through the embedded module, the same bytes whatever the order, and compute takes the union back', async () => {
+  const kernel = await loadEmbeddedKernel();
+  const base = plateau([el('a'), el('a.svc', { name: 'Billing' }), el('b'), el('s'), el('m1'), el('m2')]);
+  const target = plateau([
+    el('a'),
+    el('b'),
+    el('b.svc', { name: 'Billing', replaces: ['a.svc'] }),
+    el('t1', { replaces: ['s'] }),
+    el('t2', { replaces: ['s', 'nowhere'] }),
+    el('m', { replaces: ['m2', 'm1'] })
+  ]);
+  const raw = kernel.raw({ base, target });
+  const out = JSON.parse(raw);
+  assert.equal(out.error, undefined);
+  assert.equal(out.version, 4);
+  const change = Object.fromEntries(out.elements.map((e) => [e.reference, e.change]));
+  assert.deepEqual(change, { a: 'none', b: 'none', 'b.svc': 'moved', m: 'merged', t1: 'split', t2: 'split' });
+  assert.deepEqual(out.counts.elements, { new: 0, changed: 0, removed: 0, wording_only: 0, moved: 1, split: 2, merged: 1 });
+  assert.equal(out.warnings.length, 1);
+  assert.equal(raw, kernel.raw({ base: plateau([...base.application].reverse()), target: plateau([...target.application].reverse()) }), 'the order of the lists never shows');
+  // the union is drawn like any other: the state ends the stereotypes
+  const view = kernel.compute({ viewpoint: 'map', focal: '', elements: out.elements.map((e) => Object.assign({}, e, { relationships: [] })), opened: ['a', 'b'] });
+  assert.equal(view.error, undefined);
+  assert.deepEqual(view.items.find((i) => i.reference === 'b.svc').stereotypes, ['moved']);
+});

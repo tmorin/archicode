@@ -63,6 +63,16 @@ public abstract class AbstractElement implements Element {
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<Relationship> relationships = new LinkedHashSet<>();
 
+    /**
+     * The references of the elements of an earlier plateau that this element replaces: it is where they went when an
+     * element moved, was renamed, split or merged. Said by the author on the element of the more recent plateau, and
+     * read only by the comparison of two plateaus (see {@code archicode diff}): it never is a guess. Tools that do not
+     * know the key ignore it.
+     */
+    @Builder.Default
+    @JsonDeserialize(as = LinkedHashSet.class)
+    Set<String> replaces = new LinkedHashSet<>();
+
     @Override
     public String toString() {
         return "id='" + id + '\'';

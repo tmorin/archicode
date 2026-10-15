@@ -61,6 +61,9 @@ class ChangeMarks {
             case NEW -> Optional.of(NEW);
             case CHANGED -> Optional.of(CHANGED);
             case REMOVED -> Optional.of(REMOVED);
+            // the look of an element that replaces others is the work of the run that draws them; until then the word
+            // is the state, with the default look of a state that has none
+            case MOVED, SPLIT, MERGED -> Optional.of(item.getChange().word());
             case NONE -> item.getStereotypes().isEmpty() || !item.getStereotypes().getLast().equals(CONTAINS_CHANGES)
                 ? Optional.empty()
                 : Optional.of(CONTAINS_CHANGES);
@@ -76,7 +79,7 @@ class ChangeMarks {
             case NEW -> Optional.of(NEW);
             case CHANGED -> Optional.of(CHANGED);
             case REMOVED -> Optional.of(REMOVED);
-            case NONE -> Optional.empty();
+            case NONE, MOVED, SPLIT, MERGED -> Optional.empty();
         };
     }
 

@@ -30,6 +30,7 @@ import picocli.CommandLine;
 class PlateauComparisonTest {
 
     private static final Path FIXTURE = Path.of("src/test/resources/plateau-comparison");
+    private static final Path REPLACES = FIXTURE.resolve("replaces");
 
     @Inject
     CommandLine.IFactory factory;
@@ -37,14 +38,26 @@ class PlateauComparisonTest {
     @TempDir
     Path dir;
 
-    @SneakyThrows
     private Path workspace() {
-        try (val files = Files.walk(FIXTURE)) {
+        return copy(FIXTURE, dir);
+    }
+
+    /** The invented warehouse of {@code replaces}: a workspace of its own, apart from the bookshop. */
+    private Path replacesWorkspace() {
+        return copy(REPLACES, dir.resolve("replaces"));
+    }
+
+    @SneakyThrows
+    private Path copy(Path fixture, Path into) {
+        try (val files = Files.walk(fixture)) {
             for (val source : files.toList()) {
-                if (source.getFileName().toString().equals("expected-counts.json")) {
-                    continue; // the contract the editor's tests read too, not a file of the workspace
+                if (
+                    source.getFileName().toString().equals("expected-counts.json") ||
+                    (source.startsWith(REPLACES) && fixture == FIXTURE)
+                ) {
+                    continue; // the contract the editor's tests read too, not a file of the workspace; and a workspace of its own
                 }
-                val target = dir.resolve(FIXTURE.relativize(source).toString());
+                val target = into.resolve(fixture.relativize(source).toString());
                 if (Files.isDirectory(source)) {
                     Files.createDirectories(target);
                 } else {
@@ -52,7 +65,7 @@ class PlateauComparisonTest {
                 }
             }
         }
-        return dir.resolve("workspace.yaml");
+        return into.resolve("workspace.yaml");
     }
 
     private record Result(int exit, String out, String err) {}
@@ -123,6 +136,20 @@ class PlateauComparisonTest {
     removed  relationship  application  shop.legacy -> shop.db (loads)          -
     new      relationship  application  shop.mobile -> shop.api (calls)         -
     """;
+
+    @Test
+    void diffAndViewsDoNotFailOnPlateausWhoseElementsSayWhatTheyReplace() {
+        // the wording of the table and of the views for them is the work of the next runs; here: nothing breaks, the replaced are not removed
+        val workspace = replacesWorkspace();
+        val result = diff(workspace, "--plateau", "after");
+        assertEquals(0, result.exit, result.err);
+        assertTrue(result.out.contains("moved"), result.out);
+        assertTrue(result.out.contains("merged"), result.out);
+        assertTrue(result.out.contains("split"), result.out);
+        assertFalse(result.out.contains("removed  element       application  shop.till"), result.out);
+        val views = run("-w", workspace.toString(), "views", "generate", "--plateau", "after", "--baseline", "before");
+        assertEquals(0, views.exit, views.err);
+    }
 
     @Test
     void diffTellsWhatAPlateauChangesAndExitsZero() {

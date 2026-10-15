@@ -25,8 +25,8 @@ class KernelGraph {
     /**
      * @param index the elements of one layer
      * @param objectMapper to make the nodes
-     * @param withProperties also {@code kind}, {@code name} and {@code description}, which the comparison reads and the
-     *                       viewpoints do not
+     * @param withProperties also {@code kind}, {@code name}, {@code description} and, when there is one, {@code replaces},
+     *                       which the comparison reads and the viewpoints do not
      * @return the elements, with their qualifiers and tags (the kernel tells the stereotypes of an item from them)
      */
     ArrayNode of(ElementIndex index, ObjectMapper objectMapper, boolean withProperties) {
@@ -39,6 +39,11 @@ class KernelGraph {
                 node.put("kind", Item.Kind.from(element).name().toLowerCase(Locale.ROOT));
                 node.put("name", element.getName());
                 node.put("description", element.getDescription());
+                val replaces = Optional.ofNullable(element.getReplaces()).orElseGet(Set::of);
+                if (!replaces.isEmpty()) {
+                    val list = node.putArray("replaces");
+                    replaces.forEach(list::add);
+                }
             }
             if (element instanceof Node technologyNode) {
                 val applications = node.putArray("applications");

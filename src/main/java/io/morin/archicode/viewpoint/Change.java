@@ -13,14 +13,21 @@ public enum Change {
     NONE,
     NEW,
     CHANGED,
-    REMOVED;
+    REMOVED,
+    /** An element of the more recent plateau that replaces one other ({@code replaces}): it moved or was renamed. */
+    MOVED,
+    /** An element that replaces one that others replace too. */
+    SPLIT,
+    /** An element that replaces several. */
+    MERGED;
 
     /**
-     * The change the kernel wrote ({@code none}, {@code new}, {@code changed}, {@code removed}).
+     * The change the kernel wrote ({@code none}, {@code new}, {@code changed}, {@code removed}, {@code moved}, {@code split},
+     * {@code merged}).
      *
      * @param word what the kernel wrote
      * @return the change
-     * @throws IllegalArgumentException when it is not one of the four words
+     * @throws IllegalArgumentException when it is not one of the words of the kernel
      */
     public static Change of(@NonNull String word) {
         return switch (word) {
@@ -28,6 +35,9 @@ public enum Change {
             case "new" -> NEW;
             case "changed" -> CHANGED;
             case "removed" -> REMOVED;
+            case "moved" -> MOVED;
+            case "split" -> SPLIT;
+            case "merged" -> MERGED;
             default -> throw new IllegalArgumentException("unknown change: " + word);
         };
     }
@@ -37,7 +47,7 @@ public enum Change {
         return name().toLowerCase(Locale.ROOT);
     }
 
-    /** New, changed or removed. */
+    /** Anything but none: new, changed, removed, moved, split or merged. */
     public boolean isChange() {
         return this != NONE;
     }

@@ -85,7 +85,7 @@ test('a view of the fixture whose input says nothing of change carries none of t
         if (JSON.parse(plainCall).error) continue; // a detailed view of an element that is not a parent
         views++;
         assert.doesNotMatch(plainCall, /"change"|"context"|"natures"|contains-changes/, viewpoint + ' ' + ref);
-        assert.match(plainCall, /^\{"version":3,/);
+        assert.match(plainCall, /^\{"version":4,/);
         assert.equal(kernel.rawCompute(Object.assign({}, plain(input), { only_changes: false })), plainCall, viewpoint + ' ' + ref + ' with only_changes: false');
         assert.equal(kernel.rawCompute(Object.assign({}, plain(input), { only_changes: null })), plainCall, 'null is not given');
       }
@@ -99,7 +99,7 @@ test('the union that compare gives is drawn by compute: every item and link says
   assert.deepEqual(union.counts.elements, { new: 1, changed: 2, removed: 1, wording_only: 0 }, JSON.stringify(union.counts));
   const out = kernel.compute({ viewpoint: 'deep', layer: 'application', focal: 'shop', default_synthetic_label: 'uses', elements: unionElements(union, 'application') });
   assert.equal(out.error, undefined);
-  assert.equal(out.version, 3);
+  assert.equal(out.version, 4);
   const item = (id) => out.items.find((i) => i.id === id);
   assert.deepEqual(['shop.web.session', 'shop.catalog.cache', 'shop.web.api', 'shop.payments'].map((id) => item(id).change), ['removed', 'new', 'changed', 'changed']);
   assert.equal(item('shop.web.session').parent, 'shop.web', 'the removed container is still under its parent');
@@ -244,7 +244,7 @@ test('the contract version the editor expects is the one the kernel speaks, for 
   const { sandbox } = await openFixture();
   const kernel = await loadEmbeddedKernel();
   const expected = vm.runInContext('KERNEL_CONTRACT_VERSION', sandbox);
-  assert.equal(expected, 3);
+  assert.equal(expected, 4);
   assert.equal(kernel.compare({ base: { application: [] }, target: { application: [] } }).version, expected);
   assert.equal(kernel.compute({ viewpoint: 'map', layer: 'application', elements: [] }).version, expected);
 });

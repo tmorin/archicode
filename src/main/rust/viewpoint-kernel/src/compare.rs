@@ -9,14 +9,16 @@
 //! input : { base:   { application: [Element], technology: [Element] },
 //!           target: { application: [Element], technology: [Element] } }
 //!         Element = the one of `compute`: { reference, parent, applications, uses, relationships: [Rel], kind, name,
-//!                   description, qualifiers, tags, ... }. Both layers are optional lists, `null` is "not given".
-//! output: { version, elements: [..], relationships: [..], changes: [Row], counts }  |  { error }
+//!                   description, qualifiers, tags, replaces?, ... }. Both layers are optional lists, `null` is "not given".
+//! output: { version, elements: [..], relationships: [..], changes: [Row], counts, candidates: [..], warnings? }  |  { error }
 //! ```
 //!
 //! The rules (the *why* is in docs/wav/wav-008-plateaus-and-baseline-diff, run 0036):
 //!
 //! 1. **Identity is the dotted reference, per layer.** The same reference in both plateaus is the same thing; in the
-//!    target only it is `new`, in the base only `removed`. A moved, renamed or split element is a `removed` and a `new`.
+//!    target only it is `new`, in the base only `removed`. An author who says otherwise says it on the element of the
+//!    target: `replaces: [reference, ...]` (see rule 6). Without it, a moved, renamed or split element is a `removed` and
+//!    a `new`.
 //! 2. **Changed** is judged on the element's own properties, normalised, and on its own outgoing relationships, never
 //!    on its children: `kind`, `name`, `description` (text compared trimmed, line ends unified), `qualifiers` (a set),
 //!    `tags` (a map, every `rendering-*` tag ignored) and the deployment links `applications` and `uses` (sets).
@@ -38,22 +40,47 @@
 //!    application that points at an element its own plateau does not have is an `error` (`dangling reference: ..`),
 //!    as in `compute`; a base relationship that ends on an element only the base has is not one: it is a removed one.
 //!    A reference declared twice in one layer of one plateau is an `error`.
+//! 6. **`replaces` is the author's word, never a guess** (wave 009). An element of the target may list the references
+//!    of the base that it replaces. A reference counts when the base has it, the target no longer does and the element
+//!    does not list it twice; any other is ignored with a warning (`warnings`), never an error: the author may have
+//!    compared with another baseline. The element then says what it is, in `change`: `moved` (it replaces one element
+//!    that nothing else replaces), `split` (what it replaces is replaced by others too) or `merged` (it replaces several
+//!    elements, or one and it is itself in the base). An element that is replaced is not `removed` any more: it has no row
+//!    and no count, and it is not in the union, unless something below it was removed, which a view cannot place without
+//!    it (then it is in the union as `removed`, with `replaced_by`, and still has no row and no count). The element that
+//!    replaces it carries `replaces`, and its own changes in `natures` (the properties
+//!    compared with the replaced element for a `moved` one, with its own base version for a `merged` one that had one,
+//!    and the relationships of what was replaced, which follow it when exactly one element replaces it; the relationships
+//!    of an element that is split are not compared). What is replaced is read from the target only: a `replaces` on a
+//!    base element is not read. There is no recursion, so no cycle: an element that is replaced is not in the target,
+//!    so it cannot replace anything.
+//! 7. **Candidates are listed, never applied.** An element only the base has and that nothing replaces, and one only the
+//!    target has that replaces nothing, are a *candidate* pair when they have the same kind in the same layer and at
+//!    least one of: the same name (ignoring case), a close description (at least 60 percent of the words in common, three
+//!    words or more on each side), or the same parent when they are the only two of that kind under it. The pair is
+//!    listed with its reasons; the author decides, by writing `replaces`.
 use super::{null_as_default, Elem, Rel, CONTRACT_VERSION};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 const LAYERS: [&str; 2] = ["application", "technology"];
 const RENDERING_PREFIX: &str = "rendering-";
 /// What `OutElement` writes itself: an extra field of that name never reaches the union.
-const RESERVED: [&str; 15] = [
-    "layer", "reference", "parent", "parent_reference", "kind", "name", "description", "qualifiers", "tags", "applications", "uses", "relationships", "change", "natures", "wording_only",
+const RESERVED: [&str; 17] = [
+    "layer", "reference", "parent", "parent_reference", "kind", "name", "description", "qualifiers", "tags", "applications", "uses", "relationships", "change", "natures", "wording_only", "replaces", "replaced_by",
 ];
 
 const NEW: &str = "new";
 const CHANGED: &str = "changed";
 const REMOVED: &str = "removed";
 const NONE: &str = "none";
+const MOVED: &str = "moved";
+const SPLIT: &str = "split";
+const MERGED: &str = "merged";
+/// How close two descriptions must be to make a candidate: the share of the words they have in common, and the least words.
+const CLOSE_DESCRIPTION: f64 = 0.6;
+const LEAST_WORDS: usize = 3;
 
 #[derive(Deserialize)]
 struct Side {
@@ -141,6 +168,14 @@ fn props_of(e: &Elem) -> Props {
     }
 }
 
+/// The properties of an element of the base, its references (`applications`, `uses`) said as the target says them.
+fn base_props_of(e: &Elem, rewrite: &Rewrite) -> Props {
+    let mut p = props_of(e);
+    p.applications = rewrite.list("application", &p.applications);
+    p.uses = rewrite.list("technology", &p.uses);
+    p
+}
+
 /// A text, as it is compared: line ends unified, the edges trimmed, nothing at all being the empty text.
 fn norm_text(s: &Option<String>) -> String {
     s.as_deref().unwrap_or("").replace("\r\n", "\n").trim().to_string()
@@ -197,6 +232,121 @@ fn compare_props(b: &Props, t: &Props) -> (Vec<&'static str>, Map<String, Value>
         note(Some("deployment"), "uses", strings_value(&b.uses), strings_value(&t.uses));
     }
     (natures, before, after)
+}
+
+// ---- identity: what an element of the target says it replaces ----
+
+/// What an element of the target is, once its `replaces` is read: `moved`, `split` or `merged`.
+struct Identity {
+    kind: &'static str,
+    /// the references of the base it replaces, sorted, each one in the base and not in the target
+    replaces: Vec<String>,
+    /// the element of the base the properties of this one are compared with: its own, else (for a `moved` one) the one it replaces
+    counterpart: Option<String>,
+}
+
+/// Where a reference of the base goes in the comparison. An element that exactly one element replaces goes to it; one that
+/// several replace (it was split) goes nowhere: which of them would own what it had is a guess. Anything else stays.
+struct Rewrite {
+    /// (layer, replaced) -> who replaces it, sorted
+    by: BTreeMap<(&'static str, String), Vec<String>>,
+}
+
+impl Rewrite {
+    fn is_replaced(&self, layer: &'static str, reference: &str) -> bool {
+        self.by.contains_key(&(layer, reference.to_string()))
+    }
+
+    /// `None`: the reference is that of a split element, and what mentions it is not compared.
+    fn get(&self, layer: &'static str, reference: &str) -> Option<String> {
+        match self.by.get(&(layer, reference.to_string())) {
+            Some(who) if who.len() == 1 => Some(who[0].clone()),
+            Some(_) => None,
+            None => Some(reference.to_string()),
+        }
+    }
+
+    fn list(&self, layer: &'static str, list: &[String]) -> Vec<String> {
+        sorted_unique(&list.iter().filter_map(|r| self.get(layer, r)).collect::<Vec<_>>())
+    }
+}
+
+struct Resolved {
+    identities: BTreeMap<(&'static str, String), Identity>,
+    rewrite: Rewrite,
+    warnings: Vec<String>,
+}
+
+/// Reads the `replaces` of the target. See rule 6 at the top of this file.
+fn resolve(input: &CompareInput) -> Resolved {
+    let mut warnings: Vec<String> = Vec::new();
+    // (layer, replacing) -> the valid references it replaces
+    let mut valid: BTreeMap<(&'static str, String), Vec<String>> = BTreeMap::new();
+    for layer in LAYERS {
+        let base: HashSet<&str> = input.base.layer(layer).iter().map(|e| e.reference.as_str()).collect();
+        let target: HashSet<&str> = input.target.layer(layer).iter().map(|e| e.reference.as_str()).collect();
+        let mut elements: Vec<&Elem> = input.target.layer(layer).iter().collect();
+        elements.sort_by(|a, b| a.reference.cmp(&b.reference));
+        for e in elements {
+            let declared = match e.other.get("replaces") {
+                None | Some(Value::Null) => continue,
+                Some(Value::Array(list)) => list,
+                Some(_) => {
+                    warnings.push(format!("replaces of {} ({layer} layer) is not a list of references, ignored", e.reference));
+                    continue;
+                }
+            };
+            let mut kept: Vec<String> = Vec::new();
+            for entry in declared {
+                let Some(reference) = entry.as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+                    warnings.push(format!("replaces of {} ({layer} layer) has an entry that is not a reference, ignored", e.reference));
+                    continue;
+                };
+                if kept.iter().any(|k| k == reference) {
+                    warnings.push(format!("replaces of {} ({layer} layer) lists {reference} twice, counted once", e.reference));
+                } else if !base.contains(reference) {
+                    warnings.push(format!("replaces of {} ({layer} layer): {reference} is not an element of the base plateau, ignored", e.reference));
+                } else if target.contains(reference) {
+                    warnings.push(format!("replaces of {} ({layer} layer): {reference} is still an element of the target plateau, ignored", e.reference));
+                } else {
+                    kept.push(reference.to_string());
+                }
+            }
+            if !kept.is_empty() {
+                kept.sort();
+                valid.insert((layer, e.reference.clone()), kept);
+            }
+        }
+    }
+    // (layer, replaced) -> who replaces it
+    let mut replacers: BTreeMap<(&'static str, String), Vec<String>> = BTreeMap::new();
+    for ((layer, replacing), replaced) in &valid {
+        for r in replaced {
+            replacers.entry((*layer, r.clone())).or_default().push(replacing.clone());
+        }
+    }
+    let mut identities = BTreeMap::new();
+    for ((layer, replacing), replaced) in valid {
+        let in_base = input.base.layer(layer).iter().any(|e| e.reference == replacing);
+        let kind = if replaced.len() > 1 {
+            MERGED
+        } else if replacers[&(layer, replaced[0].clone())].len() > 1 {
+            SPLIT
+        } else if in_base {
+            MERGED
+        } else {
+            MOVED
+        };
+        let counterpart = if in_base {
+            Some(replacing.clone())
+        } else if kind == MOVED {
+            Some(replaced[0].clone())
+        } else {
+            None
+        };
+        identities.insert((layer, replacing), Identity { kind, replaces: replaced, counterpart });
+    }
+    Resolved { identities, rewrite: Rewrite { by: replacers }, warnings }
 }
 
 // ---- relationships ----
@@ -355,13 +505,19 @@ struct OutElement {
     tags: BTreeMap<String, String>,
     applications: Vec<String>,
     uses: Vec<String>,
-    /// `none`, `new`, `changed` or `removed`
+    /// `none`, `new`, `changed`, `removed`, `moved`, `split` or `merged`
     change: &'static str,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     natures: Vec<&'static str>,
     /// the description is the only thing that changed
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     wording_only: bool,
+    /// `moved`, `split` or `merged` elements: the references of the base they replace
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    replaces: Vec<String>,
+    /// an element of the base that was replaced and is in the union only because something below it was removed
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    replaced_by: Vec<String>,
     #[serde(flatten)]
     other: BTreeMap<String, Value>,
     #[serde(skip)]
@@ -395,6 +551,8 @@ fn out_element(layer: &'static str, e: &Elem, p: &Props, change: &'static str) -
         change,
         natures: Vec::new(),
         wording_only: false,
+        replaces: Vec::new(),
+        replaced_by: Vec::new(),
         other: e
             .other
             .iter()
@@ -426,6 +584,17 @@ struct ElementCounts {
     removed: usize,
     /// among the `changed` ones: those whose description is the only thing that changed
     wording_only: usize,
+    /// the elements that replace others (not in `changed`, whatever else they changed); left out when there are none
+    #[serde(skip_serializing_if = "is_zero")]
+    moved: usize,
+    #[serde(skip_serializing_if = "is_zero")]
+    split: usize,
+    #[serde(skip_serializing_if = "is_zero")]
+    merged: usize,
+}
+
+fn is_zero(n: &usize) -> bool {
+    *n == 0
 }
 
 #[derive(Serialize, Default)]
@@ -441,6 +610,18 @@ struct Counts {
     relationships: RelationshipCounts,
 }
 
+/// A pair the author might want to say with `replaces`: listed, never applied.
+#[derive(Serialize)]
+struct Candidate {
+    layer: &'static str,
+    /// the element only the base has
+    from: String,
+    /// the element only the target has
+    to: String,
+    /// why, in this order: `name`, `description`, `parent`
+    reasons: Vec<&'static str>,
+}
+
 #[derive(Serialize)]
 struct CompareOutput {
     version: u32,
@@ -448,6 +629,10 @@ struct CompareOutput {
     relationships: Vec<OutRelationship>,
     changes: Vec<Value>,
     counts: Counts,
+    candidates: Vec<Candidate>,
+    /// what the author should know without it being an error (a `replaces` that is ignored)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    warnings: Vec<String>,
 }
 
 fn index<'a>(list: &'a [Elem], which: &str, layer: &str) -> Result<HashMap<&'a str, &'a Elem>, String> {
@@ -496,19 +681,117 @@ fn check(side: &Side, which: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn relationships_of(side: &Side, layer: &'static str) -> Vec<R> {
-    side.layer(layer).iter().flat_map(|e| e.relationships.iter().map(move |r| R::of(layer, &e.reference, r))).collect()
+/// The relationships of a layer. For the base, `rewrite` says them as the target does (an element that was replaced is the one that
+/// replaces it); the ones that end at an element that was split, or start from it, are left out.
+fn relationships_of(side: &Side, layer: &'static str, rewrite: Option<&Rewrite>) -> Vec<R> {
+    let all = side.layer(layer).iter().flat_map(|e| e.relationships.iter().map(move |r| R::of(layer, &e.reference, r)));
+    match rewrite {
+        None => all.collect(),
+        Some(rewrite) => all
+            .filter_map(|mut r| {
+                r.from = rewrite.get(layer, &r.from)?;
+                r.destination = rewrite.get(layer, &r.destination)?;
+                Some(r)
+            })
+            .collect(),
+    }
+}
+
+// ---- candidates ----
+
+fn words(text: &Option<String>) -> BTreeSet<String> {
+    norm_text(text).to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(str::to_string).collect()
+}
+
+/// Shares at least `CLOSE_DESCRIPTION` of its words (of the union of the two) with the other, and has `LEAST_WORDS` of them.
+fn close_descriptions(a: &Option<String>, b: &Option<String>) -> bool {
+    let (a, b) = (words(a), words(b));
+    if a.len() < LEAST_WORDS || b.len() < LEAST_WORDS {
+        return false;
+    }
+    let common = a.intersection(&b).count() as f64;
+    common / a.union(&b).count() as f64 >= CLOSE_DESCRIPTION
+}
+
+/// The pairs (removed, new) that look like one thing said twice: same layer, same kind, and a name, a description or (when they
+/// are the only two of their kind under a parent) a parent in common. Nothing that is replaced, nothing that replaces.
+fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String), Identity>, rewrite: &Rewrite) -> Vec<Candidate> {
+    let mut out = Vec::new();
+    for layer in LAYERS {
+        let target_refs: HashSet<&str> = input.target.layer(layer).iter().map(|e| e.reference.as_str()).collect();
+        let base_refs: HashSet<&str> = input.base.layer(layer).iter().map(|e| e.reference.as_str()).collect();
+        let mut gone: Vec<(&Elem, Props)> = input
+            .base
+            .layer(layer)
+            .iter()
+            .filter(|e| !target_refs.contains(e.reference.as_str()) && !rewrite.is_replaced(layer, &e.reference))
+            .map(|e| (e, props_of(e)))
+            .collect();
+        let mut fresh: Vec<(&Elem, Props)> = input
+            .target
+            .layer(layer)
+            .iter()
+            .filter(|e| !base_refs.contains(e.reference.as_str()) && !identities.contains_key(&(layer, e.reference.clone())))
+            .map(|e| (e, props_of(e)))
+            .collect();
+        gone.sort_by(|a, b| a.0.reference.cmp(&b.0.reference));
+        fresh.sort_by(|a, b| a.0.reference.cmp(&b.0.reference));
+        let parent_of = |e: &Elem| e.reference.rfind('.').map(|i| e.reference[..i].to_string());
+        // (parent, kind) -> how many of each
+        let mut siblings: HashMap<(String, String), (usize, usize)> = HashMap::new();
+        for (e, p) in &gone {
+            if let Some(parent) = parent_of(e) {
+                siblings.entry((parent, norm_text(&p.kind))).or_default().0 += 1;
+            }
+        }
+        for (e, p) in &fresh {
+            if let Some(parent) = parent_of(e) {
+                siblings.entry((parent, norm_text(&p.kind))).or_default().1 += 1;
+            }
+        }
+        for (from, fp) in &gone {
+            for (to, tp) in &fresh {
+                let kind = norm_text(&fp.kind);
+                if kind.is_empty() || kind != norm_text(&tp.kind) {
+                    continue;
+                }
+                let mut reasons: Vec<&'static str> = Vec::new();
+                let name = norm_text(&fp.name).to_lowercase();
+                if !name.is_empty() && name == norm_text(&tp.name).to_lowercase() {
+                    reasons.push("name");
+                }
+                if close_descriptions(&fp.description, &tp.description) {
+                    reasons.push("description");
+                }
+                if let (Some(a), Some(b)) = (parent_of(from), parent_of(to)) {
+                    if a == b && siblings.get(&(a, kind)) == Some(&(1, 1)) {
+                        reasons.push("parent");
+                    }
+                }
+                if !reasons.is_empty() {
+                    out.push(Candidate { layer, from: from.reference.clone(), to: to.reference.clone(), reasons });
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The natures that come from the relationships an element declares: added, removed, changed.
+fn relationship_natures(flags: (bool, bool, bool)) -> Vec<&'static str> {
+    [(flags.0, "relationships-added"), (flags.1, "relationships-removed"), (flags.2, "relationships-changed")].into_iter().filter(|(flag, _)| *flag).map(|(_, nature)| nature).collect()
 }
 
 fn run(input: &str) -> Result<CompareOutput, String> {
     let input: CompareInput = serde_json::from_str(input).map_err(|e| format!("invalid input: {e}"))?;
     check(&input.base, "base")?;
     check(&input.target, "target")?;
+    let Resolved { identities, rewrite, warnings } = resolve(&input);
 
     // the relationships first: the natures of an element depend on them
     let mut relationships: Vec<URel> = Vec::new();
     for layer in LAYERS {
-        relationships.extend(compare_relationships(&relationships_of(&input.base, layer), &relationships_of(&input.target, layer)));
+        relationships.extend(compare_relationships(&relationships_of(&input.base, layer, Some(&rewrite)), &relationships_of(&input.target, layer, None)));
     }
     relationships.sort_by(|a, b| a.r.order().cmp(&b.r.order()).then(a.change.cmp(b.change)));
     // (layer, source) -> (added, removed, changed)
@@ -529,16 +812,22 @@ fn run(input: &str) -> Result<CompareOutput, String> {
         let target = index(input.target.layer(layer), "target", layer)?;
         for (reference, t) in &target {
             let tp = props_of(t);
-            match base.get(reference) {
-                None => elements.push(out_element(layer, t, &tp, NEW)),
-                Some(b) => {
-                    let (mut natures, before, after) = compare_props(&props_of(b), &tp);
-                    let flags = moved.get(&(layer, *reference)).copied().unwrap_or_default();
-                    for (flag, nature) in [(flags.0, "relationships-added"), (flags.1, "relationships-removed"), (flags.2, "relationships-changed")] {
-                        if flag {
-                            natures.push(nature);
-                        }
-                    }
+            let identity = identities.get(&(layer, reference.to_string()));
+            // the element of the base this one is compared with: itself, else the one it is the new place of
+            let counterpart = match base.get(reference) {
+                Some(b) => Some(*b),
+                None => identity.and_then(|i| i.counterpart.as_deref()).and_then(|c| base.get(c).copied()),
+            };
+            match (counterpart, identity) {
+                (None, None) => elements.push(out_element(layer, t, &tp, NEW)),
+                (None, Some(_)) => {
+                    let mut element = out_element(layer, t, &tp, NONE);
+                    element.natures = relationship_natures(moved.get(&(layer, *reference)).copied().unwrap_or_default());
+                    elements.push(element);
+                }
+                (Some(b), _) => {
+                    let (mut natures, before, after) = compare_props(&base_props_of(b, &rewrite), &tp);
+                    natures.extend(relationship_natures(moved.get(&(layer, *reference)).copied().unwrap_or_default()));
                     let mut element = out_element(layer, t, &tp, if natures.is_empty() { NONE } else { CHANGED });
                     element.wording_only = natures == ["description"];
                     element.natures = natures;
@@ -547,10 +836,33 @@ fn run(input: &str) -> Result<CompareOutput, String> {
                     elements.push(element);
                 }
             }
+            if let (Some(identity), Some(element)) = (identity, elements.last_mut()) {
+                element.change = identity.kind;
+                element.wording_only = false;
+                element.replaces = identity.replaces.clone();
+            }
         }
         for (reference, b) in &base {
-            if !target.contains_key(reference) {
+            if !target.contains_key(reference) && !rewrite.is_replaced(layer, reference) {
                 elements.push(out_element(layer, b, &props_of(b), REMOVED));
+            }
+        }
+        // what a replaced element held is removed unless it is replaced too, and a view needs the element it was held by to place it:
+        // the replaced element is then in the union as a place where something was removed, and `replaced_by` says who replaced it
+        let held: BTreeSet<String> = elements
+            .iter()
+            .filter(|e| e.layer == layer && e.change == REMOVED)
+            .flat_map(|e| {
+                let parts: Vec<&str> = e.reference.split('.').collect();
+                (1..parts.len()).map(|i| parts[..i].join(".")).collect::<Vec<_>>()
+            })
+            .filter(|ancestor| rewrite.is_replaced(layer, ancestor))
+            .collect();
+        for reference in held {
+            if let Some(b) = base.get(reference.as_str()) {
+                let mut place = out_element(layer, b, &props_of(b), REMOVED);
+                place.replaced_by = rewrite.by[&(layer, reference.clone())].clone();
+                elements.push(place);
             }
         }
     }
@@ -558,13 +870,16 @@ fn run(input: &str) -> Result<CompareOutput, String> {
 
     let mut counts = Counts::default();
     let mut changes: Vec<Value> = Vec::new();
-    for e in elements.iter().filter(|e| e.change != NONE) {
+    for e in elements.iter().filter(|e| e.change != NONE && e.replaced_by.is_empty()) {
         match e.change {
             NEW => counts.elements.new += 1,
             CHANGED => {
                 counts.elements.changed += 1;
                 counts.elements.wording_only += usize::from(e.wording_only);
             }
+            MOVED => counts.elements.moved += 1,
+            SPLIT => counts.elements.split += 1,
+            MERGED => counts.elements.merged += 1,
             _ => counts.elements.removed += 1,
         }
         let mut row = Map::new();
@@ -584,7 +899,10 @@ fn run(input: &str) -> Result<CompareOutput, String> {
         if e.wording_only {
             row.insert("wording_only".into(), true.into());
         }
-        if e.change == CHANGED {
+        if !e.replaces.is_empty() {
+            row.insert("replaces".into(), Value::Array(e.replaces.iter().cloned().map(Value::String).collect()));
+        }
+        if e.change == CHANGED || (!e.replaces.is_empty() && !e.before.is_empty()) {
             row.insert("before".into(), Value::Object(e.before.clone()));
             row.insert("after".into(), Value::Object(e.after.clone()));
         }
@@ -626,7 +944,8 @@ fn run(input: &str) -> Result<CompareOutput, String> {
             natures: u.natures,
         })
         .collect();
-    Ok(CompareOutput { version: CONTRACT_VERSION, elements, relationships, changes, counts })
+    let candidates = candidates(&input, &identities, &rewrite);
+    Ok(CompareOutput { version: CONTRACT_VERSION, elements, relationships, changes, counts, candidates, warnings })
 }
 
 /// The comparison of two plateaus: see the top of this file.
@@ -1175,5 +1494,370 @@ mod tests {
         assert!(error(&out).starts_with("invalid input"), "{out}");
         let out: Value = serde_json::from_str(&compare_json("nope")).unwrap();
         assert!(error(&out).starts_with("invalid input"), "{out}");
+    }
+
+    // ---- `replaces`: what an element of the target says it is the new place of (wave 009) ----
+
+    fn replacing(reference: &str, replaces: Value, extra: Value) -> Value {
+        let mut e = el(reference, extra);
+        e["replaces"] = replaces;
+        e
+    }
+
+    fn warnings(out: &Value) -> Vec<&str> {
+        out["warnings"].as_array().map_or(vec![], |a| a.iter().map(|w| w.as_str().unwrap()).collect())
+    }
+
+    fn has_element(out: &Value, reference: &str) -> bool {
+        out["elements"].as_array().unwrap().iter().any(|e| e["reference"] == reference)
+    }
+
+    fn candidate_pairs(out: &Value) -> Vec<(String, String)> {
+        out["candidates"].as_array().unwrap().iter().map(|c| (c["from"].as_str().unwrap().to_string(), c["to"].as_str().unwrap().to_string())).collect()
+    }
+
+    #[test]
+    fn one_element_that_replaces_one_in_another_place_is_moved_and_the_replaced_one_is_not_removed() {
+        let out = app(
+            vec![el("a", json!({})), el("b", json!({})), el("a.svc", json!({ "kind": "container", "name": "Billing" }))],
+            vec![el("a", json!({})), el("b", json!({})), replacing("b.svc", json!(["a.svc"]), json!({ "kind": "container", "name": "Billing" }))],
+        );
+        assert!(out.get("error").is_none(), "{out}");
+        let moved = element(&out, "b.svc");
+        assert_eq!(moved["change"], "moved");
+        assert_eq!(moved["replaces"], json!(["a.svc"]));
+        assert!(natures(moved).is_empty(), "nothing else changed: {moved}");
+        assert!(!has_element(&out, "a.svc"), "the replaced element is not in the union: {out}");
+        assert_eq!(out["counts"]["elements"], json!({ "new": 0, "changed": 0, "removed": 0, "wording_only": 0, "moved": 1 }));
+        assert_eq!(rows(&out), 1);
+        let r = row(&out, "element", "b.svc");
+        assert_eq!((r["change"].clone(), r["replaces"].clone()), (json!("moved"), json!(["a.svc"])));
+        assert!(r.get("before").is_none(), "no property differs, so no before and after");
+        assert!(out.get("warnings").is_none());
+    }
+
+    #[test]
+    fn a_moved_element_keeps_its_own_changes_next_to_its_identity() {
+        let out = app(
+            vec![el("a", json!({})), el("b", json!({})), el("a.svc", json!({ "name": "Billing", "description": "charges" }))],
+            vec![el("a", json!({})), el("b", json!({})), replacing("b.svc", json!(["a.svc"]), json!({ "name": "Invoicing", "description": "charges" }))],
+        );
+        let moved = element(&out, "b.svc");
+        assert_eq!(moved["change"], "moved");
+        assert_eq!(natures(moved), ["name"]);
+        let r = row(&out, "element", "b.svc");
+        assert_eq!((r["before"]["name"].clone(), r["after"]["name"].clone()), (json!("Billing"), json!("Invoicing")));
+        assert_eq!(out["counts"]["elements"]["changed"], 0, "a moved element is counted as moved, not also as changed");
+        assert_eq!(moved.get("wording_only"), None);
+    }
+
+    #[test]
+    fn a_description_change_of_a_moved_element_is_not_wording_only() {
+        let out = app(vec![el("a", json!({ "description": "one" }))], vec![replacing("b", json!(["a"]), json!({ "description": "two" }))]);
+        assert_eq!(element(&out, "b")["change"], "moved");
+        assert_eq!(natures(element(&out, "b")), ["description"]);
+        assert!(element(&out, "b").get("wording_only").is_none());
+        assert_eq!(out["counts"]["elements"]["wording_only"], 0);
+    }
+
+    #[test]
+    fn the_relationships_follow_the_element_that_was_replaced() {
+        // c -> a.svc becomes c -> b.svc; a.svc -> db becomes b.svc -> db: neither is a change
+        let out = app(
+            vec![el("a", json!({})), el("b", json!({})), el("c", json!({ "relationships": [rel("a.svc", "calls")] })), el("db", json!({})), el("a.svc", json!({ "relationships": [rel("db", "reads")] }))],
+            vec![
+                el("a", json!({})),
+                el("b", json!({})),
+                el("c", json!({ "relationships": [rel("b.svc", "calls")] })),
+                el("db", json!({})),
+                replacing("b.svc", json!(["a.svc"]), json!({ "relationships": [rel("db", "reads")] })),
+            ],
+        );
+        assert_eq!(out["counts"]["relationships"], json!({ "new": 0, "changed": 0, "removed": 0 }), "{out}");
+        assert_eq!(element(&out, "c")["change"], "none");
+        assert!(natures(element(&out, "b.svc")).is_empty());
+        // and one that really changed is still told
+        let out = app(
+            vec![el("a", json!({})), el("b", json!({})), el("db", json!({})), el("a.svc", json!({ "relationships": [rel("db", "reads")] }))],
+            vec![el("a", json!({})), el("b", json!({})), el("db", json!({})), replacing("b.svc", json!(["a.svc"]), json!({ "relationships": [rel("db", "writes")] }))],
+        );
+        assert_eq!(natures(element(&out, "b.svc")), ["relationships-changed"]);
+        assert_eq!(relationship(&out, "b.svc", "db", "writes")["change"], "changed");
+    }
+
+    #[test]
+    fn the_deployment_follows_an_application_that_was_replaced() {
+        let base = plateau(vec![el("a", json!({})), el("a.svc", json!({}))], vec![el("env", json!({ "applications": ["a.svc"] }))]);
+        let target = plateau(vec![el("a", json!({})), replacing("a.api", json!(["a.svc"]), json!({}))], vec![el("env", json!({ "applications": ["a.api"] }))]);
+        let out = compare(base, target);
+        assert_eq!(element(&out, "a.api")["change"], "moved");
+        assert_eq!(element(&out, "env")["change"], "none", "{out}");
+    }
+
+    #[test]
+    fn one_element_that_replaces_several_is_merged_and_several_that_replace_one_are_split() {
+        // merge: x1 and x2 become y; split: s becomes t1 and t2
+        let out = app(
+            vec![el("x1", json!({ "name": "X1" })), el("x2", json!({})), el("s", json!({})), el("keep", json!({}))],
+            vec![replacing("y", json!(["x2", "x1"]), json!({})), replacing("t1", json!(["s"]), json!({})), replacing("t2", json!(["s"]), json!({})), el("keep", json!({}))],
+        );
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(element(&out, "y")["change"], "merged");
+        assert_eq!(element(&out, "y")["replaces"], json!(["x1", "x2"]), "sorted, whatever the author's order");
+        assert_eq!(element(&out, "t1")["change"], "split");
+        assert_eq!(element(&out, "t2")["change"], "split");
+        for gone in ["x1", "x2", "s"] {
+            assert!(!has_element(&out, gone), "{gone} is replaced, not removed");
+        }
+        assert_eq!(out["counts"]["elements"], json!({ "new": 0, "changed": 0, "removed": 0, "wording_only": 0, "split": 2, "merged": 1 }));
+        assert_eq!(rows(&out), 3);
+        assert_eq!(row(&out, "element", "t1")["replaces"], json!(["s"]));
+    }
+
+    #[test]
+    fn an_element_that_was_already_there_and_replaces_another_is_merged_with_it() {
+        let out = app(
+            vec![el("a", json!({ "name": "A" })), el("b", json!({ "name": "B" }))],
+            vec![replacing("b", json!(["a"]), json!({ "name": "B2" }))],
+        );
+        let b = element(&out, "b");
+        assert_eq!(b["change"], "merged");
+        assert_eq!(b["replaces"], json!(["a"]));
+        assert_eq!(natures(b), ["name"], "compared with its own base version: {out}");
+        assert_eq!(row(&out, "element", "b")["before"]["name"], "B");
+        assert!(!has_element(&out, "a"));
+    }
+
+    #[test]
+    fn merged_wins_over_split_for_an_element_that_is_both() {
+        // a is replaced by b1 and b2 (a split), and b2 also replaces c (a merge)
+        let out = app(
+            vec![el("a", json!({})), el("c", json!({}))],
+            vec![replacing("b1", json!(["a"]), json!({})), replacing("b2", json!(["a", "c"]), json!({}))],
+        );
+        assert_eq!(element(&out, "b1")["change"], "split");
+        assert_eq!(element(&out, "b2")["change"], "merged");
+    }
+
+    #[test]
+    fn the_relationships_of_a_split_element_are_not_compared_and_those_of_merged_ones_follow() {
+        let out = app(
+            vec![el("s", json!({ "relationships": [rel("db", "reads")] })), el("m1", json!({ "relationships": [rel("db", "reads")] })), el("m2", json!({})), el("db", json!({}))],
+            vec![
+                replacing("t1", json!(["s"]), json!({ "relationships": [rel("db", "reads")] })),
+                replacing("t2", json!(["s"]), json!({})),
+                replacing("m", json!(["m1", "m2"]), json!({ "relationships": [rel("db", "reads")] })),
+                el("db", json!({})),
+            ],
+        );
+        assert_eq!(out["counts"]["relationships"]["removed"], 0, "nothing is invented as removed: {out}");
+        assert!(natures(element(&out, "m")).is_empty(), "m1 -> db became m -> db, which m still has: {out}");
+    }
+
+    #[test]
+    fn a_reference_unknown_in_the_base_is_a_warning_and_changes_nothing() {
+        let out = app(vec![el("a", json!({}))], vec![el("a", json!({})), replacing("b", json!(["nowhere"]), json!({}))]);
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(element(&out, "b")["change"], "new");
+        assert!(element(&out, "b").get("replaces").is_none(), "an ignored replaces does not travel: {out}");
+        assert_eq!(warnings(&out).len(), 1);
+        assert!(warnings(&out)[0].contains("nowhere") && warnings(&out)[0].contains("not an element of the base plateau"), "{out}");
+        assert_eq!(out["counts"]["elements"]["new"], 1);
+    }
+
+    #[test]
+    fn a_reference_that_is_still_in_the_target_is_ignored_with_a_warning() {
+        let out = app(vec![el("a", json!({})), el("b", json!({}))], vec![el("a", json!({})), replacing("b", json!(["a"]), json!({}))]);
+        assert_eq!(element(&out, "a")["change"], "none", "{out}");
+        assert_eq!(element(&out, "b")["change"], "none");
+        assert_eq!(warnings(&out).len(), 1);
+        assert!(warnings(&out)[0].contains("still an element of the target plateau"), "{out}");
+    }
+
+    #[test]
+    fn a_replaces_that_is_malformed_is_a_warning_not_an_error() {
+        let out = app(
+            vec![el("a", json!({})), el("c", json!({}))],
+            vec![replacing("b", json!("a"), json!({})), replacing("d", json!([3, null, "", "c"]), json!({}))],
+        );
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(element(&out, "b")["change"], "new", "a text instead of a list is ignored");
+        assert_eq!(element(&out, "d")["change"], "moved", "the entries that are references count");
+        assert_eq!(warnings(&out).len(), 1 + 3);
+        assert!(element(&out, "a")["change"] == "removed");
+    }
+
+    #[test]
+    fn a_reference_listed_twice_counts_once() {
+        let out = app(vec![el("a", json!({}))], vec![replacing("b", json!(["a", "a"]), json!({}))]);
+        assert_eq!(element(&out, "b")["change"], "moved", "twice the same one is still one: {out}");
+        assert_eq!(element(&out, "b")["replaces"], json!(["a"]));
+        assert_eq!(warnings(&out).len(), 1);
+        assert!(warnings(&out)[0].contains("twice"));
+    }
+
+    #[test]
+    fn cycles_and_self_references_are_ignored_and_never_loop() {
+        // a and b replace each other, c replaces itself, d replaces e that replaces d: all of them are in both plateaus
+        let both = |replaces_a: Value, replaces_b: Value, replaces_c: Value, replaces_d: Value, replaces_e: Value| {
+            vec![
+                replacing("a", replaces_a, json!({})),
+                replacing("b", replaces_b, json!({})),
+                replacing("c", replaces_c, json!({})),
+                replacing("d", replaces_d, json!({})),
+                replacing("e", replaces_e, json!({})),
+            ]
+        };
+        let out = app(
+            both(json!([]), json!([]), json!([]), json!([]), json!([])),
+            both(json!(["b"]), json!(["a"]), json!(["c"]), json!(["e"]), json!(["d"])),
+        );
+        assert!(out.get("error").is_none(), "{out}");
+        for r in ["a", "b", "c", "d", "e"] {
+            assert_eq!(element(&out, r)["change"], "none", "{r}");
+        }
+        assert_eq!(warnings(&out).len(), 5);
+        // a self reference of a new element, and a chain through an element that is new: nothing in the base to replace
+        let out = app(vec![el("old", json!({}))], vec![replacing("n1", json!(["n1"]), json!({})), replacing("n2", json!(["n1"]), json!({})), replacing("n3", json!(["old", "n3"]), json!({}))]);
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(element(&out, "n1")["change"], "new");
+        assert_eq!(element(&out, "n2")["change"], "new");
+        assert_eq!(element(&out, "n3")["change"], "moved");
+        assert_eq!(warnings(&out).len(), 3);
+    }
+
+    #[test]
+    fn what_a_replaced_element_contained_is_still_removed_unless_it_is_replaced_too() {
+        let out = app(
+            vec![el("a", json!({})), el("a.x", json!({})), el("a.y", json!({}))],
+            vec![replacing("b", json!(["a"]), json!({})), replacing("b.x", json!(["a.x"]), json!({}))],
+        );
+        assert_eq!(element(&out, "b")["change"], "moved");
+        assert_eq!(element(&out, "b.x")["change"], "moved");
+        assert_eq!(element(&out, "a.y")["change"], "removed", "nobody said where it went: {out}");
+        assert!(!has_element(&out, "a.x"), "replaced, and nothing below it");
+        // a is replaced, not removed; it is in the union only because a.y, below it, was removed: a view needs it to place a.y
+        let place = element(&out, "a");
+        assert_eq!((place["change"].clone(), place["replaced_by"].clone()), (json!("removed"), json!(["b"])), "{out}");
+        assert_eq!(out["counts"]["elements"], json!({ "new": 0, "changed": 0, "removed": 1, "wording_only": 0, "moved": 2 }), "the place is not counted");
+        assert!(out["changes"].as_array().unwrap().iter().all(|r| r["reference"] != "a"), "and has no row: {}", out["changes"]);
+    }
+
+    #[test]
+    fn replaces_works_in_the_technology_layer_and_never_across_layers() {
+        let base = plateau(vec![el("shop", json!({}))], vec![el("old-env", json!({}))]);
+        let target = plateau(vec![replacing("shop2", json!(["old-env"]), json!({}))], vec![replacing("new-env", json!(["old-env"]), json!({}))]);
+        let out = compare(base, target);
+        assert_eq!(element(&out, "new-env")["change"], "moved");
+        assert_eq!(element(&out, "shop2")["change"], "new", "old-env is not an application: {out}");
+        assert_eq!(element(&out, "shop")["change"], "removed");
+        assert_eq!(warnings(&out).len(), 1);
+    }
+
+    #[test]
+    fn a_replaces_on_a_base_element_is_not_read_and_never_leaks() {
+        let out = app(vec![replacing("a", json!(["b"]), json!({})), el("b", json!({}))], vec![el("c", json!({}))]);
+        assert_eq!(element(&out, "a")["change"], "removed");
+        assert_eq!(element(&out, "b")["change"], "removed");
+        for r in ["a", "b", "c"] {
+            assert!(element(&out, r).get("replaces").is_none(), "{r}: {out}");
+        }
+        assert!(out.get("warnings").is_none());
+    }
+
+    #[test]
+    fn a_free_form_field_named_like_a_reserved_word_does_not_reach_the_answer() {
+        // `replaces` is the author's hint, read and written by the kernel only: the union writes it itself, and only when it applies
+        let out = app(vec![el("a", json!({}))], vec![el("a", json!({})), replacing("n", json!("a text"), json!({ "extra": 1 }))]);
+        assert!(element(&out, "n").get("replaces").is_none(), "{out}");
+        assert_eq!(element(&out, "n")["extra"], 1, "the other fields still travel");
+        let out = app(vec![replacing("a", json!(["x"]), json!({}))], vec![]);
+        assert!(element(&out, "a").get("replaces").is_none(), "{out}");
+    }
+
+    #[test]
+    fn candidates_are_listed_with_their_reasons_and_never_applied() {
+        let out = app(
+            vec![
+                el("old", json!({})),
+                el("old.billing", json!({ "kind": "container", "name": "Billing", "description": "charges the customers every month and sends the invoices" })),
+                el("old.audit", json!({ "kind": "container", "name": "Audit trail", "description": "keeps a log" })),
+                el("old.cache", json!({ "kind": "component", "name": "Cache" })),
+            ],
+            vec![
+                el("old", json!({})),
+                el("new", json!({})),
+                el("new.invoicing", json!({ "kind": "container", "name": "Billing", "description": "a different text" })),
+                el("new.finance", json!({ "kind": "container", "name": "Finance", "description": "charges the customers every month and sends the invoices by mail" })),
+                el("new.cache", json!({ "kind": "container", "name": "Cache" })),
+            ],
+        );
+        assert!(out.get("error").is_none(), "{out}");
+        let pairs = candidate_pairs(&out);
+        assert_eq!(pairs, [("old.billing".to_string(), "new.finance".to_string()), ("old.billing".to_string(), "new.invoicing".to_string())], "{}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["description"]));
+        assert_eq!(out["candidates"][1]["reasons"], json!(["name"]));
+        // not applied: they are still removed and new
+        assert_eq!(element(&out, "old.billing")["change"], "removed");
+        assert_eq!(element(&out, "new.invoicing")["change"], "new");
+        assert_eq!(out["counts"]["elements"], json!({ "new": 4, "changed": 0, "removed": 3, "wording_only": 0 }));
+    }
+
+    #[test]
+    fn the_same_parent_makes_a_candidate_only_for_the_only_two_of_their_kind_under_it() {
+        let out = app(
+            vec![el("p", json!({})), el("p.a", json!({ "kind": "container" })), el("p.x", json!({ "kind": "component" }))],
+            vec![el("p", json!({})), el("p.b", json!({ "kind": "container" })), el("p.y", json!({ "kind": "component" })), el("p.z", json!({ "kind": "component" }))],
+        );
+        assert_eq!(candidate_pairs(&out), [("p.a".to_string(), "p.b".to_string())], "{}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["parent"]));
+    }
+
+    #[test]
+    fn what_is_replaced_or_replaces_is_no_candidate_and_a_kind_is_needed() {
+        let out = app(
+            vec![el("a", json!({ "kind": "container", "name": "Same" })), el("b", json!({ "kind": "container", "name": "Other" })), el("c", json!({ "name": "Same" }))],
+            vec![replacing("a2", json!(["a"]), json!({ "kind": "container", "name": "Same" })), el("b2", json!({ "kind": "container", "name": "Other" })), el("c2", json!({ "kind": "container", "name": "Same" }))],
+        );
+        assert_eq!(candidate_pairs(&out), [("b".to_string(), "b2".to_string())], "a is replaced, a2 replaces, c has no kind: {}", out["candidates"]);
+    }
+
+    #[test]
+    fn without_replaces_the_answer_is_what_it_was_plus_an_empty_list_of_candidates() {
+        let out = one(json!({ "name": "A" }), json!({ "name": "B" }));
+        assert_eq!(out["candidates"], json!([]));
+        assert!(out.get("warnings").is_none());
+        assert_eq!(out["counts"]["elements"], json!({ "new": 0, "changed": 1, "removed": 0, "wording_only": 0 }));
+        assert_eq!(out["version"], CONTRACT_VERSION);
+    }
+
+    #[test]
+    fn the_same_pair_with_replaces_gives_the_same_bytes_whatever_the_order() {
+        let input = json!({
+            "base": plateau(
+                vec![el("x1", json!({})), el("x2", json!({ "relationships": [rel("db", "reads")] })), el("s", json!({})), el("db", json!({})), el("gone", json!({ "kind": "container", "name": "Mail" }))],
+                vec![]
+            ),
+            "target": plateau(
+                vec![
+                    replacing("y", json!(["x2", "x1", "x1", "nowhere"]), json!({ "relationships": [rel("db", "reads")] })),
+                    replacing("t1", json!(["s"]), json!({})),
+                    replacing("t2", json!(["s"]), json!({})),
+                    el("db", json!({})),
+                    el("fresh", json!({ "kind": "container", "name": "Mail" })),
+                ],
+                vec![]
+            ),
+        });
+        let first = compare_json(&input.to_string());
+        let out: Value = serde_json::from_str(&first).unwrap();
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(warnings(&out).len(), 2, "{out}");
+        assert_eq!(candidate_pairs(&out), [("gone".to_string(), "fresh".to_string())]);
+        assert_eq!(first, compare_json(&input.to_string()), "twice");
+        let shuffled = reordered(&input);
+        assert_ne!(shuffled.to_string(), input.to_string(), "the test must really shuffle");
+        assert_eq!(first, compare_json(&shuffled.to_string()));
+        assert_eq!(first, compare_json(&reordered(&shuffled).to_string()));
     }
 }

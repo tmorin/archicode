@@ -19,6 +19,7 @@ import io.morin.archicode.viewpoint.Viewpoint;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -292,7 +293,7 @@ class PlateauComparerTest {
             ViewpointKernel.getInstance().compare("{\"base\":{\"application\":[]},\"target\":{\"application\":[]}}")
         );
         Assertions.assertEquals(ViewpointKernel.CONTRACT_VERSION, answer.get("version").asInt());
-        Assertions.assertEquals(3, ViewpointKernel.CONTRACT_VERSION);
+        Assertions.assertEquals(4, ViewpointKernel.CONTRACT_VERSION);
     }
 
     // ---- the views ----
@@ -401,5 +402,159 @@ class PlateauComparerTest {
                 .filter(l -> l.getFrom().getReference().equals("sys.a"))
                 .count()
         );
+    }
+
+    // ---- replaces: an element of the more recent plateau says what it is the new place of ----
+
+    private static final Path REPLACES = Path.of(
+        "src/test/resources/plateau-comparison/replaces/workspace.yaml"
+    ).toAbsolutePath();
+
+    private Comparison compareReplaces() {
+        return new PlateauComparer(objectMapper).compare(
+            workspaceFactory.create(REPLACES, null, "before"),
+            workspaceFactory.create(REPLACES, null, "after")
+        );
+    }
+
+    private static Comparison.ElementChange element(Comparison comparison, String reference) {
+        return comparison
+            .getElements()
+            .stream()
+            .filter(e -> e.reference().equals(reference))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no element " + reference));
+    }
+
+    @Test
+    void shouldReadReplacesFromTheManifestsAndReportMovedSplitAndMergedElements() {
+        val comparison = compareReplaces();
+
+        Assertions.assertEquals(Change.MOVED, element(comparison, "stock.till").change());
+        Assertions.assertEquals(List.of("shop.till"), element(comparison, "stock.till").replaces());
+        Assertions.assertEquals(Change.SPLIT, element(comparison, "shop.report-a").change());
+        Assertions.assertEquals(Change.SPLIT, element(comparison, "shop.report-b").change());
+        Assertions.assertEquals(List.of("shop.report"), element(comparison, "shop.report-b").replaces());
+        Assertions.assertEquals(Change.MERGED, element(comparison, "stock.place").change());
+        Assertions.assertEquals(List.of("stock.bin", "stock.shelf"), element(comparison, "stock.place").replaces());
+        Assertions.assertEquals(1, new Comparison.ElementCounts(0, 0, 0, 0, 1, 2, 1).moved());
+        Assertions.assertEquals(1, comparison.getCounts().elements().moved());
+        Assertions.assertEquals(2, comparison.getCounts().elements().split());
+        Assertions.assertEquals(1, comparison.getCounts().elements().merged());
+        val references = comparison.getElements().stream().map(Comparison.ElementChange::reference).toList();
+        for (val replaced : List.of("shop.till", "stock.bin", "stock.shelf")) {
+            Assertions.assertFalse(references.contains(replaced), replaced + " is replaced: it is not removed");
+        }
+        // shop.report is replaced too, and it held a component that was not: the union keeps it as the place that component was removed from
+        Assertions.assertEquals(
+            List.of("shop.report-a", "shop.report-b"),
+            element(comparison, "shop.report").replacedBy()
+        );
+        Assertions.assertEquals(Change.REMOVED, element(comparison, "shop.report").change());
+        Assertions.assertTrue(
+            comparison
+                .getChanges()
+                .stream()
+                .noneMatch(r -> r.reference().equals("shop.report")),
+            "and it has no row"
+        );
+        Assertions.assertEquals(2, comparison.getCounts().elements().removed(), "the chart and the mailer");
+        Assertions.assertEquals(
+            Change.REMOVED,
+            element(comparison, "shop.report.chart").change(),
+            "what a replaced element held is removed unless it is replaced too"
+        );
+        val row = comparison
+            .getChanges()
+            .stream()
+            .filter(r -> r.thing().equals("element") && r.reference().equals("stock.place"))
+            .findFirst()
+            .orElseThrow();
+        Assertions.assertEquals(Change.MERGED, row.change());
+        Assertions.assertEquals(List.of("stock.bin", "stock.shelf"), row.replaces());
+    }
+
+    @Test
+    void shouldFollowTheRelationshipsAndTheDeploymentOfAReplacedElement() {
+        val comparison = compareReplaces();
+
+        // web -> shop.till became web -> stock.till, till -> bin became till -> place: neither is a change
+        Assertions.assertTrue(
+            comparison
+                .getRelationships()
+                .stream()
+                .allMatch(r -> r.change() == Change.NONE),
+            comparison.getRelationships().toString()
+        );
+        Assertions.assertEquals(Change.NONE, element(comparison, "shop.web").change());
+        Assertions.assertTrue(
+            comparison
+                .getChanges()
+                .stream()
+                .noneMatch(r -> r.thing().equals("relationship") || r.reference().equals("prod.cluster")),
+            "the node that hosted the till hosts the one that replaced it"
+        );
+    }
+
+    @Test
+    void shouldWarnAboutAReplacedReferenceUnknownInTheBaselineAndListCandidatesWithoutApplyingThem() {
+        val comparison = compareReplaces();
+
+        Assertions.assertEquals(1, comparison.getWarnings().size());
+        Assertions.assertTrue(
+            comparison.getWarnings().get(0).contains("shop.nowhere"),
+            comparison.getWarnings().get(0)
+        );
+        Assertions.assertEquals(
+            List.of(
+                new Comparison.Candidate("application", "shop.mailer", "shop.postman", List.of("description", "parent"))
+            ),
+            comparison.getCandidates()
+        );
+        Assertions.assertEquals(Change.REMOVED, element(comparison, "shop.mailer").change(), "listed, not applied");
+        Assertions.assertEquals(Change.NEW, element(comparison, "shop.postman").change());
+    }
+
+    @Test
+    void shouldGiveTheSameAnswerTwiceWithReplaces() {
+        Assertions.assertEquals(compareReplaces(), compareReplaces());
+    }
+
+    @Test
+    void shouldCarryReplacesFromTheElementModelToTheKernel() {
+        val before = raw(sys("shop", con("till")), sys("stock"));
+        val after = raw(
+            sys("shop"),
+            System.builder()
+                .id("stock")
+                .elements(Set.of(Container.builder().id("till").replaces(Set.of("shop.till")).build()))
+                .build()
+        );
+        val comparison = new PlateauComparer(objectMapper).compare(
+            workspaceFactory.create(before, Map.of()),
+            workspaceFactory.create(after, Map.of())
+        );
+        Assertions.assertEquals(Change.MOVED, element(comparison, "stock.till").change());
+        Assertions.assertEquals(Change.NONE, element(comparison, "shop").change());
+        Assertions.assertEquals(0, comparison.getCounts().elements().removed());
+        Assertions.assertTrue(comparison.getWarnings().isEmpty());
+        Assertions.assertTrue(comparison.getCandidates().isEmpty());
+    }
+
+    @Test
+    void shouldDrawAnElementThatReplacesAnotherWithItsWordAsItsState() {
+        val base = workspaceFactory.create(REPLACES, null, "before");
+        val target = workspaceFactory.create(REPLACES, null, "after");
+        val comparison = new PlateauComparer(objectMapper).compare(base, target);
+        val union = workspaceFactory.createUnion(REPLACES, null, "after", base, comparison);
+        val view = ResourceFixtures.createDeepViewBuilder("view", "stock").layer(View.Layer.APPLICATION).build();
+
+        val viewpoint = new KernelViewpointFactory("deep", objectMapper, comparison, false).create(union, view);
+
+        val till = itemsOf(viewpoint).get("stock.till");
+        Assertions.assertNotNull(till);
+        Assertions.assertEquals(Change.MOVED, till.getChange());
+        Assertions.assertEquals("moved", till.getStereotypes().getLast());
+        Assertions.assertEquals(Change.MERGED, itemsOf(viewpoint).get("stock.place").getChange());
     }
 }

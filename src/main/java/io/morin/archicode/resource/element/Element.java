@@ -16,4 +16,10 @@ public interface Element {
     Map<String, String> getTags();
 
     Set<Relationship> getRelationships();
+
+    /**
+     * The references of the elements of an earlier plateau that this element replaces (it moved, or was renamed, split
+     * or merged). Empty for most elements.
+     */
+    Set<String> getReplaces();
 }

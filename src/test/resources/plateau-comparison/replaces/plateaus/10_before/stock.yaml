@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "stock"
+  name: "Stock"
+  elements:
+    - kind: "container"
+      id: "bin"
+      name: "Bin"
+    - kind: "container"
+      id: "shelf"
+      name: "Shelf"

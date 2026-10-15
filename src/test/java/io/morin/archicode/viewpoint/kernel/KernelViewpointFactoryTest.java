@@ -200,11 +200,15 @@ class KernelViewpointFactoryTest {
                         .build(),
                     Environment.builder()
                         .id("int")
-                        .elements(Set.of(Node.builder().id("host").applications(Set.of("sys_ext.con_registry")).build()))
+                        .elements(
+                            Set.of(Node.builder().id("host").applications(Set.of("sys_ext.con_registry")).build())
+                        )
                         .build(),
                     Environment.builder()
                         .id("prd")
-                        .elements(Set.of(Node.builder().id("host").applications(Set.of("sys_ext.con_registry")).build()))
+                        .elements(
+                            Set.of(Node.builder().id("host").applications(Set.of("sys_ext.con_registry")).build())
+                        )
                         .build()
                 )
             )
