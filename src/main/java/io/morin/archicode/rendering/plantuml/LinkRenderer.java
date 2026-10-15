@@ -21,12 +21,15 @@ class LinkRenderer {
 
         val linkFormatter = viewpoint.getWorkspace().getFormatters().getLink();
 
+        // what changed between two plateaus, when the view compares them
+        val state = ChangeMarks.stateOf(viewpoint, link);
+
         buf.append(link.getFrom().getItemId());
         buf.append(" ");
         if (link.getTags().containsKey("rendering-secondary")) {
             buf.append("..[#gray]>");
         } else {
-            buf.append("-->");
+            buf.append(ChangeMarks.arrow(state));
         }
         buf.append(" ");
         buf.append(link.getTo().getItemId());
@@ -43,7 +46,7 @@ class LinkRenderer {
             .map(v -> String.format(linkFormatter.getQualifiers(), v))
             .ifPresent(descriptionAsList::add);
 
-        Optional.of(String.join("\\n", descriptionAsList))
+        Optional.of(ChangeMarks.label(state, String.join("\\n", descriptionAsList)))
             .filter(v -> !v.isBlank())
             .ifPresent(description -> {
                 buf.append(" : ");

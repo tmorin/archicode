@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "warehouse"
+  name: "Warehouse"
+  elements:
+    - kind: "container"
+      id: "stock"
+      name: "Stock keeping"

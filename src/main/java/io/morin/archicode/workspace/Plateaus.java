@@ -27,7 +27,7 @@ public class Plateaus {
 
     private static final Pattern ID = Pattern.compile("[A-Za-z0-9_][A-Za-z0-9_.-]*");
     private static final Pattern DRIVE = Pattern.compile("^[A-Za-z]:.*");
-    private static final Set<String> KEYS = Set.of("id", "name", "horizon", "path");
+    private static final Set<String> KEYS = Set.of("id", "name", "horizon", "path", "baseline");
 
     /**
      * The plateau that is read, and the folder it is read from.
@@ -84,7 +84,7 @@ public class Plateaus {
                         label +
                             " has the key `" +
                             key +
-                            "`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon` and `path`"
+                            "`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon`, `path` and `baseline`"
                     );
                 }
             }
@@ -209,6 +209,28 @@ public class Plateaus {
             }
         }
         reportedIds.forEach(id -> problems.add("the plateau id `" + id + "` is used more than once"));
+        for (val plateau : plateaus) {
+            val baseline = plateau.getBaseline();
+            if (baseline == null) {
+                continue;
+            }
+            val label = "the plateau `" + plateau.getId() + "`";
+            if (baseline.equals(plateau.getId())) {
+                problems.add(label + " names itself as its `baseline`: choose another plateau to compare it with");
+            } else if (plateaus.stream().noneMatch(p -> baseline.equals(p.getId()))) {
+                problems.add(
+                    label +
+                        " has the `baseline` `" +
+                        baseline +
+                        "`, which is not in `settings.plateaus` (" +
+                        plateaus
+                            .stream()
+                            .map(p -> "`" + p.getId() + "`")
+                            .collect(Collectors.joining(", ")) +
+                        ")"
+                );
+            }
+        }
         fail(problems);
 
         val idList = plateaus
@@ -236,6 +258,58 @@ public class Plateaus {
                 new ArchiCodeException("unknown plateau `%s`: the plateaus of this workspace are %s", wanted, idList)
             );
         return new Selection(chosen, normalize(chosen.getPath()));
+    }
+
+    /**
+     * The plateau a plateau is compared with: the one asked for ({@code --baseline}), else the {@code baseline} the
+     * plateau names, else the plateau before it in the list. The first plateau, with nothing before it, has none.
+     *
+     * @param settings  the settings of the workspace, whose plateaus have been checked by {@link #select}
+     * @param plateau   the plateau that is compared
+     * @param requested the baseline asked for ({@code --baseline}), or null
+     * @return the baseline, or null when there is nothing to compare the plateau with
+     * @throws ArchiCodeException when {@code requested} is not a plateau of the workspace, or is the plateau itself
+     */
+    public static Settings.Plateau baseline(Settings settings, Settings.Plateau plateau, String requested) {
+        val plateaus = settings.getPlateaus() == null ? List.<Settings.Plateau>of() : settings.getPlateaus();
+        if (requested != null) {
+            val found = plateaus
+                .stream()
+                .filter(p -> p.getId().equals(requested))
+                .findFirst()
+                .orElseThrow(() ->
+                    new ArchiCodeException(
+                        "unknown baseline `%s`: the plateaus of this workspace are %s",
+                        requested,
+                        plateaus
+                            .stream()
+                            .map(p -> "`" + p.getId() + "`")
+                            .collect(Collectors.joining(", "))
+                    )
+                );
+            if (found.getId().equals(plateau.getId())) {
+                throw new ArchiCodeException(
+                    "the baseline `%s` is the plateau that is compared: choose another plateau to compare it with",
+                    requested
+                );
+            }
+            return found;
+        }
+        if (plateau.getBaseline() != null) {
+            return plateaus
+                .stream()
+                .filter(p -> p.getId().equals(plateau.getBaseline()))
+                .findFirst()
+                .orElseThrow(() ->
+                    new ArchiCodeException(
+                        "the plateau `%s` has the `baseline` `%s`, which is not in `settings.plateaus`",
+                        plateau.getId(),
+                        plateau.getBaseline()
+                    )
+                );
+        }
+        val index = plateaus.indexOf(plateau);
+        return index > 0 ? plateaus.get(index - 1) : null;
     }
 
     private static void fail(List<String> problems) {

@@ -7,6 +7,7 @@ import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.*;
+import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.KernelViewpointFactory;
 import java.util.Optional;
 import lombok.NonNull;
@@ -61,5 +62,10 @@ public class DeepViewpointService implements ViewpointService {
     @Override
     public ViewpointFactory createViewpointFactory() {
         return new KernelViewpointFactory(NAME, mapperFactory.createLazy(MapperFormat.JSON));
+    }
+
+    @Override
+    public ViewpointFactory createViewpointFactory(Comparison comparison, boolean onlyChanges) {
+        return new KernelViewpointFactory(NAME, mapperFactory.createLazy(MapperFormat.JSON), comparison, onlyChanges);
     }
 }

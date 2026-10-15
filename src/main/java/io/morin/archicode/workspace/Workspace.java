@@ -45,6 +45,17 @@ public class Workspace {
     @Getter
     io.morin.archicode.resource.workspace.Settings.Plateau plateau;
 
+    /**
+     * The plateau this workspace is compared with, for the workspace of a comparison (it holds the plateau and what only
+     * the baseline has: see {@code WorkspaceFactory.createUnion}); null otherwise.
+     */
+    @JsonIgnore
+    @Getter
+    io.morin.archicode.resource.workspace.Settings.Plateau baseline;
+
+    /** What was read: the elements, the views, the stories, the settings, the styles and the formatters. */
+    @JsonIgnore
+    @Getter
     @Delegate
     io.morin.archicode.resource.workspace.Workspace resources;
 

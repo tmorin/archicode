@@ -1,0 +1,37 @@
+# An invented bookshop in three states, used to test what a plateau changes (see PlateauComparisonTest).
+# as-is -> to-be: a new mobile app and a new notification service, the legacy batch is removed, one container is
+# reworded, one is renamed inside a system that does not change by itself (the system only contains a change), a
+# label changes. `later` is compared with `as-is` (its own `baseline`), not with `to-be`.
+styles:
+  by-tags:
+    removed:
+      line-color: "red"
+settings:
+  name: "Bookshop"
+  plateaus:
+    - id: "as-is"
+      name: "As is"
+      horizon: "2026"
+      path: "plateaus/10_as-is"
+    - id: "to-be"
+      name: "To be"
+      path: "plateaus/20_to-be"
+    - id: "later"
+      path: "plateaus/30_later"
+      baseline: "as-is"
+  facets:
+    customs:
+      # reads what the comparison says: leaves out what only the baseline had (an element and what points at it)
+      - name: "without-removed"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$.application..relationships[?(@.change == 'removed')]"
+          - operator: "REMOVE"
+            json-path: "$.technology..relationships[?(@.change == 'removed')]"
+          - operator: "REMOVE"
+            json-path: "$.application..elements[?(@.change == 'removed')]"
+      # an ordinary facet, which knows nothing of the comparison
+      - name: "no-orders"
+        actions:
+          - operator: "REMOVE"
+            json-path: "$..relationships[?(@.label == 'orders on')]"

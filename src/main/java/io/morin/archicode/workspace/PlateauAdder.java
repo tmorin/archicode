@@ -67,8 +67,33 @@ public class PlateauAdder {
      * @param horizon       the horizon of the new plateau, or null for none
      * @param pathOverride  the folder of the new plateau, or null for the folder the naming rule gives
      */
-    @SneakyThrows
     public Added add(Path workspaceFile, String id, String from, String name, String horizon, String pathOverride) {
+        return add(workspaceFile, id, from, name, horizon, pathOverride, null);
+    }
+
+    /**
+     * Copy the folder of the plateau {@code from} and append the new plateau to {@code settings.plateaus}.
+     *
+     * @param workspaceFile the workspace file, which must be YAML
+     * @param id            the id of the new plateau
+     * @param from          the id of the plateau to copy
+     * @param name          the name of the new plateau, or null for none
+     * @param horizon       the horizon of the new plateau, or null for none
+     * @param pathOverride  the folder of the new plateau, or null for the folder the naming rule gives
+     * @param baseline      the id of the plateau the new one is compared with, written as its {@code baseline}, or null
+     *                      to leave the default (the plateau before it, which is the one it is copied from, or the
+     *                      last one)
+     */
+    @SneakyThrows
+    public Added add(
+        Path workspaceFile,
+        String id,
+        String from,
+        String name,
+        String horizon,
+        String pathOverride,
+        String baseline
+    ) {
         val fileName = workspaceFile.getFileName().toString();
         if (!fileName.endsWith(".yaml") && !fileName.endsWith(".yml")) {
             throw new ArchiCodeException(
@@ -118,6 +143,16 @@ public class PlateauAdder {
         }
         if (plateaus.stream().anyMatch(p -> p.getId().equals(id))) {
             throw new ArchiCodeException("the plateau `%s` exists already", id);
+        }
+        if (baseline != null && plateaus.stream().noneMatch(p -> p.getId().equals(baseline))) {
+            throw new ArchiCodeException(
+                "unknown baseline `%s`: the plateaus of this workspace are %s",
+                baseline,
+                plateaus
+                    .stream()
+                    .map(p -> "`" + p.getId() + "`")
+                    .collect(Collectors.joining(", "))
+            );
         }
 
         val sourcePath = Plateaus.normalize(source.getPath());
@@ -171,7 +206,13 @@ public class PlateauAdder {
         }
 
         // the new text first: when the file cannot be edited, nothing has been copied
-        val entry = Settings.Plateau.builder().id(id).name(name).horizon(horizon).path(targetPath).build();
+        val entry = Settings.Plateau.builder()
+            .id(id)
+            .name(name)
+            .horizon(horizon)
+            .path(targetPath)
+            .baseline(baseline)
+            .build();
         val edited = appendEntry(text, entry);
         verify(mapper.readTree(edited), tree, entry);
 
@@ -346,6 +387,9 @@ public class PlateauAdder {
             fields.add(new String[] { "horizon", entry.getHorizon() });
         }
         fields.add(new String[] { "path", entry.getPath() });
+        if (entry.getBaseline() != null) {
+            fields.add(new String[] { "baseline", entry.getBaseline() });
+        }
         val quotes = quoteAll;
         val dash = " ".repeat(dashIndent);
         val added = new ArrayList<String>();
@@ -422,6 +466,9 @@ public class PlateauAdder {
             node.put("horizon", entry.getHorizon());
         }
         node.put("path", entry.getPath());
+        if (entry.getBaseline() != null) {
+            node.put("baseline", entry.getBaseline());
+        }
         if (!expected.equals(edited)) {
             throw new ArchiCodeException(
                 "workspace.yaml could not be edited without changing more than the new plateau: nothing was written." +

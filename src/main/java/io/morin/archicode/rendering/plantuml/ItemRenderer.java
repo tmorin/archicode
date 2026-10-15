@@ -67,11 +67,14 @@ class ItemRenderer {
             buf.append(" [");
             buf.append(System.lineSeparator());
 
-            // <name>
+            // <name>, with the glyph of what changed when the view compares two plateaus
             buf.append(
                 String.format(
                     atomicFormatter.getName(),
-                    Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId())
+                    ChangeMarks.title(
+                        ChangeMarks.stateOf(viewpoint, item),
+                        Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId())
+                    )
                 )
             );
             buf.append(System.lineSeparator());
@@ -120,7 +123,10 @@ class ItemRenderer {
             buf.append(
                 String.format(
                     compositeFormatter.getName(),
-                    Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId())
+                    ChangeMarks.title(
+                        ChangeMarks.stateOf(viewpoint, item),
+                        Optional.ofNullable(item.getElement().getName()).orElse(item.getElement().getId())
+                    )
                 )
             );
             buf.append("\\n");

@@ -37,7 +37,7 @@ public class PlateauComparer {
         input.set("base", side(base));
         input.set("target", side(target));
         val answer = ViewpointKernel.getInstance().compare(objectMapper.writeValueAsString(input));
-        return Comparison.of(objectMapper.readTree(answer));
+        return Comparison.of(objectMapper.readTree(answer)).between(base.getPlateau(), target.getPlateau());
     }
 
     private com.fasterxml.jackson.databind.node.ObjectNode side(Workspace workspace) {

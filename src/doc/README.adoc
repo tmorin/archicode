@@ -165,6 +165,7 @@ A plateau has these keys:
 | `path` | Required. The folder of the manifests, relative to the folder of `workspace.yaml` and below it: no `..` segment, not absolute (no leading `/` or `\`, no drive letter). Unique among the plateaus. `.`, the folder of `workspace.yaml` itself, is accepted for a single plateau and refused with several, because it would hold the others.
 | `name` | Optional. The name shown to people; the `id` when absent.
 | `horizon` | Optional. A free-text label for when the plateau is meant to hold, such as `2027-Q1`. ArchiCode never parses nor interprets it.
+| `baseline` | Optional. The id of the plateau this one is compared with (see <<plateau-comparison>>): another plateau of the list. Without it, the baseline is the plateau before this one in the list, and the first plateau has none.
 | `from` | Reserved. It will mean "an increment on top of another plateau" in a later version and is refused for now, with a message.
 |===
 
@@ -177,7 +178,7 @@ To draw another plateau than the default one, the commands that load a workspace
 archicode views generate --plateau as-is
 ----
 
-The views are written in the same folders as for a workspace without plateaus (`views`, and one folder per facet): generating another plateau writes over them, so give each its own folder with `--output` when you keep several.
+The views of a plateau are written in a folder of its own, named after it: `views-as-is` (and `views-as-is-<facet>` for each facet, as the `directory-name-template` of the facets says), `views-to-be`, and so on, so that drawing two plateaus never writes one over the other. With `--output out`, the folders are `out-as-is` and `out-to-be`. A workspace that has no plateaus keeps the folders it always had (`views`, and one folder per facet).
 
 `settings.manifests.paths` stays the short form of a workspace that has a single set of manifests, a workspace with one implicit plateau. Writing both `manifests.paths` and `plateaus` is an error: with plateaus, remove `manifests.paths` and give each plateau its own `path`. The ordered list of plateaus is not a set: the order of `settings.manifests.paths` has never mattered, the order of `settings.plateaus` does.
 
@@ -190,6 +191,56 @@ the plateaus `as-is` and `to-be` share the path `plateaus/10_as-is`: each platea
 Every rule is checked before anything is read or written, and every problem is reported, one per line.
 
 IMPORTANT: *Breaking change.* A path of `settings.manifests.paths` may no longer leave the folder of the workspace (`../shared`) nor be absolute (`/srv/manifests`, `C:\data`): the same rule as for the folder of a plateau, so that one folder holds a whole workspace, and so that the editor, which only reaches the folder it opened, reads what the command line reads. A workspace that used such a path stops with an error that says which path and what to change: move the folder below `workspace.yaml`, or move `workspace.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected, and neither is a workspace without `plateaus`: it is read, and generates its views, exactly as before.
+
+[[plateau-comparison]]
+==== Comparing two plateaus
+
+A plateau is a complete folder, so what a plateau _changes_ is the difference between two folders: ArchiCode compares a plateau with its _baseline_ and tells what is new, what changed and what was removed, elements and relationships. The baseline is, in this order, the plateau `--baseline` names, else the `baseline` key of the plateau, else the plateau before it in the list. The first plateau has no baseline, and so nothing to be compared with unless one is named. The baseline must be another plateau of the list; a `baseline` that names an unknown plateau or the plateau itself is an error that lists the plateaus.
+
+[source,yaml]
+----
+settings:
+  plateaus:
+    - id: as-is
+      path: plateaus/10_as-is
+    - id: to-be
+      path: plateaus/20_to-be
+    - id: later
+      path: plateaus/30_later
+      baseline: as-is  # not `to-be`, the plateau before it
+----
+
+Two commands show the comparison: `archicode diff` writes the table of changes (see <<diff>>), and `archicode views generate` draws the views of the comparison (see <<generate-views>>).
+
+*What counts as a change.* An element is the same element in both plateaus when it has the same reference (a reference includes the path of the element, so an element that moves under another parent is a removed one and a new one). It is _new_ when its reference is only in the plateau, _removed_ when it is only in the baseline, and _changed_ when something differs in the element itself or in the relationships it declares: its kind, its name, its description, its qualifiers, its tags (the `rendering-*` ones do not count), its deployment (`applications` and `uses`), or a relationship that was added, removed or changed. A child is judged on its own: a system whose only change is a new container is not _changed_, it _contains changes_. The table lists what changed in each element (`natures`) and tells a change of wording apart: an element whose description is the only thing that differs is _wording only_. A relationship is identified by its source, its destination and its label; it is _new_ or _removed_ when it is only on one side, and _changed_ when its qualifiers, its tags or, when it is the only one between the two elements, its label differ. The order of a list and the order of the keys of a file are no change.
+
+*How the views say it.* The views of a comparison draw the union of the two plateaus (what was removed is drawn too), and every box and every link says its state with the same four marks, never by colour alone:
+
+[cols="1,1,2,2"]
+|===
+| State | Mark | Box | Link
+
+| new | `+` | thick solid outline | thick solid line
+| changed | `~` | dotted outline | dotted line
+| removed | `−` | dashed grey outline, grey and struck title | dashed grey line
+| contains changes | `±` | thin dashed outline | (none)
+|===
+
+The mark is written in front of the title of the box and of the label of the link. A box that did not change is drawn as it always was, and so is a link. `contains changes` is for a box that did not change by itself and holds something that did (a system whose container is new, for instance): the reader can see where to look inside. A link between two boxes that are drawn as one group (a view draws the relationships of the elements below it as one link) is new when all of them are, removed when all of them are, changed when they are mixed, and unchanged when none changed. A view that says at least one change has a legend that explains the marks.
+
+The four states are stereotypes of the boxes (`new`, `changed`, `removed` and `contains-changes`), so a `styles.by-tags` entry of the same name gives them your own look, as it does for every stereotype (see <<stereotypes-and-styles>>). ArchiCode brings a default style for a state only when the workspace has none, and the style you write wins property by property: write `new` with a `background-color` and the box keeps the thick outline of the default.
+
+[source,yaml]
+----
+styles:
+  by-tags:
+    new:
+      background-color: "#DAF2E6"   # the outline stays the default one
+    removed:
+      line-color: red
+----
+
+A facet can read what changed: in a comparison, every element and every relationship has a `change` (`none`, `new`, `changed` or `removed`) that a JSONPath selects like any other field, such as `$..relationships[?(@.change == 'removed')]`. The other facets work as they always did.
 
 === Application Layer
 
@@ -856,6 +907,7 @@ Serves the editor (see <<editor>>) and opens in it the folder of the workspace f
 
 The server writes to the folder, so it does not trust the network: the page and every call carry a token that only the printed URL gives, a request must be addressed to one of the allowed host names, a page of another origin is refused, and only the `.yaml`, `.yml` and `.json` files below the folder of the workspace can be reached. With Docker, keep the host side of the port mapping on `127.0.0.1` (`-p 127.0.0.1:48080:48080`).
 
+[[generate-views]]
 === Generate views
 
 .Generate Views - The command line
@@ -890,13 +942,23 @@ The "Generate Views" command within ArchiCode serves as a dynamic catalyst for c
 
 The command offers also customization Capabilities:
 
-- Plateau: when the workspace lists plateaus (see <<plateaus>>), `--plateau <id>` chooses the one that is read. Without it, it is the plateau `settings.current` names, else the last one. The views are written in the same folders in any case.
+- Plateau: when the workspace lists plateaus (see <<plateaus>>), `--plateau <id>` chooses the one that is read. Without it, it is the plateau `settings.current` names, else the last one. The views of a plateau are written in a folder of its own, `views-<plateau>` (and one folder per facet, `views-<plateau>-<facet>` with the default `directory-name-template`); a workspace without plateaus writes `views` as it always did.
 
 .Generate Views - Plateau
 [source,shell]
 ----
 archicode views generate --plateau to-be
 ----
+
+- Comparison: `--baseline <id>` compares the plateau with another one (see <<plateau-comparison>>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in `views-<plateau>-vs-<baseline>` (and one folder per facet, `views-<plateau>-vs-<baseline>-<facet>`), next to two files that tell the same in text: `gap.md` and `gap.json`, the table of changes that `archicode diff` prints (see <<diff>>). A plateau that has a `baseline` key is compared without `--baseline`; a plateau that has none is not, even though the plateau before it is its baseline for `archicode diff`, because a comparison doubles the number of views and is not generated by surprise. An unknown baseline, or `--baseline` on a workspace that has no plateaus, stops the command before anything is written. `--output` is, with plateaus, the beginning of the name of these folders.
+
+.Generate Views - Comparison
+[source,shell]
+----
+archicode views generate --plateau to-be --baseline as-is
+----
+
+A facet applies to the views of a comparison as it does to the others, and a facet can select on `change` (see <<plateau-comparison>>).
 
 - Selective View Rendering: The power of customization lies in your hands. The command can be tailored to render specific views based on their unique identifier, providing you with control over the scope of generated visualizations.
 
@@ -992,8 +1054,40 @@ Adds a plateau to the workspace: the folder of the plateau `--from` is copied (a
 
 - `--from`: the id of the plateau to copy. Required. A workspace with no `settings.plateaus` has nothing to copy from: list its folder as the first plateau by hand.
 - `--name` and `--horizon`: the optional `name` and `horizon` of the new plateau.
+- `--baseline`: the id of a plateau of the list that the new plateau is compared with. It is written as the `baseline` of the new plateau (see <<plateau-comparison>>). Without it nothing is written, and the new plateau is compared with the plateau before it, which is the one it was copied from when that one was the last.
 - `--path`: the folder of the new plateau, below the folder of the workspace (the rules of the `path` of a plateau apply). By default the new folder is next to the copied one and named after the id. When the copied folder starts with a number, as `plateaus/10_as-is`, the new one gets the next multiple of ten above the highest number among the plateau folders that share its parent, so `plateaus/10_as-is` and `plateaus/20_to-be` give `plateaus/30_to-be-2028`; a folder with no number gives a folder with none. The number only sorts the folders; the order of the list is the one that counts.
 - The command refuses an `id` that exists, a folder that exists already (nothing is ever written over), a folder inside the copied one, and the plateau `.`.
+
+[[diff]]
+=== Compare plateaus
+
+.Compare plateaus - The command line
+[source,shell]
+----
+archicode diff --plateau to-be --baseline as-is
+----
+
+Tells what a plateau changes: the elements and the relationships that are new, changed or removed compared with the baseline, and what changed in each. It prints a table to read in a terminal, to paste in a pull request or to feed to a script, and writes nothing to disk (`views generate --baseline` writes the same table next to the views, see <<generate-views>>).
+
+[source,text]
+----
+comparing to-be (To be) with as-is (As is)
+elements      +1 ~1 -0
+relationships +1 ~0 -0
+wording only  0 of the 1 changed elements
+
+CHANGE   THING         LAYER        REFERENCE                              NATURES              DETAILS
+new      element       application  shop.payments                          -                    name: "Payments"
+changed  element       application  shop.web                               relationships-added
+new      relationship  application  shop.web -> shop.payments (pays with)  -
+----
+
+- `--plateau`: the plateau that is compared, as for `views generate`: `settings.current`, else the last one.
+- `--baseline`: the plateau it is compared with: the one named, else the `baseline` key of the plateau, else the plateau before it in the list (see <<plateau-comparison>>).
+- `--format` (`-f`): `text` (the default), `markdown` (a table to paste in a pull request) or `json` (the counts and one object per change, with `before` and `after` for a changed element).
+- `--no-wording`: leaves the elements whose description is the only thing that changed out of the table, and says how many are left out. The counts still include them.
+
+The table lists the elements, then the relationships, sorted by layer and reference: the same output for the same two plateaus, byte for byte, whatever the machine. A difference is not an error: the exit code is 0. The command stops with an error (exit code 1) that says what to do when the workspace has no `settings.plateaus`, when the plateau is the first one and has no baseline to compare with, and when the baseline is unknown or is the plateau itself.
 
 === Generate JSON Schemas
 

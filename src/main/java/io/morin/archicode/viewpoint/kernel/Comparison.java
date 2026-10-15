@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.resource.view.View;
+import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.Change;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -97,6 +98,23 @@ public class Comparison {
     /** The elements of each layer as {@code compute} takes them: the union element, its relationships nested. */
     @Getter(AccessLevel.NONE)
     Map<String, ArrayNode> unionByLayer;
+
+    /** The plateau that is compared with, or null when the comparison was not made of two plateaus of a workspace. */
+    Settings.Plateau base;
+
+    /** The plateau that is compared, or null as for {@link #getBase()}. */
+    Settings.Plateau target;
+
+    /**
+     * The same comparison, told which plateaus it is between.
+     *
+     * @param base the plateau that is compared with
+     * @param target the plateau that is compared
+     * @return the comparison
+     */
+    Comparison between(Settings.Plateau base, Settings.Plateau target) {
+        return new Comparison(elements, relationships, changes, counts, unionByLayer, base, target);
+    }
 
     /**
      * Reads the answer of the kernel.
@@ -200,7 +218,9 @@ public class Comparison {
                     relationshipCounts.path("removed").asInt()
                 )
             ),
-            unionByLayer
+            unionByLayer,
+            null,
+            null
         );
     }
 

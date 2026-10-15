@@ -104,7 +104,7 @@ test('from is reserved and refused with a message that says what to do', async (
 
 test('an unknown key of a plateau is refused and the known ones are listed', async () => {
   assert.deepEqual(await refused('  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n      date: 2026\n'),
-    ['the plateau `as-is` has the key `date`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon` and `path`']);
+    ['the plateau `as-is` has the key `date`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon`, `path` and `baseline`']);
 });
 
 test('a plateau without a path, or without an id, is refused', async () => {

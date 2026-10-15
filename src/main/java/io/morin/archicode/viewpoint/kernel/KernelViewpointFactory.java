@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.ArchiCodeException;
+import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Relationship;
+import io.morin.archicode.resource.element.technology.Environment;
+import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.Change;
@@ -26,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.WeakHashMap;
 import lombok.AccessLevel;
 import lombok.NonNull;
@@ -89,8 +93,62 @@ public class KernelViewpointFactory implements ViewpointFactory {
         this.onlyChanges = onlyChanges;
     }
 
+    /** The union of a comparison, kept to what the index of a faceted workspace still holds, built once per index. */
+    private static final Map<ElementIndex, FacetedUnion> FACETED_UNIONS = new WeakHashMap<>();
+
+    private record FacetedUnion(Comparison comparison, ArrayNode elements) {}
+
     private static synchronized ArrayNode graphOf(ElementIndex index, ObjectMapper objectMapper) {
         return GRAPHS.computeIfAbsent(index, i -> KernelGraph.of(i, objectMapper, false));
+    }
+
+    /**
+     * The elements of a layer of the comparison, as {@code compute} takes them. For the workspace of a facet, only the
+     * elements and the relationships the facet left: the facet was applied to the union (with {@code change} in it),
+     * the index of the workspace says what is left.
+     */
+    private static synchronized ArrayNode unionOf(
+        Comparison comparison,
+        Workspace workspace,
+        View.Layer layer,
+        ObjectMapper objectMapper
+    ) {
+        val union = comparison.unionElements(layer);
+        if (!workspace.isFaceted()) {
+            return union;
+        }
+        val index = layer == View.Layer.APPLICATION ? workspace.appIndex : workspace.techIndex;
+        val known = FACETED_UNIONS.get(index);
+        if (known != null && known.comparison == comparison) {
+            return known.elements;
+        }
+        val kept = objectMapper.createArrayNode();
+        for (val node : union) {
+            val model = index.searchElement(node.path("reference").asText());
+            if (model.isEmpty()) {
+                continue;
+            }
+            val copy = (ObjectNode) node.deepCopy();
+            val relationships = copy.putArray("relationships");
+            for (val rel : node.path("relationships")) {
+                if (declares(model.get(), rel)) {
+                    relationships.add(rel);
+                }
+            }
+            if (model.get() instanceof Node technologyNode) {
+                val applications = copy.putArray("applications");
+                new TreeSet<>(Optional.ofNullable(technologyNode.getApplications()).orElseGet(Set::of)).forEach(
+                    applications::add
+                );
+            }
+            if (model.get() instanceof Environment environment) {
+                val uses = copy.putArray("uses");
+                new TreeSet<>(Optional.ofNullable(environment.getUses()).orElseGet(Set::of)).forEach(uses::add);
+            }
+            kept.add(copy);
+        }
+        FACETED_UNIONS.put(index, new FacetedUnion(comparison, kept));
+        return kept;
     }
 
     @SneakyThrows
@@ -119,7 +177,9 @@ public class KernelViewpointFactory implements ViewpointFactory {
         );
         input.set(
             "elements",
-            comparison == null ? graphOf(mainIndex, objectMapper) : comparison.unionElements(view.getLayer())
+            comparison == null
+                ? graphOf(mainIndex, objectMapper)
+                : unionOf(comparison, workspace, view.getLayer(), objectMapper)
         );
         if (onlyChanges) {
             input.put("only_changes", true);
@@ -129,7 +189,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
                 "app_elements",
                 comparison == null
                     ? graphOf(workspace.appIndex, objectMapper)
-                    : comparison.unionElements(View.Layer.APPLICATION)
+                    : unionOf(comparison, workspace, View.Layer.APPLICATION, objectMapper)
             );
             // the facets are applied to the workspace before the views are asked for: the kernel is told a view is about a flow
             if (workspace.isFaceted()) {
@@ -167,7 +227,13 @@ public class KernelViewpointFactory implements ViewpointFactory {
             }
         });
 
-        return Viewpoint.builder().workspace(workspace).view(view).items(roots).links(links).build();
+        return Viewpoint.builder()
+            .workspace(workspace)
+            .view(view)
+            .items(roots)
+            .links(links)
+            .compared(comparison != null)
+            .build();
     }
 
     /**
@@ -295,6 +361,36 @@ public class KernelViewpointFactory implements ViewpointFactory {
         return result;
     }
 
+    private static boolean matches(
+        Relationship candidate,
+        String destination,
+        String label,
+        Set<String> qualifiers,
+        Map<String, String> tags
+    ) {
+        return (
+            candidate.getDestination().equals(destination) &&
+            Objects.equals(candidate.getLabel(), label) &&
+            new HashSet<>(Optional.ofNullable(candidate.getQualifiers()).orElseGet(Set::of)).equals(qualifiers) &&
+            new HashMap<>(Optional.ofNullable(candidate.getTags()).orElseGet(Map::of)).equals(tags)
+        );
+    }
+
+    /** Whether the element declares the relationship of the union (same destination, label, qualifiers and tags). */
+    private static boolean declares(Element element, JsonNode rel) {
+        val qualifiers = new HashSet<String>();
+        rel.path("qualifiers").forEach(q -> qualifiers.add(q.asText()));
+        val tags = new HashMap<String, String>();
+        rel.path("tags")
+            .fields()
+            .forEachRemaining(tag -> tags.put(tag.getKey(), tag.getValue().asText()));
+        val label = rel.path("label").isNull() || rel.path("label").isMissingNode() ? null : rel.get("label").asText();
+        return Optional.ofNullable(element.getRelationships())
+            .orElseGet(Set::of)
+            .stream()
+            .anyMatch(candidate -> matches(candidate, rel.path("destination").asText(), label, qualifiers, tags));
+    }
+
     /** The relationship, as declared, that a link of the kernel stands for. */
     private Relationship findRelationship(ElementIndex ownerIndex, JsonNode rel) {
         val owner = ownerIndex
@@ -309,12 +405,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
             .fields()
             .forEachRemaining(tag -> tags.put(tag.getKey(), tag.getValue().asText()));
         for (val candidate : Optional.ofNullable(owner.getRelationships()).orElseGet(Set::of)) {
-            if (
-                candidate.getDestination().equals(destination) &&
-                Objects.equals(candidate.getLabel(), label) &&
-                new HashSet<>(Optional.ofNullable(candidate.getQualifiers()).orElseGet(Set::of)).equals(qualifiers) &&
-                new HashMap<>(Optional.ofNullable(candidate.getTags()).orElseGet(Map::of)).equals(tags)
-            ) {
+            if (matches(candidate, destination, label, qualifiers, tags)) {
                 return candidate;
             }
         }
