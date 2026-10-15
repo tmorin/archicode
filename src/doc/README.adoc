@@ -880,6 +880,41 @@ The look is a default, given to the stereotype of the same name as the state (`n
 
 Under the diagram, the key adds an entry for each state, with a sample of its box and its link, its mark, its name, how its line is drawn, and how many boxes and links of that state the drawing shows. The SVG and PNG downloads draw the same marks, lines, struck titles, pills and tints; like the other keys, the key itself is not part of the image.
 
+[[editor-changes-panel]]
+==== The Changes panel
+
+While a comparison is on, the panel on the right of the Map and of Elements is never empty. With nothing selected it is the *Changes* panel; with something selected it has two tabs, *Selected* (what is selected, as before) and *Changes* (with the number of rows). It is not in the page of a view in the Library, whose panel is the one of the view.
+
+The panel starts with the counts: elements and relationships, each _new_, _changed_ and _removed_, as chips that carry a mark and a word (`+ 38 new`, `~ 26 changed`, `− 5 removed`), so that they read without colour. The same chip is the state on every row below. Two lists follow, *Elements* and *Relationships*, in the order a review reads them: what is new, then what changed, then what was removed, and by reference inside each. A row has the chip, the name and the reference of the element (a relationship reads `source → destination “label”`) and, for something that changed, what changed in it in words: `name`, `description (wording only)`, `qualifiers`, `tags`, `deployment`, `relationships added`, `relationships removed`, `relationships changed`, and for a relationship `label`, `qualifiers`, `tags`. A relationship whose label changed is one row that says the label before and after.
+
+A click on a row selects the thing as a click on its box or its link does, and shows it. On the Map the boxes around it are opened so that it is drawn, and the view is centred on it (what the *Center* button does); a pin or a hidden element of your own is not undone, and the panel says when the element is not on the map. A removed element opens the read-only panel described above, a relationship selects its link (in Elements, the element that declares it, and its link when that element's diagram is shown). The row of the selection is marked in the list, and the *Changes* tab brings the list back with that row in view.
+
+[[editor-what-changed]]
+==== What changed
+
+The panel of a selected element, link or removed box adds a *What changed* block, first, so that a long description does not push it out of sight; it is the same on the page of a view in the Library.
+
+- For a *changed* element, the natures in words, then each property that differs with its value _Before_ and _After_ (name, kind, description, qualifiers, tags, and the applications or `uses` of a node), then its relationships that are new, changed or removed, each a line with its chip. The *Before* and *After* lines carry a sign and a word, and the old value is struck, so nothing relies on colour.
+- For a *new* element, "Whole element is new": its properties are the ones listed below the block, and the relationships it declares are listed as new.
+- For a *removed* element, the read-only panel above, with "Whole element is removed"; it does not repeat what the panel already lists.
+- For a *link*, its state (all of the relationships it groups new, or removed, or changed, or a mixture, which reads _changed_) and, on each relationship it groups, its chip and, for one that changed, what it was and what it is.
+
+[[editor-changes-only]]
+==== Changes only and wording-only changes
+
+Next to *Compare to*, while a comparison is on, the group *Everything | Changes only* sets what the diagrams draw: with *Changes only* a diagram keeps what is new, changed or removed, the boxes that enclose them and the ends of the changed links; the links that did not change are left out. The boxes kept only to place the changes, the _context_, are drawn faded, say no state and are told in the key ("context, faded: shown to place the changes", with their number). The focal element of a diagram always stays and is never faded. It works the same on the Map, on the diagrams of Elements and on the page of a view in the Library, and together with the pins, the hidden elements, a facet and *Hide unlinked*.
+
+A change of the description alone is a change of wording, not of structure. The *Changes* panel counts them apart ("10 of the changed elements are changes of wording only") and keeps them visible by default; the checkbox *Hide wording-only changes* sets them aside in one click: those elements are drawn as unchanged (and a box that only they changed is no longer marked `contains-changes`, nor kept by *Changes only*), their rows leave the list, the counts of changed elements drop by their number and the panel says "10 wording-only changes hidden". Relationships are never set aside: a change of a label, a qualifier or a tag is structure.
+
+Both choices are yours and not the workspace's: they are remembered per folder in this browser, like the plateau and *Compare to*, never written to `workspace.yaml`, and they do nothing while *Compare to* is *Nothing*.
+
+[[editor-changes-address]]
+==== The address and the trees
+
+The address of the page carries a selection, so that a reload or a shared link reopens it: `ref=` for an element, `link-from=` and `link-to=` for a link, as before, and `removed=` for a removed element (`removed-layer=technology` for one of the technology layer). A removed element exists only next to its comparison, so the address then also carries `compare=` (`@baseline` or the id of a plateau): opening such an address chooses that comparison, as if you had chosen it, even if this browser remembered another one. The other choices of the comparison are not in the address.
+
+While a comparison is on, a row of the tree of Elements and of the tree of the Map has a small mark after its name: `+` for a new element, `~` for a changed one, and `±` for one that did not change but has a change below it. The word is in its tooltip and is read by a screen reader. A removed element is not in these trees (it is not an element of the plateau drawn, so it can be neither pinned nor hidden nor edited): the *Changes* panel lists it and opens its panel.
+
 [[editor-theme]]
 === Theme
 

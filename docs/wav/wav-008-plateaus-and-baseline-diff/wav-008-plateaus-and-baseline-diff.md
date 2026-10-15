@@ -157,7 +157,7 @@ wave_manifest:
       slug: editor-changes-panel
       phase: P3
       depends_on: [W-6]
-      run: null
+      run: '0040'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -201,7 +201,7 @@ wave_manifest:
 |---|-----|------|------------|-------|-------|---------------|
 | W-5 | 0038 | `cli-plateaus-diff` | W-4 | see what a plateau changes from the command line, in a file I can review | `--plateau` and `--baseline` (a plateau id; default the previous one in the list, a `baseline` key per plateau changes it); `archicode diff` (text, Markdown, JSON, wording-only hidable); `views generate --baseline` writing `views-<plateau>/` and `views-<plateau>-vs-<base>/` (facets keep their template); a default PlantUML style for the four states with a glyph, a line style and a label, never colour alone; first, check what PlantUML draws for dashed, dotted and struck text, and record it. | Tests on the output and the counts; the PlantUML of a pair rendered once to look at it; the manual describes the commands; `./mvnw verify` passes |
 | W-6 | 0039 | `editor-plateau-compare` | W-4 | switch plateau and compare it with another one on the map, with a legend I can read without colour | The Plateau and Compare to controls (the baseline is a plateau under the same root handle: no second picker); the encoding of the four states (glyph, line style, badge, translucent tint) that works on a box inside a box; a legend; the SVG and PNG export; the removed state in its own language, not the red dashed of a dangling reference; layout posed on the union so that boxes do not jump. | Tests on the markup and the export; the real page in light and dark with the real pair; `node --test` passes |
-| W-7 | — | `editor-changes-panel` | W-6 | list the changes, open one to see what changed in it, and hide the noise | The Changes panel (counts, lists of elements and relationships); the inspector's before and after (properties and relationships added or removed); the Changes only filter; hide wording-only changes; selection in the URL. | Tests on the markup and the panel; the real page; `node --test` passes |
+| W-7 | 0040 | `editor-changes-panel` | W-6 | list the changes, open one to see what changed in it, and hide the noise | The Changes panel (counts, lists of elements and relationships); the inspector's before and after (properties and relationships added or removed); the Changes only filter; hide wording-only changes; selection in the URL. | Tests on the markup and the panel; the real page; `node --test` passes |
 
 **Gate:** the criteria of the manifest for P3.
 

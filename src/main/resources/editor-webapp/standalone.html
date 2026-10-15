@@ -212,6 +212,49 @@
   .inspection-rel-marked { border-color: var(--accent); }
   .inspection-rel-mark { margin-left: 0.4rem; padding: 0 0.4rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; white-space: nowrap; }
 
+  /* ---- The comparison in the right-hand panel (run 0040): the Selected | Changes tabs, the list, and "What changed". A state is a chip with its glyph and its
+     word; the colour of its line (--chg-*) only repeats it. ---- */
+  .right-tabs.button-group { display: flex; margin: -1rem -1rem 0.6rem; padding: 0.6rem 1rem 0.4rem; position: sticky; top: -1rem; z-index: 3; background: var(--panel-bg); }
+  .right-tabs .field-count { color: inherit; border-color: currentColor; }
+  .right-tabs button { flex: 1 1 0; padding: 0.3rem 0.5rem !important; font-size: 0.85rem; white-space: nowrap; }
+  .change-chip { max-width: none; font-size: 0.72rem; padding: 0 0.45rem; color: var(--st-text, var(--fg)); white-space: nowrap; display: inline-flex; align-items: center; gap: 0.2rem; }
+  .change-chip .change-glyph { font-weight: 800; font-size: 0.85rem; line-height: 1; }
+  .changes-panel { display: flex; flex-direction: column; gap: 0.5rem; }
+  .changes-compared { margin: 0; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+  .changes-counts { display: flex; flex-direction: column; gap: 0.3rem; }
+  .changes-count-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.3rem; }
+  .changes-count-label { flex: 0 0 100%; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .changes-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; }
+  .changes-note { margin: 0; font-size: 0.8rem; color: var(--muted); }
+  .change-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+  .change-row { display: flex !important; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; width: 100%; text-align: left; padding: 0.3rem 0.5rem !important; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .change-row.selected { border-color: var(--accent) !important; box-shadow: inset 3px 0 0 var(--accent); }
+  .change-row .change-chip { align-self: center; }
+  .change-main { flex: 1 1 8rem; min-width: 0; }
+  .change-name { font-weight: 600; }
+  .change-ref, .change-layer, .change-natures { color: var(--muted); font-size: 0.75rem; }
+  .change-row .change-natures { flex: 0 0 100%; }
+  .change-rel-path { font-weight: 600; }
+  .change-rel-label { color: var(--muted); }
+  .change-none { margin: 0; font-size: 0.8rem; }
+  .what-changed { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
+  .what-changed .inspection-subhead { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
+  .change-natures { margin: 0; }
+  .change-diff { display: flex; flex-direction: column; gap: 0.15rem; padding-top: 0.25rem; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+  .change-diff-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .change-before, .change-after { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .change-side { flex: 0 0 4.2rem; font-size: 0.72rem; font-weight: 600; color: var(--muted); }
+  .change-before .change-text { text-decoration: line-through; text-decoration-thickness: 1px; }
+  .change-text { white-space: pre-wrap; }
+  .change-rels { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .change-rel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; font-size: 0.82rem; overflow-wrap: anywhere; }
+  .change-rel .change-diff, .change-rel .change-natures { flex: 0 0 100%; }
+  .rel-change { display: flex; flex-direction: column; gap: 0.25rem; }
+  /* the mark after the name of an element in the trees: a glyph (the word is in its tooltip and in what a screen reader reads) */
+  .tree-change { flex: none; min-width: 1rem; text-align: center; font-weight: 800; font-size: 0.8rem; line-height: 1.2; padding: 0 0.15rem; border: 1px solid var(--chg-new); border-radius: 3px; color: var(--fg); }
+  .tree-change[data-state="changed"] { border-color: var(--chg-changed); border-style: dotted; }
+  .tree-change[data-state="contains-changes"] { border-color: var(--chg-contains); border-style: dashed; font-weight: 600; }
+
   [data-resize] { background: var(--border); flex-shrink: 0; }
   [data-resize]:hover, [data-resize][data-active] { background: var(--accent); }
 
@@ -491,7 +534,7 @@
   .button-group button[aria-pressed="true"] { position: relative; z-index: 1; }
   /* The neighbours overlap by one border (margin -1px): the hovered or focused button rises above them, so none of its borders is hidden. */
   .button-group button:hover, .button-group button:focus-visible { position: relative; z-index: 2; }
-  .perspective-tabs button[aria-pressed="true"], .plateau-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .perspective-tabs button[aria-pressed="true"], .plateau-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
   /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
   .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -537,6 +580,8 @@
   .dg-arrowhead.dg-chg-new { fill: var(--chg-new); }
   .dg-arrowhead.dg-chg-changed { fill: var(--chg-changed); }
   .dg-arrowhead.dg-chg-removed { fill: var(--chg-removed); }
+  /* Changes only (run 0040): a box kept only to place the changes around it did not change itself: it is faded, has no state, and the key says so */
+  .dg-node.dg-context { opacity: 0.55; }
   .dg-label { fill: var(--fg); font-size: 11px; paint-order: stroke; stroke: var(--panel-bg); stroke-width: 4px; stroke-linejoin: round; }
   /* a link is clicked to be selected (and so is its caption); the selected pair, and the one the keyboard is on, take the accent */
   .dg-link, .dg-label[data-action] { cursor: pointer; }
@@ -2237,6 +2282,8 @@ function createInitialAppState() {
     plateauProblem: null, // a line, when the folder of the plateau read cannot be found
     compareTo: '', // the plateau the one drawn is compared with: '' (Nothing), COMPARE_BASELINE_CHOICE (the baseline of the plateau drawn) or the id of a plateau
     baseline: null, // the plateau compared with, read-only: { plateau, files, index, duplicates, problem }; null while nothing is compared (see loadBaseline)
+    changesOnly: false, // run 0040: draw only what changed, with its context (the kernel's `only_changes`); a choice of whoever looks, remembered per folder (see rememberFlag)
+    hideWording: false, // run 0040: set the changes of wording only (description alone) aside: not marked, not listed, counted apart; remembered per folder
     selection: { kind: 'none', key: null, mode: 'view' },
     expanded: new Set(),
     fatalError: null,
@@ -2525,6 +2572,29 @@ function rememberCompareTo(choice) {
   if (key === null) return;
   chosenComparisons.set(key, choice);
   panelSizeStorage.set(key, choice);
+}
+
+// Two more choices of whoever looks (run 0040), remembered per folder like the Compare to: `changes-only` and `hide-wording`, '1' or '0'.
+const FLAG_STORAGE_PREFIX = 'archicode-standalone-editor:flag:';
+const chosenFlags = new Map(); // for a browser that refuses its storage: the choice then lasts as long as the page
+
+function flagStorageKey(name) {
+  const folder = AppState.folder;
+  return folder ? FLAG_STORAGE_PREFIX + name + ':' + (folder.id || 'name:' + folder.name) : null;
+}
+
+/** A flag remembered for this folder in this browser; false when none was ever set. */
+function recalledFlag(name) {
+  const key = flagStorageKey(name);
+  if (key === null) return false;
+  return (chosenFlags.has(key) ? chosenFlags.get(key) : panelSizeStorage.get(key)) === '1';
+}
+
+function rememberFlag(name, value) {
+  const key = flagStorageKey(name);
+  if (key === null) return;
+  chosenFlags.set(key, value ? '1' : '0');
+  panelSizeStorage.set(key, value ? '1' : '0');
 }
 
 /** A choice of Compare to the workspace can honour: Nothing, the baseline shortcut, or a plateau of the list. Anything else is Nothing. */
@@ -3079,6 +3149,11 @@ async function loadWorkspace(dirHandle) {
   AppState.plateaus = selection.plateau ? settings.plateaus.map(plateauModel) : [];
   // run 0039: the comparison this browser last chose in this folder, when the workspace can still honour it
   AppState.compareTo = selection.plateau ? validCompareChoice(recalledCompareTo(), AppState.plateaus) : '';
+  // run 0040: an address that names the comparison (`compare=`, written with a removed element) is a choice made: it wins, and is kept like one
+  const compareOfAddress = selection.plateau ? validCompareChoice(compareFromHash(), AppState.plateaus) : '';
+  if (compareOfAddress !== '') { AppState.compareTo = compareOfAddress; rememberCompareTo(compareOfAddress); }
+  AppState.changesOnly = recalledFlag('changes-only'); // run 0040: how the comparison is read, as the last time in this folder
+  AppState.hideWording = recalledFlag('hide-wording');
 
   // FR-5: direct (non-recursive) children of each settings.manifests.paths dir, or of the folder of the plateau read.
   const manifestFiles = [];
@@ -3735,10 +3810,43 @@ function restoreLinkFromHash() {
   diagramLinkStop = null; // the selected link is the tab stop of the links then, not where the focus was
 }
 
-/** The hash's selection, whole: an element or a file, or a link over the element (see `restoreLinkFromHash`). */
+/** The hash's `compare=` (the Compare to the address was written with: `@baseline` or a plateau id), or null. Read when a workspace is loaded. */
+function compareFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  if (queryIdx === -1) return null;
+  return new URLSearchParams(location.hash.slice(queryIdx + 1)).get('compare');
+}
+
+/**
+ * The removed element the hash names (`removed=` with the reference of an element only the other plateau has, `removed-layer=technology` for one of that
+ * layer), or null. It is a selection that exists only with a comparison, so the address carries `compare=` with it (see `currentRouteHash`).
+ */
+function removedFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  if (queryIdx === -1) return null;
+  const params = new URLSearchParams(location.hash.slice(queryIdx + 1));
+  const reference = params.get('removed');
+  return reference ? { reference, layer: params.get('removed-layer') === 'technology' ? 'technology' : 'application' } : null;
+}
+
+/**
+ * The removed element of the hash becomes the pick of the page (run 0039's `removedPick`), over the selection the hash made. Whether the comparison has that
+ * element is not known yet (the kernel loads with the first drawing): the pick is made as a click would, the panel waits, and it is dropped, and the address
+ * with it, when the comparison does not know the element. Without a comparison on there is nothing to pick.
+ */
+function restoreRemovedFromHash() {
+  removedPick = null;
+  const removed = removedFromHash();
+  const id = perspectiveIdFromHash();
+  if (!removed || (id !== 'map' && id !== 'elements') || !compareTargetPlateau()) return;
+  removedPick = { reference: removed.reference, layer: removed.layer, selection: JSON.stringify(AppState.selection) };
+}
+
+/** The hash's selection, whole: an element or a file, or a link over the element (see `restoreLinkFromHash`), and a removed element of a comparison. */
 function applySelectionFromHashRef() {
   selectFromHashRef();
   restoreLinkFromHash();
+  restoreRemovedFromHash();
 }
 
 /** The element or manifest file the hash's `ref=` names, else nothing selected. */
@@ -3800,6 +3908,15 @@ function linkInRoute() {
   return (sel.focal ? currentPerspective === 'elements' && diagramTabShown() : currentPerspective === 'map') ? sel : null;
 }
 
+/** The removed element the address should carry: the pick of the page while it holds (the selection is what it was), when the comparison is on and has the element (or is still being read). */
+function removedPickForRoute() {
+  if (!removedPick || (currentPerspective !== 'map' && currentPerspective !== 'elements')) return null;
+  if (removedPick.selection !== JSON.stringify(AppState.selection)) return null;
+  const state = comparisonState();
+  if (!state || state.problems) return null;
+  return state.pending ? removedPick : removedInspectionOf(AppState.selection, currentPerspective);
+}
+
 /** The "#/perspective?ref=..." hash for the current perspective + selection — what the URL should read right now (UX review follow-up: the URL mirrors what's on screen). */
 function currentRouteHash() {
   const sel = elementSelection(); // a link selected in a diagram of Elements leaves the element, and so the URL, as it is
@@ -3830,6 +3947,14 @@ function currentRouteHash() {
   }
   const link = linkInRoute();
   if (link) params.push('link-from=' + encodeURIComponent(link.from), 'link-to=' + encodeURIComponent(link.to));
+  // run 0040: a removed element picked on the Map or in Elements. It means something only next to the comparison it was picked in, so the address names that too;
+  // the other choices of the comparison (Changes only, the wording-only toggle) are a choice of whoever looks, remembered per folder, and are not in the address.
+  const removed = removedPickForRoute();
+  if (removed) {
+    params.push('removed=' + encodeURIComponent(removed.reference));
+    if (removed.layer === 'technology') params.push('removed-layer=technology');
+    params.push('compare=' + encodeURIComponent(AppState.compareTo));
+  }
   return '/' + currentPerspective + (currentPerspective === 'library' ? '/' + libraryTab : '') + (params.length ? '?' + params.join('&') : '');
 }
 
@@ -5559,6 +5684,10 @@ function renderCompareToHtml() {
   html += '</select>';
   if (target) {
     html += '<button type="button" data-action="reload-baseline"' + busy + ' title="Read the folder of “' + escapeHtml(plateauTitle(target)) + '” again from the disk. It is only read here, never written.">Reload</button>';
+    // run 0040: what the diagrams draw of the comparison (all of it, or the changes with the boxes that place them), on the Map, in Elements and on the page of a view
+    html += '<span class="button-group changes-switch" role="group" aria-label="What the diagrams draw of the comparison">' +
+      '<button type="button" data-action="set-changes-only" data-value="0" aria-pressed="' + !AppState.changesOnly + '" title="Draw the whole plateau, with what changed marked">Everything</button>' +
+      '<button type="button" data-action="set-changes-only" data-value="1" aria-pressed="' + AppState.changesOnly + '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>';
   }
   return html + '</span>';
 }
@@ -5717,6 +5846,36 @@ function sortedForNav(records) {
     (a.reference < b.reference ? -1 : a.reference > b.reference ? 1 : 0));
 }
 
+/**
+ * The comparison the rows of a tree read while it is drawn (run 0040): one lookup for the whole tree, not one per row (the answer is cached, but its
+ * key is the whole model). Null with Compare to `Nothing`, and outside the drawing of a tree: a row then has no mark and is what it always was.
+ */
+let treeComparison = null;
+
+function comparisonForTrees() {
+  const state = comparisonState();
+  return state && state.records ? state : null;
+}
+
+/** The state a row of a tree says for an element: its own change, `contains-changes` for one that has a change below it, or null. A removed element is not in a tree. */
+function treeChangeOf(record) {
+  if (!treeComparison) return null;
+  const layer = record.layer || 'application';
+  const element = treeComparison.records.get(layer + '|' + record.reference);
+  if (element && CHANGE_STATES.includes(element.change)) return element.change;
+  return treeComparison.above[layer] && treeComparison.above[layer].has(record.reference) ? 'contains-changes' : null;
+}
+
+/** The mark of a row of a tree: a glyph (+ new, ~ changed, ± contains changes; the word is in the tooltip and in what a screen reader reads, see `treeChangeWord`). */
+function treeChangeMarkHtml(change) {
+  return change ? '<span class="tree-change" data-state="' + change + '" title="' + escapeHtml(treeChangeWord(change)) + '" aria-hidden="true">' + escapeHtml(CHANGE_GLYPHS[change]) + '</span>' : '';
+}
+
+/** What the mark of a row says in words. */
+function treeChangeWord(change) {
+  return change === 'contains-changes' ? 'Contains changes: something inside it is new, changed or removed' : CHANGE_WORDS[change].word.charAt(0).toUpperCase() + CHANGE_WORDS[change].word.slice(1) + ' since ' + (treeComparison ? plateauTitle(treeComparison.base) : 'the other plateau');
+}
+
 function renderTreeNodeHtml(record, level) {
   const hasChildren = Array.isArray(record.children) && record.children.length > 0;
   const key = recordKey(record);
@@ -5730,7 +5889,8 @@ function renderTreeNodeHtml(record, level) {
   const ref = escapeHtml(record.reference);
   const groupId = treeGroupId('tree-group-', record.layer || 'application', record.reference);
   const styled = styledStereotypesOf(stereotypesOfRecord(record)); // what the workspace styled: shown as badges, said in the label
-  const spoken = label + (styled.length ? ', ' + styled.join(', ') : '') + (modified ? ', modified' : '');
+  const change = treeChangeOf(record); // a comparison: the glyph after the name, and the word for a screen reader
+  const spoken = label + (styled.length ? ', ' + styled.join(', ') : '') + (modified ? ', modified' : '') + (change ? ', ' + CHANGE_WORDS[change].word : '');
 
   let html = '<div class="tree-node">';
   html += '<div class="tree-node-row' + (isActive ? ' active' : '') + '" role="treeitem" style="--level:' + level + '" aria-level="' + level + '" aria-selected="' + isActive + '"' +
@@ -5743,7 +5903,7 @@ function renderTreeNodeHtml(record, level) {
     html += '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
   }
   html += '<span class="tree-node-kind" title="' + escapeHtml(record.kind) + '">' + escapeHtml(kindAbbreviation(record.kind)) + '</span>';
-  html += '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' + stereotypeBadgesHtml(styled);
+  html += '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' + treeChangeMarkHtml(change) + stereotypeBadgesHtml(styled);
   if (modified) {
     html += '<span class="modified-dot" aria-hidden="true" title="This element has unsaved changes"></span>';
   }
@@ -5812,9 +5972,14 @@ function renderElementsNavHtml(showAddButton) {
   const note = facet
     ? '<div class="nav-facet-note">Greyed: nothing to draw through “' + escapeHtml(facet.name) + '”. <button type="button" data-action="clear-facet">Clear facet</button></div>'
     : '';
-  return note + renderDuplicateReferencesHtml() + renderUnreadManifestsHtml(false) +
-         renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
-         renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments, showAddButton);
+  treeComparison = comparisonForTrees();
+  try {
+    return note + renderDuplicateReferencesHtml() + renderUnreadManifestsHtml(false) +
+           renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
+           renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments, showAddButton);
+  } finally {
+    treeComparison = null;
+  }
 }
 
 /**
@@ -7197,7 +7362,8 @@ function inspectionRecordFor(sel) {
  */
 function renderInspectionHtml(onMap) {
   if (diagramMaximized) return null;
-  return inspectionPanelHtml(AppState.selection, onMap ? 'map' : 'elements');
+  // run 0040: with a comparison on, the panel also holds the list of the changes (a tab beside the selection, alone when nothing is selected)
+  return withChangesPanel(inspectionPanelHtml(AppState.selection, onMap ? 'map' : 'elements'));
 }
 
 /**
@@ -7227,6 +7393,7 @@ function renderRemovedInspectionHtml(picked, mode) {
     '<div class="inspection-head"><h3>Selected element</h3><button type="button" class="inspection-close" data-action="close-removed" aria-label="Close the panel" title="Close the panel">&times;</button></div>' +
     '<div class="inspection-name"><span>' + escapeHtml(record.name || record.id) + '</span><span class="stereotype-badge" style="' + escapeHtml(styleVarsText(stereotypeBadgeVarsOf('removed'))) + '">removed</span></div>' +
     '<p class="inspection-note">Removed: this element is only in “' + escapeHtml(plateauTitle(other)) + '”, the plateau this one is compared with. What you read is that plateau’s; it is not part of the plateau drawn, and nothing here is edited or saved.</p>' +
+    renderWhatChangedHtml(picked.layer, record.reference, true) +
     renderFieldRowHtml('Kind', escapeHtml(record.kind)) +
     renderFieldRowHtml('Layer', escapeHtml(picked.layer)) +
     renderElementPropertiesHtml(record) +
@@ -7260,6 +7427,7 @@ function inspectionPanelHtml(sel, mode) {
       ? '<p class="inspection-note">The map draws applications only.</p>'
       : '<p class="inspection-note" id="inspection-offmap" hidden>Not on the map right now (a pin, a hidden element or a folded box leaves it out).</p>';
   }
+  html += renderWhatChangedHtml(layer, record.reference, false); // a comparison: what differs from the other plateau, first: a long description must not push it out of sight
   html += renderFieldRowHtml('Kind', escapeHtml(record.kind));
   html += renderFieldRowHtml('Layer', escapeHtml(layer));
   html += renderElementPropertiesHtml(record);
@@ -7269,6 +7437,317 @@ function inspectionPanelHtml(sel, mode) {
       ' title="Leave this page for the element: select it in Elements, on the tab you left there">' + controlIconHtml(CONTROL_ICON_PATHS.elements) + '<span>Show in Elements</span></button>';
   }
   return html + '</div>';
+}
+
+// =====================================================================
+// The Changes panel and "What changed" (run 0040). They read `comparisonState()` (the kernel's table `changes`, its `counts`, the union `records`)
+// and nothing else: with Compare to `Nothing` none of this is on the page.
+// =====================================================================
+
+/** The kernel's natures (run 0036) in words. `description` alone is a change of wording. */
+const NATURE_WORDS = {
+  kind: 'kind', name: 'name', description: 'description', qualifiers: 'qualifiers', tags: 'tags', deployment: 'deployment',
+  'relationships-added': 'relationships added', 'relationships-removed': 'relationships removed', 'relationships-changed': 'relationships changed',
+  label: 'label'
+};
+
+/** What changed in a thing, in words: "name, relationships added"; "description (wording only)" when the description is all that changed. */
+function natureWordsText(natures) {
+  const list = Array.isArray(natures) ? natures : [];
+  if (list.length === 1 && list[0] === 'description') return 'description (wording only)';
+  return list.map((nature) => NATURE_WORDS[nature] || nature).join(', ');
+}
+
+/** The labels of the properties a row of the table can say before and after, in the order they are told. */
+const CHANGE_PROPERTY_LABELS = [['kind', 'Kind'], ['name', 'Name'], ['description', 'Description'], ['qualifiers', 'Qualifiers'], ['tags', 'Tags'], ['applications', 'Applications deployed'], ['uses', 'Uses'], ['label', 'Label']];
+
+/**
+ * A state as a chip: its glyph and its word, always both (never colour alone), in the look the workspace gave the state (the same pill as on the boxes).
+ * `count` (optional) goes between them: "+ 2 new".
+ */
+function changeChipHtml(state, count) {
+  return '<span class="stereotype-badge change-chip" data-state="' + state + '" style="' + escapeHtml(styleVarsText(stereotypeBadgeVarsOf(state))) + '">' +
+    '<span class="change-glyph" aria-hidden="true">' + escapeHtml(CHANGE_GLYPHS[state]) + '</span>' + (count === undefined ? '' : ' <span class="change-count">' + count + '</span>') + ' ' + escapeHtml(CHANGE_WORDS[state].word) + '</span>';
+}
+
+/** One value of a table row (a text, a list, a map of tags) as the panel shows it. */
+function changeValueHtml(value) {
+  if (Array.isArray(value)) return value.length ? value.map((entry) => '<span class="pill">' + escapeHtml(entry) + '</span>').join('') : '<span class="muted">none</span>';
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value).sort();
+    return keys.length ? keys.map((key) => '<span class="pill">' + escapeHtml(key + ': ' + value[key]) + '</span>').join('') : '<span class="muted">none</span>';
+  }
+  return value === undefined || value === null || value === '' ? '<span class="muted">none</span>' : '<span class="change-text">' + escapeHtml(value) + '</span>';
+}
+
+/** The properties that differ, before and after, each on two lines that say which is which (a word and a sign, so that neither relies on colour). */
+function renderChangeDiffsHtml(before, after) {
+  const was = before && typeof before === 'object' ? before : {};
+  const now = after && typeof after === 'object' ? after : {};
+  return CHANGE_PROPERTY_LABELS.filter(([key]) => key in was || key in now).map(([key, label]) =>
+    '<div class="change-diff" data-property="' + key + '"><div class="change-diff-label">' + escapeHtml(label) + '</div>' +
+    '<div class="change-before"><span class="change-side"><span aria-hidden="true">−</span> Before</span>' + changeValueHtml(was[key]) + '</div>' +
+    '<div class="change-after"><span class="change-side"><span aria-hidden="true">+</span> After</span>' + changeValueHtml(now[key]) + '</div></div>').join('');
+}
+
+/** The row of the table for a relationship (declared by `from`, to `destination`, with this label), or null. A pair whose label changed is one row, with the label of the plateau drawn. */
+function relationshipRowOf(state, layer, from, destination, label) {
+  const wanted = label === undefined || label === null ? '' : String(label);
+  return (state.changes || []).find((row) => row.thing === 'relationship' && row.layer === layer && row.reference === from && row.destination === destination && (row.label || '') === wanted) || null;
+}
+
+/** The text of a relationship of the table: who to, and what it says ("no label" when nothing). */
+function relationshipTextHtml(rel, withSource) {
+  const label = rel.label === undefined || rel.label === null || String(rel.label).trim() === '' ? '<span class="muted">no label</span>' : '“' + escapeHtml(rel.label) + '”';
+  return '<span class="change-rel-path">' + (withSource ? escapeHtml(rel.from) + ' ' : '') + '&rarr; ' + escapeHtml(rel.destination) + '</span> <span class="change-rel-label">' + label + '</span>';
+}
+
+/** One relationship that is new, changed or removed, as a line with its state; a changed one tells what it was and what it is. */
+function renderChangedRelationshipHtml(state, layer, rel, withSource) {
+  const row = rel.change === 'changed' ? relationshipRowOf(state, layer, rel.from, rel.destination, rel.label) : null;
+  return '<li class="change-rel" data-state="' + rel.change + '">' + changeChipHtml(rel.change) + ' ' + relationshipTextHtml(rel, withSource) +
+    (row ? '<div class="change-natures">Changed: ' + escapeHtml(natureWordsText(row.natures)) + '</div>' + renderChangeDiffsHtml(row.before, row.after) : '') + '</li>';
+}
+
+/** The relationships a union element declares that are new, changed or removed (a new or removed element declares all of its own as such). */
+function changedRelationshipsOf(state, layer, reference) {
+  const element = (state.layers[layer] || []).find((candidate) => candidate.reference === reference);
+  const order = { new: 0, changed: 1, removed: 2 };
+  return ((element && element.relationships) || []).map((rel, i) => [rel, i]).filter(([rel]) => CHANGE_STATES.includes(rel.change))
+    .sort((a, b) => order[a[0].change] - order[b[0].change] || a[1] - b[1]).map(([rel]) => rel);
+}
+
+/**
+ * The "What changed" block of the inspection of an element (a changed, new or removed one; '' for any other, and with no comparison): for a
+ * changed element the properties that differ with before and after, then its relationships added, removed and changed; for a new or a removed one,
+ * that the whole element is, and the relationships it declares. `removedPanel`: the read-only panel of a removed element, which says it already.
+ */
+function renderWhatChangedHtml(layer, reference, removedPanel) {
+  const state = comparisonState();
+  if (!state || !state.records) return '';
+  const element = state.records.get(layer + '|' + reference);
+  if (!element || !CHANGE_STATES.includes(element.change)) return '';
+  const other = plateauTitle(state.base);
+  let html = '<section class="what-changed" aria-label="What changed" data-state="' + element.change + '"><h4 class="inspection-subhead">What changed ' + changeChipHtml(element.change) + '</h4>';
+  if (element.change === 'new') {
+    html += '<p class="inspection-note">Whole element is new: it is not in “' + escapeHtml(other) + '”. Its properties are the ones below.</p>';
+  } else if (element.change === 'removed') {
+    html += '<p class="inspection-note">Whole element is removed' + (removedPanel ? '. Its properties and its relationships are the ones below.' : ': it is only in “' + escapeHtml(other) + '”.') + '</p>';
+  } else {
+    const row = (state.changes || []).find((candidate) => candidate.thing === 'element' && candidate.layer === layer && candidate.reference === reference);
+    html += '<p class="change-natures">Changed: ' + escapeHtml(natureWordsText(element.natures)) + '. Compared with “' + escapeHtml(other) + '”.</p>';
+    if (row) html += renderChangeDiffsHtml(row.before, row.after);
+  }
+  const rels = removedPanel ? [] : changedRelationshipsOf(state, layer, reference); // the panel of a removed element lists them already
+  if (rels.length) {
+    html += '<h5 class="inspection-subhead">Relationships <span class="field-count">' + rels.length + '</span></h5><ul class="change-rels">' +
+      rels.map((rel) => renderChangedRelationshipHtml(state, layer, rel, false)).join('') + '</ul>';
+  }
+  return html + '</section>';
+}
+
+/** The state of a link, from the relationships it stands for: all new is new, all removed is removed, none changed is none, any other mixture is changed (the kernel's rule for a grouped link). */
+function stateOfRelationships(rels) {
+  const given = rels.filter((rel) => rel.change !== undefined);
+  if (!given.length) return 'none';
+  const all = (wanted) => rels.every((rel) => (rel.change || 'none') === wanted);
+  return all('new') ? 'new' : all('removed') ? 'removed' : all('none') ? 'none' : 'changed';
+}
+
+/** For a selected link: its own state, and what each relationship it groups says of itself (the state of each is on its line, see `renderRelationshipInspectionHtml`). */
+function renderLinkChangeHtml(rels) {
+  if (!comparisonState() || !comparisonState().records) return '';
+  const state = stateOfRelationships(rels);
+  if (state === 'none') return '';
+  const plural = rels.length > 1;
+  const nouns = {
+    new: plural ? 'All of the relationships it groups are new.' : 'The relationship it stands for is new.',
+    removed: plural ? 'All of the relationships it groups are removed.' : 'The relationship it stands for is removed.',
+    changed: plural && !rels.every((rel) => rel.change === 'changed') ? 'The relationships it groups are not all the same: some are new, changed or removed.' : plural ? 'All of the relationships it groups changed.' : 'The relationship it stands for changed.'
+  };
+  return '<section class="what-changed" aria-label="What changed" data-state="' + state + '"><h4 class="inspection-subhead">What changed ' + changeChipHtml(state) + '</h4>' +
+    '<p class="inspection-note">' + nouns[state] + '</p></section>';
+}
+
+/** The detail of a changed relationship of a link: what it was and what it is, from the table. '' when it did not change. */
+function renderRelationshipChangeHtml(rel, layer) {
+  const state = comparisonState();
+  if (!state || !state.records || !CHANGE_STATES.includes(rel.change)) return '';
+  const row = rel.change === 'changed' ? relationshipRowOf(state, layer, rel.from, rel.destination, rel.label) : null;
+  return '<div class="rel-change" data-state="' + rel.change + '">' + changeChipHtml(rel.change) +
+    (row ? ' <span class="change-natures">Changed: ' + escapeHtml(natureWordsText(row.natures)) + '</span>' + renderChangeDiffsHtml(row.before, row.after) : '') + '</div>';
+}
+
+// ---- The list ----
+
+const CHANGE_STATE_ORDER = { new: 0, changed: 1, removed: 2 };
+
+/** The rows of the table in the order a reviewer reads them: what is new, what changed, what was removed; inside a state, the kernel's order (by reference). */
+function sortedChangeRows(rows) {
+  return rows.map((row, i) => [row, i]).sort((a, b) => CHANGE_STATE_ORDER[a[0].change] - CHANGE_STATE_ORDER[b[0].change] || a[1] - b[1]).map(([row]) => row);
+}
+
+/** One row of the list: a button that selects the thing (state chip, name and reference, what changed in it). `selected`: it is the selection of the page. */
+function renderChangeRowHtml(row, selected) {
+  const element = row.thing === 'element';
+  const attributes = ' data-action="select-change" data-thing="' + row.thing + '" data-change="' + row.change + '" data-layer="' + escapeHtml(row.layer) + '" data-ref="' + escapeHtml(row.reference) + '"' +
+    (element ? '' : ' data-to="' + escapeHtml(row.destination) + '" data-label="' + escapeHtml(row.label || '') + '"');
+  const layer = row.layer === 'technology' ? ' <span class="change-layer">technology</span>' : '';
+  let main;
+  let natures = '';
+  if (element) {
+    const name = row.name || String(row.reference).split('.').pop();
+    main = '<span class="change-name">' + escapeHtml(name) + '</span> <span class="change-ref">' + escapeHtml(row.reference) + '</span>' + layer;
+    if (row.change === 'changed') natures = natureWordsText(row.natures);
+  } else {
+    main = relationshipTextHtml({ from: row.reference, destination: row.destination, label: row.label }, true) + layer;
+    if (row.change === 'changed') natures = natureWordsText(row.natures) + (row.before && 'label' in row.before ? ': “' + (row.before.label || '') + '” → “' + (row.after.label || '') + '”' : '');
+  }
+  return '<li><button type="button" class="change-row' + (selected ? ' selected' : '') + '"' + attributes + (selected ? ' aria-current="true"' : '') + '>' +
+    changeChipHtml(row.change) + '<span class="change-main">' + main + '</span>' + (natures ? '<span class="change-natures">' + escapeHtml(natures) + '</span>' : '') + '</button></li>';
+}
+
+/** Is this row the selection of the page: the element selected, the removed box picked, or the link selected. */
+function changeRowIsSelected(row, pick) {
+  const sel = AppState.selection;
+  if (row.thing === 'relationship') return sel.kind === 'link' && sel.from === row.reference && sel.to === row.destination;
+  if (row.change === 'removed') return !!pick && pick.reference === row.reference && pick.layer === row.layer;
+  const element = elementSelection();
+  return element.kind === 'element' && element.key === row.reference && layerOfReference(element.key, element.layer) === row.layer;
+}
+
+/**
+ * The Changes panel: what the comparison found, in numbers and in two lists (Elements, Relationships), with the toggle that sets the wording-only
+ * changes aside. A click on a row selects the thing (see `selectChange`). `state` is `comparisonState()` of a comparison that can be drawn.
+ */
+function renderChangesPanelHtml(state) {
+  const pick = removedInspectionOf(AppState.selection, mapIsShown() ? 'map' : 'elements');
+  const rows = sortedChangeRows(state.changes || []);
+  const group = (thing, title) => {
+    const list = rows.filter((row) => row.thing === thing);
+    return '<h4 class="inspection-subhead">' + title + ' <span class="field-count">' + list.length + '</span></h4>' +
+      (list.length ? '<ul class="change-list" aria-label="' + title + ' that differ">' + list.map((row) => renderChangeRowHtml(row, changeRowIsSelected(row, pick))).join('') + '</ul>'
+        : '<p class="muted change-none">None.</p>');
+  };
+  const counts = state.counts;
+  const countRow = (title, c) => '<div class="changes-count-row"><span class="changes-count-label">' + title + '</span>' +
+    CHANGE_STATES.map((name) => changeChipHtml(name, c[name])).join('') + '</div>';
+  const wording = AppState.hideWording
+    ? (state.wordingHidden ? '<p class="changes-note" data-wording="hidden">' + state.wordingHidden + ' wording-only ' + (state.wordingHidden === 1 ? 'change' : 'changes') + ' hidden.</p>' : '')
+    : (state.wordingOnly ? '<p class="changes-note" data-wording="shown">' + state.wordingOnly + ' of the changed elements ' + (state.wordingOnly === 1 ? 'is a change' : 'are changes') + ' of wording only (the description is all that changed).</p>' : '');
+  return '<div class="changes-panel" data-changes-panel>' +
+    '<div class="inspection-head"><h3>Changes</h3></div>' +
+    '<p class="changes-compared">' + escapeHtml(plateauTitle(state.target)) + ' compared with ' + escapeHtml(plateauTitle(state.base)) + '.</p>' +
+    '<div class="changes-counts" role="group" aria-label="Counts">' + countRow('Elements', counts.elements) + countRow('Relationships', counts.relationships) + '</div>' +
+    '<label class="changes-toggle" title="A change of the description alone is wording, not structure: leave it out of the drawing, the list and the counts"><input type="checkbox" data-action="toggle-hide-wording"' + (AppState.hideWording ? ' checked' : '') + '> Hide wording-only changes</label>' +
+    wording +
+    (rows.length ? '' : '<p class="inspection-note">Nothing differs between the two plateaus.</p>') +
+    group('element', 'Elements') + group('relationship', 'Relationships') + '</div>';
+}
+
+/** The Changes tab while the comparison is still being read (the kernel loads with the first drawing): the panel is there, the list follows. */
+function renderChangesPendingHtml() {
+  return '<div class="changes-panel" data-changes-panel data-pending><div class="inspection-head"><h3>Changes</h3></div><p class="muted">Reading the comparison&hellip;</p></div>';
+}
+
+// ---- The right-hand panel with a comparison on: Selected | Changes ----
+
+/** The Changes tab was asked for while the selection of the page was this one (`rightPanelStamp`); any other selection ends it, as for `removedPick`. */
+let changesTabPick = null;
+/** The panel was drawn while the kernel was not loaded: the first drawing fills it (`refreshRightPanel`). */
+let rightPanelPending = false;
+
+/** The selection of the page, whole: what the Changes tab is a pick over. */
+function rightPanelStamp() {
+  return JSON.stringify([AppState.selection, removedPick ? [removedPick.reference, removedPick.layer] : null]);
+}
+
+/** A comparison is on and can be listed (or is being read): the Map and Elements keep a right-hand panel for it. */
+function comparisonPanelOn() {
+  const state = comparisonState();
+  return !!state && !state.problems && (currentPerspective === 'map' || currentPerspective === 'elements');
+}
+
+/**
+ * The inner HTML of the right-hand panel when a comparison is on: the inspection (`selectedHtml`, null when nothing is selected) and the Changes panel
+ * as two tabs; the Changes panel alone when nothing is selected. Without a comparison it is `selectedHtml` itself.
+ */
+function withChangesPanel(selectedHtml) {
+  const state = comparisonState();
+  rightPanelPending = false;
+  if (!state || state.problems) return selectedHtml;
+  rightPanelPending = !!state.pending;
+  const changes = state.pending ? renderChangesPendingHtml() : renderChangesPanelHtml(state);
+  if (selectedHtml === null) return changes;
+  const showChanges = changesTabPick !== null && changesTabPick.stamp === rightPanelStamp();
+  const tab = (id, label, on) => '<button type="button" data-action="set-right-tab" data-tab="' + id + '" aria-pressed="' + on + '">' + label + '</button>';
+  return '<div class="right-tabs button-group" role="group" aria-label="Right panel">' + tab('selected', 'Selected', !showChanges) +
+    tab('changes', 'Changes' + (state.pending ? '' : ' <span class="field-count">' + state.changes.length + '</span>'), showChanges) + '</div>' + (showChanges ? changes : selectedHtml);
+}
+
+/** After a drawing (the kernel is loaded now), or when the selection dropped by itself: the panel is written again from the state. */
+function refreshRightPanel() {
+  if (currentPerspective === 'library') return;
+  const panel = document.getElementById('panel-right');
+  if (!panel) return;
+  const html = renderInspectionHtml(mapIsShown());
+  if (html !== null) panel.innerHTML = html;
+}
+
+/** The Selected | Changes tabs: the Changes tab shows the list while the selection is what it is now. */
+function setRightTab(tab) {
+  changesTabPick = tab === 'changes' ? { stamp: rightPanelStamp() } : null;
+  scrollChangesToSelection = tab === 'changes';
+  render();
+}
+
+/** The Changes tab was just opened: the row of the selection is brought into view in the list (a long list opens at its top otherwise). */
+let scrollChangesToSelection = false;
+
+/** The map must draw the element for a click on a row to show it: what encloses it is opened (the choices of the user, a pin or a hidden element, stay). */
+function openOnMap(reference) {
+  const parts = String(reference).split('.');
+  const opened = currentMapOpened();
+  for (let i = 1; i < parts.length; i++) opened.add(parts.slice(0, i).join('.'));
+}
+
+/**
+ * A click on a row of the list selects the thing as a click on its box or its link does, and shows it: on the Map its enclosing boxes are opened and the
+ * view is centred on it (Center); a removed element opens the read-only panel of run 0039; a relationship selects its link.
+ * `row`: `{ thing, change, layer, ref, to }` (the attributes of the button).
+ */
+function selectChange(row) {
+  if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4: a selection is never the draft's file
+  if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
+  changesTabPick = null; // the new selection is what the panel shows; the Changes tab is one click away
+  const onMap = mapIsShown();
+  if (onMap) diagramScale = 'auto'; // Center: the thing is put in the middle
+  const layer = row.layer || 'application';
+  const onMapLayer = onMap && layer === 'application';
+  if (row.thing === 'element' && row.change === 'removed') {
+    if (onMapLayer) openOnMap(row.ref);
+    if (onMap) AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    removedPick = { reference: row.ref, layer, selection: JSON.stringify(AppState.selection) };
+    render();
+    return;
+  }
+  removedPick = null;
+  if (row.thing === 'relationship' && onMapLayer) {
+    openOnMap(row.ref);
+    openOnMap(row.to);
+    AppState.selection = linkSelectionFor(row.ref, row.to, layer, null, null);
+    revealLinkAfterDrawing = { nth: null };
+    diagramLinkStop = null;
+    render();
+    return;
+  }
+  if (onMapLayer) openOnMap(row.ref);
+  AppState.selection = { kind: 'element', key: row.ref, layer, mode: 'view' };
+  expandAncestorsOf(row.ref, layer); // the trees show it
+  scrollNavToSelection = true;
+  // in Elements a relationship is selected by the element that declares it, and its link when that element is drawn as a diagram
+  if (row.thing === 'relationship' && diagramTabShown()) AppState.selection = linkSelectionFor(row.ref, row.to, layer, null, row.ref);
+  render();
 }
 
 /** After each drawing of the Map: say, in the panel, when the selected element is not on the map as it is drawn now. */
@@ -7398,6 +7877,7 @@ function renderRelationshipInspectionHtml(rel, layer, marked) {
   return '<div class="inspection-rel' + (marked ? ' inspection-rel-marked' : '') + '"><div class="inspection-rel-label">' + label +
     (marked ? '<span class="inspection-rel-mark">Clicked link</span>' : '') + '</div>' +
     '<div class="inspection-rel-path">' + renderDeclaringElementHtml(rel.from, layer) + ' &rarr; ' + escapeHtml(rel.destination) + '</div>' +
+    renderRelationshipChangeHtml(rel, layer) +
     renderFieldRowHtml('Qualifiers', renderQualifierPillsHtml(rel.qualifiers)) +
     renderFieldRowHtml('Tags', renderTagListHtml(rel.tags)) +
     (rel.unresolved ? '<p class="inspection-note">There is no element &ldquo;' + escapeHtml(rel.destination) + '&rdquo;: the relationship points at nothing.</p>' : '') +
@@ -7417,6 +7897,7 @@ function renderLinkInspectionHtml(sel) {
     if (end.collapsed) html += '<p class="inspection-note">&ldquo;' + escapeHtml(end.title) + '&rdquo; is folded: it stands for ' + end.hidden + ' hidden element' + (end.hidden === 1 ? '' : 's') + '. Open it to see their relationships one by one.</p>';
   }
   const rels = relationshipsOfPair(pair);
+  html += renderLinkChangeHtml(rels); // a comparison: the state of the link, from the relationships it groups
   // several links between the same two boxes: the relationships of the one that was clicked are marked (when they can be told from the others)
   const clickedKeys = new Set(Array.isArray(sel.via) ? sel.via : []);
   const marked = pair.links.length > 1 ? rels.map((rel) => clickedKeys.has(relationshipKeyOf(rel))) : rels.map(() => false);
@@ -7435,9 +7916,10 @@ function renderLinkInspectionHtml(sel) {
 
 /** After a drawing, with a link selected: the panel says what this drawing drew (a facet may have removed some relationships). */
 function refreshInspection() {
+  const onPage = currentPerspective === 'library';
+  if (!onPage && comparisonPanelOn()) { refreshRightPanel(); return; } // run 0040: the panel also holds the Changes tab: it is written again whole
   const holder = document.querySelector('.inspection');
   if (!holder) return; // nothing on screen to refresh (maximized)
-  const onPage = currentPerspective === 'library';
   const html = diagramMaximized ? null : inspectionPanelHtml(diagramSelection(), onPage ? 'library' : mapIsShown() ? 'map' : 'elements');
   if (html !== null) holder.outerHTML = html;
   else if (onPage) { const section = document.querySelector('.library-selection'); if (section) section.remove(); } // the panel of the page stays: only its selection goes
@@ -7486,7 +7968,7 @@ function renderElementsPerspectiveHtml() {
   return {
     left: diagramMaximized && diagramTabShown() ? null : renderLeftPanelWrapperHtml(renderElementsNavHtml(true)),
     center: renderCenterPanelHtml(),
-    right: diagramTabShown() ? renderInspectionHtml(false) : null, // Details and the forms say the same, or are being edited
+    right: diagramTabShown() || comparisonPanelOn() ? renderInspectionHtml(false) : null, // Details and the forms say the same, or are being edited; a comparison keeps the Changes panel
     bottom: null
   };
 }
@@ -7909,12 +8391,47 @@ function unionLayersOf(union) {
 
 let comparisonCache = null; // { key, value }: the last answer of `compare`, kept while the two models are what they were
 
+/** The references above a change, per layer: every proper prefix of the reference of a new, changed or removed element (the kernel's `contains-changes` rule). */
+function referencesAboveChanges(layers) {
+  const above = { application: new Set(), technology: new Set() };
+  for (const layer of Object.keys(above)) {
+    for (const element of layers[layer] || []) {
+      if (!CHANGE_STATES.includes(element.change)) continue;
+      const parts = String(element.reference).split('.');
+      for (let i = 1; i < parts.length; i++) above[layer].add(parts.slice(0, i).join('.'));
+    }
+  }
+  return above;
+}
+
+/**
+ * The comparison with the wording-only changes set aside (run 0040): an element whose natures are exactly `description` is given to the kernel as
+ * unchanged (`change: none`, no natures), so it is not marked in the drawing, it keeps no `contains-changes` marker above it that only it earned,
+ * and `only_changes` does not keep it; the list drops its row and the counts say how many were set aside. The override is on the *input* of `compute`,
+ * so the kernel computes its markers and its filter from it. `records` follows (what the panel reads of an element), `counts.relationships` is untouched.
+ */
+function setWordingAside(value) {
+  const wording = (element) => element.change === 'changed' && element.wording_only === true;
+  const aside = (element) => { const copy = Object.assign({}, element, { change: 'none' }); delete copy.natures; delete copy.wording_only; return copy; };
+  const layers = {};
+  for (const layer of Object.keys(value.layers)) layers[layer] = value.layers[layer].map((element) => (wording(element) ? aside(element) : element));
+  const records = new Map(value.records);
+  for (const [key, element] of value.records) if (wording(element)) records.set(key, aside(element));
+  const { counts: kernelCounts, changes: kernelChanges } = value.answer;
+  const n = kernelCounts.elements.wording_only;
+  const counts = { elements: Object.assign({}, kernelCounts.elements, { changed: kernelCounts.elements.changed - n, wording_only: 0 }), relationships: kernelCounts.relationships };
+  return { layers, records, counts, changes: kernelChanges.filter((row) => !(row.thing === 'element' && row.wording_only === true)), wordingHidden: n };
+}
+
 /**
  * The comparison of the plateau drawn with the baseline, as the page needs it now:
  *   null                nothing is compared (Compare to is Nothing, or the baseline is not read yet);
  *   { pending: true }   a comparison is asked for and the kernel is not loaded yet (the drawing loads it, then asks again);
  *   { problems }        it cannot be drawn: the baseline declares a reference twice, or the kernel refused the pair (the messages);
- *   { base, target, layers, records, counts, changes }   the answer, `layers` being the union of each layer ready for `compute`.
+ *   { base, target, layers, records, counts, changes, above, wordingOnly, wordingHidden }   the answer, `layers` being the union of each layer ready for `compute`.
+ * `counts` and `changes` are the kernel's table (run 0036); with `AppState.hideWording` the wording-only changes are out of `layers`, `records`, `counts`
+ * and `changes` (`wordingHidden` says how many), else they are all in and `wordingOnly` says how many of the changed elements they are. `above`: the
+ * references (per layer) that have a change below them.
  */
 function comparisonState() {
   const target = compareTargetPlateau();
@@ -7931,7 +8448,15 @@ function comparisonState() {
   }
   const value = comparisonCache.value;
   if (value.error) return { problems: ['The comparison with “' + plateauTitle(target) + '” could not be made: ' + value.error] };
-  return { base: AppState.baseline.plateau, target: AppState.plateau, layers: value.layers, records: value.records, counts: value.answer.counts, changes: value.answer.changes };
+  if (!value.shown) {
+    const full = { layers: value.layers, records: value.records, counts: value.answer.counts, changes: value.answer.changes, wordingHidden: 0 };
+    value.shown = { full: Object.assign(full, { above: referencesAboveChanges(full.layers), wordingOnly: value.answer.counts.elements.wording_only }) };
+  }
+  if (AppState.hideWording && !value.shown.quiet) {
+    const quiet = setWordingAside(value);
+    value.shown.quiet = Object.assign(quiet, { above: referencesAboveChanges(quiet.layers), wordingOnly: value.answer.counts.elements.wording_only });
+  }
+  return Object.assign({ base: AppState.baseline.plateau, target: AppState.plateau }, value.shown[AppState.hideWording ? 'quiet' : 'full']);
 }
 
 /** Whether the references of the union (the elements of both plateaus) include this one in the application layer: the map can open a removed box. */
@@ -7983,6 +8508,8 @@ function buildKernelInput(viewpoint, reference, options) {
     input.hidden = Array.from(opts.hidden || []);
   }
   if (opts.facet) input.facet = toKernelFacet(opts.facet);
+  // run 0040: Changes only, for every host (the Map, the diagrams of Elements, the page of a view): the kernel keeps what changed and, as context, what places it
+  if (comparison && comparison.layers && AppState.changesOnly) input.only_changes = true;
   const collapsed = Array.from(opts.collapsed || []); // a Set in the UI, an array in tests
   if (collapsed.length) input.collapsed = collapsed;
   const expanded = Array.from(opts.expanded || []);
@@ -8465,7 +8992,7 @@ function stereotypeBadgesHtml(names) {
 }
 
 /** What a diagram box says about its element. `show` (qualifiers) puts the qualifiers of the element in the line of its kind, as the command line does. */
-function diagramItemText(item, show, layer) {
+function diagramItemText(item, show, layer, focalReference) {
   if (item.ghost) {
     return {
       title: item.reference,
@@ -8488,7 +9015,11 @@ function diagramItemText(item, show, layer) {
   const description = record && record.description ? String(record.description).replace(/\s+/g, ' ').trim() : '';
   // what the kernel says the box is drawn with, and what the workspace styled of it
   const stereotypes = Array.isArray(item.stereotypes) ? item.stereotypes : [];
-  const state = changeStateOfItem(item); // a comparison: the glyph in the title, the default look, the word as a badge
+  // a comparison: the glyph in the title, the default look, the word as a badge. A box kept only to place the changes (`only_changes`, run 0040) says nothing of itself: it is faded.
+  // The focal box is the exception: it is the element the diagram is about, always kept, never faded, and drawn as it is without the filter (with its `contains-changes` marker)
+  const focal = !!focalReference && item.reference === focalReference && item.id === item.reference;
+  const context = item.context === true && !focal;
+  const state = context ? null : changeStateOfItem(item);
   const look = stereotypeLookOf(stereotypes, state);
   const name = record ? (record.name || record.id) : item.reference;
   const says = state === null ? '' : '\n' + CHANGE_WORDS[state].word.charAt(0).toUpperCase() + CHANGE_WORDS[state].word.slice(1) + ': ' + (
@@ -8505,7 +9036,8 @@ function diagramItemText(item, show, layer) {
     sub: (record ? '[' + record.kind + (show && show.qualifiers && qualifiers.length ? ': ' + qualifiers.join(', ') : '') + ']' : '') + hidden,
     description,
     tooltip: item.reference + (qualifiers.length ? ' [' + qualifiers.join(', ') + ']' : '') + (record && record.description ? ' — ' + record.description : '') +
-      (look.styled.length ? '\nStereotypes: ' + stereotypes.join(', ') : '') + says
+      (look.styled.length ? '\nStereotypes: ' + stereotypes.join(', ') : '') + says + (context ? '\nContext: shown to place the changes around it; it did not change itself.' : ''),
+    context
   };
 }
 
@@ -8542,11 +9074,18 @@ function tellRemovedItems(result, comparison, layer) {
 }
 
 /** How many boxes and links of each state a drawing shows (what the key tells next to each state): `{ new: { boxes, links }, ... }`; the marker has no link. */
-function comparisonCountsOf(drawn) {
+function comparisonCountsOf(drawn, focalReference) {
   const counts = {};
   for (const state of ['new', 'changed', 'removed', 'contains-changes']) counts[state] = { boxes: 0, links: 0 };
-  for (const item of drawn.items) { const state = changeStateOfItem(item); if (state) counts[state].boxes++; }
+  let context = 0;
+  for (const item of drawn.items) {
+    // Changes only (run 0040): a box kept only to place the changes is faded and has no state (the focal box is never faded and keeps its state: it is not context)
+    if (item.context === true && !item.ghost && !(item.reference === focalReference && item.id === item.reference)) { context++; continue; }
+    const state = changeStateOfItem(item);
+    if (state) counts[state].boxes++;
+  }
   for (const link of drawn.links) if (!link.secondary && CHANGE_STATES.includes(link.change)) counts[link.change].links++;
+  if (context) counts.context = { boxes: context }; // only when there is some: a drawing that keeps everything has none
   return counts;
 }
 
@@ -8909,7 +9448,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   for (const box of boxes.sort((a, b) => a.depth - b.depth)) {
     const item = itemById.get(box.node.id);
     if (!item) continue;
-    const text = diagramItemText(item, show, options && options.itemLayer);
+    const text = diagramItemText(item, show, options && options.itemLayer, focalReference);
     const ownFill = parseCssColor(text.look.vars['--st-fill']);
     const behind = ownFill && ownFill.a !== 0 ? ownFill : (fillBehind.get(box.parentId) || null);
     fillBehind.set(box.node.id, behind);
@@ -8928,7 +9467,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       : item.removed
         ? ' data-action="select-removed" data-ref="' + escapeHtml(item.reference) + '" data-layer="' + escapeHtml(item.removed.layer) + '"'
         : ' data-action="goto-element" data-ref="' + escapeHtml(item.reference) + '"' + layerAttribute;
-    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="' + (item.ghost || item.id === stopId ? '0' : '-1') + '" role="' + (inert ? 'img' : 'link') + '" aria-label="' + escapeHtml(text.name + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
+    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="' + (item.ghost || item.id === stopId ? '0' : '-1') + '" role="' + (inert ? 'img' : 'link') + '" aria-label="' + escapeHtml(text.name + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '') + (text.context ? ', context' : '')) + '"';
     if (box.compound) {
       // Close is offered when it changes something: the user opened this box, and nothing pinned inside it keeps it open
       // (the kernel opens what encloses a pin), nor the focal element (a box around it cannot be folded)
@@ -8938,7 +9477,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       const lookStyle = overFill ? ' style="' + escapeHtml(styleVarsText(Object.assign({}, text.look.vars, { '--ov-text': overFill }))) + '"' : look.style;
       const badgeRow = text.badges.length ? diagramBadgeRow(text.badges, Math.floor((w - 48) / 2)) : null; // right-aligned in the header
       const groupRx = text.look.rx === null ? 8 : text.look.rx;
-      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + look.classes + (text.state ? ' dg-chg-' + text.state : '') + (overFill ? ' dg-over-fill' : '') + '"' + lookStyle + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
+      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + (text.context ? ' dg-context' : '') + look.classes + (text.state ? ' dg-chg-' + text.state : '') + (overFill ? ' dg-over-fill' : '') + '"' + lookStyle + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
         '<rect class="dg-group" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + groupRx + '"/>' +
         (text.look.vars['--st-tint'] ? '<rect class="dg-tint" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + groupRx + '"/>' : '') +
         '<rect class="dg-header" x="' + x + '" y="' + y + '" width="' + w + '" height="36"/>' +
@@ -8955,7 +9494,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
         '<text class="' + cls + '" x="' + (x + w / 2) + '" y="' + (y + ys[i]) + '" text-anchor="middle">' + (html ? html(line) : escapeHtml(line)) + '</text>').join('');
       const look = diagramLookAttributes(text.look);
       const rx = text.look.rx === null ? 6 : text.look.rx;
-      leaves += '<g class="dg-node dg-leaf' + (isFocal ? ' dg-focal' : '') + (item.ghost ? ' dg-ghost' : '') + (folded ? ' dg-folded' : '') + look.classes + (text.state ? ' dg-chg-' + text.state : '') + '"' + look.style + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
+      leaves += '<g class="dg-node dg-leaf' + (isFocal ? ' dg-focal' : '') + (text.context ? ' dg-context' : '') + (item.ghost ? ' dg-ghost' : '') + (folded ? ' dg-folded' : '') + look.classes + (text.state ? ' dg-chg-' + text.state : '') + '"' + look.style + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
         (folded ? '<rect class="dg-box dg-stack" x="' + (x + 5) + '" y="' + (y + 5) + '" width="' + w + '" height="' + h + '" rx="' + rx + '"/>' : '') +
         '<rect class="dg-box" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + rx + '"/>' +
         (text.look.vars['--st-tint'] ? '<rect class="dg-tint" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + rx + '"/>' : '') +
@@ -9182,6 +9721,11 @@ function diagramComparisonLegendHtml(comparison, counts) {
     return '<span class="dg-legend-state" data-state="' + state + '">' + box + link + '<b class="dg-glyph">' + escapeHtml(CHANGE_GLYPHS[state]) + '</b> ' +
       escapeHtml(CHANGE_WORDS[state].word) + ' <span class="dg-legend-how">' + escapeHtml(how[state]) + '</span>' + count + '</span>';
   });
+  // Changes only: the boxes kept to place the changes are faded and say no state; the key says so, with a sample drawn faded as they are
+  if (counts && counts.context) {
+    const box = '<svg width="28" height="16" aria-hidden="true"><g class="dg-node dg-context"><rect class="dg-box" x="2" y="2" width="24" height="12" rx="3"/></g></svg>';
+    entries.push('<span class="dg-legend-state" data-state="context">' + box + 'context <span class="dg-legend-how">faded: shown to place the changes</span> <span class="dg-legend-count">' + noun(counts.context.boxes, 'box', 'boxes') + '</span></span>');
+  }
   return ' <span class="dg-legend-compare" role="group" aria-label="Comparison">' +
     '<span class="dg-legend-title">' + escapeHtml(plateauTitle(comparison.target)) + ' compared with ' + escapeHtml(plateauTitle(comparison.base)) + ':</span> ' +
     entries.join(' ') +
@@ -9492,7 +10036,7 @@ function showDiagramScene(scene) {
         AppState.selection = { kind: 'none', key: null, mode: 'view' };
         syncHashFromState();
         document.querySelectorAll('.element-header-subject, [data-action="open-as-diagram"]').forEach((el) => el.remove());
-        removeInspectionPanel();
+        if (comparisonPanelOn()) refreshRightPanel(); else removeInspectionPanel(); // a comparison keeps its Changes panel
       }
       mapSelectionCheck = false;
     }
@@ -9510,6 +10054,7 @@ function showDiagramScene(scene) {
   applyDiagramScale();
   diagramShownView = scene.viewKey;
   reconcileLinkSelection();
+  if (rightPanelPending && comparisonPanelOn() && !(comparisonState() || {}).pending) refreshRightPanel(); // the kernel is loaded now: the list of the changes fills the panel
   markMapSelection();
   markLinkSelection();
   syncLinkTabStop(canvas);
@@ -9746,6 +10291,7 @@ function diagramExportCss() {
     '.dg-edge.dg-chg-removed{stroke:' + c('--chg-removed') + ';stroke-width:1.6;stroke-dasharray:7 4}' +
     '.dg-arrowhead.dg-chg-new{fill:' + c('--chg-new') + '}.dg-arrowhead.dg-chg-changed{fill:' + c('--chg-changed') + '}.dg-arrowhead.dg-chg-removed{fill:' + c('--chg-removed') + '}' +
     '.dg-arrowhead{fill:' + c('--muted') + '}' +
+    '.dg-node.dg-context{opacity:.55}' +
     '.dg-label{fill:' + c('--fg') + ';font:11px sans-serif;paint-order:stroke;stroke:' + c('--panel-bg') + ';stroke-width:4px;stroke-linejoin:round}' +
     '.dg-header,.dg-hit,.dg-hit-edge{fill:none;stroke:none}.dg-fold{display:none}';
 }
@@ -10158,7 +10704,7 @@ function mountDiagramIfNeeded() {
       // the styled stereotypes of the boxes on screen, each once, in the order they are met
       const drawnStereotypes = [];
       for (const item of drawn.items) for (const name of (item.ghost || !Array.isArray(item.stereotypes) ? [] : item.stereotypes)) if (!drawnStereotypes.includes(name)) drawnStereotypes.push(name);
-      const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes) + (comparison && comparison.layers ? diagramComparisonLegendHtml(comparison, comparisonCountsOf(shownResult)) : '');
+      const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes) + (comparison && comparison.layers ? diagramComparisonLegendHtml(comparison, comparisonCountsOf(shownResult, isMap ? null : reference)) : '');
       let scene;
       if (!elk) {
         scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer, readonly), status, '', { width: 0, height: 0 }, null);
@@ -10244,9 +10790,14 @@ function renderMapScopeHtml() {
   navTabStopGiven = false;
   let html = '<div class="nav-section map-scope">' + renderNavHeaderHtml('Applications', renderNavToolsHtml('application')) +
              '<div class="map-scope-hint" id="map-scope-hint">Pin (P) keeps only what touches an element. The eye (H) leaves it out. Greyed rows are not on the map.</div>';
-  html += roots.length
-    ? '<div role="tree" aria-label="Application elements of the map" aria-describedby="map-scope-hint">' + sortedForNav(roots).map((r) => renderMapScopeNodeHtml(r, 1)).join('') + '</div>'
-    : '<div class="tree-empty">No elements.</div>';
+  treeComparison = comparisonForTrees();
+  try {
+    html += roots.length
+      ? '<div role="tree" aria-label="Application elements of the map" aria-describedby="map-scope-hint">' + sortedForNav(roots).map((r) => renderMapScopeNodeHtml(r, 1)).join('') + '</div>'
+      : '<div class="tree-empty">No elements.</div>';
+  } finally {
+    treeComparison = null;
+  }
   return html + '</div>';
 }
 
@@ -10264,8 +10815,8 @@ function mapElementIsOnMap(reference) {
 }
 
 /** What a screen reader hears for a row of the tree of the map: the name, then the state the colours and the icons show. */
-function mapScopeRowLabel(name, pinned, hidden, offMap, stereotypes) {
-  return name + (stereotypes ? ', ' + stereotypes : '') + (pinned ? ', pinned' : '') + (hidden ? ', hidden' : '') + (offMap && !hidden ? ', not on the map' : '');
+function mapScopeRowLabel(name, pinned, hidden, offMap, stereotypes, change) {
+  return name + (stereotypes ? ', ' + stereotypes : '') + (pinned ? ', pinned' : '') + (hidden ? ', hidden' : '') + (offMap && !hidden ? ', not on the map' : '') + (change ? ', ' + CHANGE_WORDS[change].word : '');
 }
 
 /** Grey the rows of the elements the map does not draw (a pin, a hidden element or "Hide unlinked" left them out); applied after each drawing. */
@@ -10277,7 +10828,7 @@ function markMapScope() {
     const hidden = row.classList.contains('left-out');
     row.classList.toggle('off-map', offMap && !hidden);
     if (offMap && !hidden) row.title = 'Not on the map right now'; else row.removeAttribute('title');
-    row.setAttribute('aria-label', mapScopeRowLabel(row.getAttribute('data-name'), pinned, hidden, offMap, row.getAttribute('data-stereotypes')));
+    row.setAttribute('aria-label', mapScopeRowLabel(row.getAttribute('data-name'), pinned, hidden, offMap, row.getAttribute('data-stereotypes'), row.getAttribute('data-change')));
   });
 }
 
@@ -10315,17 +10866,18 @@ function renderMapScopeNodeHtml(record, level) {
   const abbreviation = kindAbbreviation(kind);
   const groupId = treeGroupId('map-scope-group-', record.layer || 'application', reference);
   const styled = styledStereotypesOf(stereotypesOfRecord(record));
+  const change = treeChangeOf(record); // a comparison: the glyph after the name (run 0040)
   // a row folds or unfolds its branch, nothing more: the tree of the map selects no element
   let html = '<div class="tree-node"><div class="tree-node-row map-scope-row' + (pinned ? ' pinned' : '') + (hidden ? ' left-out' : '') + (offMap ? ' off-map' : '') + (hasChildren ? ' foldable' : '') + '"' +
              ' role="treeitem" style="--level:' + level + '" aria-level="' + level + '"' + (hasChildren ? ' aria-expanded="' + isExpanded + '"' + (isExpanded ? ' aria-owns="' + groupId + '"' : '') : '') +
-             ' tabindex="' + navTabIndex(key) + '" data-node="' + escapeHtml(key) + '" data-name="' + escapeHtml(label) + '"' + (styled.length ? ' data-stereotypes="' + escapeHtml(styled.join(', ')) + '"' : '') +
-             ' aria-label="' + escapeHtml(mapScopeRowLabel(label, pinned, hidden, offMap, styled.join(', '))) + '"' + (offMap ? ' title="Not on the map right now"' : '') +
+             ' tabindex="' + navTabIndex(key) + '" data-node="' + escapeHtml(key) + '" data-name="' + escapeHtml(label) + '"' + (styled.length ? ' data-stereotypes="' + escapeHtml(styled.join(', ')) + '"' : '') + (change ? ' data-change="' + change + '"' : '') +
+             ' aria-label="' + escapeHtml(mapScopeRowLabel(label, pinned, hidden, offMap, styled.join(', '), change)) + '"' + (offMap ? ' title="Not on the map right now"' : '') +
              (hasChildren ? ' data-action="toggle-element" data-ref="' + ref + '" data-layer="application"' : '') + '>';
   html += hasChildren
     ? '<span class="tree-toggle" aria-hidden="true">' + (isExpanded ? '▾' : '▸') + '</span>'
     : '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
   html += '<span class="tree-node-kind" title="' + escapeHtml(kind) + '">' + escapeHtml(abbreviation) + '</span>' +
-          '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' + stereotypeBadgesHtml(styled);
+          '<span class="tree-node-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' + treeChangeMarkHtml(change) + stereotypeBadgesHtml(styled);
   // what the map does with the element is visible without hovering; the buttons themselves appear on hover, focus and the active row
   if (pinned) html += '<span class="map-scope-mark" title="Pinned" aria-hidden="true">' + MAP_PIN_ICON + '</span>';
   // Pin is always the last button, at the same place under the mouse: Hide comes before it, and is not drawn at all when it cannot be used
@@ -11867,7 +12419,7 @@ const ACTIONS_LEAVING_THE_FORM = new Set([
   'set-perspective', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
   'select-link', 'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
   'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
-  'library-tab', 'select-view', 'library-go-story', 'library-go-view', 'library-open-element'
+  'library-tab', 'select-view', 'library-go-story', 'library-go-view', 'library-open-element', 'select-change'
 ]);
 
 /** Asks before throwing away what was typed in a form and not applied. True when the user accepts (the draft is then gone). */
@@ -11941,6 +12493,29 @@ function handleAppClick(e) {
       break;
     case 'reload-baseline':
       reloadBaseline();
+      break;
+    case 'set-changes-only': { // run 0040: the diagrams draw the changes with their context, or everything
+      const only = target.getAttribute('data-value') === '1';
+      if (only === AppState.changesOnly) break;
+      AppState.changesOnly = only;
+      rememberFlag('changes-only', only);
+      diagramCache = null;
+      mapSelectionCheck = true; // a selection the redraw no longer draws is dropped, as for a fold or a pin
+      render();
+      break;
+    }
+    case 'toggle-hide-wording': // run 0040: the changes of wording only are set aside (not drawn as changed, not listed, counted apart)
+      AppState.hideWording = !AppState.hideWording;
+      rememberFlag('hide-wording', AppState.hideWording);
+      diagramCache = null;
+      mapSelectionCheck = true;
+      render();
+      break;
+    case 'set-right-tab':
+      setRightTab(target.getAttribute('data-tab'));
+      break;
+    case 'select-change':
+      selectChange({ thing: target.getAttribute('data-thing'), change: target.getAttribute('data-change'), layer: target.getAttribute('data-layer'), ref: target.getAttribute('data-ref'), to: target.getAttribute('data-to') });
       break;
     case 'select-file': {
       const relPath = target.getAttribute('data-relpath');
@@ -13064,6 +13639,11 @@ function render() {
     if ((id === 'panel-center' || id === 'panel-right') && !sameView) continue; // another element or view opens at the top
     const el = document.getElementById(id);
     if (el) { el.scrollTop = scrollBefore[id].top; el.scrollLeft = scrollBefore[id].left; }
+  }
+  if (scrollChangesToSelection) {
+    scrollChangesToSelection = false;
+    const selectedRow = document.querySelector('.change-row.selected');
+    if (selectedRow && selectedRow.scrollIntoView) selectedRow.scrollIntoView({ block: 'center' });
   }
   // a selection that did not come from a click in the tree (a box of a diagram, a link, the URL) is brought into view in it
   if (scrollNavToSelection) {

@@ -41,6 +41,9 @@ class PlateauComparisonTest {
     private Path workspace() {
         try (val files = Files.walk(FIXTURE)) {
             for (val source : files.toList()) {
+                if (source.getFileName().toString().equals("expected-counts.json")) {
+                    continue; // the contract the editor's tests read too, not a file of the workspace
+                }
                 val target = dir.resolve(FIXTURE.relativize(source).toString());
                 if (Files.isDirectory(source)) {
                     Files.createDirectories(target);
@@ -187,6 +190,86 @@ class PlateauComparisonTest {
         assertTrue(db.at("/before/description").isNull());
         // two spaces, a space after the colon, line feeds only
         assertTrue(result.out.startsWith("{\n  \"plateau\": {\n    \"id\": \"to-be\""), result.out);
+    }
+
+    /**
+     * The counts and the rows the CLI and the editor must give for the same pair, in one file next to the fixture
+     * ({@code expected-counts.json}). The editor's side is {@code cli-editor-counts.test.js}, which loads the same
+     * folders and asserts the same file, so that either side drifting fails a test.
+     */
+    @Test
+    @SneakyThrows
+    void theCliGivesTheCountsAndTheRowsOfTheFileTheEditorReadsToo() {
+        val mapper = new ObjectMapper();
+        val expected = mapper.readTree(FIXTURE.resolve("expected-counts.json").toFile());
+        val workspace = workspace();
+        val result = diff(
+            workspace,
+            "--plateau",
+            expected.get("plateau").asText(),
+            "--baseline",
+            expected.get("baseline").asText(),
+            "--format",
+            "json"
+        );
+        assertEquals(0, result.exit, result.err);
+        val json = mapper.readTree(result.out);
+        assertEquals(expected.get("counts"), json.get("counts"));
+        assertEquals(expected.get("changes").size(), json.get("changes").size());
+        for (int i = 0; i < expected.get("changes").size(); i++) {
+            val want = expected.get("changes").get(i);
+            val got = json.get("changes").get(i);
+            assertEquals(want.get("thing"), got.get("thing"), "row " + i);
+            assertEquals(want.get("layer"), got.get("layer"), "row " + i);
+            assertEquals(want.get("reference"), got.get("reference"), "row " + i);
+            assertEquals(want.get("change"), got.get("change"), "row " + i);
+            assertEquals(want.get("natures"), got.get("natures"), "row " + i);
+            if (want.get("thing").asText().equals("relationship")) {
+                assertEquals(want.get("destination"), got.get("destination"), "row " + i);
+                assertEquals(want.get("label").asText(), got.path("label").asText(""), "row " + i);
+            }
+        }
+        // what `--no-wording` says it hides is what the editor's toggle hides
+        val quiet = mapper.readTree(
+            diff(workspace, "--plateau", "to-be", "--baseline", "as-is", "--no-wording", "-f", "json").out
+        );
+        assertEquals(expected.get("hidden_wording_only"), quiet.get("hidden_wording_only"));
+        // the text and the Markdown forms print the same counts
+        val c = expected.get("counts");
+        val e = c.get("elements");
+        val r = c.get("relationships");
+        val text = diff(workspace, "--plateau", "to-be", "--baseline", "as-is").out;
+        assertTrue(
+            text.contains(
+                "elements      +%d ~%d -%d".formatted(
+                    e.get("new").asInt(),
+                    e.get("changed").asInt(),
+                    e.get("removed").asInt()
+                )
+            ),
+            text
+        );
+        assertTrue(
+            text.contains(
+                "relationships +%d ~%d -%d".formatted(
+                    r.get("new").asInt(),
+                    r.get("changed").asInt(),
+                    r.get("removed").asInt()
+                )
+            ),
+            text
+        );
+        val markdown = diff(workspace, "--plateau", "to-be", "--baseline", "as-is", "-f", "markdown").out;
+        assertTrue(
+            markdown.contains(
+                "| elements | %d | %d | %d |".formatted(
+                    e.get("new").asInt(),
+                    e.get("changed").asInt(),
+                    e.get("removed").asInt()
+                )
+            ),
+            markdown
+        );
     }
 
     private static JsonNode rowOf(JsonNode json, String reference) {

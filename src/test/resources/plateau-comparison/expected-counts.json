@@ -1,0 +1,150 @@
+{
+  "plateau": "to-be",
+  "baseline": "as-is",
+  "counts": {
+    "elements": {
+      "new": 3,
+      "changed": 6,
+      "removed": 1,
+      "wording_only": 1
+    },
+    "relationships": {
+      "new": 2,
+      "changed": 1,
+      "removed": 2
+    }
+  },
+  "hidden_wording_only": 1,
+  "changes": [
+    {
+      "thing": "element",
+      "layer": "application",
+      "reference": "customer",
+      "change": "changed",
+      "natures": [
+        "relationships-added"
+      ]
+    },
+    {
+      "thing": "element",
+      "layer": "application",
+      "reference": "shop.api",
+      "change": "changed",
+      "natures": [
+        "relationships-removed",
+        "relationships-changed"
+      ]
+    },
+    {
+      "thing": "element",
+      "layer": "application",
+      "reference": "shop.db",
+      "change": "changed",
+      "natures": [
+        "description"
+      ]
+    },
+    {
+      "thing": "element",
+      "layer": "application",
+      "reference": "shop.legacy",
+      "change": "removed",
+      "natures": []
+    },
+    {
+      "thing": "element",
+      "layer": "application",
+      "reference": "shop.mobile",
+      "change": "new",
+      "natures": []
+    },
+    {
+      "thing": "element",
+      "layer": "application",
+      "reference": "shop.notifications",
+      "change": "new",
+      "natures": []
+    },
+    {
+      "thing": "element",
+      "layer": "application",
+      "reference": "shop.notifications.sender",
+      "change": "new",
+      "natures": []
+    },
+    {
+      "thing": "element",
+      "layer": "application",
+      "reference": "shop.web",
+      "change": "changed",
+      "natures": [
+        "qualifiers"
+      ]
+    },
+    {
+      "thing": "element",
+      "layer": "application",
+      "reference": "warehouse.stock",
+      "change": "changed",
+      "natures": [
+        "name"
+      ]
+    },
+    {
+      "thing": "element",
+      "layer": "technology",
+      "reference": "prod.cluster",
+      "change": "changed",
+      "natures": [
+        "deployment"
+      ]
+    },
+    {
+      "thing": "relationship",
+      "layer": "application",
+      "reference": "customer",
+      "destination": "shop.mobile",
+      "label": "orders on",
+      "change": "new",
+      "natures": []
+    },
+    {
+      "thing": "relationship",
+      "layer": "application",
+      "reference": "shop.api",
+      "destination": "shop.db",
+      "label": "reads and writes",
+      "change": "changed",
+      "natures": [
+        "label"
+      ]
+    },
+    {
+      "thing": "relationship",
+      "layer": "application",
+      "reference": "shop.api",
+      "destination": "shop.legacy",
+      "label": "delegates to",
+      "change": "removed",
+      "natures": []
+    },
+    {
+      "thing": "relationship",
+      "layer": "application",
+      "reference": "shop.legacy",
+      "destination": "shop.db",
+      "label": "loads",
+      "change": "removed",
+      "natures": []
+    },
+    {
+      "thing": "relationship",
+      "layer": "application",
+      "reference": "shop.mobile",
+      "destination": "shop.api",
+      "label": "calls",
+      "change": "new",
+      "natures": []
+    }
+  ]
+}

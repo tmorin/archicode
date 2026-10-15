@@ -682,7 +682,10 @@ test('a click on a removed box shows what the other plateau had, read-only, and 
   assert.match(sandbox.renderMapPerspectiveHtml().right, /data-inspection-ref="shop\.web"/);
   click(sandbox, { 'data-action': 'select-removed', 'data-ref': 'shop.session', 'data-layer': 'application' });
   click(sandbox, { 'data-action': 'close-inspection' });
-  assert.ok(!sandbox.renderMapPerspectiveHtml().right, 'closed');
+  // run 0040: with a comparison on the right-hand panel never goes: nothing selected, it is the Changes panel (it was no panel before this run)
+  const closed = sandbox.renderMapPerspectiveHtml().right;
+  assert.doesNotMatch(closed, /class="inspection( inspection-removed)?" data-inspection-ref/, 'closed: nothing of the selection is left');
+  assert.match(closed, /data-changes-panel/, 'the list of the changes is what the panel shows');
 });
 
 test('in Elements the element of the diagram stays the subject while the panel tells about the removed box', async () => {
