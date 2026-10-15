@@ -855,6 +855,31 @@ Choosing another plateau reads its folder from the disk, so the editor asks firs
 
 A `workspace.yaml` that breaks a rule of the plateaus, or a `manifests.paths` that leaves the folder, is not opened: the editor shows the same messages as the command line. A plateau whose folder does not exist is drawn empty, and the header says so.
 
+[[editor-compare]]
+=== Comparing two plateaus
+
+With two plateaus or more, the header has a *Compare to* list next to the *Plateau* selector. *Nothing*, the default, draws the plateau alone, exactly as the editor always did. Choosing another plateau draws the plateau together with it: the Map, the diagrams of Elements and the page of a view in the Library tell what is new, what changed and what was removed compared with that plateau, with the same four states as `archicode views generate --baseline` (see <<plateau-comparison>>). After *Nothing* the list offers *Baseline: <name>*, the baseline of the plateau that is drawn by the rule of the command line (its `baseline` key, else the plateau before it in the list; the first plateau has none), which follows the plateau when you choose another one, and then each other plateau by name. Like the plateau, the choice is remembered by this browser for this folder (not in the workspace), and it is ignored when the workspace no longer has that plateau. A plateau is never compared with itself: when you choose the plateau that was the baseline, the comparison is *Nothing* until you choose another one, and comes back when you leave that plateau.
+
+The plateau compared with is only _read_. The editor reads its folder through the same folder it has opened (no second picker to use), keeps it apart from the plateau that is drawn, and never writes it: its files are not among the files of the plateau, are never counted as modified, and are not part of *Save all changes* or *Cancel*. It is read when you choose it and when you choose another plateau; *Reload*, next to the list, reads it again from the disk, which is the only way to see a change made to that folder while the page stays open. A reference declared twice in it is reported the way it is for the plateau itself (the diagram says that nothing is drawn, and names both files), and a folder that does not exist is said in the header and compared as empty. A `baseline` key that names an unknown plateau, or the plateau itself, is refused when the workspace is opened, with the message of the command line (see <<plateaus>>).
+
+The diagram is drawn from the union of the two plateaus, and the boxes are laid out on that union: what was removed is drawn where it was, so a box does not move when the comparison is turned on from the other plateau or when you choose the other plateau of the pair (with *Nothing* the plateau is laid out alone, as before). The editor tells the four states without relying on colour: each one has a mark in front of the title of the box and of the caption of the link, a line style, and a pill with its name on the box.
+
+[cols="1,1,2,2"]
+|===
+| State | Mark | Box | Link
+
+| new | `+` | thick solid outline, a pill `new`, a green tint | thick solid line
+| changed | `~` | dotted outline, a pill `changed`, an orange tint | dotted line
+| removed | `−` | dashed grey outline, grey struck title, a pill `removed`, a grey tint | dashed grey line
+| contains changes | `±` | thin dashed outline, a pill `contains-changes` | (none)
+|===
+
+A box that did not change is drawn as it always was. A removed element is not in the plateau that is drawn, so it is not in the tree and a click on its box does not open it: it shows, in the panel on the right, what the other plateau had (name, kind, properties, the file it is in, the relationships it declared), read-only. A link that changed shows its mark even when the captions are off, as on the Map. The marks and lines are the ones of the command line; the colours are only a help, chosen to read in the light and the dark theme. *Red dashed* keeps its meaning of a dangling reference (an unknown element), and is never used for a removed one.
+
+The look is a default, given to the stereotype of the same name as the state (`new`, `changed`, `removed`, `contains-changes`). A style of your own for that name in `styles` (see <<stereotypes-and-styles>>) wins property by property: your `line-color` replaces the colour of the line and keeps its style and thickness, your `background-color` fills the box and replaces the tint, your `font-color` replaces the grey of a removed title. The state is the last stereotype of a box, so it overrides the style of the others, as a later stereotype always does. A `new` or `changed` tag that you wrote by hand on an element is used as before, and on an element that did not change it stays what you wrote.
+
+Under the diagram, the key adds an entry for each state, with a sample of its box and its link, its mark, its name, how its line is drawn, and how many boxes and links of that state the drawing shows. The SVG and PNG downloads draw the same marks, lines, struck titles, pills and tints; like the other keys, the key itself is not part of the image.
+
 [[editor-theme]]
 === Theme
 
