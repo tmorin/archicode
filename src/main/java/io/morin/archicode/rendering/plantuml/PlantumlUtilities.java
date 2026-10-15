@@ -94,7 +94,27 @@ class PlantumlUtilities {
      * to the next.
      */
     List<Map.Entry<String, Styles.Style>> stereotypeStyles(@NonNull Styles styles) {
-        val merged = new TreeMap<String, Styles.Style>(styles.getByQualifiers());
+        return stereotypeStyles(styles, Map.of());
+    }
+
+    /**
+     * The styles of the stereotypes, with the default styles of the states of a comparison under the author's.
+     *
+     * <p>A default style is the base of the style of its name: the author's {@code by-qualifiers} entry of the same name
+     * is laid over it, then the {@code by-tags} entry, property by property, so that an author who styles {@code removed}
+     * with a red outline keeps the dashes and the grey title of the default.
+     *
+     * @param styles   the styles of the workspace
+     * @param defaults the default styles, by stereotype (empty for a view that compares nothing)
+     */
+    List<Map.Entry<String, Styles.Style>> stereotypeStyles(
+        @NonNull Styles styles,
+        @NonNull Map<String, Styles.Style> defaults
+    ) {
+        val merged = new TreeMap<String, Styles.Style>(defaults);
+        styles
+            .getByQualifiers()
+            .forEach((stereotype, style) -> merged.merge(stereotype, style, PlantumlUtilities::override));
         styles.getByTags().forEach((stereotype, style) -> merged.merge(stereotype, style, PlantumlUtilities::override));
         return List.copyOf(merged.entrySet());
     }

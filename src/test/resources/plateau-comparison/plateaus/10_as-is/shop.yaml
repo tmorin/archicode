@@ -1,0 +1,41 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  description: "The online shop."
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web site"
+      qualifiers:
+        - "React"
+      relationships:
+        - destination: "shop.api"
+          label: "calls"
+          qualifiers:
+            - "REST"
+    - kind: "container"
+      id: "api"
+      name: "API"
+      qualifiers:
+        - "Spring Boot"
+      relationships:
+        - destination: "shop.db"
+          label: "reads"
+        - destination: "shop.legacy"
+          label: "delegates to"
+    - kind: "container"
+      id: "db"
+      name: "Database"
+      qualifiers:
+        - "PostgreSQL"
+      tags:
+        rendering-shape: "database"
+    - kind: "container"
+      id: "legacy"
+      name: "Legacy batch"
+      relationships:
+        - destination: "shop.db"
+          label: "loads"

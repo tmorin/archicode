@@ -1,0 +1,50 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  description: "The online shop."
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web site"
+      qualifiers:
+        - "React"
+        - "SPA"
+      relationships:
+        - destination: "shop.api"
+          label: "calls"
+          qualifiers:
+            - "REST"
+    - kind: "container"
+      id: "mobile"
+      name: "Mobile app"
+      relationships:
+        - destination: "shop.api"
+          label: "calls"
+          qualifiers:
+            - "REST"
+    - kind: "container"
+      id: "api"
+      name: "API"
+      qualifiers:
+        - "Spring Boot"
+      relationships:
+        - destination: "shop.db"
+          label: "reads and writes"
+    - kind: "container"
+      id: "db"
+      name: "Database"
+      description: "Holds the catalog."
+      qualifiers:
+        - "PostgreSQL"
+      tags:
+        rendering-shape: "database"
+    - kind: "container"
+      id: "notifications"
+      name: "Notifications"
+      elements:
+        - kind: "component"
+          id: "sender"
+          name: "Sender"

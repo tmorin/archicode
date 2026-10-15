@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "prod"
+  name: "Production"
+  elements:
+    - kind: "node"
+      id: "cluster"
+      name: "Cluster"
+      applications:
+        - "shop.web"
+        - "shop.api"
+        - "shop.legacy"

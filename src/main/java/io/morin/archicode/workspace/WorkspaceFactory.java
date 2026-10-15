@@ -1,5 +1,6 @@
 package io.morin.archicode.workspace;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
@@ -9,12 +10,17 @@ import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.resource.workspace.Settings.Facets.Facet;
 import io.morin.archicode.resource.workspace.Workspace;
+import io.morin.archicode.viewpoint.Change;
+import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.ViewpointKernel;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -89,12 +95,124 @@ public class WorkspaceFactory {
      * Read a workspace file and its manifests.
      *
      * @param path         the workspace file
-     * @param viewsDirPath the folder the views are written to, or null for the one of the settings
+     * @param viewsDirPath the folder the views are written to, or null for the one of the settings. For a workspace
+     *                     that has plateaus, it is the beginning of the name of the folder of each plateau (see below)
      * @param plateauId    the plateau to read ({@code --plateau}), or null for {@code settings.current}, else the last
      *                     one of {@code settings.plateaus}; it must be null for a workspace that has no plateaus
      */
     @SneakyThrows
     public io.morin.archicode.workspace.Workspace create(Path path, Path viewsDirPath, String plateauId) {
+        val loaded = load(path, viewsDirPath, plateauId);
+        return create(loaded.resources(), loaded.elements())
+            .toBuilder()
+            .plateau(loaded.selection() == null ? null : loaded.selection().plateau())
+            .build();
+    }
+
+    /**
+     * Read the plateau {@code plateauId} again, holding in addition what only the baseline had, so that the views of the
+     * comparison can draw it: the elements the comparison calls removed, each with what it holds, under its parent. The
+     * plateau is read afresh, so that nothing merged here shows in the workspace the plain views are drawn from.
+     *
+     * @param path         the workspace file
+     * @param viewsDirPath the folder the views are written to, as for {@link #create(Path, Path, String)}
+     * @param plateauId    the plateau that is compared
+     * @param base         the baseline, loaded on its own: where the removed elements are taken from
+     * @param comparison   what {@code base} and the plateau do not share
+     * @return the workspace of the plateau and the removed elements of the baseline
+     */
+    @SneakyThrows
+    public io.morin.archicode.workspace.Workspace createUnion(
+        Path path,
+        Path viewsDirPath,
+        String plateauId,
+        io.morin.archicode.workspace.Workspace base,
+        Comparison comparison
+    ) {
+        val loaded = load(path, viewsDirPath, plateauId);
+        val manifests = new HashMap<Class<?>, Set<ManifestParser.Candidate>>();
+        loaded.elements().forEach((category, candidates) -> manifests.put(category, new HashSet<>(candidates)));
+        addRemoved(manifests, Application.class, "application", base.appIndex, comparison);
+        addRemoved(manifests, Technology.class, "technology", base.techIndex, comparison);
+        return create(loaded.resources(), manifests)
+            .toBuilder()
+            .plateau(loaded.selection() == null ? null : loaded.selection().plateau())
+            .baseline(base.getPlateau())
+            .build();
+    }
+
+    /**
+     * The elements of a layer that only the baseline has, as candidates: the ones whose parent is not removed too (a
+     * removed parent brings its removed children with it, whole).
+     */
+    private static void addRemoved(
+        Map<Class<?>, Set<ManifestParser.Candidate>> manifests,
+        Class<?> category,
+        String layer,
+        ElementIndex baseIndex,
+        Comparison comparison
+    ) {
+        val removed = new TreeSet<String>();
+        comparison
+            .getElements()
+            .stream()
+            .filter(e -> e.layer().equals(layer) && e.change() == Change.REMOVED)
+            .forEach(e -> removed.add(e.reference()));
+        for (val reference : removed) {
+            val parent = io.morin.archicode.resource.workspace.Workspace.Utilities.findParentReference(reference);
+            if (parent.isPresent() && removed.contains(parent.get())) {
+                continue;
+            }
+            manifests
+                .computeIfAbsent(category, c -> new HashSet<>())
+                .add(
+                    ManifestParser.Candidate.builder()
+                        .parent(parent.orElse(null))
+                        .reference(reference)
+                        .element(baseIndex.getElementByReference(reference))
+                        .build()
+                );
+        }
+    }
+
+    /**
+     * The same workspace, whose views are written to another folder.
+     *
+     * @param workspace the workspace
+     * @param viewsPath the folder, relative to the folder of the workspace file, or absolute
+     * @return the workspace; its indices are the ones of {@code workspace}
+     */
+    public io.morin.archicode.workspace.Workspace withViewsPath(
+        io.morin.archicode.workspace.Workspace workspace,
+        String viewsPath
+    ) {
+        return workspace
+            .toBuilder()
+            .resources(
+                workspace
+                    .getResources()
+                    .toBuilder()
+                    .settings(
+                        workspace
+                            .getSettings()
+                            .toBuilder()
+                            .views(workspace.getSettings().getViews().toBuilder().path(viewsPath).build())
+                            .build()
+                    )
+                    .build()
+            )
+            .build();
+    }
+
+    /** What a plateau (or the manifests) is made of, before it is indexed. */
+    private record Loaded(
+        Workspace resources,
+        Map<Class<?>, Set<ManifestParser.Candidate>> elements,
+        Plateaus.Selection selection
+    ) {}
+
+    @SneakyThrows
+    private Loaded load(Path path, Path viewsDirPath, String plateauId) {
         log.info("parse the resources {}", path);
 
         // create the RawWorkspace
@@ -109,26 +227,31 @@ public class WorkspaceFactory {
         val manifestsPathsWritten = tree.path("settings").path("manifests").has("paths");
         val rawWorkspace = workspaceMapper.readValue(path.toFile(), Workspace.class);
 
-        val fixedRawWorkspace = Optional.ofNullable(viewsDirPath)
-            .map(newViewsPath ->
-                rawWorkspace
-                    .toBuilder()
-                    .settings(
-                        rawWorkspace
-                            .getSettings()
-                            .toBuilder()
-                            .views(
-                                rawWorkspace.getSettings().getViews().toBuilder().path(newViewsPath.toString()).build()
-                            )
-                            .build()
-                    )
-                    .build()
-            )
-            .orElse(rawWorkspace);
-
         // the plateau to read; none for a workspace that has one set of manifests (manifests.paths)
         val wksDir = path.toFile().getParentFile().toPath();
-        val selection = Plateaus.select(fixedRawWorkspace.getSettings(), manifestsPathsWritten, plateauId);
+        val selection = Plateaus.select(rawWorkspace.getSettings(), manifestsPathsWritten, plateauId);
+
+        // The folder of the views. With plateaus, each plateau has its own, named after it (`views-to-be`, or `out-to-be`
+        // for `--output out`), so that drawing two plateaus does not overwrite one with the other; without plateaus it is
+        // the folder it has always been.
+        val viewsPath = Optional.ofNullable(viewsDirPath)
+            .map(Path::toString)
+            .orElseGet(() -> rawWorkspace.getSettings().getViews().getPath());
+        val plateauViewsPath = selection == null ? viewsPath : viewsPath + "-" + selection.plateau().getId();
+        val fixedRawWorkspace =
+            viewsDirPath == null && selection == null
+                ? rawWorkspace
+                : rawWorkspace
+                      .toBuilder()
+                      .settings(
+                          rawWorkspace
+                              .getSettings()
+                              .toBuilder()
+                              .views(rawWorkspace.getSettings().getViews().toBuilder().path(plateauViewsPath).build())
+                              .build()
+                      )
+                      .build();
+
         val manifestsDirs =
             selection == null
                 ? fixedRawWorkspace.getSettings().getManifests().getPaths()
@@ -149,19 +272,35 @@ public class WorkspaceFactory {
         // and the same reference in two plateaus is the very point of having two
         val manifests = manifestParser.parse(wksDir, manifestsDirs, path);
 
-        return create(
+        return new Loaded(
             fixedRawWorkspace.toBuilder().views(manifests.views()).stories(manifests.stories()).build(),
-            manifests.elements()
-        )
-            .toBuilder()
-            .plateau(selection == null ? null : selection.plateau())
-            .build();
+            manifests.elements(),
+            selection
+        );
     }
 
     @SneakyThrows
     public io.morin.archicode.workspace.Workspace create(
         io.morin.archicode.workspace.Workspace workspace,
         Facet facet
+    ) {
+        return create(workspace, facet, null);
+    }
+
+    /**
+     * Apply a facet to the workspace of a comparison (see {@link #createUnion}): the facet reads the JSON of the workspace
+     * with {@code change} in every element and relationship, and the relationships that only the baseline had.
+     *
+     * @param workspace  the workspace the facet is applied to
+     * @param facet      the facet
+     * @param comparison what changed between the two plateaus {@code workspace} is the union of, or null for a workspace
+     *                   that compares nothing (the facet is then applied as it always was)
+     */
+    @SneakyThrows
+    public io.morin.archicode.workspace.Workspace create(
+        io.morin.archicode.workspace.Workspace workspace,
+        Facet facet,
+        Comparison comparison
     ) {
         log.info("process {}", facet);
 
@@ -191,7 +330,12 @@ public class WorkspaceFactory {
                     .build()
             )
             .build();
-        val facetRawWorkspaceAsJson = jsonMapper.writeValueAsString(facetRawWorkspace);
+        var facetRawWorkspaceAsJson = jsonMapper.writeValueAsString(facetRawWorkspace);
+        if (comparison != null) {
+            val document = (ObjectNode) jsonMapper.readTree(facetRawWorkspaceAsJson);
+            ComparisonDocument.inject(document, comparison);
+            facetRawWorkspaceAsJson = jsonMapper.writeValueAsString(document);
+        }
 
         val request = jsonMapper.createObjectNode();
         // the workspace goes to the kernel as it is written: it is not parsed just to be written again
@@ -220,6 +364,9 @@ public class WorkspaceFactory {
         }
         answer.path("warnings").forEach(warning -> log.warn("facet {}: {}", facet.getName(), warning.asText()));
 
+        if (comparison != null) {
+            ComparisonDocument.strip(answer.get("workspace"));
+        }
         val facetWorkspace = jsonMapper.treeToValue(answer.get("workspace"), Workspace.class);
 
         return create(facetWorkspace, Map.of())
@@ -227,6 +374,7 @@ public class WorkspaceFactory {
             .faceted(true)
             .hideUnlinked(facet.isHideUnlinked())
             .plateau(workspace.getPlateau())
+            .baseline(workspace.getBaseline())
             .build();
     }
 }

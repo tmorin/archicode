@@ -53,6 +53,13 @@ public class AddPlateauCommand implements Runnable {
     )
     String path;
 
+    @CommandLine.Option(
+        names = { "--baseline" },
+        paramLabel = "PLATEAU_ID",
+        description = "The plateau the new one is compared with, written as its baseline. Default: none written, the new plateau is compared with the one before it in the list."
+    )
+    String baseline;
+
     @Override
     public void run() {
         val added = plateauAdder.add(
@@ -61,7 +68,8 @@ public class AddPlateauCommand implements Runnable {
             from,
             name,
             horizon,
-            path
+            path,
+            baseline
         );
         // printed to System.out: application.properties sets quarkus.log.level=ERROR
         System.out.printf(

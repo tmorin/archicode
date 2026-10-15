@@ -74,6 +74,12 @@ public class Settings {
          * The folder of the manifests, relative to the folder of the workspace file, below it.
          */
         String path;
+
+        /**
+         * The id of the plateau this one is compared with. Optional: the plateau before this one in the list when
+         * absent, and none for the first plateau. It must be another plateau of the list.
+         */
+        String baseline;
     }
 
     @Value

@@ -78,14 +78,17 @@ class PlateauCliTest {
     @Test
     void thePlateauAskedForIsTheOneThatIsGenerated() {
         val workspace = workspace();
-        // `--plateau` is accepted by the commands that load a workspace; without it the last plateau is read
-        val as = run("-w", workspace.toString(), "views", "generate", "--plateau", "as-is", "-o", "out-as-is");
+        // `--plateau` is accepted by the commands that load a workspace; without it the last plateau is read. Each plateau
+        // has its own folder, named after it: `-o out` is the beginning of the name (`out-as-is`)
+        val as = run("-w", workspace.toString(), "views", "generate", "--plateau", "as-is", "-o", "out");
         assertEquals(0, as.exit, as.err);
-        val last = run("-w", workspace.toString(), "views", "generate", "-o", "out-last");
+        val last = run("-w", workspace.toString(), "views", "generate", "-o", "out");
         assertEquals(0, last.exit, last.err);
         assertFalse(Files.exists(dir.resolve("out-as-is/plantuml/application/crm-overview.puml")));
-        assertTrue(Files.exists(dir.resolve("out-last/plantuml/application/crm-overview.puml")));
+        assertTrue(Files.exists(dir.resolve("out-to-be/plantuml/application/crm-overview.puml")));
         assertTrue(Files.exists(dir.resolve("out-as-is/plantuml/application/shop-overview.puml")));
+        // two plateaus do not overwrite one another, and nothing is written where a workspace without plateaus writes
+        assertFalse(Files.exists(dir.resolve("out")));
     }
 
     @Test
@@ -142,6 +145,25 @@ class PlateauCliTest {
         // the new plateau is the last: it is the one read by default
         val graph = run("-w", workspace.toString(), "query", "graph");
         assertEquals(0, graph.exit, graph.err);
+    }
+
+    @Test
+    @SneakyThrows
+    void plateauAddCanWriteTheBaselineOfTheNewPlateau() {
+        val workspace = workspace();
+        val result = run("-w", workspace.toString(), "plateau", "add", "p3", "--from", "to-be", "--baseline", "as-is");
+        assertEquals(0, result.exit, result.err);
+        val text = Files.readString(workspace);
+        assertTrue(text.endsWith("    - id: p3\n      path: plateaus/30_p3\n      baseline: as-is\n"), text);
+        // the baseline is read back, and is the one `diff` compares with
+        val diff = run("-w", workspace.toString(), "diff");
+        assertEquals(0, diff.exit, diff.err);
+        assertTrue(diff.out.startsWith("comparing p3 with as-is\n"), diff.out);
+        // an unknown baseline stops the command before anything is copied
+        val unknown = run("-w", workspace.toString(), "plateau", "add", "p4", "--from", "to-be", "--baseline", "nope");
+        assertEquals(1, unknown.exit);
+        assertTrue(unknown.err.contains("unknown baseline `nope`"), unknown.err);
+        assertFalse(Files.exists(dir.resolve("plateaus/40_p4")));
     }
 
     @Test

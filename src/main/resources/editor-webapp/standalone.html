@@ -2275,7 +2275,7 @@ function readAliased(obj, camelKey, kebabKey, fallback) {
 // and their words are the ones of the command line (`Plateaus.java`): keep them alike.
 // =====================================================================
 
-const PLATEAU_KEYS = ['id', 'name', 'horizon', 'path'];
+const PLATEAU_KEYS = ['id', 'name', 'horizon', 'path', 'baseline'];
 const PLATEAU_ID_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/;
 
 /** A scalar of the file as the command line reads it into a String (a number or a boolean is its text); '' for anything else. */
@@ -2314,7 +2314,7 @@ function checkPlateauStructure(plateaus) {
         problems.push(label + ' has a `from`: it is reserved for a later version of ArchiCode, where a plateau will be an increment on top of another one, and is not accepted yet. ' +
           'Remove it and give the plateau its own `path`, holding all its manifests (`archicode plateau add` copies a plateau into a new folder)');
       } else if (!PLATEAU_KEYS.includes(key)) {
-        problems.push(label + ' has the key `' + key + '`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon` and `path`');
+        problems.push(label + ' has the key `' + key + '`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon`, `path` and `baseline`');
       }
     }
   });

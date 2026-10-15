@@ -233,7 +233,7 @@ class PlateausTest {
             )
         );
         assertEquals(
-            "the plateau `as-is` has the key `date`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon` and `path`",
+            "the plateau `as-is` has the key `date`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon`, `path` and `baseline`",
             message
         );
     }
