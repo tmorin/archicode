@@ -27,6 +27,11 @@
     --on-accent: #ffffff;
     --on-modified: #1a1a1a; /* text on the --modified badge: 4.8:1 (white on it is 3.6:1) */
     --header-h: 3rem;
+    --chg-new: #00775a;
+    --chg-changed: #a85d00;
+    --chg-removed: #6b6b6b;
+    --chg-removed-text: #595959;
+    --chg-contains: #4f6f8f; /* the four states of a comparison (run 0039): a line and a tint, never the only way a state is told (a glyph, a line style and the word are too) */
   }
   /* The scheme is the system's, unless Settings forces one: data-theme="light" or "dark" on the root element (no attribute
      is "system"). The dark variables are written twice, for the system's dark and for the forced one: test-checked to match. */
@@ -42,6 +47,11 @@
       --danger: #ff6b6b;
       --panel-bg: #262626;
       --modified: #f0c674;
+      --chg-new: #3ddc97;
+      --chg-changed: #ffb454;
+      --chg-removed: #a0a0a0;
+      --chg-removed-text: #b0b0b0;
+      --chg-contains: #8db4d8;
     }
   }
   :root[data-theme="light"] { color-scheme: light; }
@@ -57,6 +67,11 @@
     --danger: #ff6b6b;
     --panel-bg: #262626;
     --modified: #f0c674;
+    --chg-new: #3ddc97;
+    --chg-changed: #ffb454;
+    --chg-removed: #a0a0a0;
+    --chg-removed-text: #b0b0b0;
+    --chg-contains: #8db4d8;
   }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   #app { min-height: 100vh; display: flex; flex-direction: column; }
@@ -148,6 +163,9 @@
   .plateau-label { font-size: 0.8rem; color: var(--muted); }
   .plateau-horizon { margin-left: 0.4rem; font-size: 0.75rem; opacity: 0.75; }
   .plateau-problem { font-size: 0.8rem; color: var(--danger); }
+  .compare-control { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .compare-control select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 14rem; }
+  .compare-control button { padding: 0.25rem 0.6rem !important; font-size: 0.8rem; }
   .plateau-list { margin: 0.25rem 0 0 1.5rem; list-style: decimal; line-height: 1.7; }
   .top-panel > .folder-name { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .help-wrap { position: relative; flex-shrink: 0; }
@@ -179,6 +197,7 @@
   .inspection-close { flex: none; width: 1.75rem; height: 1.75rem; padding: 0 !important; line-height: 1; }
   .inspection-name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.4rem; font-weight: 600; font-size: 1.05rem; overflow-wrap: anywhere; }
   .inspection-note { margin: 0; padding: 0.3rem 0.5rem; font-size: 0.8rem; color: var(--muted); border: 1px dashed var(--border); border-radius: 4px; }
+  .removed-relationships { margin: 0; padding-left: 1.1rem; overflow-wrap: anywhere; }
   .inspection-note[hidden] { display: none; }
   .inspection .field-row { flex-direction: column; gap: 0.1rem; }
   .inspection .tag-list { padding-left: 0; list-style: none; }
@@ -389,6 +408,13 @@
   .dg-legend { flex: none; max-width: 100%; display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.35rem; align-items: center; }
   .dg-legend svg { overflow: visible; }
   .dg-legend-stereotypes { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; }
+  /* the key to a comparison: one entry per state, each with a sample of its box and of its link, its glyph and its word */
+  .dg-legend-compare { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; align-items: center; margin-top: 0.15rem; }
+  .dg-legend-title { color: var(--muted); }
+  .dg-legend-state { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.1rem 0.3rem; }
+  .dg-legend-state .dg-glyph { font-size: 0.95rem; }
+  .dg-legend-how, .dg-legend-count { color: var(--muted); font-size: 0.78rem; }
+  .dg-legend-note { color: var(--muted); font-size: 0.78rem; }
   .diagram-note { margin: 0 0 0.5rem; color: var(--muted); }
   .diagram-fallback { margin: 0; padding-left: 1.25rem; }
   .viewpoint-switch { display: inline-flex; gap: 0.5rem; flex: none; margin-left: 0.5rem; }
@@ -497,6 +523,20 @@
   .dg-edge.dg-aggregated { stroke-dasharray: 7 4; }
   .dg-edge.dg-ghost-edge { stroke: var(--danger); stroke-dasharray: 3 4; }
   .dg-arrowhead { fill: var(--muted); }
+  /* The comparison of two plateaus (run 0039). A box says its state with a glyph in its title, a line (the --st-* variables the default
+     look of the state sets, which an entry of the same name in `styles` overrides property by property), a pill with the word and a
+     translucent tint laid over its fill; a link says it with a line style and a glyph in its caption. Red dashed stays for dangling references. */
+  .dg-tint { fill: var(--st-tint, none); fill-opacity: 0.16; stroke: none; pointer-events: none; }
+  .dg-compound .dg-tint { fill-opacity: 0.08; }
+  .dg-struck { text-decoration: line-through; }
+  .dg-glyph { font-weight: 700; }
+  .dg-label .dg-glyph { font-size: 14px; }
+  .dg-edge.dg-chg-new { stroke: var(--chg-new); stroke-width: 3; stroke-dasharray: none; }
+  .dg-edge.dg-chg-changed { stroke: var(--chg-changed); stroke-width: 2; stroke-dasharray: 2 3; }
+  .dg-edge.dg-chg-removed { stroke: var(--chg-removed); stroke-width: 1.6; stroke-dasharray: 7 4; }
+  .dg-arrowhead.dg-chg-new { fill: var(--chg-new); }
+  .dg-arrowhead.dg-chg-changed { fill: var(--chg-changed); }
+  .dg-arrowhead.dg-chg-removed { fill: var(--chg-removed); }
   .dg-label { fill: var(--fg); font-size: 11px; paint-order: stroke; stroke: var(--panel-bg); stroke-width: 4px; stroke-linejoin: round; }
   /* a link is clicked to be selected (and so is its caption); the selected pair, and the one the keyboard is on, take the accent */
   .dg-link, .dg-label[data-action] { cursor: pointer; }
@@ -2195,6 +2235,8 @@ function createInitialAppState() {
     plateau: null, // { id, name, horizon, path } of the plateau read; null for a workspace without `settings.plateaus` (see selectPlateau)
     plateaus: [], // every plateau of settings.plateaus, in the order of the file: what the selector of the header lists
     plateauProblem: null, // a line, when the folder of the plateau read cannot be found
+    compareTo: '', // the plateau the one drawn is compared with: '' (Nothing), COMPARE_BASELINE_CHOICE (the baseline of the plateau drawn) or the id of a plateau
+    baseline: null, // the plateau compared with, read-only: { plateau, files, index, duplicates, problem }; null while nothing is compared (see loadBaseline)
     selection: { kind: 'none', key: null, mode: 'view' },
     expanded: new Set(),
     fatalError: null,
@@ -2384,6 +2426,18 @@ function selectPlateau(settings, requested) {
     }
   });
   repeated.sort().forEach((id) => problems.push('the plateau id `' + id + '` is used more than once'));
+  // run 0039: a `baseline` names another plateau of the list (the words of `Plateaus.java`: the CLI refuses an unknown one, so must the editor)
+  const knownIds = plateaus.map((p) => '`' + plateauText(p.id) + '`').join(', ');
+  plateaus.forEach((plateau) => {
+    if (plateau.baseline === undefined || plateau.baseline === null) return;
+    const baseline = plateauText(plateau.baseline);
+    const label = 'the plateau `' + plateauText(plateau.id) + '`';
+    if (baseline === plateauText(plateau.id)) {
+      problems.push(label + ' names itself as its `baseline`: choose another plateau to compare it with');
+    } else if (!plateaus.some((p) => plateauText(p.id) === baseline)) {
+      problems.push(label + ' has the `baseline` `' + baseline + '`, which is not in `settings.plateaus` (' + knownIds + ')');
+    }
+  });
   if (problems.length) return { problems };
 
   const idList = plateaus.map((p) => '`' + plateauText(p.id) + '`').join(', ');
@@ -2396,9 +2450,20 @@ function selectPlateau(settings, requested) {
   return { plateau: plateauModel(chosen), path: normalizePlateauPath(plateauText(chosen.path)) };
 }
 
-/** A plateau as the editor holds it: `{ id, name, horizon, path }`, the texts the file gave (an unknown key stays in the file, not here). */
+/** A plateau as the editor holds it: `{ id, name, horizon, path, baseline }`, the texts the file gave (an unknown key stays in the file, not here); `baseline` is '' when the plateau has none. */
 function plateauModel(raw) {
-  return { id: plateauText(raw.id), name: plateauText(raw.name), horizon: plateauText(raw.horizon), path: plateauText(raw.path) };
+  return { id: plateauText(raw.id), name: plateauText(raw.name), horizon: plateauText(raw.horizon), path: plateauText(raw.path), baseline: plateauText(raw.baseline) };
+}
+
+/**
+ * The plateau a plateau is compared with by the rule of the command line (`Plateaus.baseline`): its `baseline` key, else the plateau
+ * before it in the list, else none (the first plateau). `plateaus` are the models of `AppState.plateaus`; null when there is nothing.
+ */
+function ownBaselineOf(plateau, plateaus) {
+  if (!plateau) return null;
+  if (plateau.baseline !== '') return plateaus.find((p) => p.id === plateau.baseline) || null;
+  const index = plateaus.findIndex((p) => p.id === plateau.id);
+  return index > 0 ? plateaus[index - 1] : null;
 }
 
 /** What the page calls a plateau: its name, else its id. */
@@ -2429,6 +2494,110 @@ function rememberPlateauId(id) {
   if (key === null) return;
   chosenPlateaus.set(key, id);
   panelSizeStorage.set(key, id);
+}
+
+// =====================================================================
+// Compare to (run 0039): the plateau drawn can be compared with another one of the same workspace. The other one, the baseline, is read
+// from the folder the editor already holds (its handle covers every plateau), kept apart from the plateau being edited, and never written.
+// =====================================================================
+
+/** The value of the Compare to select that follows the plateau drawn: its own baseline by the rule of the command line. */
+const COMPARE_BASELINE_CHOICE = '@baseline';
+const COMPARE_STORAGE_PREFIX = 'archicode-standalone-editor:compare:';
+
+// what was chosen in this page, for a browser that refuses its storage: the choice then lasts as long as the page
+const chosenComparisons = new Map();
+
+function compareStorageKey() {
+  const folder = AppState.folder;
+  return folder ? COMPARE_STORAGE_PREFIX + (folder.id || 'name:' + folder.name) : null;
+}
+
+/** The Compare to remembered for this folder in this browser: '' (Nothing), `@baseline` or a plateau id; null when none was ever chosen. */
+function recalledCompareTo() {
+  const key = compareStorageKey();
+  if (key === null) return null;
+  return chosenComparisons.has(key) ? chosenComparisons.get(key) : panelSizeStorage.get(key);
+}
+
+function rememberCompareTo(choice) {
+  const key = compareStorageKey();
+  if (key === null) return;
+  chosenComparisons.set(key, choice);
+  panelSizeStorage.set(key, choice);
+}
+
+/** A choice of Compare to the workspace can honour: Nothing, the baseline shortcut, or a plateau of the list. Anything else is Nothing. */
+function validCompareChoice(choice, plateaus) {
+  if (typeof choice !== 'string' || choice === '') return '';
+  if (choice === COMPARE_BASELINE_CHOICE) return choice;
+  return plateaus.some((p) => p.id === choice) ? choice : '';
+}
+
+/**
+ * The plateau the one drawn is compared with, or null (Nothing; fewer than two plateaus; a baseline shortcut for a plateau that has none;
+ * the plateau compared with itself, which compares nothing). The choice itself stays as it was made: leaving a plateau for the one that was
+ * the baseline, and coming back, finds the comparison again.
+ */
+function compareTargetPlateau() {
+  if (!AppState.plateau || AppState.plateaus.length < 2 || !AppState.compareTo) return null;
+  const target = AppState.compareTo === COMPARE_BASELINE_CHOICE
+    ? ownBaselineOf(AppState.plateau, AppState.plateaus)
+    : AppState.plateaus.find((p) => p.id === AppState.compareTo) || null;
+  return target && target.id !== AppState.plateau.id ? target : null;
+}
+
+/**
+ * Read the folder of the plateau compared with, as a model of its own (run 0039): the same reading as the plateau drawn (`readManifestFolder`,
+ * `buildIndex`, `resolveRelationships`), and none of its machinery: the files are not in `AppState.manifestFiles`, so nothing counts them as
+ * modified or writes them, and no handle to write with is kept. A reference declared twice in it is reported (`duplicates`) and a folder that
+ * is not there is told (`problem`), as for the plateau drawn; neither stops the plateau from loading.
+ */
+async function loadBaseline(rootHandle, settings) {
+  const target = compareTargetPlateau();
+  if (!target) { AppState.baseline = null; return; }
+  const relDir = normalizePlateauPath(target.path);
+  const folder = await readManifestFolder(rootHandle, relDir);
+  folder.files.sort((a, b) => a.relPath.localeCompare(b.relPath)); // as the plateau's own files are: the order of a listing is the file system's
+  const { index, duplicates } = buildIndex(folder.files, settings);
+  resolveRelationships(index);
+  // what in it could not be read is told too: a manifest that does not parse leaves its elements out of the comparison, and they would read as new
+  const unreadable = folder.files.filter((f) => f.error).map((f) => '`' + f.relPath + '`');
+  const problems = [];
+  if (folder.missing) problems.push('The folder `' + relDir + '` of the plateau `' + target.id + '` does not exist.');
+  if (unreadable.length) problems.push((unreadable.length === 1 ? 'The manifest ' : unreadable.length + ' manifests, ') + unreadable.slice(0, 3).join(', ') + (unreadable.length > 3 ? ' and more' : '') + ' of the plateau `' + target.id + '` could not be read, so what ' + (unreadable.length === 1 ? 'it declares' : 'they declare') + ' is not compared.');
+  AppState.baseline = { plateau: target, files: folder.files, index, duplicates, problem: problems.length ? problems.join(' ') : null };
+}
+
+/** `loadBaseline` that never throws: a folder the browser cannot read is the baseline's problem, said in the header, not an error of the page. */
+async function loadBaselineSafely(rootHandle, settings) {
+  try {
+    await loadBaseline(rootHandle, settings);
+  } catch (e) {
+    console.error('ArchiCode: the baseline could not be read', e);
+    const target = compareTargetPlateau();
+    AppState.baseline = target ? { plateau: target, files: [], index: { application: new Map(), technology: new Map() }, duplicates: [], problem: 'The plateau `' + target.id + '` could not be read: ' + (e && e.message ? e.message : String(e)) } : null;
+  }
+}
+
+/** Reload the baseline from the disk (the Reload button: the folder may have changed while the page stayed open) and draw again. */
+async function reloadBaseline() {
+  if (!AppState.workspace || !AppState.folder || !AppState.folder.handle || !compareTargetPlateau()) return;
+  await loadBaselineSafely(AppState.folder.handle, AppState.workspace.settings);
+  diagramCache = null;
+  render();
+}
+
+/** Compare to changed: remembered for this folder, the baseline read, the page drawn again. `choice`: '' (Nothing), `@baseline` or a plateau id. */
+async function setCompareTo(choice) {
+  if (!AppState.workspace || !AppState.plateau) return;
+  const next = validCompareChoice(choice, AppState.plateaus);
+  if (next === AppState.compareTo) return;
+  AppState.compareTo = next;
+  rememberCompareTo(next);
+  await loadBaselineSafely(AppState.folder.handle, AppState.workspace.settings);
+  diagramCache = null;
+  render();
 }
 
 function parseSettings(rawSettings) {
@@ -2810,6 +2979,51 @@ function parseManifestText(text) {
   }
 }
 
+/**
+ * The manifests of one folder below the root handle (run 0039: the reading loop of `loadWorkspace` as a function of a folder, so that a
+ * second plateau, the baseline, is read by the same code): the direct children of `relDir` that are YAML, as the records
+ * `buildIndex` takes, and the paths of the `.toml` and `.json` files the command line reads and the editor does not. `missing`:
+ * the folder is not there (or cannot be read). The records are new objects each call; nothing here writes.
+ */
+async function readManifestFolder(rootHandle, relDir) {
+  const result = { files: [], unread: [], missing: false };
+  let folderHandle;
+  try {
+    folderHandle = await getDirectoryHandleByRelativePath(rootHandle, relDir);
+  } catch (e) {
+    console.warn('ArchiCode: manifests path "' + relDir + '" not found/readable:', e);
+    result.missing = true;
+    return result;
+  }
+  for await (const [name, entryHandle] of folderHandle.entries()) {
+    if (entryHandle.kind !== 'file') continue;
+    const relPath = (relDir ? relDir + '/' : '') + name;
+    if (relDir === '' && /^workspace\.(ya?ml|json|toml)$/.test(name)) continue; // the workspace is not a manifest of itself (a folder written `.`)
+    // like the CLI (String.endsWith): `.YAML` is not a manifest. The CLI reads .toml and .json too; the editor writes YAML only
+    if (/\.(toml|json)$/.test(name)) result.unread.push(relPath);
+    if (!/\.(ya?ml)$/.test(name)) continue;
+    let rawText = '';
+    let header = null;
+    let content = null;
+    let error = null;
+    let lastKnownDiskModified = null; // TDD-0010 DEC-8
+    try {
+      const file = await entryHandle.getFile();
+      lastKnownDiskModified = file.lastModified;
+      rawText = await file.text();
+      ({ header, content, error } = parseManifestText(rawText));
+    } catch (e) {
+      error = e && e.message ? e.message : String(e);
+    }
+    result.files.push({
+      relPath, rawText, header, content, error,
+      dirty: false, existedOnDisk: true, lastKnownDiskModified,
+      savedRawText: rawText // what the file holds on disk, as far as this editor knows: an edit that restores it is no change
+    });
+  }
+  return result;
+}
+
 async function loadWorkspace(dirHandle) {
   landingBusy = null; // the next render() is the result (workspace or error), not another "Opening…"
   AppState.fatalError = null;
@@ -2822,6 +3036,7 @@ async function loadWorkspace(dirHandle) {
   AppState.plateau = null;
   AppState.plateaus = [];
   AppState.plateauProblem = null;
+  AppState.baseline = null;
   AppState.dirtyReferences = new Set();
   AppState.pendingFileRemovals = []; // a reload starts from the disk: a removal queued before it must not delete a file later
   AppState.removedFileBaselines = new Map();
@@ -2862,6 +3077,8 @@ async function loadWorkspace(dirHandle) {
   }
   AppState.plateau = selection.plateau;
   AppState.plateaus = selection.plateau ? settings.plateaus.map(plateauModel) : [];
+  // run 0039: the comparison this browser last chose in this folder, when the workspace can still honour it
+  AppState.compareTo = selection.plateau ? validCompareChoice(recalledCompareTo(), AppState.plateaus) : '';
 
   // FR-5: direct (non-recursive) children of each settings.manifests.paths dir, or of the folder of the plateau read.
   const manifestFiles = [];
@@ -2875,40 +3092,13 @@ async function loadWorkspace(dirHandle) {
     }
     if (seenManifestDirs.has(relDirPath)) continue;
     seenManifestDirs.add(relDirPath);
-    let manifestsDirHandle;
-    try {
-      manifestsDirHandle = await getDirectoryHandleByRelativePath(dirHandle, relDirPath);
-    } catch (e) {
-      console.warn('ArchiCode: manifests path "' + relDirPath + '" not found/readable:', e);
+    const folder = await readManifestFolder(dirHandle, relDirPath);
+    if (folder.missing) {
       if (selection.plateau) AppState.plateauProblem = 'The folder `' + relDirPath + '` of the plateau `' + selection.plateau.id + '` does not exist.';
       continue;
     }
-    for await (const [name, entryHandle] of manifestsDirHandle.entries()) {
-      if (entryHandle.kind !== 'file') continue;
-      const relPath = (relDirPath ? relDirPath + '/' : '') + name;
-      if (relDirPath === '' && /^workspace\.(ya?ml|json|toml)$/.test(name)) continue; // the workspace is not a manifest of itself (a folder written `.`)
-      // like the CLI (String.endsWith): `.YAML` is not a manifest. The CLI reads .toml and .json too; the editor writes YAML only
-      if (/\.(toml|json)$/.test(name)) unreadManifestFiles.push(relPath);
-      if (!/\.(ya?ml)$/.test(name)) continue;
-      let rawText = '';
-      let header = null;
-      let content = null;
-      let error = null;
-      let lastKnownDiskModified = null; // TDD-0010 DEC-8
-      try {
-        const file = await entryHandle.getFile();
-        lastKnownDiskModified = file.lastModified;
-        rawText = await file.text();
-        ({ header, content, error } = parseManifestText(rawText));
-      } catch (e) {
-        error = e && e.message ? e.message : String(e);
-      }
-      manifestFiles.push({
-        relPath, rawText, header, content, error,
-        dirty: false, existedOnDisk: true, lastKnownDiskModified,
-        savedRawText: rawText // what the file holds on disk, as far as this editor knows: an edit that restores it is no change
-      });
-    }
+    manifestFiles.push(...folder.files);
+    unreadManifestFiles.push(...folder.unread);
   }
   manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath));
   AppState.manifestFiles = manifestFiles;
@@ -2934,6 +3124,7 @@ async function loadWorkspace(dirHandle) {
     settingsLastKnownDiskModified: workspaceLastKnownDiskModified,
     rawText: workspaceText
   };
+  await loadBaselineSafely(dirHandle, settings); // the plateau compared with, if any: read-only, apart from the plateau drawn
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   render();
   await noteWorkspaceName(); // the list of folders says it, and so does the next "Opening" of this folder (TDD-0020 DEC-4)
@@ -3311,6 +3502,7 @@ function resetUiState() {
   diagramHost = 'main';
   parkedDiagramHost = newDiagramHostState();
   libraryPick = { view: null, selection: null };
+  removedPick = null;
   viewEditNotice = null;
   diagramSeq++; // a layout still being computed for the old folder is dropped when it ends
   helpOpen = false;
@@ -5339,7 +5531,35 @@ function renderPlateauTabsHtml() {
             '</button>';
   }
   html += '</span>';
+  html += renderCompareToHtml();
   if (AppState.plateauProblem) html += '<span class="plateau-problem" role="alert">' + escapeHtml(AppState.plateauProblem) + '</span>';
+  if (AppState.baseline && AppState.baseline.problem) html += '<span class="plateau-problem" role="alert">' + escapeHtml(AppState.baseline.problem) + '</span>';
+  return html + '</span>';
+}
+
+/**
+ * Compare to (run 0039), next to the Plateau selector: `Nothing` (the default), the baseline of the plateau drawn by the rule of the command line
+ * (its `baseline` key, else the plateau before it in the list; the entry carries that plateau's name, and follows the plateau drawn), then each other
+ * plateau. Only with two plateaus or more. While a comparison is on, Reload reads the folder of the other plateau again: it is read-only here, nothing in it is written.
+ */
+function renderCompareToHtml() {
+  if (!AppState.plateau || AppState.plateaus.length < 2) return '';
+  const busy = saveInFlight ? ' disabled' : '';
+  const target = compareTargetPlateau();
+  const chosen = target ? AppState.compareTo : ''; // a choice that resolves to no plateau (the baseline shortcut of a first plateau) shows as Nothing
+  const own = ownBaselineOf(AppState.plateau, AppState.plateaus);
+  const option = (value, label, title) => '<option value="' + escapeHtml(value) + '"' + (value === chosen ? ' selected' : '') + (title ? ' title="' + escapeHtml(title) + '"' : '') + '>' + escapeHtml(label) + '</option>';
+  let html = '<span class="compare-control"><label class="plateau-label" for="compare-to">Compare to</label>' +
+    '<select id="compare-to" aria-label="Compare to" title="Draw the plateau together with another one: what is new, changed and removed is told on the boxes and the links. The other plateau is only read."' + busy + '>' +
+    option('', 'Nothing', 'Draw the plateau alone');
+  if (own) html += option(COMPARE_BASELINE_CHOICE, 'Baseline: ' + plateauTitle(own), 'The baseline of ' + plateauTitle(AppState.plateau) + (AppState.plateau.baseline !== '' ? ' (its `baseline` key)' : ' (the plateau before it in the list)'));
+  for (const plateau of AppState.plateaus) {
+    if (plateau.id !== AppState.plateau.id) html += option(plateau.id, plateauTitle(plateau), plateau.id + ' · ' + plateau.path);
+  }
+  html += '</select>';
+  if (target) {
+    html += '<button type="button" data-action="reload-baseline"' + busy + ' title="Read the folder of “' + escapeHtml(plateauTitle(target)) + '” again from the disk. It is only read here, never written.">Reload</button>';
+  }
   return html + '</span>';
 }
 
@@ -6539,6 +6759,10 @@ function handleAppInput(e) {
     updateStoryField(storyField);
     return;
   }
+  if (e.target.id === 'compare-to') {
+    setCompareTo(e.target.value);
+    return;
+  }
   if (e.target.id === 'diagram-facet-select') {
     pushDiagramHistory();
     diagramFacet = e.target.value || null;
@@ -6977,11 +7201,48 @@ function renderInspectionHtml(onMap) {
 }
 
 /**
+ * A removed box was clicked on the Map or on a diagram of Elements (run 0039): `{ reference, layer, selection }`, `selection` being the selection of the page
+ * (as text) at that moment. The panel shows what the baseline had of it for as long as the page's selection is that one: any other click changes the selection
+ * and ends it, with no place to remember to clear it. On the page of a view in the Library the pick is the selection of the page itself (`baseline-element`).
+ */
+let removedPick = null;
+
+/** The removed element the panel is to show: the one picked on this page, or the page-of-a-view selection that names one; null when none, or when it is no longer removed. */
+function removedInspectionOf(sel, mode) {
+  let picked = null;
+  if (sel && sel.kind === 'baseline-element') picked = { reference: sel.key, layer: sel.layer };
+  else if (mode !== 'library' && removedPick && removedPick.selection === JSON.stringify(AppState.selection)) picked = removedPick;
+  if (!picked) return null;
+  const state = comparisonState();
+  return state && state.records && state.records.has(picked.layer + '|' + picked.reference) && AppState.baseline && AppState.baseline.index[picked.layer].has(picked.reference) ? picked : null;
+}
+
+/** The panel of an element only the baseline has: what it was, read-only, and where it was declared. Its relationships are told, not linked: they lead to the other plateau. */
+function renderRemovedInspectionHtml(picked, mode) {
+  const record = AppState.baseline.index[picked.layer].get(picked.reference);
+  const other = AppState.baseline.plateau;
+  const relationships = record.relationships.map((rel) => '<li>' + escapeHtml(rel.destination) + (rel.rawLabel ? ' : ' + escapeHtml(rel.rawLabel) : '') +
+    (rel.qualifiers && rel.qualifiers.length ? ' <span class="muted">[' + escapeHtml(rel.qualifiers.join(', ')) + ']</span>' : '') + '</li>').join('');
+  return '<div class="inspection inspection-removed" data-inspection-ref="' + escapeHtml(record.reference) + '" data-inspection-layer="' + escapeHtml(picked.layer) + '">' +
+    '<div class="inspection-head"><h3>Selected element</h3><button type="button" class="inspection-close" data-action="close-removed" aria-label="Close the panel" title="Close the panel">&times;</button></div>' +
+    '<div class="inspection-name"><span>' + escapeHtml(record.name || record.id) + '</span><span class="stereotype-badge" style="' + escapeHtml(styleVarsText(stereotypeBadgeVarsOf('removed'))) + '">removed</span></div>' +
+    '<p class="inspection-note">Removed: this element is only in “' + escapeHtml(plateauTitle(other)) + '”, the plateau this one is compared with. What you read is that plateau’s; it is not part of the plateau drawn, and nothing here is edited or saved.</p>' +
+    renderFieldRowHtml('Kind', escapeHtml(record.kind)) +
+    renderFieldRowHtml('Layer', escapeHtml(picked.layer)) +
+    renderElementPropertiesHtml(record) +
+    renderFieldRowHtml('Source file', escapeHtml(record.sourceFile)) +
+    renderFieldRowHtml('Relationships', relationships ? '<ul class="removed-relationships">' + relationships + '</ul>' : renderNoneHtml(), record.relationships.length) +
+    '</div>';
+}
+
+/**
  * The panel of a selection, whoever holds it. `mode` is where it stands: 'map' (it can be closed, and says when the element is
  * not drawn), 'elements' (nothing deselects there: it has no close button), or 'library' (the page of a view: it can be closed, and
  * leads to the element in Elements). The Map and Elements pass their own selection (`AppState.selection`), the page of a view the one of the page.
  */
 function inspectionPanelHtml(sel, mode) {
+  const removed = removedInspectionOf(sel, mode);
+  if (removed) return renderRemovedInspectionHtml(removed, mode);
   if (sel.kind === 'link') return renderLinkInspectionHtml(sel);
   const onMap = mode === 'map';
   const record = inspectionRecordFor(sel);
@@ -7402,7 +7663,7 @@ let navActiveKey = null;
  * the twins apart (the tab, the zoom direction, the perspective). Null for anything else, which keeps no focus.
  */
 function headerControlSelector(el) {
-  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button') : null;
+  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select') : null;
   if (!control) return null;
   if (control.id) return '#' + control.id;
   const action = control.getAttribute('data-action');
@@ -7460,7 +7721,9 @@ function mapIsShown() {
 /** What the kernel is given: only references that still exist (an element can be deleted while the map is on). */
 function currentMapState() {
   const known = (list) => Array.from(list).filter((reference) => AppState.index.application.has(reference));
-  return { opened: known(currentMapOpened()), pinned: known(mapPinned), hidden: known(mapHidden) };
+  // a comparison also draws the elements only the baseline has (removed): a box of the map that is one can be opened
+  const knownToOpen = (list) => Array.from(list).filter((reference) => AppState.index.application.has(reference) || comparisonHasApplication(reference));
+  return { opened: knownToOpen(currentMapOpened()), pinned: known(mapPinned), hidden: known(mapHidden) };
 }
 
 /** How many boxes the map would draw once `extra` more elements are open, children of open boxes being all drawn. */
@@ -7485,7 +7748,10 @@ function closeOnMap(reference) {
   for (const open of Array.from(opened)) if (open === reference || open.startsWith(reference + '.')) opened.delete(open);
 }
 
-/** Decode the embedded WebAssembly module and wrap its tiny C ABI (alloc / compute / result_ptr / dealloc). */
+/** The kernel, once the promise of `loadViewpointKernel` has settled: null before. */
+let loadedKernel = null;
+
+/** Decode the embedded WebAssembly module and wrap its tiny C ABI (alloc / compute / compare / result_ptr / dealloc). */
 function loadViewpointKernel() {
   if (!viewpointKernelPromise) {
     viewpointKernelPromise = (async () => {
@@ -7498,24 +7764,35 @@ function loadViewpointKernel() {
       const x = instance.exports;
       const encoder = new TextEncoder();
       const decoder = new TextDecoder();
-      return {
+      // one call of the C ABI: the input as JSON in, the answer as JSON out (`compute` draws a view, `compare` compares two plateaus)
+      const call = (name, input) => {
+        const data = encoder.encode(JSON.stringify(input));
+        const ptr = x.alloc(data.length);
+        new Uint8Array(x.memory.buffer, ptr, data.length).set(data); // read memory.buffer after alloc: it may have grown
+        const length = x[name](ptr, data.length);
+        const output = decoder.decode(new Uint8Array(x.memory.buffer, x.result_ptr(), length));
+        x.dealloc(ptr, data.length);
+        const result = JSON.parse(output);
+        if (!result.error && result.version !== KERNEL_CONTRACT_VERSION) {
+          throw new Error('The embedded viewpoint kernel speaks version ' + result.version + ', this editor expects ' + KERNEL_CONTRACT_VERSION + '.');
+        }
+        return result;
+      };
+      const kernel = {
         compute(input) {
-          const data = encoder.encode(JSON.stringify(input));
-          const ptr = x.alloc(data.length);
-          new Uint8Array(x.memory.buffer, ptr, data.length).set(data); // read memory.buffer after alloc: it may have grown
-          const length = x.compute(ptr, data.length);
-          const output = decoder.decode(new Uint8Array(x.memory.buffer, x.result_ptr(), length));
-          x.dealloc(ptr, data.length);
-          const result = JSON.parse(output);
-          if (!result.error && result.version !== KERNEL_CONTRACT_VERSION) {
-            throw new Error('The embedded viewpoint kernel speaks version ' + result.version + ', this editor expects ' + KERNEL_CONTRACT_VERSION + '.');
-          }
+          const result = call('compute', input);
           for (const warning of result.warnings || []) {
             if (!kernelWarningsShown.has(warning)) { kernelWarningsShown.add(warning); console.warn('ArchiCode: ' + warning); }
           }
           return result;
+        },
+        // run 0039: the union of two plateaus, where every element and relationship says what changed (see `buildComparison`)
+        compare(input) {
+          return call('compare', input);
         }
       };
+      loadedKernel = kernel; // the synchronous builders of a comparison need it; the drawing waits for the promise before it asks
+      return kernel;
     })();
     viewpointKernelPromise.catch(() => { viewpointKernelPromise = null; });
   }
@@ -7598,6 +7875,71 @@ function toKernelElements(map, withProperties) {
   return { elements, dangling };
 }
 
+// ---- The comparison of two plateaus (run 0039) ----
+
+/** The input of the kernel's `compare`: both layers of the baseline and of the plateau drawn, with the properties a comparison reads (kind, name, description). */
+function comparisonInput() {
+  const layers = (indexes) => ({
+    application: toKernelElements(indexes.application, true).elements,
+    technology: toKernelElements(indexes.technology, true).elements
+  });
+  return { base: layers(AppState.baseline.index), target: layers(AppState.index) };
+}
+
+/**
+ * What a caller does with the answer of `compare` to draw it (as `change.test.js` shows): the elements of a layer, each with the relationships
+ * of the layer that it declares nested under it. The kernel draws that union as it draws a plateau; a removed element keeps its place under its parent.
+ */
+function unionLayersOf(union) {
+  const declared = new Map();
+  for (const rel of union.relationships) {
+    const key = rel.layer + '|' + rel.from;
+    if (!declared.has(key)) declared.set(key, []);
+    declared.get(key).push(rel);
+  }
+  const layers = { application: [], technology: [] };
+  const records = new Map(); // layer|reference -> the union element: what a removed box is told from
+  for (const element of union.elements) {
+    if (!layers[element.layer]) continue;
+    layers[element.layer].push(Object.assign({}, element, { relationships: declared.get(element.layer + '|' + element.reference) || [] }));
+    records.set(element.layer + '|' + element.reference, element);
+  }
+  return { layers, records };
+}
+
+let comparisonCache = null; // { key, value }: the last answer of `compare`, kept while the two models are what they were
+
+/**
+ * The comparison of the plateau drawn with the baseline, as the page needs it now:
+ *   null                nothing is compared (Compare to is Nothing, or the baseline is not read yet);
+ *   { pending: true }   a comparison is asked for and the kernel is not loaded yet (the drawing loads it, then asks again);
+ *   { problems }        it cannot be drawn: the baseline declares a reference twice, or the kernel refused the pair (the messages);
+ *   { base, target, layers, records, counts, changes }   the answer, `layers` being the union of each layer ready for `compute`.
+ */
+function comparisonState() {
+  const target = compareTargetPlateau();
+  if (!target || !AppState.baseline || !AppState.baseline.plateau || AppState.baseline.plateau.id !== target.id) return null;
+  if (AppState.baseline.duplicates.length) {
+    return { problems: ['The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, has references declared more than once:'].concat(AppState.baseline.duplicates.map((d) => d.message)) };
+  }
+  if (!loadedKernel) return { pending: true };
+  const input = comparisonInput();
+  const key = JSON.stringify(input);
+  if (!comparisonCache || comparisonCache.key !== key) {
+    const answer = loadedKernel.compare(input);
+    comparisonCache = { key, value: answer.error ? { error: answer.error } : Object.assign({ answer }, unionLayersOf(answer)) };
+  }
+  const value = comparisonCache.value;
+  if (value.error) return { problems: ['The comparison with “' + plateauTitle(target) + '” could not be made: ' + value.error] };
+  return { base: AppState.baseline.plateau, target: AppState.plateau, layers: value.layers, records: value.records, counts: value.answer.counts, changes: value.answer.changes };
+}
+
+/** Whether the references of the union (the elements of both plateaus) include this one in the application layer: the map can open a removed box. */
+function comparisonHasApplication(reference) {
+  const state = comparisonState();
+  return !!(state && state.records && state.records.has('application|' + reference));
+}
+
 /** A facet of the settings as the kernel reads it. */
 function toKernelFacet(facet) {
   return {
@@ -7621,6 +7963,12 @@ function buildKernelInput(viewpoint, reference, options) {
   const layer = isMap ? 'application' : (opts.layer || layerOfReference(reference) || 'technology'); // no layer asked: the selected element's own, else the application one
   const main = toKernelElements(AppState.index[layer], !!opts.facet);
   const apps = layer === 'technology' ? toKernelElements(AppState.index.application, !!opts.facet) : { elements: [], dangling: 0 };
+  // run 0039: with a comparison on, the kernel draws the union of the two plateaus (each element and relationship says what changed); `dangling` is still the plateau drawn's own
+  const comparison = comparisonState();
+  if (comparison && comparison.layers) {
+    main.elements = comparison.layers[layer];
+    if (layer === 'technology') apps.elements = comparison.layers.application;
+  }
   const input = {
     viewpoint,
     layer,
@@ -8016,16 +8364,79 @@ function styledStereotypesOf(names) {
   return (Array.isArray(names) ? names : []).filter((name) => stereotypeStyleOf(name) !== null);
 }
 
-/** The look of a box drawn with these stereotypes: the style of each styled one, a later stereotype overriding an earlier one property by property. */
-function stereotypeLookOf(names) {
+// ---- The four states of a comparison (run 0039). The kernel puts the state of a box last in its stereotypes (`new`, `changed`, `removed`, or
+// `contains-changes` for a box that did not change and holds something that did); these are the glyph, the words and the default look of each. The
+// glyphs and the words are the ones of the command line (`ChangeMarks.java`). ----
+
+const CHANGE_STATES = ['new', 'changed', 'removed'];
+const CHANGE_GLYPHS = { new: '+', changed: '~', removed: '\u2212', 'contains-changes': '\u00B1' };
+/** What the key says of each state, in a few words that do not rest on colour: the line of its box, the line of its link. */
+const CHANGE_WORDS = {
+  new: { word: 'new', box: 'thick solid outline', link: 'thick solid line' },
+  changed: { word: 'changed', box: 'dotted outline', link: 'dotted line' },
+  removed: { word: 'removed', box: 'dashed grey outline, struck title', link: 'dashed grey line' },
+  'contains-changes': { word: 'contains changes', box: 'thin dashed outline', link: '' }
+};
+
+/**
+ * The default look of a state, as the --st-* variables a styled box carries. The colours are theme variables (--chg-*), so that the page and
+ * the export follow the theme. `own` (the CSS property of `styles` that overrides each variable): an entry of the workspace with the same
+ * name as the state wins, property by property. The fill of the author is never replaced: the tint is laid over it.
+ */
+const CHANGE_DEFAULT_LOOK = {
+  new: { '--st-stroke': 'var(--chg-new)', '--st-width': '3px', '--st-dash': 'none', '--st-tint': 'var(--chg-new)' },
+  changed: { '--st-stroke': 'var(--chg-changed)', '--st-width': '2px', '--st-dash': '2 3', '--st-tint': 'var(--chg-changed)' },
+  removed: { '--st-stroke': 'var(--chg-removed)', '--st-width': '2px', '--st-dash': '7 4', '--st-tint': 'var(--chg-removed)', '--st-text': 'var(--chg-removed-text)' },
+  'contains-changes': { '--st-stroke': 'var(--chg-contains)', '--st-width': '1px', '--st-dash': '4 3' }
+};
+
+/** The state a box of the drawing says: its own change, or `contains-changes` for an unchanged box that holds a change; null for any other (a ghost, a plain drawing). */
+function changeStateOfItem(item) {
+  if (!item || item.ghost) return null;
+  if (CHANGE_STATES.includes(item.change)) return item.change;
+  if (item.change === 'none' && Array.isArray(item.stereotypes) && item.stereotypes[item.stereotypes.length - 1] === 'contains-changes') return 'contains-changes';
+  return null;
+}
+
+/** The default variables of a state, minus the ones the entry `own` of the workspace (same name) already gives. */
+function changeDefaultVars(state, own) {
+  const style = own || {};
+  const given = {
+    '--st-stroke': !!parseCssColor(style['line-color']),
+    '--st-width': styleWholeNumber(style['line-thickness'], 20) !== null,
+    '--st-dash': styleWholeNumber(style['line-style'], 50) !== null,
+    '--st-tint': !!parseCssColor(style['background-color']),
+    '--st-text': !!parseCssColor(style['font-color'])
+  };
+  const vars = {};
+  for (const key of Object.keys(CHANGE_DEFAULT_LOOK[state])) if (!given[key]) vars[key] = CHANGE_DEFAULT_LOOK[state][key];
+  if ('--st-stroke' in vars) vars['--st-stroke-opacity'] = '1'; // a line of a state is not the faded outline of a plain compound box
+  return vars;
+}
+
+/**
+ * The look of a box drawn with these stereotypes: the style of each styled one, a later stereotype overriding an earlier one property by property.
+ * `state` (a comparison): the state the box says; its default look (a line, a tint) comes after the styles of the other stereotypes, which it
+ * overrides as a later stereotype does, and under the entry of the workspace named like it, which is read as for any stereotype. The word of
+ * the state is then one of the badges even when the workspace did not style it.
+ */
+function stereotypeLookOf(names, state) {
   const styled = styledStereotypesOf(names);
   const merged = {};
   for (const name of styled) Object.assign(merged, stereotypeStyleOf(name));
-  return Object.assign(styleLookOf(merged), { styled });
+  const look = styleLookOf(merged);
+  if (!state) return Object.assign(look, { styled });
+  const vars = Object.assign({}, look.vars, changeDefaultVars(state, stereotypeStyleOf(state)));
+  const shown = (Array.isArray(names) ? names : []).filter((name) => styled.includes(name) || name === state);
+  return Object.assign({}, look, { vars, empty: false, styled: shown });
 }
 
 /** The custom properties of a badge: the look of its own stereotype only (`initial` where it says nothing, so that it does not take the one of the box it sits in). */
 function stereotypeBadgeVarsOf(name) {
+  // the word of a state the workspace did not style: a line in the colour of the state, the fill and the text those of the page
+  if (stereotypeStyleOf(name) === null && Object.prototype.hasOwnProperty.call(CHANGE_DEFAULT_LOOK, name)) {
+    return { '--st-fill': 'initial', '--st-stroke': CHANGE_DEFAULT_LOOK[name]['--st-stroke'], '--st-text': 'initial' };
+  }
   const vars = styleLookOf(stereotypeStyleOf(name)).vars;
   const own = {};
   for (const key of ['--st-fill', '--st-stroke', '--st-text']) own[key] = key in vars ? vars[key] : 'initial';
@@ -8058,6 +8469,7 @@ function diagramItemText(item, show, layer) {
   if (item.ghost) {
     return {
       title: item.reference,
+      name: item.reference,
       sub: '[unknown element]',
       description: '',
       tooltip: 'There is no element “' + item.reference + '”, but “' + item.owner + '” has a relationship to it. Click to open “' + item.owner + '” and fix it.',
@@ -8067,22 +8479,75 @@ function diagramItemText(item, show, layer) {
   }
   // `layer` (the page of a view names it; the Map and Elements leave it out and keep letting the selection decide): the box of the
   // diagram's own layer is the one whose id is its reference, the others are the applications hosted on it
-  const record = findElementRecord(item.reference, layer ? (item.id === item.reference ? layer : 'application') : undefined);
+  // a removed element is not in the plateau drawn: the comparison told what it was (`tellRemovedItems`)
+  const record = item.removed
+    ? { id: item.removed.id, name: item.removed.name, kind: item.removed.kind, description: item.removed.description, qualifiers: item.removed.qualifiers }
+    : findElementRecord(item.reference, layer ? (item.id === item.reference ? layer : 'application') : undefined);
   const hidden = item.collapsed ? ' · ' + item.hidden + ' hidden' : '';
   const qualifiers = record && Array.isArray(record.qualifiers) ? record.qualifiers.filter((q) => typeof q === 'string' && q) : [];
   const description = record && record.description ? String(record.description).replace(/\s+/g, ' ').trim() : '';
   // what the kernel says the box is drawn with, and what the workspace styled of it
   const stereotypes = Array.isArray(item.stereotypes) ? item.stereotypes : [];
-  const look = stereotypeLookOf(stereotypes);
+  const state = changeStateOfItem(item); // a comparison: the glyph in the title, the default look, the word as a badge
+  const look = stereotypeLookOf(stereotypes, state);
+  const name = record ? (record.name || record.id) : item.reference;
+  const says = state === null ? '' : '\n' + CHANGE_WORDS[state].word.charAt(0).toUpperCase() + CHANGE_WORDS[state].word.slice(1) + ': ' + (
+    state === 'new' ? 'this element is not in the plateau it is compared with.' :
+    state === 'removed' ? 'this element is only in the plateau it is compared with, not in the one drawn.' :
+    state === 'changed' ? 'it differs from the plateau it is compared with' + (Array.isArray(item.natures) && item.natures.length ? ' (' + item.natures.join(', ') + ')' : '') + '.' :
+    'it did not change by itself, but something inside it did.');
   return {
     badges: look.styled,
     look,
-    title: record ? (record.name || record.id) : item.reference,
+    state,
+    name,
+    title: state === null ? name : CHANGE_GLYPHS[state] + ' ' + name,
     sub: (record ? '[' + record.kind + (show && show.qualifiers && qualifiers.length ? ': ' + qualifiers.join(', ') : '') + ']' : '') + hidden,
     description,
     tooltip: item.reference + (qualifiers.length ? ' [' + qualifiers.join(', ') + ']' : '') + (record && record.description ? ' — ' + record.description : '') +
-      (look.styled.length ? '\nStereotypes: ' + stereotypes.join(', ') : '')
+      (look.styled.length ? '\nStereotypes: ' + stereotypes.join(', ') : '') + says
   };
+}
+
+/** The lines of a title as SVG text: the glyph of a state in bold, the title of a removed box struck (the glyph stays clear of the strike). Without a state: the text, as it always was. */
+function diagramTitleHtml(line, text) {
+  if (!text.state) return escapeHtml(line);
+  const glyph = CHANGE_GLYPHS[text.state];
+  const lead = line.startsWith(glyph + ' ');
+  const rest = lead ? line.slice(glyph.length + 1) : line;
+  const body = text.state === 'removed' ? '<tspan class="dg-struck">' + escapeHtml(rest) + '</tspan>' : escapeHtml(rest);
+  return lead ? '<tspan class="dg-glyph">' + escapeHtml(glyph) + '</tspan> ' + body : body;
+}
+
+/**
+ * A comparison is on: the boxes the kernel calls removed are elements of the baseline, not of the plateau drawn. Tell each what it was (name, kind,
+ * description, qualifiers) from the union, so that it is drawn like the others and a click on it can say more. `layer`: the layer of the drawing.
+ */
+function tellRemovedItems(result, comparison, layer) {
+  for (const item of result.items) {
+    if (item.change !== 'removed') continue;
+    const itemLayer = item.id === item.reference ? layer : 'application';
+    const element = comparison.records.get(itemLayer + '|' + item.reference);
+    if (!element) continue;
+    item.removed = {
+      layer: itemLayer,
+      id: String(item.reference).split('.').pop(),
+      name: element.name,
+      kind: element.kind,
+      description: element.description,
+      qualifiers: Array.isArray(element.qualifiers) ? element.qualifiers : [],
+      relationships: Array.isArray(element.relationships) ? element.relationships : []
+    };
+  }
+}
+
+/** How many boxes and links of each state a drawing shows (what the key tells next to each state): `{ new: { boxes, links }, ... }`; the marker has no link. */
+function comparisonCountsOf(drawn) {
+  const counts = {};
+  for (const state of ['new', 'changed', 'removed', 'contains-changes']) counts[state] = { boxes: 0, links: 0 };
+  for (const item of drawn.items) { const state = changeStateOfItem(item); if (state) counts[state].boxes++; }
+  for (const link of drawn.links) if (!link.secondary && CHANGE_STATES.includes(link.change)) counts[link.change].links++;
+  return counts;
 }
 
 /** Longest line of a box that contains others (its name and its kind share the line of its header): past it the kind is cut. */
@@ -8230,7 +8695,7 @@ const DIAGRAM_LABEL_LINES = 4;
 const DIAGRAM_LABEL_LINE_HEIGHT = 13;
 const DIAGRAM_LABEL_PADDING = 10;
 
-function diagramLabelLayout(link, wrap) {
+function diagramLabelLayout(link, wrap, markOnly) {
   const measure = (line) => diagramMeasureText(line, 11);
   const max = DIAGRAM_LABEL_MAX_WIDTH;
   const cap = wrap ? 0 : DIAGRAM_LABEL_LINES;
@@ -8243,8 +8708,11 @@ function diagramLabelLayout(link, wrap) {
     while (cut.length > 1 && measure(cut.join('') + '…' + keep) > max) cut.pop();
     return cut.join('') + '…' + keep;
   }).join(' ');
-  const labelText = link.label && link.label.trim() ? fit(link.label) : '';
-  const qualifiers = Array.from(link.qualifiers || []);
+  // a comparison: the glyph of the state of the link opens its caption (it stands alone when the captions are off: the glyph is how the state is told)
+  const mark = diagramLinkMark(link);
+  const worded = !markOnly && link.label && link.label.trim() ? fit(link.label) : '';
+  const labelText = mark ? (worded ? mark + ' ' + worded : mark) : worded;
+  const qualifiers = markOnly ? [] : Array.from(link.qualifiers || []);
   const qualifierLines = qualifiers.length ? diagramWrapText(fit('[' + qualifiers.join(', ') + ']', ']'), max, cap ? 2 : 0, measure) : [];
   let lines = labelText ? diagramWrapText(labelText, max, cap, measure) : [];
   if (qualifierLines.length === 1 && lines.length && measure(lines[lines.length - 1] + ' ' + qualifierLines[0]) <= max) {
@@ -8258,11 +8726,17 @@ function diagramLabelLayout(link, wrap) {
   return { lines, width: width + DIAGRAM_LABEL_PADDING, height: lines.length * DIAGRAM_LABEL_LINE_HEIGHT + 2 };
 }
 
+/** The glyph of the state of a link of a comparison (`+`, `~`, `−`), or '' for a link that did not change or a drawing that compares nothing. */
+function diagramLinkMark(link) {
+  return CHANGE_STATES.includes(link.change) ? CHANGE_GLYPHS[link.change] : '';
+}
+
 /** What a link stands for, for its tooltip: each declared relationship, and a note when it groups several. */
 function diagramLinkTitle(link, itemById, layer) {
-  const name = (id) => { const item = itemById.get(id); return item ? diagramItemText(item, undefined, layer).title : id; };
+  const name = (id) => { const item = itemById.get(id); return item ? diagramItemText(item, undefined, layer).name : id; };
   const caption = diagramLinkText(link);
   const lines = [name(link.from) + ' → ' + name(link.to) + (caption ? ' : ' + caption : '')];
+  if (diagramLinkMark(link)) lines.push(CHANGE_GLYPHS[link.change] + ' ' + CHANGE_WORDS[link.change].word + (link.synthetic ? ' (as a group: see the relationships below)' : ''));
   const rels = link.relationships || [];
   if (link.synthetic && rels.length) {
     lines.push(rels.length + (rels.length === 1 ? ' relationship is' : ' relationships are') + ' grouped here:');
@@ -8319,10 +8793,13 @@ function buildElkGraph(result, options) {
   }
   const toNode = (item) => {
     const text = diagramItemText(item, show, options && options.itemLayer);
+    // a comparison turned the other way flips `new` and `removed`: their pills take the room of the wider one in the layout, so that no box changes size
+    // (and nothing moves) when the same pair is drawn from the other plateau
+    const roomBadges = text.state === 'new' ? text.badges.map((name) => (name === 'new' ? 'removed' : name)) : text.badges;
     const kids = childrenOf.get(item.id) || [];
     if (kids.length) {
       const minWidth = Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS), 12)) + 60 +
-        (text.badges.length ? diagramBadgeRow(text.badges, Infinity).width : 0);
+        (roomBadges.length ? diagramBadgeRow(roomBadges, Infinity).width : 0);
       return {
         id: item.id,
         children: kids.map(toNode),
@@ -8337,17 +8814,18 @@ function buildElkGraph(result, options) {
     }
     let width = Math.max(150, Math.min(280, Math.max(diagramTextWidth(text.title, 14), diagramTextWidth(text.sub, 12)) + 36));
     if (show.descriptions && text.description) width = Math.max(width, 240); // room for a description to read
-    if (text.badges.length) width = Math.max(width, Math.min(280, diagramBadgeRow(text.badges, Infinity).width + 20)); // room for the badges
+    if (roomBadges.length) width = Math.max(width, Math.min(280, diagramBadgeRow(roomBadges, Infinity).width + 20)); // room for the badges
     return { id: item.id, width, height: diagramLeafLayout(text, width, show).height };
   };
   const edges = [];
   result.links.forEach((link, index) => {
     if (link.secondary || !ids.has(link.from) || !ids.has(link.to)) return;
     const caption = diagramLinkText(link);
+    const mark = diagramLinkMark(link);
     const edge = { id: 'e' + index, sources: [link.from], targets: [link.to] };
-    if (caption && captions) {
-      const label = diagramLabelLayout(link, show.wrap);
-      edge.labels = [{ text: caption, width: label.width, height: label.height }];
+    if ((caption && captions) || mark) {
+      const label = diagramLabelLayout(link, show.wrap, !captions);
+      edge.labels = [{ text: (mark ? mark + (captions && caption ? ' ' : '') : '') + (captions ? caption : ''), width: label.width, height: label.height }];
     }
     edges.push(edge);
   });
@@ -8411,7 +8889,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     // the chevron is drawn in the colour the text of the box takes, so that it reads on the fill of a styled box
     const textColor = overText || (text.look && text.look.vars['--st-text']);
     return '<g class="dg-fold"' + (textColor ? ' style="--st-text:' + textColor + '"' : '') + ' data-action="toggle-fold" data-mode="' + mode + '" data-id="' + escapeHtml(item.id) + '" tabindex="0" role="button" aria-label="' +
-      escapeHtml(verb + ' ' + text.title) + '"><title>' + verb + '</title>' +
+      escapeHtml(verb + ' ' + text.name) + '"><title>' + verb + '</title>' +
       // a button that looks like one (the chevron alone was too small to hit), with a hit area larger than what is drawn
       '<rect class="dg-hit" x="' + (x - 3) + '" y="' + (y - 3) + '" width="30" height="30"/>' +
       '<rect class="dg-fold-bg" x="' + (x + 2) + '" y="' + (y + 2) + '" width="20" height="20" rx="5"/>' +
@@ -8444,10 +8922,13 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     if (isFocal) focal = { x: x + w / 2 + 4, y: y + h / 2 + 4, w, h };
     if (!item.ghost) boxesById[item.id] = { x: x + w / 2 + 4, y: y + h / 2 + 4, w, h };
     const inert = readonly && item.ghost;
+    // a removed box is no element of the plateau drawn: a click shows what the other plateau had, read-only (`select-removed`), and goes nowhere
     const action = inert ? '' : item.ghost
       ? ' data-action="fix-dangling" data-ref="' + escapeHtml(item.owner) + '"'
-      : ' data-action="goto-element" data-ref="' + escapeHtml(item.reference) + '"' + layerAttribute;
-    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="' + (item.ghost || item.id === stopId ? '0' : '-1') + '" role="' + (inert ? 'img' : 'link') + '" aria-label="' + escapeHtml(text.title + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
+      : item.removed
+        ? ' data-action="select-removed" data-ref="' + escapeHtml(item.reference) + '" data-layer="' + escapeHtml(item.removed.layer) + '"'
+        : ' data-action="goto-element" data-ref="' + escapeHtml(item.reference) + '"' + layerAttribute;
+    const common = ' data-id="' + escapeHtml(item.id) + '"' + action + ' tabindex="' + (item.ghost || item.id === stopId ? '0' : '-1') + '" role="' + (inert ? 'img' : 'link') + '" aria-label="' + escapeHtml(text.name + ' ' + text.sub + (text.badges.length ? ', ' + text.badges.join(', ') : '')) + '"';
     if (box.compound) {
       // Close is offered when it changes something: the user opened this box, and nothing pinned inside it keeps it open
       // (the kernel opens what encloses a pin), nor the focal element (a box around it cannot be folded)
@@ -8456,10 +8937,12 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       const look = diagramLookAttributes(text.look);
       const lookStyle = overFill ? ' style="' + escapeHtml(styleVarsText(Object.assign({}, text.look.vars, { '--ov-text': overFill }))) + '"' : look.style;
       const badgeRow = text.badges.length ? diagramBadgeRow(text.badges, Math.floor((w - 48) / 2)) : null; // right-aligned in the header
-      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + look.classes + (overFill ? ' dg-over-fill' : '') + '"' + lookStyle + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
-        '<rect class="dg-group" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (text.look.rx === null ? 8 : text.look.rx) + '"/>' +
+      const groupRx = text.look.rx === null ? 8 : text.look.rx;
+      compounds += '<g class="dg-node dg-compound' + (isFocal ? ' dg-focal' : '') + look.classes + (text.state ? ' dg-chg-' + text.state : '') + (overFill ? ' dg-over-fill' : '') + '"' + lookStyle + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
+        '<rect class="dg-group" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + groupRx + '"/>' +
+        (text.look.vars['--st-tint'] ? '<rect class="dg-tint" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + groupRx + '"/>' : '') +
         '<rect class="dg-header" x="' + x + '" y="' + y + '" width="' + w + '" height="36"/>' +
-        '<text class="dg-title" x="' + (x + 34) + '" y="' + (y + 22) + '">' + escapeHtml(diagramTruncate(text.title, Math.max(8, Math.floor((w - 48 - (badgeRow ? badgeRow.width : 0)) / 8)))) +
+        '<text class="dg-title" x="' + (x + 34) + '" y="' + (y + 22) + '">' + diagramTitleHtml(diagramTruncate(text.title, Math.max(8, Math.floor((w - 48 - (badgeRow ? badgeRow.width : 0)) / 8))), text) +
         ' <tspan class="dg-sub">' + escapeHtml(diagramTruncate(text.sub, DIAGRAM_HEADER_SUB_CHARS)) + '</tspan></text>' +
         (badgeRow ? diagramBadgesSvg(badgeRow, x + w - 8 - badgeRow.width, y + 10) : '') + '</g>' +
         (closable ? foldButton(Object.assign({}, item, { expandable: false }), text, x + 6, y + 6, overFill) : '');
@@ -8468,14 +8951,15 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       // a box the kernel says opening would change (and only that: a button that does nothing is not drawn)
       const expandable = isMap && !readonly && !item.ghost && item.expandable;
       const lines = diagramLeafLayout(text, w, show);
-      const linesAt = (cls, anchorLines, ys) => anchorLines.map((line, i) =>
-        '<text class="' + cls + '" x="' + (x + w / 2) + '" y="' + (y + ys[i]) + '" text-anchor="middle">' + escapeHtml(line) + '</text>').join('');
+      const linesAt = (cls, anchorLines, ys, html) => anchorLines.map((line, i) =>
+        '<text class="' + cls + '" x="' + (x + w / 2) + '" y="' + (y + ys[i]) + '" text-anchor="middle">' + (html ? html(line) : escapeHtml(line)) + '</text>').join('');
       const look = diagramLookAttributes(text.look);
       const rx = text.look.rx === null ? 6 : text.look.rx;
-      leaves += '<g class="dg-node dg-leaf' + (isFocal ? ' dg-focal' : '') + (item.ghost ? ' dg-ghost' : '') + (folded ? ' dg-folded' : '') + look.classes + '"' + look.style + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
+      leaves += '<g class="dg-node dg-leaf' + (isFocal ? ' dg-focal' : '') + (item.ghost ? ' dg-ghost' : '') + (folded ? ' dg-folded' : '') + look.classes + (text.state ? ' dg-chg-' + text.state : '') + '"' + look.style + common + '><title>' + escapeHtml(text.tooltip) + '</title>' +
         (folded ? '<rect class="dg-box dg-stack" x="' + (x + 5) + '" y="' + (y + 5) + '" width="' + w + '" height="' + h + '" rx="' + rx + '"/>' : '') +
         '<rect class="dg-box" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + rx + '"/>' +
-        linesAt('dg-title', lines.titleLines, lines.titleY) + linesAt('dg-sub', lines.subLines, lines.subY) +
+        (text.look.vars['--st-tint'] ? '<rect class="dg-tint" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + rx + '"/>' : '') +
+        linesAt('dg-title', lines.titleLines, lines.titleY, (line) => diagramTitleHtml(line, text)) + linesAt('dg-sub', lines.subLines, lines.subY) +
         lines.descLines.map((line, i) => '<text class="dg-desc" x="' + (x + DIAGRAM_DESCRIPTION_PADDING) + '" y="' + (y + lines.descY[i]) + '">' + escapeHtml(line) + '</text>').join('') +
         (lines.badgeRow ? diagramBadgesSvg(lines.badgeRow, x + (w - lines.badgeRow.width) / 2, y + lines.badgeY) : '') + '</g>' +
         (expandable ? foldButton(item, text, x + 2, y + 2) : '');
@@ -8487,7 +8971,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const endOf = (id) => {
     const item = itemById.get(id);
     const text = item ? diagramItemText(item, undefined, options && options.itemLayer) : { title: id, sub: '' };
-    return { id, reference: item ? item.reference : id, title: text.title, sub: text.sub, ghost: !!(item && item.ghost), collapsed: !!(item && item.collapsed), hidden: item && item.hidden ? item.hidden : 0 };
+    return { id, reference: item ? item.reference : id, title: text.name === undefined ? text.title : text.name, sub: text.sub, ghost: !!(item && item.ghost), collapsed: !!(item && item.collapsed), hidden: item && item.hidden ? item.hidden : 0 };
   };
   // the links drawn between the same two boxes, in order: the ones of a pair of several say which of them they are (`data-nth`)
   const drawnPerPair = new Map();
@@ -8497,6 +8981,8 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   }
   let edges = '';
   let labels = '';
+  const statesUsed = new Set(); // the states of the links drawn: an arrowhead in the colour of each is defined for them only
+  const markOnly = !!(options && options.show && options.show.labels === false); // the captions are off: a changed link still carries its glyph
   for (const edge of layout.edges || []) {
     const section = edge.sections && edge.sections[0];
     if (!section) continue;
@@ -8509,31 +8995,37 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     if (!pairs.has(pairKey)) pairs.set(pairKey, { from: link.from, to: link.to, fromEnd: endOf(link.from), toEnd: endOf(link.to), links: [] });
     const nth = pairs.get(pairKey).links.push(link) - 1;
     const caption = diagramLinkText(link);
+    const state = CHANGE_STATES.includes(link.change) ? link.change : null; // a comparison: the link says what happened to it
+    if (state) statesUsed.add(state);
     const select = ends + (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') + layerAttribute + ' data-action="select-link"';
     // the links are one tab stop (roving tabindex, `syncLinkTabStop` moves it): the first one until the page says otherwise
     edges += '<g class="dg-link"' + select + ' tabindex="' + (edges ? '-1' : '0') + '" role="button" aria-pressed="false" aria-label="' +
-      escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer)) + '</title>' +
+      escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '') + (state ? ', ' + CHANGE_WORDS[state].word : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer)) + '</title>' +
       '<path class="dg-hit-edge" d="' + d + '"/>' +
-      '<path class="dg-edge' + (link.synthetic ? ' dg-aggregated' : '') + (link.ghost ? ' dg-ghost-edge' : '') + '" marker-end="url(#dg-arrow)" d="' + d + '"/></g>';
+      '<path class="dg-edge' + (link.synthetic ? ' dg-aggregated' : '') + (link.ghost ? ' dg-ghost-edge' : '') + (state ? ' dg-chg-' + state : '') + '" marker-end="url(#' + (state ? 'dg-arrow-' + state : 'dg-arrow') + ')" d="' + d + '"/></g>';
     const label = edge.labels && edge.labels[0];
     if (label) {
       // one line: as it always was. Several: one <tspan> per line under the same <text> (one click target, centred on the link),
       // the first baseline where the single line sat, and the tooltip of the link on the whole of it
-      const lines = diagramLabelLayout(link, !!(options && options.show && options.show.wrap)).lines;
+      const lines = diagramLabelLayout(link, !!(options && options.show && options.show.wrap), markOnly).lines;
       const cx = o.x + label.x + label.width / 2;
       const top = o.y + label.y + DIAGRAM_LABEL_LINE_HEIGHT - 1;
+      // the glyph of a changed link opens its first line, in bold
+      const mark = diagramLinkMark(link);
+      const lineHtml = (line, first) => (mark && first && line.startsWith(mark) ? '<tspan class="dg-glyph">' + escapeHtml(mark) + '</tspan>' + escapeHtml(line.slice(mark.length)) : escapeHtml(line));
       labels += '<text class="dg-label"' + select + ' text-anchor="middle" x="' + cx + '" y="' + top + '">' +
         (lines.length > 1
           ? '<title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer)) + '</title>' +
-            lines.map((line, i) => '<tspan x="' + cx + '" y="' + (top + i * DIAGRAM_LABEL_LINE_HEIGHT) + '">' + escapeHtml(line) + '</tspan>').join('')
-          : escapeHtml(lines.length ? lines[0] : label.text)) + '</text>';
+            lines.map((line, i) => '<tspan x="' + cx + '" y="' + (top + i * DIAGRAM_LABEL_LINE_HEIGHT) + '">' + lineHtml(line, i === 0) + '</tspan>').join('')
+          : lines.length ? lineHtml(lines[0], true) : escapeHtml(label.text)) + '</text>';
     }
   }
 
   const width = Math.ceil(layout.width || 0) + 8;
   const height = Math.ceil(layout.height || 0) + 8;
   const html = '<svg xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Diagram" viewBox="-4 -4 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '">' +
-    '<defs><marker id="dg-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead" d="M0,0 L10,4 L0,8 z"/></marker></defs>' +
+    '<defs><marker id="dg-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path class="dg-arrowhead" d="M0,0 L10,4 L0,8 z"/></marker>' +
+    CHANGE_STATES.filter((state) => statesUsed.has(state)).map((state) => '<marker id="dg-arrow-' + state + '" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="11" refX="13" refY="5.5" orient="auto"><path class="dg-arrowhead dg-chg-' + state + '" d="M0,0 L14,5.5 L0,11 z"/></marker>').join('') + '</defs>' +
     compounds + (edges ? '<g class="dg-links" role="group" aria-label="Links: one tab stop, the arrow keys move between them">' + edges + '</g>' : '') + leaves + labels + '</svg>';
   return { html, width, height, focal, boxes: boxesById, links: Array.from(pairs.values()) };
 }
@@ -8670,6 +9162,30 @@ function diagramLegendHtml(hasGhosts, stereotypes) {
   const styled = styledStereotypesOf(stereotypes);
   return sample('') + ' direct ' + sample('dg-aggregated') + ' grouped' + (hasGhosts ? ' ' + sample('dg-ghost-edge') + ' unknown element' : '') +
     (styled.length ? ' <span class="dg-legend-stereotypes" role="group" aria-label="Stereotypes">' + stereotypeBadgesHtml(styled) + '</span>' : '');
+}
+
+/**
+ * The key to the four states of a comparison: for each, a sample of its box and of its link, its glyph, its word and how its line is drawn, so that
+ * it reads without colour. The samples are drawn with the same variables and classes as the boxes (the look of the workspace's own entry included).
+ * Red dashed is not one of them: it is kept for what the editor already used it for.
+ */
+function diagramComparisonLegendHtml(comparison, counts) {
+  const noun = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+  const how = { new: 'thick solid', changed: 'dotted', removed: 'dashed, struck title', 'contains-changes': 'thin dashed: something inside changed' };
+  const entries = ['new', 'changed', 'removed', 'contains-changes'].map((state) => {
+    const look = stereotypeLookOf([state], state);
+    const box = '<svg width="28" height="16" aria-hidden="true"><g class="dg-styled dg-chg-' + state + '" style="' + escapeHtml(styleVarsText(look.vars)) + '">' +
+      '<rect class="dg-box" x="2" y="2" width="24" height="12" rx="3"/>' + (look.vars['--st-tint'] ? '<rect class="dg-tint" x="2" y="2" width="24" height="12" rx="3"/>' : '') + '</g></svg>';
+    const link = state === 'contains-changes' ? '' : '<svg width="26" height="8" aria-hidden="true"><line class="dg-edge dg-chg-' + state + '" x1="0" y1="4" x2="26" y2="4"/></svg>';
+    // what this drawing shows of the state, when it is told: boxes, and links for the states that have a line
+    const count = counts ? ' <span class="dg-legend-count">' + noun(counts[state].boxes, 'box', 'boxes') + (state === 'contains-changes' ? '' : ', ' + noun(counts[state].links, 'link', 'links')) + '</span>' : '';
+    return '<span class="dg-legend-state" data-state="' + state + '">' + box + link + '<b class="dg-glyph">' + escapeHtml(CHANGE_GLYPHS[state]) + '</b> ' +
+      escapeHtml(CHANGE_WORDS[state].word) + ' <span class="dg-legend-how">' + escapeHtml(how[state]) + '</span>' + count + '</span>';
+  });
+  return ' <span class="dg-legend-compare" role="group" aria-label="Comparison">' +
+    '<span class="dg-legend-title">' + escapeHtml(plateauTitle(comparison.target)) + ' compared with ' + escapeHtml(plateauTitle(comparison.base)) + ':</span> ' +
+    entries.join(' ') +
+    ' <span class="dg-legend-note">Red dashed is kept for dangling references (unknown elements).</span></span>';
 }
 
 /** What `showDiagramScene` needs to put a computed diagram on screen. */
@@ -8968,7 +9484,8 @@ function showDiagramScene(scene) {
   // on the map, "the element" is the one selected: Center puts it in the middle, Fit shows everything
   if (canvas.hasAttribute('data-map')) {
     const sel = AppState.selection;
-    scene.focal = sel.kind === 'element' && scene.boxes && scene.boxes[sel.key] ? scene.boxes[sel.key] : null;
+    const pickedRemoved = removedInspectionOf(sel, 'map'); // a removed box that was clicked is the element Center puts in the middle
+    scene.focal = pickedRemoved && scene.boxes && scene.boxes[pickedRemoved.reference] ? scene.boxes[pickedRemoved.reference] : sel.kind === 'element' && scene.boxes && scene.boxes[sel.key] ? scene.boxes[sel.key] : null;
     // scenes that say nothing about what they draw (an error) leave the selection alone and the check for the next one
     if (scene.drawnIds) {
       if (mapSelectionCheck && sel.kind === 'element' && !scene.drawnIds.has(sel.key)) {
@@ -9014,6 +9531,12 @@ function markMapSelection() {
   if (!canvas || !(canvas.hasAttribute('data-map') || canvas.getAttribute('data-host') === 'library')) return;
   canvas.querySelectorAll('.dg-selected').forEach((el) => el.classList.remove('dg-selected'));
   const sel = diagramSelection();
+  const removed = removedInspectionOf(sel, canvas.getAttribute('data-host') === 'library' ? 'library' : 'map'); // a removed box that was clicked
+  if (removed) {
+    const box = Array.from(canvas.querySelectorAll('.dg-node')).find((el) => el.getAttribute('data-ref') === removed.reference && el.getAttribute('data-layer') === removed.layer);
+    if (box) box.classList.add('dg-selected');
+    return;
+  }
   if (sel.kind !== 'element') return;
   // the Map's boxes are the elements themselves (id = reference); on the page of a view a box can be an element hosted by another (id differs): its reference and layer say which
   const onPage = canvas.getAttribute('data-host') === 'library';
@@ -9214,6 +9737,14 @@ function diagramExportCss() {
     '.dg-badge rect{fill:var(--st-fill,' + c('--panel-bg') + ');stroke:var(--st-stroke,' + c('--border') + ');stroke-width:1}.dg-badge text{fill:var(--st-text,' + c('--fg') + ');font:600 10.5px sans-serif}' +
     '.dg-edge{fill:none;stroke:' + c('--muted') + ';stroke-width:1.4}.dg-aggregated{stroke-dasharray:7 4}' +
     '.dg-ghost-edge{stroke:' + c('--danger') + ';stroke-dasharray:3 4}' +
+    // the comparison of two plateaus: the colours of the states in the theme of the page (the boxes carry var(--chg-*) in their --st-* variables), the tint, the strike, the lines of the links
+    'svg{--chg-new:' + c('--chg-new') + ';--chg-changed:' + c('--chg-changed') + ';--chg-removed:' + c('--chg-removed') + ';--chg-removed-text:' + c('--chg-removed-text') + ';--chg-contains:' + c('--chg-contains') + '}' +
+    '.dg-tint{fill:var(--st-tint,none);fill-opacity:.16;stroke:none}.dg-compound .dg-tint{fill-opacity:.08}' +
+    '.dg-struck{text-decoration:line-through}.dg-glyph{font-weight:700}.dg-label .dg-glyph{font-size:14px}' +
+    '.dg-edge.dg-chg-new{stroke:' + c('--chg-new') + ';stroke-width:3;stroke-dasharray:none}' +
+    '.dg-edge.dg-chg-changed{stroke:' + c('--chg-changed') + ';stroke-width:2;stroke-dasharray:2 3}' +
+    '.dg-edge.dg-chg-removed{stroke:' + c('--chg-removed') + ';stroke-width:1.6;stroke-dasharray:7 4}' +
+    '.dg-arrowhead.dg-chg-new{fill:' + c('--chg-new') + '}.dg-arrowhead.dg-chg-changed{fill:' + c('--chg-changed') + '}.dg-arrowhead.dg-chg-removed{fill:' + c('--chg-removed') + '}' +
     '.dg-arrowhead{fill:' + c('--muted') + '}' +
     '.dg-label{fill:' + c('--fg') + ';font:11px sans-serif;paint-order:stroke;stroke:' + c('--panel-bg') + ';stroke-width:4px;stroke-linejoin:round}' +
     '.dg-header,.dg-hit,.dg-hit-edge{fill:none;stroke:none}.dg-fold{display:none}';
@@ -9567,6 +10098,14 @@ function mountDiagramIfNeeded() {
   if (!recipe) return;
   const { isMap, reference, record, viewpoint, facet, mapState, shows, hideUnlinked } = recipe;
   const readonly = recipe.host === 'library'; // the page of a view only shows the drawing
+  // run 0039: a comparison needs the kernel before the input can be built (the union is its answer): load it, then draw again
+  if ((comparisonState() || {}).pending) {
+    loadViewpointKernel().then(
+      () => { if (seq === diagramSeq) mountDiagramIfNeeded(); },
+      (e) => { if (seq === diagramSeq) showDiagramScene(buildDiagramScene('kernel-error', '<div class="error-panel">The diagram could not be computed: ' + escapeHtml(e && e.message ? e.message : String(e)) + '</div>', '', '', { width: 0, height: 0 }, null)); }
+    );
+    return;
+  }
   const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, layer: recipe.layer, opened: mapState.opened, pinned: mapState.pinned } : { facet, layer: recipe.layer });
   if (isMap) input.hidden = mapState.hidden;
   const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].concat(readonly ? ['view:' + recipe.view.id] : []).join('|');
@@ -9577,6 +10116,13 @@ function mountDiagramIfNeeded() {
     showDiagramScene(buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' +
       (duplicates.length === 1 ? 'a reference is' : duplicates.length + ' references are') + ' declared more than once.</strong><ul>' +
       duplicates.map((d) => '<li>' + duplicateMessageHtml(d.message) + '</li>').join('') + '</ul></div>', '', '', { width: 0, height: 0 }, null));
+    return;
+  }
+  const comparison = comparisonState();
+  if (comparison && comparison.problems) {
+    // the two plateaus cannot be compared (a reference twice in the baseline, a pair the kernel refuses): said, and nothing is drawn from it
+    showDiagramScene(buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' + escapeHtml(comparison.problems[0]) + '</strong>' +
+      (comparison.problems.length > 1 ? '<ul>' + comparison.problems.slice(1).map((m) => '<li>' + duplicateMessageHtml(m) + '</li>').join('') + '</ul>' : '') + '</div>', '', '', { width: 0, height: 0 }, null));
     return;
   }
   if (diagramCache && diagramCache.key === key) {
@@ -9595,6 +10141,7 @@ function mountDiagramIfNeeded() {
           : '<div class="error-panel">' + escapeHtml(result.error) + '</div>', '', '', { width: 0, height: 0 }, null));
         return;
       }
+      if (comparison && comparison.layers) tellRemovedItems(result, comparison, input.layer);
       const ghosts = buildDiagramGhosts(result, isMap ? null : reference, input.layer);
       let drawn = { items: result.items.concat(ghosts.items), links: result.links.concat(ghosts.links) };
       let shownResult = result;
@@ -9611,7 +10158,7 @@ function mountDiagramIfNeeded() {
       // the styled stereotypes of the boxes on screen, each once, in the order they are met
       const drawnStereotypes = [];
       for (const item of drawn.items) for (const name of (item.ghost || !Array.isArray(item.stereotypes) ? [] : item.stereotypes)) if (!drawnStereotypes.includes(name)) drawnStereotypes.push(name);
-      const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes);
+      const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes) + (comparison && comparison.layers ? diagramComparisonLegendHtml(comparison, comparisonCountsOf(shownResult)) : '');
       let scene;
       if (!elk) {
         scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer, readonly), status, '', { width: 0, height: 0 }, null);
@@ -11392,6 +11939,9 @@ function handleAppClick(e) {
     case 'set-plateau':
       switchPlateau(target.getAttribute('data-plateau'));
       break;
+    case 'reload-baseline':
+      reloadBaseline();
+      break;
     case 'select-file': {
       const relPath = target.getAttribute('data-relpath');
       // DEC-10/FLOW-4: keep the draft when re-selecting the very file it
@@ -11695,7 +12245,29 @@ function handleAppClick(e) {
       render();
       break;
     }
+    case 'select-removed': {
+      const removedRef = target.getAttribute('data-ref');
+      const removedLayer = target.getAttribute('data-layer') || 'application';
+      if (currentPerspective === 'library') { selectOnLibraryPage({ kind: 'baseline-element', key: removedRef, layer: removedLayer, mode: 'view' }); break; }
+      if (mapIsShown() && diagramScale === 'auto') {
+        const canvas = document.getElementById('diagram-canvas');
+        if (canvas) takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
+      }
+      if (rawYamlEditDraft) rawYamlEditDraft = null;
+      if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
+      // on the Map nothing else is selected any more (the panel is about this box); in Elements the element of the diagram stays the subject
+      if (mapIsShown()) AppState.selection = { kind: 'none', key: null, mode: 'view' };
+      removedPick = { reference: removedRef, layer: removedLayer, selection: JSON.stringify(AppState.selection) };
+      render();
+      break;
+    }
+    case 'close-removed':
+      if (currentPerspective === 'library') { closeLibrarySelection(); break; }
+      removedPick = null;
+      render();
+      break;
     case 'close-inspection': // nothing else deselects on the Map; in Elements a link goes back to its element
+      removedPick = null;
       if (currentPerspective === 'library') { closeLibrarySelection(); break; }
       if (AppState.selection.kind === 'link') dropLinkSelection(); else AppState.selection = { kind: 'none', key: null, mode: 'view' };
       render();
