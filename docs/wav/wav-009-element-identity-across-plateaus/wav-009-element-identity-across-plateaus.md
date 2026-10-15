@@ -114,7 +114,7 @@ wave_manifest:
       slug: state-tag-rule
       phase: P1
       depends_on: []
-      run: null
+      run: '0043'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/rendering/plantuml/**'
@@ -187,7 +187,7 @@ wave_manifest:
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
 | W-1 | 0042 | `replaces-kernel` | — | say in the data that an element is the same thing under another name or place | `replaces` read from the elements of the target (Rust and Java adapter, and the editor's input); `compare` reports moved, split and merged, stops reporting the replaced as removed, lists candidates; contract version 4; wasm re-embedded | cargo tests on invented pairs (1:1, 1:n, n:1, unknown reference, a reference that exists in the target, cycles of `replaces`), a Java test through `PlateauComparer`, `embed.sh --check`, byte-identity without `replaces` |
-| W-2 | — | `state-tag-rule` | — | a hand-written new or changed tag looks the same in the CLI and in the editor | the CLI gives the default look of a state only to a box that has the state computed; a contradicting hand-written tag is reported (D-5); the manual states the rule | a Java test and a JS test on the same invented case, the manual updated, byte-identity without a comparison |
+| W-2 | 0043 | `state-tag-rule` | — | a hand-written new or changed tag looks the same in the CLI and in the editor | the CLI gives the default look of a state only to a box that has the state computed; a contradicting hand-written tag is reported (D-5); the manual states the rule | a Java test and a JS test on the same invented case, the manual updated, byte-identity without a comparison |
 
 **Gate:** see the manifest.
 
