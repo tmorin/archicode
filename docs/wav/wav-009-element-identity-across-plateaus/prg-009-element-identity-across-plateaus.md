@@ -64,6 +64,17 @@ wave: 009
   requirement, and filed #41 and #42.
 - 2026-10-16: batch 4, phase P3: W-6 `move-element-editor` (run 0047), tier `standard`, `run-executor` at the default model, 1 run
   in flight.
+- 2026-10-16: W-6 `move-element-editor` (run 0047) returned `completed`, commit 41fbf84; status file `completed`. Verified by the
+  orchestrator on the final tree: `./mvnw -o -q verify` exit 0, `cargo test` 160 passed, `embed.sh --check` ok (651,048 bytes),
+  `node --test` 842/842, `prettier --check` clean. Reported by the run: the move dialog looked at in the built-in browser (light
+  and dark) on an invented bakery copy in the scratchpad, the saved files differing from the originals only by the moved block,
+  the rewritten references and the `replaces` lines, and `archicode diff` on that copy reading 3 moved. Issues filed: #43, #44.
+- 2026-10-16: **gate P3 verified**: `replaces-editor.test.js` (31 tests: panel rows, candidates, "Write replaces" writing exactly
+  one added line, refusals, hand editing, warnings) and `move-editor.test.js` (33 tests: children follow, references rewritten
+  across files, refusals leave the files unchanged, offer of `replaces` for the element and each descendant, cache
+  invalidation); the node suite and Maven pass as above. Canonical impact: answered in the run documents.
+- 2026-10-16: batch 5, phase P4: W-7 `identity-proof` (run 0048), tier `standard`, `run-executor` at the default model, 1 run in
+  flight (the last).
 
 ## Findings
 
