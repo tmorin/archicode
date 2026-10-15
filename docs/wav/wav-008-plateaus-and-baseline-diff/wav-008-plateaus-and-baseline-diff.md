@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 008
-status: in-progress
+status: completed
 date: 2026-10-14
 related:
   - docs/wav/wav-008-plateaus-and-baseline-diff/wbc-008-plateaus-and-baseline-diff.md
@@ -40,7 +40,7 @@ the author's real baseline and target.
 wave_manifest:
   wave: 008
   slug: plateaus-and-baseline-diff
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P1
@@ -168,7 +168,7 @@ wave_manifest:
       slug: plateaus-manual-and-field-check
       phase: P4
       depends_on: [W-5, W-7]
-      run: null
+      run: '0041'
       delegation: standard
       likely_paths:
         - 'src/doc/README.adoc'
@@ -209,7 +209,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-8 | — | `plateaus-manual-and-field-check` | W-5, W-7 | trust the feature on a real baseline and target, and learn how to use it from the manual | The manual gets a section on plateaus, the comparison, the states and their legend, the CLI and the editor, and the breaking change; an invented example workspace in `src/doc/examples` that loads; a field check on a copy of the real baseline and target arranged as two plateaus (the originals are never written: checksums before and after), generating with the CLI and looking at the real page in light and dark. | The manual builds and its example loads; the counts are the study's or the difference is explained; what was not verified is listed |
+| W-8 | 0041 | `plateaus-manual-and-field-check` | W-5, W-7 | trust the feature on a real baseline and target, and learn how to use it from the manual | The manual gets a section on plateaus, the comparison, the states and their legend, the CLI and the editor, and the breaking change; an invented example workspace in `src/doc/examples` that loads; a field check on a copy of the real baseline and target arranged as two plateaus (the originals are never written: checksums before and after), generating with the CLI and looking at the real page in light and dark. | The manual builds and its example loads; the counts are the study's or the difference is explained; what was not verified is listed |
 
 **Gate:** the criteria of the manifest for P4.
 
