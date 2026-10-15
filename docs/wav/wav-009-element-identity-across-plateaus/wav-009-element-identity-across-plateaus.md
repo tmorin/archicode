@@ -164,7 +164,7 @@ wave_manifest:
       slug: move-element-editor
       phase: P3
       depends_on: [W-5]
-      run: null
+      run: '0047'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -208,7 +208,7 @@ wave_manifest:
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
 | W-5 | 0046 | `replaces-editor` | W-1, W-4 | see in the Changes panel what moved, split or merged, and accept a proposed match in one click | Changes panel rows and filters for the new states, candidates with "Write replaces" and "Not related", `replaces` written through the line-preserving save, the inspector shows what an element replaces | JS tests on the markup and on the saved file (one line changed), the manual's editor section |
-| W-6 | — | `move-element-editor` | W-5 | move an element under another parent without breaking a reference, and say what it replaces | a Move action in the element panel (children follow, inbound references rewritten in every file, a clash of ids refused), offering to write `replaces`; works on the plateau being edited only | JS tests on the files after a move (nothing else changes), a refused move, the offer of `replaces` |
+| W-6 | 0047 | `move-element-editor` | W-5 | move an element under another parent without breaking a reference, and say what it replaces | a Move action in the element panel (children follow, inbound references rewritten in every file, a clash of ids refused), offering to write `replaces`; works on the plateau being edited only | JS tests on the files after a move (nothing else changes), a refused move, the offer of `replaces` |
 
 **Gate:** see the manifest.
 
