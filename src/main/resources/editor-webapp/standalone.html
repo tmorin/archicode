@@ -7469,8 +7469,9 @@ function renderFacetSelectHtml() {
 }
 
 function diagramTruncate(text, max) {
-  const s = String(text);
-  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+  // by code points: a cut between the two halves of a surrogate pair would leave a character that is not valid XML in the SVG
+  const chars = Array.from(String(text));
+  return chars.length > max ? chars.slice(0, max - 1).join('') + '…' : chars.join('');
 }
 
 function diagramTextWidth(text, px) {
@@ -7767,10 +7768,11 @@ function diagramWrapText(text, max, maxLines, measure) {
   for (let word of String(text).split(/\s+/).filter(Boolean)) {
     while (width(word) > max && word.length > 1) {
       if (line) { lines.push(line); line = ''; }
+      const chars = Array.from(word); // cut by code points, never between the two halves of a surrogate pair
       let cut = 1;
-      while (cut < word.length && width(word.slice(0, cut + 1)) <= max) cut++;
-      lines.push(word.slice(0, cut));
-      word = word.slice(cut);
+      while (cut < chars.length && width(chars.slice(0, cut + 1).join('')) <= max) cut++;
+      lines.push(chars.slice(0, cut).join(''));
+      word = chars.slice(cut).join('');
     }
     if (!line) line = word;
     else if (width(line + ' ' + word) <= max) line += ' ' + word;
@@ -7779,9 +7781,9 @@ function diagramWrapText(text, max, maxLines, measure) {
   if (line) lines.push(line);
   if (maxLines && lines.length > maxLines) {
     const kept = lines.slice(0, maxLines);
-    let last = kept[maxLines - 1];
-    while (last.length > 1 && width(last + '…') > max) last = last.slice(0, -1);
-    kept[maxLines - 1] = last + '…';
+    const last = Array.from(kept[maxLines - 1]);
+    while (last.length > 1 && width(last.join('') + '…') > max) last.pop();
+    kept[maxLines - 1] = last.join('') + '…';
     return kept;
   }
   return lines;
@@ -7862,8 +7864,9 @@ function diagramLeafLayout(text, width, show) {
 /**
  * The caption of a link, broken into lines (soft wrap, always on: a long caption read as one line runs over the boxes and
  * the links next to it). A line is at most DIAGRAM_LABEL_MAX_WIDTH px wide at 11px, cut at the spaces; a word wider than a
- * line is cut with an ellipsis, as a name is. The qualifiers (`[https]`) stay in one piece and are never what is cut: they
- * share the last line of the label when they fit, or take a line (or two) of their own. Without "Wrap" the caption has at most
+ * line is cut with an ellipsis, as a name is. The qualifiers (`[https]`) stay in one piece as far as possible: they
+ * share the last line of the label when they fit, or take a line (or two) of their own; they are cut only past two lines
+ * without Wrap, or when a single word of them is wider than a line (its closing bracket is kept). Without "Wrap" the caption has at most
  * DIAGRAM_LABEL_LINES lines (the end of the label is replaced by an ellipsis, the tooltip of the link has it whole); with it
  * nothing is cut. The layout asks for the size, the drawing for the lines: one function, so that they agree.
  */
@@ -7876,16 +7879,18 @@ function diagramLabelLayout(link, wrap) {
   const measure = (line) => diagramMeasureText(line, 11);
   const max = DIAGRAM_LABEL_MAX_WIDTH;
   const cap = wrap ? 0 : DIAGRAM_LABEL_LINES;
-  // a word wider than a line is cut with an ellipsis, not spread over several lines
-  const fit = (text) => String(text).split(/\s+/).filter(Boolean).map((word) => {
+  // a word wider than a line is cut with an ellipsis (by code points), not spread over several lines; `tail` is what a cut
+  // word that ends with it keeps (the closing bracket of the qualifiers)
+  const fit = (text, tail = '') => String(text).split(/\s+/).filter(Boolean).map((word) => {
     if (measure(word) <= max) return word;
-    let cut = word;
-    while (cut.length > 1 && measure(cut + '…') > max) cut = cut.slice(0, -1);
-    return cut + '…';
+    const keep = tail && word.endsWith(tail) ? tail : '';
+    const cut = Array.from(keep ? word.slice(0, -keep.length) : word);
+    while (cut.length > 1 && measure(cut.join('') + '…' + keep) > max) cut.pop();
+    return cut.join('') + '…' + keep;
   }).join(' ');
   const labelText = link.label && link.label.trim() ? fit(link.label) : '';
   const qualifiers = Array.from(link.qualifiers || []);
-  const qualifierLines = qualifiers.length ? diagramWrapText(fit('[' + qualifiers.join(', ') + ']'), max, cap ? 2 : 0, measure) : [];
+  const qualifierLines = qualifiers.length ? diagramWrapText(fit('[' + qualifiers.join(', ') + ']', ']'), max, cap ? 2 : 0, measure) : [];
   let lines = labelText ? diagramWrapText(labelText, max, cap, measure) : [];
   if (qualifierLines.length === 1 && lines.length && measure(lines[lines.length - 1] + ' ' + qualifierLines[0]) <= max) {
     lines[lines.length - 1] += ' ' + qualifierLines[0];

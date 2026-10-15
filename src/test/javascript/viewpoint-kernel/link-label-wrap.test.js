@@ -1,7 +1,7 @@
 'use strict';
 // The caption of a link in the diagram of the standalone editor (run 0033): broken at the spaces into lines of a bounded width
 // (soft wrap, always on), one <tspan> per line under the one <text> that is the click target, the layout told the size of
-// the whole, the qualifiers never the part that is cut, the tooltip and the accessible name whole.
+// the whole, the qualifiers kept in one piece as far as possible, the tooltip and the accessible name whole.
 // The reference case of the wave is a label of 108 characters and the qualifier `https`; the text here is synthetic.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
@@ -194,4 +194,33 @@ test('the maximum width is a constant between 200 and 240 px, and the line heigh
   const exported = /\.dg-label\{([^}]*)\}/.exec(sandbox.diagramExportCss())[1];
   assert.match(exported, /font:11px sans-serif/, 'the export draws the label in the same 11 px');
   assert.doesNotMatch(page + exported, /tspan|dy=/, 'nothing in the CSS depends on the lines being one <text>');
+});
+
+/** True when the text holds a surrogate half without its other half: not valid XML, so not valid in the SVG. */
+const hasLoneSurrogate = (text) => /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(text);
+
+test('a text is cut between code points, never between the two halves of a surrogate pair', async () => {
+  const { sandbox } = await openFixture();
+  assert.equal(hasLoneSurrogate('\ud83d'), true, 'the probe itself works');
+  const emoji = '\u{1F600}'.repeat(100);
+  const layout = sandbox.diagramLabelLayout({ label: emoji, qualifiers: [] }, false);
+  assert.ok(layout.lines.length > 0 && layout.lines.every((line) => !hasLoneSurrogate(line)), JSON.stringify(layout.lines));
+  assert.ok(layout.lines.every((line) => measure(sandbox, line) <= 220));
+  const quals = sandbox.diagramLabelLayout({ label: 'reads', qualifiers: [emoji] }, false);
+  assert.ok(quals.lines.every((line) => !hasLoneSurrogate(line)), JSON.stringify(quals.lines));
+  const wrapped = plain(sandbox.diagramWrapText(emoji, 220, 0, (line) => measure(sandbox, line)));
+  assert.ok(wrapped.length > 1 && wrapped.every((line) => !hasLoneSurrogate(line)));
+  assert.equal(wrapped.join(''), emoji, 'cut in several lines, nothing lost');
+  const ellipsis = plain(sandbox.diagramWrapText(emoji, 220, 1, (line) => measure(sandbox, line)));
+  assert.ok(ellipsis.length === 1 && ellipsis[0].endsWith('\u2026') && !hasLoneSurrogate(ellipsis[0]));
+  assert.equal(hasLoneSurrogate(sandbox.diagramTruncate(emoji, 15)), false, 'the truncation of a name too');
+  assert.equal(sandbox.diagramTruncate('\u{1F600}'.repeat(3), 5), '\u{1F600}'.repeat(3));
+});
+
+test('a qualifier wider than a line is cut but keeps its closing bracket', async () => {
+  const d = await drawn('reads', ['q'.repeat(300)]);
+  const lines = plain(d.sandbox.diagramLabelLayout(d.link, false).lines);
+  assert.equal(lines.length, 2);
+  assert.match(lines[1], /^\[q+\u2026\]$/, lines[1]);
+  assert.ok(lines.every((line) => measure(d.sandbox, line) <= 220));
 });
