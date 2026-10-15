@@ -1,0 +1,27 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web site"
+      description: "The front of the shop."
+      qualifiers:
+        - "React"
+      relationships:
+        - destination: "shop.catalog"
+          label: "browses"
+        - destination: "shop.payments"
+          label: "pays with"
+    - kind: "container"
+      id: "catalog"
+      name: "Catalog"
+      description: "The books that are on sale."
+    - kind: "container"
+      id: "payments"
+      name: "Payments"
+      tags:
+        rendering-stereotypes: "new"

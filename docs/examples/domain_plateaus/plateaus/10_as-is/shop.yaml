@@ -1,0 +1,23 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web site"
+      description: "The front of the shop."
+      relationships:
+        - destination: "shop.catalog"
+          label: "reads"
+        - destination: "shop.mailer"
+          label: "sends mails with"
+    - kind: "container"
+      id: "catalog"
+      name: "Catalog"
+      description: "The books on sale."
+    - kind: "container"
+      id: "mailer"
+      name: "Mailer"
