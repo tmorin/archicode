@@ -126,7 +126,7 @@ wave_manifest:
       slug: replaces-cli
       phase: P2
       depends_on: [W-1, W-2]
-      run: null
+      run: '0044'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/**'
@@ -140,7 +140,7 @@ wave_manifest:
       slug: comparison-cache-version
       phase: P2
       depends_on: []
-      run: null
+      run: '0045'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -195,8 +195,8 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-3 | — | `replaces-cli` | W-1, W-2 | read in the table of changes and in the views that an element moved, split or merged, and see the candidates | `diff` text, markdown and json, `gap.md`, `gap.json` (identity column, candidates section), the computed stereotypes in the views and their look (not colour alone), `--no-wording` unchanged | Java tests on the fixture, the generated files of an invented pair, the manual's CLI section |
-| W-4 | — | `comparison-cache-version` | — | a render of the editor with a comparison on does not serialise the whole model | a version counter of the two models bumped by loads, edits and baseline changes; the cache key built from it | JS tests: invalidation on load, edit and baseline change; no serialisation on a plain render |
+| W-3 | 0044 | `replaces-cli` | W-1, W-2 | read in the table of changes and in the views that an element moved, split or merged, and see the candidates | `diff` text, markdown and json, `gap.md`, `gap.json` (identity column, candidates section), the computed stereotypes in the views and their look (not colour alone), `--no-wording` unchanged | Java tests on the fixture, the generated files of an invented pair, the manual's CLI section |
+| W-4 | 0045 | `comparison-cache-version` | — | a render of the editor with a comparison on does not serialise the whole model | a version counter of the two models bumped by loads, edits and baseline changes; the cache key built from it | JS tests: invalidation on load, edit and baseline change; no serialisation on a plain render |
 
 **Gate:** see the manifest.
 

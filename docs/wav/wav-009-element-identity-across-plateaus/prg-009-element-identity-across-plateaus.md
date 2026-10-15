@@ -24,6 +24,21 @@ wave: 009
 - 2026-10-15: batch 1, part 2: W-2 `state-tag-rule` (run 0043) at tier `standard`, `run-executor` at the default model, 1 run in
   flight, serialized after W-1 as the plan's `serialize` verdict says. The two members never ran together, so that verdict is
   neither confirmed nor contradicted.
+- 2026-10-16: W-2 `state-tag-rule` (run 0043) returned `completed`, commit c339ec6; status file `completed`. Reported by the run:
+  `./mvnw -o -q verify` exit 0 (259 tests), byte-identity of 37 commands on 12 workspaces (the error output differs only by the
+  intended new warning on `domain_plateaus` and by stack-frame line numbers of already expected `diff` errors). It filed issues
+  #34, #35, #36. Files outside its `likely_paths`: `GenerateViewsCommand.java`, `DiffCommand.java`, the new `StateTagReport.java`,
+  `reflect-config.json`, the new `state-tags.test.js` and `src/test/resources/plateau-state-tags/**`.
+- 2026-10-16: **gate P1 verified** by the orchestrator against real evidence: `cargo test` 160 passed; `embed.sh --check` ok (wasm
+  651,048 bytes); `KERNEL_CONTRACT_VERSION`, `ViewpointKernel.CONTRACT_VERSION` and the Rust `CONTRACT_VERSION` are all 4 (read in
+  the three files); `./mvnw -o -q verify` exit 0; `node --test` 767/767; `prettier --check` clean; `StateTagRuleTest.java` and
+  `state-tags.test.js` assert the same case in the CLI and the editor; `replaces.test.js`, the cargo tests of run 0042 and
+  `PlateauComparerTest` cover moved, split, merged and candidates; byte-identity without `replaces` was run by both runs
+  against a jar of the previous commit (reported, not re-run by the orchestrator). Canonical impact: both runs answer it in
+  their `Canonical impact` section (read).
+- 2026-10-16: batch 2 of phase P2: W-3 `replaces-cli` (run 0044) and W-4 `comparison-cache-version` (run 0045), both tier
+  `standard`, `run-executor` at the default model, 2 runs in flight concurrently (plan verdict `concurrent-safe`: W-3 edits Java
+  and the manual, W-4 only `standalone.html` and its JS tests).
 
 ## Findings
 
