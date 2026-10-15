@@ -17,7 +17,6 @@ import picocli.CommandLine;
  * What a plateau changes: the new, changed and removed elements and relationships, as a table to read.
  */
 @Slf4j
-@SuppressWarnings("java:S6813")
 @CommandLine.Command(
     name = "diff",
     description = {
