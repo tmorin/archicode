@@ -44,6 +44,12 @@ test('the editor tells, word for word, what the command line tells, for every st
   for (const word of ['new', 'changed', 'removed', 'moved', 'split', 'merged', 'contains-changes']) assert.ok(said.has(word), word + ' is said by the fixture');
   assert.ok(EXPECTED.some((s) => s.includes('(qualifier)')) && EXPECTED.some((s) => s.includes('`rendering-stereotypes` tag)')));
   assert.ok(hints.some((hint) => hint.layer === 'technology') && hints.some((hint) => hint.layer === 'application'));
+  // the vault is only in the baseline and carries `new`: neither the command line nor the editor tell the words of an element the plateau drawn does not have
+  assert.ok(!hints.some((hint) => hint.reference === 'library.vault') && !EXPECTED.some((s) => s.includes('library.vault')));
+  // the hints of one element are those of the whole list that are about it
+  const state = sandbox.comparisonState();
+  assert.deepEqual(plain(sandbox.stateWordHintsFor(state, 'application', 'library.loans')), plain(hints.filter((hint) => hint.reference === 'library.loans')));
+  assert.deepEqual(plain(sandbox.stateWordHintsFor(state, 'application', 'library.vault')), []);
 });
 
 test('the inspection of an element says it, and only for the words that disagree', async () => {

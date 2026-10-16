@@ -43,7 +43,7 @@ public class StateTags {
     /**
      * What disagrees, as sentences, in a stable order (layer, then reference, then the order of the words).
      *
-     * @param workspace  the workspace that is drawn (the union of two plateaus for a comparison)
+     * @param workspace  the workspace that is drawn, that is the plateau alone and not the union of the two: the words of an element that only the baseline has are not told
      * @param comparison what the comparison computed for it, or null when nothing is compared
      * @return one sentence per element and word (without {@code warning:}, which the channel adds); none for a workspace without plateaus, which has no comparison to
      * disagree with, or when every word written by hand is the state of its element
