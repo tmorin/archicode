@@ -1,5 +1,6 @@
 package io.morin.archicode.manifest;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
@@ -74,8 +75,20 @@ public class ManifestParser {
                 log.info("parse the manifest {}", manifestFile);
 
                 val mapper = mapperFactory.create(manifestFile);
-                val resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
-                val item = ManifestConverter.builder().manifest(resource).mapper(mapper).build().convert();
+                val source = sourceOf(wksDir, manifestFile);
+                final Manifest resource;
+                try {
+                    resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
+                } catch (JsonProcessingException e) {
+                    throw ArchiCodeException.unreadable(source, e, true);
+                }
+                final Object item;
+                try {
+                    item = ManifestConverter.builder().manifest(resource).mapper(mapper).build().convert();
+                } catch (JsonProcessingException e) {
+                    // the content is read again from a string: the line and the column are not those of the file
+                    throw ArchiCodeException.unreadable(source, e, false);
+                }
 
                 if (item instanceof Element element) {
                     declare(

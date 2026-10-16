@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 010
-status: planned
+status: in-progress
 date: 2026-10-16
 related:
   - docs/wav/wav-010-clean-failures-and-faithful-saves/wbc-010-clean-failures-and-faithful-saves.md
@@ -61,7 +61,7 @@ wave 009's D-7 stays.
 wave_manifest:
   wave: 010
   slug: clean-failures-and-faithful-saves
-  status: planned
+  status: in-progress
   sources: []
   phases:
     - id: P1
@@ -87,7 +87,7 @@ wave_manifest:
       slug: cli-messages
       phase: P1
       depends_on: []
-      run: null
+      run: '0049'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/**'

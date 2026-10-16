@@ -36,6 +36,9 @@ class PlateauComparisonTest {
     @Inject
     CommandLine.IFactory factory;
 
+    @Inject
+    ErrorOutput errorOutput;
+
     @TempDir
     Path dir;
 
@@ -80,10 +83,7 @@ class PlateauComparisonTest {
         try {
             val commandLine = new CommandLine(ArchiCode.class, factory);
             commandLine.setErr(new java.io.PrintWriter(err, true, StandardCharsets.UTF_8));
-            commandLine.setExecutionExceptionHandler((e, c, p) -> {
-                c.getErr().println(e.getMessage());
-                return 1;
-            });
+            errorOutput.install(commandLine);
             val exit = commandLine.execute(args);
             return new Result(exit, out.toString(StandardCharsets.UTF_8), err.toString(StandardCharsets.UTF_8));
         } finally {
@@ -379,7 +379,7 @@ class PlateauComparisonTest {
     void everyReplacesTheComparisonIgnoresIsToldWithTheElementThatSaidIt() {
         val workspace = replacesWorkspace();
         val shop = workspace.getParent().resolve("plateaus/20_after/shop.yaml");
-        // the web site is still in the plateau, and 12 is no reference of the baseline
+        // the web site is still in the plateau, and the mailer is listed twice (the kernel is given the list as written)
         Files.writeString(
             shop,
             Files.readString(shop).replace(
@@ -392,6 +392,7 @@ class PlateauComparisonTest {
         assertEquals(
             List.of(
                 "warning: replaces of shop.postman (application layer): shop.web is still an element of the target plateau, ignored",
+                "warning: replaces of shop.postman (application layer) lists shop.mailer twice, counted once",
                 REPLACES_WARNING
             ),
             result.err.lines().toList()

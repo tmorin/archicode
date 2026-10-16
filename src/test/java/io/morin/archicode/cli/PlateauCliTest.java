@@ -26,6 +26,9 @@ class PlateauCliTest {
     @Inject
     CommandLine.IFactory factory;
 
+    @Inject
+    ErrorOutput errorOutput;
+
     @TempDir
     Path dir;
 
@@ -64,10 +67,7 @@ class PlateauCliTest {
         try {
             val commandLine = new CommandLine(ArchiCode.class, factory);
             commandLine.setErr(new java.io.PrintWriter(err, true, StandardCharsets.UTF_8));
-            commandLine.setExecutionExceptionHandler((e, c, p) -> {
-                c.getErr().println(e.getMessage());
-                return 1;
-            });
+            errorOutput.install(commandLine);
             val exit = commandLine.execute(args);
             return new Result(exit, out.toString(StandardCharsets.UTF_8), err.toString(StandardCharsets.UTF_8));
         } finally {

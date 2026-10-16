@@ -3,6 +3,7 @@ package io.morin.archicode.cli;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
+import io.morin.archicode.Warnings;
 import io.morin.archicode.rendering.gap.GapFormat;
 import io.morin.archicode.rendering.gap.GapReport;
 import io.morin.archicode.viewpoint.kernel.PlateauComparer;
@@ -36,8 +37,8 @@ public class DiffCommand implements Runnable {
     @Inject
     MapperFactory mapperFactory;
 
-    @CommandLine.Spec
-    CommandLine.Model.CommandSpec spec;
+    @Inject
+    Warnings warnings;
 
     @CommandLine.Mixin
     PlateauOption plateauOption = new PlateauOption();
@@ -83,9 +84,9 @@ public class DiffCommand implements Runnable {
         val comparison = new PlateauComparer(mapperFactory.createLazy(MapperFormat.JSON)).compare(base, target);
 
         // what the comparison ignored in the `replaces` of the plateau, then a state written by hand that the comparison does
-        // not give the element: on the error output, so that the table on the standard output is what it was
-        StateTagReport.print(spec, StateTagReport.replaces(comparison.getWarnings()));
-        StateTagReport.print(spec, StateTags.warnings(target, comparison));
+        // not give the element: on the error output (see Warnings), so that the table on the standard output is what it was
+        warnings.warnAll(comparison.getWarnings());
+        warnings.warnAll(StateTags.warnings(target, comparison));
 
         // printed to System.out: application.properties sets quarkus.log.level=ERROR
         System.out.print(GapReport.render(comparison, format, noWording));

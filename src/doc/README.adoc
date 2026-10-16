@@ -846,9 +846,11 @@ What the replaced elements held is not carried by itself: a container that moved
 
 * a reference that is not an element of the baseline (you may be comparing with another baseline than the one you wrote it for);
 * a reference that is still an element of the plateau (what is there is not replaced, and an element cannot replace itself);
-* an entry that is not a reference (the kernel ignores it).
+* a reference listed twice (it counts once);
+* an entry that is not a reference (`- 12`, or an empty entry: it is ignored, and it is not read as the reference `12`);
+* a `replaces` that is not a list (`replaces: "shop.mailer"`: it is ignored, and the element replaces nothing).
 
-A reference listed twice counts once, and the command line says nothing of it. A `replaces` that is not a list (`replaces: "shop.mailer"`) is not a warning from the command line: the reader of the manifests refuses it and the command stops, without naming the file (the editor refuses it with a message).
+The command line gives the comparison the list as you wrote it, so these lines are the ones the comparison says (the editor refuses a `replaces` that is not a list with a message). A `replaces` that is well written says nothing, and so does an empty list.
 
 ----
 warning: replaces of shop.report-b (application layer): shop.nowhere is not an element of the base plateau, ignored
@@ -1322,6 +1324,32 @@ Within the realm of ArchiCode, an array of meticulously designed commands empowe
 - Data Model Querying Commands: ArchiCode equips you with specialized commands designed to query the intricate data model of your workspace. These commands serve as a window into your architecture's foundational elements, facilitating insightful exploration and analysis.
 
 As you delve deeper into the Command section of ArchiCode's documentation, you'll uncover the diverse set of commands at your disposal, each contributing to a more intuitive, efficient, and informed architectural workflow. Let's embark on this journey through the realm of ArchiCode's commands, discovering how they enhance your ability to shape, explore, and communicate architectural concepts.
+
+[[errors-and-warnings]]
+=== Errors, warnings and exit codes
+
+Every command speaks on its error output in the same way, and keeps its standard output for what it produces (the files it announces, a table, a graph), so that `archicode diff > changes.txt` or `archicode query graph | jq` never mixes the two.
+
+*Errors.* When a command cannot do what you asked, it prints one line for each problem on the error output, starts it with `error: ` and exits with the code 1. It prints no stack trace. The line says what is wrong and where, for instance:
+
+----
+error: dangling reference: payments
+error: unknown plateau `nope`: the plateaus of this workspace are `as-is`, `to-be`
+error: `manifests/shop.yaml` is not valid: the value has the wrong shape (found an array) at `header` (line 1, column 9)
+error: the workspace file `/work/workspace.yaml` does not exist (`-w` names another one)
+----
+
+An option that does not exist or a missing argument is a usage error: the command prints the problem and how to use the command, as it always did, and exits with the code 2. A failure that nobody expected, a bug, prints `error: unexpected ...` and keeps its stack trace, because a report needs it; the exit code is 1.
+
+*Warnings.* A warning says that the command went on but that something is probably not what you meant. It is one line starting with `warning: ` on the error output, printed when the command has done its work (and before the error, if it fails), once for a sentence the command would say many times. The log is not where to look: the log level of the application is `ERROR`, which hides the warnings of the log. A warning does not change the exit code. The command line warns of:
+
+* a facet written in the old dialect (`anyof`, `noneof`, `== null`): it is rewritten, and the warning gives the standard form (see <<facets>>);
+* a step of a story that names a view nobody declares;
+* a view of a viewpoint that the command line does not generate (the map is drawn by the editor), skipped by `views generate --view`;
+* what a comparison ignored in the `replaces` of a plateau, with `archicode diff` and `archicode views generate --baseline` (see <<plateau-replaces-warnings>>);
+* a state word you wrote by hand on an element, where it disagrees with the comparison (see <<plateau-state-tags>>).
+
+A command that has nothing to warn of prints nothing on its error output. Nothing here makes a warning fail a command: the exit code tells whether the command did its work.
 
 [[serve-the-editor]]
 === Serve the editor
@@ -1986,7 +2014,7 @@ Archicode introduces the facet concept, a feature engineered to automate the gen
 ====
 The `json-path` of an action is a JSONPath as standardized by https://www.rfc-editor.org/rfc/rfc9535[RFC 9535]. It selects nodes of the workspace, and the `REMOVE` operator deletes them. The same code evaluates it in the command line and in the editor, so a facet cannot mean one thing in each. Beyond comparisons, a filter can combine tests with `&&`, `||` and `!`, test that a field exists (`?(@.label)`), look inside a list (`?(@.qualifiers[?(@ == 'oidc')])`) and call `length()` or `count()`. The functions `match()` and `search()` (regular expressions) are not available.
 
-The facets written for the previous engine (Jayway) keep working for now, with a warning that gives the standard form. They are going to be removed in a future major version.
+The facets written for the previous engine (Jayway) keep working for now, with a warning that gives the standard form. They are going to be removed in a future major version. The command line prints the warning on its error output, one line per rewritten filter (see <<errors-and-warnings>>).
 
 [cols="1,1"]
 |===

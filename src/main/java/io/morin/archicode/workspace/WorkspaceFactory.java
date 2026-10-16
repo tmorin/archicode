@@ -1,10 +1,13 @@
 package io.morin.archicode.workspace;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
+import io.morin.archicode.Warnings;
 import io.morin.archicode.manifest.ManifestParser;
 import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.technology.Technology;
@@ -14,6 +17,7 @@ import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.ViewpointKernel;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,6 +40,7 @@ public class WorkspaceFactory {
 
     MapperFactory mapperFactory;
     ManifestParser manifestParser;
+    Warnings warnings;
 
     @SneakyThrows
     public io.morin.archicode.workspace.Workspace create(
@@ -65,8 +70,8 @@ public class WorkspaceFactory {
                 .stream()
                 .filter(step -> step.getView() != null && viewIndex.searchView(step.getView()).isEmpty())
                 .forEach(step ->
-                    log.warn(
-                        "the story {} has a step on the view {}, which is not declared",
+                    warnings.warn(
+                        "the story `%s` has a step on the view `%s`, which is not declared",
                         story.getId(),
                         step.getView()
                     )
@@ -215,17 +220,27 @@ public class WorkspaceFactory {
     private Loaded load(Path path, Path viewsDirPath, String plateauId) {
         log.info("parse the resources {}", path);
 
+        if (!Files.isRegularFile(path)) {
+            throw new ArchiCodeException("the workspace file `%s` does not exist (`-w` names another one)", path);
+        }
+
         // create the RawWorkspace
         val workspaceMapper = mapperFactory.create(path);
         // what the author wrote: the plateaus are checked on it, and so is whether `manifests.paths` is written (its
         // default is not, and does not count)
-        val tree = workspaceMapper.readTree(path.toFile());
-        val structure = Plateaus.checkStructure(tree.path("settings").path("plateaus"));
-        if (!structure.isEmpty()) {
-            throw new ArchiCodeException("%s", String.join("\n", structure));
+        final JsonNode tree;
+        final Workspace rawWorkspace;
+        try {
+            tree = workspaceMapper.readTree(path.toFile());
+            val structure = Plateaus.checkStructure(tree.path("settings").path("plateaus"));
+            if (!structure.isEmpty()) {
+                throw new ArchiCodeException("%s", String.join("\n", structure));
+            }
+            rawWorkspace = workspaceMapper.readValue(path.toFile(), Workspace.class);
+        } catch (JsonProcessingException e) {
+            throw ArchiCodeException.unreadable(path.getFileName().toString(), e, true);
         }
         val manifestsPathsWritten = tree.path("settings").path("manifests").has("paths");
-        val rawWorkspace = workspaceMapper.readValue(path.toFile(), Workspace.class);
 
         // the plateau to read; none for a workspace that has one set of manifests (manifests.paths)
         val wksDir = path.toFile().getParentFile().toPath();
@@ -362,7 +377,7 @@ public class WorkspaceFactory {
                 ViewpointKernel.CONTRACT_VERSION
             );
         }
-        answer.path("warnings").forEach(warning -> log.warn("facet {}: {}", facet.getName(), warning.asText()));
+        answer.path("warnings").forEach(warning -> warnings.warn("facet %s: %s", facet.getName(), warning.asText()));
 
         if (comparison != null) {
             ComparisonDocument.strip(answer.get("workspace"));

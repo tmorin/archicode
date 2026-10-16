@@ -2,6 +2,7 @@ package io.morin.archicode.viewpoint.kernel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import io.morin.archicode.resource.element.Replaces;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
@@ -40,7 +41,14 @@ class KernelGraph {
                 node.put("name", element.getName());
                 node.put("description", element.getDescription());
                 val replaces = Optional.ofNullable(element.getReplaces()).orElseGet(Set::of);
-                if (!replaces.isEmpty()) {
+                if (replaces instanceof Replaces read) {
+                    // as written, so that the kernel warns of a reference listed twice, of an entry that is not a
+                    // reference and of a value that is not a list; nothing at all for no value or an empty list
+                    val written = read.getWritten();
+                    if (!written.isNull() && !(written.isArray() && written.isEmpty())) {
+                        node.set("replaces", written);
+                    }
+                } else if (!replaces.isEmpty()) {
                     val list = node.putArray("replaces");
                     replaces.forEach(list::add);
                 }

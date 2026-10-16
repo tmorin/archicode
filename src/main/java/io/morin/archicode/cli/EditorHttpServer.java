@@ -228,7 +228,7 @@ public class EditorHttpServer {
             if (!started) text(exchange, refusal.status, refusal.getMessage());
             return;
         }
-        log.warn("the editor server failed on {}", exchange.getRequestURI().getRawPath(), e);
+        log.error("the editor server failed on {}", exchange.getRequestURI().getRawPath(), e);
         if (!started) text(exchange, 500, "the editor server failed, see its log");
     }
 
