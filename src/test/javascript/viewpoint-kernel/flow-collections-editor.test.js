@@ -382,3 +382,49 @@ test('a move whose collections cannot be put back as they were is saved as the e
   assert.ok(again.__state().index.application.has('garden.tools.greenhouse.vent'));
   assert.equal(again.__state().relationshipStats.dangling, 0);
 });
+
+// ---- two collections that read the same and are written differently: the edit of one never gives the other its spelling (review of wave 010) ----
+
+const TWINS = [
+  'header:',
+  '  kind: "archicode.morin.io/system"',
+  '  version: "1"',
+  '',
+  'content:',
+  '  id: "bakery"',
+  '  name: "Bakery"',
+  '  elements:',
+  '    - kind: container',
+  '      id: "mixer"',
+  '      name: "Mixer"',
+  '      tags: {zone: north}',
+  '    - kind: group',
+  '      id: "oven"',
+  '      name: "Oven"',
+  '      tags: { zone:  north }',
+  ''
+].join('\n');
+
+test('removing the collection of one of two that read the same leaves the other as it was written, and keeps the collection the edit did not touch', () => {
+  const first = save(TWINS, (v) => { delete v.content.elements[0].tags; });
+  assert.deepEqual(lineDiff(TWINS, first), { removed: ['      tags: {zone: north}'], added: [] });
+  assert.ok(first.includes('      tags: { zone:  north }'));
+  const second = save(TWINS, (v) => { delete v.content.elements[1].tags; });
+  assert.deepEqual(lineDiff(TWINS, second), { removed: ['      tags: { zone:  north }'], added: [] });
+  assert.ok(second.includes('      tags: {zone: north}'));
+  // nobody touched them: both stay as they are
+  assert.equal(app.patchYamlText(TWINS, plain(app.parseYaml(TWINS))), TWINS);
+  // an edit of one of them changes that one only
+  const changed = save(TWINS, (v) => { v.content.elements[1].tags.zone = 'south'; });
+  assert.ok(changed.includes('      tags: {zone: north}\n'), changed);
+  assert.ok(changed.includes('      tags:\n        zone: south'), changed);
+});
+
+test('moving one of two elements whose collections read the same: each keeps the spelling it had', async () => {
+  const { sandbox, file } = await open(TWINS);
+  assert.equal(sandbox.commitMoveElement('bakery.mixer', 'application', 'bakery.oven', { writeReplaces: false }).ok, true);
+  await sandbox.saveAllChanges();
+  assert.ok(file().includes('        tags: {zone: north}\n'), file()); // the mixer, one level deeper
+  assert.ok(file().includes('      tags: { zone:  north }\n'), file()); // the oven
+  assert.equal(file().split('\n').filter((l) => l.includes('zone')).length, 2);
+});

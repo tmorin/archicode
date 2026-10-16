@@ -31,3 +31,8 @@ content:
     - kind: "container"
       id: "annex"
       name: "Annex"
+    - kind: "container"
+      id: "vault"
+      name: "Vault"
+      tags:
+        rendering-stereotypes: "new"

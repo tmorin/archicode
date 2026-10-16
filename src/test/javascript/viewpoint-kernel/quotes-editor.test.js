@@ -263,3 +263,26 @@ test('a result that does not read back as the emitter\'s text is not accepted: t
     app.escapeYamlDoubleQuoted = original;
   }
 });
+
+// ---- a line that changes keeps its trailing comment and the way its key is written (review of wave 010) ----
+
+test('a line whose value changes keeps its trailing comment and its quoted key; a line that goes takes its comment with it, one that no edit reaches is as it was', () => {
+  const app = createApp({});
+  const edit = (text, change) => {
+    const value = plain(app.parseYaml(text));
+    change(value);
+    const out = app.patchYamlText(text, value);
+    assert.deepEqual(plain(app.parseYaml(out)), value);
+    return out;
+  };
+  const text = ['content:', '  "id": "a"   # why', "  'name': 'Alpha'  # the name", '  size: 3 # three', '  tags:', '    - "x"   # c1', '    - y   # c2', ''].join('\n');
+  assert.equal(edit(text, (v) => { v.content.id = 'b'; }), text.replace('"id": "a"', '"id": "b"'));
+  assert.equal(edit(text, (v) => { v.content.name = 'Beta'; }), text.replace("'Alpha'", "'Beta'"));
+  assert.equal(edit(text, (v) => { v.content.size = 4; }), text.replace('size: 3', 'size: 4'));
+  assert.equal(edit(text, (v) => { v.content.tags[0] = 'z'; }), text.replace('- "x"', '- "z"'));
+  // an item that goes is gone with its comment; the other one keeps its own
+  assert.equal(edit(text, (v) => { v.content.tags.shift(); }), text.replace('    - "x"   # c1\n', ''));
+  // an item added next to others takes no comment of theirs
+  const added = edit(text, (v) => { v.content.tags.push('w'); });
+  assert.deepEqual(lineDiff(text, added), { removed: [], added: ['    - w'] });
+});
