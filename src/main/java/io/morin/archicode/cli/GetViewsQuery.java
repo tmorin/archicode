@@ -10,7 +10,10 @@ import io.morin.archicode.workspace.ElementIndex;
 import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
-import java.util.HashSet;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -65,7 +68,7 @@ public class GetViewsQuery implements Runnable {
     String template;
 
     @SneakyThrows
-    private String filterViews(@NonNull Set<View> allViews) {
+    private String filterViews(@NonNull List<View> allViews) {
         val jsonMapper = mapperFactory.create(MapperFormat.JSON);
         val isQuery = Objects.nonNull(query) && !query.isBlank();
         if (isQuery) {
@@ -84,11 +87,11 @@ public class GetViewsQuery implements Runnable {
             null,
             plateauOption.plateauId
         );
-        val allViews = new HashSet<>(workspace.getViews());
+        val allViews = new LinkedHashSet<>(workspace.getViews());
         allViews.addAll(getBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION));
         allViews.addAll(getBuiltinViews(workspace, workspace.techIndex, View.Layer.TECHNOLOGY));
 
-        val resultAsJson = filterViews(allViews);
+        val resultAsJson = filterViews(sortViews(allViews));
 
         if (OutputFormat.CUSTOM.equals(outputFormat)) {
             val resultAsString = QueryOutputWriter.TemplateUtilities.render(template, resultAsJson);
@@ -98,6 +101,31 @@ public class GetViewsQuery implements Runnable {
             val resultAsString = mapperFactory.create(outputFormat.mapperFormat).writeValueAsString(resultAsTree);
             queryOutputWriter.write(resultAsString);
         }
+    }
+
+    /**
+     * The order of the views of every format of the command: the identifier, then the layer (application before
+     * technology), then, for two views that share both, the viewpoint, the name, the description and the properties.
+     * <p>
+     * A total order, so that the output is the same from one run to the next and from one build to the next. The views
+     * used to be collected in a hash set, and the hash code of a {@link View} holds the identity hash of its layer, an
+     * enum, which depends on what the JVM did before.
+     */
+    private static final Comparator<View> VIEW_ORDER = Comparator.comparing(View::getId)
+        .thenComparing(View::getLayer)
+        .thenComparing(View::getViewpoint)
+        .thenComparing(View::getName, Comparator.nullsFirst(Comparator.naturalOrder()))
+        .thenComparing(View::getDescription, Comparator.nullsFirst(Comparator.naturalOrder()))
+        .thenComparing(view -> Objects.toString(view.getProperties(), ""));
+
+    /**
+     * Sort the given views in the order of the output, see {@link #VIEW_ORDER}.
+     *
+     * @param views the views, in any order
+     * @return the views, sorted, in a new list
+     */
+    static List<View> sortViews(@NonNull Collection<View> views) {
+        return views.stream().sorted(VIEW_ORDER).toList();
     }
 
     @SneakyThrows

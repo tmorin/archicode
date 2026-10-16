@@ -78,7 +78,7 @@ wave_manifest:
       slug: sorted-query-output
       phase: P1
       depends_on: []
-      run: null
+      run: '0056'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/GetViewsQuery.java'

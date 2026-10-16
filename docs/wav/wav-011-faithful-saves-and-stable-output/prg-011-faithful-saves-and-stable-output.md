@@ -16,10 +16,17 @@ wave: 011
 - 2026-10-16: batch 1a dispatched: W-1 `editor-faithful-saves` (run 0055), tier `standard`, `run-executor` at the default model, 1 run at a time.
 - 2026-10-16: W-1 `editor-faithful-saves` (run 0055) returned `completed`; status file `completed` (single-document run, no pln). Verified by the orchestrator on the tree: `node --test` 909/909, `embed.sh --check` ok, `prettier --check` clean. Reported by the run: `./mvnw -o -q verify` exit 0, `cargo test` 169, 19 new tests (14 fail on the previous `standalone.html`), six edits on 85 YAML files (507 of 510 results byte-identical to HEAD, the 3 others are #52 on one-key `workspace.yaml` files), differential fuzz without other differences, the real page looked at in light and dark. Out-of-path file: `src/doc/README.adoc` (one sentence). Serialized with the rest, so no collision to check; W-2 and W-3 will edit the same README after it. Issue filed: #57.
 - 2026-10-16: W-1 committed as one commit on the wave branch.
+- 2026-10-16: batch 1b dispatched: W-2 `sorted-query-output` (run 0056), tier `standard`, `run-executor` at the default model, 1 run at a time (W-1 is committed).
+- 2026-10-16: W-2 `sorted-query-output` (run 0056) returned `completed`; status file `completed` (single-document). Verified by the orchestrator: `./mvnw -o -q verify` exit 0, `prettier --check` clean, no stray process left. Reported by the run: 20 runs of `query views -f json` and of `query schemas` (workspace, manifest) give one output on each of two clean builds of the tree and across the two; 29 loading workspaces of the 30 tracked in git have the same set of views as the base jar, now ordered by id then layer (`query graph` and all error outputs byte-identical to base); schemas equal as JSON to base, only property order differs; 329 Java tests, `node --test` 909/909. No out-of-path file; serialized, no collision to check. Issues filed: #58, #59. Not verified: the native image (the only GraalVM on the machine is 17), left to W-5's job.
+- 2026-10-16: W-2 committed as one commit on the wave branch.
 
 ## Findings
 
 - #50's single-scalar case was already fixed before the wave (commit `d2849d2`, issue left open); the run closed the remaining gap (several keyless list items rewritten in a row). #53 also covers `~`, `Null` and a bare `key:`. Say both in the closing notes of the issues.
 - Still lossy after W-1 (not in this wave): files with anchors or tags, a list at the column of its key (#57), a comment inside an empty collection that an edit fills.
+
+- Note for the release notes (W-2, #48, #49): the order of `query views` (all formats) and the order of the properties in `query schemas` change once, in 0.14.0; the set of views and the content of the schemas do not change; a script that reads `$.[0]` of `query views` should select by `id`. The run's own copy is under "Note for the release notes" in run 0056.
+- Cause of #49: the element types are interfaces without fields, so Jackson takes their property order from `getDeclaredMethods`, which the JVM does not fix (about one run in three, not one in twenty). Fixed with a copy of the JSON mapper that sorts properties alphabetically.
+- W-2 found #58 (`query graph` output is not sorted, a `HashSet<String>`; stable in practice) and #59 (`query views -f toml` writes invalid TOML, before the wave).
 
 ## Lessons Learnt

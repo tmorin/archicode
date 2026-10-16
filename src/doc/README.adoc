@@ -1502,6 +1502,8 @@ archicode query views -f toml
 archicode query views -f custom -t '$d.e("$.[*].id")'
 ----
 
+- Sorted Output: the views come sorted, by identifier and then by layer (application before technology), in every output format and before the JSON Path query is applied, so that `$.[0]` is always the same view. Two runs, on the same machine or not, and two builds of the same version give the same output byte for byte, which lets you diff it or keep it in git. Before 0.14.0 the order of the views was not defined and changed from one build to another; the set of views did not. The order of your scripts' results changes once, when you upgrade; if a script relies on the position of a view, select it by its `id` instead.
+
 [[plateau-add]]
 === Add a plateau
 
@@ -1627,6 +1629,8 @@ archicode query schemas workspace
 ----
 archicode query schemas manifest
 ----
+
+- Sorted Output: the properties of every object of the schema come in alphabetical order, so that two runs, and two builds of the same version, give the same schema byte for byte and you can diff it or keep it in git. Before 0.14.0 the properties of some objects (the elements) changed order on about one run in three; the schema did not otherwise change. The order of the properties changes once, when you upgrade.
 
 - IDE Integration and Coding: By integrating the generated JSON Schema into your Integrated Development Environment (IDE), your coding experience is enriched. The schema acts as a guiding framework, offering autocompletion, validation, and insights that elevate your coding accuracy and efficiency.
 
