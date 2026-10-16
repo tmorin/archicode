@@ -191,18 +191,18 @@ test('moving a container with its children puts the block under the new parent a
   // the lines that changed in the files that point at it: the reference, nothing around it
   assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.yaml'], fileOf(mem, 'app.shop.till.yaml')), {
     removed: ['    - destination: "bakery.oven.timer"', '    - destination: "bakery.oven"'],
-    added: ['    - destination: bakery.tools.oven.timer', '    - destination: bakery.tools.oven']
+    added: ['    - destination: "bakery.tools.oven.timer"', '    - destination: "bakery.tools.oven"']
   });
-  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.screen.yaml'], fileOf(mem, 'app.shop.till.screen.yaml')), { removed: ['    - destination: "bakery.oven.gauge"'], added: ['    - destination: bakery.tools.oven.gauge'] });
+  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.screen.yaml'], fileOf(mem, 'app.shop.till.screen.yaml')), { removed: ['    - destination: "bakery.oven.gauge"'], added: ['    - destination: "bakery.tools.oven.gauge"'] });
   assert.deepEqual(lineDiff(MANIFESTS['app.delivery.van.yaml'], fileOf(mem, 'app.delivery.van.yaml')), { removed: ['    - destination: bakery.oven'], added: ['    - destination: bakery.tools.oven'] });
   assert.deepEqual(lineDiff(MANIFESTS['env.prod.yaml'], fileOf(mem, 'env.prod.yaml')), { removed: ['        - bakery.oven', '        - bakery.oven.timer'], added: ['        - bakery.tools.oven', '        - bakery.tools.oven.timer'] });
-  assert.deepEqual(lineDiff(MANIFESTS['view.ovens.yaml'], fileOf(mem, 'view.ovens.yaml')), { removed: ['    element: "bakery.oven"'], added: ['    element: bakery.tools.oven'] });
+  assert.deepEqual(lineDiff(MANIFESTS['view.ovens.yaml'], fileOf(mem, 'view.ovens.yaml')), { removed: ['    element: "bakery.oven"'], added: ['    element: "bakery.tools.oven"'] });
   // the file of the bakery: the block left with its comment, its quotes and its escaped string, one level deeper; the rest is as it was (the comments of the others stay on theirs)
   const bakery = fileOf(mem, 'app.bakery.yaml');
   const block = BAKERY.split('\n').slice(9, 24); // the comment of the oven to its last line
   assert.equal(bakery, BAKERY
     .replace(block.join('\n') + '\n', '')
-    .replace('        - destination: "bakery.oven.gauge"', '        - destination: bakery.tools.oven.gauge')
+    .replace('        - destination: "bakery.oven.gauge"', '        - destination: "bakery.tools.oven.gauge"')
     .replace('      name: "Tools"\n', '      name: "Tools"\n      elements:\n' + block.map((line) => '    ' + line).join('\n') + '\n'));
   assert.ok(bakery.includes('        # the ovens come first\n        - kind: container\n          id: "oven"'), 'the comment above the block went with it');
   assert.ok(bakery.includes('          description: "Bakes \\"the\\" bread: 220 degrees, no more."'), 'quoted strings are the author\'s');
@@ -221,11 +221,11 @@ test('a manifest that is not nested changes one line, its header.parent, and the
   assert.equal(state.index.application.get('delivery.till.screen').sourceFile, 'plateaus/20_target/app.shop.till.screen.yaml', 'the file of the child did not move');
   await sandbox.saveAllChanges();
   assert.deepEqual(changedFiles(mem), ['app.shop.till.yaml', 'app.shop.till.screen.yaml', 'app.delivery.van.yaml']);
-  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.yaml'], fileOf(mem, 'app.shop.till.yaml')), { removed: ['  parent: "shop"'], added: ['  parent: delivery'] });
-  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.screen.yaml'], fileOf(mem, 'app.shop.till.screen.yaml')), { removed: ['  parent: "shop.till"'], added: ['  parent: delivery.till'] });
+  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.yaml'], fileOf(mem, 'app.shop.till.yaml')), { removed: ['  parent: "shop"'], added: ['  parent: "delivery"'] });
+  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.screen.yaml'], fileOf(mem, 'app.shop.till.screen.yaml')), { removed: ['  parent: "shop.till"'], added: ['  parent: "delivery.till"'] });
   assert.deepEqual(lineDiff(MANIFESTS['app.delivery.van.yaml'], fileOf(mem, 'app.delivery.van.yaml')), {
     removed: ['    - destination: "shop.till"', '    - destination: shop.till.screen'],
-    added: ['    - destination: delivery.till', '    - destination: delivery.till.screen']
+    added: ['    - destination: "delivery.till"', '    - destination: delivery.till.screen']
   });
   assert.equal(fileOf(mem, 'app.shop.yaml'), MANIFESTS['app.shop.yaml']);
   assert.equal(state.relationshipStats.dangling, 0);
@@ -241,8 +241,8 @@ test('a system goes under a solution: every reference to it and to what it holds
   assert.equal(state.relationshipStats.dangling, 0);
   await sandbox.saveAllChanges();
   const added = lineDiff(MANIFESTS['app.bakery.yaml'], fileOf(mem, 'app.bakery.yaml')).added;
-  assert.ok(added.includes('  parent: suite'));
-  assert.deepEqual(added.filter((l) => /^ +- bakery/.test(l)).map((l) => l.trim()).sort(), ['- bakery', '- bakery.mixer', '- bakery.oven', '- bakery.oven.gauge', '- bakery.oven.timer', '- bakery.shelf', '- bakery.tools'], 'the system and each of the six elements inside it name their old reference');
+  assert.ok(added.includes('  parent: "suite"'));
+  assert.deepEqual(added.filter((l) => /^ +- "bakery/.test(l)).map((l) => l.trim()).sort(), ['- "bakery"', '- "bakery.mixer"', '- "bakery.oven"', '- "bakery.oven.gauge"', '- "bakery.oven.timer"', '- "bakery.shelf"', '- "bakery.tools"'], 'the system and each of the six elements inside it name their old reference');
   assert.deepEqual(lineDiff(withSolution['app.suite.yaml'], mem.files.get(target('app.suite.yaml')).text), { removed: [], added: [] }, 'the new parent is not touched');
   // the children inside the file of the system are told too: the comparison reads one moved system with what it holds
   const rows = Object.fromEntries(sandbox.comparisonState().changes.filter((r) => /bakery/.test(r.reference)).map((r) => [r.reference, r.change]));
@@ -320,17 +320,17 @@ test('the lines "Move and write replaces" adds are the key and the old reference
   assert.deepEqual(lineDiff(fileOf(alone.mem, 'app.bakery.yaml'), moved), {
     removed: [],
     added: [
-      '              replaces:', '                - bakery.oven.gauge',
-      '              replaces:', '                - bakery.oven.timer',
-      '          replaces:', '            - bakery.oven'
+      '              replaces:', '                - "bakery.oven.gauge"',
+      '              replaces:', '                - "bakery.oven.timer"',
+      '          replaces:', '            - "bakery.oven"'
     ]
   });
   // a manifest that is not nested gets the key at the end of its content, the others around it are as they were
   const root = await open();
   assert.equal(move(root.sandbox, 'shop.till', 'delivery', true).ok, true);
   await root.sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.yaml'], fileOf(root.mem, 'app.shop.till.yaml')), { removed: ['  parent: "shop"'], added: ['  parent: delivery', '  replaces:', '    - shop.till'] });
-  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.screen.yaml'], fileOf(root.mem, 'app.shop.till.screen.yaml')), { removed: ['  parent: "shop.till"'], added: ['  parent: delivery.till', '  replaces:', '    - shop.till.screen'] });
+  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.yaml'], fileOf(root.mem, 'app.shop.till.yaml')), { removed: ['  parent: "shop"'], added: ['  parent: "delivery"', '  replaces:', '    - "shop.till"'] });
+  assert.deepEqual(lineDiff(MANIFESTS['app.shop.till.screen.yaml'], fileOf(root.mem, 'app.shop.till.screen.yaml')), { removed: ['  parent: "shop.till"'], added: ['  parent: "delivery.till"', '  replaces:', '    - "shop.till.screen"'] });
 });
 
 test('replaces is added to the list the element already has, and an element the baseline does not have gets none', async () => {
@@ -346,7 +346,7 @@ test('replaces is added to the list the element already has, and an element the 
   assert.deepEqual(plain(page.state.index.application.get('bakery.tools.oven.timer').replaces), []);
   await page.sandbox.saveAllChanges();
   const saved = fileOf(page.mem, 'app.bakery.yaml');
-  assert.ok(saved.includes('              replaces:\n                - bakery.old-gauge\n                - bakery.oven.gauge\n'));
+  assert.ok(saved.includes('              replaces:\n                - "bakery.old-gauge"\n                - "bakery.oven.gauge"\n'), 'the file quotes its strings, and the lines the ordinary save writes here do too');
   assert.ok(saved.startsWith('# the bakery: everything that makes bread\nheader:') && saved.endsWith('# end of the bakery\n'));
 });
 
@@ -681,7 +681,7 @@ test('the comments on lines of their own inside the block go with it; the ones a
   await page.sandbox.saveAllChanges();
   const saved = fileOf(page.mem, 'app.bakery.yaml');
   assert.ok(saved.includes('            # the timer, which counts\n            - kind: component\n              id: "timer"\n              name: "Timer"\n'), 'the comment between two children went with them, one level deeper');
-  assert.ok(saved.includes('        - destination: bakery.tools.oven.gauge\n          label: "checks"\n'));
+  assert.ok(saved.includes('        - destination: "bakery.tools.oven.gauge"\n          label: "checks"\n'));
   assert.equal((saved.match(/# after the oven/g) || []).length, 1, 'the comment after the last line is not lost');
   assert.ok(saved.indexOf('# after the oven') < saved.indexOf('# the mixer is on its own'), 'it stays where it was, with what follows it');
 });

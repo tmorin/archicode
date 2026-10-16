@@ -528,7 +528,7 @@ test('a view that still lives in workspace.yaml is edited in place; saving it re
   assert.deepEqual(dirtyFiles(page), [], 'no manifest is marked');
   await page.sandbox.saveAllChanges();
   assert.deepEqual(written(page), ['workspace.yaml']);
-  assert.match(page.mem.files.get('workspace.yaml').text, /viewpoint: deep/);
+  assert.match(page.mem.files.get('workspace.yaml').text, /viewpoint: "deep"/, 'the new value is written in the quotes the file uses');
 });
 
 // ============================================================ 8. A text committed by leaving it
