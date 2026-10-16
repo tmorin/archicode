@@ -23,6 +23,9 @@ public class ServeEditorCommand implements Runnable {
     @CommandLine.ParentCommand
     EditorGroup editorGroup;
 
+    @CommandLine.Spec
+    CommandLine.Model.CommandSpec spec;
+
     @Inject
     EditorHttpServer editorHttpServer;
 
@@ -66,7 +69,7 @@ public class ServeEditorCommand implements Runnable {
         val workspaceFilePath = editorGroup.archiCode.workspaceFilePath.toAbsolutePath();
         if (!"workspace.yaml".equals(String.valueOf(workspaceFilePath.getFileName()))) {
             throw new CommandLine.ParameterException(
-                new CommandLine(this),
+                spec.commandLine(),
                 "the editor opens a folder with a workspace.yaml: " + workspaceFilePath + " is not named so."
             );
         }

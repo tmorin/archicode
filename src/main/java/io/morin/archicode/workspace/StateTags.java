@@ -22,7 +22,8 @@ import lombok.val;
  * it. A word written by hand keeps the author's own style of that name, and nothing else. This class says, for each such
  * word, where the author's word and the computed state do not agree, so that the author is not surprised by a box that is
  * not drawn as the word says. It is made of sentences, and prints nothing: the application's log level is
- * {@code ERROR}, which hides {@code log.warn}, so the commands put the sentences on their error output.
+ * {@code ERROR}, which hides {@code log.warn}, so the commands hand the sentences to {@code Warnings}, which the command line prints
+ * on its error output.
  */
 @UtilityClass
 public class StateTags {
@@ -44,7 +45,7 @@ public class StateTags {
      *
      * @param workspace  the workspace that is drawn (the union of two plateaus for a comparison)
      * @param comparison what the comparison computed for it, or null when nothing is compared
-     * @return one sentence per element and word; none for a workspace without plateaus, which has no comparison to
+     * @return one sentence per element and word (without {@code warning:}, which the channel adds); none for a workspace without plateaus, which has no comparison to
      * disagree with, or when every word written by hand is the state of its element
      */
     public List<String> warnings(@NonNull Workspace workspace, Comparison comparison) {
@@ -130,7 +131,7 @@ public class StateTags {
         Workspace workspace,
         Comparison comparison
     ) {
-        val head = String.format("warning: the element `%s` carries `%s` (%s)", reference, word, source);
+        val head = String.format("the element `%s` carries `%s` (%s)", reference, word, source);
         val own = String.format(
             "it is drawn with your own `styles` entry named `%s` (if any) and not with the default look of the state",
             word

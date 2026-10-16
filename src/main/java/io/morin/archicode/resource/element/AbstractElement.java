@@ -67,10 +67,10 @@ public abstract class AbstractElement implements Element {
      * The references of the elements of an earlier plateau that this element replaces: it is where they went when an
      * element moved, was renamed, split or merged. Said by the author on the element of the more recent plateau, and
      * read only by the comparison of two plateaus (see {@code archicode diff}): it never is a guess. Tools that do not
-     * know the key ignore it.
+     * know the key ignore it. It is read with what was written (see {@link Replaces}).
      */
     @Builder.Default
-    @JsonDeserialize(as = LinkedHashSet.class)
+    @JsonDeserialize(using = Replaces.Deserializer.class)
     Set<String> replaces = new LinkedHashSet<>();
 
     @Override
