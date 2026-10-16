@@ -346,7 +346,12 @@ test('replaces is added to the list the element already has, and an element the 
   assert.deepEqual(plain(page.state.index.application.get('bakery.tools.oven.timer').replaces), []);
   await page.sandbox.saveAllChanges();
   const saved = fileOf(page.mem, 'app.bakery.yaml');
-  assert.ok(saved.includes('              replaces:\n                - "bakery.old-gauge"\n                - "bakery.oven.gauge"\n'), 'the file quotes its strings, and the lines the ordinary save writes here do too');
+  // the list the author wrote on one line (plain) is the list that gets the item, in its style (the file's quotes are for the lines it writes anew: the `replaces` of the oven)
+  assert.ok(saved.includes('              replaces:\n                - bakery.old-gauge\n                - bakery.oven.gauge\n'), 'the item joins the list as the author wrote it');
+  assert.ok(saved.includes('          replaces:\n            - "bakery.oven"\n'), 'a new list takes the quotes of the file');
+  // the file is carried over as written (#51): the comment of the mixer stays above the mixer, the one of the ovens goes with the ovens
+  assert.ok(saved.includes('    # the mixer is on its own\n    - kind: container\n      id: "mixer"\n'), 'the comment of the mixer stays on it');
+  assert.ok(saved.includes('        # the ovens come first\n        - kind: container\n          id: "oven"\n'), 'the comment of the ovens goes with them');
   assert.ok(saved.startsWith('# the bakery: everything that makes bread\nheader:') && saved.endsWith('# end of the bakery\n'));
 });
 

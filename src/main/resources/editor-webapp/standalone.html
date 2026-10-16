@@ -1383,8 +1383,14 @@ function readYamlFlowPlain(p, startLine) {
   return { text: out };
 }
 
-/** One node of a flow collection: a collection or a scalar (`{ value, text, scalar }`). */
+/**
+ * One node of a flow collection: a collection or a scalar (`{ value, text, scalar }`). When the cursor has a `leaves` list, the way each value is written
+ * (`'"'`, `"'"` or `''`) is added to it, in the order the emitter writes them: a scalar, an empty collection or a missing value counts, a key does not
+ * (see `openFlowLists`). The reading itself is the same with or without it.
+ */
 function parseYamlFlowNode(p, startLine) {
+  const note = (quote) => { if (p.leaves) p.leaves.push(quote); };
+  const forget = () => { if (p.leaves) p.leaves.pop(); }; // the scalar just read was a key
   skipYamlFlowSpace(p, startLine);
   const line = p.lines[p.i];
   const c = line[p.col];
@@ -1393,11 +1399,12 @@ function parseYamlFlowNode(p, startLine) {
     const arr = [];
     for (;;) {
       skipYamlFlowSpace(p, startLine);
-      if (p.lines[p.i][p.col] === ']') { p.col++; return { value: arr, scalar: false }; }
+      if (p.lines[p.i][p.col] === ']') { p.col++; if (arr.length === 0) note(''); return { value: arr, scalar: false }; }
       const item = parseYamlFlowNode(p, startLine);
       skipYamlFlowSpace(p, startLine);
       if (item.scalar && p.lines[p.i][p.col] === ':') {
         // a single pair inside a sequence: `[a: b]`
+        forget();
         p.col++;
         const pair = {};
         setYamlKey(pair, item.text, parseYamlFlowPairValue(p, startLine));
@@ -1417,14 +1424,17 @@ function parseYamlFlowNode(p, startLine) {
     const map = {};
     for (;;) {
       skipYamlFlowSpace(p, startLine);
-      if (p.lines[p.i][p.col] === '}') { p.col++; return { value: map, scalar: false }; }
+      if (p.lines[p.i][p.col] === '}') { p.col++; if (Object.keys(map).length === 0) note(''); return { value: map, scalar: false }; }
       const keyNode = parseYamlFlowNode(p, startLine);
       if (!keyNode.scalar) throw yamlError('a collection cannot be a key of a flow mapping', p.i);
+      forget();
       skipYamlFlowSpace(p, startLine);
       let value = null;
       if (p.lines[p.i][p.col] === ':') {
         p.col++;
         value = parseYamlFlowPairValue(p, startLine);
+      } else {
+        note('');
       }
       setYamlKey(map, keyNode.text, value);
       skipYamlFlowSpace(p, startLine);
@@ -1436,12 +1446,14 @@ function parseYamlFlowNode(p, startLine) {
   }
   if (c === '"' || c === "'") {
     const text = readYamlQuoted(p, c);
+    note(c);
     return { value: text, text, scalar: true };
   }
   if (c === '&' || c === '*' || c === '!') throw yamlError('anchors, aliases and tags are not supported', p.i);
   if (',]}|>'.indexOf(c) !== -1) throw yamlError('unexpected "' + c + '" in a flow collection', p.i);
   const plain = readYamlFlowPlain(p, startLine);
   if (plain.text === '') throw yamlError('unexpected "' + (p.lines[p.i][p.col] || '') + '" in a flow collection', p.i);
+  note('');
   return { value: resolveYamlPlain(plain.text), text: plain.text, scalar: true };
 }
 
@@ -1449,7 +1461,7 @@ function parseYamlFlowNode(p, startLine) {
 function parseYamlFlowPairValue(p, startLine) {
   skipYamlFlowSpace(p, startLine);
   const d = p.lines[p.i][p.col];
-  if (d === ',' || d === '}' || d === ']') return null;
+  if (d === ',' || d === '}' || d === ']') { if (p.leaves) p.leaves.push(''); return null; }
   return parseYamlFlowNode(p, startLine).value;
 }
 
@@ -1751,8 +1763,9 @@ function serializeManifestFile(header, content) {
  * quotes and a trailing comment do not count); when one is not (a flow list, other indentation, a key written another
  * way), the layout of the file is not one this can follow, and the text is the emitter's, as before.
  *
- * A list written on one line (`qualifiers: [Redis, Cache]`) is the one layout that is followed since wave 009 (a `replaces` is often written so): it is
- * read as the block the emitter writes, and goes back to its line when the edit did not touch it (see `openFlowLists`).
+ * A flow collection (`qualifiers: [Redis, Cache]`, `tags: {zone: north}`, one on several lines, one with others inside, one in an item of a list of maps) is
+ * followed too (a list since wave 009, any shape since wave 010): it is read as the block the emitter writes, with the quotes of its values, and goes back
+ * as it was written when the edit did not touch it (see `openFlowLists`); one that the edit changes stays a block.
  */
 function patchYamlText(oldText, newValue) {
   const emitted = serializeYamlValue(newValue, 0);
@@ -1782,50 +1795,138 @@ function patchYamlText(oldText, newValue) {
   return says(closed) ? closed : emitted;
 }
 
+/** A line moved `delta` columns to the right (to the left when negative, as far as it has room): the shift of a block that is carried to another depth. */
+function shiftYamlLine(line, delta) {
+  if (line.trim() === '' || delta === 0) return line;
+  if (delta > 0) return ' '.repeat(delta) + line;
+  return yamlIndentOf(line) >= -delta ? line.slice(-delta) : line.replace(/^ +/, '');
+}
+
 /**
- * The text with every list written on one line, as the value of a plain key (`  tags: [a, b]  # why`), written as the block the emitter writes for it
- * (the comment goes on the key's line), and the lists as they were, to put back by `closeFlowLists`. `null` when the text has none, or one that cannot be read.
+ * The lines the emitter writes for `value` (a list or a mapping that a flow collection holds) when it sits at `indent`, with the quotes the author gave the values in the
+ * flow collection: `["a", 'b', c]` is written `- "a"`, `- 'b'`, `- c`, so that a collection the edit changes does not lose the quotes of its other items. `leaves` is
+ * what the reader noted for each value, in order (see `parseYamlFlowNode`); a quote is applied only where the emitter wrote the text plain, and nothing is applied if
+ * the lines and the values do not match one to one.
+ */
+function emitFlowBlock(value, leaves, indent) {
+  const lines = serializeYamlValue(value, indent).split('\n');
+  const carrying = lines.map((line, i) => (/^ *(?:- )*-$/.test(line) || /:$/.test(line) ? -1 : i)).filter((i) => i !== -1); // the lines that end with a value
+  if (carrying.length !== leaves.length) return lines;
+  carrying.forEach((at, k) => {
+    const added = leaves[k] === '' ? null : readYamlScalarLine(lines[at]);
+    if (added === null || added.quote !== '' || !added.plainable) return;
+    const token = lines[at].slice(added.valueAt);
+    lines[at] = lines[at].slice(0, added.valueAt) + (leaves[k] === '"' ? '"' + escapeYamlDoubleQuoted(token) + '"' : "'" + token.replace(/'/g, "''") + "'");
+  });
+  return lines;
+}
+
+/**
+ * The text with every flow collection written as the value of a plain key (`  tags: [a, b]  # why`, `  - destination: x`, `    tags: {zone: north}`) or as an item of a
+ * list (`- {destination: x, label: y}`), on one line or on several, with other collections inside, written as the block the emitter writes for it (the quotes of its values
+ * stay, and the comment goes on the first line), and the collections as they were, to put back by `closeFlowLists`. `null` when the text has none, or none that can be
+ * read as the block they become.
  */
 function openFlowLists(text) {
   const eol = /\r\n/.test(text) ? '\r\n' : '\n';
   const lines = text.split(/\r\n|\r|\n/);
   const lists = [];
-  let found = false;
-  const out = lines.map((line) => {
-    const m = line.match(/^( *)([A-Za-z0-9_][A-Za-z0-9_.-]*): *\[(.*)\] *(#.*)?$/);
-    if (!m || m[3].trim() === '') return line;
-    let value;
-    try {
-      value = parseYaml(m[2] + ': [' + m[3] + ']');
-    } catch (e) {
-      return line;
+  const out = [];
+  let blockFrom = -1; // the column a block scalar's text must go past: the text of a block scalar is not YAML
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (blockFrom !== -1) {
+      if (line.trim() === '' || yamlIndentOf(line) > blockFrom) { out.push(line); continue; }
+      blockFrom = -1;
     }
-    const items = value && typeof value === 'object' ? value[m[2]] : null;
-    if (!Array.isArray(items) || !items.length || items.some((item) => item !== null && typeof item === 'object')) return line;
-    found = true;
-    const expanded = [m[1] + m[2] + ':' + (m[4] ? '  ' + m[4] : '')].concat(serializeYamlValue(items, m[1].length + 2).split('\n'));
-    lists.push({ expanded, original: line });
-    return expanded.join('\n');
-  });
-  return found ? { text: out.join(eol), lists } : null;
+    const header = stripYamlComment(line).match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+    if (header) { blockFrom = header[1].length; out.push(line); continue; }
+    // `key: [`, `- key: {` (the key plain or quoted), or `- [` / `- {`: where a flow collection starts, and the text before it
+    const lead = line.match(/^ *(?:- +)*/)[0];
+    const found = scanYamlKey(line, lead.length, i);
+    let at = -1;
+    if (found) {
+      at = found.end;
+      while (at < line.length && isYamlWs(line[at])) at++;
+    }
+    const keyed = found !== null && at < line.length && (line[at] === '[' || line[at] === '{');
+    const item = !keyed && /^ *- +[\[{]/.test(line);
+    if (!keyed && !item) { out.push(line); continue; }
+    const m = keyed ? [line.slice(0, at), lead, line.slice(lead.length, found.end - 1).replace(/[ \t]+$/, '')] : line.match(/^( *)(- +)(?=[\[{])/); // [text before the collection, indentation (and dashes), key as written]
+    if (!keyed) at = m[0].length;
+    const p = { lines, i, col: at, leaves: [] };
+    let node;
+    let comment = '';
+    try {
+      node = parseYamlFlowNode(p, i);
+      const tail = lines[p.i].slice(p.col).match(/^[ \t]*$|^[ \t]+(#.*)$/);
+      if (!tail || node.scalar || node.value === null || typeof node.value !== 'object') { out.push(line); continue; }
+      comment = tail[1] || '';
+    } catch (e) {
+      out.push(line);
+      continue;
+    }
+    const note = comment ? '  ' + comment : '';
+    let expanded;
+    let column; // what a line must be indented past to belong to the collection
+    if (keyed) {
+      const key = m[2]; // as written, quotes included
+      const empty = yamlEmptyCollection(node.value);
+      expanded = empty ? [m[1] + key + ': ' + empty + note] : [m[1] + key + ':' + note].concat(emitFlowBlock(node.value, p.leaves, m[1].length + 2));
+      column = m[1].length;
+      if (!empty) { // the block must say what the flow collection says
+        const keyless = [key + ':'].concat(expanded.slice(1).map((l) => shiftYamlLine(l, -m[1].length)));
+        let same = false;
+        try {
+          same = serializeYamlValue(parseYaml(keyless.join('\n')), 0) === serializeYamlValue({ [found.key]: node.value }, 0);
+        } catch (e) { /* not the same */ }
+        if (!same) { out.push(line); continue; }
+      }
+    } else {
+      const dashes = m[1].length;
+      const block = emitFlowBlock([node.value], p.leaves, dashes);
+      expanded = block.slice();
+      if (note) expanded[0] += note;
+      column = dashes;
+      let same = false;
+      try {
+        same = serializeYamlValue(parseYaml(block.map((l) => shiftYamlLine(l, -dashes)).join('\n')), 0) === serializeYamlValue([node.value], 0);
+      } catch (e) { /* not the same */ }
+      if (!same) { out.push(line); continue; }
+    }
+    const original = lines.slice(i, p.i + 1);
+    if (expanded.join('\n') !== original.join('\n')) lists.push({ expanded, original, column });
+    out.push.apply(out, expanded);
+    i = p.i;
+  }
+  return lists.length ? { text: out.join(eol), lists } : null;
 }
 
-/** The text after the edit with the lists that `openFlowLists` opened and the edit left alone put back on their line; a list the edit changed stays a block. */
+/**
+ * The text after the edit with the collections that `openFlowLists` opened and the edit left alone put back as they were written; a collection the edit changed stays a
+ * block. A collection is found where the edit left it, or where it was carried to (another depth: a block moved to another parent): its lines are then shifted the same.
+ */
 function closeFlowLists(text, lists) {
   const eol = /\r\n/.test(text) ? '\r\n' : '\n';
   let lines = text.split(/\r\n|\r|\n/);
   let from = 0;
   for (const list of lists) {
-    for (let i = from; i + list.expanded.length <= lines.length; i++) {
-      const keyIndent = list.original.length - list.original.replace(/^ +/, '').length;
-      const next = lines[i + list.expanded.length];
-      const continues = next !== undefined && /^ *- /.test(next) && next.length - next.replace(/^ +/, '').length > keyIndent; // the edit added an item after the last one
-      if (!continues && list.expanded.every((line, k) => lines[i + k] === line)) {
-        lines = lines.slice(0, i).concat(list.original, lines.slice(i + list.expanded.length));
-        from = i + 1;
-        break;
+    const size = list.expanded.length;
+    const found = (start, end) => {
+      for (let i = start; i < end && i + size <= lines.length; i++) {
+        const delta = yamlIndentOf(lines[i]) - yamlIndentOf(list.expanded[0]);
+        if (!list.expanded.every((line, k) => lines[i + k] === shiftYamlLine(line, delta))) continue;
+        const next = lines[i + size];
+        // the edit added a line after the last one that belongs to the collection (an item, a key): it is not the collection that was written
+        if (next !== undefined && next.trim() !== '' && !next.trim().startsWith('#') && yamlIndentOf(next) > list.column + delta) continue;
+        return { i, delta };
       }
-    }
+      return null;
+    };
+    const place = found(from, lines.length) || found(0, from);
+    if (place === null) continue;
+    lines = lines.slice(0, place.i).concat(list.original.map((line) => shiftYamlLine(line, place.delta)), lines.slice(place.i + size));
+    from = place.i + list.original.length;
   }
   return lines.join(eol);
 }
@@ -2128,12 +2229,14 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
     if (!oldPath || !newPath || !oldPath.length || !newPath.length) return null;
     const eol = /\r\n/.test(oldText) ? '\r\n' : '\n';
     const endsWithBreak = /\n$/.test(oldText);
-    const original = oldText.replace(/^﻿/, '').split(/\r\n|\r|\n/);
+    const opened = openFlowLists(oldText); // the flow collections of the file are read as the blocks the emitter writes, and put back where the move left them
+    const source = opened ? opened.text : oldText;
+    const original = source.replace(/^﻿/, '').split(/\r\n|\r|\n/);
     if (endsWithBreak) original.pop();
     const before = emittedBlockOf(oldValue, oldPath);
     const after = emittedBlockOf(newValue, newPath);
     if (before === null || after === null) return null;
-    if (serializeYamlValue(parseYaml(oldText), 0) !== before.lines.join('\n')) return null; // the model is not what the file says: no guess
+    if (serializeYamlValue(parseYaml(source), 0) !== before.lines.join('\n')) return null; // the model is not what the file says: no guess
     // the value without the element (and without its parent's `elements` if that was the last one)
     const without = JSON.parse(JSON.stringify(oldValue));
     const parent = elementNodeAt(without.content, oldPath.slice(0, -2));
@@ -2162,11 +2265,7 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
     let carryFrom = first;
     while (carryFrom - 1 > floor && original[carryFrom - 1].trim().startsWith('#')) carryFrom--;
     const delta = yamlIndentOf(after.lines[after.start]) - yamlIndentOf(before.lines[before.start]);
-    const carried = original.slice(carryFrom, last + 1).map((line) => {
-      if (line.trim() === '' || delta === 0) return line;
-      if (delta > 0) return ' '.repeat(delta) + line;
-      return yamlIndentOf(line) >= -delta ? line.slice(-delta) : line.replace(/^ +/, '');
-    });
+    const carried = original.slice(carryFrom, last + 1).map((line) => shiftYamlLine(line, delta));
     const removeFrom = cutFrom < before.start ? place[cutFrom] : carryFrom;
     // the new lines go after the line of the old text that comes before them in the new one
     const previous = putAt - 1 < cutFrom ? putAt - 1 : putAt - 1 + (before.end - cutFrom);
@@ -2177,7 +2276,8 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
       if (i < removeFrom || i > last) out.push(original[i]);
       if (i === insertAfter) out.push.apply(out, inserted);
     }
-    const text = out.join(eol) + (endsWithBreak ? eol : '');
+    const moved = out.join(eol) + (endsWithBreak ? eol : '');
+    const text = opened ? closeFlowLists(moved, opened.lists) : moved;
     return serializeYamlValue(parseYaml(text), 0) === after.lines.join('\n') ? text : null;
   } catch (e) {
     return null;
