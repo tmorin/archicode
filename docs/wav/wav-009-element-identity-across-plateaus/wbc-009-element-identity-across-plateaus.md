@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 009
-status: proposed
+status: completed
 date: 2026-10-15
 related:
   - docs/wav/wav-008-plateaus-and-baseline-diff/wav-008-plateaus-and-baseline-diff.md
