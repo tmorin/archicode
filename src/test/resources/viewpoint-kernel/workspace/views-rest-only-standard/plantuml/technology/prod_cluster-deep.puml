@@ -26,14 +26,14 @@ rectangle prod.cluster.data.svc <<node>> <<atomic>> [
 ]
 }
 rectangle prod.cluster.web as "**web namespace**\n""[node]""" <<composite>> {
-rectangle prod.cluster.web.pod-a as "**frontend pod**\n""[node]""" <<composite>> {
-rectangle pod-a_shop_web_frontend <<Angular>> <<container>> <<atomic>> [
+rectangle prod.cluster.web.pod_a as "**frontend pod**\n""[node]""" <<composite>> {
+rectangle pod_a_shop_web_frontend <<Angular>> <<container>> <<atomic>> [
 **Frontend**
 ""[container: Angular]""
 ]
 }
-rectangle prod.cluster.web.pod-b as "**api pod**\n""[node]""" <<composite>> {
-rectangle pod-b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
+rectangle prod.cluster.web.pod_b as "**api pod**\n""[node]""" <<composite>> {
+rectangle pod_b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]
@@ -47,11 +47,11 @@ rectangle psp.gateway <<node>> <<atomic>> [
 ""[node]""
 ]
 }
-pod-a_shop_web_frontend --> pod-b_shop_web_api : calls\n""[REST]""
+pod_a_shop_web_frontend --> pod_b_shop_web_api : calls\n""[REST]""
 prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
-prod.cluster.web.pod-a --> prod.cluster.web.pod-b : forwards to\n""[HTTP]""
-prod.cluster.web.pod-b --> prod.cluster.data.svc : ""[gRPC]""
-prod.cluster.web.pod-b --> psp.gateway : pays through\n""[HTTPS]""
+prod.cluster.web.pod_a --> prod.cluster.web.pod_b : forwards to\n""[HTTP]""
+prod.cluster.web.pod_b --> prod.cluster.data.svc : ""[gRPC]""
+prod.cluster.web.pod_b --> psp.gateway : pays through\n""[HTTPS]""
 <style>
 .external {
 actor {

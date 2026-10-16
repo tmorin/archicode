@@ -23,13 +23,13 @@ class ItemRenderer {
     @Builder.Default
     CompositeItemRenderer compositeItemRenderer = CompositeItemRenderer.builder().build();
 
-    String render(@NonNull Viewpoint viewpoint, @NonNull Item item) {
+    String render(@NonNull Viewpoint viewpoint, @NonNull PlantumlNames names, @NonNull Item item) {
         val buf = new StringBuilder();
 
         if (item.getChildren().isEmpty()) {
-            buf.append(atomicItemRenderer.render(viewpoint, item));
+            buf.append(atomicItemRenderer.render(viewpoint, names, item));
         } else {
-            buf.append(compositeItemRenderer.render(viewpoint, item));
+            buf.append(compositeItemRenderer.render(viewpoint, names, item));
         }
 
         return buf.toString();
@@ -41,7 +41,7 @@ class ItemRenderer {
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     static class AtomicItemRenderer {
 
-        String render(@NonNull Viewpoint viewpoint, @NonNull Item item) {
+        String render(@NonNull Viewpoint viewpoint, @NonNull PlantumlNames names, @NonNull Item item) {
             log.debug("render atomic {}", item);
 
             val buf = new StringBuilder();
@@ -61,7 +61,7 @@ class ItemRenderer {
             // <shape> <id> <stereotypes> <<atomic>> [
             buf.append(shape);
             buf.append(" ");
-            buf.append(item.getItemId());
+            buf.append(names.of(item));
             buf.append(" ");
             buf.append(
                 PlantumlUtilities.generateStereotypes(
@@ -115,7 +115,7 @@ class ItemRenderer {
         @Builder.Default
         RenderingShape shape = RenderingShape.RECTANGLE;
 
-        String render(@NonNull Viewpoint viewpoint, @NonNull Item item) {
+        String render(@NonNull Viewpoint viewpoint, @NonNull PlantumlNames names, @NonNull Item item) {
             log.debug("render composite {}", item);
 
             val buf = new StringBuilder();
@@ -125,7 +125,7 @@ class ItemRenderer {
             // <code>rectangle <id> as "<label>\n<qualifiers>" <<stereotypes>> {</code>
             buf.append(shape.name().toLowerCase());
             buf.append(" ");
-            buf.append(item.getItemId());
+            buf.append(names.of(item));
             buf.append(" as \"");
             buf.append(
                 String.format(
@@ -150,7 +150,7 @@ class ItemRenderer {
                 .stream()
                 .sorted()
                 .toList()
-                .forEach(child -> buf.append(itemRenderer.render(viewpoint, child)));
+                .forEach(child -> buf.append(itemRenderer.render(viewpoint, names, child)));
 
             buf.append("}");
             buf.append(System.lineSeparator());

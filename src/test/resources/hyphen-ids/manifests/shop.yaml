@@ -1,0 +1,40 @@
+header:
+  kind: "archicode.morin.io/solution"
+  version: "1"
+content:
+  id: "shop"
+  name: "Bookshop"
+  elements:
+    - kind: "system"
+      id: "backoffice"
+      name: "Back office"
+      elements:
+        - kind: "container"
+          id: "web-front"
+          name: "Web front"
+          relationships:
+            - destination: "shop.backoffice.report-a"
+              label: "asks for the sales"
+            - destination: "shop.backoffice.report_a"
+              label: "asks for the stock"
+        - kind: "container"
+          id: "report-a"
+          name: "Sales report"
+          elements:
+            - kind: "component"
+              id: "parser-1"
+              name: "Parser"
+              relationships:
+                - destination: "shop.backoffice.report-a.printer-2"
+            - kind: "component"
+              id: "printer-2"
+              name: "Printer"
+        - kind: "container"
+          id: "report_a"
+          name: "Stock report"
+        - kind: "container"
+          id: "2nd-run"
+          name: "Night run"
+          relationships:
+            - destination: "shop.backoffice.report-a.parser-1"
+              label: "starts"

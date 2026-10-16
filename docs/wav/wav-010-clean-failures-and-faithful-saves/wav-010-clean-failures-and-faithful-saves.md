@@ -117,7 +117,7 @@ wave_manifest:
       slug: plantuml-hyphen-ids
       phase: P1
       depends_on: []
-      run: null
+      run: '0050'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/rendering/plantuml/**'

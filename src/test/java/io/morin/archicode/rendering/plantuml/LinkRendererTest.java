@@ -44,7 +44,7 @@ class LinkRendererTest {
     @Test
     void render() {
         val link = Link.builder().from(fromItem).to(toItem).build();
-        val puml = LinkRenderer.builder().build().render(viewpoint, link);
+        val puml = LinkRenderer.builder().build().render(viewpoint, PlantumlNames.of(viewpoint), link);
         log.info("puml {}", puml);
         Assertions.assertEquals("from --> to\n", puml);
     }
@@ -52,7 +52,7 @@ class LinkRendererTest {
     @Test
     void renderWithLabel() {
         val link = Link.builder().from(fromItem).to(toItem).label("label").build();
-        val puml = LinkRenderer.builder().build().render(viewpoint, link);
+        val puml = LinkRenderer.builder().build().render(viewpoint, PlantumlNames.of(viewpoint), link);
         log.info("puml {}", puml);
         Assertions.assertEquals("from --> to : label\n", puml);
     }
@@ -62,7 +62,7 @@ class LinkRendererTest {
         val link = Link.builder().from(fromItem).to(toItem).build();
         link.getQualifiers().add("q1");
         link.getQualifiers().add("q2");
-        val puml = LinkRenderer.builder().build().render(viewpoint, link);
+        val puml = LinkRenderer.builder().build().render(viewpoint, PlantumlNames.of(viewpoint), link);
         log.info("puml {}", puml);
         Assertions.assertEquals("from --> to : [q1, q2]\n", puml);
     }
@@ -72,8 +72,19 @@ class LinkRendererTest {
         val link = Link.builder().from(fromItem).to(toItem).label("label").build();
         link.getQualifiers().add("q1");
         link.getQualifiers().add("q2");
-        val puml = LinkRenderer.builder().build().render(viewpoint, link);
+        val puml = LinkRenderer.builder().build().render(viewpoint, PlantumlNames.of(viewpoint), link);
         log.info("puml {}", puml);
         Assertions.assertEquals("from --> to : label\\n[q1, q2]\n", puml);
+    }
+
+    @Test
+    void renderWithHyphensInTheIdsOfTheEnds() {
+        val link = Link.builder()
+            .from(ViewpointFixtures.createItem(Solution.builder().id("shop.web-front").build()))
+            .to(ViewpointFixtures.createItem(Solution.builder().id("shop.report-a").build()))
+            .label("label")
+            .build();
+        val puml = LinkRenderer.builder().build().render(viewpoint, PlantumlNames.of(viewpoint), link);
+        Assertions.assertEquals("shop.web_front --> shop.report_a : label\n", puml);
     }
 }

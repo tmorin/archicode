@@ -26,7 +26,7 @@ rectangle prod.cluster.data.svc <<node>> <<atomic>> [
 ]
 }
 rectangle prod.cluster.web as "**web namespace**\n""[node]""" <<composite>> {
-rectangle prod.cluster.web.pod-b <<node>> <<atomic>> [
+rectangle prod.cluster.web.pod_b <<node>> <<atomic>> [
 **api pod**
 ""[node]""
 ]
@@ -34,7 +34,7 @@ rectangle prod.cluster.web.pod-b <<node>> <<atomic>> [
 }
 }
 prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
-prod.cluster.web.pod-b --> prod.cluster.data.svc : ""[gRPC]""
+prod.cluster.web.pod_b --> prod.cluster.data.svc : ""[gRPC]""
 <style>
 .external {
 actor {

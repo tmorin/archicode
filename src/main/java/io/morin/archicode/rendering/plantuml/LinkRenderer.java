@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 class LinkRenderer {
 
-    String render(@NonNull Viewpoint viewpoint, @NonNull Link link) {
+    String render(@NonNull Viewpoint viewpoint, @NonNull PlantumlNames names, @NonNull Link link) {
         log.debug("render link {}", link);
 
         val buf = new StringBuilder();
@@ -24,7 +24,7 @@ class LinkRenderer {
         // what changed between two plateaus, when the view compares them
         val state = ChangeMarks.stateOf(viewpoint, link);
 
-        buf.append(link.getFrom().getItemId());
+        buf.append(names.of(link.getFrom()));
         buf.append(" ");
         if (link.getTags().containsKey("rendering-secondary")) {
             buf.append("..[#gray]>");
@@ -32,7 +32,7 @@ class LinkRenderer {
             buf.append(ChangeMarks.arrow(state));
         }
         buf.append(" ");
-        buf.append(link.getTo().getItemId());
+        buf.append(names.of(link.getTo()));
 
         val descriptionAsList = new ArrayList<String>();
 

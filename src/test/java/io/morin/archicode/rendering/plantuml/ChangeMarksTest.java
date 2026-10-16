@@ -52,7 +52,7 @@ class ChangeMarksTest {
     }
 
     private String atomic(Viewpoint viewpoint, Item item) {
-        return ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, item);
+        return ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, PlantumlNames.of(viewpoint), item);
     }
 
     @Test
@@ -108,7 +108,7 @@ class ChangeMarksTest {
         val parent = item("p", Change.NONE, "contains-changes");
         val child = item("c", Change.NEW, "new");
         parent.getChildren().add(child);
-        val puml = ItemRenderer.builder().build().render(compared, parent);
+        val puml = ItemRenderer.builder().build().render(compared, PlantumlNames.of(compared), parent);
         assertTrue(
             puml.startsWith("rectangle p as \"<U+00B1> P\\n[solution]\" <<contains-changes>> <<composite>> {\n"),
             puml
@@ -131,24 +131,30 @@ class ChangeMarksTest {
         val renderer = LinkRenderer.builder().build();
         assertEquals(
             "from -[thickness=3,#009E73]-> to : **+** reads\n",
-            renderer.render(compared, link(Change.NEW, "reads"))
+            renderer.render(compared, PlantumlNames.of(compared), link(Change.NEW, "reads"))
         );
         assertEquals(
             "from -[dotted,thickness=2,#E69F00]-> to : **<U+007E>** reads\\n[REST]\n",
-            renderer.render(compared, link(Change.CHANGED, "reads", "REST"))
+            renderer.render(compared, PlantumlNames.of(compared), link(Change.CHANGED, "reads", "REST"))
         );
         assertEquals(
             "from -[dashed,#7F7F7F]-> to : **<U+2212>** reads\n",
-            renderer.render(compared, link(Change.REMOVED, "reads"))
+            renderer.render(compared, PlantumlNames.of(compared), link(Change.REMOVED, "reads"))
         );
         // a link without a label has the glyph alone
         assertEquals(
             "from -[dashed,#7F7F7F]-> to : **<U+2212>**\n",
-            renderer.render(compared, link(Change.REMOVED, null))
+            renderer.render(compared, PlantumlNames.of(compared), link(Change.REMOVED, null))
         );
         // and a link that did not change, or a view that compares nothing, is what it always was
-        assertEquals("from --> to : reads\n", renderer.render(compared, link(Change.NONE, "reads")));
-        assertEquals("from --> to : reads\n", renderer.render(plain, link(Change.NEW, "reads")));
+        assertEquals(
+            "from --> to : reads\n",
+            renderer.render(compared, PlantumlNames.of(compared), link(Change.NONE, "reads"))
+        );
+        assertEquals(
+            "from --> to : reads\n",
+            renderer.render(plain, PlantumlNames.of(plain), link(Change.NEW, "reads"))
+        );
     }
 
     private static Styles.Style style(String key, Map<String, Styles.Style> styles) {

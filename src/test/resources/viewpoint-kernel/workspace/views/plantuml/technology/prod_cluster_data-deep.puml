@@ -30,8 +30,8 @@ rectangle svc_shop_catalog_service <<Quarkus>> <<container>> <<atomic>> [
 }
 }
 rectangle prod.cluster.web as "**web namespace**\n""[node]""" <<composite>> {
-rectangle prod.cluster.web.pod-b as "**api pod**\n""[node]""" <<composite>> {
-rectangle pod-b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
+rectangle prod.cluster.web.pod_b as "**api pod**\n""[node]""" <<composite>> {
+rectangle pod_b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]
@@ -40,7 +40,7 @@ rectangle pod-b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
 }
 }
 prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
-prod.cluster.web.pod-b --> prod.cluster.data.svc : ""[gRPC]""
+prod.cluster.web.pod_b --> prod.cluster.data.svc : ""[gRPC]""
 <style>
 .external {
 actor {

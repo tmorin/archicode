@@ -20,11 +20,11 @@ rectangle prod.cluster.data <<node>> <<atomic>> [
 ""[node]""
 ]
 rectangle prod.cluster.web as "**web namespace**\n""[node]""" <<composite>> {
-rectangle prod.cluster.web.pod-a <<node>> <<atomic>> [
+rectangle prod.cluster.web.pod_a <<node>> <<atomic>> [
 **frontend pod**
 ""[node]""
 ]
-rectangle prod.cluster.web.pod-b <<node>> <<atomic>> [
+rectangle prod.cluster.web.pod_b <<node>> <<atomic>> [
 **api pod**
 ""[node]""
 ]
@@ -35,9 +35,9 @@ rectangle psp <<environment>> <<atomic>> [
 **Payment Provider Cloud**
 ""[environment]""
 ]
-prod.cluster.web.pod-a --> prod.cluster.web.pod-b : forwards to\n""[HTTP]""
-prod.cluster.web.pod-b --> prod.cluster.data : uses\n""[gRPC]""
-prod.cluster.web.pod-b --> psp : uses\n""[HTTPS]""
+prod.cluster.web.pod_a --> prod.cluster.web.pod_b : forwards to\n""[HTTP]""
+prod.cluster.web.pod_b --> prod.cluster.data : uses\n""[gRPC]""
+prod.cluster.web.pod_b --> psp : uses\n""[HTTPS]""
 <style>
 .external {
 actor {
