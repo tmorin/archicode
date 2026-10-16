@@ -1,0 +1,51 @@
+# Recorded by ReplacesLargePairTest on replaces-large-pair (an invented harbour): before -> after, no replaces anywhere.
+# Regenerate with: ./mvnw -o test -Dtest=ReplacesLargePairTest -DrecordReplacesLargePair=true
+planted=97 found=169 true-positives=76 false-positives=93 misses=21
+precision=0.450 recall=0.784
+level application/1: true-positives=3 false-positives=0 misses=0
+level application/2: true-positives=46 false-positives=21 misses=19
+level application/3: true-positives=16 false-positives=53 misses=0
+level technology/1: true-positives=1 false-positives=0 misses=0
+level technology/2: true-positives=10 false-positives=19 misses=2
+trap close-description-unrelated: listed=9 rejected=3
+trap lone-sibling-different-thing: listed=8 rejected=2
+trap same-name-other-kind: listed=0 rejected=5
+trap same-name-other-layer: listed=0 rejected=2
+trap same-name-other-parent: listed=8 rejected=0
+trap short-description-three-words: listed=2 rejected=0
+trap short-description-two-words: listed=0 rejected=2
+scenario container-renamed-with-components: found=1 missed=1
+scenario container-renamed-with-components/inside: found=5 missed=0
+scenario environment-renamed: found=1 missed=0
+scenario environment-renamed/inside: found=4 missed=0
+scenario merge-across-systems: found=1 missed=1
+scenario merge-keeps-the-description-of-one: found=1 missed=1
+scenario merge-keeps-the-name-of-one: found=1 missed=1
+scenario merge-new-name-new-description: found=0 missed=2
+scenario moved-name-kept: found=6 missed=0
+scenario moved-renamed-description-kept: found=4 missed=0
+scenario moved-renamed-rewritten: found=0 missed=3
+scenario moved-renamed-rewritten/inside: found=2 missed=0
+scenario node-moved-name-kept: found=2 missed=0
+scenario node-renamed-description-kept: found=2 missed=0
+scenario node-renamed-id-only: found=2 missed=0
+scenario node-renamed-rewritten: found=0 missed=2
+scenario person-renamed-description-kept: found=1 missed=0
+scenario person-renamed-name-kept: found=1 missed=0
+scenario rename-description-kept: found=2 missed=0
+scenario rename-description-kept-lone: found=2 missed=0
+scenario rename-description-kept/inside: found=3 missed=0
+scenario rename-description-touched-up: found=3 missed=0
+scenario rename-description-touched-up-lone: found=1 missed=0
+scenario rename-id-only-among-others: found=5 missed=0
+scenario rename-id-only-lone: found=5 missed=0
+scenario rename-rewritten: found=0 missed=3
+scenario rename-rewritten-lone: found=2 missed=0
+scenario split-both-halves-keep-the-description: found=2 missed=0
+scenario split-in-three: found=0 missed=3
+scenario split-new-names-new-descriptions: found=0 missed=2
+scenario split-one-half-keeps-the-description: found=1 missed=1
+scenario split-one-half-keeps-the-name: found=1 missed=1
+scenario system-renamed: found=1 missed=0
+scenario system-renamed/inside: found=8 missed=0
+scenario system-renamed/inside/inside: found=6 missed=0

@@ -105,7 +105,7 @@ wave_manifest:
       slug: candidates-large-pair
       phase: P2
       depends_on: [W-1, W-3]
-      run: null
+      run: '0058'
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'

@@ -1,0 +1,140 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "container-yard"
+  name: "Container Yard"
+  description: "Looks after the yard side of the harbour."
+  elements:
+    - kind: "container"
+      id: "yard-forms-hub"
+      name: "Yard Forms Hub"
+      description: "Archives the yard statements for the ship chandlers and weighs the crew lists once a week."
+      replaces:
+        - "container-yard.yard-forms"
+      relationships:
+        - destination: "container-yard.yard-sync"
+          label: "synchronises with"
+      elements:
+        - kind: "component"
+          id: "formatter"
+          name: "Formatter"
+          description: "Lays out the results for the screen and for the printer."
+          replaces:
+            - "container-yard.yard-forms.formatter"
+        - kind: "component"
+          id: "cache"
+          name: "Cache"
+          description: "Keeps the latest answers close to the callers."
+          replaces:
+            - "container-yard.yard-forms.cache"
+        - kind: "component"
+          id: "mapper"
+          name: "Mapper"
+          description: "Renames and converts the fields on their way out."
+          replaces:
+            - "container-yard.yard-forms.mapper"
+    - kind: "container"
+      id: "yard-scheduler-hub"
+      name: "Yard Scheduler Hub"
+      description: "Checks the yard queues for the tug captains and compares the expired licences before noon."
+      replaces:
+        - "container-yard.yard-scheduler"
+      relationships:
+        - destination: "container-yard.yard-dashboard"
+          label: "reads from"
+        - destination: "container-yard.yard-notifier"
+          label: "synchronises with"
+        - destination: "truck-parking.parking-tracker"
+          label: "fetches from"
+    - kind: "container"
+      id: "yard-calendar"
+      name: "Yard Calendar"
+      description: "Publishes the yard statements for the visa clerks and flags the changed plans once a week."
+      qualifiers:
+        - "Kafka"
+      relationships:
+        - destination: "container-yard.yard-dashboard"
+          label: "fetches from"
+        - destination: "gate-control.gate-exporter"
+          label: "notifies"
+        - destination: "container-yard.yard-billing"
+          label: "reads from"
+    - kind: "container"
+      id: "yard-alerts"
+      name: "Yard Alerts"
+      description: "Summarises the yard statements for the port authority board and maps the empty tanks on request."
+      qualifiers:
+        - "Go"
+      relationships:
+        - destination: "container-yard.yard-billing"
+          label: "notifies"
+    - kind: "container"
+      id: "yard-statistics"
+      name: "Yard Statistics"
+      description: "Converts the yard queues for the crane drivers and ranks the full berths on request."
+      qualifiers:
+        - "REST"
+      relationships:
+        - destination: "container-yard.yard-dashboard"
+          label: "asks"
+    - kind: "container"
+      id: "yard-notifier"
+      name: "Yard Notifier"
+      description: "Computes the yard queues for the harbour master and signs the crew lists during the winter."
+      qualifiers:
+        - "Python"
+      relationships:
+        - destination: "container-yard.yard-auditor"
+          label: "reports to"
+        - destination: "container-yard.yard-calendar"
+          label: "synchronises with"
+        - destination: "container-yard.yard-dashboard"
+          label: "fetches from"
+    - kind: "container"
+      id: "yard-sync"
+      name: "Yard Sync"
+      description: "Records the yard requests for the ferry crews and flags the duplicate entries after every storm."
+      relationships:
+        - destination: "container-yard.yard-forms-hub"
+          label: "reports to"
+        - destination: "berth-allocation.berth-auditor"
+          label: "notifies"
+    - kind: "container"
+      id: "yard-billing"
+      name: "Yard Billing"
+      description: "Forwards the yard bookings for the lease managers and lists the open permits each hour."
+      qualifiers:
+        - "PostgreSQL"
+      relationships:
+        - destination: "container-yard.yard-calendar"
+          label: "asks"
+    - kind: "container"
+      id: "yard-dashboard"
+      name: "Yard Dashboard"
+      description: "Validates the yard bookings for the ticket office and lists the wrong weights each hour."
+      relationships:
+        - destination: "container-yard.yard-sync"
+          label: "reports to"
+        - destination: "container-yard.yard-statistics"
+          label: "notifies"
+        - destination: "container-yard.yard-statistics"
+          label: "synchronises with"
+    - kind: "container"
+      id: "yard-auditor"
+      name: "Yard Auditor"
+      description: "Publishes the yard incidents for the port authority board and summarises the heavy loads before noon."
+      qualifiers:
+        - "PostgreSQL"
+      relationships:
+        - destination: "container-yard.yard-scheduler-hub"
+          label: "publishes to"
+    - kind: "container"
+      id: "yard-importer"
+      name: "Yard Importer"
+      description: "Tracks the yard records for the port police and warns the rough seas twice a day."
+      qualifiers:
+        - "PostgreSQL"
+      relationships:
+        - destination: "container-yard.yard-forms-hub"
+          label: "fetches from"

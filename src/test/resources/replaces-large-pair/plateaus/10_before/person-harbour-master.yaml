@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "harbour-master"
+  name: "Harbour Master"
+  description: "Runs the harbour and answers for everything that happens in it."
+  relationships:
+    - destination: "visitor-centre.visitor-calendar"
+      label: "orders from"
+    - destination: "dredging-works.dredging-importer"
+      label: "uses"
+    - destination: "tide-forecast.tide-gateway"
+      label: "looks at"

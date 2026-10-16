@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "customs-officer"
+  name: "Customs Officer"
+  description: "Checks the cargo and the crew of every vessel that arrives."
+  relationships:
+    - destination: "berth-allocation.berth-billing"
+      label: "uses"
+    - destination: "tug-operations.tug-search"
+      label: "looks at"
+    - destination: "cargo-manifests.manifest-sync"
+      label: "uses"
