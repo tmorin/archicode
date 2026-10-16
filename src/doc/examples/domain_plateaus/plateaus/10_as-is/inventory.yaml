@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "shop"
+content:
+  id: "inventory"
+  name: "Inventory"
+  description: "Counts the books on the shelves."
+  elements:
+    - kind: "component"
+      id: "levels"
+      name: "Levels"
+      description: "The count of each book."

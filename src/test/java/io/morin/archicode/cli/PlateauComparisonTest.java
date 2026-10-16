@@ -31,6 +31,7 @@ class PlateauComparisonTest {
 
     private static final Path FIXTURE = Path.of("src/test/resources/plateau-comparison");
     private static final Path REPLACES = FIXTURE.resolve("replaces");
+    private static final Path EXAMPLE = Path.of("src/doc/examples/domain_plateaus");
 
     @Inject
     CommandLine.IFactory factory;
@@ -286,10 +287,16 @@ class PlateauComparisonTest {
     }
 
     @Test
+    @SneakyThrows
     void aPlateauThatDoesNotUseReplacesIsToldAsItAlwaysWasEvenWhenTheKernelFindsACandidate() {
-        // the example of the manual: the mailer is removed and the payments are new, the only two containers of the shop, which the
-        // kernel lists as a candidate; the plateau says nothing of `replaces`, so the table does not change
-        val workspace = copy(Path.of("src/doc/examples/domain_plateaus"), dir.resolve("example"));
+        // the example of the manual with every `replaces` taken out of it: the reviews and the ratings still look like one thing
+        // said twice (the kernel finds it), but the plateau says nothing of `replaces`, so the table does not list a candidate
+        val workspace = copy(EXAMPLE, dir.resolve("example"));
+        try (val files = Files.walk(dir.resolve("example").resolve("plateaus"))) {
+            for (val file : files.filter(f -> f.toString().endsWith(".yaml")).toList()) {
+                Files.writeString(file, Files.readString(file).replaceAll("(?m)^ *replaces:\\n( +- [^\\n]*\\n)+", ""));
+            }
+        }
         for (val format : List.of("text", "markdown", "json")) {
             val result = diff(workspace, "--plateau", "to-be", "--format", format);
             assertEquals(0, result.exit, result.err);
@@ -297,6 +304,47 @@ class PlateauComparisonTest {
             assertFalse(result.out.contains("replacing") || result.out.contains("Replacing"), format);
             assertEquals("", result.err, format);
         }
+        // and the same example with its `replaces` lists the candidate, so the difference above is the plateau's
+        assertTrue(
+            diff(copy(EXAMPLE, dir.resolve("with")), "--plateau", "to-be").out.contains("candidates, not applied")
+        );
+    }
+
+    @Test
+    void diffTellsMovedSplitAndMergedOnTheExampleOfTheManualWithOneCandidateNotApplied() {
+        val result = diff(copy(EXAMPLE, dir.resolve("example")), "--plateau", "to-be");
+        assertEquals(0, result.exit, result.err);
+        assertEquals("", result.err, "the hand-written `new` of the example agrees with the comparison");
+        assertTrue(
+            result.out.contains("elements      +2 ~2 -2\nreplacing     2 moved, 2 split, 1 merged\n"),
+            result.out
+        );
+        assertTrue(result.out.contains("application  shop.reviews  shop.ratings  description"), result.out);
+        // the replaced elements are not removed: the inventory and its child moved, the orders were split, the invoices merged
+        for (val replaced : List.of("shop.inventory", "shop.orders", "shop.invoices", "shop.receipts")) {
+            assertFalse(
+                result.out.lines().anyMatch(line -> line.startsWith("removed") && line.contains(replaced)),
+                replaced + "\n" + result.out
+            );
+        }
+    }
+
+    @Test
+    @SneakyThrows
+    void theManualShowsWhatTheCommandPrintsOnTheExampleOfTheManual() {
+        val manual = Files.readString(Path.of("src/doc/README.adoc"));
+        val result = diff(copy(EXAMPLE, dir.resolve("example")), "--plateau", "to-be");
+        assertEquals(0, result.exit, result.err);
+        // quoted twice: in the tutorial (step 5) and under `diff`
+        val quotes = manual.split(
+            java.util.regex.Pattern.quote("----\n" + result.out.stripTrailing() + "\n----\n"),
+            -1
+        );
+        assertEquals(
+            3,
+            quotes.length,
+            "the sample of `diff` on the example is in the manual twice, as the command prints it"
+        );
     }
 
     @Test

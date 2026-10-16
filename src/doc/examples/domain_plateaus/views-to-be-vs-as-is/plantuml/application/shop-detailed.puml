@@ -1,0 +1,415 @@
+@startuml shop-detailed
+title System - Shop - Detailed View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+person customer <<person>> <<atomic>> [
+Customer
+[person]
+]
+rectangle shop as "<U+00B1> Shop\n[system]" <<contains-changes>> <<composite>> {
+rectangle shop.billing <<merged>> <<container>> <<atomic>> [
+<U+2295> Billing (from shop.invoices, shop.receipts)
+[container]
+Writes the invoice and sends the receipt.
+]
+rectangle shop.cart <<split>> <<container>> <<atomic>> [
+<U+22D4> Cart (from shop.orders)
+[container]
+Keeps the basket of a customer.
+]
+rectangle shop.catalog <<changed>> <<container>> <<atomic>> [
+<U+007E> Catalog
+[container]
+The books that are on sale.
+]
+rectangle shop.checkout <<split>> <<container>> <<atomic>> [
+<U+22D4> Checkout (from shop.orders)
+[container]
+Turns a basket into an order.
+]
+rectangle shop.mailer <<removed>> <<container>> <<atomic>> [
+<U+2212> --Mailer--
+[container]
+]
+rectangle shop.payments <<new>> <<container>> <<atomic>> [
++ Payments
+[container]
+]
+rectangle shop.ratings <<new>> <<container>> <<atomic>> [
++ Ratings
+[container]
+Readers rate the books they have bought.
+]
+rectangle shop.reviews <<removed>> <<container>> <<atomic>> [
+<U+2212> --Reviews--
+[container]
+Readers rate the books they bought.
+]
+rectangle shop.web <<changed>> <<React>> <<container>> <<atomic>> [
+<U+007E> Web site
+[container: React]
+The front of the shop.
+]
+}
+customer --> shop.web : orders on
+shop.web -[dotted,thickness=2,#E69F00]-> shop.catalog : **<U+007E>** browses
+shop.web -[dashed,#7F7F7F]-> shop.mailer : **<U+2212>** sends mails with
+shop.web -[thickness=3,#009E73]-> shop.payments : **+** pays with
+legend right
+**To be** compared with **As is**
+|= Mark |= Box |= Link |
+| **+** | new: thick solid outline | new: thick solid line |
+| **<U+007E>** | changed: dotted outline | changed: dotted line |
+| **<U+2212>** | removed: dashed grey outline, struck title | removed: dashed grey line |
+| **<U+00B1>** | something inside changed: thin dashed outline | |
+| **<U+22D4>** | split, one of several that replace one element: medium dashes | |
+| **<U+2295>** | merged, replaces several elements: short dashes | |
+endlegend
+<style>
+.changed {
+actor {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+</style>
+<style>
+.changed {
+card {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+</style>
+<style>
+.changed {
+database {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+</style>
+<style>
+.changed {
+node {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+</style>
+<style>
+.changed {
+person {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+</style>
+<style>
+.changed {
+rectangle {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+</style>
+<style>
+.contains-changes {
+actor {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+card {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+database {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+node {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+person {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+rectangle {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.merged {
+actor {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+</style>
+<style>
+.merged {
+card {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+</style>
+<style>
+.merged {
+database {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+</style>
+<style>
+.merged {
+node {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+</style>
+<style>
+.merged {
+person {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+</style>
+<style>
+.merged {
+rectangle {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+</style>
+<style>
+.new {
+actor {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+</style>
+<style>
+.new {
+card {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+</style>
+<style>
+.new {
+database {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+</style>
+<style>
+.new {
+node {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+</style>
+<style>
+.new {
+person {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+</style>
+<style>
+.new {
+rectangle {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+</style>
+<style>
+.removed {
+actor {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+</style>
+<style>
+.removed {
+card {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+</style>
+<style>
+.removed {
+database {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+</style>
+<style>
+.removed {
+node {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+</style>
+<style>
+.removed {
+person {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+</style>
+<style>
+.removed {
+rectangle {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+</style>
+<style>
+.split {
+actor {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+</style>
+<style>
+.split {
+card {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+</style>
+<style>
+.split {
+database {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+</style>
+<style>
+.split {
+node {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+</style>
+<style>
+.split {
+person {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+</style>
+<style>
+.split {
+rectangle {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+</style>
+@enduml
