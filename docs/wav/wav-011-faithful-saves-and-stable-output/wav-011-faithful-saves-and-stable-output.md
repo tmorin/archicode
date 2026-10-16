@@ -119,7 +119,7 @@ wave_manifest:
       slug: native-build-ci
       phase: P2
       depends_on: []
-      run: null
+      run: '0059'
       delegation: standard
       likely_paths:
         - '.github/workflows/**'

@@ -99,3 +99,73 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: "target/site"
+
+  Native:
+    # Builds the native image on every pull request and push, in parallel with Build, so that a missing reflection
+    # registration or resource (src/main/resources/META-INF/native-image, quarkus.native.resources.includes in
+    # application.properties) is seen on the pull request that causes it, not after a release. To run it less often, add
+    # an `if:` here (for example `if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}`).
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 45
+    steps:
+      - uses: "actions/checkout@v7"
+      - name: "Set up Mandrel for JDK 25"
+        # Mandrel is what Quarkus builds native images with by default; with java-version 25 the action takes the latest
+        # Mandrel release of JDK 25, the Java of the project (.sdkmanrc, maven.compiler.release). The image is built with
+        # this local Mandrel (JAVA_HOME / GRAALVM_HOME), not in a builder container.
+        uses: "graalvm/setup-graalvm@v1.6.7"
+        with:
+          java-version: "25"
+          distribution: "mandrel"
+          cache: maven
+      - name: "Build the native image"
+        # No unit tests here (Build runs them) and no manual: the project has no integration test to run against the
+        # image, the next step is what runs the image.
+        run: |
+          ./mvnw verify \
+            --batch-mode \
+            --update-snapshots \
+            -Dnative \
+            -DskipTests \
+            -Dplugin.asciidoctor.skip=true
+      - name: "Run the native image on the examples of the manual"
+        run: |
+          set -euo pipefail
+          runner="$(realpath target/*-runner)"
+          work="$(mktemp -d)"
+          cp -r src/doc/examples/domain_workspace "$work/workspace"
+          cp -r src/doc/examples/domain_plateaus "$work/plateaus"
+
+          "$runner" --help > /dev/null
+
+          # the kernel (WebAssembly translated to bytecode) assembles the views; the renderer writes PlantUML
+          "$runner" -w "$work/workspace/workspace.yaml" views generate -o views
+          test -s "$work/workspace/views/plantuml/application/ArchiCode-overview.puml"
+
+          # Jackson reaches the model and the results by reflection
+          views="$("$runner" -w "$work/workspace/workspace.yaml" query views)"
+          grep -q 'ArchiCode-deep' <<< "$views"
+          schemas="$("$runner" -w "$work/workspace/workspace.yaml" query schemas)"
+          grep -q 'urn:jsonschema' <<< "$schemas"
+          graph="$("$runner" -w "$work/workspace/workspace.yaml" query graph)"
+          grep -q '"reference":"ArchiCode"' <<< "$graph"
+
+          # plateaus: the comparison goes through the kernel as well
+          diff="$("$runner" -w "$work/plateaus/workspace.yaml" diff)"
+          grep -q '^comparing ' <<< "$diff"
+          "$runner" -w "$work/plateaus/workspace.yaml" views generate -o views --baseline as-is
+          test -s "$work/plateaus/views-to-be-vs-as-is/gap.md"
+
+          # the editor page is a resource of the image
+          "$runner" -w "$work/workspace/workspace.yaml" editor serve --port 0 > "$work/editor.log" 2>&1 &
+          editor=$!
+          trap 'kill "$editor" 2>/dev/null || true' EXIT
+          url=""
+          for _ in $(seq 1 30); do
+            url="$(grep -o 'http://127.0.0.1:[0-9]*/?token=[0-9a-zA-Z_-]*' "$work/editor.log" | head -1 || true)"
+            [ -n "$url" ] && break
+            sleep 1
+          done
+          test -n "$url" || { cat "$work/editor.log"; exit 1; }
+          page="$(curl --fail --silent "$url")"
+          grep -qi '<html' <<< "$page"
