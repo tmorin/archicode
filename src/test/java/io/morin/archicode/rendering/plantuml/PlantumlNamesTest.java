@@ -53,6 +53,15 @@ class PlantumlNamesTest {
     }
 
     @Test
+    void aNumberThatIsNotADecimalDigitIsNotReadEither() {
+        // letters and decimal digits only (`conformance.test.js` copies this rule: `[\p{L}\p{Nd}_.]`)
+        assertEquals(
+            List.of("shop.a_", "shop.a__2", "shop.a__3"),
+            namesOf("shop.a\u00b2", "shop.a\u00bd", "shop.a\u2167")
+        );
+    }
+
+    @Test
     void aNameAnotherIdHasIsNeverTaken() {
         // both ids are in the view: one name each, and the id that needed no change keeps its own
         val names = namesOf("shop.report-a", "shop.report_a");
