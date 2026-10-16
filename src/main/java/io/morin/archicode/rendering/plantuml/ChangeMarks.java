@@ -26,18 +26,23 @@ import lombok.val;
  *   <tr><th>State</th><th>Glyph</th><th>Box</th><th>Link</th></tr>
  *   <tr><td>{@code new}</td><td>+</td><td>thick solid outline</td><td>thick solid line</td></tr>
  *   <tr><td>{@code changed}</td><td>~</td><td>dotted outline</td><td>dotted line</td></tr>
- *   <tr><td>{@code removed}</td><td>&minus;</td><td>dashed grey outline, grey struck title</td><td>dashed grey line</td></tr>
+ *   <tr><td>{@code removed}</td><td>&minus;</td><td>long dashes with narrow gaps (16-3), grey outline, grey struck title</td><td>dashed grey line</td></tr>
  *   <tr><td>{@code contains-changes}</td><td>&plusmn;</td><td>thin dashed outline</td><td>-</td></tr>
- *   <tr><td>{@code moved}</td><td>&rarr;</td><td>long dashes, blue, "(from ...)" after the title</td><td>-</td></tr>
- *   <tr><td>{@code split}</td><td>&#x22D4;</td><td>medium dashes, purple, "(from ...)" after the title</td><td>-</td></tr>
- *   <tr><td>{@code merged}</td><td>&oplus;</td><td>short dashes, light blue, "(from ..., ...)" after the title</td><td>-</td></tr>
+ *   <tr><td>{@code moved}</td><td>&rarr;</td><td>long dashes with wide gaps (12-12), blue, "(from ...)" after the title</td><td>-</td></tr>
+ *   <tr><td>{@code split}</td><td>&#x22D4;</td><td>medium dashes (8-8), purple, "(from ...)" after the title</td><td>-</td></tr>
+ *   <tr><td>{@code merged}</td><td>&oplus;</td><td>short dashes far apart (3-9), light blue, "(from ..., ...)" after the title</td><td>-</td></tr>
  * </table>
  *
  * The three last ones say that an element is the same thing as one of the plateau before ({@code replaces}): the title tells
  * what it replaces. A removed box that is only there to hold what was removed from it, because the element was replaced,
  * says what replaces it: "(replaced by ...)".
  *
- * The glyphs are written as PlantUML escapes ({@code <U+2212>}), so that a file is plain ASCII whatever the encoding of
+ * The three states that are dashes and nothing else (removed, split and merged) have a dash and a gap that differ
+ * pairwise, and differ from the line of {@code changed} (2-2), of {@code contains-changes} (4-4) and of {@code moved}
+ * (12-12): {@code LineStyle: 16-3}, {@code 8-8} and {@code 3-9} (run 0057, issue 55). They used to be 7, 6 and 5, which
+ * differ by one pixel (and the 6 of split is now 8, to sit between the 4 of contains-changes and the 12 of moved).
+ *
+ * <p>The glyphs are written as PlantUML escapes ({@code <U+2212>}), so that a file is plain ASCII whatever the encoding of
  * the machine, and {@code ~}, which Creole takes for an escape, is a character like another. What PlantUML 1.2024.7 draws
  * for them was looked at on a file written by hand (see run 0038 and run 0044).
  *
@@ -226,15 +231,17 @@ class ChangeMarks {
             case REMOVED -> Styles.Style.builder()
                 .backgroundColor("#EEEEEE")
                 .lineColor(GREY)
-                .lineStyle(7)
+                .lineStyle(16)
+                .lineGap(3)
                 .lineThickness(2)
                 .fontColor(GREY)
                 .build();
-            // an element that is the same thing as one of the plateau before: a blue or a purple outline of dashes of its
-            // own, medium thick, the fill left to the author (the glyph and the title say which of the three it is)
+            // an element that is the same thing as one of the plateau before: a blue, a purple or a light blue outline of dashes
+            // of its own (moved 12-12, split 8-8, merged 3-9), medium thick, the fill left to the author (the glyph and the
+            // title say which of the three it is)
             case MOVED -> Styles.Style.builder().lineColor("#0072B2").lineStyle(12).lineThickness(2).build();
-            case SPLIT -> Styles.Style.builder().lineColor("#CC79A7").lineStyle(6).lineThickness(2).build();
-            case MERGED -> Styles.Style.builder().lineColor("#56B4E9").lineStyle(5).lineThickness(2).build();
+            case SPLIT -> Styles.Style.builder().lineColor("#CC79A7").lineStyle(8).lineThickness(2).build();
+            case MERGED -> Styles.Style.builder().lineColor("#56B4E9").lineStyle(3).lineGap(9).lineThickness(2).build();
             default -> Styles.Style.builder().lineColor("#5B7C99").lineStyle(4).lineThickness(1).build();
         };
     }
@@ -289,7 +296,7 @@ class ChangeMarks {
             .append(nl);
         buf.append("| **")
             .append(GLYPH_REMOVED)
-            .append("** | removed: dashed grey outline, struck title | removed: dashed grey line |")
+            .append("** | removed: long dashes, narrow gaps, grey outline, struck title | removed: dashed grey line |")
             .append(nl);
         buf.append("| **")
             .append(GLYPH_CONTAINS)
@@ -298,7 +305,7 @@ class ChangeMarks {
         if (used.containsKey(MOVED)) {
             buf.append("| **")
                 .append(GLYPH_MOVED)
-                .append("** | moved or renamed, replaces one element: long dashes | |")
+                .append("** | moved or renamed, replaces one element: long dashes, wide gaps | |")
                 .append(nl);
         }
         if (used.containsKey(SPLIT)) {
@@ -310,7 +317,7 @@ class ChangeMarks {
         if (used.containsKey(MERGED)) {
             buf.append("| **")
                 .append(GLYPH_MERGED)
-                .append("** | merged, replaces several elements: short dashes | |")
+                .append("** | merged, replaces several elements: short dashes, far apart | |")
                 .append(nl);
         }
         buf.append("endlegend").append(nl);

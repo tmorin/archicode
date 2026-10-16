@@ -227,11 +227,11 @@ Two commands show the comparison: `archicode diff` writes the table of changes (
 
 | new | `+` | thick solid outline | thick solid line
 | changed | `~` | dotted outline | dotted line
-| removed | `−` | dashed grey outline, grey and struck title | dashed grey line
+| removed | `−` | long dashes with narrow gaps, grey outline, grey and struck title | dashed grey line
 | contains changes | `±` | thin dashed outline | (none)
-| moved | `→` | long dashes, blue; the title ends with `(from <the reference it replaces>)` | (none)
+| moved | `→` | long dashes with wide gaps, blue; the title ends with `(from <the reference it replaces>)` | (none)
 | split | `⋔` | medium dashes, purple; the title ends with `(from <the reference it replaces>)` | (none)
-| merged | `⊕` | short dashes, light blue; the title ends with `(from <the references it replaces>)` | (none)
+| merged | `⊕` | short dashes far apart, light blue; the title ends with `(from <the references it replaces>)` | (none)
 |===
 
 The mark is written in front of the title of the box and of the label of the link. A box that did not change is drawn as it always was, and so is a link. `contains changes` is for a box that did not change by itself and holds something that did (a system whose container is new, for instance): the reader can see where to look inside. A link between two boxes that are drawn as one group (a view draws the relationships of the elements below it as one link) is new when all of them are, removed when all of them are, changed when they are mixed, and unchanged when none changed. A view that says at least one change has a legend that explains the marks.
@@ -639,7 +639,9 @@ The `styles` of the workspace give a stereotype its look.
 `styles.by-tags` and `styles.by-qualifiers` map a stereotype to a style, and a box has the style of every stereotype it is drawn with.
 The key is the stereotype itself, not the name of a tag: the keys of `by-tags` are the words of `rendering-stereotypes`, the keys of `by-qualifiers` are the qualifiers.
 The two maps are equivalent for the renderer, which only sees stereotypes; use the one that says where the stereotype comes from.
-A style sets any of `background-color`, `line-color`, `line-style`, `line-thickness`, `round-corner`, `font-color`, `font-style` and `shadowing`.
+A style sets any of `background-color`, `line-color`, `line-style`, `line-gap`, `line-thickness`, `round-corner`, `font-color`, `font-style` and `shadowing`.
+`line-style` is the length of a dash (0 is a solid line) and `line-gap` the gap between two dashes: without `line-gap` the gap is as long as the dash, so that `line-style: 5` is a dash of 5 and a gap of 5 and `line-style: 16` with `line-gap: 3` is long dashes with narrow gaps (PlantUML's `LineStyle: 16-3`).
+A `line-gap` means nothing without a `line-style`; when a style overrides the `line-style` of another one, the gap of the other style goes with the dash it replaces.
 
 .Styling the boxes tagged `external` and `changed`
 [source,yaml]
@@ -666,7 +668,7 @@ content:
     rendering-stereotypes: "external changed"
 ----
 
-*In the editor.* The editor draws a box with the style of the stereotypes it is drawn with: `background-color` is the fill, `line-color`, `line-thickness` and `line-style` the outline (derived from the fill when only the fill is given, see below), and `round-corner`, `font-color`, `font-style` and `shadowing` the rest.
+*In the editor.* The editor draws a box with the style of the stereotypes it is drawn with: `background-color` is the fill, `line-color`, `line-thickness`, `line-style` and `line-gap` the outline (derived from the fill when only the fill is given, see below), and `round-corner`, `font-color`, `font-style` and `shadowing` the rest.
 A styled stereotype is also written on its box as a text badge with its name, so that a colour is never the only carrier.
 The same badge follows the name of the element in the *Elements* tree and in the tree of the *Map*, and in the header of an element (after its kind, on *Details* and on the diagram tabs; when the header is narrow it shows the badges that fit and the name keeps its room), and the key under the diagram shows the badge of each styled stereotype drawn.
 The badges are part of the SVG and PNG exported from a diagram, while the key is not; a badge is not the dot that marks an element as modified and not yet saved.
@@ -1193,16 +1195,16 @@ The diagram is drawn from the union of the two plateaus, and the boxes are laid 
 
 | new | `+` | thick solid outline, a pill `new`, a green tint | thick solid line
 | changed | `~` | dotted outline, a pill `changed`, an orange tint | dotted line
-| removed | `−` | dashed grey outline, grey struck title, a pill `removed`, a grey tint | dashed grey line
+| removed | `−` | long dashes with narrow gaps, grey outline, grey struck title, a pill `removed`, a grey tint | dashed grey line
 | contains changes | `±` | thin dashed outline, a pill `contains-changes` | (none)
-| moved | `→` | long dashed outline, a pill `moved`, a blue tint, `(from shop.till)` after the title | (none)
-| split | `⋔` | medium dashed outline, a pill `split`, a purple tint, `(from shop.report)` after the title | (none)
-| merged | `⊕` | short dashed outline, a pill `merged`, a light blue tint, `(from stock.bin, stock.shelf)` after the title | (none)
+| moved | `→` | long dashes with wide gaps, a pill `moved`, a blue tint, `(from shop.till)` after the title | (none)
+| split | `⋔` | medium dashes, a pill `split`, a purple tint, `(from shop.report)` after the title | (none)
+| merged | `⊕` | short dashes far apart, a pill `merged`, a light blue tint, `(from stock.bin, stock.shelf)` after the title | (none)
 |===
 
 The last three states are for the elements that say what they replace, and exist only for a box: a relationship is never moved, split or merged. They are in the table above and in the key only when the drawing has a box in that state.
 
-A box that did not change is drawn as it always was. A removed element is not in the plateau that is drawn, so it is not in the tree and a click on its box does not open it: it shows, in the panel on the right, what the other plateau had (name, kind, properties, the file it is in, the relationships it declared), read-only. A link that changed shows its mark even when the captions are off, as on the Map. The marks and lines are the ones of the command line (`split` is medium dashes in both, a dash and a gap of 6; no other state uses that pair); the colours are only a help, chosen to read in the light and the dark theme. *Red dashed* keeps its meaning of a dangling reference (an unknown element), and is never used for a removed one.
+A box that did not change is drawn as it always was. A removed element is not in the plateau that is drawn, so it is not in the tree and a click on its box does not open it: it shows, in the panel on the right, what the other plateau had (name, kind, properties, the file it is in, the relationships it declared), read-only. A link that changed shows its mark even when the captions are off, as on the Map. The marks and lines are the ones of the command line (a dash and a gap of its own for `removed` 16-3, `moved` 12-12, `split` 8-8 and `merged` 3-9 in both, so that no two of them are alike); the colours are only a help, chosen to read in the light and the dark theme. *Red dashed* keeps its meaning of a dangling reference (an unknown element), and is never used for a removed one.
 
 The look is a default, given to the stereotype of the same name as the state (`new`, `changed`, `removed`, `contains-changes`). A style of your own for that name in `styles` (see <<stereotypes-and-styles>>) wins property by property: your `line-color` replaces the colour of the line and keeps its style and thickness, your `background-color` fills the box and replaces the tint, your `font-color` replaces the grey of a removed title. The state is the last stereotype of a box, so it overrides the style of the others, as a later stereotype always does. A `new` or `changed` tag that you wrote by hand on an element that does not have that state is only your stereotype, with your own style if you gave it one, and the command line draws it the same way (see <<plateau-state-tags>>).
 

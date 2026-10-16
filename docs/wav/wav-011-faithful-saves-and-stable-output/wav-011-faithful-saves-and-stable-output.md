@@ -91,7 +91,7 @@ wave_manifest:
       slug: distinct-dashes
       phase: P1
       depends_on: []
-      run: null
+      run: '0057'
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/rendering/plantuml/**'

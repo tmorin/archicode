@@ -410,7 +410,7 @@ test('the comparison draws the four states on the boxes: glyph in the title, lin
   const removed = nodeOf(svg, 'shop.session');
   assert.match(openingTag(removed), /class="dg-node dg-leaf dg-styled dg-chg-removed"/);
   assert.match(openingTag(removed), /data-action="select-removed" data-ref="shop\.session" data-layer="application"/, 'a removed box is not a link to an element');
-  assert.equal(varsOf(removed)['--st-dash'], '7 4');
+  assert.equal(varsOf(removed)['--st-dash'], '16 3');
   assert.equal(varsOf(removed)['--st-text'], 'var(--chg-removed-text)');
   assert.match(removed, /<tspan class="dg-glyph">−<\/tspan> <tspan class="dg-struck">Session store<\/tspan><\/text>/, 'the glyph is outside the strike');
   assert.match(removed, /<text class="dg-sub"[^>]*>\[container\]<\/text>/, 'what it was: its kind, from the other plateau');
@@ -497,7 +497,7 @@ test('the legend explains the four states with their glyph, their line and their
   await sandbox.setCompareTo('as-is');
   const legend = sandbox.diagramComparisonLegendHtml(sandbox.comparisonState());
   const text = legend.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-  assert.equal(text, 'To be compared with As is: + new thick solid ~ changed dotted − removed dashed, struck title ± contains changes thin dashed: something inside changed Red dashed is kept for dangling references (unknown elements).');
+  assert.equal(text, 'To be compared with As is: + new thick solid ~ changed dotted − removed long dashes, narrow gaps, struck title ± contains changes thin dashed: something inside changed Red dashed is kept for dangling references (unknown elements).');
   assert.deepEqual(Array.from(legend.matchAll(/data-state="([^"]*)"/g), (m) => m[1]), ['new', 'changed', 'removed', 'contains-changes']);
   // a sample of each: the box with the classes and variables of the boxes, the link with the class of the links
   for (const state of ['new', 'changed', 'removed']) {
@@ -523,7 +523,7 @@ test('the key says, next to each state, how many boxes and links of it the drawi
   const counts = plain(sandbox.comparisonCountsOf(result));
   assert.deepEqual(counts, { new: { boxes: 1, links: 1 }, changed: { boxes: 1, links: 0 }, removed: { boxes: 2, links: 1 }, 'contains-changes': { boxes: 1, links: 0 } });
   const text = sandbox.diagramComparisonLegendHtml(comparison, counts).replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-  assert.equal(text, 'To be compared with As is: + new thick solid 1 box, 1 link ~ changed dotted 1 box, 0 links \u2212 removed dashed, struck title 2 boxes, 1 link \u00B1 contains changes thin dashed: something inside changed 1 box Red dashed is kept for dangling references (unknown elements).');
+  assert.equal(text, 'To be compared with As is: + new thick solid 1 box, 1 link ~ changed dotted 1 box, 0 links \u2212 removed long dashes, narrow gaps, struck title 2 boxes, 1 link \u00B1 contains changes thin dashed: something inside changed 1 box Red dashed is kept for dangling references (unknown elements).');
 });
 
 // ---- 5. The author's styles win, property by property ----
@@ -564,7 +564,7 @@ test('the fill the author gave to another stereotype stays under the tint, and t
   assert.equal(vars['--st-fill'], '#d3d3d3', 'the author\'s fill is kept');
   assert.equal(vars['--st-tint'], 'var(--chg-removed)', 'with the tint over it');
   assert.equal(vars['--st-stroke'], 'var(--chg-removed)', 'the state comes last and overrides the line of the qualifier, as a later stereotype does');
-  assert.equal(vars['--st-dash'], '7 4');
+  assert.equal(vars['--st-dash'], '16 3');
 });
 
 test('a hand-written stereotype with the name of a state does not make a box that did not change look like one', async () => {

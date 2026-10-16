@@ -47,7 +47,7 @@ class PlantumlUtilities {
             });
 
         Optional.ofNullable(style.getLineStyle()).ifPresent(s -> {
-            buf.append(String.format("LineStyle: %s", s));
+            buf.append(String.format("LineStyle: %s", style.getLineGap() == null ? s : s + "-" + style.getLineGap()));
             buf.append(System.lineSeparator());
         });
 
@@ -155,7 +155,9 @@ class PlantumlUtilities {
         return Styles.Style.builder()
             .backgroundColor(pick(top.getBackgroundColor(), base.getBackgroundColor()))
             .lineColor(pick(top.getLineColor(), base.getLineColor()))
+            // a dash and its gap are one property: the gap of the base is not the gap of the dash the top style chose
             .lineStyle(Optional.ofNullable(top.getLineStyle()).orElse(base.getLineStyle()))
+            .lineGap(top.getLineStyle() == null ? base.getLineGap() : top.getLineGap())
             .lineThickness(Optional.ofNullable(top.getLineThickness()).orElse(base.getLineThickness()))
             .roundCorner(Optional.ofNullable(top.getRoundCorner()).orElse(base.getRoundCorner()))
             .fontColor(pick(top.getFontColor(), base.getFontColor()))

@@ -46,7 +46,7 @@ legend right
 |= Mark |= Box |= Link |
 | **+** | new: thick solid outline | new: thick solid line |
 | **<U+007E>** | changed: dotted outline | changed: dotted line |
-| **<U+2212>** | removed: dashed grey outline, struck title | removed: dashed grey line |
+| **<U+2212>** | removed: long dashes, narrow gaps, grey outline, struck title | removed: dashed grey line |
 | **<U+00B1>** | something inside changed: thin dashed outline | |
 endlegend
 <style>
@@ -216,7 +216,7 @@ LineThickness: 3
 actor {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -227,7 +227,7 @@ FontColor: #7F7F7F
 card {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -238,7 +238,7 @@ FontColor: #7F7F7F
 database {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -249,7 +249,7 @@ FontColor: #7F7F7F
 node {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -260,7 +260,7 @@ FontColor: #7F7F7F
 person {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -271,7 +271,7 @@ FontColor: #7F7F7F
 rectangle {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }

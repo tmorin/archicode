@@ -185,19 +185,19 @@ test('the map draws a moved, a split and a merged box with the glyph, the line, 
   assert.match(moved, /dg-chg-moved/);
   assert.match(moved, /<tspan class="dg-glyph">→<\/tspan> Counter \(from library\.desk\)/, 'the glyph and the title say it, as the title of the command line does');
   assert.deepEqual(pillsOf(moved), ['moved']);
-  assert.deepEqual([varsOf(moved)['--st-width'], varsOf(moved)['--st-dash'], varsOf(moved)['--st-stroke'], varsOf(moved)['--st-tint']], ['2px', '14 4', 'var(--chg-moved)', 'var(--chg-moved)']);
+  assert.deepEqual([varsOf(moved)['--st-width'], varsOf(moved)['--st-dash'], varsOf(moved)['--st-stroke'], varsOf(moved)['--st-tint']], ['2px', '12 12', 'var(--chg-moved)', 'var(--chg-moved)']);
   const split = nodeOf(svg, 'library.catalog-a');
   assert.match(split, /dg-chg-split/);
   assert.match(split, /⋔<\/tspan> Catalog of books \(from/, 'a title longer than the box is cut with an ellipsis, as any title is; the tooltip and the panel have it whole');
   assert.equal(sandbox.diagramItemText(result.items.find((i) => i.reference === 'library.catalog-a'), undefined, 'application').title, '⋔ Catalog of books (from library.catalog)');
   assert.deepEqual(pillsOf(split), ['split']);
-  assert.equal(varsOf(split)['--st-dash'], '6 6');
+  assert.equal(varsOf(split)['--st-dash'], '8 8');
   const merged = nodeOf(svg, 'archive.cabinet');
   assert.match(merged, /dg-chg-merged/);
   assert.match(merged, /⊕<\/tspan> Cabinet \(from archive/);
   assert.equal(sandbox.diagramItemText(result.items.find((i) => i.reference === 'archive.cabinet'), undefined, 'application').title, '⊕ Cabinet (from archive.bin, archive.shelf)');
   assert.deepEqual(pillsOf(merged), ['merged']);
-  assert.equal(varsOf(merged)['--st-dash'], '4 2');
+  assert.equal(varsOf(merged)['--st-dash'], '3 9');
   // the answer of compute carries the word; the page does not invent it
   assert.deepEqual(plain(result.items.filter((i) => i.change !== 'none' && i.change !== 'new' && i.change !== 'removed').map((i) => i.reference + ' ' + i.change).sort()),
     ['archive.cabinet merged', 'archive.counter moved', 'library.catalog-a split', 'library.catalog-b split']);
@@ -232,7 +232,7 @@ test('the key lists a state of identity only when the drawing has a box in it; e
   assert.deepEqual(counts.split, { boxes: 2 });
   assert.deepEqual(counts.merged, { boxes: 1 });
   const legend = text(sandbox.diagramComparisonLegendHtml(full.comparison, counts));
-  assert.match(legend, /\+ new thick solid 2 boxes, 0 links ~ changed dotted 0 boxes, 0 links − removed dashed, struck title 4 boxes, 0 links → moved long dashes: replaces one element 1 box ⋔ split medium dashes: one of several that replace one 2 boxes ⊕ merged short dashes: replaces several 1 box ± contains changes thin dashed: something inside changed 2 boxes/);
+  assert.match(legend, /\+ new thick solid 2 boxes, 0 links ~ changed dotted 0 boxes, 0 links − removed long dashes, narrow gaps, struck title 4 boxes, 0 links → moved long dashes, wide gaps: replaces one element 1 box ⋔ split medium dashes: one of several that replace one 2 boxes ⊕ merged short dashes, far apart: replaces several 1 box ± contains changes thin dashed: something inside changed 2 boxes/);
   // the diagram of one element that has none of them: the key is the key of the four states
   const one = await draw(sandbox, 'overview', 'library.lending');
   const oneLegend = text(sandbox.diagramComparisonLegendHtml(one.comparison, plain(sandbox.comparisonCountsOf(one.result))));
@@ -241,7 +241,7 @@ test('the key lists a state of identity only when the drawing has a box in it; e
   assert.doesNotMatch(text(sandbox.diagramComparisonLegendHtml(full.comparison, null)), /\bmoved\b|\bsplit\b|\bmerged\b/);
   // and its samples are drawn with the same variables as the boxes
   const html = sandbox.diagramComparisonLegendHtml(full.comparison, counts);
-  assert.match(html, /<span class="dg-legend-state" data-state="split"><svg[^>]*><g class="dg-styled dg-chg-split" style="[^"]*--st-dash:6 6/);
+  assert.match(html, /<span class="dg-legend-state" data-state="split"><svg[^>]*><g class="dg-styled dg-chg-split" style="[^"]*--st-dash:8 8/);
   assert.doesNotMatch(html, /data-state="moved"><svg[^>]*>[\s\S]{0,400}<svg width="26" height="8"/, 'a state of a box has no sample of a link');
 });
 
@@ -282,7 +282,7 @@ test('a state written by hand on a box that does not have it gets none of the lo
   // the same word on a box that is moved: the default look under the author's entry, property by property
   const moved = varsOf(nodeOf(styled.svg, 'archive.counter'));
   assert.equal(moved['--st-stroke'], '#123456');
-  assert.equal(moved['--st-dash'], '14 4');
+  assert.equal(moved['--st-dash'], '12 12');
 });
 
 test('the trees mark a moved, split or merged element with its glyph, and what is above them with the marker', async () => {

@@ -422,12 +422,18 @@ class PlateauComparisonTest {
             stock
         );
         assertTrue(
-            stock.contains(".merged {\nrectangle {\nLineColor: #56B4E9\nLineStyle: 5\nLineThickness: 2\n}\n}\n"),
+            stock.contains(".merged {\nrectangle {\nLineColor: #56B4E9\nLineStyle: 3-9\nLineThickness: 2\n}\n}\n"),
             stock
         );
         // the legend explains the two the view uses
-        assertTrue(stock.contains("| **<U+2192>** | moved or renamed, replaces one element: long dashes | |"), stock);
-        assertTrue(stock.contains("| **<U+2295>** | merged, replaces several elements: short dashes | |"), stock);
+        assertTrue(
+            stock.contains("| **<U+2192>** | moved or renamed, replaces one element: long dashes, wide gaps | |"),
+            stock
+        );
+        assertTrue(
+            stock.contains("| **<U+2295>** | merged, replaces several elements: short dashes, far apart | |"),
+            stock
+        );
         assertFalse(stock.contains("split"), stock);
         val shop = read("replaces/views-after-vs-before/plantuml/application/shop-detailed.puml");
         assertTrue(
@@ -997,7 +1003,7 @@ class PlateauComparisonTest {
         // removed: the author wrote `line-color: red` for it; every other property is the default's
         assertTrue(
             puml.contains(
-                ".removed {\nrectangle {\nBackgroundColor: #EEEEEE\nLineColor: red\nLineStyle: 7\nLineThickness: 2\nFontColor: #7F7F7F\n}\n}"
+                ".removed {\nrectangle {\nBackgroundColor: #EEEEEE\nLineColor: red\nLineStyle: 16-3\nLineThickness: 2\nFontColor: #7F7F7F\n}\n}"
             ),
             puml
         );

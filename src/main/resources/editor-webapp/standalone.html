@@ -10133,7 +10133,7 @@ function derivedOutlineOf(fill) {
   return { r: channel(fill.r), g: channel(fill.g), b: channel(fill.b), a: 1 };
 }
 
-const STYLE_KEYS = ['background-color', 'line-color', 'line-style', 'line-thickness', 'round-corner', 'font-color', 'font-style', 'shadowing'];
+const STYLE_KEYS = ['background-color', 'line-color', 'line-style', 'line-gap', 'line-thickness', 'round-corner', 'font-color', 'font-style', 'shadowing'];
 
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -10183,7 +10183,9 @@ function styleLookOf(style) {
   const thickness = styleWholeNumber(source['line-thickness'], 20);
   if (thickness !== null) vars['--st-width'] = thickness + 'px';
   const dash = styleWholeNumber(source['line-style'], 50);
-  if (dash !== null) vars['--st-dash'] = dash > 0 ? dash + ' ' + dash : 'none';
+  // a dash and its gap, as PlantUML's `LineStyle: <dash>-<gap>`; without `line-gap` the gap is as long as the dash. The gap means nothing without a dash.
+  const gap = styleWholeNumber(source['line-gap'], 50);
+  if (dash !== null) vars['--st-dash'] = dash > 0 ? dash + ' ' + (gap !== null ? gap : dash) : 'none';
   const round = styleWholeNumber(source['round-corner'], 100);
   if (round !== null) rx = round / 2;
   // the text: against the fill the author chose; without a fill the box is the theme's and so is its text
@@ -10218,10 +10220,10 @@ const CHANGE_GLYPHS = { new: '+', changed: '~', removed: '\u2212', moved: '\u219
 const CHANGE_WORDS = {
   new: { word: 'new', box: 'thick solid outline', link: 'thick solid line' },
   changed: { word: 'changed', box: 'dotted outline', link: 'dotted line' },
-  removed: { word: 'removed', box: 'dashed grey outline, struck title', link: 'dashed grey line' },
-  moved: { word: 'moved', box: 'long dashed outline', link: '' },
-  split: { word: 'split', box: 'medium dashed outline', link: '' },
-  merged: { word: 'merged', box: 'short dashed outline', link: '' },
+  removed: { word: 'removed', box: 'long dashes with narrow gaps, grey outline, struck title', link: 'dashed grey line' },
+  moved: { word: 'moved', box: 'long dashes, wide gaps', link: '' },
+  split: { word: 'split', box: 'medium dashes', link: '' },
+  merged: { word: 'merged', box: 'short dashes, far apart', link: '' },
   'contains-changes': { word: 'contains changes', box: 'thin dashed outline', link: '' }
 };
 
@@ -10233,12 +10235,13 @@ const CHANGE_WORDS = {
 const CHANGE_DEFAULT_LOOK = {
   new: { '--st-stroke': 'var(--chg-new)', '--st-width': '3px', '--st-dash': 'none', '--st-tint': 'var(--chg-new)' },
   changed: { '--st-stroke': 'var(--chg-changed)', '--st-width': '2px', '--st-dash': '2 3', '--st-tint': 'var(--chg-changed)' },
-  removed: { '--st-stroke': 'var(--chg-removed)', '--st-width': '2px', '--st-dash': '7 4', '--st-tint': 'var(--chg-removed)', '--st-text': 'var(--chg-removed-text)' },
-  // identity (wave 009): a width and a dash pattern that no other state has, as the command line gives each its own line style. `split` is `6 6`, the pair
-  // the command line draws (PlantUML's `LineStyle: 6`, a dash and a gap of 6; a dash and a dot is a pattern it cannot draw) and the one no other state uses here (run 0054, issue 42)
-  moved: { '--st-stroke': 'var(--chg-moved)', '--st-width': '2px', '--st-dash': '14 4', '--st-tint': 'var(--chg-moved)' },
-  split: { '--st-stroke': 'var(--chg-split)', '--st-width': '2px', '--st-dash': '6 6', '--st-tint': 'var(--chg-split)' },
-  merged: { '--st-stroke': 'var(--chg-merged)', '--st-width': '2px', '--st-dash': '4 2', '--st-tint': 'var(--chg-merged)' },
+  removed: { '--st-stroke': 'var(--chg-removed)', '--st-width': '2px', '--st-dash': '16 3', '--st-tint': 'var(--chg-removed)', '--st-text': 'var(--chg-removed-text)' },
+  // a dash and a gap for every state of the box, the pair the command line draws (PlantUML's `LineStyle: <dash>-<gap>`; a dash and a dot is a pattern it cannot draw),
+  // and no pair is another's: `removed` 16 3, `moved` 12 12, `split` 8 8, `merged` 3 9 (run 0057, issue 55; `split` was `6 6` since run 0054, issue 42, the CLI's then).
+  // `moved` was `14 4` here, the pair of the command line is `12 12`: next to the `16 3` of `removed` the two long dashes were too much alike.
+  moved: { '--st-stroke': 'var(--chg-moved)', '--st-width': '2px', '--st-dash': '12 12', '--st-tint': 'var(--chg-moved)' },
+  split: { '--st-stroke': 'var(--chg-split)', '--st-width': '2px', '--st-dash': '8 8', '--st-tint': 'var(--chg-split)' },
+  merged: { '--st-stroke': 'var(--chg-merged)', '--st-width': '2px', '--st-dash': '3 9', '--st-tint': 'var(--chg-merged)' },
   'contains-changes': { '--st-stroke': 'var(--chg-contains)', '--st-width': '1px', '--st-dash': '4 3' }
 };
 
@@ -11058,10 +11061,10 @@ function diagramLegendHtml(hasGhosts, stereotypes) {
 function diagramComparisonLegendHtml(comparison, counts) {
   const noun = (n, one, many) => n + ' ' + (n === 1 ? one : many);
   const how = {
-    new: 'thick solid', changed: 'dotted', removed: 'dashed, struck title', 'contains-changes': 'thin dashed: something inside changed',
-    moved: 'long dashes: replaces one element',
+    new: 'thick solid', changed: 'dotted', removed: 'long dashes, narrow gaps, struck title', 'contains-changes': 'thin dashed: something inside changed',
+    moved: 'long dashes, wide gaps: replaces one element',
     split: 'medium dashes: one of several that replace one',
-    merged: 'short dashes: replaces several'
+    merged: 'short dashes, far apart: replaces several'
   };
   // the three states of identity are in the key only when the drawing shows one, so that the key of every other drawing is what it was
   const shown = ['new', 'changed', 'removed'].concat(IDENTITY_STATES.filter((state) => counts && counts[state] && counts[state].boxes > 0), 'contains-changes');

@@ -168,7 +168,8 @@ class ChangeMarksTest {
         assertEquals(3, newStyle.getLineThickness(), "thick");
         assertEquals(2, ChangeMarks.style("changed").getLineStyle(), "dotted");
         val removed = ChangeMarks.style("removed");
-        assertEquals(7, removed.getLineStyle(), "dashed");
+        assertEquals(16, removed.getLineStyle(), "long dashes");
+        assertEquals(3, removed.getLineGap(), "narrow gaps");
         assertEquals("#7F7F7F", removed.getFontColor(), "a grey title");
         val container = ChangeMarks.style("contains-changes");
         assertEquals(4, container.getLineStyle(), "dashed");
@@ -189,7 +190,8 @@ class ChangeMarksTest {
         // removed: the author's colour and thickness over the default's dashes, fill and grey title
         assertEquals("red", style("removed", merged).getLineColor());
         assertEquals(1, style("removed", merged).getLineThickness());
-        assertEquals(7, style("removed", merged).getLineStyle());
+        assertEquals(16, style("removed", merged).getLineStyle());
+        assertEquals(3, style("removed", merged).getLineGap());
         assertEquals("#EEEEEE", style("removed", merged).getBackgroundColor());
         assertEquals("#7F7F7F", style("removed", merged).getFontColor());
         // new: by-qualifiers over the default, then by-tags over both
@@ -331,7 +333,7 @@ class ChangeMarksTest {
         for (val state : List.of("new", "changed", "removed", "contains-changes", "moved", "split", "merged")) {
             val style = ChangeMarks.style(state);
             assertTrue(
-                seen.add(style.getLineStyle() + "/" + style.getLineThickness()),
+                seen.add(style.getLineStyle() + "-" + style.getLineGap() + "/" + style.getLineThickness()),
                 state + " has a look of its own"
             );
             assertTrue(seen.add("glyph " + ChangeMarks.glyph(state)), state + " has a glyph of its own");
@@ -341,6 +343,97 @@ class ChangeMarksTest {
             assertEquals(null, ChangeMarks.style(state).getBackgroundColor(), state);
             assertEquals(2, ChangeMarks.style(state).getLineThickness(), state);
         }
+    }
+
+    /** What the style of a state says after {@code LineStyle:} in the view. */
+    private static String lineStyleWritten(String state) {
+        return PlantumlUtilities.generateStyle(ChangeMarks.style(state), state, "rectangle")
+            .lines()
+            .filter(line -> line.startsWith("LineStyle: "))
+            .findFirst()
+            .orElseThrow()
+            .substring("LineStyle: ".length());
+    }
+
+    /** The dash and the gap of a state as PlantUML draws them: without a gap, the gap is as long as the dash. */
+    private static int[] dashes(String state) {
+        val style = ChangeMarks.style(state);
+        return new int[] {
+            style.getLineStyle(),
+            style.getLineGap() == null ? style.getLineStyle() : style.getLineGap()
+        };
+    }
+
+    @Test
+    void theDashesOfRemovedSplitAndMergedDifferVisiblyFromEachOtherAndFromEveryOtherState() {
+        // "visibly": the dash or the gap differs by at least 4 (units of a line 2 thick, drawn at 96 dpi), where 7, 6 and 5
+        // differed by one. The pairs were rendered with plantuml-1.2024.7 and looked at (run 0057).
+        val states = List.of("new", "changed", "contains-changes", "moved", "removed", "split", "merged");
+        val three = List.of("removed", "split", "merged");
+        assertEquals("16-3", lineStyleWritten("removed"));
+        assertEquals("8", lineStyleWritten("split"), "a dash of 8 and a gap as long: 8-8");
+        assertEquals("3-9", lineStyleWritten("merged"));
+        for (val state : three) {
+            for (val other : states) {
+                if (state.equals(other) || (three.contains(other) && other.compareTo(state) < 0)) {
+                    continue;
+                }
+                val a = dashes(state);
+                val b = dashes(other);
+                if (b[0] == 0) {
+                    continue; // new is a solid line: it has no dash to confuse
+                }
+                val apart = Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
+                assertTrue(
+                    apart >= 4,
+                    state +
+                        " " +
+                        a[0] +
+                        "-" +
+                        a[1] +
+                        " and " +
+                        other +
+                        " " +
+                        b[0] +
+                        "-" +
+                        b[1] +
+                        " are " +
+                        apart +
+                        " apart"
+                );
+            }
+        }
+    }
+
+    @Test
+    void aGapTravelsWithItsDashWhenTheAuthorChangesTheDash() {
+        val defaults = Map.of("removed", ChangeMarks.style("removed"), "merged", ChangeMarks.style("merged"));
+        val styles = Styles.builder()
+            .byTag("removed", Styles.Style.builder().lineStyle(7).build())
+            .byTag("merged", Styles.Style.builder().lineGap(1).build())
+            .build();
+        val merged = PlantumlUtilities.stereotypeStyles(styles, defaults)
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        // the author's `line-style: 7` is a dash of 7 and a gap of 7, not the default's gap of 3 behind another dash
+        assertEquals(7, merged.get("removed").getLineStyle());
+        assertEquals(null, merged.get("removed").getLineGap());
+        // a gap without a dash means nothing: the default's pair stays
+        assertEquals(3, merged.get("merged").getLineStyle());
+        assertEquals(9, merged.get("merged").getLineGap());
+        // and the line the author wrote is the line PlantUML reads
+        assertTrue(
+            PlantumlUtilities.generateStyle(Styles.Style.builder().lineStyle(5).build(), "rectangle", null).contains(
+                "LineStyle: 5\n"
+            )
+        );
+        assertTrue(
+            PlantumlUtilities.generateStyle(
+                Styles.Style.builder().lineStyle(5).lineGap(2).build(),
+                "rectangle",
+                null
+            ).contains("LineStyle: 5-2\n")
+        );
     }
 
     @Test
@@ -374,8 +467,14 @@ class ChangeMarksTest {
         );
         Mockito.when(compared.getItems()).thenReturn(Set.of(moved, merged));
         val legend = ChangeMarks.legend(compared);
-        assertTrue(legend.contains("| **<U+2192>** | moved or renamed, replaces one element: long dashes | |"), legend);
-        assertTrue(legend.contains("| **<U+2295>** | merged, replaces several elements: short dashes | |"), legend);
+        assertTrue(
+            legend.contains("| **<U+2192>** | moved or renamed, replaces one element: long dashes, wide gaps | |"),
+            legend
+        );
+        assertTrue(
+            legend.contains("| **<U+2295>** | merged, replaces several elements: short dashes, far apart | |"),
+            legend
+        );
         assertFalse(legend.contains("split"), legend);
         assertEquals(List.of("merged", "moved"), List.copyOf(ChangeMarks.styles(compared).keySet()));
     }
