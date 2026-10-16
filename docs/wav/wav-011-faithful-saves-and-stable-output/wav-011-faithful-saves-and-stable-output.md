@@ -68,7 +68,7 @@ wave_manifest:
       slug: editor-faithful-saves
       phase: P1
       depends_on: []
-      run: null
+      run: '0055'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'

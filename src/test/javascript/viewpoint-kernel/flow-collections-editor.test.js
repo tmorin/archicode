@@ -124,15 +124,15 @@ test('a list with nested brackets: kept when untouched, a block of blocks (read 
   assert.equal(save(text, (v) => { v.content.list.push('f'); }), 'content:\n  id: "m"\n  list:  # tricky\n    - "a, b"\n    - \'c]\'\n    - "d: e"\n    - "f"\n  name: "N"\n');
 });
 
-test('a list on several lines: kept whole when untouched (comments inside, trailing comment), a block with the quotes of its items when changed', () => {
+test('a list on several lines: kept whole when untouched (comments inside, trailing comment), a block with the quotes of its items and its comments when changed', () => {
   const changed = save(MILL, (v) => { v.content.replaces.push('mill.oldest'); });
   assert.deepEqual(lineDiff(MILL, changed), {
-    removed: ['  replaces: [', '    # the old mill', '    "mill.old",', "    'mill.older',   # the oldest", '  ]  # on several lines'],
-    added: ['  replaces:  # on several lines', '    - "mill.old"', "    - 'mill.older'", "    - 'mill.oldest'"]
-  });
+    removed: ['  replaces: [', '    "mill.old",', "    'mill.older',   # the oldest", '  ]  # on several lines'],
+    added: ['  replaces:  # on several lines', '    - "mill.old"', "    - 'mill.older'   # the oldest", "    - 'mill.oldest'"]
+  }); // the comments inside the brackets stay, as lines of the block (#54): the one above the first item stays where it is
   // a text that needs the emitter's quotes keeps them; the other items keep the ones the author gave
   const needs = save(MILL, (v) => { v.content.replaces.push('a: b'); });
-  assert.ok(needs.includes("    - 'mill.older'\n    - \"a: b\"\n# end of the mill\n"));
+  assert.ok(needs.includes("    - 'mill.older'   # the oldest\n    - \"a: b\"\n# end of the mill\n"));
   // a map over several lines, and the lines of the file around it
   const text = 'header:\n  kind: x\n# note\ncontent:\n  id: m\n  name: N\n\n  tags: {\n    zone: north,\n    tier: gold\n  }\n\n  # last\n  size: 3\n';
   assert.equal(save(text, (v) => { v.content.name = 'M'; }), text.replace('name: N', 'name: M'));

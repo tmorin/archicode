@@ -1333,13 +1333,22 @@ function parseYamlBlockScalar(p, parentIndent) {
   return body + '\n' + (chomp === '+' ? '\n'.repeat(trailing) : '');
 }
 
-/** Skip the blanks, line ends and comments inside a flow collection (which may span lines). */
+/**
+ * Skip the blanks, line ends and comments inside a flow collection (which may span lines). When the cursor has a `comments` list, each comment skipped is added to it
+ * (see `openFlowLists`): `{ text, gap, before, after }`, `before` the number of values read so far, `after` the index of the value it trails (it sits on the line where that
+ * value ends, with nothing but `,` and closing brackets between them) or -1 when it stands on its own, above the value that follows.
+ */
 function skipYamlFlowSpace(p, startLine) {
   for (;;) {
     if (p.i >= p.lines.length) throw yamlError('the flow collection starting here is never closed', startLine);
     const line = p.lines[p.i];
     while (p.col < line.length && isYamlWs(line[p.col])) p.col++;
     if (p.col >= line.length || isYamlCommentAt(line, p.col)) {
+      if (p.comments && p.col < line.length) {
+        const last = p.leaves && p.leaves.length > 0 ? p.leaves[p.leaves.length - 1] : null;
+        const trails = last !== null && last.line === p.i && line.slice(0, p.col).trim() !== '' && line.slice(last.col, p.col).replace(/[\s,\]}]/g, '') === '';
+        p.comments.push({ text: line.slice(p.col), gap: line.slice(0, p.col).match(/[ \t]*$/)[0], before: p.leaves ? p.leaves.length : 0, after: trails ? p.leaves.length - 1 : -1 });
+      }
       p.i++;
       p.col = 0;
       continue;
@@ -1384,13 +1393,19 @@ function readYamlFlowPlain(p, startLine) {
 }
 
 /**
- * One node of a flow collection: a collection or a scalar (`{ value, text, scalar }`). When the cursor has a `leaves` list, the way each value is written
- * (`'"'`, `"'"` or `''`) is added to it, in the order the emitter writes them: a scalar, an empty collection or a missing value counts, a key does not
- * (see `openFlowLists`). The reading itself is the same with or without it.
+ * One node of a flow collection: a collection or a scalar (`{ value, text, scalar }`). When the cursor has a `leaves` list, the way each value is written is added to it,
+ * in the order the emitter writes them (a scalar, an empty collection or a missing value counts, a key does not): `{ quote, word, line, col }`, `quote` is `'"'`, `"'"` or
+ * `''`, `word` the text of a plain scalar and `line`, `col` where the value ends (see `openFlowLists`). A cursor with a `keys` list gets the keys, in the order they are
+ * read: `{ key, written }`, `written` the key as it stands in the text when it is quoted. The reading itself is the same with or without them.
  */
 function parseYamlFlowNode(p, startLine) {
-  const note = (quote) => { if (p.leaves) p.leaves.push(quote); };
+  const note = (quote, word) => { if (p.leaves) p.leaves.push({ quote, word: word === undefined ? null : word, line: p.i, col: p.col }); };
   const forget = () => { if (p.leaves) p.leaves.pop(); }; // the scalar just read was a key
+  const keyed = (text, from, to) => { // the key spans `from` to `to`
+    if (!p.keys) return;
+    const quote = p.lines[from.i][from.col];
+    p.keys.push({ key: text, written: (quote === '"' || quote === "'") && from.i === to.i ? p.lines[from.i].slice(from.col, to.col) : null });
+  };
   skipYamlFlowSpace(p, startLine);
   const line = p.lines[p.i];
   const c = line[p.col];
@@ -1400,13 +1415,16 @@ function parseYamlFlowNode(p, startLine) {
     for (;;) {
       skipYamlFlowSpace(p, startLine);
       if (p.lines[p.i][p.col] === ']') { p.col++; if (arr.length === 0) note(''); return { value: arr, scalar: false }; }
+      const at = { i: p.i, col: p.col };
       const item = parseYamlFlowNode(p, startLine);
+      const read = { i: p.i, col: p.col };
       skipYamlFlowSpace(p, startLine);
       if (item.scalar && p.lines[p.i][p.col] === ':') {
         // a single pair inside a sequence: `[a: b]`
         forget();
         p.col++;
         const pair = {};
+        keyed(item.text, at, read);
         setYamlKey(pair, item.text, parseYamlFlowPairValue(p, startLine));
         arr.push(pair);
       } else {
@@ -1425,9 +1443,11 @@ function parseYamlFlowNode(p, startLine) {
     for (;;) {
       skipYamlFlowSpace(p, startLine);
       if (p.lines[p.i][p.col] === '}') { p.col++; if (Object.keys(map).length === 0) note(''); return { value: map, scalar: false }; }
+      const at = { i: p.i, col: p.col };
       const keyNode = parseYamlFlowNode(p, startLine);
       if (!keyNode.scalar) throw yamlError('a collection cannot be a key of a flow mapping', p.i);
       forget();
+      keyed(keyNode.text, at, { i: p.i, col: p.col });
       skipYamlFlowSpace(p, startLine);
       let value = null;
       if (p.lines[p.i][p.col] === ':') {
@@ -1453,7 +1473,7 @@ function parseYamlFlowNode(p, startLine) {
   if (',]}|>'.indexOf(c) !== -1) throw yamlError('unexpected "' + c + '" in a flow collection', p.i);
   const plain = readYamlFlowPlain(p, startLine);
   if (plain.text === '') throw yamlError('unexpected "' + (p.lines[p.i][p.col] || '') + '" in a flow collection', p.i);
-  note('');
+  note('', plain.text);
   return { value: resolveYamlPlain(plain.text), text: plain.text, scalar: true };
 }
 
@@ -1461,7 +1481,7 @@ function parseYamlFlowNode(p, startLine) {
 function parseYamlFlowPairValue(p, startLine) {
   skipYamlFlowSpace(p, startLine);
   const d = p.lines[p.i][p.col];
-  if (d === ',' || d === '}' || d === ']') { if (p.leaves) p.leaves.push(''); return null; }
+  if (d === ',' || d === '}' || d === ']') { if (p.leaves) p.leaves.push({ quote: '', word: null, line: p.i, col: p.col }); return null; }
   return parseYamlFlowNode(p, startLine).value;
 }
 
@@ -1803,22 +1823,63 @@ function shiftYamlLine(line, delta) {
 }
 
 /**
- * The lines the emitter writes for `value` (a list or a mapping that a flow collection holds) when it sits at `indent`, with the quotes the author gave the values in the
- * flow collection: `["a", 'b', c]` is written `- "a"`, `- 'b'`, `- c`, so that a collection the edit changes does not lose the quotes of its other items. `leaves` is
- * what the reader noted for each value, in order (see `parseYamlFlowNode`); a quote is applied only where the emitter wrote the text plain, and nothing is applied if
- * the lines and the values do not match one to one.
+ * The lines the emitter writes for `value` (a list or a mapping that a flow collection holds) when it sits at `indent`, with what the author wrote in the collection that
+ * the emitter does not: the quotes of the values (`["a", 'b', c]` is written `- "a"`, `- 'b'`, `- c`), the quotes of the keys (`{"tier": gold}` is `"tier": gold`), the word
+ * of a boolean or a null that is not the emitter's (`{heat: on}` is `heat: on`) and the comments (`# first` on a line of its own above the value it comes before, `# second`
+ * at the end of the line of the value it follows). `read` is what the reader noted (`leaves`, `keys`, `comments`: see `parseYamlFlowNode`), in the order the emitter writes it;
+ * a quote or a word is applied only where the emitter wrote the plain text, and nothing is applied if the lines do not match one to one what was read.
  */
-function emitFlowBlock(value, leaves, indent) {
+function emitFlowBlock(value, read, indent) {
   const lines = serializeYamlValue(value, indent).split('\n');
+  const leaves = read.leaves;
   const carrying = lines.map((line, i) => (/^ *(?:- )*-$/.test(line) || /:$/.test(line) ? -1 : i)).filter((i) => i !== -1); // the lines that end with a value
   if (carrying.length !== leaves.length) return lines;
   carrying.forEach((at, k) => {
-    const added = leaves[k] === '' ? null : readYamlScalarLine(lines[at]);
-    if (added === null || added.quote !== '' || !added.plainable) return;
+    const added = readYamlScalarLine(lines[at]);
+    if (added === null || added.quote !== '') return;
     const token = lines[at].slice(added.valueAt);
-    lines[at] = lines[at].slice(0, added.valueAt) + (leaves[k] === '"' ? '"' + escapeYamlDoubleQuoted(token) + '"' : "'" + token.replace(/'/g, "''") + "'");
+    if (leaves[k].quote === '') { // a word that reads as the emitter's token (`on` for `true`, `~` for `null`) stays the author's
+      const word = leaves[k].word;
+      if (word !== null && word !== token && /^(true|false|null)$/.test(token) && resolveYamlPlain(word) === JSON.parse(token)) lines[at] = lines[at].slice(0, added.valueAt) + word;
+    } else if (added.plainable) {
+      lines[at] = lines[at].slice(0, added.valueAt) + (leaves[k].quote === '"' ? '"' + escapeYamlDoubleQuoted(token) + '"' : "'" + token.replace(/'/g, "''") + "'");
+    }
   });
-  return lines;
+  // the keys the author quoted
+  const keyLines = [];
+  lines.forEach((line, i) => {
+    const prefix = line.match(/^ *(?:- +)*/)[0];
+    const found = scanYamlKey(line, prefix.length, 0);
+    if (found) keyLines.push({ at: i, prefix, found });
+  });
+  if (keyLines.length === read.keys.length && keyLines.every((k, n) => k.found.key === read.keys[n].key)) {
+    keyLines.forEach((k, n) => {
+      const written = read.keys[n].written;
+      if (written !== null && lines[k.at].slice(k.prefix.length, k.found.end - 1) === serializeYamlKey(k.found.key)) lines[k.at] = k.prefix + written + ':' + lines[k.at].slice(k.found.end);
+    });
+  }
+  // the comments: at the end of the line of the value they follow, or on lines of their own above the value they come before (above the lines of the keys that lead to it)
+  const above = new Map();
+  const below = [];
+  const after = new Map();
+  for (const comment of read.comments) {
+    if (comment.after !== -1 && comment.after < carrying.length) {
+      if (!after.has(carrying[comment.after])) after.set(carrying[comment.after], (comment.gap === '' ? '  ' : comment.gap) + comment.text);
+      continue;
+    }
+    if (comment.before >= carrying.length) { below.push(' '.repeat(indent) + comment.text); continue; }
+    let at = carrying[comment.before];
+    const floor = comment.before === 0 ? -1 : carrying[comment.before - 1];
+    while (at - 1 > floor) at--;
+    if (!above.has(at)) above.set(at, []);
+    above.get(at).push(' '.repeat(yamlIndentOf(lines[at])) + comment.text);
+  }
+  const out = [];
+  lines.forEach((line, i) => {
+    if (above.has(i)) out.push.apply(out, above.get(i));
+    out.push(line + (after.get(i) || ''));
+  });
+  return out.concat(below);
 }
 
 /**
@@ -1854,7 +1915,7 @@ function openFlowLists(text) {
     if (!keyed && !item) { out.push(line); continue; }
     const m = keyed ? [line.slice(0, at), lead, line.slice(lead.length, found.end - 1).replace(/[ \t]+$/, '')] : line.match(/^( *)(- +)(?=[\[{])/); // [text before the collection, indentation (and dashes), key as written]
     if (!keyed) at = m[0].length;
-    const p = { lines, i, col: at, leaves: [] };
+    const p = { lines, i, col: at, leaves: [], keys: [], comments: [] };
     let node;
     let comment = '';
     try {
@@ -1872,7 +1933,7 @@ function openFlowLists(text) {
     if (keyed) {
       const key = m[2]; // as written, quotes included
       const empty = yamlEmptyCollection(node.value);
-      expanded = empty ? [m[1] + key + ': ' + empty + note] : [m[1] + key + ':' + note].concat(emitFlowBlock(node.value, p.leaves, m[1].length + 2));
+      expanded = empty ? [m[1] + key + ': ' + empty + note] : [m[1] + key + ':' + note].concat(emitFlowBlock(node.value, p, m[1].length + 2));
       column = m[1].length;
       if (!empty) { // the block must say what the flow collection says
         const keyless = [key + ':'].concat(expanded.slice(1).map((l) => shiftYamlLine(l, -m[1].length)));
@@ -1884,9 +1945,9 @@ function openFlowLists(text) {
       }
     } else {
       const dashes = m[1].length;
-      const block = emitFlowBlock([node.value], p.leaves, dashes);
+      const block = emitFlowBlock([node.value], p, dashes);
       expanded = block.slice();
-      if (note) expanded[0] += note;
+      if (note) { const first = expanded.findIndex((l) => !/^ *#/.test(l)); expanded[first] += note; }
       column = dashes;
       let same = false;
       try {
@@ -2063,6 +2124,31 @@ function quoteYamlAddedLine(line, dropped, siblings, votes) {
 }
 
 /**
+ * The words of the line `at` of `original` as the emitter would write them: a plain scalar that the reader reads as a boolean or a null by another word than the
+ * emitter's (`yes`, `Off`, `~`) is the word the emitter writes for that value (`true`, `false`, `null`), and so is a key with nothing after it and nothing below it
+ * (`description:` is `description: null`), so that a line written by the author is found for the line the emitter wrote.
+ */
+function yamlEmittedWordsOf(original, at) {
+  const line = original[at];
+  const words = yamlWordsOf(line);
+  const read = readYamlScalarLine(line);
+  if (read === null) {
+    const prefix = line.match(/^ *(?:- +)*/)[0];
+    const found = scanYamlKey(line, prefix.length, 0);
+    if (found === null || stripYamlComment(line).replace(/\s+$/, '').length !== found.end) return words;
+    let next = at + 1;
+    while (next < original.length && yamlWordsOf(original[next]) === '') next++;
+    // a block below it (deeper, or a list at the column of the key) is the value of the key
+    if (next < original.length && (yamlIndentOf(original[next]) > prefix.length || (yamlIndentOf(original[next]) === prefix.length && /^ *- /.test(original[next]) && !/- /.test(prefix)))) return words;
+    return words + ' null';
+  }
+  if (read.quote !== '') return words;
+  const value = resolveYamlPlain(stripYamlComment(line).replace(/\s+$/, '').slice(read.valueAt));
+  if (value !== null && typeof value !== 'boolean') return words;
+  return (yamlWordsOf(line.slice(0, read.valueAt)) + ' ' + serializeYamlScalarToken(value)).trim();
+}
+
+/**
  * Where each line of `before` (what the emitter writes for the old value) sits in the original lines: `{ place, spans }` (`spans`: the lines of a block scalar
  * that follow the first one), or `null` when a line cannot be found in order, with the same indentation and the same words.
  */
@@ -2088,7 +2174,7 @@ function locateEmittedLines(original, before) {
       const candidate = original[j];
       if (wordsOf(candidate) === '' ) continue; // a comment or a blank line
       if (indentOf(candidate) === indentOf(line)) {
-        if (wordsOf(candidate) === wordsOf(line)) found = j;
+        if (wordsOf(candidate) === wordsOf(line) || yamlEmittedWordsOf(original, j) === wordsOf(line)) found = j;
         else {
           // a text over several lines is a block (| or >) in the file and a quoted string on one line for the emitter
           const key = line.slice(0, line.indexOf(': ') + 1);
@@ -2169,6 +2255,23 @@ function patchYamlLines(oldText, emitted, newValue, styled) {
   }
   for (let k = endBefore; k < before.length; k++) steps.push({ keep: k });
 
+  // in a run of lines that go and lines that come, each line that goes is followed by the one that replaces it (the first with the first, the second with the second): the
+  // comments and blank lines that sit above a line that goes stay above the line that takes its place, and not below it
+  for (let from = 0; from < steps.length; from++) {
+    if (steps[from].keep !== undefined) continue;
+    let to = from;
+    while (to < steps.length && steps[to].keep === undefined) to++;
+    const drops = steps.slice(from, to).filter((step) => step.drop !== undefined);
+    const adds = steps.slice(from, to).filter((step) => step.add !== undefined);
+    const paired = [];
+    for (let k = 0; k < Math.max(drops.length, adds.length); k++) {
+      if (k < drops.length) paired.push(drops[k]);
+      if (k < adds.length) paired.push(adds[k]);
+    }
+    steps.splice(from, to - from, ...paired);
+    from = to - 1;
+  }
+
   // a value that is added or changed is written in the quotes of the file (only when the caller asks: `styled` counts the lines it wrote so)
   if (styled) {
     let all = null;
@@ -2205,8 +2308,9 @@ function patchYamlLines(oldText, emitted, newValue, styled) {
       const added = readYamlScalarLine(step.add);
       if (added === null) continue;
       const same = (g) => !g.used && g.read !== null && g.read.prefix === added.prefix && g.read.key === added.key;
-      // an item of a list has no key: it is told from the other items only when it is the one item that goes and the one that comes
-      if (added.key === null && (goneLines.filter(same).length !== 1 || addSteps.filter((o) => { const r = readYamlScalarLine(o.add); return r !== null && r.key === null && r.prefix === added.prefix; }).length !== 1)) continue;
+      // an item of a list has no key: it is told from the other items only when as many items go as come (the first that goes is the first that comes), as in a rename of the items of a list
+      const items = (reads) => reads.filter((r) => r !== null && r.key === null && r.prefix === added.prefix).length;
+      if (added.key === null && items(goneLines.map((g) => g.read)) !== items(addSteps.map((o) => readYamlScalarLine(o.add)))) continue;
       const twin = goneLines.find(same);
       if (!twin) continue;
       twin.used = true;
