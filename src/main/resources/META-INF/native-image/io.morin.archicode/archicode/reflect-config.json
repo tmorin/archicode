@@ -531,6 +531,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.rendering.plantuml.PlantumlNames",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.rendering.plantuml.PlantumlUtilities",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,

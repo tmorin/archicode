@@ -16,14 +16,14 @@ FontStyle: normal
 rectangle prod as "**Production**\n""[environment]""" <<composite>> {
 rectangle prod.cluster as "**Kubernetes Cluster**\n""[node: K8s]""" <<K8s>> <<composite>> {
 rectangle prod.cluster.web as "**web namespace**\n""[node]""" <<composite>> {
-rectangle prod.cluster.web.pod-a as "**frontend pod**\n""[node]""" <<composite>> {
-rectangle pod-a_shop_web_frontend <<Angular>> <<container>> <<atomic>> [
+rectangle prod.cluster.web.pod_a as "**frontend pod**\n""[node]""" <<composite>> {
+rectangle pod_a_shop_web_frontend <<Angular>> <<container>> <<atomic>> [
 **Frontend**
 ""[container: Angular]""
 ]
 }
-rectangle prod.cluster.web.pod-b as "**api pod**\n""[node]""" <<composite>> {
-rectangle pod-b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
+rectangle prod.cluster.web.pod_b as "**api pod**\n""[node]""" <<composite>> {
+rectangle pod_b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]
@@ -31,8 +31,8 @@ rectangle pod-b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
 }
 }
 }
-pod-a_shop_web_frontend --> pod-b_shop_web_api : calls\n""[REST]""
-prod.cluster.web.pod-a --> prod.cluster.web.pod-b : forwards to\n""[HTTP]""
+pod_a_shop_web_frontend --> pod_b_shop_web_api : calls\n""[REST]""
+prod.cluster.web.pod_a --> prod.cluster.web.pod_b : forwards to\n""[HTTP]""
 <style>
 .external {
 actor {

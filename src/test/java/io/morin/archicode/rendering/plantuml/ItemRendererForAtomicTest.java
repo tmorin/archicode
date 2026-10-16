@@ -35,7 +35,9 @@ class ItemRendererForAtomicTest {
     void shouldRender() {
         val element = elementBuilder.build();
         val item = ViewpointFixtures.createItemBuilder(element).build();
-        val puml = ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, item);
+        val puml = ItemRenderer.AtomicItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
@@ -52,7 +54,9 @@ class ItemRendererForAtomicTest {
     void shouldRenderWithName() {
         val element = elementBuilder.name("Name").build();
         val item = ViewpointFixtures.createItemBuilder(element).build();
-        val puml = ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, item);
+        val puml = ItemRenderer.AtomicItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
@@ -71,7 +75,9 @@ class ItemRendererForAtomicTest {
         element.getQualifiers().add("q1");
         element.getQualifiers().add("q2");
         val item = ViewpointFixtures.createItemBuilder(element).stereotypes(List.of("q1", "q2")).build();
-        val puml = ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, item);
+        val puml = ItemRenderer.AtomicItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
@@ -88,7 +94,9 @@ class ItemRendererForAtomicTest {
     void shouldRenderWithDescription() {
         val element = elementBuilder.description("description").build();
         val item = ViewpointFixtures.createItemBuilder(element).build();
-        val puml = ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, item);
+        val puml = ItemRenderer.AtomicItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
@@ -110,11 +118,31 @@ class ItemRendererForAtomicTest {
         val item = ViewpointFixtures.createItemBuilder(element)
             .stereotypes(List.of("Spring Boot", "external", "changed"))
             .build();
-        val puml = ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, item);
+        val puml = ItemRenderer.AtomicItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
         Assertions.assertTrue(
             puml.startsWith("rectangle item_id <<changed>> <<external>> <<Spring Boot>> <<solution>> <<atomic>> [\n"),
             puml
         );
         Assertions.assertFalse(puml.contains("external changed"), puml);
+    }
+
+    @Test
+    void shouldNameABoxWithAHyphenInItsIdWithANameThatPlantumlReadsAndKeepTheIdInItsLabel() {
+        val element = Solution.builder().id("shop.report-a").build();
+        val item = ViewpointFixtures.createItemBuilder(element).build();
+        val puml = ItemRenderer.AtomicItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
+        Assertions.assertEquals(
+            """
+            rectangle shop.report_a <<solution>> <<atomic>> [
+            shop.report-a
+            [solution]
+            ]
+            """,
+            puml
+        );
     }
 }

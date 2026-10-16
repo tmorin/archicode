@@ -47,8 +47,10 @@ public class PlantumlViewRenderer implements ViewRenderer {
 
                 outputStreamWriter.write(styleRenderer.render(viewpoint));
 
+                val names = PlantumlNames.of(viewpoint);
+
                 for (Item item : viewpoint.getItems().stream().sorted().toList()) {
-                    outputStreamWriter.write(itemRenderer.render(viewpoint, item));
+                    outputStreamWriter.write(itemRenderer.render(viewpoint, names, item));
                 }
 
                 for (Link link : viewpoint
@@ -57,7 +59,7 @@ public class PlantumlViewRenderer implements ViewRenderer {
                     .sorted()
                     .filter(link -> link.getTags().getOrDefault("rendering-secondary", "yes").equals("yes"))
                     .toList()) {
-                    outputStreamWriter.write(linkRenderer.render(viewpoint, link));
+                    outputStreamWriter.write(linkRenderer.render(viewpoint, names, link));
                 }
 
                 outputStreamWriter.write(ChangeMarks.legend(viewpoint));

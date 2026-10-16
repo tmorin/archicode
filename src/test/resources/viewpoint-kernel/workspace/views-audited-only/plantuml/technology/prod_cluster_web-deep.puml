@@ -16,14 +16,14 @@ FontStyle: normal
 rectangle prod as "**Production**\n""[environment]""" <<composite>> {
 rectangle prod.cluster as "**Kubernetes Cluster**\n""[node: K8s]""" <<K8s>> <<composite>> {
 rectangle prod.cluster.web as "**web namespace**\n""[node]""" <<composite>> {
-rectangle prod.cluster.web.pod-a as "**frontend pod**\n""[node]""" <<composite>> {
-rectangle pod-a_shop_web_frontend <<Angular>> <<container>> <<atomic>> [
+rectangle prod.cluster.web.pod_a as "**frontend pod**\n""[node]""" <<composite>> {
+rectangle pod_a_shop_web_frontend <<Angular>> <<container>> <<atomic>> [
 **Frontend**
 ""[container: Angular]""
 ]
 }
-rectangle prod.cluster.web.pod-b as "**api pod**\n""[node]""" <<composite>> {
-rectangle pod-b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
+rectangle prod.cluster.web.pod_b as "**api pod**\n""[node]""" <<composite>> {
+rectangle pod_b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]
@@ -41,7 +41,7 @@ Takes the money.
 ]
 }
 }
-pod-b_shop_web_api --> gateway_shop_payments : charges with\n""[HTTPS]""
+pod_b_shop_web_api --> gateway_shop_payments : charges with\n""[HTTPS]""
 <style>
 .external {
 actor {

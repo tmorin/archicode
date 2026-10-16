@@ -1,0 +1,5 @@
+# An invented bookshop whose ids hold hyphens, used to check that the generated PlantUML only holds names PlantUML reads
+# (see HyphenIdViewsTest): elements, a container that holds components, links to and from them, two ids that differ
+# by a hyphen and an underscore, and nodes that host applications.
+settings:
+  name: "Bookshop"

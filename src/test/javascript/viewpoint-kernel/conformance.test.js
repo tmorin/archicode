@@ -33,7 +33,27 @@ function parsePuml(text) {
   return { links, items };
 }
 
-const linkKey = (l) => [l.from, l.to, l.label || '', Array.from(l.qualifiers).sort().join(',')].join('|');
+const linkKey = (l, name = (id) => id) => [name(l.from), name(l.to), l.label || '', Array.from(l.qualifiers).sort().join(',')].join('|');
+
+/**
+ * The name the CLI gives each id of a view in its PlantUML (rendering/plantuml/PlantumlNames.java): PlantUML reads letters,
+ * digits, `_` and `.`; an id made of those is its own name, any other has each other character replaced by `_`, and a name
+ * another id of the view already has is told apart by a number, in the order of the ids.
+ */
+function plantumlNames(ids) {
+  const readable = /^[\p{L}\p{N}_.]+$/u;
+  const sorted = Array.from(new Set(ids)).sort();
+  const taken = new Set(sorted.filter((id) => readable.test(id)));
+  const names = new Map(sorted.filter((id) => readable.test(id)).map((id) => [id, id]));
+  for (const id of sorted.filter((i) => !readable.test(i))) {
+    const base = id.replace(/[^\p{L}\p{N}_.]/gu, '_');
+    let name = base;
+    for (let n = 2; taken.has(name); n++) name = base + '_' + n;
+    taken.add(name);
+    names.set(id, name);
+  }
+  return (id) => names.get(id);
+}
 
 test('the fixture is what the tests below expect it to be', async () => {
   const { state } = await openFixture();
@@ -63,8 +83,9 @@ test('every generated view is reproduced, for the workspace and for each facet',
           const out = kernel.compute(input);
           const where = set.dir + '/' + layer + '/' + ref + ' ' + viewpoint;
           if (out.error) { problems.push(where + ': ' + out.error); continue; }
-          const mine = new Set(out.links.filter((l) => !l.secondary).map(linkKey));
-          const ids = new Set(out.items.map((i) => i.id));
+          const name = plantumlNames(out.items.map((i) => i.id));
+          const mine = new Set(out.links.filter((l) => !l.secondary).map((l) => linkKey(l, name)));
+          const ids = new Set(out.items.map((i) => name(i.id)));
           const diff = (a, b) => [...a].filter((v) => !b.has(v));
           const extra = { links: diff(mine, gold.links), items: diff(ids, gold.items) };
           const missing = { links: diff(gold.links, mine), items: diff(gold.items, ids) };
@@ -119,11 +140,12 @@ test('the stereotypes of every box are the ones the CLI draws it with: the quali
           if (!fs.existsSync(file)) continue;
           const gold = pumlStereotypes(fs.readFileSync(file, 'utf8'));
           const out = kernel.compute(sandbox.buildKernelInput(viewpoint, ref, { layer, facet: set.facet }).input);
+          const name = plantumlNames(out.items.map((i) => i.id));
           for (const item of out.items) {
-            if (!gold.has(item.id)) { problems.push(file + ': no box ' + item.id); continue; }
+            if (!gold.has(name(item.id))) { problems.push(file + ': no box ' + item.id); continue; }
             boxes++;
             const mine = Array.from(item.stereotypes); // from another realm: copied
-            if (JSON.stringify(mine) !== JSON.stringify(gold.get(item.id))) problems.push(file + ' ' + item.id + ': the kernel says ' + JSON.stringify(mine) + ', the CLI draws ' + JSON.stringify(gold.get(item.id)));
+            if (JSON.stringify(mine) !== JSON.stringify(gold.get(name(item.id)))) problems.push(file + ' ' + item.id + ': the kernel says ' + JSON.stringify(mine) + ', the CLI draws ' + JSON.stringify(gold.get(name(item.id))));
             mine.forEach((s) => seen.add(s));
           }
         }
@@ -236,11 +258,12 @@ test('the map, pinned on one element with nothing open, draws the overview the C
         const out = kernel.compute(input);
         const where = set.dir + ' ' + ref + ' ' + viewpoint;
         if (out.error) { problems.push(where + ': ' + out.error); continue; }
-        const mine = new Set(out.links.filter((l) => !l.secondary).map(linkKey));
+        const name = plantumlNames(out.items.map((i) => i.id));
+        const mine = new Set(out.links.filter((l) => !l.secondary).map((l) => linkKey(l, name)));
         const diff = (a, b) => [...a].filter((v) => !b.has(v));
         const bad = diff(mine, gold.links).concat(diff(gold.links, mine));
         if (viewpoint === 'overview') {
-          const ids = new Set(out.items.map((i) => i.id));
+          const ids = new Set(out.items.map((i) => name(i.id)));
           bad.push(...diff(ids, gold.items), ...diff(gold.items, ids)); // the deep view draws only the boxes links reach; the map also draws the children it opens
         }
         if (bad.length) problems.push(where + ' ' + JSON.stringify(bad));

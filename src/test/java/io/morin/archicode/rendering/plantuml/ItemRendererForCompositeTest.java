@@ -36,7 +36,9 @@ class ItemRendererForCompositeTest {
     void shouldRender() {
         val element = solutionBuilder.build();
         val item = ViewpointFixtures.createItemBuilder(element).build();
-        val puml = ItemRenderer.CompositeItemRenderer.builder().build().render(viewpoint, item);
+        val puml = ItemRenderer.CompositeItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
@@ -51,7 +53,9 @@ class ItemRendererForCompositeTest {
     void shouldRenderWithName() {
         val element = solutionBuilder.name("Name").build();
         val item = ViewpointFixtures.createItemBuilder(element).build();
-        val puml = ItemRenderer.CompositeItemRenderer.builder().build().render(viewpoint, item);
+        val puml = ItemRenderer.CompositeItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
@@ -68,7 +72,9 @@ class ItemRendererForCompositeTest {
         element.getQualifiers().add("q1");
         element.getQualifiers().add("q2");
         val item = ViewpointFixtures.createItemBuilder(element).stereotypes(List.of("q1", "q2")).build();
-        val puml = ItemRenderer.CompositeItemRenderer.builder().build().render(viewpoint, item);
+        val puml = ItemRenderer.CompositeItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
@@ -84,7 +90,9 @@ class ItemRendererForCompositeTest {
         val system = System.builder().id("sys_id").build();
         val element = solutionBuilder.elements(Set.of(system)).build();
         val item = ViewpointFixtures.createItemBuilder(element).build();
-        val puml = ItemRenderer.CompositeItemRenderer.builder().build().render(viewpoint, item);
+        val puml = ItemRenderer.CompositeItemRenderer.builder()
+            .build()
+            .render(viewpoint, PlantumlNames.of(viewpoint), item);
         log.info("linkAsPuml {}", puml);
         Assertions.assertEquals(
             """
@@ -92,6 +100,25 @@ class ItemRendererForCompositeTest {
             rectangle sys_id <<system>> <<atomic>> [
             sys_id
             [system]
+            ]
+            }
+            """,
+            puml
+        );
+    }
+
+    @Test
+    void shouldNameACompositeAndItsChildrenWithNamesThatPlantumlReads() {
+        val child = ViewpointFixtures.createItem(Solution.builder().id("shop.web-front").build());
+        val item = ViewpointFixtures.createItem(Solution.builder().id("shop.back-office").build());
+        item.getChildren().add(child);
+        val puml = ItemRenderer.builder().build().render(viewpoint, PlantumlNames.of(viewpoint), item);
+        Assertions.assertEquals(
+            """
+            rectangle shop.back_office as "shop.back-office\\n[solution]" <<composite>> {
+            rectangle shop.web_front <<solution>> <<atomic>> [
+            shop.web-front
+            [solution]
             ]
             }
             """,
