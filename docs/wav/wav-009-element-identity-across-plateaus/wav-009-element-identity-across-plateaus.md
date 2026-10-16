@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 009
-status: proposed
+status: completed
 date: 2026-10-15
 related:
   - docs/wav/wav-009-element-identity-across-plateaus/wbc-009-element-identity-across-plateaus.md
@@ -63,7 +63,7 @@ None. The decisions below are made by this wave and recorded in the runs that ap
 wave_manifest:
   wave: 009
   slug: element-identity-across-plateaus
-  status: proposed
+  status: completed
   sources: []
   phases:
     - id: P1
