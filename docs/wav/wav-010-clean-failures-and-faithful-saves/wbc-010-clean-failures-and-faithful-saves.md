@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 010
-status: proposed
+status: completed
 date: 2026-10-16
 related:
   - docs/wav/wav-009-element-identity-across-plateaus/wav-009-element-identity-across-plateaus.md
