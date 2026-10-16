@@ -191,7 +191,7 @@ test('the map draws a moved, a split and a merged box with the glyph, the line, 
   assert.match(split, /⋔<\/tspan> Catalog of books \(from/, 'a title longer than the box is cut with an ellipsis, as any title is; the tooltip and the panel have it whole');
   assert.equal(sandbox.diagramItemText(result.items.find((i) => i.reference === 'library.catalog-a'), undefined, 'application').title, '⋔ Catalog of books (from library.catalog)');
   assert.deepEqual(pillsOf(split), ['split']);
-  assert.equal(varsOf(split)['--st-dash'], '9 3 2 3');
+  assert.equal(varsOf(split)['--st-dash'], '6 6');
   const merged = nodeOf(svg, 'archive.cabinet');
   assert.match(merged, /dg-chg-merged/);
   assert.match(merged, /⊕<\/tspan> Cabinet \(from archive/);
@@ -232,7 +232,7 @@ test('the key lists a state of identity only when the drawing has a box in it; e
   assert.deepEqual(counts.split, { boxes: 2 });
   assert.deepEqual(counts.merged, { boxes: 1 });
   const legend = text(sandbox.diagramComparisonLegendHtml(full.comparison, counts));
-  assert.match(legend, /\+ new thick solid 2 boxes, 0 links ~ changed dotted 0 boxes, 0 links − removed dashed, struck title 4 boxes, 0 links → moved long dashes: replaces one element 1 box ⋔ split dash-dot: one of several that replace one 2 boxes ⊕ merged short dashes: replaces several 1 box ± contains changes thin dashed: something inside changed 2 boxes/);
+  assert.match(legend, /\+ new thick solid 2 boxes, 0 links ~ changed dotted 0 boxes, 0 links − removed dashed, struck title 4 boxes, 0 links → moved long dashes: replaces one element 1 box ⋔ split medium dashes: one of several that replace one 2 boxes ⊕ merged short dashes: replaces several 1 box ± contains changes thin dashed: something inside changed 2 boxes/);
   // the diagram of one element that has none of them: the key is the key of the four states
   const one = await draw(sandbox, 'overview', 'library.lending');
   const oneLegend = text(sandbox.diagramComparisonLegendHtml(one.comparison, plain(sandbox.comparisonCountsOf(one.result))));
@@ -241,7 +241,7 @@ test('the key lists a state of identity only when the drawing has a box in it; e
   assert.doesNotMatch(text(sandbox.diagramComparisonLegendHtml(full.comparison, null)), /\bmoved\b|\bsplit\b|\bmerged\b/);
   // and its samples are drawn with the same variables as the boxes
   const html = sandbox.diagramComparisonLegendHtml(full.comparison, counts);
-  assert.match(html, /<span class="dg-legend-state" data-state="split"><svg[^>]*><g class="dg-styled dg-chg-split" style="[^"]*--st-dash:9 3 2 3/);
+  assert.match(html, /<span class="dg-legend-state" data-state="split"><svg[^>]*><g class="dg-styled dg-chg-split" style="[^"]*--st-dash:6 6/);
   assert.doesNotMatch(html, /data-state="moved"><svg[^>]*>[\s\S]{0,400}<svg width="26" height="8"/, 'a state of a box has no sample of a link');
 });
 
