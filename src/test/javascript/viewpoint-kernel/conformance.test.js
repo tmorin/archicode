@@ -41,12 +41,12 @@ const linkKey = (l, name = (id) => id) => [name(l.from), name(l.to), l.label || 
  * another id of the view already has is told apart by a number, in the order of the ids.
  */
 function plantumlNames(ids) {
-  const readable = /^[\p{L}\p{N}_.]+$/u;
+  const readable = /^[\p{L}\p{Nd}_.]+$/u;
   const sorted = Array.from(new Set(ids)).sort();
   const taken = new Set(sorted.filter((id) => readable.test(id)));
   const names = new Map(sorted.filter((id) => readable.test(id)).map((id) => [id, id]));
   for (const id of sorted.filter((i) => !readable.test(i))) {
-    const base = id.replace(/[^\p{L}\p{N}_.]/gu, '_');
+    const base = id.replace(/[^\p{L}\p{Nd}_.]/gu, '_');
     let name = base;
     for (let n = 2; taken.has(name); n++) name = base + '_' + n;
     taken.add(name);
