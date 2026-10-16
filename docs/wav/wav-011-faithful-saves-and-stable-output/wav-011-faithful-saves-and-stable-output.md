@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 011
-status: proposed
+status: completed
 date: 2026-10-16
 related:
   - docs/wav/wav-011-faithful-saves-and-stable-output/wbc-011-faithful-saves-and-stable-output.md
@@ -41,7 +41,7 @@ candidates of `replaces` have been run against a large invented pair with known 
 wave_manifest:
   wave: 011
   slug: faithful-saves-and-stable-output
-  status: proposed
+  status: completed
   sources: []
   phases:
     - id: P1
@@ -195,3 +195,7 @@ line styles and the save's comment handling where they mention the old behaviour
 `embed.sh --check`, `node --test` and `npx prettier --check "src/**/*.java"` pass on the final tree; the native job is green on
 the wave's pull request; the issues #48, #49, #50, #52, #53, #54, #55 are closed by their commits or re-filed with the reason;
 #33 and #29 carry their comment and checklist; every item a run lists as "not verified" is in the final report.
+
+### Outcome
+
+Completed with one exception: "the native job is green on the wave's pull request" cannot be met before the pull request exists, and no native image was built on the machine that executed the wave; the job's first run is on that pull request. #29 stays open until then. #33 stays open for the author to close. `CLAUDE.md` mentions none of the old behaviours (sorted output, line styles, comment handling), so it is unchanged.

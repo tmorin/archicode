@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 011
-status: proposed
+status: completed
 date: 2026-10-16
 related:
   - docs/wav/wav-010-clean-failures-and-faithful-saves/wav-010-clean-failures-and-faithful-saves.md

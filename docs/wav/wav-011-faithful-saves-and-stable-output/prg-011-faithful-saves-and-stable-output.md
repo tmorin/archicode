@@ -1,6 +1,6 @@
 ---
 type: prg
-status: active
+status: completed
 date: 2026-10-16
 related:
   - docs/wav/wav-011-faithful-saves-and-stable-output/wav-011-faithful-saves-and-stable-output.md
