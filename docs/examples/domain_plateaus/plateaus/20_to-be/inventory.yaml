@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "warehouse"
+content:
+  id: "inventory"
+  name: "Inventory"
+  description: "Counts the books on the shelves."
+  replaces:
+    - "shop.inventory" # the inventory moved from the shop to the warehouse
+  elements:
+    - kind: "component"
+      id: "levels"
+      name: "Levels"
+      description: "The count of each book."
+      replaces:
+        - "shop.inventory.levels" # what is inside a moved element says it too

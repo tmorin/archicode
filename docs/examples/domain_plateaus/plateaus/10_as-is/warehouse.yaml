@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "warehouse"
+  name: "Warehouse"
+  elements:
+    - kind: "container"
+      id: "picking"
+      name: "Picking"
+      description: "Prepares the parcels."
+      relationships:
+        - destination: "shop.inventory"
+          label: "counts with"

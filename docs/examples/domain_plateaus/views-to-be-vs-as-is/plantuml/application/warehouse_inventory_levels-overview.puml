@@ -1,0 +1,142 @@
+@startuml warehouse_inventory_levels-overview
+title Component - Levels - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment<<atomic>> center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+<style>
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+</style>
+rectangle warehouse as "<U+00B1> Warehouse\n[system]" <<contains-changes>> <<composite>> {
+rectangle warehouse.inventory as "<U+2192> Inventory (from shop.inventory)\n[container]" <<moved>> <<composite>> {
+rectangle warehouse.inventory.levels <<moved>> <<component>> <<atomic>> [
+<U+2192> Levels (from shop.inventory.levels)
+[component]
+The count of each book.
+]
+}
+}
+legend right
+**To be** compared with **As is**
+|= Mark |= Box |= Link |
+| **+** | new: thick solid outline | new: thick solid line |
+| **<U+007E>** | changed: dotted outline | changed: dotted line |
+| **<U+2212>** | removed: dashed grey outline, struck title | removed: dashed grey line |
+| **<U+00B1>** | something inside changed: thin dashed outline | |
+| **<U+2192>** | moved or renamed, replaces one element: long dashes | |
+endlegend
+<style>
+.contains-changes {
+actor {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+card {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+database {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+node {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+person {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.contains-changes {
+rectangle {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+</style>
+<style>
+.moved {
+actor {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+</style>
+<style>
+.moved {
+card {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+</style>
+<style>
+.moved {
+database {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+</style>
+<style>
+.moved {
+node {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+</style>
+<style>
+.moved {
+person {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+</style>
+<style>
+.moved {
+rectangle {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+</style>
+@enduml

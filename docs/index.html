@@ -579,7 +579,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_the_idea">The idea</a></li>
 <li><a href="#_the_layout">The layout</a></li>
 <li><a href="#_the_settings_in_short">The settings in short</a></li>
-<li><a href="#_the_four_states">The four states</a></li>
+<li><a href="#_the_states">The states</a></li>
+<li><a href="#plateau-replaces">Saying what an element replaces</a></li>
 <li><a href="#_a_tutorial_from_one_workspace_to_a_review_of_the_changes">A tutorial: from one workspace to a review of the changes</a></li>
 <li><a href="#plateaus-upgrade">Upgrading: what breaks, and what does not</a></li>
 </ul>
@@ -602,6 +603,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#editor-what-changed">What changed</a></li>
 <li><a href="#editor-changes-only">Changes only and wording-only changes</a></li>
 <li><a href="#editor-changes-address">The address and the trees</a></li>
+<li><a href="#editor-replaces">Moved, split and merged elements, and candidates</a></li>
+<li><a href="#editor-move">Moving an element under another parent</a></li>
 </ul>
 </li>
 <li><a href="#editor-theme">Theme</a></li>
@@ -738,7 +741,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 <div class="paragraph">
 <div class="title">States of an Architecture</div>
-<p>A plateau is a complete folder of manifests, the architecture as it is or as it should be. ArchiCode computes what is new, changed and removed from one plateau to the next and draws it, in the views and in the editor, with marks that never rely on colour (see <a href="#plateaus-overview">States of an architecture (plateaus)</a>).</p>
+<p>A plateau is a complete folder of manifests, the architecture as it is or as it should be. ArchiCode computes what is new, changed and removed from one plateau to the next and draws it, in the views and in the editor, with marks that never rely on colour. An element can say what it replaces (<code>replaces</code>), so that a move, a split or a merge is one change and not a removal plus an addition; the editor proposes the matches it finds and writes the hint in one click, and moves an element under another parent without breaking a reference (see <a href="#plateaus-overview">States of an architecture (plateaus)</a>).</p>
 </div>
 <div class="paragraph">
 <div class="title">Unraveling Clarity Through Facets</div>
@@ -1050,10 +1053,10 @@ the plateaus `as-is` and `to-be` share the path `plateaus/10_as-is`: each platea
 <p>Two commands show the comparison: <code>archicode diff</code> writes the table of changes (see <a href="#diff">Compare plateaus</a>), and <code>archicode views generate</code> draws the views of the comparison (see <a href="#generate-views">Generate views</a>).</p>
 </div>
 <div class="paragraph">
-<p><strong>What counts as a change.</strong> An element is the same element in both plateaus when it has the same reference (a reference includes the path of the element, so an element that moves under another parent is a removed one and a new one). It is <em>new</em> when its reference is only in the plateau, <em>removed</em> when it is only in the baseline, and <em>changed</em> when something differs in the element itself or in the relationships it declares: its kind, its name, its description, its qualifiers, its tags (the <code>rendering-*</code> ones do not count), its deployment (<code>applications</code> and <code>uses</code>), or a relationship that was added, removed or changed. A child is judged on its own: a system whose only change is a new container is not <em>changed</em>, it <em>contains changes</em>. The table lists what changed in each element (<code>natures</code>) and tells a change of wording apart: an element whose description is the only thing that differs is <em>wording only</em>. A relationship is identified by its source, its destination and its label; it is <em>new</em> or <em>removed</em> when it is only on one side, and <em>changed</em> when its qualifiers, its tags or, when it is the only one between the two elements, its label differ. The order of a list and the order of the keys of a file are no change.</p>
+<p><strong>What counts as a change.</strong> An element is the same element in both plateaus when it has the same reference (a reference includes the path of the element, so an element that moves under another parent is a removed one and a new one, unless the new one says that it replaces the old one, see <a href="#plateau-replaces">Saying what an element replaces</a>). It is <em>new</em> when its reference is only in the plateau, <em>removed</em> when it is only in the baseline, and <em>changed</em> when something differs in the element itself or in the relationships it declares: its kind, its name, its description, its qualifiers, its tags (the <code>rendering-*</code> ones do not count), its deployment (<code>applications</code> and <code>uses</code>), or a relationship that was added, removed or changed. A child is judged on its own: a system whose only change is a new container is not <em>changed</em>, it <em>contains changes</em>. The table lists what changed in each element (<code>natures</code>) and tells a change of wording apart: an element whose description is the only thing that differs is <em>wording only</em>. A relationship is identified by its source, its destination and its label; it is <em>new</em> or <em>removed</em> when it is only on one side, and <em>changed</em> when its qualifiers, its tags or, when it is the only one between the two elements, its label differ. The order of a list and the order of the keys of a file are no change.</p>
 </div>
 <div class="paragraph">
-<p><strong>How the views say it.</strong> The views of a comparison draw the union of the two plateaus (what was removed is drawn too), and every box and every link says its state with the same four marks, never by colour alone:</p>
+<p><strong>How the views say it.</strong> The views of a comparison draw the union of the two plateaus (what was removed is drawn too), and every box and every link says its state with the same marks, never by colour alone (the last three are for an element that says what it replaces, see <a href="#plateau-replaces">Saying what an element replaces</a>, and are only in the legend of a view that has one):</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1095,13 +1098,34 @@ the plateaus `as-is` and `to-be` share the path `plateaus/10_as-is`: each platea
 <td class="tableblock halign-left valign-top"><p class="tableblock">thin dashed outline</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">moved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>→</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">long dashes, blue; the title ends with <code>(from &lt;the reference it replaces&gt;)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">split</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>⋔</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">medium dashes, purple; the title ends with <code>(from &lt;the reference it replaces&gt;)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">merged</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>⊕</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">short dashes, light blue; the title ends with <code>(from &lt;the references it replaces&gt;)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
 <p>The mark is written in front of the title of the box and of the label of the link. A box that did not change is drawn as it always was, and so is a link. <code>contains changes</code> is for a box that did not change by itself and holds something that did (a system whose container is new, for instance): the reader can see where to look inside. A link between two boxes that are drawn as one group (a view draws the relationships of the elements below it as one link) is new when all of them are, removed when all of them are, changed when they are mixed, and unchanged when none changed. A view that says at least one change has a legend that explains the marks.</p>
 </div>
 <div class="paragraph">
-<p>The four states are stereotypes of the boxes (<code>new</code>, <code>changed</code>, <code>removed</code> and <code>contains-changes</code>), so a <code>styles.by-tags</code> entry of the same name gives them your own look, as it does for every stereotype (see <a href="#stereotypes-and-styles">Stereotypes and styles</a>). ArchiCode brings a default style for a state only when the workspace has none, and the style you write wins property by property: write <code>new</code> with a <code>background-color</code> and the box keeps the thick outline of the default.</p>
+<p>The states are stereotypes of the boxes (<code>new</code>, <code>changed</code>, <code>removed</code>, <code>contains-changes</code>, <code>moved</code>, <code>split</code> and <code>merged</code>), so a <code>styles.by-tags</code> entry of the same name gives them your own look, as it does for every stereotype (see <a href="#stereotypes-and-styles">Stereotypes and styles</a>). ArchiCode brings a default style for a state only when the workspace has none, and the style you write wins property by property: write <code>new</code> with a <code>background-color</code> and the box keeps the thick outline of the default.</p>
+</div>
+<div class="paragraph">
+<p>The default look of a state belongs to the boxes that <em>have</em> the state, computed: it is never given to a box because of a word it carries. If you wrote <code>rendering-stereotypes: "new"</code> (or <code>changed</code>, <code>removed</code>, <code>contains-changes</code>, <code>moved</code>, <code>split</code>, <code>merged</code>) on an element that does not have that state, the box is drawn with your own <code>styles</code> entry named <code>new</code> and nothing else, no thick outline, no mark, no struck title, in a view that has something new as in one that has not, and the command says so (see <a href="#plateau-state-tags">[plateau-state-tags]</a>).</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1114,7 +1138,7 @@ the plateaus `as-is` and `to-be` share the path `plateaus/10_as-is`: each platea
 </div>
 </div>
 <div class="paragraph">
-<p>A facet can read what changed: in a comparison, every element and every relationship has a <code>change</code> (<code>none</code>, <code>new</code>, <code>changed</code> or <code>removed</code>) that a JSONPath selects like any other field, such as <code>$..relationships[?(@.change == 'removed')]</code>. The other facets work as they always did.</p>
+<p>A facet can read what changed: in a comparison, every element and every relationship has a <code>change</code> (<code>none</code>, <code>new</code>, <code>changed</code> or <code>removed</code>, and, for an element that says what it replaces, <code>moved</code>, <code>split</code> or <code>merged</code>) that a JSONPath selects like any other field, such as <code>$..relationships[?(@.change == 'removed')]</code>. The other facets work as they always did.</p>
 </div>
 </div>
 </div>
@@ -1796,6 +1820,9 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <div class="paragraph">
 <p>A plateau is a <em>complete</em> folder of manifests: the whole architecture in that state, not a list of differences. You edit the plateau of the future as you would edit any workspace, and nothing has to be kept in sync by hand. The difference between two plateaus is <em>computed</em> from the references of the elements and the relationships, never typed: ArchiCode tells what is new, what changed and what was removed, and the views, the table of changes and the editor all draw the same answer.</p>
 </div>
+<div class="paragraph">
+<p>One thing cannot be computed: that two elements are the same thing. An element that moves under another parent, or is renamed, has another reference, so it reads as one removed element and one new one. ArchiCode never guesses it; you say it, on the element of the more recent plateau, with <code>replaces</code>, and the comparison then reads a <em>moved</em>, <em>split</em> or <em>merged</em> element. It proposes the pairs that look like one thing said twice (the <em>candidates</em>) and applies none. The editor writes the hint when you accept a candidate, and when you move an element under another parent.</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_the_layout">The layout</h3>
@@ -1809,10 +1836,14 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
     - plateaus/
         - 10_as-is/ <b class="conum">(1)</b>
             - customer.yaml
+            - inventory.yaml
             - shop.yaml
+            - warehouse.yaml
         - 20_to-be/ <b class="conum">(2)</b>
             - customer.yaml
+            - inventory.yaml
             - shop.yaml
+            - warehouse.yaml
     - workspace.yaml <b class="conum">(3)</b></pre>
 </div>
 </div>
@@ -1825,7 +1856,7 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <p>The manifests of the second one: the whole architecture, as it should be.</p>
 </li>
 <li>
-<p>Lists the plateaus in <code>settings.plateaus</code>. This is the example <code>domain_plateaus</code> of this manual.</p>
+<p>Lists the plateaus in <code>settings.plateaus</code>. This is the example <code>domain_plateaus</code> of this manual (<code>src/doc/examples/domain_plateaus</code> in the source repository).</p>
 </li>
 </ol>
 </div>
@@ -1857,9 +1888,9 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 </div>
 </div>
 <div class="sect2">
-<h3 id="_the_four_states">The four states</h3>
+<h3 id="_the_states">The states</h3>
 <div class="paragraph">
-<p>What a plateau changes is told with four states, computed, on elements and on relationships (the fourth is for boxes only):</p>
+<p>What a plateau changes is told with four states, computed, on elements and on relationships (the fourth is for boxes only), and three more for the elements that say what they replace (see <a href="#plateau-replaces">Saying what an element replaces</a>):</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1895,19 +1926,141 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>±</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">the element did not change by itself, but something inside it did</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>moved</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>→</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the element says that it replaces one element of the baseline (elements only)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>split</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>⋔</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the element says that it replaces an element that another element replaces too (elements only)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>merged</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>⊕</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the element says that it replaces several elements (elements only)</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
 <p>Each state has a mark, a line style and a legend, so that nothing relies on colour: see <a href="#plateau-comparison">Comparing two plateaus</a> for the command line and <a href="#editor-compare">Comparing two plateaus in the editor</a> for the editor.</p>
 </div>
+<div id="plateau-state-tags" class="paragraph">
+<p><strong>The states and the tags you wrote by hand.</strong> The states are stereotypes of the boxes, the same ones that a <code>styles.by-tags</code> entry or a <code>rendering-stereotypes</code> tag names (see <a href="#stereotypes-and-styles">Stereotypes and styles</a>). If you used to mark the boxes of a target by hand with <code>rendering-stereotypes: "new"</code> or <code>"changed"</code>, nothing breaks, and the command line and the editor draw such a tag the same way. One rule decides it: <em>a box gets the default look of a state (its mark, its outline, its tint, its struck title) only when the comparison computes that state for it.</em></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A word you wrote that is the state the box has (a <code>new</code> tag on a new element) is one stereotype: the computed state is not written twice, it is the <em>last</em> stereotype of the box, so its look overrides the look of the other stereotypes as a later stereotype always does (the generated <code>.puml</code> writes the stereotypes in reverse, so it reads first there). Your <code>styles.by-tags</code> entry named like the state wins, property by property, over the default look of ArchiCode: a <code>new</code> with only a <code>background-color</code> keeps the thick outline of the default.</p>
+</li>
+<li>
+<p>A word you wrote that is <em>not</em> the state the box has (a <code>new</code> tag on an element that did not change, a <code>new</code> tag on an element that changed, any state word when no comparison is made) is only your stereotype (a <code>.puml</code> of a comparison writes it <code>written-new</code>, so that the default look of <code>new</code> cannot reach it). The box has the style you gave to that name in <code>styles.by-tags</code> or <code>styles.by-qualifiers</code>, if any, and nothing of the default look, whatever else the view shows. On an element that changed, the computed state, which is last, has the last word over it.</p>
+</li>
+<li>
+<p>The tags themselves are not read by the comparison (a <code>rendering-*</code> tag is never a change), so you can drop them when you like: the computed states say the same, and say it only where it is true.</p>
+</li>
+</ul>
+</div>
 <div class="paragraph">
-<p><strong>The states and the tags you wrote by hand.</strong> The four states are stereotypes of the boxes, the same ones that a <code>styles.by-tags</code> entry or a <code>rendering-stereotypes</code> tag names (see <a href="#stereotypes-and-styles">Stereotypes and styles</a>). If you used to mark the boxes of a target by hand with <code>rendering-stereotypes: "new"</code> or <code>"changed"</code>, nothing breaks. A tag is a stereotype like another and keeps its style: the computed state of the same name is not written twice, and a state is always the <em>last</em> stereotype of a box, so its look overrides the look of the other stereotypes as a later stereotype always does. Your <code>styles.by-tags</code> entry named like a state wins, property by property, over the default look of ArchiCode: a <code>new</code> with only a <code>background-color</code> keeps the thick outline of the default. The tags themselves are not read by the comparison (a <code>rendering-*</code> tag is never a change), so you can drop them when you like: the computed states say the same, and say it only where it is true. One small difference remains between the tools. On an element that did not change, the editor leaves your hand-written <code>new</code> as you wrote it, while the command line gives it the default look of <code>new</code> in a view that has something new, because the look is a style of the stereotype.</p>
+<p>The command line tells you where a word and the comparison disagree, one line per element and word, on the error output (not in the log, which hides warnings by default), and the files it writes and the table it prints are the same whether you read the lines or not. With the tag <code>rendering-stereotypes: "new"</code> added to <code>customer</code> in the example, which did not change, <code>archicode diff</code> says:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>warning: the element `customer` carries `new` (`rendering-stereotypes` tag), but the comparison of `to-be` with `as-is` finds that it did not change and holds no change: it is drawn with your own `styles` entry named `new` (if any) and not with the default look of the state. The comparison computes the states, so the word can be dropped.</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>archicode diff</code> and <code>archicode views generate --baseline</code> check the plateau they compare. <code>archicode views generate</code> of a plateau that is not compared says that a state word is a state of a comparison and that nothing is compared here. A workspace without <code>settings.plateaus</code> has no comparison to disagree with, and is never told anything: there the words are your own stereotypes, as they always were. A word that agrees with the comparison is never reported. The editor draws the same: a hand-written word is a badge and a style, and the look of a state only where the state is computed.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="plateau-replaces">Saying what an element replaces</h3>
+<div class="paragraph">
+<p>A comparison finds an element by its reference. An element that moves under another parent, or is renamed, has another reference: the comparison reads it as one removed element and one new one, with nothing that links them. ArchiCode never guesses that two elements are the same thing; <em>you</em> say it, on the element of the more recent plateau, with the key <code>replaces</code>: a list of the full references, in the baseline, of what the element replaces. It is the same hint as the <code>moved</code> block of Terraform. The editor can write it for you when it moves an element (see <a href="#editor-move">Moving an element under another parent</a>).</p>
+</div>
+<div class="listingblock">
+<div class="title">The container <code>inventory</code> in the plateau <code>to-be</code> (<code>plateaus/20_to-be/inventory.yaml</code> of the example <code>domain_plateaus</code>)</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">header</span>:
+  <span class="key">kind</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">archicode.morin.io/container</span><span class="delimiter">&quot;</span></span>
+  <span class="key">version</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span>
+  <span class="key">parent</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">warehouse</span><span class="delimiter">&quot;</span></span>
+<span class="key">content</span>:
+  <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">inventory</span><span class="delimiter">&quot;</span></span>
+  <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Inventory</span><span class="delimiter">&quot;</span></span>
+  <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Counts the books on the shelves.</span><span class="delimiter">&quot;</span></span>
+  <span class="key">replaces</span>:
+    - <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.inventory</span><span class="delimiter">&quot;</span></span> <span class="comment"># the inventory moved from the shop to the warehouse</span>
+  <span class="key">elements</span>:
+    - <span class="string"><span class="content">kind: &quot;component&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">levels</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Levels</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">The count of each book.</span><span class="delimiter">&quot;</span></span>
+      <span class="key">replaces</span>:
+        - <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.inventory.levels</span><span class="delimiter">&quot;</span></span> <span class="comment"># what is inside a moved element says it too</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The inventory used to be a container of the system <code>shop</code> and is now one of the system <code>warehouse</code>, so its reference went from <code>shop.inventory</code> to <code>warehouse.inventory</code>. It says what it replaces, and so does the component <code>levels</code> inside it.</p>
+</div>
+<div class="paragraph">
+<p>The key is optional, and a tool that does not know it ignores it. The comparison turns the elements that say what they replace into three states, and the replaced elements are no longer <em>removed</em>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>moved</strong>: the element replaces one element, which no other element replaces. It is in another place or has another name, and it is the same thing. Whatever else it changes, it keeps it: a name, a description and the relationships it declares are compared with the element it replaces, and the table says which (the <code>natures</code>), next to <code>moved</code>. A moved element is counted as <code>moved</code>, not also as <code>changed</code>.</p>
+</li>
+<li>
+<p><strong>split</strong>: several elements replace the same element (<code>shop.orders</code> became <code>shop.cart</code> and <code>shop.checkout</code>). Each of them is <code>split</code>, and the table names the other ones.</p>
+</li>
+<li>
+<p><strong>merged</strong>: the element replaces two elements or more (<code>shop.billing</code> replaces <code>shop.invoices</code> and <code>shop.receipts</code>), or an element that is in the baseline and in the plateau at the same time. When an element is both split and merged, it is <code>merged</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>What the replaced elements held is not carried by itself: a container that moved takes none of its children with it, so each child needs its own <code>replaces</code> (<code>levels</code> above), or it is read as removed (the box of the replaced container is then drawn as the place it was removed from, with the words "replaced by"). What points at a replaced element follows it when exactly one element replaces it: a relationship to <code>shop.till</code> that now points at <code>stock.till</code> is not a change of the element that declares it, and nor is a node that deployed <code>shop.till</code> and now deploys <code>stock.till</code>. What points at a split element is not rewritten, because which half would own it is a guess.</p>
+</div>
+<div id="plateau-candidates" class="paragraph">
+<p><strong>Candidates.</strong> When an element is only in the baseline and another one of the same kind and the same layer is only in the plateau, and nothing replaces or is replaced by either of them, the comparison may find that they look like one thing that was said twice: the same name (ignoring the case), a description with most of its words in common, or the only two elements of that kind under the same parent. It lists them as candidates and it never applies one. To accept one, write <code>replaces</code> on the new element; to refuse it, do nothing. <code>archicode diff</code>, <code>gap.md</code> and <code>gap.json</code> list the candidates once the plateau uses <code>replaces</code> (a workspace that does not is written as it always was), each with its reasons. The candidates are not drawn in the views.</p>
+</div>
+<div id="plateau-replaces-warnings" class="paragraph">
+<p><strong>Warnings.</strong> The comparison does not fail on a <code>replaces</code> that it cannot use: it ignores it, and says so on the error output of <code>archicode diff</code> and of <code>archicode views generate --baseline</code> (not in the log, which hides warnings by default), one line per entry (the example has none; the sample below is from the invented warehouse that <a href="#diff">Compare plateaus</a> uses):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a reference that is not an element of the baseline (you may be comparing with another baseline than the one you wrote it for);</p>
+</li>
+<li>
+<p>a reference that is still an element of the plateau (what is there is not replaced, and an element cannot replace itself);</p>
+</li>
+<li>
+<p>an entry that is not a reference (the kernel ignores it).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A reference listed twice counts once, and the command line says nothing of it. A <code>replaces</code> that is not a list (<code>replaces: "shop.mailer"</code>) is not a warning from the command line: the reader of the manifests refuses it and the command stops, without naming the file (the editor refuses it with a message).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>warning: replaces of shop.report-b (application layer): shop.nowhere is not an element of the base plateau, ignored</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>replaces</code> is read from the elements of the plateau that is compared; a <code>replaces</code> on an element of the baseline is not read. A plateau that is not compared does not use it.</p>
+</div>
+<div class="paragraph">
+<p><strong>What the command line shows.</strong> <code>archicode diff</code> has the three states in its table, with the counts of <code>moved</code>, <code>split</code> and <code>merged</code> on a line of their own (<code>replacing</code>), and says in the details of each row what the element replaces (see <a href="#diff">Compare plateaus</a>). The views of the comparison draw them with the marks above (see <a href="#plateau-comparison">Comparing two plateaus</a>). The editor draws them too, lists the candidates, and writes <code>replaces</code> for you (see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>).</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_a_tutorial_from_one_workspace_to_a_review_of_the_changes">A tutorial: from one workspace to a review of the changes</h3>
 <div class="paragraph">
-<p>The tutorial builds the example <code>domain_plateaus</code> of this manual, an invented bookshop. Its commands run in the folder of <code>workspace.yaml</code>; the output quoted is the one the commands print.</p>
+<p>The tutorial builds the example <code>domain_plateaus</code> of this manual, an invented bookshop, from the first plateau to a review of the changes in the editor, including the things that change shape. Its commands run in the folder of <code>workspace.yaml</code>; the output quoted is the one the commands print.</p>
 </div>
 <div class="paragraph">
 <p><strong>Step 1. Start from the architecture you have.</strong> An existing workspace is your first plateau. Create the folder of the plateau under the folder of <code>workspace.yaml</code> and move the manifests in it. The files that were in the folder named by <code>manifests.paths</code> are the ones to move.</p>
@@ -1956,7 +2109,7 @@ mv manifests/* plateaus/10_as-is/</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The folder <code>plateaus/20_to-be</code> is a copy of the first one. Edit it as the architecture should be, with an editor or in the editor of ArchiCode: in the example, <code>shop.payments</code> is added, <code>shop.mailer</code> is removed, the relationships of <code>shop.web</code> change, a description is reworded.</p>
+<p>The folder <code>plateaus/20_to-be</code> is a copy of the first one. Edit it as the architecture should be, with an editor or in the editor of ArchiCode. In the example, <code>shop.payments</code> is added, <code>shop.mailer</code> is removed, <code>shop.web</code> gets the qualifier <code>React</code> and its relationships change, a description is reworded, and four things change shape: the orders are split in two, the invoices and the receipts become one, the reviews are rewritten as the ratings, and the inventory moves from the shop to another system, the warehouse. The folders hold two more files per plateau, <code>inventory.yaml</code> and <code>warehouse.yaml</code>, shown in the next step.</p>
 </div>
 <div class="listingblock">
 <div class="title"><code>plateaus/10_as-is/shop.yaml</code></div>
@@ -1983,7 +2136,23 @@ mv manifests/* plateaus/10_as-is/</pre>
       <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">The books on sale.</span><span class="delimiter">&quot;</span></span>
     - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
       <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">mailer</span><span class="delimiter">&quot;</span></span>
-      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Mailer</span><span class="delimiter">&quot;</span></span></code></pre>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Mailer</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">orders</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Orders</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Takes the basket and the order of a customer.</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">invoices</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Invoices</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Writes an invoice for each order.</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">receipts</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Receipts</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Sends a receipt for each payment.</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">reviews</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Reviews</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Readers rate the books they bought.</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="listingblock">
@@ -2015,14 +2184,81 @@ mv manifests/* plateaus/10_as-is/</pre>
       <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">payments</span><span class="delimiter">&quot;</span></span>
       <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Payments</span><span class="delimiter">&quot;</span></span>
       <span class="key">tags</span>:
-        <span class="key">rendering-stereotypes</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">new</span><span class="delimiter">&quot;</span></span></code></pre>
+        <span class="key">rendering-stereotypes</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">new</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">cart</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Cart</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Keeps the basket of a customer.</span><span class="delimiter">&quot;</span></span>
+      <span class="key">replaces</span>:
+        - <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.orders</span><span class="delimiter">&quot;</span></span> <span class="comment"># the orders are split in two</span>
+    - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">checkout</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Checkout</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Turns a basket into an order.</span><span class="delimiter">&quot;</span></span>
+      <span class="key">replaces</span>:
+        - <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.orders</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">billing</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Billing</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Writes the invoice and sends the receipt.</span><span class="delimiter">&quot;</span></span>
+      <span class="key">replaces</span>:
+        - <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.invoices</span><span class="delimiter">&quot;</span></span> <span class="comment"># the invoices and the receipts are merged</span>
+        - <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.receipts</span><span class="delimiter">&quot;</span></span>
+    - <span class="string"><span class="content">kind: &quot;container&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ratings</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Ratings</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Readers rate the books they have bought.</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Two things to see in <code>plateaus/20_to-be/shop.yaml</code>. The wording of the description of <code>shop.catalog</code> is the only change of that element. And <code>shop.payments</code> still carries the tag <code>rendering-stereotypes: "new"</code> that this author wrote by hand: it works as before, and the comparison does not need it.</p>
+<p>Two things to see in <code>plateaus/20_to-be/shop.yaml</code> before the next step. The wording of the description of <code>shop.catalog</code> is the only change of that element. And <code>shop.payments</code> still carries the tag <code>rendering-stereotypes: "new"</code> that this author wrote by hand: it works as before, and the comparison does not need it. In the comparison its word agrees with the state <code>new</code>, so nothing is said; when you draw the plateau alone (<code>archicode views generate</code> without <code>--baseline</code>), the command says on its error output that <code>new</code> is a state of a comparison and that nothing is compared there (see <a href="#plateau-state-tags">[plateau-state-tags]</a>).</p>
 </div>
 <div class="paragraph">
-<p><strong>Step 4. Ask what changed.</strong> <code>archicode diff</code> compares the plateau that is drawn by default, the last one, with the plateau before it:</p>
+<p><strong>Step 4. Say what moved, was split or merged.</strong> Compare the two folders. Read by their references alone, <code>shop.orders</code>, <code>shop.invoices</code>, <code>shop.receipts</code>, <code>shop.reviews</code> and <code>shop.inventory</code> (with its child) are gone, and <code>cart</code>, <code>checkout</code>, <code>billing</code>, <code>ratings</code> and <code>warehouse.inventory</code> (with its child) are new, with nothing that links them. Some of them are the same things, and only you know which, so you say it with <code>replaces</code> on the elements of the more recent plateau (see <a href="#plateau-replaces">Saying what an element replaces</a>):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>shop.orders</code> was <strong>split</strong>: <code>cart</code> and <code>checkout</code> both say <code>replaces: ["shop.orders"]</code>.</p>
+</li>
+<li>
+<p><code>shop.invoices</code> and <code>shop.receipts</code> were <strong>merged</strong>: <code>billing</code> lists both in its <code>replaces</code>.</p>
+</li>
+<li>
+<p><code>shop.inventory</code> <strong>moved</strong> to the warehouse. It is a manifest of its own, with the <code>parent</code> of its header (which is also what lets the editor move it from one file to another, see <a href="#editor-move">Moving an element under another parent</a>), and <code>plateaus/20_to-be/inventory.yaml</code> says <code>parent: "warehouse"</code> and <code>replaces</code> on the container and on its child <code>levels</code>: a container that moves takes none of its children by itself.</p>
+</li>
+<li>
+<p><code>shop.ratings</code> says nothing, on purpose: it will show a candidate in step 6.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title"><code>plateaus/20_to-be/inventory.yaml</code></div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span class="key">header</span>:
+  <span class="key">kind</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">archicode.morin.io/container</span><span class="delimiter">&quot;</span></span>
+  <span class="key">version</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span>
+  <span class="key">parent</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">warehouse</span><span class="delimiter">&quot;</span></span>
+<span class="key">content</span>:
+  <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">inventory</span><span class="delimiter">&quot;</span></span>
+  <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Inventory</span><span class="delimiter">&quot;</span></span>
+  <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Counts the books on the shelves.</span><span class="delimiter">&quot;</span></span>
+  <span class="key">replaces</span>:
+    - <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.inventory</span><span class="delimiter">&quot;</span></span> <span class="comment"># the inventory moved from the shop to the warehouse</span>
+  <span class="key">elements</span>:
+    - <span class="string"><span class="content">kind: &quot;component&quot;</span></span>
+      <span class="key">id</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">levels</span><span class="delimiter">&quot;</span></span>
+      <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Levels</span><span class="delimiter">&quot;</span></span>
+      <span class="key">description</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">The count of each book.</span><span class="delimiter">&quot;</span></span>
+      <span class="key">replaces</span>:
+        - <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.inventory.levels</span><span class="delimiter">&quot;</span></span> <span class="comment"># what is inside a moved element says it too</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In <code>plateaus/10_as-is</code>, <code>inventory.yaml</code> has the same content with <code>parent: "shop"</code> and no <code>replaces</code>, and <code>warehouse.yaml</code> holds the system <code>warehouse</code> with its container <code>picking</code>. What points at a moved element follows it. In <code>plateaus/10_as-is/warehouse.yaml</code>, <code>picking</code> counts with <code>shop.inventory</code>; in <code>plateaus/20_to-be/warehouse.yaml</code> it counts with <code>warehouse.inventory</code>, and the comparison does not read that as a change of <code>picking</code>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Step 5. Ask what changed.</strong> <code>archicode diff</code> compares the plateau that is drawn by default, the last one, with the plateau before it:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2032,25 +2268,40 @@ mv manifests/* plateaus/10_as-is/</pre>
 <div class="listingblock">
 <div class="content">
 <pre>comparing to-be (To be) with as-is (As is)
-elements      +1 ~2 -1
+elements      +2 ~2 -2
+replacing     2 moved, 2 split, 1 merged
 relationships +1 ~1 -1
 wording only  1 of the 2 changed elements
 
 CHANGE   THING         LAYER        REFERENCE                                   NATURES                                                                     DETAILS
+merged   element       application  shop.billing                                -                                                                           from shop.invoices, shop.receipts; name: "Billing"
+split    element       application  shop.cart                                   -                                                                           from shop.orders; name: "Cart"; split with shop.checkout
 changed  element       application  shop.catalog                                description (wording only)                                                  description: "The books on sale." -&gt; "The books that are on sale."
+split    element       application  shop.checkout                               -                                                                           from shop.orders; name: "Checkout"; split with shop.cart
 removed  element       application  shop.mailer                                 -                                                                           name: "Mailer"
 new      element       application  shop.payments                               -                                                                           name: "Payments"
+new      element       application  shop.ratings                                -                                                                           name: "Ratings"
+removed  element       application  shop.reviews                                -                                                                           name: "Reviews"
 changed  element       application  shop.web                                    qualifiers,relationships-added,relationships-removed,relationships-changed  qualifiers: +React
+moved    element       application  warehouse.inventory                         -                                                                           from shop.inventory; name: "Inventory"
+moved    element       application  warehouse.inventory.levels                  -                                                                           from shop.inventory.levels; name: "Levels"
 changed  relationship  application  shop.web -&gt; shop.catalog (browses)          label                                                                       label: "reads" -&gt; "browses"
 removed  relationship  application  shop.web -&gt; shop.mailer (sends mails with)  -
-new      relationship  application  shop.web -&gt; shop.payments (pays with)       -</pre>
+new      relationship  application  shop.web -&gt; shop.payments (pays with)       -
+
+candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)
+LAYER        FROM          TO            REASONS
+application  shop.reviews  shop.ratings  description</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Two elements changed, one only by its wording, and the table says in each row what changed (see <a href="#diff">Compare plateaus</a> for the options and the other formats). Nothing is written, and a difference is not an error.</p>
+<p>The NATURES column says what changed in an element that changed (here <code>qualifiers</code> and the relationships of <code>shop.web</code>, <code>description (wording only)</code> for the catalog), and the DETAILS column says from what and to what. Two elements changed, one only by its wording, and two moved, two were split and one merged: the table says in each row what changed or where the element came from (see <a href="#diff">Compare plateaus</a> for the options and the other formats). The replaced elements have no row and are not counted as removed, and <code>shop.mailer</code> and <code>shop.reviews</code> are, because nothing replaces them. Nothing is written, and a difference is not an error.</p>
 </div>
 <div class="paragraph">
-<p><strong>Step 5. Draw the comparison.</strong> <code>views generate</code> writes the views of a plateau, and, with <code>--baseline</code>, the views of the comparison next to them:</p>
+<p><strong>Step 6. Decide about the candidates.</strong> The last lines of the output are a candidate: <code>shop.reviews</code> is removed, <code>shop.ratings</code> is new, they are of the same kind in the same layer and their descriptions share most of their words, so the comparison thinks they may be one thing said twice (see <a href="#plateau-candidates">[plateau-candidates]</a>). It never applies a candidate. If it is the same thing, write <code>replaces: ["shop.reviews"]</code> on <code>ratings</code>: <code>ratings</code> becomes a moved element (<code>moved</code>, natures <code>name,description</code>, <code>from shop.reviews</code>), the counts read <code>elements +1 ~2 -1</code> and <code>replacing 3 moved, 2 split, 1 merged</code>, and the table lists a new, weaker candidate, <code>shop.mailer</code> to <code>shop.payments</code> with the reason <code>parent</code>: with the reviews and the ratings settled they are the only removed and the only new container of the shop. They are not the same thing, and the answer is to do nothing. If the reviews and the ratings are not the same thing either, do nothing, as this example does, and the output stays as it is. The editor writes the line for you (step 8).</p>
+</div>
+<div class="paragraph">
+<p><strong>Step 7. Draw the comparison.</strong> <code>views generate</code> writes the views of a plateau, and, with <code>--baseline</code>, the views of the comparison next to them:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2071,7 +2322,7 @@ plantuml</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>(The <code>ls</code> shows what a clean folder shows; a folder that already had <code>manifests</code>, <code>views</code> or <code>views-as-is</code> still has them: they are not removed.) <code>views-to-be</code> holds the views of the plateau, as for any workspace. <code>views-to-be-vs-as-is</code> holds the views of the comparison, and <code>gap.md</code> and <code>gap.json</code>, the table of changes of step 4 in a file that a pull request can carry. Every box and every link of these views says its state with a mark and a line style, and the views that have a change have a legend. The overview of the container <code>shop.web</code>:</p>
+<p>(The <code>ls</code> shows what a clean folder shows; a folder that already had <code>manifests</code>, <code>views</code> or <code>views-as-is</code> still has them: they are not removed.) <code>views-to-be</code> holds the views of the plateau, as for any workspace. <code>views-to-be-vs-as-is</code> holds the views of the comparison, and <code>gap.md</code> and <code>gap.json</code>, the table of changes of step 5 in a file that a pull request can carry. Every box and every link of these views that changed says its state with a mark and a line style, and the views that have a change have a legend. The overview of the container <code>shop.web</code>:</p>
 </div>
 <div class="listingblock">
 <div class="title">The overview of <code>shop.web</code> in <code>views-to-be-vs-as-is</code></div>
@@ -2363,7 +2614,582 @@ FontColor: #7F7F7F
 <p><code>shop.web</code> and <code>shop.catalog</code> are changed (dotted outline, <code>~</code>), <code>shop.payments</code> is new (thick outline, <code>`), `shop.mailer` is removed (dashed, struck title, `−`), and the system `shop`, which did not change by itself, _contains changes_ (`±`). The links say it the same way: ` pays with</code> is new, <code>− sends mails with</code> is removed, and the label of <code>shop.web</code> to <code>shop.catalog</code> changed, from <code>reads</code> to <code>browses</code>.</p>
 </div>
 <div class="paragraph">
-<p><strong>Step 6. Look at it in the editor.</strong> <code>archicode editor serve</code> opens the folder in your browser (see <a href="#serve-the-editor">Serve the editor</a>):</p>
+<p>The detailed view of the system <code>shop</code> draws what was split and merged. The titles say where the boxes came from, <code>(from shop.orders)</code> and <code>(from shop.invoices, shop.receipts)</code>, and the legend has one line for each of the two states, with dashes that tell them from the others. <code>shop.ratings</code> is new and <code>shop.reviews</code> removed: the candidate is not drawn.</p>
+</div>
+<div class="listingblock">
+<div class="title">The detailed view of <code>shop</code> in <code>views-to-be-vs-as-is</code></div>
+<div class="content">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml shop-detailed
+title System - Shop - Detailed View
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+person customer &lt;&lt;person&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+Customer
+[person]
+]
+rectangle shop as "&lt;U+00B1&gt; Shop\n[system]" &lt;&lt;contains-changes&gt;&gt; &lt;&lt;composite&gt;&gt; {
+rectangle shop.billing &lt;&lt;merged&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+&lt;U+2295&gt; Billing (from shop.invoices, shop.receipts)
+[container]
+Writes the invoice and sends the receipt.
+]
+rectangle shop.cart &lt;&lt;split&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+&lt;U+22D4&gt; Cart (from shop.orders)
+[container]
+Keeps the basket of a customer.
+]
+rectangle shop.catalog &lt;&lt;changed&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+&lt;U+007E&gt; Catalog
+[container]
+The books that are on sale.
+]
+rectangle shop.checkout &lt;&lt;split&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+&lt;U+22D4&gt; Checkout (from shop.orders)
+[container]
+Turns a basket into an order.
+]
+rectangle shop.mailer &lt;&lt;removed&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+&lt;U+2212&gt; --Mailer--
+[container]
+]
+rectangle shop.payments &lt;&lt;new&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
++ Payments
+[container]
+]
+rectangle shop.ratings &lt;&lt;new&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
++ Ratings
+[container]
+Readers rate the books they have bought.
+]
+rectangle shop.reviews &lt;&lt;removed&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+&lt;U+2212&gt; --Reviews--
+[container]
+Readers rate the books they bought.
+]
+rectangle shop.web &lt;&lt;changed&gt;&gt; &lt;&lt;React&gt;&gt; &lt;&lt;container&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+&lt;U+007E&gt; Web site
+[container: React]
+The front of the shop.
+]
+}
+customer --&gt; shop.web : orders on
+shop.web -[dotted,thickness=2,#E69F00]-&gt; shop.catalog : **&lt;U+007E&gt;** browses
+shop.web -[dashed,#7F7F7F]-&gt; shop.mailer : **&lt;U+2212&gt;** sends mails with
+shop.web -[thickness=3,#009E73]-&gt; shop.payments : **+** pays with
+legend right
+**To be** compared with **As is**
+|= Mark |= Box |= Link |
+| **+** | new: thick solid outline | new: thick solid line |
+| **&lt;U+007E&gt;** | changed: dotted outline | changed: dotted line |
+| **&lt;U+2212&gt;** | removed: dashed grey outline, struck title | removed: dashed grey line |
+| **&lt;U+00B1&gt;** | something inside changed: thin dashed outline | |
+| **&lt;U+22D4&gt;** | split, one of several that replace one element: medium dashes | |
+| **&lt;U+2295&gt;** | merged, replaces several elements: short dashes | |
+endlegend
+&lt;style&gt;
+.changed {
+actor {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.changed {
+card {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.changed {
+database {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.changed {
+node {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.changed {
+person {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.changed {
+rectangle {
+LineColor: #E69F00
+LineStyle: 2
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+actor {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+card {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+database {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+node {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+person {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+rectangle {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.merged {
+actor {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.merged {
+card {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.merged {
+database {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.merged {
+node {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.merged {
+person {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.merged {
+rectangle {
+LineColor: #56B4E9
+LineStyle: 5
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.new {
+actor {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.new {
+card {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.new {
+database {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.new {
+node {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.new {
+person {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.new {
+rectangle {
+LineColor: #009E73
+LineStyle: 0
+LineThickness: 3
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.removed {
+actor {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.removed {
+card {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.removed {
+database {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.removed {
+node {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.removed {
+person {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.removed {
+rectangle {
+BackgroundColor: #EEEEEE
+LineColor: #7F7F7F
+LineStyle: 7
+LineThickness: 2
+FontColor: #7F7F7F
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.split {
+actor {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.split {
+card {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.split {
+database {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.split {
+node {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.split {
+person {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.split {
+rectangle {
+LineColor: #CC79A7
+LineStyle: 6
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+@enduml</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The inventory is drawn where it is now, in the warehouse, with <code>→</code> and <code>(from shop.inventory)</code>. The view of its child <code>levels</code> shows the container and the component that moved together, each with the reference it came from.</p>
+</div>
+<div class="listingblock">
+<div class="title">The overview of <code>levels</code> in <code>views-to-be-vs-as-is</code></div>
+<div class="content">
+<pre>Failed to generate image: Could not load PlantUML. Either require 'asciidoctor-diagram-plantuml' or specify the location of the PlantUML JAR(s) using the 'DIAGRAM_PLANTUML_CLASSPATH' environment variable. Alternatively a PlantUML binary can be provided (plantuml-native in $PATH).
+@startuml warehouse_inventory_levels-overview
+title Component - Levels - Overview
+skinparam defaultTextAlignment center
+skinparam defaultTextAlignment&lt;&lt;atomic&gt;&gt; center
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+&lt;style&gt;
+.composite {
+BackgroundColor: transparent
+LineColor: darkgray
+LineStyle: 5
+FontStyle: normal
+}
+&lt;/style&gt;
+rectangle warehouse as "&lt;U+00B1&gt; Warehouse\n[system]" &lt;&lt;contains-changes&gt;&gt; &lt;&lt;composite&gt;&gt; {
+rectangle warehouse.inventory as "&lt;U+2192&gt; Inventory (from shop.inventory)\n[container]" &lt;&lt;moved&gt;&gt; &lt;&lt;composite&gt;&gt; {
+rectangle warehouse.inventory.levels &lt;&lt;moved&gt;&gt; &lt;&lt;component&gt;&gt; &lt;&lt;atomic&gt;&gt; [
+&lt;U+2192&gt; Levels (from shop.inventory.levels)
+[component]
+The count of each book.
+]
+}
+}
+legend right
+**To be** compared with **As is**
+|= Mark |= Box |= Link |
+| **+** | new: thick solid outline | new: thick solid line |
+| **&lt;U+007E&gt;** | changed: dotted outline | changed: dotted line |
+| **&lt;U+2212&gt;** | removed: dashed grey outline, struck title | removed: dashed grey line |
+| **&lt;U+00B1&gt;** | something inside changed: thin dashed outline | |
+| **&lt;U+2192&gt;** | moved or renamed, replaces one element: long dashes | |
+endlegend
+&lt;style&gt;
+.contains-changes {
+actor {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+card {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+database {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+node {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+person {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.contains-changes {
+rectangle {
+LineColor: #5B7C99
+LineStyle: 4
+LineThickness: 1
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.moved {
+actor {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.moved {
+card {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.moved {
+database {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.moved {
+node {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.moved {
+person {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+&lt;style&gt;
+.moved {
+rectangle {
+LineColor: #0072B2
+LineStyle: 12
+LineThickness: 2
+}
+}
+&lt;/style&gt;
+@enduml</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Step 8. Look at it in the editor.</strong> <code>archicode editor serve</code> opens the folder in your browser (see <a href="#serve-the-editor">Serve the editor</a>):</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
@@ -2371,16 +3197,22 @@ FontColor: #7F7F7F
 <p>The <strong>Plateau</strong> selector of the header chooses the plateau that is drawn (see <a href="#editor-plateaus">Plateaus in the editor</a>).</p>
 </li>
 <li>
-<p><strong>Compare to</strong> draws it together with another plateau. Choose <strong>Baseline: As is</strong>: the Map shows the four states, and the key under the drawing is the legend (see <a href="#editor-compare">Comparing two plateaus in the editor</a>).</p>
+<p><strong>Compare to</strong> draws it together with another plateau. Choose <strong>Baseline: As is</strong>: the Map shows the states, the new, changed, removed, moved, split and merged boxes, and the key under the drawing is the legend (see <a href="#editor-compare">Comparing two plateaus in the editor</a>).</p>
 </li>
 <li>
-<p>With nothing selected, the panel on the right is the <strong>Changes</strong> panel: the counts, then every element and relationship that changed, new first (see <a href="#editor-changes-panel">The Changes panel</a>). A click on a row shows it on the Map.</p>
+<p>With nothing selected, the panel on the right is the <strong>Changes</strong> panel: the counts (<code>+ 2 new</code>, <code>~ 2 changed</code>, <code>− 2 removed</code>, <code>→ 2 moved</code>, <code>⋔ 2 split</code>, <code>⊕ 1 merged</code> for the elements), then every element and relationship that changed. They are the rows of step 5, in the same words. A click on a row shows it on the Map (see <a href="#editor-changes-panel">The Changes panel</a>).</p>
 </li>
 <li>
-<p>Select a changed element: the block <strong>What changed</strong> gives each property <em>Before</em> and <em>After</em> and its relationships that changed (see <a href="#editor-what-changed">What changed</a>).</p>
+<p>Select a changed element: the block <strong>What changed</strong> gives each property <em>Before</em> and <em>After</em> and its relationships that changed; for a moved, split or merged element it says what it replaces (see <a href="#editor-what-changed">What changed</a>).</p>
 </li>
 <li>
 <p><strong>Changes only</strong> keeps what changed and the boxes needed to place it, and <strong>Hide wording-only changes</strong> sets the rewording aside (see <a href="#editor-changes-only">Changes only and wording-only changes</a>).</p>
+</li>
+<li>
+<p>Under the counts, the <strong>Candidates</strong> section proposes the pair of step 6, <code>Reviews</code> and <code>Ratings</code>, with its reason, <em>close description</em>. <strong>Write replaces</strong> adds <code>replaces: [shop.reviews]</code> to <code>ratings</code> in the manifest of the plateau that is drawn and changes nothing else in the file; <code>ratings</code> is now <code>moved</code>, the counts read <code>→ 3 moved</code>, and <strong>Save all changes</strong> writes the file. <strong>Not related</strong> sets the pair aside until you close the page. With the clear pair resolved, the comparison may propose a weaker one: <code>Mailer</code> and <code>Payments</code> are now the only removed and the only new container under <code>shop</code>, which is the reason it gives. They are not the same thing, so <strong>Not related</strong> is the answer (see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>).</p>
+</li>
+<li>
+<p><strong>Move</strong> puts an element under another parent. Try it on a copy of the example in which you copy <code>plateaus/10_as-is/inventory.yaml</code> and <code>plateaus/10_as-is/warehouse.yaml</code> over the ones of <code>plateaus/20_to-be</code> (so that <code>inventory.yaml</code> says <code>parent: "shop"</code>, has no <code>replaces</code>, and <code>picking</code> counts with <code>shop.inventory</code>): select <code>Inventory</code>, <strong>Edit</strong>, <strong>Move</strong>, choose <code>Warehouse</code> and <strong>Move and write replaces</strong>. The editor changes the <code>parent</code> of the header, rewrites the <code>destination</code> of <code>picking</code>, writes <code>replaces</code> on <code>inventory</code> and on <code>levels</code>, and nothing else; the Changes panel then counts the two moved elements, and <code>archicode diff</code> on the saved folder prints the table of step 5 (see <a href="#editor-move">Moving an element under another parent</a>).</p>
 </li>
 </ol>
 </div>
@@ -2388,7 +3220,7 @@ FontColor: #7F7F7F
 <p>The editor never writes the plateau it compares with.</p>
 </div>
 <div class="paragraph">
-<p><strong>Step 7. Go on.</strong> <code>archicode plateau add</code> again copies the plateau you name with <code>--from</code>, to prepare the state after it. The new plateau is the last of the list, so it becomes the plateau that is drawn by default and the one that <code>archicode diff</code> compares; give it a <code>--baseline</code> when the plateau that comes before it in the list is not the one it should be compared with:</p>
+<p><strong>Step 9. Go on.</strong> <code>archicode plateau add</code> again copies the plateau you name with <code>--from</code>, to prepare the state after it. The new plateau is the last of the list, so it becomes the plateau that is drawn by default and the one that <code>archicode diff</code> compares; give it a <code>--baseline</code> when the plateau that comes before it in the list is not the one it should be compared with:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2412,7 +3244,10 @@ FontColor: #7F7F7F
 </ol>
 </div>
 <div class="paragraph">
-<p>Nothing is to be changed in the manifests themselves: their format is the one it always was.</p>
+<p>Nothing is to be changed in the manifests themselves: their format is the one it always was, with one optional key more, <code>replaces</code> (see <a href="#plateau-replaces">Saying what an element replaces</a>), that an older version of ArchiCode ignores.</p>
+</div>
+<div class="paragraph">
+<p>One more thing changed for a workspace that has plateaus and that marks its boxes by hand with a state word (<code>rendering-stereotypes: "new"</code> or <code>"changed"</code>). A word that agrees with the comparison is drawn as before. A word on an element that does not have that state used to give the box the default look of the state in the views of the command line, and the editor did not: it now gives it nothing in both, and the command says so on its error output (see <a href="#plateau-state-tags">[plateau-state-tags]</a>). The files that a workspace without a state word writes are the same, byte for byte.</p>
 </div>
 </div>
 </div>
@@ -2459,7 +3294,7 @@ FontColor: #7F7F7F
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Details</strong>: the fields, qualifiers, tags and relationships of the element, with <strong>Edit</strong> to change them, and <strong>Delete</strong> (the relationships of other elements that pointed at it are listed first, so that none is left dangling by surprise).</p>
+<p><strong>Details</strong>: the fields, qualifiers, tags and relationships of the element, with <strong>Edit</strong> to change them (change its id and every reference to it follows; <strong>Move</strong>, in the edit form, puts it under another parent, see <a href="#editor-move">Moving an element under another parent</a>), and <strong>Delete</strong> (the relationships of other elements that pointed at it are listed first, so that none is left dangling by surprise).</p>
 </li>
 <li>
 <p><strong>Overview</strong>, <strong>Detailed</strong> and <strong>Deep</strong>: the viewpoints of the same names, drawn live from the model, as the command line generates them. <strong>Detailed</strong> is for an element that can contain others. Clicking a box in a diagram selects that element.</p>
@@ -2643,13 +3478,13 @@ FontColor: #7F7F7F
 <div class="sect2">
 <h3 id="editor-compare">Comparing two plateaus</h3>
 <div class="paragraph">
-<p>With two plateaus or more, the header has a <strong>Compare to</strong> list next to the <strong>Plateau</strong> selector. <strong>Nothing</strong>, the default, draws the plateau alone, exactly as the editor always did. Choosing another plateau draws the plateau together with it: the Map, the diagrams of Elements and the page of a view in the Library tell what is new, what changed and what was removed compared with that plateau, with the same four states as <code>archicode views generate --baseline</code> (see <a href="#plateau-comparison">Comparing two plateaus</a>). After <strong>Nothing</strong> the list offers <strong>Baseline: &lt;name&gt;</strong>, the baseline of the plateau that is drawn by the rule of the command line (its <code>baseline</code> key, else the plateau before it in the list; the first plateau has none), which follows the plateau when you choose another one, and then each other plateau by name. Like the plateau, the choice is remembered by this browser for this folder (not in the workspace), and it is ignored when the workspace no longer has that plateau. A plateau is never compared with itself: when you choose the plateau that was the baseline, the comparison is <strong>Nothing</strong> until you choose another one, and comes back when you leave that plateau.</p>
+<p>With two plateaus or more, the header has a <strong>Compare to</strong> list next to the <strong>Plateau</strong> selector. <strong>Nothing</strong>, the default, draws the plateau alone, exactly as the editor always did. Choosing another plateau draws the plateau together with it: the Map, the diagrams of Elements and the page of a view in the Library tell what is new, what changed and what was removed (and, for the elements that say what they replace, what moved, was split or merged, see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>) compared with that plateau, with the same states as <code>archicode views generate --baseline</code> (see <a href="#plateau-comparison">Comparing two plateaus</a>). After <strong>Nothing</strong> the list offers <strong>Baseline: &lt;name&gt;</strong>, the baseline of the plateau that is drawn by the rule of the command line (its <code>baseline</code> key, else the plateau before it in the list; the first plateau has none), which follows the plateau when you choose another one, and then each other plateau by name. Like the plateau, the choice is remembered by this browser for this folder (not in the workspace), and it is ignored when the workspace no longer has that plateau. A plateau is never compared with itself: when you choose the plateau that was the baseline, the comparison is <strong>Nothing</strong> until you choose another one, and comes back when you leave that plateau.</p>
 </div>
 <div class="paragraph">
 <p>The plateau compared with is only <em>read</em>. The editor reads its folder through the same folder it has opened (no second picker to use), keeps it apart from the plateau that is drawn, and never writes it: its files are not among the files of the plateau, are never counted as modified, and are not part of <strong>Save all changes</strong> or <strong>Cancel</strong>. It is read when you choose it and when you choose another plateau; <strong>Reload</strong>, next to the list, reads it again from the disk, which is the only way to see a change made to that folder while the page stays open. A reference declared twice in it is reported the way it is for the plateau itself (the diagram says that nothing is drawn, and names both files), and a folder that does not exist is said in the header and compared as empty. A <code>baseline</code> key that names an unknown plateau, or the plateau itself, is refused when the workspace is opened, with the message of the command line (see <a href="#plateaus">Plateaus</a>).</p>
 </div>
 <div class="paragraph">
-<p>The diagram is drawn from the union of the two plateaus, and the boxes are laid out on that union: what was removed is drawn where it was, so a box does not move when the comparison is turned on from the other plateau or when you choose the other plateau of the pair (with <strong>Nothing</strong> the plateau is laid out alone, as before). The editor tells the four states without relying on colour: each one has a mark in front of the title of the box and of the caption of the link, a line style, and a pill with its name on the box.</p>
+<p>The diagram is drawn from the union of the two plateaus, and the boxes are laid out on that union: what was removed is drawn where it was, so a box does not move when the comparison is turned on from the other plateau or when you choose the other plateau of the pair (with <strong>Nothing</strong> the plateau is laid out alone, as before). The editor tells the states without relying on colour: each one has a mark in front of the title of the box and of the caption of the link, a line style, and a pill with its name on the box.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -2691,16 +3526,37 @@ FontColor: #7F7F7F
 <td class="tableblock halign-left valign-top"><p class="tableblock">thin dashed outline, a pill <code>contains-changes</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">moved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>→</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">long dashed outline, a pill <code>moved</code>, a blue tint, <code>(from shop.till)</code> after the title</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">split</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>⋔</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dash-dot outline, a pill <code>split</code>, a purple tint, <code>(from shop.report)</code> after the title</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">merged</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>⊕</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">short dashed outline, a pill <code>merged</code>, a light blue tint, <code>(from stock.bin, stock.shelf)</code> after the title</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>A box that did not change is drawn as it always was. A removed element is not in the plateau that is drawn, so it is not in the tree and a click on its box does not open it: it shows, in the panel on the right, what the other plateau had (name, kind, properties, the file it is in, the relationships it declared), read-only. A link that changed shows its mark even when the captions are off, as on the Map. The marks and lines are the ones of the command line; the colours are only a help, chosen to read in the light and the dark theme. <strong>Red dashed</strong> keeps its meaning of a dangling reference (an unknown element), and is never used for a removed one.</p>
+<p>The last three states are for the elements that say what they replace, and exist only for a box: a relationship is never moved, split or merged. They are in the table above and in the key only when the drawing has a box in that state.</p>
 </div>
 <div class="paragraph">
-<p>The look is a default, given to the stereotype of the same name as the state (<code>new</code>, <code>changed</code>, <code>removed</code>, <code>contains-changes</code>). A style of your own for that name in <code>styles</code> (see <a href="#stereotypes-and-styles">Stereotypes and styles</a>) wins property by property: your <code>line-color</code> replaces the colour of the line and keeps its style and thickness, your <code>background-color</code> fills the box and replaces the tint, your <code>font-color</code> replaces the grey of a removed title. The state is the last stereotype of a box, so it overrides the style of the others, as a later stereotype always does. A <code>new</code> or <code>changed</code> tag that you wrote by hand on an element is used as before, and on an element that did not change it stays what you wrote.</p>
+<p>A box that did not change is drawn as it always was. A removed element is not in the plateau that is drawn, so it is not in the tree and a click on its box does not open it: it shows, in the panel on the right, what the other plateau had (name, kind, properties, the file it is in, the relationships it declared), read-only. A link that changed shows its mark even when the captions are off, as on the Map. The marks and lines are the ones of the command line (except the line of <code>split</code>, dash-dot here and medium dashes there); the colours are only a help, chosen to read in the light and the dark theme. <strong>Red dashed</strong> keeps its meaning of a dangling reference (an unknown element), and is never used for a removed one.</p>
 </div>
 <div class="paragraph">
-<p>Under the diagram, the key adds an entry for each state, with a sample of its box and its link, its mark, its name, how its line is drawn, and how many boxes and links of that state the drawing shows. The SVG and PNG downloads draw the same marks, lines, struck titles, pills and tints; like the other keys, the key itself is not part of the image.</p>
+<p>The look is a default, given to the stereotype of the same name as the state (<code>new</code>, <code>changed</code>, <code>removed</code>, <code>contains-changes</code>). A style of your own for that name in <code>styles</code> (see <a href="#stereotypes-and-styles">Stereotypes and styles</a>) wins property by property: your <code>line-color</code> replaces the colour of the line and keeps its style and thickness, your <code>background-color</code> fills the box and replaces the tint, your <code>font-color</code> replaces the grey of a removed title. The state is the last stereotype of a box, so it overrides the style of the others, as a later stereotype always does. A <code>new</code> or <code>changed</code> tag that you wrote by hand on an element that does not have that state is only your stereotype, with your own style if you gave it one, and the command line draws it the same way (see <a href="#plateau-state-tags">[plateau-state-tags]</a>).</p>
+</div>
+<div class="paragraph">
+<p>Under the diagram, the key adds an entry for each state the drawing uses, with a sample of its box and its link, its mark, its name, how its line is drawn, and how many boxes and links of that state the drawing shows. The SVG and PNG downloads draw the same marks, lines, struck titles, pills and tints; like the other keys, the key itself is not part of the image.</p>
 </div>
 <div class="sect3">
 <h4 id="editor-changes-panel">The Changes panel</h4>
@@ -2708,7 +3564,7 @@ FontColor: #7F7F7F
 <p>While a comparison is on, the panel on the right of the Map and of Elements is never empty. With nothing selected it is the <strong>Changes</strong> panel; with something selected it has two tabs, <strong>Selected</strong> (what is selected, as before) and <strong>Changes</strong> (with the number of rows). It is not in the page of a view in the Library, whose panel is the one of the view.</p>
 </div>
 <div class="paragraph">
-<p>The panel starts with the counts: elements and relationships, each <em>new</em>, <em>changed</em> and <em>removed</em>, as chips that carry a mark and a word (<code>+ 38 new</code>, <code>~ 26 changed</code>, <code>− 5 removed</code>), so that they read without colour. The same chip is the state on every row below. Two lists follow, <strong>Elements</strong> and <strong>Relationships</strong>, in the order a review reads them: what is new, then what changed, then what was removed, and by reference inside each. A row has the chip, the name and the reference of the element (a relationship reads <code>source → destination “label”</code>) and, for something that changed, what changed in it in words: <code>name</code>, <code>description (wording only)</code>, <code>qualifiers</code>, <code>tags</code>, <code>deployment</code>, <code>relationships added</code>, <code>relationships removed</code>, <code>relationships changed</code>, and for a relationship <code>label</code>, <code>qualifiers</code>, <code>tags</code>. A relationship whose label changed is one row that says the label before and after.</p>
+<p>The panel starts with the counts: elements and relationships, each <em>new</em>, <em>changed</em> and <em>removed</em>, as chips that carry a mark and a word (<code>+ 38 new</code>, <code>~ 26 changed</code>, <code>− 5 removed</code>), so that they read without colour; the elements add <code>→ 1 moved</code>, <code>⋔ 2 split</code> and <code>⊕ 1 merged</code> when there are some. The same chip is the state on every row below. Two lists follow, <strong>Elements</strong> and <strong>Relationships</strong>, in the order a review reads them: what is new, then what changed, then what moved, was split or merged, then what was removed, and by reference inside each. A row has the chip, the name and the reference of the element (a relationship reads <code>source → destination “label”</code>) and, for something that changed, what changed in it in words: <code>name</code>, <code>description (wording only)</code>, <code>qualifiers</code>, <code>tags</code>, <code>deployment</code>, <code>relationships added</code>, <code>relationships removed</code>, <code>relationships changed</code>, and for a relationship <code>label</code>, <code>qualifiers</code>, <code>tags</code>. A relationship whose label changed is one row that says the label before and after. A row of a moved, split or merged element says where it came from (<code>from shop.till</code>, <code>from shop.report; split with shop.report-b</code>), as <code>archicode diff</code> does.</p>
 </div>
 <div class="paragraph">
 <p>A click on a row selects the thing as a click on its box or its link does, and shows it. On the Map the boxes around it are opened so that it is drawn, and the view is centred on it (what the <strong>Center</strong> button does); a pin or a hidden element of your own is not undone, and the panel says when the element is not on the map. A removed element opens the read-only panel described above, a relationship selects its link (in Elements, the element that declares it, and its link when that element&#8217;s diagram is shown). The row of the selection is marked in the list, and the <strong>Changes</strong> tab brings the list back with that row in view.</p>
@@ -2728,7 +3584,10 @@ FontColor: #7F7F7F
 <p>For a <strong>new</strong> element, "Whole element is new": its properties are the ones listed below the block, and the relationships it declares are listed as new.</p>
 </li>
 <li>
-<p>For a <strong>removed</strong> element, the read-only panel above, with "Whole element is removed"; it does not repeat what the panel already lists.</p>
+<p>For a <strong>removed</strong> element, the read-only panel above, with "Whole element is removed"; it does not repeat what the panel already lists. A removed element that is only drawn as the place of what was inside it, and that other elements replace, adds <em>Replaced by</em> and lists them.</p>
+</li>
+<li>
+<p>For a <strong>moved</strong>, <strong>split</strong> or <strong>merged</strong> element, one sentence that says which, then <em>Replaces</em> with the name and the reference of each element it replaces (one that the other plateau does not have is flagged), then, if the element also changed, <em>Also changed</em> and the properties <em>Before</em> and <em>After</em> as above.</p>
 </li>
 <li>
 <p>For a <strong>link</strong>, its state (all of the relationships it groups new, or removed, or changed, or a mixture, which reads <em>changed</em>) and, on each relationship it groups, its chip and, for one that changed, what it was and what it is.</p>
@@ -2754,7 +3613,94 @@ FontColor: #7F7F7F
 <p>The address of the page carries a selection, so that a reload or a shared link reopens it: <code>ref=</code> for an element, <code>link-from=</code> and <code>link-to=</code> for a link, as before, and <code>removed=</code> for a removed element (<code>removed-layer=technology</code> for one of the technology layer). A removed element exists only next to its comparison, so the address then also carries <code>compare=</code> (<code>@baseline</code> or the id of a plateau): opening such an address chooses that comparison, as if you had chosen it, even if this browser remembered another one. The other choices of the comparison are not in the address.</p>
 </div>
 <div class="paragraph">
-<p>While a comparison is on, a row of the tree of Elements and of the tree of the Map has a small mark after its name: <code>+</code> for a new element, <code>~</code> for a changed one, and <code>±</code> for one that did not change but has a change below it. The word is in its tooltip and is read by a screen reader. A removed element is not in these trees (it is not an element of the plateau drawn, so it can be neither pinned nor hidden nor edited): the <strong>Changes</strong> panel lists it and opens its panel.</p>
+<p>While a comparison is on, a row of the tree of Elements and of the tree of the Map has a small mark after its name: <code>+</code> for a new element, <code>~</code> for a changed one, <code>→</code>, <code>⋔</code> or <code>⊕</code> for a moved, split or merged one, and <code>±</code> for one that did not change but has a change below it. The word is in its tooltip and is read by a screen reader. A removed element is not in these trees (it is not an element of the plateau drawn, so it can be neither pinned nor hidden nor edited): the <strong>Changes</strong> panel lists it and opens its panel.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="editor-replaces">Moved, split and merged elements, and candidates</h4>
+<div class="paragraph">
+<p>An element of the plateau that is drawn can say which elements of the plateau it is compared with it replaces: the key <code>replaces</code> (see <a href="#plateau-replaces">Saying what an element replaces</a>). The editor draws the result with the three states above, counts them and lists them in the <strong>Changes</strong> panel, and the <strong>What changed</strong> block of a moved, split or merged element says what it replaces. A replaced element is not listed as removed. The <strong>Changes only</strong> filter keeps these elements like the others. The hand-written tags still follow the rule of <a href="#plateau-state-tags">[plateau-state-tags]</a>: the look of <code>moved</code>, <code>split</code> or <code>merged</code> is only for a box the comparison says is in that state.</p>
+</div>
+<div class="paragraph">
+<p><strong>Candidates.</strong> Under the counts, the <strong>Candidates</strong> section lists the pairs the comparison takes for one thing said twice: an element only the other plateau has, and an element only this one has, of the same kind and the same layer, with the same name, a close description, or as the only two of their kind under the same parent, and each with its reasons. Unlike <code>archicode diff</code>, which lists them only for a plateau that already uses <code>replaces</code>, the editor proposes them for any comparison: it is how an author starts. A candidate is never applied by itself. Each pair has two buttons:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Write replaces</strong> adds the reference of the removed element to the <code>replaces</code> of the new one, in the manifest of the plateau that is drawn, and nothing else. It is an edit like the others: the file is marked as modified and written by <strong>Save all changes</strong>, the lines you did not touch (comments, blank lines, quotes) stay as they are, a list that was there gets the reference appended once, and a list written on one line (<code>replaces: [shop.till]</code>) becomes a list on several lines. The comparison is made again at once, and the new element is now <code>moved</code>, <code>split</code> or <code>merged</code>.</p>
+</li>
+<li>
+<p><strong>Not related</strong> sets the pair aside. It is remembered by the page only, until you close it: nothing is written and the comparison is not changed. The section says how many pairs are set aside, and <strong>Show again</strong> brings them back.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Only the plateau that is drawn is written, and the plateau compared with never is. <strong>Write replaces</strong> is refused, with the reason in the panel and nothing written, when the new element is not an element of the plateau drawn (it belongs to the plateau compared with, which is read-only), when the plateau drawn comes <em>before</em> the one it is compared with in the list of plateaus (<code>replaces</code> goes on the more recent plateau: draw that one and compare it with the older), when the replaced element is still in the plateau drawn, or when the <code>replaces</code> of the element is not a list.</p>
+</div>
+<div class="paragraph">
+<p><strong>By hand.</strong> The edit form of an element has a <strong>Replaces</strong> section as soon as the workspace has several plateaus: the list, each reference with a button to remove it, and a field to add one (it completes with the references of the plateau compared with). A reference the plateau compared with does not have is accepted and flagged ("not in “Base”", with the name of that plateau), because you may have written it for another baseline; one that the plateau drawn still has is flagged "still in this plateau: ignored". An element cannot replace itself, and a reference is listed once. The details of an element that replaces something list it too.</p>
+</div>
+<div class="paragraph">
+<p><strong>Warnings.</strong> What the comparison ignored in the <code>replaces</code> it was given (see <a href="#plateau-replaces-warnings">[plateau-replaces-warnings]</a>) is a short list in the <strong>Changes</strong> panel, under the candidates, with the sentences of the command line; the editor does not write them to the console.</p>
+</div>
+<div class="paragraph">
+<p><strong>Moving an element.</strong> An element that you put under another parent in the editor has another reference: <strong>Move and write replaces</strong> writes the <code>replaces</code> for you, for the element and for each element inside it (see <a href="#editor-move">Moving an element under another parent</a>).</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="editor-move">Moving an element under another parent</h4>
+<div class="paragraph">
+<p>In the edit form of an element, <strong>Move</strong> (after <strong>Delete</strong>, before <strong>Add child</strong>) puts the element, and everything inside it, under another parent, without breaking a reference. It is offered for the elements that can have a parent: a system, a container, a component, a group, a node. A solution, a person or an environment is never put under anything, and has no <strong>Move</strong>; a system can go under a solution, and has no <strong>Move</strong> when the workspace has none. It works on the plateau that is drawn, and never on the one it is compared with, which is read-only.</p>
+</div>
+<div class="paragraph">
+<p>The dialog has a search field (it keeps the parents that have every word you type in their name, id, reference or kind) and the list of the <strong>valid parents</strong>, in the layer of the element: an element that may hold the kind of this one (the rules that create an element under a parent: a system holds containers and groups, a container holds components and groups, an environment or a node holds nodes), but not the element itself, nor anything inside it, nor the parent it already has, nor a parent that already holds an element with the same id. It says how many elements follow, how many references will be rewritten in how many files, and how many saved views follow.</p>
+</div>
+<div class="paragraph">
+<p><strong>What follows.</strong> The reference of the element becomes the reference of the new parent followed by its id, and so does the reference of each element inside it. Every reference to the element or to something inside it is rewritten, in every file of the workspace, by the machinery of an id change:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the <code>destination</code> of the relationships of any element of the same layer;</p>
+</li>
+<li>
+<p>the <code>applications</code> of the nodes of the technology layer (for an application element) and the <code>uses</code> of the environments (for a technology element);</p>
+</li>
+<li>
+<p>the <code>header.parent</code> of the manifests attached to the element or below it;</p>
+</li>
+<li>
+<p>the saved views and the steps of stories of the workspace (the <code>element</code> of a view, the pinned, hidden and open elements of a Map view);</p>
+</li>
+<li>
+<p>what the page remembers: the selection, the unfolded rows, the modified marks, the pins of the Map.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The facets (their JSONPath is not a reference) are not read, as when an id changes. Nothing else of a file is touched.</p>
+</div>
+<div class="paragraph">
+<p><strong>What is written.</strong> How a move is written depends on how the manifest holds the element, and the lines that are not part of it stay as the author wrote them (comments, blank lines, quotes), as for any other edit:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>An element that has a manifest of its own (<code>app.shop.till.yaml</code>, with its <code>header.parent</code>) stays in its file: only the <code>header.parent</code> line changes, and the manifests attached below it follow by their own <code>header.parent</code>. The new parent can be in any file.</p>
+</li>
+<li>
+<p>An element that is nested in the manifest of another one (in its <code>content.elements</code>) is moved as a block inside that manifest: its lines, with the comments just above it and those at the end of its lines, go to the <code>elements</code> of the new parent, one level deeper or shallower, and the <code>elements</code> it leaves is dropped when it was the last element. The new parent has to be in the same file. A parent in another file would mean cutting the block out of one file and pasting it into another, which the editor does not do: the dialog says how many parents it leaves out for that reason, and the move is refused if you ask for one. Give the element a manifest of its own first, or move it by hand. The comments on lines of their own inside the block go with it. A comment after the last line of the block, before the next element, is the next element&#8217;s and stays where it was.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Replaces.</strong> When the workspace has plateaus and a comparison is on (see <a href="#editor-compare">Comparing two plateaus</a>), the dialog has two buttons: <strong>Move and write replaces</strong> and <strong>Move only</strong>. The first also writes <code>replaces</code> (see <a href="#plateau-replaces">Saying what an element replaces</a>) in the same edit, on the moved element and on each element inside it, each naming its old reference: the comparison then reads one moved element with what it holds, not a removed element and a new one for each. Without the key on the children, a container that moved would be <code>moved</code> and its children <code>removed</code> and <code>new</code>. An element that the plateau compared with does not have (it was added in this plateau) gets none, and the dialog says how many. Without a comparison, or with a plateau compared with that comes after the one drawn, the dialog offers <strong>Move</strong> alone and says why <code>replaces</code> is not offered (see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>). In a workspace without plateaus there is no mention of it. The key is written to the manifests like the rest of the move; it is a normal edit, so the comparison is made again at once.</p>
+</div>
+<div class="paragraph">
+<p><strong>A move that is refused</strong> changes nothing at all, and the reason is told in the dialog, which stays open with what you chose: the new parent is the element or something inside it, it is its parent already, it cannot hold that kind, it already holds an element with that id, the element or the parent is declared twice or belongs to the plateau compared with, a manifest cannot be read (a reference in it could not be rewritten), a reference is written as a number (<code>destination: 8080</code>) and cannot be rewritten as the reference of another element, a nested element is asked to go to another file, or (with <strong>Move and write replaces</strong>) an element has a <code>replaces</code> that is not a list.</p>
+</div>
+<div class="paragraph">
+<p>Like every edit, a move is not written until <strong>Save all changes</strong>, and <strong>Cancel</strong> gives it up with the others (the folder is read again). The files it changed are marked as modified, and so is the moved element.</p>
 </div>
 </div>
 </div>
@@ -2902,7 +3848,7 @@ FontColor: #7F7F7F
 <div class="ulist">
 <ul>
 <li>
-<p>Comparison: <code>--baseline &lt;id&gt;</code> compares the plateau with another one (see <a href="#plateau-comparison">Comparing two plateaus</a>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in <code>views-&lt;plateau&gt;-vs-&lt;baseline&gt;</code> (and one folder per facet, <code>views-&lt;plateau&gt;-vs-&lt;baseline&gt;-&lt;facet&gt;</code>), next to two files that tell the same in text: <code>gap.md</code> and <code>gap.json</code>, the table of changes that <code>archicode diff</code> prints (see <a href="#diff">Compare plateaus</a>). A workspace that sets <code>settings.facets.global-enabled: false</code> has nothing but these two files in <code>views-&lt;plateau&gt;-vs-&lt;baseline&gt;</code>: its views are in the folders of its facets. A plateau that has a <code>baseline</code> key is compared without <code>--baseline</code>; a plateau that has none is not, even though the plateau before it is its baseline for <code>archicode diff</code>, because a comparison doubles the number of views, and so about the time it takes (a workspace of 3,400 views goes from about 40 to about 90 seconds), and is not generated by surprise. An unknown baseline, or <code>--baseline</code> on a workspace that has no plateaus, stops the command before anything is written. <code>--output</code> is, with plateaus, the beginning of the name of these folders.</p>
+<p>Comparison: <code>--baseline &lt;id&gt;</code> compares the plateau with another one (see <a href="#plateau-comparison">Comparing two plateaus</a>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in <code>views-&lt;plateau&gt;-vs-&lt;baseline&gt;</code> (and one folder per facet, <code>views-&lt;plateau&gt;-vs-&lt;baseline&gt;-&lt;facet&gt;</code>), next to two files that tell the same in text: <code>gap.md</code> and <code>gap.json</code>, the table of changes that <code>archicode diff</code> prints (see <a href="#diff">Compare plateaus</a>), with the elements that moved, split or merged and the candidates (see <a href="#plateau-replaces">Saying what an element replaces</a>), and the same warnings about <code>replaces</code> on the error output. A workspace that sets <code>settings.facets.global-enabled: false</code> has nothing but these two files in <code>views-&lt;plateau&gt;-vs-&lt;baseline&gt;</code>: its views are in the folders of its facets. A plateau that has a <code>baseline</code> key is compared without <code>--baseline</code>; a plateau that has none is not, even though the plateau before it is its baseline for <code>archicode diff</code>, because a comparison doubles the number of views, and so about the time it takes (a workspace of 3,400 views goes from about 40 to about 90 seconds), and is not generated by surprise. An unknown baseline, or <code>--baseline</code> on a workspace that has no plateaus, stops the command before anything is written. <code>--output</code> is, with plateaus, the beginning of the name of these folders.</p>
 </li>
 </ul>
 </div>
@@ -3071,23 +4017,35 @@ A test (<code>DeterministicGenerationTest</code>) generates a workspace twice, w
 </div>
 </div>
 <div class="paragraph">
-<p>Tells what a plateau changes: the elements and the relationships that are new, changed or removed compared with the baseline, and what changed in each. It prints a table to read in a terminal, to paste in a pull request or to feed to a script, and writes nothing to disk (<code>views generate --baseline</code> writes the same table next to the views, see <a href="#generate-views">Generate views</a>).</p>
+<p>Tells what a plateau changes: the elements and the relationships that are new, changed or removed compared with the baseline, and what changed in each. An element that says what it replaces (see <a href="#plateau-replaces">Saying what an element replaces</a>) is <code>moved</code>, <code>split</code> or <code>merged</code>. It prints a table to read in a terminal, to paste in a pull request or to feed to a script, and writes nothing to disk (<code>views generate --baseline</code> writes the same table next to the views, see <a href="#generate-views">Generate views</a>).</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="text">comparing to-be (To be) with as-is (As is)
-elements      +1 ~2 -1
+elements      +2 ~2 -2
+replacing     2 moved, 2 split, 1 merged
 relationships +1 ~1 -1
 wording only  1 of the 2 changed elements
 
 CHANGE   THING         LAYER        REFERENCE                                   NATURES                                                                     DETAILS
+merged   element       application  shop.billing                                -                                                                           from shop.invoices, shop.receipts; name: &quot;Billing&quot;
+split    element       application  shop.cart                                   -                                                                           from shop.orders; name: &quot;Cart&quot;; split with shop.checkout
 changed  element       application  shop.catalog                                description (wording only)                                                  description: &quot;The books on sale.&quot; -&gt; &quot;The books that are on sale.&quot;
+split    element       application  shop.checkout                               -                                                                           from shop.orders; name: &quot;Checkout&quot;; split with shop.cart
 removed  element       application  shop.mailer                                 -                                                                           name: &quot;Mailer&quot;
 new      element       application  shop.payments                               -                                                                           name: &quot;Payments&quot;
+new      element       application  shop.ratings                                -                                                                           name: &quot;Ratings&quot;
+removed  element       application  shop.reviews                                -                                                                           name: &quot;Reviews&quot;
 changed  element       application  shop.web                                    qualifiers,relationships-added,relationships-removed,relationships-changed  qualifiers: +React
+moved    element       application  warehouse.inventory                         -                                                                           from shop.inventory; name: &quot;Inventory&quot;
+moved    element       application  warehouse.inventory.levels                  -                                                                           from shop.inventory.levels; name: &quot;Levels&quot;
 changed  relationship  application  shop.web -&gt; shop.catalog (browses)          label                                                                       label: &quot;reads&quot; -&gt; &quot;browses&quot;
 removed  relationship  application  shop.web -&gt; shop.mailer (sends mails with)  -
-new      relationship  application  shop.web -&gt; shop.payments (pays with)       -</code></pre>
+new      relationship  application  shop.web -&gt; shop.payments (pays with)       -
+
+candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)
+LAYER        FROM          TO            REASONS
+application  shop.reviews  shop.ratings  description</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -3102,12 +4060,60 @@ new      relationship  application  shop.web -&gt; shop.payments (pays with)    
 <p><code>--format</code> (<code>-f</code>): <code>text</code> (the default; its lines are as long as the longest reference, several hundred characters on a large workspace, so read them with <code>less -S</code> or take <code>markdown</code>), <code>markdown</code> (a table to paste in a pull request) or <code>json</code> (the counts and one object per change, with <code>before</code> and <code>after</code> for a changed element).</p>
 </li>
 <li>
-<p><code>--no-wording</code>: leaves the elements whose description is the only thing that changed out of the table, and says how many are left out. The counts still include them.</p>
+<p><code>--no-wording</code>: leaves the elements whose description is the only thing that changed out of the table, and says how many are left out. The counts still include them. It changes nothing to the elements that moved, split or merged, nor to the candidates.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The table lists the elements, then the relationships, sorted by layer and reference: the same output for the same two plateaus, byte for byte, whatever the machine. A difference is not an error: the exit code is 0. The command stops with an error (exit code 1) that says what to do when the workspace has no <code>settings.plateaus</code>, when the plateau is the first one and has no baseline to compare with, and when the baseline is unknown or is the plateau itself.</p>
+<p>The table lists the elements, then the relationships, sorted by layer and reference (the reference of an element that moved, split or merged is its own, not the one it replaces): the same output for the same two plateaus, byte for byte, whatever the machine.</p>
+</div>
+<div class="paragraph">
+<p><strong>When elements replace others.</strong> The table above, of the example of the manual, has them already (see <a href="#plateaus-overview">States of an architecture (plateaus)</a>). A second invented workspace, the warehouse of <code>src/test/resources/plateau-comparison/replaces</code> in the source repository, has a till that moved to the stock system and was renamed, a report that was split in two (and its chart, which nothing replaces, so it is removed), a bin and a shelf that were merged into a place, a mailer that was rewritten as a postman without a word about it, and a <code>replaces</code> that names an element the baseline never had. <code>archicode diff --plateau after</code> prints:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="text">warning: replaces of shop.report-b (application layer): shop.nowhere is not an element of the base plateau, ignored
+comparing after with before
+elements      +1 ~0 -2
+replacing     1 moved, 2 split, 1 merged
+relationships +0 ~0 -0
+wording only  0 of the 0 changed elements
+
+CHANGE   THING    LAYER        REFERENCE          NATURES  DETAILS
+removed  element  application  shop.mailer        -        name: &quot;Mailer&quot;
+new      element  application  shop.postman       -        name: &quot;Postman&quot;
+split    element  application  shop.report-a      -        from shop.report; name: &quot;Sales report&quot;; split with shop.report-b
+split    element  application  shop.report-b      -        from shop.report; name: &quot;Stock report&quot;; split with shop.report-a
+removed  element  application  shop.report.chart  -        name: &quot;Chart&quot;
+merged   element  application  stock.place        -        from stock.bin, stock.shelf; name: &quot;Place&quot;
+moved    element  application  stock.till         name     from shop.till; name: &quot;Till&quot; -&gt; &quot;Cash desk&quot;
+
+candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)
+LAYER        FROM         TO            REASONS
+application  shop.mailer  shop.postman  description, parent</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The first line is a warning, on the error output; the rest is the table, on the standard output.</p>
+</li>
+<li>
+<p>The <code>replacing</code> line, and in the Markdown form the line "Replacing elements: &#8230;&#8203;", exist only when an element replaces another. The elements that replaced others are in the <code>replacing</code> counts and not in the <code>new</code>, <code>changed</code> or <code>removed</code> ones, and the elements they replace have no row and no count: they are not removed.</p>
+</li>
+<li>
+<p>The details of a row begin with <code>from</code> what the element replaces, then its name, then what differs from what it replaces (<code>name: "Till" &#8594; "Cash desk"</code>), and for a split the other elements that replace the same one.</p>
+</li>
+<li>
+<p>The candidates are listed after the table, marked <em>not applied</em>: write <code>replaces</code> on the element in the <code>TO</code> column to accept one (see <a href="#plateau-candidates">[plateau-candidates]</a>). The mailer and the postman are still removed and new.</p>
+</li>
+<li>
+<p>In JSON, a row of an element that replaces others has a <code>replaces</code> list (the references, sorted), the counts of <code>elements</code> have <code>moved</code>, <code>split</code> and <code>merged</code> when there are some, and <code>candidates</code> is a list of <code>layer</code>, <code>from</code>, <code>to</code>, <code>reasons</code> and <code>"applied": false</code>. In Markdown, the candidates are a section, <code>## Candidates, not applied</code>.</p>
+</li>
+<li>
+<p>A plateau that does not use <code>replaces</code> gets the table it always had, byte for byte. A difference is not an error: the exit code is 0. The command stops with an error (exit code 1) that says what to do when the workspace has no <code>settings.plateaus</code>, when the plateau is the first one and has no baseline to compare with, and when the baseline is unknown or is the plateau itself.</p>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect2">
@@ -5376,7 +6382,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-15 21:16:28 UTC
+Last updated 2026-10-16 04:15:57 UTC
 </div>
 </div>
 </body>
