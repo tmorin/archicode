@@ -1,0 +1,33 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "library"
+  name: "Library"
+  elements:
+    - kind: "container"
+      id: "desk"
+      name: "Desk"
+      qualifiers:
+        - "new"
+      tags:
+        rendering-stereotypes: "moved"
+    - kind: "container"
+      id: "loans"
+      name: "Loans"
+      description: "Lends the books."
+    - kind: "container"
+      id: "catalog"
+      name: "Catalog"
+    - kind: "container"
+      id: "counter"
+      name: "Counter"
+    - kind: "container"
+      id: "report"
+      name: "Report"
+    - kind: "container"
+      id: "hall"
+      name: "Hall"
+    - kind: "container"
+      id: "annex"
+      name: "Annex"

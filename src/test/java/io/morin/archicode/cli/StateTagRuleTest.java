@@ -60,11 +60,15 @@ class StateTagRuleTest {
         }
     }
 
-    @SneakyThrows
     private Path office(Path into) {
-        try (val files = Files.walk(FIXTURE)) {
+        return copy(FIXTURE, into);
+    }
+
+    @SneakyThrows
+    private Path copy(Path fixture, Path into) {
+        try (val files = Files.walk(fixture)) {
             for (val source : files.toList()) {
-                val target = into.resolve(FIXTURE.relativize(source).toString());
+                val target = into.resolve(fixture.relativize(source).toString());
                 if (Files.isDirectory(source)) {
                     Files.createDirectories(target);
                 } else {
@@ -199,6 +203,27 @@ class StateTagRuleTest {
         val puml = view("views-after", "office-detailed.puml");
         assertTrue(boxOf(puml, "office.counter").contains("<<new>>"), boxOf(puml, "office.counter"));
         assertFalse(puml.contains("written-"), puml);
+    }
+
+    /**
+     * The sentences are the ones the editor tells (issue 36): {@code state-hints.test.js} reads the same file, the same fixture, and
+     * fails if the editor's sentences are not these ones, word for word. One sentence per line, without {@code warning: }.
+     */
+    @Test
+    @SneakyThrows
+    void theSentencesAreTheOnesTheEditorTellsForTheSameFiles() {
+        val workspace = copy(Path.of("src/test/resources/plateau-state-hints"), dir);
+        val result = run("-w", workspace.toString(), "diff", "--plateau", "after");
+        assertEquals(0, result.exit, result.err);
+        val expected = Files.readAllLines(Path.of("src/test/resources/state-hints/expected-sentences.txt"));
+        assertEquals(
+            expected,
+            result.err
+                .lines()
+                .map(l -> l.replaceFirst("^warning: ", ""))
+                .toList(),
+            result.err
+        );
     }
 
     @Test

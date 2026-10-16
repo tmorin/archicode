@@ -1,0 +1,14 @@
+# An invented lending library in two states, used to test how a state word written by hand is told (see StateHintSentencesTest and
+# state-hints.test.js, which read the same files and the same expected sentences, expected-sentences.txt). before -> after: the
+# desk did not change, the loans changed, the catalog holds a new shelf, the kiosk is new, the till is the old counter moved,
+# the report is split in two, the hall and the annex are merged into a room. Every element carries a word that is the name of a
+# state, some of which are its own state (nothing to say) and some are not (a sentence each); one is written as a qualifier.
+settings:
+  name: "Library"
+  plateaus:
+    - id: "before"
+      name: "Before"
+      path: "plateaus/10_before"
+    - id: "after"
+      name: "After"
+      path: "plateaus/20_after"

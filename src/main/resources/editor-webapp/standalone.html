@@ -8301,6 +8301,7 @@ function inspectionPanelHtml(sel, mode) {
       : '<p class="inspection-note" id="inspection-offmap" hidden>Not on the map right now (a pin, a hidden element or a folded box leaves it out).</p>';
   }
   html += renderWhatChangedHtml(layer, record.reference, false); // a comparison: what differs from the other plateau, first: a long description must not push it out of sight
+  html += renderStateWordHintsHtml(layer, record.reference); // a hand-written state word that the comparison does not give the element (issue 36)
   html += renderFieldRowHtml('Kind', escapeHtml(record.kind));
   html += renderFieldRowHtml('Layer', escapeHtml(layer));
   html += renderElementPropertiesHtml(record);
@@ -8562,7 +8563,7 @@ function renderChangesPanelHtml(state) {
     '<label class="changes-toggle" title="A change of the description alone is wording, not structure: leave it out of the drawing, the list and the counts"><input type="checkbox" data-action="toggle-hide-wording"' + (AppState.hideWording ? ' checked' : '') + '> Hide wording-only changes</label>' +
     wording +
     (candidateMessage ? '<p class="changes-message" role="alert">' + escapeHtml(candidateMessage) + '</p>' : '') +
-    renderCandidatesHtml(state) + renderWarningsHtml(state) +
+    renderCandidatesHtml(state) + renderWarningsHtml(state) + renderStateWordsHtml(state) +
     (rows.length ? '' : '<p class="inspection-note">Nothing differs between the two plateaus.</p>') +
     group('element', 'Elements') + group('relationship', 'Relationships') + '</div>';
 }
@@ -8627,6 +8628,77 @@ function renderWarningsHtml(state) {
   if (!warnings.length) return '';
   return '<section class="changes-warnings-section" aria-label="Warnings"><h4 class="inspection-subhead changes-subhead">Warnings <span class="field-count">' + warnings.length + '</span></h4>' +
     '<ul class="changes-warnings">' + warnings.map((warning) => '<li>' + escapeHtml(warning) + '</li>').join('') + '</ul></section>';
+}
+
+/** The Hand-written states section of the Changes panel: one line per element and word (the sentences of the command line); '' when every word agrees with the comparison, or there is none. */
+function renderStateWordsHtml(state) {
+  const hints = stateWordHintsOf(state);
+  if (!hints.length) return '';
+  return '<section class="changes-state-words" aria-label="Hand-written states"><h4 class="inspection-subhead changes-subhead">Hand-written states <span class="field-count">' + hints.length + '</span></h4>' +
+    '<ul class="changes-warnings">' + hints.map((hint) => '<li data-ref="' + escapeHtml(hint.reference) + '" data-word="' + escapeHtml(hint.word) + '">' + escapeHtml(hint.sentence) + '</li>').join('') + '</ul></section>';
+}
+
+// ---- A state written by hand that the comparison does not compute (issue 36) ----
+// The states of a comparison (`new`, `changed`, `removed`, `moved`, `split`, `merged`, `contains-changes`) are also words an author may have written by hand, as a
+// qualifier or in the `rendering-stereotypes` tag. A box gets the default look of a state only where the comparison computes it (wave 009, D-5), so a word that
+// disagrees with the comparison is a badge and the author's own style on a box that looks as it did, and nothing says why. The command line says it on its error
+// output (`StateTags.java`); the sentences below are the same ones, word for word, and `state-hints.test.js` reads the sentences of the command line
+// (`src/test/resources/state-hints/expected-sentences.txt`, which `StateHintSentencesTest.java` checks the command line against) and fails if they differ.
+
+/** The words of the author that are the name of a state, for an element: [{ word, source }], qualifiers first, each word once (the order of `StateTags.written`). */
+function writtenStateWordsOf(record) {
+  const words = [];
+  const add = (word, source) => { if (STATE_WORDS.includes(word) && !words.some((w) => w.word === word)) words.push({ word, source }); };
+  kernelStringsOf(record.qualifiers).forEach((word) => add(word, 'qualifier'));
+  const tag = kernelTagsOf(record.tags)['rendering-stereotypes'];
+  if (tag !== undefined && tag.trim() !== '') tag.trim().split(/\s+/).forEach((word) => add(word, '`rendering-stereotypes` tag'));
+  return words;
+}
+
+/** What the comparison says an element is, whatever the wording toggle: its own change, else `contains-changes` when something below it changed, else null (the rule of `StateTags.stateOf`). */
+function computedStateOf(full, layer, reference) {
+  const own = full.records.get(layer + '|' + reference);
+  if (own && CHANGE_STATES.includes(own.change)) return own.change;
+  return full.above[layer] && full.above[layer].has(reference) ? 'contains-changes' : null;
+}
+
+/** The sentence about one word and one element (`StateTags.sentence`, with a comparison). */
+function stateWordSentence(reference, word, source, state, target, base) {
+  const said = state === null ? 'finds that it did not change and holds no change'
+    : state === 'contains-changes' ? 'finds that it did not change by itself but holds a change'
+    : 'finds that it is ' + state;
+  return 'the element `' + reference + '` carries `' + word + '` (' + source + '), but the comparison of `' + target.id + '` with `' + base.id + '` ' + said +
+    ': it is drawn with your own `styles` entry named `' + word + '` (if any) and not with the default look of the state. The comparison computes the states, so the word can be dropped.';
+}
+
+/**
+ * The words that disagree with the comparison, one per element and word, in the order of the command line (application, then technology; by reference; the order of the words):
+ * [{ layer, reference, word, state, sentence }]. Nothing when nothing is compared (the command line says another thing then: that nothing is compared, which the editor, where the
+ * comparison is a choice of the page, leaves to its Compare to), and none for a word that is the state of its element.
+ */
+function stateWordHintsOf(state) {
+  if (!state || !state.full || !state.full.records) return [];
+  const hints = [];
+  for (const layer of ['application', 'technology']) {
+    const map = AppState.index[layer];
+    if (!map) continue;
+    for (const reference of Array.from(map.keys()).sort()) {
+      const record = map.get(reference);
+      for (const { word, source } of writtenStateWordsOf(record)) {
+        const computed = computedStateOf(state.full, layer, reference);
+        if (word !== computed) hints.push({ layer, reference, word, state: computed, sentence: stateWordSentence(reference, word, source, computed, state.target, state.base) });
+      }
+    }
+  }
+  return hints;
+}
+
+/** In the inspection of an element: the words it carries that the comparison does not give it, told where the author looks at the box. '' when none (or nothing is compared). */
+function renderStateWordHintsHtml(layer, reference) {
+  const hints = stateWordHintsOf(comparisonState()).filter((hint) => hint.layer === layer && hint.reference === reference);
+  if (!hints.length) return '';
+  return '<section class="state-word-hints" aria-label="Words that are not its state">' +
+    hints.map((hint) => '<p class="inspection-note state-word-hint" data-word="' + escapeHtml(hint.word) + '">' + escapeHtml(hint.sentence) + '</p>').join('') + '</section>';
 }
 
 /**
@@ -9521,7 +9593,8 @@ function comparisonState() {
     value.shown.quiet = Object.assign(quiet, { above: referencesAboveChanges(quiet.layers), wordingOnly: value.answer.counts.elements.wording_only });
   }
   // wave 009: the pairs the kernel proposes as one thing said twice (never applied) and what it ignored in the `replaces` it was given; neither depends on the wording toggle
-  return Object.assign({ base: AppState.baseline.plateau, target: AppState.plateau, candidates: value.answer.candidates || [], warnings: value.answer.warnings || [] }, value.shown[AppState.hideWording ? 'quiet' : 'full']);
+  // `full`: the answer with every change in it, whatever the wording toggle says (what the hand-written state words are compared with, see `stateWordHintsOf`)
+  return Object.assign({ base: AppState.baseline.plateau, target: AppState.plateau, candidates: value.answer.candidates || [], warnings: value.answer.warnings || [], full: value.shown.full }, value.shown[AppState.hideWording ? 'quiet' : 'full']);
 }
 
 /** Whether the references of the union (the elements of both plateaus) include this one in the application layer: the map can open a removed box. */
@@ -9966,6 +10039,8 @@ const RELATIONSHIP_STATES = ['new', 'changed', 'removed'];
 const IDENTITY_STATES = ['moved', 'split', 'merged'];
 /** Every state an element of the union can have besides `contains-changes` (which is the marker of a box above a change, not a change). Anything that lists the states reads this. */
 const CHANGE_STATES = RELATIONSHIP_STATES.concat(IDENTITY_STATES);
+/** Every word that names a state an element can be drawn with: the ones above and the marker of a box above a change. A hand-written word of this list is told when the comparison does not give it to the element (`stateWordHintsOf`). */
+const STATE_WORDS = CHANGE_STATES.concat(['contains-changes']);
 const CHANGE_GLYPHS = { new: '+', changed: '~', removed: '\u2212', moved: '\u2192', split: '\u22D4', merged: '\u2295', 'contains-changes': '\u00B1' };
 /** What the key says of each state, in a few words that do not rest on colour: the line of its box, the line of its link. */
 const CHANGE_WORDS = {
@@ -9973,7 +10048,7 @@ const CHANGE_WORDS = {
   changed: { word: 'changed', box: 'dotted outline', link: 'dotted line' },
   removed: { word: 'removed', box: 'dashed grey outline, struck title', link: 'dashed grey line' },
   moved: { word: 'moved', box: 'long dashed outline', link: '' },
-  split: { word: 'split', box: 'dash-dot outline', link: '' },
+  split: { word: 'split', box: 'medium dashed outline', link: '' },
   merged: { word: 'merged', box: 'short dashed outline', link: '' },
   'contains-changes': { word: 'contains changes', box: 'thin dashed outline', link: '' }
 };
@@ -9987,9 +10062,10 @@ const CHANGE_DEFAULT_LOOK = {
   new: { '--st-stroke': 'var(--chg-new)', '--st-width': '3px', '--st-dash': 'none', '--st-tint': 'var(--chg-new)' },
   changed: { '--st-stroke': 'var(--chg-changed)', '--st-width': '2px', '--st-dash': '2 3', '--st-tint': 'var(--chg-changed)' },
   removed: { '--st-stroke': 'var(--chg-removed)', '--st-width': '2px', '--st-dash': '7 4', '--st-tint': 'var(--chg-removed)', '--st-text': 'var(--chg-removed-text)' },
-  // identity (wave 009): a width and a dash pattern that no other state has, as the command line gives each its own line style
+  // identity (wave 009): a width and a dash pattern that no other state has, as the command line gives each its own line style. `split` is `6 6`, the pair
+  // the command line draws (PlantUML's `LineStyle: 6`, a dash and a gap of 6; a dash and a dot is a pattern it cannot draw) and the one no other state uses here (run 0054, issue 42)
   moved: { '--st-stroke': 'var(--chg-moved)', '--st-width': '2px', '--st-dash': '14 4', '--st-tint': 'var(--chg-moved)' },
-  split: { '--st-stroke': 'var(--chg-split)', '--st-width': '2px', '--st-dash': '9 3 2 3', '--st-tint': 'var(--chg-split)' },
+  split: { '--st-stroke': 'var(--chg-split)', '--st-width': '2px', '--st-dash': '6 6', '--st-tint': 'var(--chg-split)' },
   merged: { '--st-stroke': 'var(--chg-merged)', '--st-width': '2px', '--st-dash': '4 2', '--st-tint': 'var(--chg-merged)' },
   'contains-changes': { '--st-stroke': 'var(--chg-contains)', '--st-width': '1px', '--st-dash': '4 3' }
 };
@@ -10812,7 +10888,7 @@ function diagramComparisonLegendHtml(comparison, counts) {
   const how = {
     new: 'thick solid', changed: 'dotted', removed: 'dashed, struck title', 'contains-changes': 'thin dashed: something inside changed',
     moved: 'long dashes: replaces one element',
-    split: 'dash-dot: one of several that replace one',
+    split: 'medium dashes: one of several that replace one',
     merged: 'short dashes: replaces several'
   };
   // the three states of identity are in the key only when the drawing shows one, so that the key of every other drawing is what it was
