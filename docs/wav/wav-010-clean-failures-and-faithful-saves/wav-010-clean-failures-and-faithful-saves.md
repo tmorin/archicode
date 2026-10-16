@@ -129,7 +129,7 @@ wave_manifest:
       slug: editor-keeps-quotes
       phase: P2
       depends_on: []
-      run: null
+      run: '0052'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'

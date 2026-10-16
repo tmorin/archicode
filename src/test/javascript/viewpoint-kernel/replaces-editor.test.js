@@ -438,7 +438,7 @@ test('"Write replaces" writes exactly one `replaces` on the new element, keeps e
   assert.equal(run(sandbox, 'saveStatus').state, 'success');
   assert.deepEqual(mem.writes, [target('library.lending')], 'one file is written');
   const saved = mem.files.get(target('library.lending')).text;
-  assert.deepEqual(lineDiff(TARGET['app.library.lending.yaml'], saved), { removed: [], added: ['  replaces:', '    - library.loans'] });
+  assert.deepEqual(lineDiff(TARGET['app.library.lending.yaml'], saved), { removed: [], added: ['  replaces:', '    - "library.loans"'] });
   assert.ok(saved.startsWith('# the manifest of lending\n') && saved.endsWith('# end of lending\n'), 'the comments, the quotes and the blank line are the author\'s');
   assert.ok(saved.includes('  kind: "archicode.morin.io/container"') && saved.includes('\n\ncontent:\n'));
   // and the file reads back as the editor, and the command line, read it
@@ -465,7 +465,7 @@ test('other flow lists of a file the edit does not touch stay on their line, and
   const { sandbox, mem } = await open({ target: Object.assign({}, TARGET, { 'app.library.lending.yaml': withQualifiers }) });
   click(sandbox, { 'data-action': 'accept-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });
   await sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(withQualifiers, mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - library.loans'] }, 'the list on one line, its comment and its quotes are as they were');
+  assert.deepEqual(lineDiff(withQualifiers, mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - "library.loans"'] }, 'the list on one line, its comment and its quotes are as they were');
 });
 
 test('"Not related" sets the pair aside for this page: the list loses it, nothing is written, and "Show again" brings it back', async () => {
@@ -579,7 +579,7 @@ test('adding a reference by hand writes one line more, validates, flags an unkno
   assert.deepEqual(plain(state.index.application.get('library.lending').replaces), ['library.loans']);
   assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'library.lending').change, 'moved', 'the same writer, the same result as accepting the candidate');
   await sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(TARGET['app.library.lending.yaml'], mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - library.loans'] });
+  assert.deepEqual(lineDiff(TARGET['app.library.lending.yaml'], mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - "library.loans"'] });
   // an unknown reference is allowed, and flagged in the list and by the kernel's warning
   formFields(sandbox, 'library.fines', 'library.somewhere');
   click(sandbox, { 'data-action': 'add-replaces', 'data-ref': 'library.fines' });

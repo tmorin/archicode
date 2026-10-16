@@ -137,7 +137,7 @@ test('an edit of an element rewrites its manifest line by line: the comments of 
   assert.ok(mf.rawText.startsWith('# kept: the owner of this file\n'));
   assert.ok(mf.rawText.includes('  name: "Web Shop"   # kept too\n'));
   assert.ok(mf.rawText.endsWith('# trailing\n'));
-  assert.ok(mf.rawText.includes('name: Frontend 2'));
+  assert.ok(mf.rawText.includes('name: "Frontend 2"'));
   assert.ok(mf.rawText.includes('      qualifiers:\n        - "Angular"'), 'a line the edit did not touch keeps its quotes');
   assert.equal(mf.rawText.split('\n').length, (mf.rawText.match(/\n/g) || []).length + 1);
   assert.deepEqual(parse(mf.rawText), plain({ header: mf.header, content: mf.content }));

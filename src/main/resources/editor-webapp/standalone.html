@@ -1756,20 +1756,30 @@ function serializeManifestFile(header, content) {
  */
 function patchYamlText(oldText, newValue) {
   const emitted = serializeYamlValue(newValue, 0);
-  const strict = patchYamlLines(oldText, emitted, newValue);
-  if (strict !== null) return strict;
+  // what is written must say what the edit says, in the emitter's own terms
+  const says = (text) => {
+    try {
+      return serializeYamlValue(parseYaml(text), 0) === emitted;
+    } catch (e) {
+      return false;
+    }
+  };
+  const styled = { lines: 0 };
+  const strict = patchYamlLines(oldText, emitted, newValue, styled);
+  if (strict !== null) {
+    // a new value written in the quotes of the file is kept only if it reads back as the emitter's text; otherwise the value is written plain, as the emitter does
+    if (styled.lines === 0 || says(strict)) return strict;
+    return patchYamlLines(oldText, emitted, newValue);
+  }
   const opened = openFlowLists(oldText);
   if (opened === null) return emitted;
-  const patched = patchYamlLines(opened.text, emitted, newValue);
+  const quoted = { lines: 0, voteLines: oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/) }; // the quotes of the author are in the text as written, not in the lists opened
+  let patched = patchYamlLines(opened.text, emitted, newValue, quoted);
   if (patched === null) return emitted;
-  const closed = closeFlowLists(patched, opened.lists);
-  // what is written must say what the edit says, in the emitter's own terms; if it does not, the emitter's text is the safe one
-  try {
-    if (serializeYamlValue(parseYaml(closed), 0) !== emitted) return emitted;
-  } catch (e) {
-    return emitted;
-  }
-  return closed;
+  let closed = closeFlowLists(patched, opened.lists);
+  if (quoted.lines > 0 && !says(closed)) closed = closeFlowLists(patchYamlLines(opened.text, emitted, newValue), opened.lists);
+  // if what is written does not say what the edit says, the emitter's text is the safe one
+  return says(closed) ? closed : emitted;
 }
 
 /**
@@ -1831,6 +1841,91 @@ function yamlWordsOf(line) {
 }
 
 /**
+ * A line that is a scalar, `key: value`, `- value` or `- key: value`, read for its quoting: `{ prefix, key, valueAt, quote, plainable }`, or `null` for any other line
+ * (a key alone, a flow collection, a block scalar, an anchor, a text that does not close). `prefix` is the indentation and the dashes, `key` the name (`null` for a list
+ * item), `valueAt` the index where the value starts, `quote` how it is written (`'"'`, `"'"` or `''` for plain), `plainable` whether the emitter would have written the
+ * string without quotes: a quote that the text needs (`"1"`, `"a: b"`) is not a choice of the author and says nothing about the style of the file.
+ */
+function readYamlScalarLine(line) {
+  const prefix = line.match(/^ *(?:- +)*/)[0];
+  const found = scanYamlKey(line, prefix.length, 0);
+  let at = prefix.length;
+  if (found) {
+    at = found.end;
+    while (at < line.length && isYamlWs(line[at])) at++;
+  }
+  const token = stripYamlComment(line).replace(/\s+$/, '').slice(at);
+  if (token === '' || /^[\[{&*!|>#%@`?]/.test(token)) return null;
+  let quote = '';
+  let value = token;
+  try {
+    if (token[0] === '"' || token[0] === "'") {
+      if (token.length < 2 || token[token.length - 1] !== token[0]) return null;
+      quote = token[0];
+      const body = token.slice(1, -1);
+      value = quote === '"' ? unescapeYamlDoubleQuoted(body, 0) : body.replace(/''/g, "'");
+    }
+  } catch (e) {
+    return null;
+  }
+  return { prefix, key: found ? found.key : null, valueAt: at, quote, plainable: !yamlStringNeedsQuoting(value) };
+}
+
+/** The scalar lines of a file whose quoting is the author's choice (see `readYamlScalarLine`), the text of a block scalar left out. */
+function yamlQuotingVotes(original) {
+  const votes = [];
+  let blockFrom = -1; // the column a block scalar's text must go past
+  for (const line of original) {
+    if (blockFrom !== -1) {
+      if (line.trim() === '' || yamlIndentOf(line) > blockFrom) continue;
+      blockFrom = -1;
+    }
+    const header = stripYamlComment(line).match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+    if (header) { blockFrom = header[1].length; continue; }
+    const read = readYamlScalarLine(line);
+    if (read !== null && read.plainable) votes.push({ key: read.key, quote: read.quote });
+  }
+  return votes;
+}
+
+/** The quote that most of `votes` use, plain when there is none or when plain is as frequent as the other. */
+function dominantYamlQuote(votes) {
+  const count = { '': 0, '"': 0, "'": 0 };
+  for (const vote of votes) count[vote.quote]++;
+  let best = '';
+  for (const quote of ['"', "'"]) if (count[quote] > count[best]) best = quote;
+  return best;
+}
+
+/**
+ * The line the emitter wrote for a new or changed value, written in the quotes of the file: the style of the line it replaces (`dropped`: the lines the edit takes out
+ * next to it, read by `readYamlScalarLine`) when one has the same key, else the one of a line that stays next to it (`siblings`) with the same key, else the one most
+ * lines with that key use, else the one most scalar lines of the file use, else none. Only a string that the emitter writes plain is touched (a number, a boolean, a text the emitter had to quote stay as the emitter wrote them), and the line comes
+ * back as it was when the choice is plain.
+ */
+function quoteYamlAddedLine(line, dropped, siblings, votes) {
+  const added = readYamlScalarLine(line);
+  if (added === null || added.quote !== '' || !added.plainable) return line;
+  let quote = null;
+  const twin = dropped.find((d) => d.read !== null && !d.used && d.read.prefix === added.prefix && d.read.key === added.key);
+  if (twin) {
+    twin.used = true;
+    if (twin.read.plainable) quote = twin.read.quote;
+  }
+  if (quote === null) { // a line of the same list or the same mapping, next to the new one, as the author wrote it
+    const sibling = siblings.find((read) => read !== null && read.plainable && read.prefix === added.prefix && read.key === added.key);
+    if (sibling) quote = sibling.quote;
+  }
+  if (quote === null) {
+    const same = votes().filter((vote) => vote.key === added.key);
+    quote = dominantYamlQuote(same.length ? same : votes());
+  }
+  if (quote === '') return line;
+  const token = line.slice(added.valueAt);
+  return line.slice(0, added.valueAt) + (quote === '"' ? '"' + escapeYamlDoubleQuoted(token) + '"' : "'" + token.replace(/'/g, "''") + "'");
+}
+
+/**
  * Where each line of `before` (what the emitter writes for the old value) sits in the original lines: `{ place, spans }` (`spans`: the lines of a block scalar
  * that follow the first one), or `null` when a line cannot be found in order, with the same indentation and the same words.
  */
@@ -1886,7 +1981,7 @@ function locateEmittedLines(original, before) {
  * `patchYamlText` for a layout it can follow: the text of `oldText` with the difference between what the emitter writes for the old value and `emitted`
  * (what it writes for `newValue`) applied; `null` when a line the emitter writes for the old value cannot be found in `oldText`.
  */
-function patchYamlLines(oldText, emitted, newValue) {
+function patchYamlLines(oldText, emitted, newValue, styled) {
   let oldValue;
   try {
     oldValue = parseYaml(oldText);
@@ -1936,6 +2031,30 @@ function patchYamlLines(oldText, emitted, newValue) {
     else { steps.push({ drop: start + i }); i++; }
   }
   for (let k = endBefore; k < before.length; k++) steps.push({ keep: k });
+
+  // a value that is added or changed is written in the quotes of the file (only when the caller asks: `styled` counts the lines it wrote so)
+  if (styled) {
+    let all = null;
+    const votes = () => all || (all = yamlQuotingVotes(styled.voteLines || original));
+    for (let from = 0; from < steps.length; from++) {
+      if (steps[from].keep !== undefined) continue;
+      let to = from;
+      while (to < steps.length && steps[to].keep === undefined) to++;
+      const hunk = steps.slice(from, to);
+      const dropped = hunk.filter((step) => step.drop !== undefined).map((step) => ({ read: readYamlScalarLine(original[place[step.drop]]), used: false }));
+      // the lines that stay just before and after the edit, read for their quotes: what a new item of their list is written like
+      const around = [steps[from - 1], steps[to]].filter((step) => step !== undefined).map((step) => readYamlScalarLine(original[place[step.keep]]));
+      let shallowest = Infinity; // the new lines of a list that goes with a key of its own (a new `replaces:`) are not next to the lines before it
+      for (const step of hunk) {
+        if (step.add === undefined) continue;
+        const depth = yamlIndentOf(step.add);
+        const line = quoteYamlAddedLine(step.add, dropped, shallowest < depth ? [] : around, votes);
+        shallowest = Math.min(shallowest, depth);
+        if (line !== step.add) { step.add = line; styled.lines++; }
+      }
+      from = to - 1;
+    }
+  }
 
   // the original lines, the ones that sit between two lines of the value (comments, blank lines) with the line before them
   const out = [];
