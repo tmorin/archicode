@@ -4,11 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.Warnings;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UncheckedIOException;
 import java.net.BindException;
+import java.nio.charset.CharacterCodingException;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.FileSystemException;
 import java.nio.file.NoSuchFileException;
 import java.util.List;
 import lombok.AccessLevel;
@@ -77,29 +77,83 @@ public class ErrorOutput implements CommandLine.IExecutionExceptionHandler, Comm
         return FAILURE;
     }
 
-    /** The lines to print, or null for a failure that is not one the author can act on. */
+    /**
+     * The lines to print, or null for a failure that is not one the author can act on.
+     *
+     * <p>The whole chain of causes is read, and the most precise cause wins over the one that wraps it: a missing file under an
+     * {@link UncheckedIOException} is a missing file. Only what the author can fix is told in a line: a sentence of ours, a file
+     * (or a folder) that is absent, refused, or cannot be read or written, a text that is not valid, a port already in use, a
+     * file that is not valid YAML, TOML or JSON. Any other {@link IOException} is not (it may be a bug that happens to wrap one),
+     * and keeps its stack trace.
+     */
     static String message(Throwable failure) {
+        String best = null;
+        var bestRank = Integer.MAX_VALUE;
         for (Throwable e = failure; e != null; e = e.getCause() == e ? null : e.getCause()) {
-            if (e instanceof ArchiCodeException) {
-                return e.getMessage();
-            }
-            if (e instanceof JsonProcessingException json) {
-                return ArchiCodeException.unreadable("a file", json, false).getMessage();
-            }
-            if (e instanceof NoSuchFileException file) {
-                return "`" + file.getFile() + "` does not exist";
-            }
-            if (e instanceof AccessDeniedException file) {
-                return "`" + file.getFile() + "` cannot be accessed: permission denied";
-            }
-            if (e instanceof BindException bind) {
-                return "the server cannot listen: " + bind.getMessage();
-            }
-            if (e instanceof UncheckedIOException || e instanceof IOException) {
-                return "cannot read or write: " + e.getMessage();
+            val rank = rank(e);
+            if (rank < bestRank) {
+                best = describe(e);
+                bestRank = rank;
             }
         }
-        return null;
+        return best;
+    }
+
+    /** How precise a cause is, the lowest first; {@link Integer#MAX_VALUE} for one that says nothing the author can act on. */
+    private static int rank(Throwable e) {
+        if (e instanceof ArchiCodeException) {
+            return 0;
+        }
+        if (e instanceof NoSuchFileException || e instanceof AccessDeniedException) {
+            return 1;
+        }
+        if (e instanceof FileSystemException) {
+            return 2;
+        }
+        if (e instanceof BindException) {
+            return 3;
+        }
+        if (e instanceof CharacterCodingException) {
+            return 4;
+        }
+        if (e instanceof JsonProcessingException) {
+            return 5;
+        }
+        return Integer.MAX_VALUE;
+    }
+
+    private static String describe(Throwable e) {
+        if (e instanceof ArchiCodeException) {
+            return e.getMessage();
+        }
+        if (e instanceof JsonProcessingException json) {
+            return ArchiCodeException.unreadable(null, json, false).getMessage();
+        }
+        if (e instanceof FileSystemException file) {
+            val name = file.getFile();
+            if (name == null) {
+                return "a file cannot be read or written: " + reasonOf(file);
+            }
+            if (e instanceof NoSuchFileException) {
+                return "`" + name + "` does not exist";
+            }
+            if (e instanceof AccessDeniedException) {
+                return "`" + name + "` cannot be accessed: permission denied";
+            }
+            return "`" + name + "` cannot be read or written: " + reasonOf(file);
+        }
+        if (e instanceof BindException bind) {
+            return "the server cannot listen: " + reasonOf(bind);
+        }
+        // a CharacterCodingException: the text of a file is not valid in the encoding it is read in
+        return "a file is not valid text (UTF-8): " + reasonOf(e);
+    }
+
+    /** What the failure says, or its name when it says nothing. */
+    private static String reasonOf(Throwable e) {
+        val reason =
+            e instanceof FileSystemException file && file.getReason() != null ? file.getReason() : e.getMessage();
+        return reason == null ? e.getClass().getSimpleName() : reason;
     }
 
     private static void print(PrintWriter err, List<String> lines) {
