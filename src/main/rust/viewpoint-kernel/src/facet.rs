@@ -18,6 +18,12 @@
 //! not delete). A path that selects nothing changes nothing; a path that does not parse, or an operator other than
 //! REMOVE, is an error naming it — never ignored.
 //!
+//! Removing an element removes what points at it: when an action takes an element out of the document (with the
+//! elements inside it), the relationships that point at it or at one of its children, the entries of `uses` that name
+//! it and the entries of `applications` of a node that name it are removed too, in the same step, so that the views of
+//! the facet do not end in a `dangling reference`. A reference that already led nowhere before the action is not
+//! touched: it is still an error.
+//!
 //! The paths of the earlier, Jayway dialect keep working for now: `@.f anyof [...]`, `@.f noneof [...]` and
 //! `@.f == null` / `!= null` are rewritten to their standard form, and the rewrite is reported as a warning.
 use super::{null_as_default, Elem, Input, Rel};
@@ -105,11 +111,83 @@ pub(crate) fn apply(doc: &mut Value, actions: &[Action]) -> Result<Vec<String>, 
         }
         found.sort_unstable_by(|a, b| b.cmp(a));
         found.dedup();
+        // the references of the elements are only worth reading when the action removes something
+        let before = (!found.is_empty()).then(|| References::of(doc));
         for steps in &found {
             remove_at(doc, steps);
         }
+        if let Some(before) = before {
+            let gone = before.without(&References::of(doc));
+            if !gone.is_empty() {
+                drop_references_to(doc, &gone);
+            }
+        }
     }
     Ok(warnings)
+}
+
+// ---- what points at an element that a facet removes ----
+
+/// The references of the elements of the two layers of a document.
+struct References {
+    application: HashSet<String>,
+    technology: HashSet<String>,
+}
+
+impl References {
+    fn of(doc: &Value) -> References {
+        fn walk(nodes: Option<&Value>, parent: Option<&str>, out: &mut HashSet<String>) {
+            for node in nodes.and_then(Value::as_array).into_iter().flatten() {
+                let Some(id) = node.get("id").and_then(Value::as_str) else { continue };
+                let reference = parent.map_or(id.to_string(), |p| format!("{p}.{id}"));
+                walk(node.get("elements"), Some(&reference), out);
+                out.insert(reference);
+            }
+        }
+        let layer = |name: &str| {
+            let mut out = HashSet::new();
+            walk(doc.get(name).and_then(|l| l.get("elements")), None, &mut out);
+            out
+        };
+        References { application: layer("application"), technology: layer("technology") }
+    }
+
+    /// What `self` has and `after` does not have any more.
+    fn without(self, after: &References) -> References {
+        References {
+            application: self.application.difference(&after.application).cloned().collect(),
+            technology: self.technology.difference(&after.technology).cloned().collect(),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.application.is_empty() && self.technology.is_empty()
+    }
+}
+
+/// Takes out of the elements of the document what leads to one of the references `gone`: a relationship whose
+/// destination is one (a destination is a reference of the layer of the element that declares it), an entry of `uses`
+/// (a reference of the technology layer) and an entry of `applications` (a reference of the application layer).
+fn drop_references_to(doc: &mut Value, gone: &References) {
+    fn walk(nodes: Option<&mut Value>, same_layer: &HashSet<String>, gone: &References) {
+        for node in nodes.and_then(Value::as_array_mut).into_iter().flatten() {
+            if let Some(Value::Array(list)) = node.get_mut("relationships") {
+                list.retain(|r| !r.get("destination").and_then(Value::as_str).is_some_and(|d| same_layer.contains(d)));
+            }
+            if let Some(Value::Array(list)) = node.get_mut("uses") {
+                list.retain(|u| !u.as_str().is_some_and(|u| gone.technology.contains(u)));
+            }
+            if let Some(Value::Array(list)) = node.get_mut("applications") {
+                list.retain(|a| !a.as_str().is_some_and(|a| gone.application.contains(a)));
+            }
+            walk(node.get_mut("elements"), same_layer, gone);
+        }
+    }
+    for (name, same_layer) in [("application", &gone.application), ("technology", &gone.technology)] {
+        if let Some(elements) = doc.get_mut(name).and_then(|l| l.get_mut("elements")) {
+            walk(Some(elements), same_layer, gone);
+        }
+    }
 }
 
 // ---- the earlier dialect (Jayway) ----

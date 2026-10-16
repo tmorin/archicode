@@ -1160,7 +1160,7 @@ A story is a file (`story.<id>.yaml`) in the first manifests folder, and so is e
 [[editor-facets]]
 === Facets
 
-The facets of the workspace (see <<facets>>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out. In the tree, the elements the facet leaves with nothing to draw are greyed. The facets themselves are edited in the *Settings* perspective, along with the other settings of the workspace (see <<technical-configuration>>).
+The facets of the workspace (see <<facets>>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out, and the elements it removes, with the relationships that pointed at them. In the tree, the elements the facet leaves with nothing to draw are greyed. The facets themselves are edited in the *Settings* perspective, along with the other settings of the workspace (see <<technical-configuration>>).
 
 [[editor-workspace-name]]
 === Name of the workspace
@@ -2034,6 +2034,25 @@ The facets written for the previous engine (Jayway) keep working for now, with a
 |===
 
 Relationships that have no tag, or no qualifier, simply do not have the field: `@.tags['k'] != 'v'` selects them, `@.tags['k'] == 'v'` does not.
+====
+
+[NOTE]
+.A facet can remove an element, and what points at it goes with it
+====
+`REMOVE` is not only for relationships: an action can select elements, such as `$.application..elements[?(@.id == 'catalog')]`. The element is removed with the elements inside it, and so is everything of the workspace that pointed at it or at one of them: the relationships whose `destination` is one of them, the entries of `uses` of an environment, and the entries of `applications` of a node. The views of the facet are then written without them; they do not stop with `dangling reference`. The facet says nothing when it does so, it is what it asked for. The workspace and its other facets are untouched.
+
+[source,yaml]
+----
+settings:
+  facets:
+    customs:
+      - name: "without-catalog"
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.id == 'catalog')]"
+----
+
+With this facet, the view of `shop.web` in `views-without-catalog` no longer shows a `browses` link to `shop.catalog`, and no view of `shop.catalog` (the element, or a view of the manifests that is about it) is written for the facet. The same goes for a facet that selects on the state of a comparison (`$.application..elements[?(@.change == 'moved')]`). A reference that already pointed nowhere before the facet is not hidden by it: it is still reported as a `dangling reference`.
 ====
 
 ===== Step #1: Create the main workspace
