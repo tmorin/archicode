@@ -309,3 +309,8 @@ test('the editor renames an element: the id, the references that follow and thei
     added: ['    - destination: "granary" # why', '    - destination: "granary"    # again']
   });
 });
+
+test('#54: when the lines of the block do not match what was read, the comments are kept above the block and nothing else is applied', () => {
+  const read = { leaves: [{ quote: '"', word: null, line: 0, col: 0 }], keys: [], comments: [{ text: '# first', gap: ' ', before: 0, after: -1 }, { text: '# second', gap: '  ', before: 1, after: 0 }] };
+  assert.deepEqual(app.emitFlowBlock(['a', 'b'], read, 4), ['    # first', '    # second', '    - a', '    - b']);
+});

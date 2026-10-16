@@ -12,7 +12,7 @@ import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -87,7 +87,7 @@ public class GetViewsQuery implements Runnable {
             null,
             plateauOption.plateauId
         );
-        val allViews = new LinkedHashSet<>(workspace.getViews());
+        val allViews = new HashSet<>(workspace.getViews());
         allViews.addAll(getBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION));
         allViews.addAll(getBuiltinViews(workspace, workspace.techIndex, View.Layer.TECHNOLOGY));
 

@@ -1827,13 +1827,14 @@ function shiftYamlLine(line, delta) {
  * the emitter does not: the quotes of the values (`["a", 'b', c]` is written `- "a"`, `- 'b'`, `- c`), the quotes of the keys (`{"tier": gold}` is `"tier": gold`), the word
  * of a boolean or a null that is not the emitter's (`{heat: on}` is `heat: on`) and the comments (`# first` on a line of its own above the value it comes before, `# second`
  * at the end of the line of the value it follows). `read` is what the reader noted (`leaves`, `keys`, `comments`: see `parseYamlFlowNode`), in the order the emitter writes it;
- * a quote or a word is applied only where the emitter wrote the plain text, and nothing is applied if the lines do not match one to one what was read.
+ * a quote or a word is applied only where the emitter wrote the plain text, and nothing is applied if the lines do not match one to one what was read (the comments then stand above the block).
  */
 function emitFlowBlock(value, read, indent) {
   const lines = serializeYamlValue(value, indent).split('\n');
   const leaves = read.leaves;
   const carrying = lines.map((line, i) => (/^ *(?:- )*-$/.test(line) || /:$/.test(line) ? -1 : i)).filter((i) => i !== -1); // the lines that end with a value
-  if (carrying.length !== leaves.length) return lines;
+  // the lines do not match one to one what was read: nothing is applied to them, but a comment is the author's text and is not lost, it goes above the block
+  if (carrying.length !== leaves.length) return read.comments.map((comment) => ' '.repeat(indent) + comment.text).concat(lines);
   carrying.forEach((at, k) => {
     const added = readYamlScalarLine(lines[at]);
     if (added === null || added.quote !== '') return;

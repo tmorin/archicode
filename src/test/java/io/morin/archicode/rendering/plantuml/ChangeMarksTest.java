@@ -434,6 +434,21 @@ class ChangeMarksTest {
                 null
             ).contains("LineStyle: 5-2\n")
         );
+        // a solid line has no gap, and a negative gap is not one
+        assertTrue(
+            PlantumlUtilities.generateStyle(
+                Styles.Style.builder().lineStyle(0).lineGap(3).build(),
+                "rectangle",
+                null
+            ).contains("LineStyle: 0\n")
+        );
+        assertTrue(
+            PlantumlUtilities.generateStyle(
+                Styles.Style.builder().lineStyle(8).lineGap(-2).build(),
+                "rectangle",
+                null
+            ).contains("LineStyle: 8\n")
+        );
     }
 
     @Test

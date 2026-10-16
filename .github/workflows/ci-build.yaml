@@ -129,35 +129,48 @@ jobs:
             -DskipTests \
             -Dplugin.asciidoctor.skip=true
       - name: "Run the native image on the examples of the manual"
+        # Every check runs, and the step lists the ones that failed at the end: a gap is found with the next one, not one build later.
         run: |
-          set -euo pipefail
+          set -u -o pipefail
           runner="$(realpath target/*-runner)"
           work="$(mktemp -d)"
           cp -r src/doc/examples/domain_workspace "$work/workspace"
           cp -r src/doc/examples/domain_plateaus "$work/plateaus"
+          workspace="$work/workspace/workspace.yaml"
+          plateaus="$work/plateaus/workspace.yaml"
+          failed=()
 
-          "$runner" --help > /dev/null
+          # expect <label> <pattern> <command...>: the command succeeds and what it prints has the pattern
+          expect() {
+            local label="$1" pattern="$2" out
+            shift 2
+            if out="$("$@" 2>&1)" && grep -q -- "$pattern" <<< "$out"; then
+              echo "ok: $label"
+            else
+              echo "::error::native image: $label"
+              head -n 20 <<< "$out"
+              failed+=("$label")
+            fi
+          }
+
+          expect "help" "" "$runner" --help
 
           # the kernel (WebAssembly translated to bytecode) assembles the views; the renderer writes PlantUML
-          "$runner" -w "$work/workspace/workspace.yaml" views generate -o views
-          test -s "$work/workspace/views/plantuml/application/ArchiCode-overview.puml"
+          expect "views generate" "" "$runner" -w "$workspace" views generate -o views
+          expect "views generate writes the views" "" test -s "$work/workspace/views/plantuml/application/ArchiCode-overview.puml"
 
           # Jackson reaches the model and the results by reflection
-          views="$("$runner" -w "$work/workspace/workspace.yaml" query views)"
-          grep -q 'ArchiCode-deep' <<< "$views"
-          schemas="$("$runner" -w "$work/workspace/workspace.yaml" query schemas)"
-          grep -q 'urn:jsonschema' <<< "$schemas"
-          graph="$("$runner" -w "$work/workspace/workspace.yaml" query graph)"
-          grep -q '"reference":"ArchiCode"' <<< "$graph"
+          expect "query views" "ArchiCode-deep" "$runner" -w "$workspace" query views
+          expect "query schemas" "urn:jsonschema" "$runner" -w "$workspace" query schemas
+          expect "query graph" '"reference":"ArchiCode"' "$runner" -w "$workspace" query graph
 
           # plateaus: the comparison goes through the kernel as well
-          diff="$("$runner" -w "$work/plateaus/workspace.yaml" diff)"
-          grep -q '^comparing ' <<< "$diff"
-          "$runner" -w "$work/plateaus/workspace.yaml" views generate -o views --baseline as-is
-          test -s "$work/plateaus/views-to-be-vs-as-is/gap.md"
+          expect "diff" "^comparing " "$runner" -w "$plateaus" diff
+          expect "views generate --baseline" "" "$runner" -w "$plateaus" views generate -o views --baseline as-is
+          expect "views generate --baseline writes the table" "" test -s "$work/plateaus/views-to-be-vs-as-is/gap.md"
 
           # the editor page is a resource of the image
-          "$runner" -w "$work/workspace/workspace.yaml" editor serve --port 0 > "$work/editor.log" 2>&1 &
+          "$runner" -w "$workspace" editor serve --port 0 > "$work/editor.log" 2>&1 &
           editor=$!
           trap 'kill "$editor" 2>/dev/null || true' EXIT
           url=""
@@ -166,6 +179,15 @@ jobs:
             [ -n "$url" ] && break
             sleep 1
           done
-          test -n "$url" || { cat "$work/editor.log"; exit 1; }
-          page="$(curl --fail --silent "$url")"
-          grep -qi '<html' <<< "$page"
+          if [ -n "$url" ]; then
+            expect "editor serve" "<html" curl --fail --silent "$url"
+          else
+            echo "::error::native image: editor serve did not print its address"
+            cat "$work/editor.log"
+            failed+=("editor serve")
+          fi
+
+          if [ "${#failed[@]}" -ne 0 ]; then
+            echo "failed: ${failed[*]}"
+            exit 1
+          fi

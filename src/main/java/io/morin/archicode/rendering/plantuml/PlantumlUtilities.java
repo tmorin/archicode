@@ -47,7 +47,9 @@ class PlantumlUtilities {
             });
 
         Optional.ofNullable(style.getLineStyle()).ifPresent(s -> {
-            buf.append(String.format("LineStyle: %s", style.getLineGap() == null ? s : s + "-" + style.getLineGap()));
+            // the gap goes with a dash: a solid line (0) has none, and a gap below 0 is not one
+            val gap = style.getLineGap();
+            buf.append(String.format("LineStyle: %s", gap == null || s <= 0 || gap < 0 ? s : s + "-" + gap));
             buf.append(System.lineSeparator());
         });
 

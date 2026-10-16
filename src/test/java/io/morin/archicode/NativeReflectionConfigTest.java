@@ -2,7 +2,9 @@ package io.morin.archicode;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchema;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import lombok.val;
 import org.junit.jupiter.api.Assertions;
@@ -75,6 +78,36 @@ class NativeReflectionConfigTest {
             missing = files
                 .map(path -> CLASSES.relativize(path).toString())
                 .filter(name -> name.endsWith(".class"))
+                .map(name -> name.substring(0, name.length() - ".class".length()).replace('/', '.'))
+                .filter(name -> !registered.contains(name))
+                .collect(Collectors.toCollection(TreeSet::new));
+        }
+
+        Assertions.assertTrue(
+            missing.isEmpty(),
+            "Add these classes to " + CONFIG + " (allDeclared* and allPublic* members): " + missing
+        );
+    }
+
+    /**
+     * {@code query schemas} writes the schema with the JSON-Schema module of Jackson, which creates its own classes by
+     * reflection (the type id resolver of {@code JsonSchema} needs a constructor, the schema types are written through
+     * their getters). They belong to a dependency, so the test above does not see them.
+     */
+    @Test
+    void everyClassOfTheJsonSchemaModuleIsRegisteredForReflection() throws IOException, URISyntaxException {
+        val registered = new HashSet<String>();
+        for (JsonNode entry : new ObjectMapper().readTree(CONFIG.toFile())) {
+            registered.add(entry.get("name").asText());
+        }
+
+        val jar = Path.of(JsonSchema.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        final Set<String> missing;
+        try (val file = new JarFile(jar.toFile())) {
+            missing = file
+                .stream()
+                .map(entry -> entry.getName())
+                .filter(name -> name.startsWith("com/") && name.endsWith(".class"))
                 .map(name -> name.substring(0, name.length() - ".class".length()).replace('/', '.'))
                 .filter(name -> !registered.contains(name))
                 .collect(Collectors.toCollection(TreeSet::new));
