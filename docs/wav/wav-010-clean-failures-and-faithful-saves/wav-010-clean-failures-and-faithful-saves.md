@@ -139,7 +139,7 @@ wave_manifest:
       slug: editor-flow-collections
       phase: P2
       depends_on: []
-      run: null
+      run: '0053'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
