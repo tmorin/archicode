@@ -111,8 +111,8 @@ pub(crate) fn apply(doc: &mut Value, actions: &[Action]) -> Result<Vec<String>, 
         }
         found.sort_unstable_by(|a, b| b.cmp(a));
         found.dedup();
-        // the references of the elements are only worth reading when the action removes something
-        let before = (!found.is_empty()).then(|| References::of(doc));
+        // the references of the elements are only worth reading when the action may remove an element: not for the common facet, which removes relationships
+        let before = found.iter().any(|steps| may_remove_element(steps)).then(|| References::of(doc));
         for steps in &found {
             remove_at(doc, steps);
         }
@@ -127,6 +127,26 @@ pub(crate) fn apply(doc: &mut Value, actions: &[Action]) -> Result<Vec<String>, 
 }
 
 // ---- what points at an element that a facet removes ----
+
+/// Whether removing the node at `steps` can remove an element: it is a layer, the `elements` of a layer or of an element, or an element (an
+/// element is `application.elements[i]`, and `elements[j]` again inside it). A field of an element (`relationships`, `tags`, ...) is not.
+fn may_remove_element(steps: &[Step]) -> bool {
+    fn in_elements(rest: &[Step]) -> bool {
+        match rest {
+            [] | [Step::Index(_)] => true,
+            [Step::Index(_), Step::Name(name), tail @ ..] if name == "elements" => in_elements(tail),
+            _ => false,
+        }
+    }
+    match steps {
+        [Step::Name(layer), rest @ ..] if layer == "application" || layer == "technology" => match rest {
+            [] => true,
+            [Step::Name(name), tail @ ..] if name == "elements" => in_elements(tail),
+            _ => false,
+        },
+        _ => false,
+    }
+}
 
 /// The references of the elements of the two layers of a document.
 struct References {
@@ -466,4 +486,38 @@ pub fn apply_facet_json(input: &str) -> String {
             Ok(json!({ "version": super::CONTRACT_VERSION, "workspace": request.workspace, "warnings": warnings }))
         });
     result.unwrap_or_else(|e| json!({ "error": e })).to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn name(n: &str) -> Step {
+        Step::Name(n.to_string())
+    }
+
+    #[test]
+    fn only_the_paths_that_can_remove_an_element_are_worth_a_snapshot_of_the_references() {
+        // a layer, its elements, an element, the elements of an element, an element inside an element: they remove elements
+        for steps in [
+            vec![name("application")],
+            vec![name("technology"), name("elements")],
+            vec![name("application"), name("elements"), Step::Index(2)],
+            vec![name("application"), name("elements"), Step::Index(0), name("elements")],
+            vec![name("technology"), name("elements"), Step::Index(1), name("elements"), Step::Index(3)],
+        ] {
+            assert!(may_remove_element(&steps));
+        }
+        // a field of an element (a relationship, a tag, a nested field of a nested element) and anything out of the layers do not
+        for steps in [
+            vec![name("application"), name("elements"), Step::Index(0), name("relationships"), Step::Index(1)],
+            vec![name("application"), name("elements"), Step::Index(0), name("tags"), name("zone")],
+            vec![name("technology"), name("elements"), Step::Index(1), name("elements"), Step::Index(0), name("uses")],
+            vec![name("application"), name("settings")],
+            vec![name("header")],
+            vec![],
+        ] {
+            assert!(!may_remove_element(&steps));
+        }
+    }
 }
