@@ -5,8 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.ArchiCodeException;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -14,7 +17,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
+import java.net.BindException;
+import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -269,6 +276,81 @@ class CleanFailuresTest {
             ErrorOutput.message(new IllegalStateException("wrapped", new ArchiCodeException("a sentence")))
         );
         assertEquals("`/x/y` does not exist", ErrorOutput.message(new NoSuchFileException("/x/y")));
-        assertTrue(ErrorOutput.message(new UncheckedIOException(new IOException("disk full"))).contains("disk full"));
+    }
+
+    @Test
+    void theMostPreciseCauseIsTheOneThatIsSaid() {
+        // a wrapper does not hide the file that is missing, whatever the wrapper is
+        assertEquals(
+            "`/x` does not exist",
+            ErrorOutput.message(new UncheckedIOException(new IOException("wrapped", new NoSuchFileException("/x"))))
+        );
+        assertEquals(
+            "`/x` cannot be accessed: permission denied",
+            ErrorOutput.message(new IllegalStateException("wrapped", new AccessDeniedException("/x")))
+        );
+        // a file system failure of another kind says what it was, and the file
+        assertEquals(
+            "`/x` cannot be read or written: No space left on device",
+            ErrorOutput.message(new FileSystemException("/x", null, "No space left on device"))
+        );
+        // a failure without a file or without a message is not printed as `null`
+        assertEquals(
+            "a file cannot be read or written: FileSystemException",
+            ErrorOutput.message(new FileSystemException(null))
+        );
+        assertEquals("the server cannot listen: BindException", ErrorOutput.message(new BindException()));
+        assertEquals(
+            "the server cannot listen: Address already in use",
+            ErrorOutput.message(new BindException("Address already in use"))
+        );
+        assertTrue(
+            ErrorOutput.message(new MalformedInputException(1)).startsWith("a file is not valid text (UTF-8): ")
+        );
+        // a sentence of ours is the most precise of all
+        assertEquals(
+            "a sentence",
+            ErrorOutput.message(new IOException("wrapped", new ArchiCodeException("a sentence", new Object[0])))
+        );
+    }
+
+    @Test
+    void anInputOutputFailureThatIsNotAboutAFileIsABugAndKeepsItsStackTrace() {
+        assertNull(ErrorOutput.message(new IOException("a resource of the application cannot be read")));
+        assertNull(ErrorOutput.message(new UncheckedIOException(new IOException("wrapped"))));
+        assertNull(ErrorOutput.message(new IOException()));
+    }
+
+    static class Shape {
+
+        public List<String> items;
+    }
+
+    @Test
+    void aJsonFailureOutsideAManifestDoesNotSayThatAFileIsNamedAFile() {
+        val failure = assertThrows(JsonProcessingException.class, () ->
+            new ObjectMapper().readValue("{\"items\": \"text\"}", Shape.class)
+        );
+        val message = ErrorOutput.message(failure);
+        assertTrue(message.startsWith("a file is not valid: "), message);
+        assertFalse(message.contains("`a file`"), message);
+    }
+
+    @Test
+    void aNumberWithADecimalPointWhereAListIsExpectedIsSaidAsTheWrongShape() {
+        val failure = assertThrows(JsonProcessingException.class, () ->
+            new ObjectMapper().readValue("{\"items\": 1.5}", Shape.class)
+        );
+        assertEquals(
+            "`shop.yaml` is not valid: the value has the wrong shape (found a floating-point) at `items`",
+            ArchiCodeException.unreadable("shop.yaml", failure, false).getMessage()
+        );
+        val integer = assertThrows(JsonProcessingException.class, () ->
+            new ObjectMapper().readValue("{\"items\": 3}", Shape.class)
+        );
+        assertEquals(
+            "`shop.yaml` is not valid: the value has the wrong shape (found an integer) at `items`",
+            ArchiCodeException.unreadable("shop.yaml", integer, false).getMessage()
+        );
     }
 }

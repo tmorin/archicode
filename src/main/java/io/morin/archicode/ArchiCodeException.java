@@ -15,7 +15,7 @@ import lombok.val;
 public class ArchiCodeException extends RuntimeException {
 
     private static final Pattern WRONG_SHAPE = Pattern.compile(
-        "^Cannot deserialize value of type `[^`]*` from (\\w+) value"
+        "^Cannot deserialize value of type `[^`]*` from ([\\w-]+) value"
     );
 
     /**
@@ -30,7 +30,7 @@ public class ArchiCodeException extends RuntimeException {
     /**
      * The failure for a file that cannot be read as the YAML, TOML or JSON it is meant to be.
      *
-     * @param file         the name of the file, as the author knows it
+     * @param file         the name of the file, as the author knows it, or null when it is not known
      * @param e            what the reader said
      * @param withLocation whether the line and the column of {@code e} are those of the file (they are not when the
      *                     content was read again from a string)
@@ -45,7 +45,12 @@ public class ArchiCodeException extends RuntimeException {
         if (withLocation && location != null && location.getLineNr() > 0) {
             where += " (line " + location.getLineNr() + ", column " + location.getColumnNr() + ")";
         }
-        return new ArchiCodeException("`%s` is not valid: %s%s", file, reason(e), where);
+        return new ArchiCodeException(
+            "%s is not valid: %s%s",
+            file == null ? "a file" : "`" + file + "`",
+            reason(e),
+            where
+        );
     }
 
     /** What is wrong, in a sentence an author reads, not the vocabulary of the reader of the file. */
