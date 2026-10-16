@@ -58,7 +58,7 @@ Customize and extend ArchiCode's functionality by plugging in renderer engines t
 ArchiCode's extensibility goes further by integrating viewpoint providers to enhance your architectural perspectives with specialized viewpoints.
 
 .States of an Architecture
-A plateau is a complete folder of manifests, the architecture as it is or as it should be. ArchiCode computes what is new, changed and removed from one plateau to the next and draws it, in the views and in the editor, with marks that never rely on colour (see <<plateaus-overview>>).
+A plateau is a complete folder of manifests, the architecture as it is or as it should be. ArchiCode computes what is new, changed and removed from one plateau to the next and draws it, in the views and in the editor, with marks that never rely on colour. An element can say what it replaces (`replaces`), so that a move, a split or a merge is one change and not a removal plus an addition; the editor proposes the matches it finds and writes the hint in one click, and moves an element under another parent without breaking a reference (see <<plateaus-overview>>).
 
 .Unraveling Clarity Through Facets
 The facet feature in Archicode elegantly simplifies complex architectural views, offering tailored visualizations focused on specific model elements and relationships for enhanced clarity and comprehension.
@@ -250,7 +250,7 @@ styles:
       line-color: red
 ----
 
-A facet can read what changed: in a comparison, every element and every relationship has a `change` (`none`, `new`, `changed` or `removed`) that a JSONPath selects like any other field, such as `$..relationships[?(@.change == 'removed')]`. The other facets work as they always did.
+A facet can read what changed: in a comparison, every element and every relationship has a `change` (`none`, `new`, `changed` or `removed`, and, for an element that says what it replaces, `moved`, `split` or `merged`) that a JSONPath selects like any other field, such as `$..relationships[?(@.change == 'removed')]`. The other facets work as they always did.
 
 === Application Layer
 
@@ -746,6 +746,8 @@ IMPORTANT: *Breaking change.* A path of `settings.manifests.paths` may no longer
 
 A plateau is a _complete_ folder of manifests: the whole architecture in that state, not a list of differences. You edit the plateau of the future as you would edit any workspace, and nothing has to be kept in sync by hand. The difference between two plateaus is _computed_ from the references of the elements and the relationships, never typed: ArchiCode tells what is new, what changed and what was removed, and the views, the table of changes and the editor all draw the same answer.
 
+One thing cannot be computed: that two elements are the same thing. An element that moves under another parent, or is renamed, has another reference, so it reads as one removed element and one new one. ArchiCode never guesses it; you say it, on the element of the more recent plateau, with `replaces`, and the comparison then reads a _moved_, _split_ or _merged_ element. It proposes the pairs that look like one thing said twice (the _candidates_) and applies none. The editor writes the hint when you accept a candidate, and when you move an element under another parent.
+
 === The layout
 
 The folder of the architecture holds one `workspace.yaml`, with the settings, the styles and the facets that every plateau shares, and one folder per plateau.
@@ -756,15 +758,19 @@ The folder of the architecture holds one `workspace.yaml`, with the settings, th
     - plateaus/
         - 10_as-is/ <1>
             - customer.yaml
+            - inventory.yaml
             - shop.yaml
+            - warehouse.yaml
         - 20_to-be/ <2>
             - customer.yaml
+            - inventory.yaml
             - shop.yaml
+            - warehouse.yaml
     - workspace.yaml <3>
 ----
 <1> The manifests of the first plateau, directly in the folder (a plateau folder is read like a `manifests` folder: its files, not its sub-folders).
 <2> The manifests of the second one: the whole architecture, as it should be.
-<3> Lists the plateaus in `settings.plateaus`. This is the example `domain_plateaus` of this manual.
+<3> Lists the plateaus in `settings.plateaus`. This is the example `domain_plateaus` of this manual (`src/doc/examples/domain_plateaus` in the source repository).
 
 === The settings in short
 
@@ -799,8 +805,8 @@ Each state has a mark, a line style and a legend, so that nothing relies on colo
 [[plateau-state-tags]]
 *The states and the tags you wrote by hand.* The states are stereotypes of the boxes, the same ones that a `styles.by-tags` entry or a `rendering-stereotypes` tag names (see <<stereotypes-and-styles>>). If you used to mark the boxes of a target by hand with `rendering-stereotypes: "new"` or `"changed"`, nothing breaks, and the command line and the editor draw such a tag the same way. One rule decides it: _a box gets the default look of a state (its mark, its outline, its tint, its struck title) only when the comparison computes that state for it._
 
-* A word you wrote that is the state the box has (a `new` tag on a new element) is one stereotype: the computed state is not written twice, it is the _last_ stereotype of the box, so its look overrides the look of the other stereotypes as a later stereotype always does. Your `styles.by-tags` entry named like the state wins, property by property, over the default look of ArchiCode: a `new` with only a `background-color` keeps the thick outline of the default.
-* A word you wrote that is _not_ the state the box has (a `new` tag on an element that did not change, a `new` tag on an element that changed, any state word when no comparison is made) is only your stereotype. The box has the style you gave to that name in `styles.by-tags` or `styles.by-qualifiers`, if any, and nothing of the default look, whatever else the view shows. On an element that changed, the computed state, which is last, has the last word over it.
+* A word you wrote that is the state the box has (a `new` tag on a new element) is one stereotype: the computed state is not written twice, it is the _last_ stereotype of the box, so its look overrides the look of the other stereotypes as a later stereotype always does (the generated `.puml` writes the stereotypes in reverse, so it reads first there). Your `styles.by-tags` entry named like the state wins, property by property, over the default look of ArchiCode: a `new` with only a `background-color` keeps the thick outline of the default.
+* A word you wrote that is _not_ the state the box has (a `new` tag on an element that did not change, a `new` tag on an element that changed, any state word when no comparison is made) is only your stereotype (a `.puml` of a comparison writes it `written-new`, so that the default look of `new` cannot reach it). The box has the style you gave to that name in `styles.by-tags` or `styles.by-qualifiers`, if any, and nothing of the default look, whatever else the view shows. On an element that changed, the computed state, which is last, has the last word over it.
 * The tags themselves are not read by the comparison (a `rendering-*` tag is never a change), so you can drop them when you like: the computed states say the same, and say it only where it is true.
 
 The command line tells you where a word and the comparison disagree, one line per element and word, on the error output (not in the log, which hides warnings by default), and the files it writes and the table it prints are the same whether you read the lines or not. With the tag `rendering-stereotypes: "new"` added to `customer` in the example, which did not change, `archicode diff` says:
@@ -816,44 +822,33 @@ warning: the element `customer` carries `new` (`rendering-stereotypes` tag), but
 
 A comparison finds an element by its reference. An element that moves under another parent, or is renamed, has another reference: the comparison reads it as one removed element and one new one, with nothing that links them. ArchiCode never guesses that two elements are the same thing; _you_ say it, on the element of the more recent plateau, with the key `replaces`: a list of the full references, in the baseline, of what the element replaces. It is the same hint as the `moved` block of Terraform. The editor can write it for you when it moves an element (see <<editor-move>>).
 
+.The container `inventory` in the plateau `to-be` (`plateaus/20_to-be/inventory.yaml` of the example `domain_plateaus`)
 [source,yaml]
-.The stock system of the invented warehouse, in the plateau `after` (`src/test/resources/plateau-comparison/replaces` of the repository)
 ----
-content:
-  id: "stock"
-  name: "Stock"
-  elements:
-    - kind: "container"
-      id: "till"
-      name: "Cash desk"
-      replaces:
-        - "shop.till" # it was the till of the shop, under another name
-    - kind: "container"
-      id: "place"
-      name: "Place"
-      replaces:
-        - "stock.shelf" # the bin and the shelf are one place now
-        - "stock.bin"
+include::examples/domain_plateaus/plateaus/20_to-be/inventory.yaml[]
 ----
+
+The inventory used to be a container of the system `shop` and is now one of the system `warehouse`, so its reference went from `shop.inventory` to `warehouse.inventory`. It says what it replaces, and so does the component `levels` inside it.
 
 The key is optional, and a tool that does not know it ignores it. The comparison turns the elements that say what they replace into three states, and the replaced elements are no longer _removed_:
 
 * *moved*: the element replaces one element, which no other element replaces. It is in another place or has another name, and it is the same thing. Whatever else it changes, it keeps it: a name, a description and the relationships it declares are compared with the element it replaces, and the table says which (the `natures`), next to `moved`. A moved element is counted as `moved`, not also as `changed`.
-* *split*: several elements replace the same element (`shop.report` became `shop.report-a` and `shop.report-b`). Each of them is `split`, and the table names the other ones.
-* *merged*: the element replaces two elements or more, or an element that is in the baseline and in the plateau at the same time. When an element is both split and merged, it is `merged`.
+* *split*: several elements replace the same element (`shop.orders` became `shop.cart` and `shop.checkout`). Each of them is `split`, and the table names the other ones.
+* *merged*: the element replaces two elements or more (`shop.billing` replaces `shop.invoices` and `shop.receipts`), or an element that is in the baseline and in the plateau at the same time. When an element is both split and merged, it is `merged`.
 
-What the replaced elements held is not carried by itself: a container that moved takes none of its children with it, so each child needs its own `replaces`, or it is read as removed (the box of the replaced container is then drawn as the place it was removed from, with the words "replaced by"). What points at a replaced element follows it when exactly one element replaces it: a relationship to `shop.till` that now points at `stock.till` is not a change of the element that declares it, and nor is a node that deployed `shop.till` and now deploys `stock.till`. What points at a split element is not rewritten, because which half would own it is a guess.
+What the replaced elements held is not carried by itself: a container that moved takes none of its children with it, so each child needs its own `replaces` (`levels` above), or it is read as removed (the box of the replaced container is then drawn as the place it was removed from, with the words "replaced by"). What points at a replaced element follows it when exactly one element replaces it: a relationship to `shop.till` that now points at `stock.till` is not a change of the element that declares it, and nor is a node that deployed `shop.till` and now deploys `stock.till`. What points at a split element is not rewritten, because which half would own it is a guess.
 
 [[plateau-candidates]]
 *Candidates.* When an element is only in the baseline and another one of the same kind and the same layer is only in the plateau, and nothing replaces or is replaced by either of them, the comparison may find that they look like one thing that was said twice: the same name (ignoring the case), a description with most of its words in common, or the only two elements of that kind under the same parent. It lists them as candidates and it never applies one. To accept one, write `replaces` on the new element; to refuse it, do nothing. `archicode diff`, `gap.md` and `gap.json` list the candidates once the plateau uses `replaces` (a workspace that does not is written as it always was), each with its reasons. The candidates are not drawn in the views.
 
 [[plateau-replaces-warnings]]
-*Warnings.* The comparison does not fail on a `replaces` that it cannot use: it ignores it, and says so on the error output of `archicode diff` and of `archicode views generate --baseline` (not in the log, which hides warnings by default), one line per entry:
+*Warnings.* The comparison does not fail on a `replaces` that it cannot use: it ignores it, and says so on the error output of `archicode diff` and of `archicode views generate --baseline` (not in the log, which hides warnings by default), one line per entry (the example has none; the sample below is from the invented warehouse that <<diff>> uses):
 
 * a reference that is not an element of the baseline (you may be comparing with another baseline than the one you wrote it for);
 * a reference that is still an element of the plateau (what is there is not replaced, and an element cannot replace itself);
-* a reference listed twice, which counts once;
-* an entry that is not a reference, or a `replaces` that is not a list.
+* an entry that is not a reference (the kernel ignores it).
+
+A reference listed twice counts once, and the command line says nothing of it. A `replaces` that is not a list (`replaces: "shop.mailer"`) is not a warning from the command line: the reader of the manifests refuses it and the command stops, without naming the file (the editor refuses it with a message).
 
 ----
 warning: replaces of shop.report-b (application layer): shop.nowhere is not an element of the base plateau, ignored
@@ -865,7 +860,7 @@ warning: replaces of shop.report-b (application layer): shop.nowhere is not an e
 
 === A tutorial: from one workspace to a review of the changes
 
-The tutorial builds the example `domain_plateaus` of this manual, an invented bookshop. Its commands run in the folder of `workspace.yaml`; the output quoted is the one the commands print.
+The tutorial builds the example `domain_plateaus` of this manual, an invented bookshop, from the first plateau to a review of the changes in the editor, including the things that change shape. Its commands run in the folder of `workspace.yaml`; the output quoted is the one the commands print.
 
 *Step 1. Start from the architecture you have.* An existing workspace is your first plateau. Create the folder of the plateau under the folder of `workspace.yaml` and move the manifests in it. The files that were in the folder named by `manifests.paths` are the ones to move.
 
@@ -905,7 +900,7 @@ archicode plateau add to-be --from as-is --name "To be" --horizon 2027-Q1
 plateau `to-be` added: `plateaus/10_as-is` copied to `plateaus/20_to-be`, and the plateau appended to settings.plateaus
 ----
 
-The folder `plateaus/20_to-be` is a copy of the first one. Edit it as the architecture should be, with an editor or in the editor of ArchiCode: in the example, `shop.payments` is added, `shop.mailer` is removed, the relationships of `shop.web` change, a description is reworded.
+The folder `plateaus/20_to-be` is a copy of the first one. Edit it as the architecture should be, with an editor or in the editor of ArchiCode. In the example, `shop.payments` is added, `shop.mailer` is removed, `shop.web` gets the qualifier `React` and its relationships change, a description is reworded, and four things change shape: the orders are split in two, the invoices and the receipts become one, the reviews are rewritten as the ratings, and the inventory moves from the shop to another system, the warehouse. The folders hold two more files per plateau, `inventory.yaml` and `warehouse.yaml`, shown in the next step.
 
 .`plateaus/10_as-is/shop.yaml`
 [source,yaml]
@@ -919,9 +914,24 @@ include::examples/domain_plateaus/plateaus/10_as-is/shop.yaml[]
 include::examples/domain_plateaus/plateaus/20_to-be/shop.yaml[]
 ----
 
-Two things to see in `plateaus/20_to-be/shop.yaml`. The wording of the description of `shop.catalog` is the only change of that element. And `shop.payments` still carries the tag `rendering-stereotypes: "new"` that this author wrote by hand: it works as before, and the comparison does not need it. In the comparison its word agrees with the state `new`, so nothing is said; when you draw the plateau alone (`archicode views generate` without `--baseline`), the command says on its error output that `new` is a state of a comparison and that nothing is compared there (see <<plateau-state-tags>>).
+Two things to see in `plateaus/20_to-be/shop.yaml` before the next step. The wording of the description of `shop.catalog` is the only change of that element. And `shop.payments` still carries the tag `rendering-stereotypes: "new"` that this author wrote by hand: it works as before, and the comparison does not need it. In the comparison its word agrees with the state `new`, so nothing is said; when you draw the plateau alone (`archicode views generate` without `--baseline`), the command says on its error output that `new` is a state of a comparison and that nothing is compared there (see <<plateau-state-tags>>).
 
-*Step 4. Ask what changed.* `archicode diff` compares the plateau that is drawn by default, the last one, with the plateau before it:
+*Step 4. Say what moved, was split or merged.* Compare the two folders. Read by their references alone, `shop.orders`, `shop.invoices`, `shop.receipts`, `shop.reviews` and `shop.inventory` (with its child) are gone, and `cart`, `checkout`, `billing`, `ratings` and `warehouse.inventory` (with its child) are new, with nothing that links them. Some of them are the same things, and only you know which, so you say it with `replaces` on the elements of the more recent plateau (see <<plateau-replaces>>):
+
+* `shop.orders` was *split*: `cart` and `checkout` both say `replaces: ["shop.orders"]`.
+* `shop.invoices` and `shop.receipts` were *merged*: `billing` lists both in its `replaces`.
+* `shop.inventory` *moved* to the warehouse. It is a manifest of its own, with the `parent` of its header (which is also what lets the editor move it from one file to another, see <<editor-move>>), and `plateaus/20_to-be/inventory.yaml` says `parent: "warehouse"` and `replaces` on the container and on its child `levels`: a container that moves takes none of its children by itself.
+* `shop.ratings` says nothing, on purpose: it will show a candidate in step 6.
+
+.`plateaus/20_to-be/inventory.yaml`
+[source,yaml]
+----
+include::examples/domain_plateaus/plateaus/20_to-be/inventory.yaml[]
+----
+
+In `plateaus/10_as-is`, `inventory.yaml` has the same content with `parent: "shop"` and no `replaces`, and `warehouse.yaml` holds the system `warehouse` with its container `picking`. What points at a moved element follows it. In `plateaus/10_as-is/warehouse.yaml`, `picking` counts with `shop.inventory`; in `plateaus/20_to-be/warehouse.yaml` it counts with `warehouse.inventory`, and the comparison does not read that as a change of `picking`.
+
+*Step 5. Ask what changed.* `archicode diff` compares the plateau that is drawn by default, the last one, with the plateau before it:
 
 [source,shell]
 ----
@@ -930,23 +940,37 @@ archicode diff
 
 ----
 comparing to-be (To be) with as-is (As is)
-elements      +1 ~2 -1
+elements      +2 ~2 -2
+replacing     2 moved, 2 split, 1 merged
 relationships +1 ~1 -1
 wording only  1 of the 2 changed elements
 
 CHANGE   THING         LAYER        REFERENCE                                   NATURES                                                                     DETAILS
+merged   element       application  shop.billing                                -                                                                           from shop.invoices, shop.receipts; name: "Billing"
+split    element       application  shop.cart                                   -                                                                           from shop.orders; name: "Cart"; split with shop.checkout
 changed  element       application  shop.catalog                                description (wording only)                                                  description: "The books on sale." -> "The books that are on sale."
+split    element       application  shop.checkout                               -                                                                           from shop.orders; name: "Checkout"; split with shop.cart
 removed  element       application  shop.mailer                                 -                                                                           name: "Mailer"
 new      element       application  shop.payments                               -                                                                           name: "Payments"
+new      element       application  shop.ratings                                -                                                                           name: "Ratings"
+removed  element       application  shop.reviews                                -                                                                           name: "Reviews"
 changed  element       application  shop.web                                    qualifiers,relationships-added,relationships-removed,relationships-changed  qualifiers: +React
+moved    element       application  warehouse.inventory                         -                                                                           from shop.inventory; name: "Inventory"
+moved    element       application  warehouse.inventory.levels                  -                                                                           from shop.inventory.levels; name: "Levels"
 changed  relationship  application  shop.web -> shop.catalog (browses)          label                                                                       label: "reads" -> "browses"
 removed  relationship  application  shop.web -> shop.mailer (sends mails with)  -
 new      relationship  application  shop.web -> shop.payments (pays with)       -
+
+candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)
+LAYER        FROM          TO            REASONS
+application  shop.reviews  shop.ratings  description
 ----
 
-Two elements changed, one only by its wording, and the table says in each row what changed (see <<diff>> for the options and the other formats). Nothing is written, and a difference is not an error.
+The NATURES column says what changed in an element that changed (here `qualifiers` and the relationships of `shop.web`, `description (wording only)` for the catalog), and the DETAILS column says from what and to what. Two elements changed, one only by its wording, and two moved, two were split and one merged: the table says in each row what changed or where the element came from (see <<diff>> for the options and the other formats). The replaced elements have no row and are not counted as removed, and `shop.mailer` and `shop.reviews` are, because nothing replaces them. Nothing is written, and a difference is not an error.
 
-*Step 5. Draw the comparison.* `views generate` writes the views of a plateau, and, with `--baseline`, the views of the comparison next to them:
+*Step 6. Decide about the candidates.* The last lines of the output are a candidate: `shop.reviews` is removed, `shop.ratings` is new, they are of the same kind in the same layer and their descriptions share most of their words, so the comparison thinks they may be one thing said twice (see <<plateau-candidates>>). It never applies a candidate. If it is the same thing, write `replaces: ["shop.reviews"]` on `ratings`: `ratings` becomes a moved element (`moved`, natures `name,description`, `from shop.reviews`), the counts read `elements +1 ~2 -1` and `replacing 3 moved, 2 split, 1 merged`, and the table lists a new, weaker candidate, `shop.mailer` to `shop.payments` with the reason `parent`: with the reviews and the ratings settled they are the only removed and the only new container of the shop. They are not the same thing, and the answer is to do nothing. If the reviews and the ratings are not the same thing either, do nothing, as this example does, and the output stays as it is. The editor writes the line for you (step 8).
+
+*Step 7. Draw the comparison.* `views generate` writes the views of a plateau, and, with `--baseline`, the views of the comparison next to them:
 
 [source,shell]
 ----
@@ -965,7 +989,7 @@ gap.md
 plantuml
 ----
 
-(The `ls` shows what a clean folder shows; a folder that already had `manifests`, `views` or `views-as-is` still has them: they are not removed.) `views-to-be` holds the views of the plateau, as for any workspace. `views-to-be-vs-as-is` holds the views of the comparison, and `gap.md` and `gap.json`, the table of changes of step 4 in a file that a pull request can carry. Every box and every link of these views says its state with a mark and a line style, and the views that have a change have a legend. The overview of the container `shop.web`:
+(The `ls` shows what a clean folder shows; a folder that already had `manifests`, `views` or `views-as-is` still has them: they are not removed.) `views-to-be` holds the views of the plateau, as for any workspace. `views-to-be-vs-as-is` holds the views of the comparison, and `gap.md` and `gap.json`, the table of changes of step 5 in a file that a pull request can carry. Every box and every link of these views that changed says its state with a mark and a line style, and the views that have a change have a legend. The overview of the container `shop.web`:
 
 .The overview of `shop.web` in `views-to-be-vs-as-is`
 [plantuml, plateaus_shop_web_overview]
@@ -975,17 +999,35 @@ include::examples/domain_plateaus/views-to-be-vs-as-is/plantuml/application/shop
 
 `shop.web` and `shop.catalog` are changed (dotted outline, `~`), `shop.payments` is new (thick outline, `+`), `shop.mailer` is removed (dashed, struck title, `−`), and the system `shop`, which did not change by itself, _contains changes_ (`±`). The links say it the same way: `+ pays with` is new, `− sends mails with` is removed, and the label of `shop.web` to `shop.catalog` changed, from `reads` to `browses`.
 
-*Step 6. Look at it in the editor.* `archicode editor serve` opens the folder in your browser (see <<serve-the-editor>>):
+The detailed view of the system `shop` draws what was split and merged. The titles say where the boxes came from, `(from shop.orders)` and `(from shop.invoices, shop.receipts)`, and the legend has one line for each of the two states, with dashes that tell them from the others. `shop.ratings` is new and `shop.reviews` removed: the candidate is not drawn.
+
+.The detailed view of `shop` in `views-to-be-vs-as-is`
+[plantuml, plateaus_shop_detailed]
+----
+include::examples/domain_plateaus/views-to-be-vs-as-is/plantuml/application/shop-detailed.puml[]
+----
+
+The inventory is drawn where it is now, in the warehouse, with `→` and `(from shop.inventory)`. The view of its child `levels` shows the container and the component that moved together, each with the reference it came from.
+
+.The overview of `levels` in `views-to-be-vs-as-is`
+[plantuml, plateaus_levels_overview]
+----
+include::examples/domain_plateaus/views-to-be-vs-as-is/plantuml/application/warehouse_inventory_levels-overview.puml[]
+----
+
+*Step 8. Look at it in the editor.* `archicode editor serve` opens the folder in your browser (see <<serve-the-editor>>):
 
 . The *Plateau* selector of the header chooses the plateau that is drawn (see <<editor-plateaus,Plateaus in the editor>>).
-. *Compare to* draws it together with another plateau. Choose *Baseline: As is*: the Map shows the four states, and the key under the drawing is the legend (see <<editor-compare,Comparing two plateaus in the editor>>).
-. With nothing selected, the panel on the right is the *Changes* panel: the counts, then every element and relationship that changed, new first (see <<editor-changes-panel>>). A click on a row shows it on the Map.
-. Select a changed element: the block *What changed* gives each property _Before_ and _After_ and its relationships that changed (see <<editor-what-changed>>).
+. *Compare to* draws it together with another plateau. Choose *Baseline: As is*: the Map shows the states, the new, changed, removed, moved, split and merged boxes, and the key under the drawing is the legend (see <<editor-compare,Comparing two plateaus in the editor>>).
+. With nothing selected, the panel on the right is the *Changes* panel: the counts (`+ 2 new`, `~ 2 changed`, `− 2 removed`, `→ 2 moved`, `⋔ 2 split`, `⊕ 1 merged` for the elements), then every element and relationship that changed. They are the rows of step 5, in the same words. A click on a row shows it on the Map (see <<editor-changes-panel>>).
+. Select a changed element: the block *What changed* gives each property _Before_ and _After_ and its relationships that changed; for a moved, split or merged element it says what it replaces (see <<editor-what-changed>>).
 . *Changes only* keeps what changed and the boxes needed to place it, and *Hide wording-only changes* sets the rewording aside (see <<editor-changes-only>>).
+. Under the counts, the *Candidates* section proposes the pair of step 6, `Reviews` and `Ratings`, with its reason, _close description_. *Write replaces* adds `replaces: [shop.reviews]` to `ratings` in the manifest of the plateau that is drawn and changes nothing else in the file; `ratings` is now `moved`, the counts read `→ 3 moved`, and *Save all changes* writes the file. *Not related* sets the pair aside until you close the page. With the clear pair resolved, the comparison may propose a weaker one: `Mailer` and `Payments` are now the only removed and the only new container under `shop`, which is the reason it gives. They are not the same thing, so *Not related* is the answer (see <<editor-replaces>>).
+. *Move* puts an element under another parent. Try it on a copy of the example in which you copy `plateaus/10_as-is/inventory.yaml` and `plateaus/10_as-is/warehouse.yaml` over the ones of `plateaus/20_to-be` (so that `inventory.yaml` says `parent: "shop"`, has no `replaces`, and `picking` counts with `shop.inventory`): select `Inventory`, *Edit*, *Move*, choose `Warehouse` and *Move and write replaces*. The editor changes the `parent` of the header, rewrites the `destination` of `picking`, writes `replaces` on `inventory` and on `levels`, and nothing else; the Changes panel then counts the two moved elements, and `archicode diff` on the saved folder prints the table of step 5 (see <<editor-move>>).
 
 The editor never writes the plateau it compares with.
 
-*Step 7. Go on.* `archicode plateau add` again copies the plateau you name with `--from`, to prepare the state after it. The new plateau is the last of the list, so it becomes the plateau that is drawn by default and the one that `archicode diff` compares; give it a `--baseline` when the plateau that comes before it in the list is not the one it should be compared with:
+*Step 9. Go on.* `archicode plateau add` again copies the plateau you name with `--from`, to prepare the state after it. The new plateau is the last of the list, so it becomes the plateau that is drawn by default and the one that `archicode diff` compares; give it a `--baseline` when the plateau that comes before it in the list is not the one it should be compared with:
 
 [source,shell]
 ----
@@ -1000,7 +1042,9 @@ Two things that used to pass now stop with an error that says what to change. Ev
 . *A path of `settings.manifests.paths` with `..` or an absolute path.* `../shared`, `/srv/manifests` and `C:\data` are refused: one folder holds a whole workspace, so that the editor, which only reaches the folder it opened, reads what the command line reads. Move the folder below the folder of `workspace.yaml`, or move `workspace.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected.
 . *A reference declared twice.* Two manifests, a manifest and an element nested in another one, or two elements of one file that share a reference used to pass silently, and which of them was drawn depended on chance. The command line now stops, names the reference and the two files, and writes nothing, and the editor reports the same in the same words (see <<duplicate-references>>). Remove one of the declarations, or give one of them another `id`. Two identical copies count too. This check applies to workspaces without plateaus as well; with plateaus, the same reference in two plateaus is no duplicate, it is what the comparison is about.
 
-Nothing is to be changed in the manifests themselves: their format is the one it always was.
+Nothing is to be changed in the manifests themselves: their format is the one it always was, with one optional key more, `replaces` (see <<plateau-replaces>>), that an older version of ArchiCode ignores.
+
+One more thing changed for a workspace that has plateaus and that marks its boxes by hand with a state word (`rendering-stereotypes: "new"` or `"changed"`). A word that agrees with the comparison is drawn as before. A word on an element that does not have that state used to give the box the default look of the state in the views of the command line, and the editor did not: it now gives it nothing in both, and the command says so on its error output (see <<plateau-state-tags>>). The files that a workspace without a state word writes are the same, byte for byte.
 
 [[editor]]
 == Editor
@@ -1156,7 +1200,7 @@ The diagram is drawn from the union of the two plateaus, and the boxes are laid 
 
 The last three states are for the elements that say what they replace, and exist only for a box: a relationship is never moved, split or merged. They are in the table above and in the key only when the drawing has a box in that state.
 
-A box that did not change is drawn as it always was. A removed element is not in the plateau that is drawn, so it is not in the tree and a click on its box does not open it: it shows, in the panel on the right, what the other plateau had (name, kind, properties, the file it is in, the relationships it declared), read-only. A link that changed shows its mark even when the captions are off, as on the Map. The marks and lines are the ones of the command line; the colours are only a help, chosen to read in the light and the dark theme. *Red dashed* keeps its meaning of a dangling reference (an unknown element), and is never used for a removed one.
+A box that did not change is drawn as it always was. A removed element is not in the plateau that is drawn, so it is not in the tree and a click on its box does not open it: it shows, in the panel on the right, what the other plateau had (name, kind, properties, the file it is in, the relationships it declared), read-only. A link that changed shows its mark even when the captions are off, as on the Map. The marks and lines are the ones of the command line (except the line of `split`, dash-dot here and medium dashes there); the colours are only a help, chosen to read in the light and the dark theme. *Red dashed* keeps its meaning of a dangling reference (an unknown element), and is never used for a removed one.
 
 The look is a default, given to the stereotype of the same name as the state (`new`, `changed`, `removed`, `contains-changes`). A style of your own for that name in `styles` (see <<stereotypes-and-styles>>) wins property by property: your `line-color` replaces the colour of the line and keeps its style and thickness, your `background-color` fills the box and replaces the tint, your `font-color` replaces the grey of a removed title. The state is the last stereotype of a box, so it overrides the style of the others, as a later stereotype always does. A `new` or `changed` tag that you wrote by hand on an element that does not have that state is only your stereotype, with your own style if you gave it one, and the command line draws it the same way (see <<plateau-state-tags>>).
 
@@ -1461,18 +1505,30 @@ Tells what a plateau changes: the elements and the relationships that are new, c
 [source,text]
 ----
 comparing to-be (To be) with as-is (As is)
-elements      +1 ~2 -1
+elements      +2 ~2 -2
+replacing     2 moved, 2 split, 1 merged
 relationships +1 ~1 -1
 wording only  1 of the 2 changed elements
 
 CHANGE   THING         LAYER        REFERENCE                                   NATURES                                                                     DETAILS
+merged   element       application  shop.billing                                -                                                                           from shop.invoices, shop.receipts; name: "Billing"
+split    element       application  shop.cart                                   -                                                                           from shop.orders; name: "Cart"; split with shop.checkout
 changed  element       application  shop.catalog                                description (wording only)                                                  description: "The books on sale." -> "The books that are on sale."
+split    element       application  shop.checkout                               -                                                                           from shop.orders; name: "Checkout"; split with shop.cart
 removed  element       application  shop.mailer                                 -                                                                           name: "Mailer"
 new      element       application  shop.payments                               -                                                                           name: "Payments"
+new      element       application  shop.ratings                                -                                                                           name: "Ratings"
+removed  element       application  shop.reviews                                -                                                                           name: "Reviews"
 changed  element       application  shop.web                                    qualifiers,relationships-added,relationships-removed,relationships-changed  qualifiers: +React
+moved    element       application  warehouse.inventory                         -                                                                           from shop.inventory; name: "Inventory"
+moved    element       application  warehouse.inventory.levels                  -                                                                           from shop.inventory.levels; name: "Levels"
 changed  relationship  application  shop.web -> shop.catalog (browses)          label                                                                       label: "reads" -> "browses"
 removed  relationship  application  shop.web -> shop.mailer (sends mails with)  -
 new      relationship  application  shop.web -> shop.payments (pays with)       -
+
+candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)
+LAYER        FROM          TO            REASONS
+application  shop.reviews  shop.ratings  description
 ----
 
 - `--plateau`: the plateau that is compared, as for `views generate`: `settings.current`, else the last one.
@@ -1482,7 +1538,7 @@ new      relationship  application  shop.web -> shop.payments (pays with)       
 
 The table lists the elements, then the relationships, sorted by layer and reference (the reference of an element that moved, split or merged is its own, not the one it replaces): the same output for the same two plateaus, byte for byte, whatever the machine.
 
-*When elements replace others.* The invented warehouse of `src/test/resources/plateau-comparison/replaces` has a till that moved to the stock system and was renamed, a report that was split in two (and its chart, which nothing replaces, so it is removed), a bin and a shelf that were merged into a place, a mailer that was rewritten as a postman without a word about it, and a `replaces` that names an element the baseline never had. `archicode diff --plateau after` prints:
+*When elements replace others.* The table above, of the example of the manual, has them already (see <<plateaus-overview>>). A second invented workspace, the warehouse of `src/test/resources/plateau-comparison/replaces` in the source repository, has a till that moved to the stock system and was renamed, a report that was split in two (and its chart, which nothing replaces, so it is removed), a bin and a shelf that were merged into a place, a mailer that was rewritten as a postman without a word about it, and a `replaces` that names an element the baseline never had. `archicode diff --plateau after` prints:
 
 [source,text]
 ----

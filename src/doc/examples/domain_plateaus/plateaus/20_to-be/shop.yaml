@@ -25,3 +25,26 @@ content:
       name: "Payments"
       tags:
         rendering-stereotypes: "new"
+    - kind: "container"
+      id: "cart"
+      name: "Cart"
+      description: "Keeps the basket of a customer."
+      replaces:
+        - "shop.orders" # the orders are split in two
+    - kind: "container"
+      id: "checkout"
+      name: "Checkout"
+      description: "Turns a basket into an order."
+      replaces:
+        - "shop.orders"
+    - kind: "container"
+      id: "billing"
+      name: "Billing"
+      description: "Writes the invoice and sends the receipt."
+      replaces:
+        - "shop.invoices" # the invoices and the receipts are merged
+        - "shop.receipts"
+    - kind: "container"
+      id: "ratings"
+      name: "Ratings"
+      description: "Readers rate the books they have bought."
