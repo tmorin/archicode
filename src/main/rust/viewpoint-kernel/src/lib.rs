@@ -56,6 +56,9 @@
 //!   input : { workspace, actions: [{operator: "REMOVE", json_path}] }
 //!   output: { version, workspace, warnings } | { error }
 //! Version 2: the paths of a facet are standard JSONPath, `apply_facet` exists, and `warnings` may be in the output.
+//! A facet that removes an element removes what points at it (a relationship, an entry of `uses`, an entry of the
+//! `applications` of a node: see `facet.rs`), so the same input gives a view where it gave `dangling reference: x`. No
+//! version moves for it: an input that worked gives the same output.
 //!
 //! What changed (version 3). An element, and a relationship, may carry `change`: `none`, `new`, `changed` or `removed`, and an
 //! element also `moved`, `split` or `merged` (version 4: it replaces others, see `compare.rs`) (what `compare` gives, see below;
@@ -1831,15 +1834,156 @@ mod tests {
     }
 
     #[test]
-    fn a_facet_can_remove_an_element_and_what_points_at_it_is_then_dangling() {
+    fn a_facet_can_remove_an_element_and_what_points_at_it_goes_with_it() {
         let out = with_facet("deep", "a", "application", remove("$.application.elements[?(@.id == 'b')]"));
-        assert_eq!(error(&out), "dangling reference: b");
+        assert!(out.get("error").is_none(), "no more dangling reference: {out}");
+        assert!(out["links"].as_array().unwrap().is_empty(), "the three relationships of a pointed at b: {out}");
+        assert!(out["items"].as_array().unwrap().iter().all(|i| i["id"] != "b"));
         let out = with_facet("deep", "a", "application", remove("$.application.elements[?(@.id == 'a')]"));
         assert!(!error(&out).is_empty(), "the focal element is gone: {out}");
         let out = with_facet("deep", "a", "application", remove("$..relationships[?(length(@.qualifiers) == 1)]"));
         assert_eq!(labels(&out), [None], "functions are available: only the relationship without qualifiers is left");
         let out = with_facet("deep", "a", "application", remove("$..relationships[?(match(@.label, 'r.*'))]"));
         assert!(error(&out).contains("invalid facet JSONPath"), "regular expressions are left out of the module: {out}");
+    }
+
+    // ---- removing an element removes what points at it ----
+
+    /// The workspace of the CLI after the facet: `{application, technology}` of a small model, with `path` removed.
+    fn after_removing(workspace: Value, path: &str) -> Value {
+        let request = json!({ "workspace": workspace, "actions": remove(path) });
+        let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
+        assert!(out.get("error").is_none(), "{out}");
+        out["workspace"].clone()
+    }
+
+    fn destinations(workspace: &Value, pointer: &str) -> Vec<String> {
+        let list = workspace.pointer(pointer).and_then(Value::as_array).cloned().unwrap_or_default();
+        list.iter().map(|r| r["destination"].as_str().unwrap().to_string()).collect()
+    }
+
+    fn shop() -> Value {
+        json!({ "application": { "elements": [
+            { "id": "shop", "kind": "system", "relationships": [{ "destination": "payments" }], "elements": [
+                { "id": "web", "relationships": [{ "destination": "shop.catalog", "label": "browses" }, { "destination": "shop.catalog.items" },
+                                                  { "destination": "shop.cart" }, { "destination": "payments" }] },
+                { "id": "catalog", "relationships": [{ "destination": "shop.cart" }], "elements": [{ "id": "items", "relationships": [{ "destination": "payments" }] }] },
+                { "id": "cart" }
+            ] },
+            { "id": "payments", "relationships": [{ "destination": "shop.catalog" }] },
+            { "id": "ghost-hunter", "relationships": [{ "destination": "ghost" }] }
+        ] } })
+    }
+
+    #[test]
+    fn removing_an_element_removes_the_relationships_that_point_at_it_and_at_what_is_inside_it() {
+        let kept = after_removing(shop(), "$.application..elements[?(@.id == 'catalog')]");
+        assert_eq!(destinations(&kept, "/application/elements/0/elements/0/relationships"), ["shop.cart", "payments"], "the link to the catalog and to its child are gone, the others stay in order");
+        assert_eq!(destinations(&kept, "/application/elements/1/relationships"), Vec::<String>::new(), "the last one of a list leaves an empty list");
+        let children = kept.pointer("/application/elements/0/elements").unwrap().as_array().unwrap();
+        assert_eq!(children.len(), 2, "web and cart; the catalog went with its child");
+        assert_eq!(destinations(&kept, "/application/elements/0/relationships"), ["payments"], "the system keeps what leads elsewhere");
+    }
+
+    #[test]
+    fn removing_an_element_that_holds_children_removes_what_points_at_any_of_them() {
+        let kept = after_removing(shop(), "$.application.elements[?(@.id == 'shop')]");
+        assert_eq!(kept["application"]["elements"].as_array().unwrap().len(), 2, "shop and all that it holds are gone");
+        assert_eq!(destinations(&kept, "/application/elements/0/relationships"), Vec::<String>::new(), "payments pointed at shop.catalog");
+        assert_eq!(destinations(&kept, "/application/elements/1/relationships"), ["ghost"], "see the next test");
+    }
+
+    #[test]
+    fn a_reference_that_led_nowhere_before_the_facet_is_left_alone() {
+        let kept = after_removing(shop(), "$.application..elements[?(@.id == 'cart')]");
+        assert_eq!(destinations(&kept, "/application/elements/2/relationships"), ["ghost"], "it is still the author's mistake to see");
+        let out = compute(json!({
+            "viewpoint": "deep", "layer": "application", "focal": "a",
+            "facet": { "name": "f", "actions": remove("$.application.elements[?(@.id == 'c')]") },
+            "elements": [{ "reference": "a", "relationships": [{ "destination": "z" }] }, { "reference": "c" }]
+        }));
+        assert_eq!(error(&out), "dangling reference: z");
+    }
+
+    #[test]
+    fn removing_two_elements_that_point_at_each_other_leaves_the_others_clean() {
+        let workspace = json!({ "application": { "elements": [
+            { "id": "a", "relationships": [{ "destination": "b" }, { "destination": "c" }] },
+            { "id": "b", "relationships": [{ "destination": "a" }] },
+            { "id": "c", "relationships": [{ "destination": "a" }, { "destination": "b" }] }
+        ] } });
+        let kept = after_removing(workspace.clone(), "$.application.elements[?(@.id == 'a' || @.id == 'b')]");
+        assert_eq!(kept["application"]["elements"], json!([{ "id": "c", "relationships": [] }]));
+        // one action after the other: the second one reads what the first left
+        let request = json!({ "workspace": workspace, "actions": [
+            { "operator": "REMOVE", "json_path": "$.application.elements[?(@.id == 'b')]" },
+            { "operator": "REMOVE", "json_path": "$.application.elements[?(@.relationships[?(@.destination == 'b')])]" }
+        ] });
+        let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
+        assert_eq!(out["workspace"]["application"]["elements"][0]["id"], "a", "a lost its link to b before the second action looked: it stays");
+        assert_eq!(out["workspace"]["application"]["elements"].as_array().unwrap().len(), 2, "{out}");
+    }
+
+    #[test]
+    fn a_facet_that_removes_only_relationships_or_nothing_changes_nothing_else() {
+        let workspace = shop();
+        let kept = after_removing(workspace.clone(), "$.application..relationships[?(@.destination == 'shop.catalog')]");
+        assert_eq!(destinations(&kept, "/application/elements/0/elements/0/relationships"), ["shop.catalog.items", "shop.cart", "payments"]);
+        assert_eq!(after_removing(workspace.clone(), "$.application..elements[?(@.id == 'nobody')]"), workspace);
+        assert_eq!(after_removing(workspace.clone(), "$.application..relationships[?(@.destination == 'nobody')]"), workspace);
+    }
+
+    fn deployed_model() -> Value {
+        json!({
+            "application": { "elements": [{ "id": "shop", "elements": [{ "id": "api" }, { "id": "web" }] }, { "id": "registry" }] },
+            "technology": { "elements": [
+                { "id": "dev", "uses": ["int", "int.a", "registry"], "elements": [{ "id": "app", "applications": ["shop.api", "shop.web", "registry"] }] },
+                { "id": "int", "elements": [{ "id": "a", "applications": ["registry"] }] }
+            ] }
+        })
+    }
+
+    #[test]
+    fn removing_an_application_removes_the_deployment_on_the_nodes() {
+        let kept = after_removing(deployed_model(), "$.application.elements[?(@.id == 'shop')]");
+        assert_eq!(kept["technology"]["elements"][0]["elements"][0]["applications"], json!(["registry"]), "shop.api and shop.web are not deployed any more");
+        assert_eq!(kept["technology"]["elements"][0]["uses"], json!(["int", "int.a", "registry"]), "a name of the other layer is not a reference to it");
+        assert_eq!(kept["technology"]["elements"][1]["elements"][0]["applications"], json!(["registry"]));
+    }
+
+    #[test]
+    fn removing_an_environment_or_a_node_removes_the_entries_of_uses_that_name_it() {
+        let kept = after_removing(deployed_model(), "$.technology.elements[?(@.id == 'int')]");
+        assert_eq!(kept["technology"]["elements"][0]["uses"], json!(["registry"]), "int and int.a, which was inside it");
+        assert_eq!(kept["application"], deployed_model()["application"], "the applications are untouched");
+        let kept = after_removing(deployed_model(), "$.technology.elements[?(@.id == 'int')].elements[?(@.id == 'a')]");
+        assert_eq!(kept["technology"]["elements"][0]["uses"], json!(["int", "registry"]));
+        assert_eq!(kept["technology"]["elements"][0]["elements"][0]["applications"], json!(["shop.api", "shop.web", "registry"]));
+    }
+
+    #[test]
+    fn the_views_of_the_editor_get_the_same_answer_as_the_workspace_of_the_command_line() {
+        // application layer: the focal element keeps its links but the ones that led to the removed element
+        let elements = json!([
+            { "reference": "s", "parent": true },
+            { "reference": "s.web", "relationships": [{ "destination": "s.catalog" }, { "destination": "s.cart", "label": "fills" }] },
+            { "reference": "s.catalog" }, { "reference": "s.cart" }
+        ]);
+        let out = compute(json!({
+            "viewpoint": "deep", "layer": "application", "focal": "s", "elements": elements,
+            "facet": { "name": "f", "actions": remove("$.application..elements[?(@.id == 'catalog')]") }
+        }));
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(labels(&out), [Some("fills".to_string())]);
+        assert!(out["items"].as_array().unwrap().iter().all(|i| i["reference"] != "s.catalog"));
+        // technology layer: the application leaves the node that hosted it
+        let out = environments("dev", json!(["int"]), json!({ "facet": { "name": "f", "actions": remove("$.application.elements[?(@.id == 'ext')]") } }));
+        assert!(out.get("error").is_none(), "{out}");
+        assert!(out["links"].as_array().unwrap().is_empty() && !has_item(&out, "a_ext_registry"), "{out}");
+        // an environment that is used and removed
+        let out = environments("dev", json!(["int", "prd"]), json!({ "facet": { "name": "f", "actions": remove("$.technology.elements[?(@.id == 'int')]") } }));
+        assert!(out.get("error").is_none(), "{out}");
+        assert!(link_between(&out, "app_shop_api", "a_ext_registry") && !has_item(&out, "int.a"), "{out}");
     }
 
     #[test]

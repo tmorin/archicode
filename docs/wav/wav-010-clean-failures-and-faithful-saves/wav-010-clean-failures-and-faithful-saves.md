@@ -102,7 +102,7 @@ wave_manifest:
       slug: facet-removes-element
       phase: P1
       depends_on: [W-1]
-      run: null
+      run: '0051'
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
