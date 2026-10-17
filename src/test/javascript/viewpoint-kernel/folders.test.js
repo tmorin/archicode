@@ -11,7 +11,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
-const { FIXTURE, createApp, fakeIndexedDB, makeDirHandle } = require('./harness');
+const { FIXTURE, createApp, fakeIndexedDB, makeDirHandle, waitFor } = require('./harness');
 
 const DB = 'archicode-standalone-editor';
 const MANIFEST = 'header:\n  kind: archicode.morin.io/system\ncontent:\n  id: s1\n  name: S1\n';
@@ -306,11 +306,12 @@ test('Open on a folder of the list asks the permission, then opens it, as the la
   const p = await load(idb);
   let asked = 0;
   const entry = entryOf(p, a);
-  entry.handle.requestPermission = async (options) => { asked++; assert.deepEqual(plain(options), { mode: 'read' }); return 'granted'; };
+  // the person answers the browser's prompt in their own time (#66): the test waits for the opening, not for a delay that a busy machine overruns
+  entry.handle.requestPermission = async (options) => { asked++; assert.deepEqual(plain(options), { mode: 'read' }); await new Promise((r) => setTimeout(r, 150)); return 'granted'; };
   const before = entry.openedAt;
-  await new Promise((r) => setTimeout(r, 2));
+  await new Promise((r) => setTimeout(r, 2)); // two different openedAt
   p.sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (n) => (n === 'data-action' ? 'open-remembered-folder' : entry.id) }) } });
-  await new Promise((r) => setTimeout(r, 50));
+  await waitFor(() => p.state().workspace && records(idb).workspace && records(idb).workspace.id === entry.id && records(idb)['folder:' + entry.id].openedAt > before, 'the folder to be opened and remembered as the last one');
   assert.equal(asked, 1, 'the click asks the permission');
   assert.ok(p.state().workspace);
   assert.equal(p.state().folder.id, entry.id);

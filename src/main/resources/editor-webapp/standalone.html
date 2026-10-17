@@ -167,12 +167,14 @@
 
   /* Both headers share one control size (2rem) so buttons line up from the top bar down to the center header. */
   .top-panel button, .element-header button { height: 2rem; padding: 0 0.8rem !important; font-size: 0.875rem; line-height: 1.25; white-space: nowrap; }
-  .top-panel .perspective-tabs, .top-panel .plateau-switch { flex-shrink: 0; }
-  .plateau-switch { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .top-panel .perspective-tabs { flex-shrink: 0; }
+  /* The plateau switch is never wider than the bar (#69): its buttons wrap inside their own group, and Compare to goes under them, so the page does not scroll sideways. */
+  .plateau-switch { display: inline-flex; align-items: center; gap: 0.25rem 0.5rem; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  .plateau-tabs { flex-wrap: wrap; row-gap: 0.25rem; min-width: 0; max-width: 100%; }
   .plateau-label { font-size: 0.8rem; color: var(--muted); }
   .plateau-horizon { margin-left: 0.4rem; font-size: 0.75rem; opacity: 0.75; }
   .plateau-problem { font-size: 0.8rem; color: var(--danger); }
-  .compare-control { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .compare-control { display: inline-flex; align-items: center; gap: 0.25rem 0.4rem; flex-wrap: wrap; min-width: 0; max-width: 100%; }
   .compare-control select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 14rem; }
   .compare-control button { padding: 0.25rem 0.6rem !important; font-size: 0.8rem; }
   .plateau-list { margin: 0.25rem 0 0 1.5rem; list-style: decimal; line-height: 1.7; }
@@ -8531,14 +8533,14 @@ function changeValueHtml(value) {
   return value === undefined || value === null || value === '' ? '<span class="muted">none</span>' : '<span class="change-text">' + escapeHtml(value) + '</span>';
 }
 
-/** The properties that differ, before and after, each on two lines that say which is which (a word and a sign, so that neither relies on colour). */
-function renderChangeDiffsHtml(before, after) {
+/** The properties that differ, before and after, each on two lines that say which is which (a word and a sign, so that neither relies on colour). `beforeOnly`: the Before line alone (an element that is gone has no After). */
+function renderChangeDiffsHtml(before, after, beforeOnly) {
   const was = before && typeof before === 'object' ? before : {};
   const now = after && typeof after === 'object' ? after : {};
   return CHANGE_PROPERTY_LABELS.filter(([key]) => key in was || key in now).map(([key, label]) =>
     '<div class="change-diff" data-property="' + key + '"><div class="change-diff-label">' + escapeHtml(label) + '</div>' +
     '<div class="change-before"><span class="change-side"><span aria-hidden="true">−</span> Before</span>' + changeValueHtml(was[key]) + '</div>' +
-    '<div class="change-after"><span class="change-side"><span aria-hidden="true">+</span> After</span>' + changeValueHtml(now[key]) + '</div></div>').join('');
+    (beforeOnly ? '' : '<div class="change-after"><span class="change-side"><span aria-hidden="true">+</span> After</span>' + changeValueHtml(now[key]) + '</div>') + '</div>').join('');
 }
 
 /** The row of the table for a relationship (declared by `from`, to `destination`, with this label), or null. A pair whose label changed is one row, with the label of the plateau drawn. */
@@ -8609,6 +8611,11 @@ function renderWhatChangedHtml(layer, reference, removedPanel) {
     html += '<p class="inspection-note">Whole element is new: it is not in “' + escapeHtml(other) + '”. Its properties are the ones below.</p>';
   } else if (element.change === 'removed') {
     html += '<p class="inspection-note">Whole element is removed' + (removedPanel ? '. Its properties and its relationships are the ones below.' : ': it is only in “' + escapeHtml(other) + '”.') + '</p>';
+    if (removedPanel) {
+      // #71: what the node deployed, as the panel of a changed node says it (Before only), read as the other plateau's file wrote it
+      const gone = AppState.baseline && AppState.baseline.index[layer] ? AppState.baseline.index[layer].get(reference) : null;
+      if (gone && Array.isArray(gone.applications) && gone.applications.length) html += renderChangeDiffsHtml({ applications: gone.applications }, {}, true);
+    }
     if (Array.isArray(element.replaced_by) && element.replaced_by.length) {
       // wave 009: it is drawn only as the place of what was inside it; the elements that replace it are the ones to read
       html += '<div class="change-diff" data-property="replaced_by"><div class="change-diff-label">Replaced by</div>' +
@@ -10955,6 +10962,22 @@ function facetRemovesElement(kernel, viewpoint, reference, layer) {
   return !plain.error;
 }
 
+/**
+ * The Map through a facet (#68): an element that is opened, pinned or hidden and that the facet removes is no longer in the model the kernel draws, and the kernel refuses a
+ * list that names it (`dangling reference: x`). The lists leave out what the facet removes (and what was inside it), one reference at a time as the kernel names them, and the
+ * Map is drawn from the rest; `input` has its lists replaced. The lists of the page are not touched: without the facet the choice of the user is back. A reference that the
+ * lists do not name stays an error.
+ */
+function computeMapThroughFacet(kernel, input) {
+  for (;;) {
+    const result = kernel.compute(input);
+    const named = result.error ? /^dangling reference: (.+)$/.exec(result.error) : null;
+    const lists = ['opened', 'pinned', 'hidden'];
+    if (!named || !lists.some((list) => input[list].includes(named[1]))) return result;
+    for (const list of lists) input[list] = input[list].filter((reference) => reference !== named[1] && !reference.startsWith(named[1] + '.'));
+  }
+}
+
 /** Does the diagram of an element draw nothing but the element itself? (`drawn`: its boxes and links, the ghosts of dangling relationships included.) */
 function diagramHasNothingToDraw(drawn) {
   return !drawn.links.some((link) => !link.secondary) && drawn.items.length <= 1;
@@ -12050,7 +12073,7 @@ function mountDiagramIfNeeded() {
   (async () => {
     try {
       const [kernel, elk] = await Promise.all([loadViewpointKernel(), loadElk()]);
-      const result = kernel.compute(input);
+      const result = isMap && facet ? computeMapThroughFacet(kernel, input) : kernel.compute(input);
       if (seq !== diagramSeq) return;
       if (result.error) {
         const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference, recipe.layer);
@@ -12065,7 +12088,7 @@ function mountDiagramIfNeeded() {
       let shownResult = result;
       let hiddenCount = 0;
       if (hideUnlinked) {
-        const kept = hideUnlinkedItems(drawn.items, drawn.links, isMap ? mapState.pinned : reference);
+        const kept = hideUnlinkedItems(drawn.items, drawn.links, isMap ? input.pinned : reference);
         hiddenCount = kept.hidden;
         drawn = { items: kept.items, links: kept.links };
         const ids = new Set(kept.items.map((item) => item.id));
@@ -12083,14 +12106,14 @@ function mountDiagramIfNeeded() {
         scene.drawnIds = new Set(drawn.items.filter((item) => !item.ghost).map((item) => item.id));
       } else if (isMap && !drawn.items.length) {
         scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no application element' +
-          (mapState.hidden.length ? ' left once the hidden ones are out' + (readonly ? '.' : ': show some again with their eye, or with the chips above the map.') : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
+          (input.hidden.length ? ' left once the hidden ones are out' + (readonly ? '.' : ': show some again with their eye, or with the chips above the map.') : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
         scene.drawnIds = new Set();
       } else if (!isMap && diagramHasNothingToDraw(drawn)) {
         const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? (readonly ? ' (the deep viewpoint includes what is inside it)' : ' (try Deep to include what is inside it)') : '';
         scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, { readonly, layer: recipe.layer }), status, '', { width: 0, height: 0 }, null);
       } else {
         // the Map starts without captions on its links (they take most of its room): the tooltip says what a link stands for
-        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap, itemLayer: recipe.layer })), drawn, reference, { map: isMap, layer: input.layer, opened: mapState ? mapState.opened : [], pinned: mapState ? mapState.pinned : [], show: shows, readonly, itemLayer: recipe.layer });
+        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap, itemLayer: recipe.layer })), drawn, reference, { map: isMap, layer: input.layer, opened: isMap ? input.opened : [], pinned: isMap ? input.pinned : [], show: shows, readonly, itemLayer: recipe.layer });
         scene = buildDiagramScene(viewKey, drawing.html, status, legend, drawing, drawing.focal);
         scene.boxes = drawing.boxes;
         scene.links = drawing.links;

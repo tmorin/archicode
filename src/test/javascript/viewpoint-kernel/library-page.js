@@ -4,7 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { createApp, openFixture } = require('./harness');
+const { createApp, makeDirHandle, openFixture } = require('./harness');
 const { memFolder, fixtureFiles } = require('./mem-folder');
 
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
@@ -48,6 +48,15 @@ async function startPage(options) {
     const appState = app.__state();
     appState.folder = { handle: mem.handle, name: 'ws' };
     appState.permissionState = 'granted';
+    opened = { sandbox: app, state: appState, kernel: await app.loadViewpointKernel() };
+  } else if (options && options.dir) { // a folder of the repository, read in place (the Brightcart folders), on the plateau asked for
+    const app = createApp();
+    const handle = makeDirHandle(options.dir);
+    const appState = app.__state();
+    appState.folder = { handle, name: path.basename(options.dir) };
+    appState.permissionState = 'granted';
+    await app.loadWorkspace(handle);
+    if (options.plateau) await app.switchPlateau(options.plateau);
     opened = { sandbox: app, state: appState, kernel: await app.loadViewpointKernel() };
   } else {
     opened = await openFixture();

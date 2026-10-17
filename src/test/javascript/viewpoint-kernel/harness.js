@@ -336,6 +336,20 @@ function createApp(options = {}) {
   return sandbox;
 }
 
+/**
+ * Waits for `condition()` to hold, polling every few milliseconds, and fails with `what` after `timeout` ms. A test waits for what it
+ * needs, never for a fixed delay: on a busy machine (an IDE, a build, six runs at once) a delay that was long enough is not.
+ */
+async function waitFor(condition, what, timeout = 10000) {
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    const value = await condition();
+    if (value) return value;
+    if (Date.now() > deadline) throw new Error('timed out after ' + timeout + ' ms waiting for ' + what);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
+
 /** The fixture workspace, loaded the way the editor loads a folder. */
 async function openFixture() {
   const sandbox = createApp();
@@ -346,4 +360,4 @@ async function openFixture() {
   return { sandbox, state, kernel };
 }
 
-module.exports = { FIXTURE, createApp, fakeIndexedDB, makeDirHandle, openFixture };
+module.exports = { FIXTURE, createApp, fakeIndexedDB, makeDirHandle, openFixture, waitFor };
