@@ -2,10 +2,9 @@
 // Generates Brightcart, the invented shopping fixture of docs/fixtures/brightcart-spec.md, from one description (description.mjs).
 //
 //   node src/test/resources/brightcart/generate.mjs
+//   node src/test/resources/brightcart/generate.mjs --layered <empty folder outside the repository>
 //
-// It writes, next to this file (and nothing else; the four folders are emptied first, so a second run gives the same bytes):
-//   layered/    the layered rendition: four plateau folders, `patches` in each plateau.yaml, a workspace.yaml with no `settings.plateaus` and a `settings.manifests.paths` that lists the four plateau folders.
-//               Nothing reads it yet: the layered engine does not exist. The resolver below is its only reader.
+// It writes, next to this file (and nothing else; the three folders are emptied first, so a second run gives the same bytes):
 //   folders/    the complete-folder rendition: each plateau a whole folder of manifests, the `baseline` key written for every plateau but the first (E2),
 //               `replaces` relative to that key; the one the current tools read (`archicode diff`, `views generate`, the editor).
 //   variants/   V1 to V14 (negative variants) and M1 to M3 (merge scenarios) as descriptions with the expected class of message. They are not run;
@@ -13,15 +12,21 @@
 //   expected/   the sizes, the two renditions in files, lines and bytes, the comparisons P1 to P6 (with the flag that says whether a tool verifies
 //               them or only the model does), the table of changes of each comparison and the notable cases N1 to N17.
 //
+// The layered rendition is not written here. It is the rendition of the layered engine, which does not exist: no tool reads it, so it is not a committed folder
+// (every shipped file is opened by a tool in a test). The resolver below needs it, so it is built in a temporary folder, read back from the files and removed.
+// `--layered <folder>` writes it into <folder> instead and keeps it: four plateau folders, `patches` in each plateau.yaml, a workspace.yaml with no `settings.plateaus` and a
+// `settings.manifests.paths` that lists the four plateau folders. The folder must be empty or absent, and must not be inside this one.
+//
 // What the generator checks before it finishes (it exits 1 on the first difference, after printing it):
 //   1. the description resolves to the sizes and the counts of the document (50, 42, 66, 82 elements; P1 to P6);
 //   2. the notable cases N1 to N17 hold in the model's comparisons;
-//   3. the resolver reads layered/ from the files, resolves each plateau and finds exactly what is in folders/ (the "same plateaus" test);
+//   3. the resolver reads the layered rendition from the files, resolves each plateau and finds exactly what is in folders/ (the "same plateaus" test);
 //   4. the negative variants V1 to V8 fail in the model with the words expected.
 // The command line checks the other side (README.md): `archicode diff` on folders/ gives the counts of P1, P2, P3 and P5.
 //
 // Everything is invented; nothing comes from a real workspace.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, ORDER, BASELINE_KEY, VIEWS, E, Plateau, WORKSPACE_SETTINGS, WORKSPACE_STYLES, COMPARISONS, NOTABLE, VARIANTS, MERGES, DOCUMENT } from './description.mjs';
@@ -669,7 +674,7 @@ function listFiles(dir) {
   return out;
 }
 
-/** layered/ read from the disk: the plateaus with their manifests and their patches, each manifest in the plateau of its folder (L0). */
+/** The layered rendition read from the disk: the plateaus with their manifests and their patches, each manifest in the plateau of its folder (L0). */
 function readLayered(dir) {
   const plateaus = {};
   for (const f of listFiles(dir)) {
@@ -718,13 +723,13 @@ function diffPlateau(pid, resolved, folder) {
   const rec = resolved.history[pid];
   const a = new Set(resolved.el.keys());
   const b = new Set(folder.el.keys());
-  for (const k of a) if (!b.has(k)) problems.push(`${pid}: ${keyRef(k)} is in the resolution of layered/ and not in folders/`);
-  for (const k of b) if (!a.has(k)) problems.push(`${pid}: ${keyRef(k)} is in folders/ and not in the resolution of layered/`);
+  for (const k of a) if (!b.has(k)) problems.push(`${pid}: ${keyRef(k)} is in the resolution of the layered rendition and not in folders/`);
+  for (const k of b) if (!a.has(k)) problems.push(`${pid}: ${keyRef(k)} is in folders/ and not in the resolution of the layered rendition`);
   for (const k of a) {
     if (!b.has(k)) continue;
     const x = face(resolved.el.get(k), rec.get(k) || []);
     const y = face(folder.el.get(k), folder.el.get(k).replaces);
-    if (x !== y) problems.push(`${pid}: ${keyRef(k)} differs\n    layered/ ${x}\n    folders/ ${y}`);
+    if (x !== y) problems.push(`${pid}: ${keyRef(k)} differs\n    layered   ${x}\n    folders/ ${y}`);
   }
   return problems;
 }
@@ -753,7 +758,29 @@ function measure(files) {
   return { files: [...files.keys()].filter((n) => n !== 'workspace.yaml').length, lines, bytes };
 }
 
+/** `--layered <folder>`: the folder to keep the layered rendition in, or null (then it is built in a temporary folder and removed). */
+function layeredTarget() {
+  const args = process.argv.slice(2);
+  if (args.length === 0) return null;
+  if (args.length !== 2 || args[0] !== '--layered') {
+    console.error('usage: node generate.mjs [--layered <empty folder outside the repository>]');
+    process.exit(2);
+  }
+  const dir = path.resolve(args[1]);
+  const inside = path.relative(here, dir);
+  if (inside === '' || (!inside.startsWith('..') && !path.isAbsolute(inside))) {
+    console.error(`--layered ${args[1]}: the layered rendition is not kept in the fixture folder (nothing reads it); give a folder outside ${here}`);
+    process.exit(2);
+  }
+  if (fs.existsSync(dir) && (!fs.statSync(dir).isDirectory() || fs.readdirSync(dir).length)) {
+    console.error(`--layered ${args[1]}: the folder must be empty or absent (the generator does not empty a folder it did not make)`);
+    process.exit(2);
+  }
+  return dir;
+}
+
 function main() {
+  const kept = layeredTarget();
   const P = build();
   const { S, messages } = runAll(P);
   if (messages.length) fail('the description does not resolve cleanly:\n  ' + messages.join('\n  '));
@@ -834,29 +861,36 @@ function main() {
   // ---- renditions
   const layered = writeLayered(P);
   const folders = writeFolders(P, S);
-  const renditions = { layered: measure(layered), folders: measure(folders) };
-  renditions.layered.manifests = renditions.layered.files - ORDER.length; // plateau.yaml files are not manifests
-  renditions.layered.plateauFiles = ORDER.length;
-  renditions.layered.patches = ORDER.reduce((n, id) => n + P[id].patches.length, 0);
+  const layeredSize = measure(layered);
+  layeredSize.manifests = layeredSize.files - ORDER.length; // plateau.yaml files are not manifests
+  layeredSize.plateauFiles = ORDER.length;
+  layeredSize.patches = ORDER.reduce((n, id) => n + P[id].patches.length, 0);
+  const renditions = { folders: measure(folders) }; // only what is committed: the layered rendition is not
 
-  writeTree(path.join(here, 'layered'), layered);
   writeTree(path.join(here, 'folders'), folders);
 
-  // ---- the resolver: layered/ read from the files, resolved, against folders/ read from the files
-  const fromDisk = readLayered(path.join(here, 'layered'));
+  // ---- the resolver: the layered rendition read from the files (kept in `kept`, or in a temporary folder), resolved, against folders/ read from the files
+  const layeredDir = kept || fs.mkdtempSync(path.join(os.tmpdir(), 'brightcart-layered-'));
+  writeTree(layeredDir, layered);
+  let fromDisk;
+  try {
+    fromDisk = readLayered(layeredDir);
+  } finally {
+    if (!kept) fs.rmSync(layeredDir, { recursive: true, force: true });
+  }
   const folderPlateaus = readFolders(path.join(here, 'folders'));
   const resolvedSizes = {};
   const stateOf = {};
   for (const pid of ORDER) {
     const pl = fromDisk[pid];
     if (!pl) {
-      fail(`resolver: layered/ has no plateau ${pid}`);
+      fail(`resolver: the layered rendition has no plateau ${pid}`);
       continue;
     }
     try {
       stateOf[pid] = resolve(pl.parent ? stateOf[pl.parent] : null, pl);
     } catch (ex) {
-      fail(`resolver: layered/ does not resolve ${pid}: ${ex.message}`);
+      fail(`resolver: the layered rendition does not resolve ${pid}: ${ex.message}`);
       continue;
     }
     resolvedSizes[pid] = stateOf[pid].el.size;
@@ -903,8 +937,8 @@ function main() {
     const s = sizes[pid];
     console.log(`${pid.padEnd(12)} ${String(s.application).padStart(11)} ${String(s.technology).padStart(10)} ${String(s.elements).padStart(8)} ${String(s.relationships).padStart(13)} ${String(s.files).padStart(5)} ${String(s.declared).padStart(8)} ${String(s.patches).padStart(7)}`);
   }
-  console.log('resolver     ' + ORDER.map((pid) => `${pid} ${resolvedSizes[pid]}`).join(', ') + ' elements (layered/ resolved from the files, compared with folders/)');
-  console.log(`layered/     ${renditions.layered.files} files (${renditions.layered.manifests} manifests, ${renditions.layered.plateauFiles} plateau.yaml, ${renditions.layered.patches} patches), ${renditions.layered.lines} lines, ${renditions.layered.bytes} bytes`);
+  console.log('resolver     ' + ORDER.map((pid) => `${pid} ${resolvedSizes[pid]}`).join(', ') + ' elements (the layered rendition resolved from the files, compared with folders/)');
+  console.log(`layered      ${layeredSize.files} files (${layeredSize.manifests} manifests, ${layeredSize.plateauFiles} plateau.yaml, ${layeredSize.patches} patches), ${layeredSize.lines} lines, ${layeredSize.bytes} bytes, ${kept ? 'written to ' + kept : 'built in a temporary folder and removed (--layered <folder> keeps it)'}`);
   console.log(`folders/     ${renditions.folders.files} files, ${renditions.folders.lines} lines, ${renditions.folders.bytes} bytes`);
   for (const c of comparisons) {
     const e = c.elements;
@@ -916,7 +950,7 @@ function main() {
     console.error('\nFAILED:\n' + failures.map((f) => '  - ' + f).join('\n'));
     process.exit(1);
   }
-  console.log('ok: the description matches the document, and layered/ resolves to folders/ for the four plateaus');
+  console.log('ok: the description matches the document, and the layered rendition resolves to folders/ for the four plateaus');
 }
 
 main();

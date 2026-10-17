@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 013
-status: proposed
+status: in-progress
 date: 2026-10-17
 related:
   - docs/wav/wav-013-reported-defects-and-shipped-files/wbc-013-reported-defects-and-shipped-files.md
@@ -47,7 +47,7 @@ workspace that hits none of these defects generates exactly the same views as be
 wave_manifest:
   wave: 013
   slug: reported-defects-and-shipped-files
-  status: proposed
+  status: in-progress
   sources: []
   phases:
     - id: P1
@@ -91,7 +91,7 @@ wave_manifest:
       slug: fixture-layered-off-repo
       phase: P1
       depends_on: []
-      run: null
+      run: '0064'
       delegation: standard
       likely_paths:
         - 'src/test/resources/brightcart/**'

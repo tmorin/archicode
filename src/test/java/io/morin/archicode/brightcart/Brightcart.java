@@ -199,9 +199,17 @@ final class Brightcart {
 
     /** {@code views generate --plateau <id>} for the four plateaus, one after the other, on a copy in {@code into}. */
     static Generated generateAll(Cli cli, Path into) {
+        return generate(cli, into, PLATEAUS);
+    }
+
+    /**
+     * {@code views generate --plateau <id>} for the given plateaus, one after the other, on a copy in {@code into}: a
+     * run takes about twenty seconds per plateau, so a test that needs the files of two runs asks for two plateaus.
+     */
+    static Generated generate(Cli cli, Path into, List<String> plateaus) {
         val workspace = copyFolders(into);
         val results = new TreeMap<String, Result>();
-        for (val plateau : PLATEAUS) {
+        for (val plateau : plateaus) {
             results.put(plateau, cli.generate(workspace, plateau));
         }
         return new Generated(workspace, results);

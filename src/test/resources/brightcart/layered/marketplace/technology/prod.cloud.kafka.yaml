@@ -1,9 +1,0 @@
-header:
-  kind: "archicode.morin.io/node"
-  version: "1"
-  parent: "prod.cloud"
-content:
-  id: "kafka"
-  name: "Managed Kafka"
-  applications:
-    - "platform.broker"

@@ -1,7 +1,0 @@
-header:
-  kind: "archicode.morin.io/plateau"
-  version: "1"
-content:
-  id: "baseline"
-  name: "Monolith"
-  horizon: "2026-Q1"

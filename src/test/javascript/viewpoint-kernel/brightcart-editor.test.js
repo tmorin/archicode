@@ -3,10 +3,10 @@
 // src/test/resources/brightcart/. Three things, each against the answers the generator wrote in expected/ and not against numbers typed here:
 //   - the editor opens each of the four plateaus of `folders/` and finds the sizes of the document;
 //   - the Changes panel of each comparison that a tool can say today (P1, P2, P3, P5, P6) shows the counts `archicode diff` prints (BrightcartDiffTest.java reads the same file);
-//   - the save keeps what an edit does not touch (the line-preserving save of run 0055 and wave 011): every manifest of both renditions (73 files in `folders/`, 49 in `layered/`) is
+//   - the save keeps what an edit does not touch (the line-preserving save of run 0055 and wave 011): every manifest of `folders/` (73 files) is
 //     saved as it was when nothing changed, an edit of its name changes its name line and no other, an addition keeps every line it had; and the editor itself, on the whole of `folders/`,
 //     writes a rename and writes it back to the bytes of the file on the disk.
-// `layered/` is data that only the generator reads (no engine), so its files go through the text save alone (`patchYamlText`), not through a loaded workspace.
+// The layered rendition is not committed (no tool reads it; `node generate.mjs --layered <folder>` writes it), so its files are not saved here: the 73 files of `folders/` are.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,7 +17,6 @@ const { memFolder } = require('./mem-folder');
 
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart');
 const FOLDERS = path.join(BRIGHTCART, 'folders');
-const LAYERED = path.join(BRIGHTCART, 'layered');
 const expected = (name) => JSON.parse(fs.readFileSync(path.join(BRIGHTCART, 'expected', name + '.json'), 'utf8'));
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
@@ -130,20 +129,18 @@ test('P4 is not asked of the editor: no plateau compares marketplace with baseli
   assert.equal(state.plateau.id, 'marketplace');
 });
 
-// ---- the save: every manifest of both renditions ----
+// ---- the save: every manifest of the complete-folder rendition ----
 
 const FOLDERS_FILES = yamlFiles(FOLDERS).filter((f) => f !== 'workspace.yaml');
-const LAYERED_FILES = yamlFiles(LAYERED).filter((f) => f !== 'workspace.yaml');
 const app = createApp({});
 const parse = (text) => plain(app.parseYaml(text));
 
-test('the two renditions are the files the document counts', () => {
-  for (const [files, rendition] of [[FOLDERS_FILES, RENDITIONS.folders], [LAYERED_FILES, RENDITIONS.layered]]) {
-    const texts = files.map((f) => fs.readFileSync(path.join(files === FOLDERS_FILES ? FOLDERS : LAYERED, f), 'utf8'));
-    assert.equal(files.length, rendition.files);
-    assert.equal(texts.reduce((n, t) => n + t.split('\n').length - 1, 0), rendition.lines);
-    assert.equal(texts.reduce((n, t) => n + Buffer.byteLength(t), 0), rendition.bytes);
-  }
+test('the complete-folder rendition is the files the document counts', () => {
+  const texts = FOLDERS_FILES.map((f) => fs.readFileSync(path.join(FOLDERS, f), 'utf8'));
+  assert.equal(FOLDERS_FILES.length, RENDITIONS.folders.files);
+  assert.equal(texts.reduce((n, t) => n + t.split('\n').length - 1, 0), RENDITIONS.folders.lines);
+  assert.equal(texts.reduce((n, t) => n + Buffer.byteLength(t), 0), RENDITIONS.folders.bytes);
+  assert.equal(RENDITIONS.layered, undefined, 'the layered rendition is not committed, so it is not counted here');
 });
 
 /** `value` with the name of its content set to `name`: what an edit of the name saves. */
@@ -153,7 +150,7 @@ const renamed = (text, name) => {
   return app.patchYamlText(text, value);
 };
 
-for (const [rendition, root, files] of [['folders', FOLDERS, FOLDERS_FILES], ['layered', LAYERED, LAYERED_FILES]]) {
+for (const [rendition, root, files] of [['folders', FOLDERS, FOLDERS_FILES]]) {
   test('save, ' + rendition + ': a file read and written back with no edit is the file, byte for byte (' + files.length + ' files)', () => {
     for (const file of files.concat(['workspace.yaml'])) {
       const text = fs.readFileSync(path.join(root, file), 'utf8');

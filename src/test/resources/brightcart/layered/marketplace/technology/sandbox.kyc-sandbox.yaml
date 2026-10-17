@@ -1,9 +1,0 @@
-header:
-  kind: "archicode.morin.io/node"
-  version: "1"
-  parent: "sandbox"
-content:
-  id: "kyc-sandbox"
-  name: "KYC (sandbox)"
-  applications:
-    - "kyc"

@@ -24,7 +24,9 @@ import picocli.CommandLine;
 
 /**
  * The same files give the same bytes (wave 012, run 0061): {@code views generate} for the four plateaus and their
- * facets, run twice on two copies of {@code folders/} (and once more in the folder where the views already are);
+ * facets, and again for {@code saas} and {@code marketplace} on a second copy of {@code folders/} (and once more in the
+ * folder where the views already are; wave 013, run 0064: the second run no longer repeats the four plateaus, it takes
+ * minutes);
  * {@code diff} in its three formats; {@code query views} and {@code query graph}, sorted and identical from one run to
  * the next (wave 011, issues #48, #49 and the sorted output of the CLI). The four plateaus exit 0, the comparison views
  * of {@code inhouse} and {@code marketplace} among the files compared (E1 of the document, fixed by W-3 of wave 012).
@@ -55,34 +57,53 @@ class BrightcartStableOutputTest {
         }
     }
 
+    /**
+     * The plateaus run twice: {@code saas} (a plateau with a baseline and its comparison views) and {@code marketplace}
+     * (the deepest one, whose comparison views stopped on E1). A run of a plateau takes about twenty seconds, so the
+     * second run does not repeat the four; the first one, shared with the other tests, still draws the four.
+     */
+    private static final List<String> TWICE = List.of("saas", "marketplace");
+
     @Test
     void twoRunsOnTwoCopiesWriteTheSameFilesWithTheSameBytes(@TempDir Path dir) {
         val first = Brightcart.firstRun(cli());
-        val second = Brightcart.generateAll(cli(), dir);
-        for (val plateau : Brightcart.PLATEAUS) {
+        val second = Brightcart.generate(cli(), dir, TWICE);
+        for (val plateau : TWICE) {
             assertEquals(
                 first.results().get(plateau),
                 second.results().get(plateau),
                 plateau + ": exit code, output and messages"
             );
         }
+        for (val plateau : Brightcart.PLATEAUS) {
+            assertEquals(0, first.results().get(plateau).exit(), plateau + " exits 0");
+        }
         val folders = viewFolders(first.workspace());
-        assertEquals(folders, viewFolders(second.workspace()));
         assertTrue(
             folders.size() >= 16,
             "the views of four plateaus, their facets and the comparisons that were drawn: " + folders
         );
-        var compared = 0;
-        for (val folder : folders) {
+        val again = viewFolders(second.workspace());
+        val compared = folders
+            .stream()
+            .filter(f -> TWICE.stream().anyMatch(p -> isViewsOf(f, p)))
+            .toList();
+        assertEquals(compared, again, "the folders of the plateaus run twice");
+        for (val folder : compared) {
             val files = Brightcart.tree(first.views(folder));
             assertFalse(files.isEmpty(), folder);
             assertEquals("", Brightcart.difference(files, Brightcart.tree(second.views(folder))), folder);
-            compared++;
         }
-        assertTrue(compared >= 20, "the folders compared: " + compared);
-        // the comparisons of the two plateaus that replace elements are among them (they stopped on E1, and half written)
+        assertTrue(compared.size() >= 8, "the folders compared: " + compared);
+        // the comparisons of the two plateaus that replace elements are among the folders of the first run (they stopped on E1, and half written)
         assertTrue(folders.contains("views-inhouse-vs-baseline"), folders.toString());
         assertTrue(folders.contains("views-marketplace-vs-inhouse"), folders.toString());
+        assertTrue(compared.contains("views-marketplace-vs-inhouse"), compared.toString());
+    }
+
+    /** {@code views-<plateau>}, its facets and its comparisons: {@code views-<plateau>-...}. */
+    private static boolean isViewsOf(String folder, String plateau) {
+        return folder.equals("views-" + plateau) || folder.startsWith("views-" + plateau + "-");
     }
 
     @Test
