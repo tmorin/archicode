@@ -98,6 +98,7 @@ flowchart TB
 | L8 | A reference declared twice, in any layer of the chain, is an error. | Redeclaring an element of an ancestor plateau |
 | L9 | `replaces` is a fact of one plateau. Comparing two plateaus several steps apart composes the facts of the steps in between. | `replaces` across several steps |
 | L10 | Views and stories are patchable and follow a `MOVE`. | Views and stories under patches |
+| L11 | A plateau can be merged into an ancestor, and the result resolves to what the future plateau resolved to (section 14). | Whether the fold exists, and how its result is produced |
 
 ## 4. The workspace
 
@@ -1470,6 +1471,9 @@ Each case is a place where the fixture asks something specific. "State" is what 
 | V9 | Two `SET` of the same field in one plateau | A warning; the last one wins. |
 | V10 | `horizon` of a child earlier than its parent's | A warning. |
 | V11 | Two plateaus with the same `override` and the same `id` | Error: plateau declared twice. |
+| V12 | Merge `inhouse` into `baseline` while `saas` hangs under `baseline` | Refused: `saas` no longer resolves (`patch REMOVE has no match for shop.app.catalog`). Allowed with `--drop saas`. Nothing is written when it is refused. |
+| V13 | Merge `marketplace` into `saas` | Error: `saas` is not an ancestor of `marketplace`. |
+| V14 | Merge a plateau into itself, or `baseline` into anything | Error: nothing to merge. |
 
 **What the fixture drives.**
 
@@ -1483,7 +1487,8 @@ Each case is a place where the fixture asks something specific. "State" is what 
 | Native | The smoke step runs `diff` and `views generate` on `folders/`. |
 | Layered engine | For each plateau, resolving `layered/` gives the same plateau as `folders/` (byte for byte once written out). |
 | Migration | `plateau migrate` on `folders/` gives patches that resolve back to the same plateaus. |
-| Variants | V1 to V11 each fail, or warn, with the expected class of message. |
+| Merge | M1 to M3 (section 14): the state of each surviving plateau is unchanged, byte for byte in the complete-folder rendition; its comparison with the new present equals the old comparison (P3 for M1, P4 for M2); a second run changes nothing; `--dry-run` writes nothing. |
+| Variants | V1 to V14 each fail, or warn, with the expected class of message. |
 
 ## 12. What building it showed
 
@@ -1500,6 +1505,8 @@ These are findings, not decisions.
 7. **A merge makes a self-link.** The relationship between the two merged elements is rewritten into a link from the result to itself and reads as removed, in the model and in the real `diff` alike. It may be right; it is surprising.
 8. **Render-only tags are invisible to `compare`** by design, so the fixture needs one to prove it (N11).
 9. **A bulk edit with a guard is the right contract.** `expect: 12` turns a silent drift (a thirteenth container) into an error.
+10. **A merge composes `replaces` too (section 14).** Folding `marketplace` into `inhouse` leaves `discovery.search` declared once, replacing `shop.app.search`: the two moves become one.
+11. **Merging into the root materialises.** The root has no patches, so every `REMOVE`, `SET` and `MOVE` of the absorbed layers has to end as a manifest.
 
 **On the engine (today).**
 
@@ -1524,13 +1531,77 @@ Read these before using it as evidence.
 - **`MOVE` is thinly used.** Of the twelve elements that move across the two later plateaus, the operator is the right tool for four (`shop.cache`, `commerce.search`, and the rename of `shop` that carries `shop.web`); the others change kind or name and are better written as a manifest that says `replaces`.
 - **P4 is not checked against the real tool.** It needs a composition of `replaces` that the current tool does not have; only the model computes it.
 
-## 14. Next steps
+## 14. Merging a future plateau into the present
+
+Over a year the chain grows: every plateau adds a layer, patches pile up, and the root stays what the architecture was. When a future plateau becomes real, the author wants to fold it into the present, so that the present is what was planned and the layers between disappear. This is the fold ("replier") of the time axis.
+
+**Definition.** `merge F into P`, where `F` is a descendant of `P`. Afterwards:
+
+1. `P` resolves to exactly what `F` resolved to before. `F` and every plateau between `P` and `F` are gone.
+2. Every plateau below `F` resolves to the same state as before, and now hangs under `P`.
+3. A plateau that hangs under `P` but not under `F` (a rejected alternative) survives only if it still resolves. Otherwise the merge is refused and lists them; `--drop` removes them.
+4. The `replaces` of the absorbed layers described changes against parents that no longer exist. They are dropped for the absorbed elements, and composed where two moves become one. The files cannot say any more what changed between the old present and the new one: git does. An option may keep the old present as a read-only plateau (`--archive`).
+
+**Two ways to produce the new `P`.** *Concatenation* puts the manifests and the patches of `F`'s layers after those of `P`. *Derivation* computes the canonical delta between the parent of `P` and the state of `F` (the machinery `migrate` needs anyway). On this fixture, concatenation gives the right state (M2): it works because no manifest of the later layer depends on something an earlier patch creates, which is not true in general, since all the manifests are then read before the older patches. Derivation is safe in general. The recommendation is to derive, and to accept concatenation only as a shortcut that is checked by state equality.
+
+```mermaid
+flowchart LR
+  subgraph before["Before"]
+    b0["baseline"] --> s0["saas"]
+    b0 --> i0["inhouse"] --> m0["marketplace"]
+  end
+  subgraph m1["After M1: inhouse into baseline"]
+    b1["baseline<br/>(= old inhouse)"] --> m1n["marketplace"]
+    s1["saas<br/>refused, or dropped"]
+  end
+  subgraph m2["After M2: marketplace into inhouse"]
+    b2["baseline"] --> s2["saas"]
+    b2 --> i2["inhouse<br/>(= old marketplace)"]
+  end
+  subgraph m3["After M3: marketplace into baseline"]
+    b3["baseline<br/>(= old marketplace)"]
+    s3["saas<br/>refused, or dropped"]
+  end
+  classDef gone fill:#f8d7da,stroke:#b02a37,stroke-dasharray:4 3,color:#111
+  classDef merged fill:#d6e4ff,stroke:#2f5fb3,color:#111
+  class s1,s3 gone
+  class b1,i2,b3 merged
+```
+
+**Scenarios on the fixture.**
+
+| Id | Merge | New present | Survivors | Expected |
+| --- | --- | --- | --- | --- |
+| M1 | `inhouse` into `baseline` | `baseline` resolves to 66 elements, with manifests only (the root has no patch) | `marketplace` now hangs under `baseline`: its 23 manifests and 19 patches are unchanged, its state is unchanged (82 elements) and its comparison with the new `baseline` is exactly P3 (+21 ~12 -5, 5 moved). `saas` is refused: it targets `shop.app.catalog`, which the new baseline no longer has. | `--drop saas` is needed, or the merge stops before writing anything. |
+| M2 | `marketplace` into `inhouse` | `inhouse` resolves to 82 elements and declares 49. Of the 19 patches of `marketplace`, 11 fold into manifests (they target elements this layer declares, or are the bulk edit); 8 stay patches because they target elements of the baseline: `REMOVE shop.app`, `REMOVE shop.db`, `ADD` on `fulfilment.sync`, `MOVE shop`, `SET` on `storefront.web` and the three `REMOVE` of virtual machines. | `saas` is untouched and still resolves. The new `inhouse` against `baseline` is exactly P4 (+38 ~3 -6, 11 moved, 2 split, 1 merged). `discovery.search` is declared once and replaces `shop.app.search`. | The only case where the composition of `replaces` is visible in the files. |
+| M3 | `marketplace` into `baseline` (two steps) | `baseline` resolves to 82 elements, manifests only | `saas` is refused or dropped. Nothing survives below. | The chain has become one node. |
+
+The counts are computed by the model, like the rest of this document.
+
+**Command line.**
+
+```
+archicode plateau merge marketplace --into inhouse
+archicode plateau merge inhouse --into baseline --drop saas
+archicode plateau merge marketplace --into baseline --dry-run
+```
+
+- `--into` names the present. It defaults to `settings.current`.
+- `--dry-run` prints what would be written and the comparison of the present with the future (the table `diff` already prints). It writes nothing.
+- The report lists the plateaus absorbed, the plateaus that now hang under the new present, the refused ones with their first failing patch, the manifests moved, the patches folded and the `replaces` composed.
+- It writes everything or nothing. A plateau that stops resolving after the merge aborts it.
+
+**Editor.** On the timeline, select the future node and choose *Merge into present*. The panel shows the same Changes as a comparison of the two plateaus, the plateaus that would be refused with their first failing patch (and a button to drop them), and what will be rewritten. The writes go through the line-preserving save. Undo is git.
+
+**In the complete-folder rendition** a merge is a copy of the folder of `F` over the folder of `P`, the removal of the folders in between, and a rewrite of the `baseline` key of the survivors. The `replaces` of the survivors, written against `F`, stay right; those of `F` itself, written against its old parent, are dropped. That is the version a command of today could implement, and it is the one the tests can start with.
+
+## 15. Next steps
 
 1. Read the story and the hard cases; say what is missing or unrealistic (a payment flow, a returns flow, an observability stack?).
 2. Decide the home. Proposed: the specification stays at `docs/fixtures/brightcart-spec.md`; the files live in `src/test/resources/brightcart/` (`layered/`, `folders/`, `variants/`, `expected/`) with a generator next to them (`generate.mjs`, like the harbour pair), and a subset is copied to `src/doc/examples/` once the layered engine exists.
 3. Write the generator from the model (a throwaway Python model exists in the working folder; the generator is its port). Regenerate byte for byte, as the harbour pair does.
 4. Wire the tests of section 11 that need only the current tools: `diff` on P1, P2, P3, P5; `views generate`; the editor's saves.
 5. File E1 and fix it; its test is already described.
-6. The rest (L1 to L10, P4, the variants, `migrate`) waits for decisions that are not taken.
+6. The rest (L1 to L11, P4, the merge, the variants, `migrate`) waits for decisions that are not taken.
 
 **Scale.** About 80 elements per plateau is a small workspace next to a real one (170 and more). A generator parameter that repeats the bounded contexts (`orders`, `accounts`, `marketplace`) under new ids would give a large variant for performance tests without a second story. It is not needed for the first version.
