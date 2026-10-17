@@ -50,8 +50,8 @@ archicode -w /tmp/brightcart/workspace.yaml views generate --plateau saas
 
 `--baseline` is written for P5 and P6 only; for the others the `baseline` key of the plateau says what it is compared with. Rendering needs PlantUML (`PLANTUML_JAR`).
 
-`views generate` makes the comparison of a plateau that has a `baseline` key. For `inhouse` and `marketplace` that comparison stops today with a `dangling reference` (E1 of the specification, section 12); the views of the plateau itself
-are written before it stops (147 and 181 files). Every other command works.
+`views generate` makes the comparison of a plateau that has a `baseline` key: `views-<plateau>-vs-<baseline>` is written next to the plateau's own views. For `inhouse` and `marketplace` that comparison used to stop with a
+`dangling reference` (E1 of the specification, section 12, fixed by commit `ce452a2`); the four plateaus now exit 0.
 
 `expected/changes.json` is the model's table of changes; for P1, P2, P3, P5 and P6 it agrees, element by element, with the `changes` of `archicode diff -f json` (the label change of N3 is listed there under the new label).
 

@@ -4,6 +4,8 @@ status: draft
 date: 2026-10-17
 files: src/test/resources/brightcart
 generator: src/test/resources/brightcart/generate.mjs
+tests: src/test/java/io/morin/archicode/brightcart, src/test/javascript/viewpoint-kernel/brightcart-*.test.js
+verified: P1, P2, P3, P5, P6 (by `archicode diff`), the comparison views of the four plateaus, the saves of the 122 manifests; not verified: P4, the layered semantics, the merge, the variants, the native image
 ---
 
 # Brightcart: a shopping fixture across four plateaus
@@ -22,7 +24,7 @@ Nothing here comes from a real workspace. Every name, id and label is invented.
 
 **What "convincing" means here:** 42 to 82 elements per plateau across both layers (a real workspace is bigger, section 13), the six states of `compare` all present, a fork between two exclusive alternatives, a plateau that only makes sense on one of them, and the awkward cases a real migration produces (a split, a merge, a subtree renamed, an element moved twice, a stale reference).
 
-**How it was checked.** The content of this document was produced by a throwaway model, not written by hand: it applies the layers and replays the rules of `compare.rs`. The model was then cross-checked against the real thing. The four plateaus were written out as complete folders and read by the current `archicode diff`; the five comparisons it can run (section 10) gave exactly the counts below. The layered semantics themselves (patches) are only the model's: nothing of the layered engine exists yet.
+**How it was checked.** The content of this document was produced by a throwaway model, not written by hand: it applies the layers and replays the rules of `compare.rs`. The model was then cross-checked against the real thing. The four plateaus were written out as complete folders and read by the current `archicode diff`; the five comparisons it can run (section 10) gave exactly the counts below. The layered semantics themselves (patches) are only the model's: nothing of the layered engine exists yet. Since then the tools have been wired to the files: section 12 says which result each one now verifies and which stay the model's, and section 13 what is still not checked.
 
 **Out of scope for this document:** deciding the open design points (each assumption below is labelled as open), writing the files, golden outputs of the renderer.
 
@@ -140,7 +142,7 @@ styles:
       round-corner: 20
 ```
 
-The three facets were run on the four plateaus with the current command line: they all generate, `no-externals` leaves no `Payment provider` system in any view (the technology nodes `Payment provider (live)` and `(sandbox)` keep the partner's name in theirs), and `journey` leaves no `Back office`. `without-cart` selects nothing in `saas`, where the cart is gone, and generates all the same: a facet tolerates a path that selects nothing, a patch does not (L3).
+The three facets were run on the four plateaus with the current command line: they all generate, `no-externals` leaves no `Payment provider` system in any view (the technology nodes `Payment provider (live)` and `(sandbox)` keep the partner's name in theirs), and `journey` leaves no `Back office`. `without-cart` selects nothing in `saas`, where the cart is gone, and generates all the same: a facet tolerates a path that selects nothing, a patch does not (L3). It selects nothing in the elements, not in the bytes: the 20 technology views of `saas` through that facet differ from the plain ones (section 12, note 2).
 
 ## 5. Plateau `baseline`: the monolith
 
@@ -1484,7 +1486,7 @@ Each case is a place where the fixture asks something specific. "State" is what 
 | Kernel | `compare` returns the counts of P1, P2, P3 and P5 on the complete-folder rendition, and the table of changes for the notable cases. |
 | Kernel | The composition of `replaces` gives P4 (layered engine only). |
 | Command line | `diff` for the verified pairs; `views generate` for the four plateaus and for both facets; two runs give identical bytes. |
-| Command line | `views generate` on the comparison views of `inhouse` and `marketplace`. They fail today (section 12, E1): they become the regression test of the fix. |
+| Command line | `views generate` on the comparison views of `inhouse` and `marketplace`. They failed until E1 was fixed (section 12): they are its regression test. |
 | Editor | Open each plateau, switch *Compare to*, read the Changes panel, *Write replaces* on the candidates, *Move* an element. Save each manifest (49 in the layered rendition, 73 in the complete folders) through the line-preserving save and compare the bytes. |
 | Native | The smoke step runs `diff` and `views generate` on `folders/`. |
 | Layered engine | For each plateau, resolving `layered/` gives the same plateau as `folders/` (byte for byte once written out). |
@@ -1512,7 +1514,7 @@ These are findings, not decisions.
 
 **On the engine (today).**
 
-- **E1. `views generate` fails on the comparison views of `inhouse` and `marketplace`** with `dangling application reference: shop.cache` and `dangling reference: shop.web`, while `diff` works. A node that is removed keeps an application that another element replaced, so the union model points at nothing. On Brightcart, `views generate --plateau inhouse` (and `marketplace`) stops with it, because those plateaus have a `baseline` key and the command then also draws the comparison; the views of the plateau itself (147 and 181 files) are written before it stops. Removing the `replaces` from the element involved makes the plateau generate, which isolates the cause. A second error appears once the first is out (`dangling reference: shop.app.inventory`); whether it is the same cause is not known. A workspace of four small files reproduces the first one:
+- **E1 (fixed: issue #67, commit `ce452a2`). `views generate` failed on the comparison views of `inhouse` and `marketplace`** with `dangling application reference: shop.cache` and `dangling reference: shop.web`, while `diff` worked. On Brightcart, `views generate --plateau inhouse` (and `marketplace`) stopped with it, because those plateaus have a `baseline` key and the command then also draws the comparison; the views of the plateau itself (147 and 181 files) were written before it stopped. Removing the `replaces` from the element involved made the plateau generate, which isolated the cause. A workspace of four small files reproduced it, and is now a test:
 
 ```yaml
 # workspace.yaml: settings.plateaus a (plateaus/a) and b (plateaus/b, baseline: a)
@@ -1520,8 +1522,43 @@ These are findings, not decisions.
 # plateaus/b: system s { container y, replaces: [s.x] } environment e { node m, applications: [s.y] }
 ```
 
-`archicode diff --plateau b` prints `+1 ~0 -1` and one move. `archicode views generate --plateau b` stops with `error: dangling application reference: s.x`.
+  `archicode diff --plateau b` prints `+1 ~0 -1` and one move; `archicode views generate --plateau b` stopped with `error: dangling application reference: s.x`, and exits 0 now.
+
+  *Where it was.* In the union of the two plateaus a removed element took its `applications` and `uses` from the baseline unchanged, so it named an element that another one replaced and that the union does not hold. Three places held that cause, and the fix touches the three: the kernel's `compare` (a removed element, and the place of a replaced box, read their properties through the same rewrite as every other element), `KernelViewpointFactory.unionOf` (the union of the views of a facet of a comparison overwrote them with the references of the faceted model, which are the baseline's raw ones) and `WorkspaceFactory.createUnion` (the workspace of a comparison held children that another element had replaced, such as `shop.web` under the place `shop`). The second error that appeared once the first was out (`dangling reference: shop.web`, `shop.app.inventory`) was the third place, not a second defect.
+
+  *What was decided.* An entry that points at a replaced element points at the element that replaced it, and one that points at a split element is left out. A removed node that deployed `shop.cache`, which `commerce.cart-store` replaced, now deploys `commerce.cart-store` in the comparison: it is drawn removed, next to the new node that deploys the same element. The other two ways (drop the entry, keep the replaced element in the union) lose what the node hosted, or draw as new an element the author says is not removed. The shape of the kernel's output and its contract version (4) did not change (#34 untouched). The author can overrule it on the pull request.
+
+  *What reads it.* `BrightcartViewsTest` (the four plateaus exit 0 with an empty error output, the comparison folders of `inhouse` and `marketplace`, N13 in P1, P2 and P3), `BrightcartStableOutputTest` (two runs identical, the two comparison folders among them), `ReplacedElementsViewsTest` (the four-file workspace, three tests), the Rust tests of `compare.rs` and `replaces.test.js` and `brightcart-kernel.test.js` (the views of every environment of the union). One consequence a reader will meet: the *Before* of `staging.vm` in P2 lists `commerce.cart-store`, which the baseline never had (it had `shop.cache`), and `archicode diff` says `applications: -commerce.cart-store` for it. It is the same reading in both tools (issue #71 notes it).
 - **E2. `--baseline` has to be written** when the `baseline` key of a plateau is missing and the previous plateau in the list is not the right one (`inhouse` would otherwise compare with `saas`). The fixture sets the key everywhere.
+
+**What a tool now verifies.** Wave 012 wired the tests; the numbers are read from `expected/`, never typed in a test, and each test fails when the fixture file it reads is changed.
+
+| Result of the document | Verified by | What is checked |
+| --- | --- | --- |
+| Sizes (50, 42, 66, 82 elements; 28, 21, 36, 48 application elements) | Java (`BrightcartSizesTest`, `query graph`), node (the editor opens each plateau), the look (Map) | The loader finds the sizes of section 10. The Map, unfolded, draws 28, 21, 36 and 48 items and 28, 21, 35 and 50 links: the application half of the table. |
+| P1, P2, P3, P5: counts, text, table of changes, warnings | Java (`BrightcartDiffTest`), node (kernel and the Changes panel of the editor), the look | `diff` gives the counts of section 10, the table of `changes.json` and, for P5 and P6, the warnings of `ignoredReplaces`. The Changes panel gives the same counts for P1, P2, P3, P5 and P6, and the mirror of P1. |
+| P6 | the same, as what the tool prints | 4 moves and 16 removed, which is not the real change (P4). |
+| Comparison views of the four plateaus | Java (`BrightcartViewsTest`, `BrightcartStableOutputTest`, `ReplacedElementsViewsTest`) | `views generate --plateau <id>` exits 0 for the four, with the file counts of section 10 and an empty error output; `views-inhouse-vs-baseline` and `views-marketplace-vs-inhouse` are written with a table equal to `diff -f json`; two runs give the same bytes, those two folders included. |
+| The three facets | Java (`BrightcartViewsTest`) | They generate on the four plateaus, `journey` leaves no `Back office`, `no-externals` no `Payment provider` system, `without-cart` takes the cart away where there is one. |
+| Notable cases N1 to N16 | Java (`theNotableCasesTheTableCanShowHoldInTheTool`), node (`brightcart-kernel.test.js`) | Each has a check that the table answers in P1, P2, P3 or P5. N13, a state of the drawing, is read in the PlantUML of the comparison views (P1, P2, P3) and in the kernel. N3 is read under the new label (note 1). |
+| Saves | node (`brightcart-editor.test.js`) | The 73 manifests of `folders/` and the 49 files of `layered/` go through the line-preserving save: no edit gives the file byte for byte, a rename changes its line and no other, and putting it back gives the file back. The editor itself, on the whole of `folders/`, plateau by plateau, does the same with one rename per manifest. `layered/` goes through the text save only: no engine reads it. |
+| Smoke step | `ci-build.yaml`, step of the `Native` job | `diff` of `inhouse`, `views generate` of `saas` and the view of a facet, on a copy of `folders/`; its text was run with `bash -e` against the JVM build. |
+
+*Notes on this table.* (1) The label change of N3: `expected/changes.json` keeps the old label of the relationship in its `label-changed` rows; the tools say `changed` with the new label and the old one under `before`; the tests map the two. (2) The facet `without-cart` selects nothing in `saas` and still generates, and the application views are byte for byte those of `saas`; but 20 technology views differ from the plain ones, because a faceted workspace asks the kernel for the links between applications in the technology views (`prod-deep.puml` gains `web_vm_shop_web --> app_vm_shop_app`). It is by design, and it makes the sentence "selects nothing" true of the elements, not of the bytes.
+
+**What the editor showed.** The editor was served on a copy of `folders/` (`archicode editor serve`) and driven in the built-in browser, in light and in dark. The pane of the browser was hidden for the whole session: no screenshot could be taken and the page never fired an animation frame, so what follows was read from the page (its text, its structure, the computed colours), not seen. A look at the screen is still to do.
+
+- Each of the four plateaus opens, in both themes, and the Map unfolded draws the sizes above. The page has no error text; no manifest view or story exists in the fixture, so the Library is empty and the page of a view was not looked at.
+- The Changes panel gives the counts of `archicode diff` for P1, P2, P3, P5 and P6 (the plateau's *Baseline:* entry and the named plateau give the same). P2 and P5 show the moved, split and merged chips; P5 lists the 7 warnings and P6 the 1 of `ignoredReplaces`; the candidates of P5 (2) are those of the command line.
+- The `Deep` view of `prod` is drawn for P1, P2, P3, P5 and P6 (21, 45, 62, 45 and 64 items) with the states, `contains-changes`, `moved`, `split` and `merged` among them: it was the view that failed on E1 in the editor. The facets `no-externals` and `without-cart` draw on P2 and P3; `journey` draws too, as long as nothing was unfolded, pinned or hidden on the Map (#68, below).
+- *Write replaces*, on the first candidate of P1 (`partners.commerce-live` replaces `partners.tax-live`, the swap of N15): the comparison went from +3 ~5 -11 to +2 ~5 -10 with one move; *Save all changes* wrote two lines in `tec.partners.yaml` and nothing else, and `archicode diff --plateau saas` on the saved copy gave the same. Reverted by copying `folders/` again.
+- *Move and write replaces*, of `shop.app.notifications` under `shop.web` in P2: the dialog offers 2 parents, because the others are in another file (documented in the manual), and says 1 reference is rewritten in 1 file; the comparison went from 7 to 8 moved and the relationships stayed +17 ~1 -6; the save moved the block, rewrote the one `destination` in `app.orders.yaml`, wrote `replaces: [shop.app.notifications]`, and `diff` on the saved copy said 8 moved. Reverted the same way.
+- *Changes only*, P3, unfolded Map: 51 items and 53 links become 37 items and 22 links, 6 of the boxes being context, and the key counts 14 new, 9 changed, 3 removed and 5 moved boxes.
+- Colours: in both themes, for the 91 (P2) and 130 (P3) boxes drawn, the colour of the text against the fill of its box is 4.5 or more everywhere (computed from the page; the transparency of a fill is not taken into account).
+- Speed, measured in the page (a `MutationObserver` on the document, from the click to the last change, with the pane hidden, so layout and paint are not in it): choosing `marketplace` (82 elements, 48 on the Map) takes 230 to 245 ms, which includes reading the folder; adding a comparison, 240 to 270 ms; *Unfold all* on P6 (61 items, 72 links), 440 to 470 ms the first time; the `Deep` view of `prod` in P3 (62 items), 325 ms the first time and 65 to 100 ms after. Nothing here was slow at this size.
+- Four surprises, each a GitHub issue with a reproduction on the fixture: **#68** an element opened, pinned or hidden on the Map and removed by a facet (`journey` removes `backoffice`) turns the Map into `dangling reference: backoffice`; **#69** the header does not wrap with four plateaus, and *Compare to* is off screen below about 1275 px; **#70** the candidates of two sibling plateaus (P5) propose the two node pairs that are alternatives, not one thing said twice; **#71** the panel of a removed node lists no applications.
+
+**Open.** Whether the *Before* of an entry that points at a replaced element should read as the replacing one, as it does since E1 was fixed, or as the replaced one the baseline file says (#71); the author can overrule the choice on the pull request.
 
 ## 13. Limits of this fixture
 
@@ -1532,6 +1569,13 @@ Read these before using it as evidence.
 - **It is small.** 42 to 82 elements per plateau. Problems of scale (candidates precision, editor speed, view clutter) will not show.
 - **`MOVE` is thinly used.** Of the twelve elements that move across the two later plateaus, the operator is the right tool for four (`shop.cache`, `commerce.search`, and the rename of `shop` that carries `shop.web`); the others change kind or name and are better written as a manifest that says `replaces`.
 - **P4 is not checked against the real tool.** It needs a composition of `replaces` that the current tool does not have; only the model computes it.
+- **P6 is the tool's reading, not the change.** It is verified, as what the current tool prints for `marketplace` against `baseline` (last step only, 4 moves, 16 removed); the real change of the two plateaus is P4.
+- **The layered semantics are the model's.** No tool reads `layered/`; that it resolves to `folders/` is shown by the generator's own resolver and nothing else, and the rules L0 to L11, the patches, `plateau migrate` and the merge (M1 to M3, section 14) are not run by anything. Open (with the author): whether `layered/workspace.yaml` should name `settings.manifests.paths`.
+- **The variants are described, not run.** V1 to V14 and M1 to M3 are in `variants/` with the class of message they expect; V1 to V8 also fail in the model with the words they expect; no tool runs any of them. N17 is V8.
+- **The native image was not built.** The smoke step was run against the JVM build; the first run of the `Native` job is the pull request's.
+- **The editor was read, not seen.** It was driven in one browser (the built-in one) with its pane hidden: the counts, the texts, the structure and the colours of the page were read, there is no screenshot and no measure of layout or paint. Other browsers, the folder picker (the editor was served by the command line) and the published page were not tried. The speed is for 82 elements; a real workspace has twice as many.
+- **The facets are generated, not compared byte by byte.** The three facets generate on the four plateaus and the tests assert what they leave out; the bytes of the technology views of a faceted workspace differ from the plain ones even for a facet that selects nothing (note 2 above).
+- **Nothing here says what the editor should do with a view or a story that points at a removed or a renamed element** (L10): the fixture has no manifest view or story.
 
 ## 14. Merging a future plateau into the present
 
@@ -1602,8 +1646,8 @@ archicode plateau merge marketplace --into baseline --dry-run
 1. Read the story and the hard cases; say what is missing or unrealistic (a payment flow, a returns flow, an observability stack?).
 2. The home is taken: the specification stays at `docs/fixtures/brightcart-spec.md`; the files live in `src/test/resources/brightcart/` (`layered/`, `folders/`, `variants/`, `expected/`, with `description.mjs`, `generate.mjs` and a README next to them, like the harbour pair). A subset is copied to `src/doc/examples/` once the layered engine exists.
 3. Done: `generate.mjs` is the port of the throwaway Python model (which stays outside the repository). `node src/test/resources/brightcart/generate.mjs` regenerates the files byte for byte, resolves `layered/` from the files and fails if a plateau differs from `folders/`; `folders/` is identical, file for file, to what the model wrote.
-4. Wire the tests of section 11 that need only the current tools: `diff` on P1, P2, P3, P5; `views generate`; the editor's saves.
-5. File E1 and fix it; its test is already described.
+4. Done: the tests of section 11 that need only the current tools (`diff` on P1, P2, P3, P5, `views generate`, the facets, the kernel, the editor's Changes panel and saves, the smoke step); section 12 lists what each verifies.
+5. Done: E1 is filed (#67) and fixed (commit `ce452a2`); the editor was looked at (section 12), and its four findings are issues #68 to #71.
 6. The rest (L1 to L11, P4, the merge, the variants, `migrate`) waits for decisions that are not taken.
 
 **Scale.** About 80 elements per plateau is a small workspace next to a real one (170 and more). A generator parameter that repeats the bounded contexts (`orders`, `accounts`, `marketplace`) under new ids would give a large variant for performance tests without a second story. It is not needed for the first version.
