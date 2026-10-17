@@ -42,21 +42,27 @@ and 012.
   comments of a whole file on a list written at the column of its key.
 - `query graph` has an unsorted order and `query views -f toml` is not valid TOML: both are cheap now and costly once someone
   stores the output.
+- The negative cases of the fixture (a plateau declared twice, a baseline that names nothing, a missing folder) were described by
+  wave 012 and run by no tool. Each is a place where a user can meet a stack trace or a silence, and the rule of `CLAUDE.md`
+  says they are found by a test, not by the user.
 - The candidates of `replaces` are right 45 percent of the time on a large invented pair, and propose a swap between two
   alternatives (#60, #70). A split element's relationships read as new with nothing saying why (#61).
 
 ## Options & Recommendation
 
-1. **One wave of six runs in three phases: shipped files and fixture, editor defects, outputs and candidates** (recommended).
+1. **One wave of seven runs in four phases: shipped files and fixture, editor defects, outputs and candidates, negative cases**
+   (recommended). The author asked for as many bug fixes as possible: every open issue that is a defect is in, and the wave runs
+   the fixture's negative cases to find the ones nobody has reported yet.
    Each run has its own exit evidence and its own files; the phases are checkpoints. All runs are executed one at a time (one
    working tree, one `target/`).
-2. **Six waves, or one run per issue** (twelve runs). Rejected: five issues are in `standalone.html` and four share the kernel
+2. **Seven waves, or one run per issue** (twelve runs). Rejected: five issues are in `standalone.html` and four share the kernel
    or `query`; a run per issue would edit the same file in turn and the exit evidence of #68, #69 and #71 is one look at the
    editor.
 3. **Do it directly, without a wave**, as one commit. Rejected: the kernel, the editor page, the command line and a fixture
    generator change together, and the wave gives each change its verification and its progress log.
-4. **Include #62 (native checks as integration tests), #65 (`plateau merge`), #73 (recursive paths) and #72 (the timeline).**
-   Rejected: #62 says it is worth doing only if the script grows and cannot be verified without a native image; #65 is deferred
+4. **Include #62 (native checks as integration tests), #65 (`plateau merge`), #73 (recursive paths), #72 (the timeline), and the
+   issues that are not defects (#37, #26, #43, #44).** Rejected: #37 says itself it is not a defect on the sizes tried; #26, #43
+   and #44 are features; #62 says it is worth doing only if the script grows and cannot be verified without a native image; #65 is deferred
    by the author; #73 and #72 wait for decisions (and #72 for the layered model, #30). They are in issues, not in this wave.
 
 ## Vision
@@ -66,5 +72,6 @@ exceptions each carrying its reason. The layered rendition of Brightcart is no l
 demand and its resolver still proves it equals the complete folders. A manifest with `Kind: plateau` or a `plateau` header is
 refused by the command line and the editor with one line that says layered plateaus are not supported yet. The editor's four
 reported defects and the flaky test are fixed with a test each; the save keeps the lines of a list written at the column of its
-key. `query graph` is sorted and `query views -f toml` is valid. The candidates of `replaces` are better on the large invented
+key, and so are the lossy cases nobody had filed. The negative cases of the fixture that today's tools can run have been run and
+each gives one clear line. `query graph` is sorted and `query views -f toml` is valid. The candidates of `replaces` are better on the large invented
 pair and no longer propose the pair of two alternatives; the relationships of a split element say they come from it.
