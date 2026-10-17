@@ -54,6 +54,8 @@ Errors and warnings: `cli/ErrorOutput` is the error path of every command (insta
 - Lombok is used pervasively: `@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)` + `@RequiredArgsConstructor` for DI-injected fields, `@Slf4j` for logging, `@SneakyThrows` instead of checked-exception boilerplate.
 - SonarCloud is no longer part of CI (removed — see git history). Existing `@SuppressWarnings("java:S____")` annotations are inert leftovers from when it was; no new ones need to follow that pattern.
 
+- Every file, example or fixture the repository ships is loaded by the command line and by the editor in a test. What fails today is pinned by a test that checks the author's error message (one `error:` line, no stack trace), or it is not shipped. A wave that ships such files names, in its plan, the test that does this for each form of them.
+
 ## Commit messages
 
 Conventional Commits, no scope except on release commits: `feat: ...`, `fix: ...`, `chore: ...`. (Early history used `feature:`; that was abandoned in favor of `feat:` — don't revive it.) Release commits from `maven-release-plugin` are the only ones with a scope: `chore(release): archicode-X.Y.Z`.
