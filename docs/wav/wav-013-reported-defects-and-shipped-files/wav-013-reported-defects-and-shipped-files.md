@@ -127,7 +127,7 @@ wave_manifest:
       slug: save-list-at-key-column
       phase: P2
       depends_on: []
-      run: null
+      run: '0067'
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'

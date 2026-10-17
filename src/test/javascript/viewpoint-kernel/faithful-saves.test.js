@@ -314,3 +314,228 @@ test('#54: when the lines of the block do not match what was read, the comments 
   const read = { leaves: [{ quote: '"', word: null, line: 0, col: 0 }], keys: [], comments: [{ text: '# first', gap: ' ', before: 0, after: -1 }, { text: '# second', gap: '  ', before: 1, after: 0 }] };
   assert.deepEqual(app.emitFlowBlock(['a', 'b'], read, 4), ['    # first', '    # second', '    - a', '    - b']);
 });
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// #57 (wave 013, run 0067): a list written at the column of its key (`tags:` then `- a` at the same column) is followed by the save: the items an edit does not touch stay
+// as written, an item the edit adds is written at the column the list already uses, and the comments and blank lines of the list stay. The rule stays: a result is accepted
+// only if re-reading it gives the emitter's text of the new value.
+
+const KEY_COLUMN = [
+  '# the mill',
+  'header:',
+  '  kind: "archicode.morin.io/system"',
+  '  version: "1"',
+  '',
+  'content:',
+  '  id: mill   # keep',
+  '  name: Mill',
+  '  tags:',
+  '  # why these three',
+  '  - flour   # one',
+  '  - "grain"',
+  '',
+  '  - sack',
+  '  relationships:',
+  '  - destination: bakery.oven   # sells to',
+  '    label: sells flour',
+  '    tags:',
+  '    - bulk   # nested, at the column of its key',
+  '    - fresh',
+  '  - destination: bakery.door',
+  '    label: opens',
+  '    note: |',
+  '      Three keys.',
+  '      - not an item',
+  '  description: A mill.',
+  '  size: 3',
+  '# end of the mill',
+  ''
+].join('\n');
+
+test('#57: the issue\'s example — a list at the column of its key, a comment on the id line — saves only the lines the edit changes', () => {
+  const text = 'content:\n  id: m   # keep\n  tags:\n  - a\n  - b\n  name: N\n';
+  const renamed = save(text, (v) => { v.content.tags[0] = 'x'; });
+  assert.deepEqual(lineDiff(text, renamed), { removed: ['  - a'], added: ['  - x'] });
+  const added = save(text, (v) => { v.content.tags.push('c'); });
+  assert.equal(added, 'content:\n  id: m   # keep\n  tags:\n  - a\n  - b\n  - c\n  name: N\n', 'the item is written at the column of the list');
+  const removed = save(text, (v) => { v.content.tags.splice(0, 1); });
+  assert.deepEqual(lineDiff(text, removed), { removed: ['  - a'], added: [] });
+  const other = save(text, (v) => { v.content.name = 'M'; });
+  assert.deepEqual(lineDiff(text, other), { removed: ['  name: N'], added: ['  name: M'] });
+});
+
+test('#57: rename, add, remove an item and change another key: only those lines differ, and the comments, the blank line and the quotes stay', () => {
+  const rename = save(KEY_COLUMN, (v) => { v.content.tags[0] = 'bran'; });
+  assert.deepEqual(lineDiff(KEY_COLUMN, rename), { removed: ['  - flour   # one'], added: ['  - bran   # one'] });
+  const add = save(KEY_COLUMN, (v) => { v.content.tags.push('husk'); });
+  assert.deepEqual(lineDiff(KEY_COLUMN, add), { removed: [], added: ['  - husk'] });
+  assert.ok(add.includes('\n  - sack\n  - husk\n  relationships:\n'), 'the new item follows the last one, at the column of the list');
+  const remove = save(KEY_COLUMN, (v) => { v.content.tags.splice(1, 1); });
+  assert.deepEqual(lineDiff(KEY_COLUMN, remove), { removed: ['  - "grain"'], added: [] });
+  const other = save(KEY_COLUMN, (v) => { v.content.name = 'Flour mill'; v.content.size = 4; v.content.description = 'A mill of flour.'; });
+  assert.deepEqual(lineDiff(KEY_COLUMN, other), {
+    removed: ['  name: Mill', '  description: A mill.', '  size: 3'],
+    added: ['  name: Flour mill', '  description: A mill of flour.', '  size: 4']
+  });
+});
+
+test('#57: a list of maps at the column of its key, with a list at the column of its own key inside an item: an item added, an item removed, a nested item added', () => {
+  const nested = save(KEY_COLUMN, (v) => { v.content.relationships[0].tags.push('loose'); });
+  assert.deepEqual(lineDiff(KEY_COLUMN, nested), { removed: [], added: ['    - loose'] });
+  const item = save(KEY_COLUMN, (v) => { v.content.relationships.push({ destination: 'bakery.shelf', label: 'stocks' }); });
+  assert.deepEqual(lineDiff(KEY_COLUMN, item), { removed: [], added: ['  - destination: bakery.shelf', '    label: stocks'] });
+  const last = save(KEY_COLUMN, (v) => { v.content.relationships.splice(1, 1); });
+  assert.deepEqual(lineDiff(KEY_COLUMN, last), { removed: ['  - destination: bakery.door', '    label: opens', '    note: |', '      Three keys.', '      - not an item'], added: [] });
+  const first = save(KEY_COLUMN, (v) => { v.content.relationships[0].destination = 'bakery.stove'; });
+  assert.deepEqual(lineDiff(KEY_COLUMN, first), { removed: ['  - destination: bakery.oven   # sells to'], added: ['  - destination: bakery.stove   # sells to'] });
+  const block = save(KEY_COLUMN, (v) => { v.content.relationships[1].note = 'Two keys.\n- not an item\n'; });
+  assert.ok(block.includes('  - destination: bakery.door\n'), block);
+  const all = save(KEY_COLUMN, (v) => {
+    v.content.tags[2] = 'sacks'; v.content.tags.push('husk'); v.content.relationships[0].tags.splice(0, 1); v.content.relationships[1].label = 'closes'; v.content.size = 5;
+  });
+  assert.deepEqual(lineDiff(KEY_COLUMN, all), {
+    removed: ['  - sack', '    - bulk   # nested, at the column of its key', '    label: opens', '  size: 3'],
+    added: ['  - sacks', '  - "husk"', '    label: closes', '  size: 5']
+  });
+});
+
+test('#57: a file that writes one list at the column of its key and another indented keeps each as it is, and an item added goes at the column of its own list', () => {
+  const text = 'content:\n  id: m\n  tags:\n  - a   # flat\n  qualifiers:\n    - q   # deep\n  name: N\n';
+  const out = save(text, (v) => { v.content.tags.push('b'); v.content.qualifiers.push('r'); });
+  assert.equal(out, 'content:\n  id: m\n  tags:\n  - a   # flat\n  - b\n  qualifiers:\n    - q   # deep\n    - r\n  name: N\n');
+});
+
+test('#57: a list that grows from nothing, and one that is emptied, are the emitter\'s lines for that key and the rest of the file stays', () => {
+  const grown = save(KEY_COLUMN.replace(/  tags:\n  # why these three\n  - flour   # one\n  - "grain"\n\n  - sack\n/, '  tags: []\n'), (v) => { v.content.tags.push('flour'); });
+  assert.ok(grown.includes('  id: mill   # keep\n  name: Mill\n  tags:\n    - flour\n  relationships:\n  - destination: bakery.oven   # sells to\n'), grown);
+  const emptied = save(KEY_COLUMN, (v) => { v.content.tags = []; });
+  assert.ok(emptied.includes('  id: mill   # keep\n  name: Mill\n  tags: []\n  # why these three\n\n  relationships:\n  - destination: bakery.oven   # sells to\n    label: sells flour\n'), emptied);
+  assert.ok(emptied.startsWith('# the mill\nheader:') && emptied.endsWith('  size: 3\n# end of the mill\n'));
+});
+
+test('#57: a file with CRLF line breaks and a list at the column of its key', () => {
+  const text = KEY_COLUMN.replace(/\n/g, '\r\n');
+  const out = save(text, (v) => { v.content.tags.push('husk'); v.content.name = 'M'; });
+  assert.equal(out, text.replace('  name: Mill', '  name: M').replace('  - sack\r\n', '  - sack\r\n  - husk\r\n'));
+});
+
+test('#57: lists at the column of their keys in the elements of a tree: a nested element added, the others stay', () => {
+  const text = [
+    'header:',
+    '  kind: "archicode.morin.io/system"',
+    'content:',
+    '  id: bakery   # the bakery',
+    '  elements:',
+    '  - kind: container   # first',
+    '    id: oven',
+    '    tags:',
+    '    - hot',
+    '    elements:',
+    '    - kind: component',
+    '      id: door',
+    '      qualifiers:',
+    '      - steel   # strong',
+    '  - kind: container',
+    '    id: shelf',
+    ''
+  ].join('\n');
+  const out = save(text, (v) => {
+    v.content.elements[0].elements[0].qualifiers.push('glass');
+    v.content.elements[1].tags = ['wood'];
+    v.content.elements.push({ kind: 'container', id: 'till' });
+  });
+  assert.deepEqual(lineDiff(text, out), {
+    removed: [],
+    added: ['      - glass', '    tags:', '      - wood', '  - kind: container', '    id: till']
+  });
+});
+
+test('#57: a result that does not read back as the emitter\'s text is not accepted for a file with a list at the column of its key either', () => {
+  const sandbox = createApp({});
+  const value = plain(sandbox.parseYaml(KEY_COLUMN));
+  value.content.name = 'Flour mill';
+  const emitted = sandbox.serializeYamlValue(value, 0);
+  assert.equal(sandbox.patchYamlText(KEY_COLUMN, value), KEY_COLUMN.replace('  name: Mill', '  name: Flour mill'));
+  const real = sandbox.patchYamlLines;
+  sandbox.patchYamlLines = (...args) => { const text = real(...args); return text === null ? null : text.replace('name: Flour mill', 'name: [broken'); };
+  assert.equal(sandbox.patchYamlText(KEY_COLUMN, value), emitted);
+  sandbox.patchYamlLines = real;
+  // a file that already uses a character the save keeps for itself is the emitter's text, not a guess
+  const odd = 'content:\n  id: m \u0001\n  tags:\n  - a\n';
+  assert.equal(sandbox.patchYamlText(odd, { content: { id: 'm \u0001', tags: ['a', 'b'] } }), sandbox.serializeYamlValue({ content: { id: 'm \u0001', tags: ['a', 'b'] } }, 0));
+});
+
+test('#57: when the aligner keeps the line of a key for another value (the first item of a list of maps goes, the second stays), the lines under it are the emitter\'s and the data is right', () => {
+  const text = 'content:\n  id: m\n  size:\n  - note:\n    - gamma   # c1\n    # c2\n    - x\n  - note:   # c3\n      q: 1\n    label: l\n';
+  const out = save(text, (v) => { v.content.size.splice(0, 1); });
+  // the same lines as for the same file with the lists indented: the first `note:` line is the one that stays, so the comment of the second (`# c3`) goes with the line that goes
+  assert.equal(out, 'content:\n  id: m\n  size:\n  - note:\n      # c2\n      q: 1\n    label: l\n');
+});
+
+test('#57: the editor renames an element whose file writes its lists at the column of their keys: the id, the references and the comments are the only lines that differ', async () => {
+  const files = {
+    'app.mill.yaml': [
+      '# the mill', 'header:', '  kind: "archicode.morin.io/system"', '  version: "1"', '', 'content:', '  id: "mill"   # the id', '  name: "Mill"', '  tags:', '  # two tags', '  - flour', '  - grain   # last', '# end of the mill', ''
+    ].join('\n'),
+    'app.bakery.yaml': [
+      '# the bakery', 'header:', '  kind: "archicode.morin.io/system"', '  version: "1"', '', 'content:', '  id: "bakery"', '  name: "Bakery"', '  relationships:',
+      '  # flour comes from the mill', '  - destination: "mill" # why', '    label: "buys from"', '  - destination: "mill"    # again', '    label: "pays"', '# end of the bakery', ''
+    ].join('\n')
+  };
+  const mem = memFolder(Object.assign({ 'workspace.yaml': PLATEAUS }, Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
+  const sandbox = createApp({});
+  const state = sandbox.__state();
+  state.folder = { handle: mem.handle, name: 'ws' };
+  state.permissionState = 'granted';
+  await sandbox.loadWorkspace(mem.handle);
+  sandbox.commitElementEdit('mill', (node) => { node.id = 'granary'; node.tags.push('bran'); return { renamedTo: { from: 'mill', to: 'granary' } }; });
+  await sandbox.saveAllChanges();
+  const saved = (file) => mem.files.get('plateaus/10_base/' + file).text;
+  assert.deepEqual(lineDiff(files['app.mill.yaml'], saved('app.mill.yaml')), { removed: ['  id: "mill"   # the id'], added: ['  id: "granary"   # the id', '  - bran'] });
+  assert.deepEqual(lineDiff(files['app.bakery.yaml'], saved('app.bakery.yaml')), {
+    removed: ['  - destination: "mill" # why', '  - destination: "mill"    # again'],
+    added: ['  - destination: "granary" # why', '  - destination: "granary"    # again']
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// a comment in an empty collection that an edit fills (wave 013, run 0067): the comment on the line of the key, and the comments inside the brackets, are kept
+
+const EMPTY = (line) => 'header:\n  kind: x\ncontent:\n  id: m   # keep\n' + line + '  name: N\n';
+
+test('a comment after `[]`, `{}`, `~` or a bare key that an edit fills stays on the line of the key', () => {
+  for (const [line, write] of [['  tags: [] # note\n', ' # note'], ['  tags:  []    # note\n', '  # note'], ['  tags: # note\n', ' # note'], ['  tags: ~ # note\n', ' # note']]) {
+    const text = EMPTY(line);
+    const out = save(text, (v) => { v.content.tags = ['z', 'y']; });
+    // a bare key is the very line the emitter writes: it stays, and the items come under it
+    assert.deepEqual(lineDiff(text, out), line === '  tags: # note\n' ? { removed: [], added: ['    - z', '    - y'] } : { removed: [line.slice(0, -1)], added: ['  tags:' + write, '    - z', '    - y'] }, line);
+  }
+  const map = EMPTY('  props: {} # note\n');
+  assert.deepEqual(lineDiff(map, save(map, (v) => { v.content.props = { a: 'b' }; })), { removed: ['  props: {} # note'], added: ['  props: # note', '    a: b'] });
+});
+
+test('the comment of a collection that an edit empties stays on its line', () => {
+  const text = EMPTY('  tags:   # why\n    - z\n    - y\n');
+  assert.deepEqual(lineDiff(text, save(text, (v) => { v.content.tags = []; })), { removed: ['  tags:   # why', '    - z', '    - y'], added: ['  tags: []   # why'] });
+});
+
+test('a comment on a line of its own inside an empty block, or inside the brackets of an empty collection, is kept when an edit fills it', () => {
+  const block = EMPTY('  tags:\n    # note about tags\n');
+  const filled = save(block, (v) => { v.content.tags = ['z']; });
+  assert.equal(filled.split('# note about tags').length, 2, filled);
+  assert.deepEqual(lineDiff(block, filled), { removed: [], added: ['    - z'] });
+  const flow = EMPTY('  tags: [\n    # note inside\n  ]\n');
+  const opened = save(flow, (v) => { v.content.tags = ['z']; });
+  assert.equal(opened.split('# note inside').length, 2, opened);
+  assert.equal(opened.split('\n').filter((l) => /^\s*- z$/.test(l)).length, 1);
+  assert.ok(opened.startsWith('header:\n  kind: x\ncontent:\n  id: m   # keep\n  tags:\n'), opened);
+  const after = EMPTY('  tags: [ ]   # after\n');
+  assert.deepEqual(lineDiff(after, save(after, (v) => { v.content.tags = ['z']; })), { removed: ['  tags: [ ]   # after'], added: ['  tags:  # after', '    - z'] });
+});
+
+test('a collection that no edit fills is saved as written, comments inside included', () => {
+  for (const line of ['  tags: [] # note\n', '  tags: # note\n', '  tags: [\n    # note inside\n  ]\n', '  tags:\n    # note about tags\n']) {
+    const text = EMPTY(line);
+    assert.equal(save(text, (v) => { v.content.name = 'M'; }), text.replace('  name: N', '  name: M'), line);
+  }
+});

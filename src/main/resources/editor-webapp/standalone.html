@@ -1788,8 +1788,25 @@ function serializeManifestFile(header, content) {
  * A flow collection (`qualifiers: [Redis, Cache]`, `tags: {zone: north}`, one on several lines, one with others inside, one in an item of a list of maps) is
  * followed too (a list since wave 009, any shape since wave 010): it is read as the block the emitter writes, with the quotes of its values, and goes back
  * as it was written when the edit did not touch it (see `openFlowLists`); one that the edit changes stays a block.
+ *
+ * A list written at the column of its key (`tags:` then `- a` at the same column) is followed too (see `markKeyColumnLists`): the file is read as the emitter would write it, with
+ * those lists two columns deeper, and the lists go back to their column in the result, the items the edit adds with them.
  */
 function patchYamlText(oldText, newValue) {
+  const marked = markKeyColumnLists(oldText);
+  if (marked === null) return patchYamlTextAt(oldText, newValue);
+  const emitted = serializeYamlValue(newValue, 0);
+  const back = unmarkKeyColumnLists(patchYamlTextAt(marked, newValue));
+  try {
+    // a result is accepted only if re-reading it gives the emitter's value
+    return back !== null && serializeYamlValue(parseYaml(back), 0) === emitted ? back : emitted;
+  } catch (e) {
+    return emitted;
+  }
+}
+
+/** `patchYamlText` for a file whose lists are all indented as the emitter writes them. */
+function patchYamlTextAt(oldText, newValue) {
   const emitted = serializeYamlValue(newValue, 0);
   // what is written must say what the edit says, in the emitter's own terms
   const says = (text) => {
@@ -1815,6 +1832,97 @@ function patchYamlText(oldText, newValue) {
   if (quoted.lines > 0 && !says(closed)) closed = closeFlowLists(patchYamlLines(opened.text, emitted, newValue), opened.lists);
   // if what is written does not say what the edit says, the emitter's text is the safe one
   return says(closed) ? closed : emitted;
+}
+
+/** The column of the key of a line that is `key:` with nothing after it but a comment (`- tags:` included), -1 for any other line. */
+function yamlBareKeyColumn(line) {
+  const prefix = line.match(/^ *(?:- +)*/)[0];
+  const found = scanYamlKey(line, prefix.length, 0);
+  return found !== null && stripYamlComment(line).replace(/\s+$/, '').length === found.end ? prefix.length : -1;
+}
+
+/**
+ * The last line under the key at line `i` of `lines` (the key is at column `col`): the lines deeper than the key, then the comments deeper than the key; `i` when there is none.
+ * With `atColumn` the lines are those of a file as written, where the first one has to be an item at the column of the key (`- a`) and the others may be one too.
+ */
+function yamlLastLineUnderKey(lines, i, col, atColumn) {
+  const item = (line) => atColumn && yamlIndentOf(line) === col && /^ *-(?: |$)/.test(line);
+  let last = i;
+  for (let j = i + 1; j < lines.length; j++) {
+    const line = lines[j];
+    if (line.trim() === '' || line.trim().startsWith('#')) continue;
+    if (last === i && atColumn ? !item(line) : !(yamlIndentOf(line) > col || item(line))) break;
+    last = j;
+  }
+  if (atColumn && last === i) return i;
+  for (let j = last + 1; j < lines.length; j++) {
+    if (lines[j].trim() === '') continue;
+    if (!lines[j].trim().startsWith('#') || yamlIndentOf(lines[j]) <= col) break;
+    last = j;
+  }
+  return last;
+}
+
+/**
+ * The text with each list written at the column of its key (`tags:` then `- a` at the same column, and everything under the list) moved two columns to the right, which is where
+ * the emitter writes it, so that the aligner finds the lines it expects; the line of the key carries a mark (a comment, `\u0001K` after ` #`, or `\u0001L` after the comment it has)
+ * that tells `unmarkKeyColumnLists` which lists to put back. The comments between the key and the end of the list move with it, and the ones after it that are deeper than the key.
+ * `null` when the file has no such list (or already uses the mark character).
+ */
+function markKeyColumnLists(text) {
+  if (text.indexOf('\u0001') !== -1) return null;
+  const bom = text.charAt(0) === '\ufeff' ? '\ufeff' : '';
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n';
+  const lines = text.slice(bom.length).split(/\r\n|\r|\n/);
+  const shift = new Array(lines.length).fill(0);
+  const keys = new Set();
+  let blockFrom = -1; // the column a block scalar's text must go past: the text of a block scalar is not YAML
+  for (let i = 0; i < lines.length; i++) {
+    if (blockFrom !== -1) {
+      if (lines[i].trim() === '' || yamlIndentOf(lines[i]) > blockFrom) continue;
+      blockFrom = -1;
+    }
+    const header = stripYamlComment(lines[i]).match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+    if (header) { blockFrom = header[1].length; continue; }
+    const col = yamlBareKeyColumn(lines[i]);
+    const last = col === -1 ? i : yamlLastLineUnderKey(lines, i, col, true);
+    if (last === i) continue;
+    keys.add(i);
+    for (let j = i + 1; j <= last; j++) shift[j] += 2;
+  }
+  if (keys.size === 0) return null;
+  return bom + lines.map((line, i) => {
+    const moved = line.trim() === '' ? line : ' '.repeat(shift[i]) + line;
+    if (!keys.has(i)) return moved;
+    return stripYamlComment(line).length < line.length ? moved + '\u0001L' : moved + ' #\u0001K';
+  }).join(eol);
+}
+
+/**
+ * `text` (written by the aligner on the output of `markKeyColumnLists`) with the lists that were at the column of their key put back there: the lines under each marked key
+ * move two columns to the left, the items the edit added with them. `null` when a line has no room to move or a mark is left over.
+ */
+function unmarkKeyColumnLists(text) {
+  const bom = text.charAt(0) === '\ufeff' ? '\ufeff' : '';
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n';
+  const lines = text.slice(bom.length).split(/\r\n|\r|\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const mark = lines[i].match(/ #\u0001K$|\u0001L$/);
+    if (mark === null) continue;
+    lines[i] = lines[i].slice(0, -mark[0].length);
+    const col = lines[i].match(/^ *(?:- +)*/)[0].length;
+    const last = yamlLastLineUnderKey(lines, i, col, false); // the key may have been rewritten (`tags: []`), the comments under it were moved all the same
+    let first = i + 1;
+    while (first <= last && (lines[first].trim() === '' || lines[first].trim().startsWith('#'))) first++;
+    if (first <= last && !(yamlIndentOf(lines[first]) === col + 2 && /^ *-(?: |$)/.test(lines[first]))) continue; // the line is no longer the key of a list (the aligner kept it for another value): what is under it is the emitter's
+    for (let j = i + 1; j <= last; j++) {
+      if (lines[j].trim() === '') continue;
+      if (yamlIndentOf(lines[j]) < 2) return null;
+      lines[j] = lines[j].slice(2);
+    }
+  }
+  const out = bom + lines.join(eol);
+  return out.indexOf('\u0001') === -1 ? out : null;
 }
 
 /** A line moved `delta` columns to the right (to the left when negative, as far as it has room): the shift of a block that is carried to another depth. */
@@ -1936,7 +2044,7 @@ function openFlowLists(text) {
     if (keyed) {
       const key = m[2]; // as written, quotes included
       const empty = yamlEmptyCollection(node.value);
-      expanded = empty ? [m[1] + key + ': ' + empty + note] : [m[1] + key + ':' + note].concat(emitFlowBlock(node.value, p, m[1].length + 2));
+      expanded = empty ? [m[1] + key + ': ' + empty + note].concat(p.comments.map((c) => ' '.repeat(m[1].length + 2) + c.text)) : [m[1] + key + ':' + note].concat(emitFlowBlock(node.value, p, m[1].length + 2));
       column = m[1].length;
       if (!empty) { // the block must say what the flow collection says
         const keyless = [key + ':'].concat(expanded.slice(1).map((l) => shiftYamlLine(l, -m[1].length)));
@@ -2070,6 +2178,19 @@ function readYamlScalarLine(line) {
     return null;
   }
   return { prefix, key: found ? found.key : null, valueAt: at, quote, plainable: !yamlStringNeedsQuoting(value) };
+}
+
+/**
+ * `{ prefix, key, collection }` of a line `key: value` whose value is a scalar, nothing (`key:`) or an empty collection (`[]`, `{}`); `collection` is true for the last two, the
+ * lines the emitter writes for a collection that has no item or that has a block under it. `null` for any other line.
+ */
+function readYamlKeyLine(line) {
+  const prefix = line.match(/^ *(?:- +)*/)[0];
+  const found = scanYamlKey(line, prefix.length, 0);
+  if (found === null) return null;
+  const rest = stripYamlComment(line).slice(found.end).trim();
+  const collection = rest === '' || rest === '[]' || rest === '{}';
+  return collection || readYamlScalarLine(line) !== null ? { prefix, key: found.key, collection } : null;
 }
 
 /** The scalar lines of a file whose quoting is the author's choice (see `readYamlScalarLine`), the text of a block scalar left out. */
@@ -2305,11 +2426,20 @@ function patchYamlLines(oldText, emitted, newValue, styled) {
     let to = from;
     while (to < steps.length && steps[to].keep === undefined) to++;
     const hunk = steps.slice(from, to);
-    const goneLines = hunk.filter((step) => step.drop !== undefined).map((step) => ({ line: original[place[step.drop]], read: readYamlScalarLine(original[place[step.drop]]), used: false }));
+    const goneLines = hunk.filter((step) => step.drop !== undefined).map((step) => ({ line: original[place[step.drop]], read: readYamlScalarLine(original[place[step.drop]]), shape: readYamlKeyLine(original[place[step.drop]]), used: false }));
     const addSteps = hunk.filter((step) => step.add !== undefined);
     for (const step of addSteps) {
       const added = readYamlScalarLine(step.add);
-      if (added === null) continue;
+      if (added === null) {
+        // the line of a key whose collection an edit fills or empties (`tags: [] # note` and `tags: # note` become `tags:`, and back) keeps its comment
+        const shape = readYamlKeyLine(step.add);
+        const gone = shape !== null && shape.collection ? goneLines.find((g) => !g.used && g.shape !== null && g.shape.prefix === shape.prefix && g.shape.key === shape.key) : undefined;
+        if (gone) {
+          gone.used = true;
+          step.add += gone.line.slice(stripYamlComment(gone.line).replace(/\s+$/, '').length);
+        }
+        continue;
+      }
       const same = (g) => !g.used && g.read !== null && g.read.prefix === added.prefix && g.read.key === added.key;
       // an item of a list has no key: it is told from the other items only when as many items go as come (the first that goes is the first that comes), as in a rename of the items of a list
       const items = (reads) => reads.filter((r) => r !== null && r.key === null && r.prefix === added.prefix).length;
