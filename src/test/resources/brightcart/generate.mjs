@@ -4,7 +4,7 @@
 //   node src/test/resources/brightcart/generate.mjs
 //
 // It writes, next to this file (and nothing else; the four folders are emptied first, so a second run gives the same bytes):
-//   layered/    the layered rendition: four plateau folders, `patches` in each plateau.yaml, a workspace.yaml with no `settings.plateaus`.
+//   layered/    the layered rendition: four plateau folders, `patches` in each plateau.yaml, a workspace.yaml with no `settings.plateaus` and a `settings.manifests.paths` that lists the four plateau folders.
 //               Nothing reads it yet: the layered engine does not exist. The resolver below is its only reader.
 //   folders/    the complete-folder rendition: each plateau a whole folder of manifests, the `baseline` key written for every plateau but the first (E2),
 //               `replaces` relative to that key; the one the current tools read (`archicode diff`, `views generate`, the editor).
@@ -461,7 +461,9 @@ function layeredTree(pl, file) {
 
 function writeLayered(P) {
   const files = new Map();
-  files.set('workspace.yaml', 'settings:\n' + WORKSPACE_SETTINGS + WORKSPACE_STYLES);
+  // The plateau folders sit next to workspace.yaml and the default `manifests` folder does not exist here: say where the manifests are.
+  const manifests = '  manifests:\n    paths: [' + ORDER.join(', ') + ']\n';
+  files.set('workspace.yaml', 'settings:\n' + WORKSPACE_SETTINGS + manifests + WORKSPACE_STYLES);
   for (const pid of ORDER) {
     const pl = P[pid];
     files.set(`${pid}/plateau.yaml`, plateauText(pl));

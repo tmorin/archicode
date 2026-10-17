@@ -106,7 +106,7 @@ flowchart TB
 
 ## 4. The workspace
 
-`workspace.yaml` holds what is shared by every plateau: the name, the styles and the facets. In the layered rendition there is no `settings.plateaus`.
+`workspace.yaml` holds what is shared by every plateau: the name, the styles and the facets. In the layered rendition there is no `settings.plateaus`; `settings.manifests.paths` lists the four plateau folders, which sit next to `workspace.yaml` (the default `manifests` folder does not exist there), and is the search root where an engine would look for `Kind: Plateau`.
 
 ```yaml
 settings:
@@ -1570,7 +1570,7 @@ Read these before using it as evidence.
 - **`MOVE` is thinly used.** Of the twelve elements that move across the two later plateaus, the operator is the right tool for four (`shop.cache`, `commerce.search`, and the rename of `shop` that carries `shop.web`); the others change kind or name and are better written as a manifest that says `replaces`.
 - **P4 is not checked against the real tool.** It needs a composition of `replaces` that the current tool does not have; only the model computes it.
 - **P6 is the tool's reading, not the change.** It is verified, as what the current tool prints for `marketplace` against `baseline` (last step only, 4 moves, 16 removed); the real change of the two plateaus is P4.
-- **The layered semantics are the model's.** No tool reads `layered/`; that it resolves to `folders/` is shown by the generator's own resolver and nothing else, and the rules L0 to L11, the patches, `plateau migrate` and the merge (M1 to M3, section 14) are not run by anything. Open (with the author): whether `layered/workspace.yaml` should name `settings.manifests.paths`.
+- **The layered semantics are the model's.** No tool reads `layered/`; that it resolves to `folders/` is shown by the generator's own resolver and nothing else, and the rules L0 to L11, the patches, `plateau migrate` and the merge (M1 to M3, section 14) are not run by anything. `layered/workspace.yaml` names the four plateau folders in `settings.manifests.paths`; today's command line, run on it, stops on `Kind: Plateau`, which it does not know.
 - **The variants are described, not run.** V1 to V14 and M1 to M3 are in `variants/` with the class of message they expect; V1 to V8 also fail in the model with the words they expect; no tool runs any of them. N17 is V8.
 - **The native image was not built.** The smoke step was run against the JVM build; the first run of the `Native` job is the pull request's.
 - **The editor was read, not seen.** It was driven in one browser (the built-in one) with its pane hidden: the counts, the texts, the structure and the colours of the page were read, there is no screenshot and no measure of layout or paint. Other browsers, the folder picker (the editor was served by the command line) and the published page were not tried. The speed is for 82 elements; a real workspace has twice as many.

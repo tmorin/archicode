@@ -16,6 +16,8 @@ settings:
         actions:
           - operator: REMOVE
             json-path: "$.application..elements[?(@.id == 'cart')]"
+  manifests:
+    paths: [baseline, saas, inhouse, marketplace]
 styles:
   by-tags:
     external:
