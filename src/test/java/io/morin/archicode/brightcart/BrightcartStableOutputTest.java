@@ -26,8 +26,8 @@ import picocli.CommandLine;
  * The same files give the same bytes (wave 012, run 0061): {@code views generate} for the four plateaus and their
  * facets, run twice on two copies of {@code folders/} (and once more in the folder where the views already are);
  * {@code diff} in its three formats; {@code query views} and {@code query graph}, sorted and identical from one run to
- * the next (wave 011, issues #48, #49 and the sorted output of the CLI). Whatever the exit code of the two plateaus
- * that stop on E1 (fixed by W-3 of wave 012), the files they wrote, their exit code and their messages are the same.
+ * the next (wave 011, issues #48, #49 and the sorted output of the CLI). The four plateaus exit 0, the comparison views
+ * of {@code inhouse} and {@code marketplace} among the files compared (E1 of the document, fixed by W-3 of wave 012).
  */
 @QuarkusTest
 class BrightcartStableOutputTest {
@@ -66,12 +66,6 @@ class BrightcartStableOutputTest {
                 plateau + ": exit code, output and messages"
             );
         }
-        // the comparison of a plateau that stopped on E1 is half written, and which half is not the same from one run to the next
-        // (one run wrote technology/prod-overview.puml, the other did not): it is left out until W-3 of wave 012 fixes E1, and counted
-        // as soon as the plateau exits 0
-        val stopped = Brightcart.PLATEAUS.stream()
-            .filter(p -> first.results().get(p).exit() != 0)
-            .toList();
         val folders = viewFolders(first.workspace());
         assertEquals(folders, viewFolders(second.workspace()));
         assertTrue(
@@ -80,15 +74,15 @@ class BrightcartStableOutputTest {
         );
         var compared = 0;
         for (val folder : folders) {
-            if (stopped.stream().anyMatch(p -> folder.startsWith("views-" + p + "-vs-"))) {
-                continue;
-            }
             val files = Brightcart.tree(first.views(folder));
             assertFalse(files.isEmpty(), folder);
             assertEquals("", Brightcart.difference(files, Brightcart.tree(second.views(folder))), folder);
             compared++;
         }
         assertTrue(compared >= 20, "the folders compared: " + compared);
+        // the comparisons of the two plateaus that replace elements are among them (they stopped on E1, and half written)
+        assertTrue(folders.contains("views-inhouse-vs-baseline"), folders.toString());
+        assertTrue(folders.contains("views-marketplace-vs-inhouse"), folders.toString());
     }
 
     @Test

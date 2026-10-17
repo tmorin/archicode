@@ -5,7 +5,7 @@
 // (loadWorkspace, toKernelElements) and the embedded module (`compare`, then `compute` for the state a box gets from what is below it). The Java side is in
 // src/test/java/io/morin/archicode/brightcart/: `archicode diff` gives the same counts and the same table from the same files.
 // Only the comparisons that the current tools can say are asserted (`verified: "archicode diff"`): P4 is the model's alone (it needs the composition of `replaces`).
-// The `deep` view of `inhouse` and `marketplace` is not drawn here: it is E1 of the document (section 12), which W-3 of wave 012 fixes with its own test.
+// The `deep` view of `inhouse` and `marketplace` against their baselines is drawn (E1 of the document, section 12, fixed by W-3 of wave 012): see "E1" below.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -185,13 +185,46 @@ test('N13: shop and prod.dc contain changes and have none of their own (the box 
   const want = n13.checks.filter((c) => c.state === 'contains-changes' && byId(c.in).verified === 'archicode diff');
   assert.ok(want.length >= 5, 'the file has the cases: ' + want.length);
   for (const check of want) {
-    // the application box on the map; the environment's nodes on the detailed view of `prod`. (The deep view of `inhouse` and `marketplace` is E1, W-3's.)
+    // the application box on the map; the environment's nodes on the detailed view of `prod`.
     const stereotypes = check.layer === 'application' ? await drawn(byId(check.in), 'map', '', 'application') : await drawn(byId(check.in), 'detailed', 'prod', 'technology');
     assert.ok(stereotypes.has(check.ref), check.in + ': ' + check.ref + ' is drawn');
     assert.ok(stereotypes.get(check.ref).includes('contains-changes'), check.in + ' ' + check.ref + ': ' + JSON.stringify(stereotypes.get(check.ref)));
     const out = await compare(byId(check.in));
     assert.equal(out.elements.find((e) => e.layer === check.layer && e.reference === check.ref).change, 'none', check.ref + ' has no change of its own');
   }
+});
+
+// ---- E1 (section 12): the views of the union of a plateau that replaces elements ----
+
+test('E1: every view of every environment of the union is drawn for inhouse against baseline and marketplace against inhouse (it failed on a dangling reference)', async () => {
+  const { state, sides } = await brightcart();
+  const environments = sides.inhouse.technology.filter((e) => !e.reference.includes('.')).map((e) => e.reference);
+  assert.ok(environments.length >= 3, 'the environments of the fixture: ' + environments.join(', '));
+  assert.ok(state.plateaus.length === 4);
+  for (const id of ['P2', 'P3']) {
+    for (const environment of environments) {
+      for (const viewpoint of ['overview', 'detailed', 'deep']) {
+        const stereotypes = await drawn(byId(id), viewpoint, environment, 'technology'); // asserts there is no error
+        assert.ok(stereotypes.has(environment), id + ' ' + viewpoint + ' ' + environment + ' is drawn');
+      }
+    }
+  }
+});
+
+test('E1: a node of the baseline that is removed deploys what replaced the application it deployed, and nothing points at a replaced element', async () => {
+  for (const id of ['P2', 'P3']) {
+    const out = await compare(byId(id));
+    const known = new Set(out.elements.map((e) => e.layer + '|' + e.reference));
+    for (const e of out.elements) {
+      for (const application of e.applications) assert.ok(known.has('application|' + application), id + ': ' + e.reference + ' deploys ' + application + ', which is not in the union');
+      for (const used of e.uses) assert.ok(known.has('technology|' + used), id + ': ' + e.reference + ' uses ' + used + ', which is not in the union');
+    }
+  }
+  // the facts the fix is about: the replaced cache is no element of the union of P2, and the node that hosted it is removed and hosts the cache that replaced it
+  const out = await compare(byId('P2'));
+  assert.equal(out.elements.some((e) => e.layer === 'application' && e.reference === 'shop.cache'), false);
+  const hosts = out.elements.filter((e) => e.layer === 'technology' && e.change === 'removed' && e.applications.includes('commerce.cart-store'));
+  assert.ok(hosts.length > 0, 'a removed node deploys commerce.cart-store, which replaced shop.cache');
 });
 
 // ---- the same bytes whatever the order ----

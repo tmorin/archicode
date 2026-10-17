@@ -13,10 +13,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine;
 
@@ -26,11 +29,10 @@ import picocli.CommandLine;
  * {@code folders/}. The number of PlantUML files each plateau gives is the one of {@code expected/sizes.json}; what a
  * facet takes away is read off the files.
  *
- * <p>{@code baseline} and {@code saas} generate and exit 0. {@code inhouse} and {@code marketplace} have a
- * {@code baseline} key, so the command also draws their comparison, and that stops today on a dangling reference (E1 of
- * section 12 of the document, fixed by W-3 of wave 012): their own views and the views of their facets are written before it
- * stops, and that is what is asserted for them. The test says nothing of the comparison views of these two plateaus,
- * and accepts a command that succeeds, so that the fix does not have to change it.
+ * <p>The four plateaus generate and exit 0. {@code inhouse} and {@code marketplace} have a {@code baseline} key, so the
+ * command also draws their comparison; that stopped on a dangling reference (E1 of section 12 of the document, fixed by W-3
+ * of wave 012), and the test now asserts the comparison views of both, with the table of changes and the boxes that
+ * contain changes (N13 in P2 and P3).
  */
 @QuarkusTest
 class BrightcartViewsTest {
@@ -52,28 +54,11 @@ class BrightcartViewsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "baseline", "saas" })
-    void aPlateauWithoutAnE1ComparisonGeneratesAndExitsZero(String plateau) {
+    @ValueSource(strings = { "baseline", "saas", "inhouse", "marketplace" })
+    void everyPlateauGeneratesAndExitsZero(String plateau) {
         val result = generated().results().get(plateau);
         assertEquals(0, result.exit(), result.err());
         assertEquals("", result.err());
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = { "inhouse", "marketplace" })
-    void theTwoPlateausThatReplaceElementsExitZeroOrOnTheKnownComparisonError(String plateau) {
-        val result = generated().results().get(plateau);
-        if (result.exit() != 0) {
-            // E1, until W-3 of wave 012 fixes it: nothing else may stop these two
-            assertEquals(1, result.exit(), result.err());
-            assertTrue(
-                result
-                    .err()
-                    .lines()
-                    .anyMatch(l -> l.matches(Brightcart.E1)),
-                result.err()
-            );
-        }
     }
 
     @ParameterizedTest
@@ -126,19 +111,55 @@ class BrightcartViewsTest {
         return Files.readString(file);
     }
 
-    /** N13 in P1: the boxes that have no change of their own and hold one say so in the comparison views. */
-    @Test
-    void theBoxesThatContainChangesAreDrawnAsSuch() {
-        val folder = generated().views("views-saas-vs-baseline/plantuml");
+    /**
+     * The comparisons a plateau with a {@code baseline} draws: the id of the comparison of the document, the folder, and
+     * the plateau it is made of.
+     */
+    private static Stream<Arguments> comparisons() {
+        return Stream.of(
+            Arguments.of("P1", "views-saas-vs-baseline"),
+            Arguments.of("P2", "views-inhouse-vs-baseline"),
+            Arguments.of("P3", "views-marketplace-vs-inhouse")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("comparisons")
+    void theComparisonViewsOfEachPlateauAreWrittenWithTheTableOfChanges(String id, String folderName) {
+        val folder = generated().views(folderName);
+        assertTrue(Files.isDirectory(folder.resolve("plantuml/application")), folderName);
+        assertTrue(Files.isDirectory(folder.resolve("plantuml/technology")), folderName);
+        assertTrue(Files.isRegularFile(folder.resolve("gap.md")), folderName);
+        assertTrue(Brightcart.puml(folder) > 0, folderName);
+        // the table is the one `archicode diff` prints for the same pair
+        val diff = new Brightcart.Cli(factory, errorOutput).diff(
+            generated().workspace(),
+            Brightcart.comparison(id),
+            "json"
+        );
+        assertEquals(0, diff.exit(), diff.err());
+        assertEquals(diff.out(), read(folder.resolve("gap.json")), folderName);
+    }
+
+    /**
+     * N13 in P1, P2 and P3: the boxes that have no change of their own and hold one say so in the comparison views
+     * (the P2 and P3 views stopped on E1 before W-3 of wave 012).
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("comparisons")
+    void theBoxesThatContainChangesAreDrawnAsSuch(String id, String folderName) {
+        val folder = generated().views(folderName + "/plantuml");
+        var checked = 0;
+        var named = 0;
         for (val notable : Brightcart.expected("notable-cases")) {
             if (!notable.get("id").asText().equals("N13")) {
                 continue;
             }
-            var checked = 0;
             for (val check : notable.get("checks")) {
-                if (!check.get("in").asText().equals("P1")) {
-                    continue; // P2 and P3 are drawn after E1; P4 is the model's
+                if (!check.get("in").asText().equals(id)) {
+                    continue; // P4 is the model's
                 }
+                named++;
                 val layer = check.get("layer").asText();
                 val reference = check.get("ref").asText();
                 val boxes = boxesOf(folder.resolve(layer), reference);
@@ -146,8 +167,9 @@ class BrightcartViewsTest {
                 assertTrue(boxes.stream().allMatch(b -> b.contains("<<contains-changes>>")), reference + ": " + boxes);
                 checked++;
             }
-            assertEquals(2, checked, "shop and prod.dc in P1");
         }
+        assertTrue(named >= 1, "the file names boxes of N13 in " + id);
+        assertEquals(named, checked);
     }
 
     /** The lines that open the box of an element in the views of a layer: {@code rectangle <reference> ...}. */

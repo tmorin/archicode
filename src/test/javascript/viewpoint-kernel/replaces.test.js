@@ -118,3 +118,41 @@ test('a workspace without replaces compares as it did: same counts, no new key i
   assert.equal('warnings' in answer, false);
   assert.deepEqual(answer.candidates.map((c) => [c.from, c.to]), [['shop.till', 'stock.till']], 'listed, same kind and name, and not applied: both are still removed and new');
 });
+
+// ---- E1 of docs/fixtures/brightcart-spec.md (section 12), wave 012: a removed node that deployed an application another one replaced ----
+
+const E1_BASE = {
+  'app.s.yaml': element('system', null, 's', 'S'),
+  'app.s.x.yaml': element('container', 's', 'x', 'X'),
+  'tec.e.yaml': element('environment', null, 'e', 'E'),
+  'tec.e.n.yaml': element('node', 'e', 'n', 'N', '  applications: [s.x]\n')
+};
+const E1_TARGET = {
+  'app.s.yaml': element('system', null, 's', 'S'),
+  'app.s.y.yaml': element('container', 's', 'y', 'Y', '  replaces: [s.x]\n'),
+  'tec.e.yaml': element('environment', null, 'e', 'E'),
+  'tec.e.m.yaml': element('node', 'e', 'm', 'M', '  applications: [s.y]\n')
+};
+
+test('E1: the removed node of a comparison deploys what replaced the application it deployed, and the deep view of the environment is drawn', async () => {
+  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n' + SETTINGS }, folder('10_base', E1_BASE), folder('20_target', E1_TARGET)));
+  const sandbox = createApp({});
+  const state = sandbox.__state();
+  state.folder = { handle: mem.handle, name: 'ws' };
+  state.permissionState = 'granted';
+  await sandbox.loadWorkspace(mem.handle);
+  const kernel = await sandbox.loadViewpointKernel();
+  await sandbox.setCompareTo('base');
+  const answer = plain(kernel.compare(sandbox.comparisonInput()));
+  assert.equal(answer.error, undefined);
+  const removed = answer.elements.find((e) => e.layer === 'technology' && e.reference === 'e.n');
+  assert.equal(removed.change, 'removed');
+  assert.deepEqual(removed.applications, ['s.y'], 'the application that took the place of s.x');
+  assert.equal(answer.elements.some((e) => e.reference === 's.x'), false, 's.x is still not in the union');
+  assert.deepEqual(answer.counts.elements, { new: 1, changed: 0, removed: 1, wording_only: 0, moved: 1 });
+  for (const viewpoint of ['overview', 'detailed', 'deep']) {
+    const { input } = sandbox.buildKernelInput(viewpoint, 'e', { layer: 'technology' });
+    const result = kernel.compute(input);
+    assert.equal(result.error, undefined, viewpoint + ': ' + JSON.stringify(result.error));
+  }
+});

@@ -101,7 +101,7 @@ wave_manifest:
       slug: comparison-views-dangling
       phase: P2
       depends_on: [W-1]
-      run: null
+      run: '0062'
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'

@@ -2,6 +2,8 @@ package io.morin.archicode.workspace;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.morin.archicode.ArchiCodeException;
@@ -9,7 +11,9 @@ import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.Warnings;
 import io.morin.archicode.manifest.ManifestParser;
+import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Application;
+import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.resource.workspace.Settings.Facets.Facet;
 import io.morin.archicode.resource.workspace.Workspace;
@@ -137,8 +141,9 @@ public class WorkspaceFactory {
         val loaded = load(path, viewsDirPath, plateauId);
         val manifests = new HashMap<Class<?>, Set<ManifestParser.Candidate>>();
         loaded.elements().forEach((category, candidates) -> manifests.put(category, new HashSet<>(candidates)));
-        addRemoved(manifests, Application.class, "application", base.appIndex, comparison);
-        addRemoved(manifests, Technology.class, "technology", base.techIndex, comparison);
+        val mapper = mapperFactory.create(MapperFormat.JSON);
+        addRemoved(manifests, Application.class, "application", base.appIndex, comparison, mapper);
+        addRemoved(manifests, Technology.class, "technology", base.techIndex, comparison, mapper);
         return create(loaded.resources(), manifests)
             .toBuilder()
             .plateau(loaded.selection() == null ? null : loaded.selection().plateau())
@@ -148,14 +153,18 @@ public class WorkspaceFactory {
 
     /**
      * The elements of a layer that only the baseline has, as candidates: the ones whose parent is not removed too (a
-     * removed parent brings its removed children with it, whole).
+     * removed parent brings its removed children with it). What such an element held that the comparison does not have
+     * (a child that another element replaced, which is in no view of the comparison) is left behind: the workspace of the
+     * comparison holds the union and nothing else.
      */
+    @SneakyThrows
     private static void addRemoved(
         Map<Class<?>, Set<ManifestParser.Candidate>> manifests,
         Class<?> category,
         String layer,
         ElementIndex baseIndex,
-        Comparison comparison
+        Comparison comparison,
+        ObjectMapper mapper
     ) {
         val removed = new TreeSet<String>();
         comparison
@@ -174,9 +183,56 @@ public class WorkspaceFactory {
                     ManifestParser.Candidate.builder()
                         .parent(parent.orElse(null))
                         .reference(reference)
-                        .element(baseIndex.getElementByReference(reference))
+                        .element(
+                            onlyWhatIsRemoved(baseIndex.getElementByReference(reference), reference, removed, mapper)
+                        )
                         .build()
                 );
+        }
+    }
+
+    /** Whether an element holds, at any depth, an element that is not among {@code kept}. */
+    private static boolean holdsOthers(Element element, String reference, Set<String> kept) {
+        if (!(element instanceof Parent<?> parent)) {
+            return false;
+        }
+        return parent
+            .getElements()
+            .stream()
+            .anyMatch(child -> {
+                val childReference = reference + "." + child.getId();
+                return !kept.contains(childReference) || holdsOthers(child, childReference, kept);
+            });
+    }
+
+    /**
+     * The element, as it is when it holds only elements of {@code kept} (the very object of the baseline: nothing is copied
+     * for the usual case, a removed element that holds only removed ones); else a copy without the others, so that the
+     * baseline is not changed.
+     */
+    @SneakyThrows
+    private static Element onlyWhatIsRemoved(Element element, String reference, Set<String> kept, ObjectMapper mapper) {
+        if (!holdsOthers(element, reference, kept)) {
+            return element;
+        }
+        val tree = (ObjectNode) mapper.valueToTree(element);
+        leaveOut(tree, reference, kept);
+        return mapper.treeToValue(tree, element.getClass());
+    }
+
+    private static void leaveOut(ObjectNode node, String reference, Set<String> kept) {
+        if (!node.path("elements").isArray()) {
+            return;
+        }
+        val children = (ArrayNode) node.get("elements");
+        for (int i = children.size() - 1; i >= 0; i--) {
+            val child = (ObjectNode) children.get(i);
+            val childReference = reference + "." + child.path("id").asText();
+            if (kept.contains(childReference)) {
+                leaveOut(child, childReference, kept);
+            } else {
+                children.remove(i);
+            }
         }
     }
 

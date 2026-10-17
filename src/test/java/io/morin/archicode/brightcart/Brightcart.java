@@ -44,12 +44,6 @@ final class Brightcart {
     /** The three facets of the workspace of section 4 of the document. */
     static final List<String> FACETS = List.of("journey", "no-externals", "without-cart");
 
-    /**
-     * The failure that {@code views generate} ends with today for {@code inhouse} and {@code marketplace}, which draw
-     * their comparison with a {@code baseline} (E1 of section 12). W-3 of wave 012 fixes it and removes this.
-     */
-    static final String E1 = "error: dangling (application )?reference: .*";
-
     private Brightcart() {}
 
     record Result(int exit, String out, String err) {}
