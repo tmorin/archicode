@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 012
-status: proposed
+status: completed
 date: 2026-10-17
 related:
   - docs/fixtures/brightcart-spec.md

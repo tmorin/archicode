@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 012
-status: in-progress
+status: completed
 date: 2026-10-17
 related:
   - docs/wav/wav-012-brightcart-fixture/wbc-012-brightcart-fixture.md
@@ -46,7 +46,7 @@ verifies and what is still only the model's. The layered engine is not built.
 wave_manifest:
   wave: 012
   slug: brightcart-fixture
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P1
@@ -117,7 +117,7 @@ wave_manifest:
       slug: brightcart-editor-look
       phase: P3
       depends_on: [W-1, W-3]
-      run: null
+      run: '0063'
       delegation: standard
       likely_paths:
         - 'docs/fixtures/brightcart-spec.md'
@@ -211,3 +211,7 @@ The three phase gates verified; `./mvnw -o verify`, `cargo test`, `embed.sh --ch
 job is green on the wave's pull request (which no run can see); E1 is closed by its commit or re-filed with the reason; the
 document says what a tool verifies and what is still the model's; no engine, no new command; every item a run lists as "not
 verified" is in the final report.
+
+### Outcome
+
+Completed with these exceptions: "the `Native` job is green on the wave's pull request" cannot be met before the pull request is merged or checked, and no native image was built on the machine that executed the wave (the smoke step's text ran against the JVM build); E1 (#67) is closed by `Fixes #67` in the commit `ce452a2` when the pull request is merged. The editor was driven and read in the built-in browser, not seen: its pane was hidden. Four runs were `completed`, none `hard_judgment`. Gate P1 criterion 3 was reworded during the wave (a plateau with a `baseline` key always draws its comparison, so `inhouse` and `marketplace` could not succeed before W-3); see the progress log.
