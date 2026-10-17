@@ -3672,6 +3672,16 @@ async function getDirectoryHandleByRelativePath(rootHandle, relPath, options) {
   return current;
 }
 
+/** The end of the sentence that refuses a layered plateau; the command line says the same words (`ManifestParser.LAYERED_PLATEAU`): keep them alike. */
+const LAYERED_PLATEAU = ' is not supported yet: layered plateaus (a plateau written as an increment on top of another one) are reserved for a later version of ArchiCode (see #30). Give each plateau its own folder of manifests in `settings.plateaus` instead';
+
+/** The sentence for a manifest of `kind: plateau` or with a `plateau` in its header (neither is recognised, as `from` of a plateau is not), else null. */
+function layeredPlateauProblem(header) {
+  if (Object.prototype.hasOwnProperty.call(header, 'plateau')) return '`header.plateau`' + LAYERED_PLATEAU;
+  if (typeof header.kind === 'string' && stripArchicodeKindPrefix(header.kind.trim().toLowerCase()) === 'plateau') return '`kind: plateau`' + LAYERED_PLATEAU;
+  return null;
+}
+
 /**
  * Parse one manifest file's text the way every load/edit path needs
  * (loadWorkspace, commitFileEdit, reloadManifestFile): `{ header, content,
@@ -3684,6 +3694,8 @@ function parseManifestText(text) {
     const header = (parsed.header && typeof parsed.header === 'object') ? parsed.header : null;
     const content = (parsed.content && typeof parsed.content === 'object') ? parsed.content : null;
     if (!header || !header.kind) return { header, content, error: 'Missing header.kind' };
+    const layered = layeredPlateauProblem(header);
+    if (layered) return { header, content, error: layered };
     if (!content || content.id === undefined) return { header, content, error: 'Missing content.id' };
     return { header, content, error: null };
   } catch (e) {

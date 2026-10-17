@@ -1,7 +1,10 @@
 package io.morin.archicode.manifest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
@@ -80,7 +83,9 @@ public class ManifestParser {
                 try {
                     resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
                 } catch (JsonProcessingException e) {
-                    throw ArchiCodeException.unreadable(source, e, true);
+                    throw layeredPlateau(e)
+                        .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
+                        .orElseGet(() -> ArchiCodeException.unreadable(source, e, true));
                 }
                 final Object item;
                 try {
@@ -127,6 +132,43 @@ public class ManifestParser {
         }
         failOnDuplicates(declarations);
         return new Parsed(map, views, stories);
+    }
+
+    /**
+     * What is said of a manifest that is a layered plateau. The editor says the same words ({@code LAYERED_PLATEAU} in
+     * {@code standalone.html}): keep them alike. It is the end of the sentence that begins with the key.
+     */
+    static final String LAYERED_PLATEAU =
+        " is not supported yet: layered plateaus (a plateau written as an increment on top of another one) are reserved" +
+        " for a later version of ArchiCode (see #30). Give each plateau its own folder of manifests in" +
+        " `settings.plateaus` instead";
+
+    /**
+     * Whether the reader refused a manifest because it is a layered plateau, which ArchiCode does not know yet: its
+     * {@code kind} is {@code plateau} or its header has a {@code plateau}. Neither is recognised or accepted; both are
+     * told once, in one sentence, as the {@code from} of a plateau of the workspace is. Every other kind and every other
+     * key keeps the message of the reader.
+     *
+     * @param e what the reader said
+     * @return the reason, which names the key, or empty
+     */
+    static Optional<String> layeredPlateau(JsonProcessingException e) {
+        if (!(e instanceof JsonMappingException mapping)) {
+            return Optional.empty();
+        }
+        val path = mapping.getPath().stream().map(JsonMappingException.Reference::getFieldName).toList();
+        if (e instanceof UnrecognizedPropertyException && path.equals(List.of("header", "plateau"))) {
+            return Optional.of("`header.plateau`" + LAYERED_PLATEAU);
+        }
+        if (
+            e instanceof InvalidFormatException invalid &&
+            path.equals(List.of("header", "kind")) &&
+            invalid.getValue() instanceof String kind &&
+            kind.strip().toLowerCase(Locale.ROOT).replaceFirst("^archicode\\.morin\\.io/", "").equals("plateau")
+        ) {
+            return Optional.of("`kind: plateau`" + LAYERED_PLATEAU);
+        }
+        return Optional.empty();
     }
 
     /**

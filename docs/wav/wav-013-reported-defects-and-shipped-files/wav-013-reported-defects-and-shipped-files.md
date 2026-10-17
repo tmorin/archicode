@@ -56,7 +56,7 @@ wave_manifest:
         criteria:
           - '`git ls-files src/test/resources/brightcart/layered` is empty; `node src/test/resources/brightcart/generate.mjs` run twice leaves `git status --porcelain src/test/resources/brightcart` empty; `node src/test/resources/brightcart/generate.mjs --layered <empty dir>` writes the layered rendition there and the resolver reports that it equals `folders/` for the four plateaus (sizes 50, 42, 66, 82)'
           - 'the double run of `BrightcartStableOutputTest` covers `saas` and `marketplace` only, the other tests of the class and `BrightcartViewsTest` still cover the four plateaus, and the run reports the time of the class before and after'
-          - 'one Java test loads every `workspace.yaml` under `src/doc/examples` and `src/test/resources` with `WorkspaceFactory`, and one node test opens the same list in the editor harness, each from a list of exceptions in which every entry has a reason; altering a fixture manifest (an unknown key) makes both fail, shown by the run'
+          - 'one Java test loads every `workspace.yaml` under `src/doc/examples` and `src/test/resources` with `WorkspaceFactory`, and one node test opens the same list in the editor harness, each from a list of exceptions in which every entry has a reason; altering a fixture manifest makes both fail, shown by the run (an unknown key for the command line; an unknown kind or a `plateau` header for the editor, which accepts an unknown header key today: that difference is W-7''s)'
           - 'a manifest with `kind: archicode.morin.io/plateau` and one with a `plateau:` header each give, on the command line, exit 1 and one `error:` line that names the key, says layered plateaus are not supported yet and points at #30, with no stack trace; the editor shows the same sentence; tests pin both'
           - 'the document says in its limits that the complete-folder rendition is flat because the loader reads one level (#73), and the README of the fixture says how to write the layered rendition'
           - '`./mvnw -o verify`, `cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml`, `src/main/rust/viewpoint-kernel/embed.sh --check`, `node --test "src/test/javascript/**/*.test.js"` and `npx prettier --check "src/**/*.java"` pass'
@@ -82,7 +82,7 @@ wave_manifest:
       name: The negative cases of the fixture
       gate:
         criteria:
-          - '`src/test/resources/brightcart/variants/` holds, for each variant that today''s tools can run (at least: a plateau declared twice, a baseline that names no plateau, a baseline that is a cycle, a plateau folder that is missing, a `current` that names no plateau, a reference declared twice in one plateau, a `replaces` that names nothing, a typo in a plateau id given to `--plateau`), the folders to run it on, and a test runs each on the command line and in the editor harness'
+          - '`src/test/resources/brightcart/variants/` holds, for each variant that today''s tools can run (at least: a plateau declared twice, a baseline that names no plateau, a baseline that is a cycle, a plateau folder that is missing, a `current` that names no plateau, a reference declared twice in one plateau, a `replaces` that names nothing, a typo in a plateau id given to `--plateau`, an unknown key in a manifest header, which the command line refuses and the editor accepts), the folders to run it on, and a test runs each on the command line and in the editor harness'
           - 'each of those gives exit 1 and one `error:` line without a stack trace on the command line (or a warning, where the variant is a warning), and the same sentence in the editor; a case that gave a stack trace, a wrong silence or two different sentences is fixed in the run with a test, or filed as an issue with its reproduction, and the run lists which'
           - 'the document''s variants table says which variants are run by a tool and which wait for the layered engine'
           - 'the five commands of P1 pass'
@@ -103,7 +103,7 @@ wave_manifest:
       slug: shipped-files-loaded
       phase: P1
       depends_on: [W-1]
-      run: null
+      run: '0065'
       delegation: standard
       likely_paths:
         - 'src/test/java/io/morin/archicode/doc/**'
@@ -212,7 +212,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-7 | — | `negative-variants-run` | W-1, W-2 | a wrong workspace gives one clear line, tested | the negative variants of the document that today's tools can run on the complete folders (V2, V4, V5, V11 and their kin, and the ones `settings.plateaus` adds: a baseline that names nothing or loops, a missing folder, a `current` that names nothing, a mistyped `--plateau`), written as small folders next to the fixture and run on the command line and in the editor harness; every case that gives a stack trace, a wrong silence or two sentences for one error is fixed when it is a few lines and filed with its reproduction otherwise; the document's variants table says which are run | one test per variant on the command line and one in the harness; the list of cases fixed and filed; the five commands |
+| W-7 | — | `negative-variants-run` | W-1, W-2 | a wrong workspace gives one clear line, tested | the negative variants of the document that today's tools can run on the complete folders (V2, V4, V5, V11 and their kin, and the ones `settings.plateaus` adds: a baseline that names nothing or loops, a missing folder, a `current` that names nothing, a mistyped `--plateau`, an unknown key in a manifest header, which the command line refuses and the editor accepts without a word), written as small folders next to the fixture and run on the command line and in the editor harness; every case that gives a stack trace, a wrong silence or two sentences for one error is fixed when it is a few lines and filed with its reproduction otherwise; the document's variants table says which are run | one test per variant on the command line and one in the harness; the list of cases fixed and filed; the five commands |
 
 **Gate:** see the manifest, phase P4.
 
