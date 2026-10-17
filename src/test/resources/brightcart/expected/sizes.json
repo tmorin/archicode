@@ -1,0 +1,46 @@
+{
+  "elements": "application + technology",
+  "plateaus": {
+    "baseline": {
+      "application": 28,
+      "technology": 22,
+      "elements": 50,
+      "relationships": 28,
+      "files": 17,
+      "declared": 50,
+      "patches": 0,
+      "views": 109
+    },
+    "saas": {
+      "application": 21,
+      "technology": 21,
+      "elements": 42,
+      "relationships": 21,
+      "files": 4,
+      "declared": 3,
+      "patches": 19,
+      "views": 93
+    },
+    "inhouse": {
+      "application": 36,
+      "technology": 30,
+      "elements": 66,
+      "relationships": 35,
+      "files": 12,
+      "declared": 26,
+      "patches": 28,
+      "views": 147
+    },
+    "marketplace": {
+      "application": 48,
+      "technology": 34,
+      "elements": 82,
+      "relationships": 50,
+      "files": 16,
+      "declared": 23,
+      "patches": 19,
+      "views": 181
+    }
+  },
+  "source": "computed by the generator from the description; views: counted with the current command line"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "V12",
+  "kind": "negative variant",
+  "change": "Merge `inhouse` into `baseline` while `saas` hangs under `baseline`.",
+  "expected": "Refused: `saas` no longer resolves (`patch REMOVE has no match for shop.app.catalog`). Allowed with `--drop saas`. Nothing is written when it is refused.",
+  "class": "refusal",
+  "mentions": [
+    "saas",
+    "shop.app.catalog"
+  ],
+  "model": null,
+  "status": "described; not run"
+}

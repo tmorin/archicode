@@ -1,0 +1,45 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "fulfilment"
+  name: "Fulfilment"
+  description: "Picks, packs and ships."
+  elements:
+    - kind: "container"
+      id: "sync"
+      name: "Order and stock sync"
+      description: "Nightly exchange of orders and stock with the ERP."
+      qualifiers: ["Batch job"]
+      relationships:
+        - destination: "erp"
+          label: "exchanges orders and stock with"
+          qualifiers: ["SFTP"]
+        - destination: "carrier"
+          label: "books shipments with"
+          qualifiers: ["HTTPS"]
+        - destination: "orders.db"
+          label: "reads orders from"
+          qualifiers: ["SQL"]
+        - destination: "fulfilment.inventory"
+          label: "writes stock levels to"
+          qualifiers: ["REST"]
+    - kind: "container"
+      id: "inventory"
+      name: "Inventory service"
+      description: "Stock levels and reservations."
+      qualifiers: ["Java", "Quarkus"]
+      tags:
+        runtime: "quarkus"
+      replaces:
+        - "shop.app.inventory"
+      relationships:
+        - destination: "fulfilment.db"
+          label: "reads and reserves stock in"
+        - destination: "platform.broker"
+          label: "publishes stock events to"
+    - kind: "container"
+      id: "db"
+      name: "Fulfilment database"
+      description: "Stock levels."
+      qualifiers: ["PostgreSQL"]

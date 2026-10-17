@@ -1,0 +1,33 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "discovery"
+  name: "Discovery"
+  description: "Search and recommendations."
+  elements:
+    - kind: "container"
+      id: "search"
+      name: "Search service"
+      description: "Full-text search over products."
+      qualifiers: ["OpenSearch"]
+      replaces:
+        - "commerce.search"
+      relationships:
+        - destination: "commerce.catalog"
+          label: "indexes products from"
+    - kind: "container"
+      id: "recommender"
+      name: "Recommender"
+      description: "Suggests products to a shopper."
+      qualifiers: ["Python"]
+      relationships:
+        - destination: "platform.broker"
+          label: "consumes events from"
+        - destination: "discovery.features"
+          label: "reads features from"
+    - kind: "container"
+      id: "features"
+      name: "Feature store"
+      description: "Shopper and product features."
+      qualifiers: ["Redis"]

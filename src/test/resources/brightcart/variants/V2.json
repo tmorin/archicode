@@ -1,0 +1,15 @@
+{
+  "id": "V2",
+  "kind": "negative variant",
+  "change": "`marketplace` declares `commerce.cart` again.",
+  "expected": "Error: `commerce.cart` declared twice (`inhouse` and `marketplace`).",
+  "class": "error",
+  "mentions": [
+    "commerce.cart",
+    "declared twice"
+  ],
+  "model": [
+    "marketplace: reference commerce.cart declared twice"
+  ],
+  "status": "described; the model reports the messages above; no tool runs it"
+}

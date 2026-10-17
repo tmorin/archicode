@@ -1,0 +1,51 @@
+settings:
+  name: "Brightcart"
+  views:
+    path: "views"
+  facets:
+    customs:
+      - name: "journey"            # the purchase journey: no staff tools, no fulfilment
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.id == 'agent' || @.id == 'merchandiser' || @.id == 'backoffice' || @.id == 'fulfilment')]"
+      - name: "no-externals"       # what Brightcart builds, without its partners
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.tags['rendering-stereotypes'] == 'external')]"
+      - name: "without-cart"       # selects nothing in `saas`, where the cart is gone
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.id == 'cart')]"
+  plateaus:
+    - id: "baseline"
+      name: "Monolith"
+      horizon: "2026-Q1"
+      path: "plateaus/baseline"
+    - id: "saas"
+      name: "Buy the commerce platform"
+      horizon: "2026-Q4"
+      path: "plateaus/saas"
+      baseline: "baseline"
+    - id: "inhouse"
+      name: "Build commerce services"
+      horizon: "2026-Q4"
+      path: "plateaus/inhouse"
+      baseline: "baseline"
+    - id: "marketplace"
+      name: "Marketplace and personalisation"
+      horizon: "2027-Q4"
+      path: "plateaus/marketplace"
+      baseline: "inhouse"
+styles:
+  by-tags:
+    external:
+      background-color: "lightgray"
+    legacy:
+      line-style: 8
+      line-gap: 4
+    hot-path:
+      line-color: "orangered"
+      line-thickness: 3
+  by-qualifiers:
+    PostgreSQL:
+      round-corner: 20

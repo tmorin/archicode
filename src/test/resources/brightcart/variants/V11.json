@@ -1,0 +1,13 @@
+{
+  "id": "V11",
+  "kind": "negative variant",
+  "change": "Two plateaus with the same `override` and the same `id`.",
+  "expected": "Error: plateau declared twice.",
+  "class": "error",
+  "mentions": [
+    "plateau",
+    "declared twice"
+  ],
+  "model": null,
+  "status": "described; not run"
+}

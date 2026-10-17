@@ -1,0 +1,16 @@
+{
+  "id": "V6",
+  "kind": "negative variant",
+  "change": "`MOVE platform.broker` to `platform.notifications`, an element the plateau declares.",
+  "expected": "Error: target reference already exists.",
+  "class": "error",
+  "mentions": [
+    "marketplace",
+    "platform.notifications",
+    "existing reference"
+  ],
+  "model": [
+    "marketplace: patch 20 (MOVE platform.broker): MOVE platform.broker onto the existing reference platform.notifications"
+  ],
+  "status": "described; the model reports the messages above; no tool runs it"
+}

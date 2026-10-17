@@ -1,0 +1,18 @@
+{
+  "id": "V8",
+  "kind": "negative variant",
+  "change": "The `baseline` renames `shop.db` to `shop.database` (its own references follow).",
+  "expected": "`saas`: relationship `fulfilment.sync -> shop.db` matches nothing. `inhouse`: `staging.vm` lists a missing application (the copied list). `marketplace`: `REMOVE shop.db` matches nothing. The model stops a plateau at its first error: in `inhouse` the relationship `fulfilment.sync -> shop.db` fails before the copied list is looked at, and `marketplace` is then not resolved. An engine that collects every error would list all three.",
+  "class": "error",
+  "mentions": [
+    "saas",
+    "inhouse",
+    "shop.db"
+  ],
+  "model": [
+    "saas: patch 18 (SET fulfilment.sync): relationship fulfilment.sync -> shop.db \"reads orders, writes stock levels\" matched 0",
+    "inhouse: patch 27 (SET fulfilment.sync): relationship fulfilment.sync -> shop.db \"reads orders, writes stock levels\" matched 0",
+    "marketplace: not resolved, its parent inhouse did not resolve"
+  ],
+  "status": "described; the model reports the messages above; no tool runs it"
+}

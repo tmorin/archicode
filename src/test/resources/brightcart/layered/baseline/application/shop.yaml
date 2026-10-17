@@ -1,0 +1,27 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  description: "The web shop of the retailer."
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web storefront"
+      description: "Pages of the shop, in the browser."
+      qualifiers: ["React"]
+      relationships:
+        - destination: "shop.app"
+          label: "calls"
+          qualifiers: ["JSON/HTTPS"]
+    - kind: "container"
+      id: "db"
+      name: "Shop database"
+      description: "Products, accounts, orders and stock."
+      qualifiers: ["PostgreSQL"]
+    - kind: "container"
+      id: "cache"
+      name: "Session cache"
+      description: "Baskets and sessions."
+      qualifiers: ["Redis"]

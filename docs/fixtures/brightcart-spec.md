@@ -2,11 +2,13 @@
 type: spec
 status: draft
 date: 2026-10-17
+files: src/test/resources/brightcart
+generator: src/test/resources/brightcart/generate.mjs
 ---
 
 # Brightcart: a shopping fixture across four plateaus
 
-An invented online retailer, described as manifests, whose architecture changes over four plateaus. It is written for three uses at once: to think about where ArchiCode should go with plateaus, to ship as a worked example, and to drive tests. This document specifies it; the files are not written yet.
+An invented online retailer, described as manifests, whose architecture changes over four plateaus. It is written for three uses at once: to think about where ArchiCode should go with plateaus, to ship as a worked example, and to drive tests. This document specifies it; the files are written by `src/test/resources/brightcart/generate.mjs` (section 15).
 
 Nothing here comes from a real workspace. Every name, id and label is invented.
 
@@ -138,7 +140,7 @@ styles:
       round-corner: 20
 ```
 
-The three facets were run on the four plateaus with the current command line: they all generate, `no-externals` leaves no `Payment provider` in any view, and `journey` leaves no `Back office`. `without-cart` selects nothing in `saas`, where the cart is gone, and generates all the same: a facet tolerates a path that selects nothing, a patch does not (L3).
+The three facets were run on the four plateaus with the current command line: they all generate, `no-externals` leaves no `Payment provider` system in any view (the technology nodes `Payment provider (live)` and `(sandbox)` keep the partner's name in theirs), and `journey` leaves no `Back office`. `without-cart` selects nothing in `saas`, where the cart is gone, and generates all the same: a facet tolerates a path that selects nothing, a patch does not (L3).
 
 ## 5. Plateau `baseline`: the monolith
 
@@ -1409,10 +1411,10 @@ Generated views. With the current command line on the complete-folder rendition,
 
 | Rendition | Files | Lines | Bytes |
 | --- | --- | --- | --- |
-| Layered (49 manifests, 4 `plateau.yaml`, 66 patches) | 49 | 1171 | 32167 |
+| Layered (49 files: 45 manifests and 4 `plateau.yaml`, 66 patches) | 49 | 1172 | 32237 |
 | Complete folders | 73 | 1913 | 52089 |
 
-The layered rendition is about 40% smaller, and 9 of its 32 KB are patches. The saving is real and not dramatic; it grows with the number of plateaus and shrinks when plateaus restructure. The `inhouse` increment is 10 KB against 14 KB for its complete folder, because it adds 26 elements.
+Counted on the files `generate.mjs` writes, `workspace.yaml` left out (it is shared). The layered rendition is about 40% smaller, and 9 of its 32 KB are patches. The saving is real and not dramatic; it grows with the number of plateaus and shrinks when plateaus restructure. The `inhouse` increment is 10 KB against 14 KB for its complete folder, because it adds 26 elements.
 
 ### Comparisons
 
@@ -1467,7 +1469,7 @@ Each case is a place where the fixture asks something specific. "State" is what 
 | V5 | A plateau typo, `plateau: inhous` | Same error in the implicit plateau `inhous`; with a warning that it exists only through one header. |
 | V6 | `MOVE platform.broker` to `platform.notifications` | Error: target reference already exists. |
 | V7 | `REMOVE shop.cache` in `marketplace` | Error: no match (`inhouse` already moved it). The stale-patch case. |
-| V8 | The `baseline` renames `shop.db` to `shop.database` | `saas`: relationship `fulfilment.sync -> shop.db` matches nothing. `inhouse`: `staging.vm` lists a missing application (the copied list). `marketplace`: `REMOVE shop.db` matches nothing. |
+| V8 | The `baseline` renames `shop.db` to `shop.database` | `saas`: relationship `fulfilment.sync -> shop.db` matches nothing. `inhouse`: `staging.vm` lists a missing application (the copied list). `marketplace`: `REMOVE shop.db` matches nothing. The model stops a plateau at its first error: it reports the relationship in `saas` and in `inhouse` (the patch that fails first, after the copied list) and does not resolve `marketplace`; an engine that collects every error would list the three. |
 | V9 | Two `SET` of the same field in one plateau | A warning; the last one wins. |
 | V10 | `horizon` of a child earlier than its parent's | A warning. |
 | V11 | Two plateaus with the same `override` and the same `id` | Error: plateau declared twice. |
@@ -1510,7 +1512,7 @@ These are findings, not decisions.
 
 **On the engine (today).**
 
-- **E1. `views generate` fails on the comparison views of `inhouse` and `marketplace`** with `dangling application reference: shop.cache` and `dangling reference: shop.web`, while `diff` works. A node that is removed keeps an application that another element replaced, so the union model points at nothing. Removing the `replaces` from the element involved makes the plateau generate, which isolates the cause. A second error appears once the first is out (`dangling reference: shop.app.inventory`); whether it is the same cause is not known. A workspace of four small files reproduces the first one:
+- **E1. `views generate` fails on the comparison views of `inhouse` and `marketplace`** with `dangling application reference: shop.cache` and `dangling reference: shop.web`, while `diff` works. A node that is removed keeps an application that another element replaced, so the union model points at nothing. On Brightcart, `views generate --plateau inhouse` (and `marketplace`) stops with it, because those plateaus have a `baseline` key and the command then also draws the comparison; the views of the plateau itself (147 and 181 files) are written before it stops. Removing the `replaces` from the element involved makes the plateau generate, which isolates the cause. A second error appears once the first is out (`dangling reference: shop.app.inventory`); whether it is the same cause is not known. A workspace of four small files reproduces the first one:
 
 ```yaml
 # workspace.yaml: settings.plateaus a (plateaus/a) and b (plateaus/b, baseline: a)
@@ -1598,8 +1600,8 @@ archicode plateau merge marketplace --into baseline --dry-run
 ## 15. Next steps
 
 1. Read the story and the hard cases; say what is missing or unrealistic (a payment flow, a returns flow, an observability stack?).
-2. Decide the home. Proposed: the specification stays at `docs/fixtures/brightcart-spec.md`; the files live in `src/test/resources/brightcart/` (`layered/`, `folders/`, `variants/`, `expected/`) with a generator next to them (`generate.mjs`, like the harbour pair), and a subset is copied to `src/doc/examples/` once the layered engine exists.
-3. Write the generator from the model (a throwaway Python model exists in the working folder; the generator is its port). Regenerate byte for byte, as the harbour pair does.
+2. The home is taken: the specification stays at `docs/fixtures/brightcart-spec.md`; the files live in `src/test/resources/brightcart/` (`layered/`, `folders/`, `variants/`, `expected/`, with `description.mjs`, `generate.mjs` and a README next to them, like the harbour pair). A subset is copied to `src/doc/examples/` once the layered engine exists.
+3. Done: `generate.mjs` is the port of the throwaway Python model (which stays outside the repository). `node src/test/resources/brightcart/generate.mjs` regenerates the files byte for byte, resolves `layered/` from the files and fails if a plateau differs from `folders/`; `folders/` is identical, file for file, to what the model wrote.
 4. Wire the tests of section 11 that need only the current tools: `diff` on P1, P2, P3, P5; `views generate`; the editor's saves.
 5. File E1 and fix it; its test is already described.
 6. The rest (L1 to L11, P4, the merge, the variants, `migrate`) waits for decisions that are not taken.

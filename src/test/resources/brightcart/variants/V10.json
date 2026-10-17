@@ -1,0 +1,12 @@
+{
+  "id": "V10",
+  "kind": "negative variant",
+  "change": "`horizon` of a child plateau earlier than its parent's.",
+  "expected": "A warning.",
+  "class": "warning",
+  "mentions": [
+    "horizon"
+  ],
+  "model": null,
+  "status": "described; not run"
+}

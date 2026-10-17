@@ -1,0 +1,16 @@
+{
+  "id": "V1",
+  "kind": "negative variant",
+  "change": "A typo in a `target`: `commerce.catalogue` instead of `commerce.catalog`, in the patch of `marketplace` that rewrites the description of the catalog.",
+  "expected": "Error in `marketplace`: the patch on `commerce.catalogue` has no match (it names the rank of the patch).",
+  "class": "error",
+  "mentions": [
+    "marketplace",
+    "commerce.catalogue",
+    "no match"
+  ],
+  "model": [
+    "marketplace: patch 9 (SET commerce.catalogue) has no match for commerce.catalogue"
+  ],
+  "status": "described; the model reports the messages above; no tool runs it"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "V14",
+  "kind": "negative variant",
+  "change": "Merge a plateau into itself, or `baseline` into anything.",
+  "expected": "Error: nothing to merge.",
+  "class": "error",
+  "mentions": [
+    "nothing to merge"
+  ],
+  "model": null,
+  "status": "described; not run"
+}

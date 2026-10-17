@@ -1,0 +1,14 @@
+{
+  "id": "M1",
+  "kind": "merge scenario",
+  "merge": "`inhouse` into `baseline`",
+  "newPresent": "`baseline` resolves to 66 elements, with manifests only (the root has no patch).",
+  "survivors": "`marketplace` now hangs under `baseline`: its 23 manifests and 19 patches are unchanged, its state is unchanged (82 elements) and its comparison with the new `baseline` is exactly P3 (+21 ~12 -5, 5 moved). `saas` is refused: it targets `shop.app.catalog`, which the new baseline no longer has.",
+  "expected": "`--drop saas` is needed, or the merge stops before writing anything.",
+  "numbers": {
+    "presentElements": 66,
+    "survivorElements": 82,
+    "survivorComparison": "P3"
+  },
+  "status": "described; not run (the command does not exist: tmorin/archicode#65)"
+}

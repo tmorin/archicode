@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "erp"
+  name: "ERP"
+  description: "Master of stock, purchases and accounting."
+  tags:
+    rendering-stereotypes: "external"

@@ -1,0 +1,32 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "partners"
+  name: "Partners (live)"
+  elements:
+    - kind: "node"
+      id: "psp-live"
+      name: "Payment provider (live)"
+      applications:
+        - "psp"
+    - kind: "node"
+      id: "carrier-live"
+      name: "Carrier API (live)"
+      applications:
+        - "carrier"
+    - kind: "node"
+      id: "erp-live"
+      name: "ERP (live)"
+      applications:
+        - "erp"
+    - kind: "node"
+      id: "mail-live"
+      name: "Mail provider (live)"
+      applications:
+        - "mailer"
+    - kind: "node"
+      id: "commerce-live"
+      name: "Commerce platform (live)"
+      applications:
+        - "commerce-saas"

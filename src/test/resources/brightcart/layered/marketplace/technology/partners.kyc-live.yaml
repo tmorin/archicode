@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  parent: "partners"
+content:
+  id: "kyc-live"
+  name: "KYC (live)"
+  applications:
+    - "kyc"

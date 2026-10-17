@@ -1,0 +1,96 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "prod"
+  name: "Production"
+  uses:
+    - "partners"
+  elements:
+    - kind: "node"
+      id: "dc"
+      name: "Paris data centre"
+      elements:
+        - kind: "node"
+          id: "batch-vm"
+          name: "Batch VM"
+          applications:
+            - "fulfilment.sync"
+        - kind: "node"
+          id: "admin-vm"
+          name: "Admin VM"
+          applications:
+            - "backoffice.console"
+    - kind: "node"
+      id: "cloud"
+      name: "Cloud region eu-west"
+      elements:
+        - kind: "node"
+          id: "k8s"
+          name: "Kubernetes cluster"
+          elements:
+            - kind: "node"
+              id: "commerce"
+              name: "Commerce namespace"
+              applications:
+                - "commerce.gateway"
+                - "commerce.catalog"
+                - "discovery.search"
+                - "commerce.cart"
+                - "commerce.checkout"
+                - "commerce.pricing"
+            - kind: "node"
+              id: "payments"
+              name: "Payments namespace"
+              applications:
+                - "payments.orchestrator"
+            - kind: "node"
+              id: "orders"
+              name: "Orders namespace"
+              applications:
+                - "orders.placement"
+                - "orders.history"
+            - kind: "node"
+              id: "accounts"
+              name: "Accounts namespace"
+              applications:
+                - "accounts.profiles"
+            - kind: "node"
+              id: "marketplace"
+              name: "Marketplace namespace"
+              applications:
+                - "marketplace.seller-portal"
+                - "marketplace.listing"
+                - "marketplace.settlement"
+            - kind: "node"
+              id: "platform"
+              name: "Platform namespace"
+              applications:
+                - "platform.notifications"
+                - "discovery.recommender"
+                - "fulfilment.inventory"
+        - kind: "node"
+          id: "pg"
+          name: "Managed PostgreSQL"
+          applications:
+            - "commerce.catalog-db"
+            - "orders.db"
+            - "accounts.db"
+            - "marketplace.db"
+            - "fulfilment.db"
+        - kind: "node"
+          id: "redis"
+          name: "Managed Redis"
+          applications:
+            - "commerce.cart-store"
+            - "discovery.features"
+        - kind: "node"
+          id: "cdn"
+          name: "CDN"
+          applications:
+            - "storefront.web"
+        - kind: "node"
+          id: "kafka"
+          name: "Managed Kafka"
+          applications:
+            - "platform.broker"

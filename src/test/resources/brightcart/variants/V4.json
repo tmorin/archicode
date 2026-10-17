@@ -1,0 +1,19 @@
+{
+  "id": "V4",
+  "kind": "negative variant",
+  "change": "`inhouse/application/commerce.cart.yaml` loses its folder default (moved outside `inhouse/`).",
+  "expected": "The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. A warning on the folder name is also expected.",
+  "class": "error and warning",
+  "mentions": [
+    "baseline",
+    "commerce.cart",
+    "parent"
+  ],
+  "model": [
+    "baseline: the parent of commerce.cart does not exist when its manifest is read",
+    "saas: not resolved, its parent baseline did not resolve",
+    "inhouse: not resolved, its parent baseline did not resolve",
+    "marketplace: not resolved, its parent inhouse did not resolve"
+  ],
+  "status": "described; the model reports the messages above; no tool runs it"
+}

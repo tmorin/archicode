@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  parent: "prod.cloud"
+content:
+  id: "cdn"
+  name: "CDN"
+  applications:
+    - "shop.web"

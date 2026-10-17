@@ -1,0 +1,22 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  parent: "staging"
+  plateau: "inhouse"
+content:
+  id: "k8s"
+  name: "Staging cluster"
+  applications:
+    - "commerce.gateway"
+    - "commerce.catalog"
+    - "commerce.catalog-db"
+    - "commerce.search"
+    - "commerce.cart"
+    - "commerce.checkout"
+    - "commerce.pricing"
+    - "payments.orchestrator"
+    - "orders.placement"
+    - "orders.history"
+    - "orders.db"
+    - "accounts.profiles"
+    - "accounts.db"

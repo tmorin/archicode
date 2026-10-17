@@ -1,0 +1,37 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "orders"
+  name: "Order management"
+  description: "Orders from placement to history."
+  elements:
+    - kind: "container"
+      id: "placement"
+      name: "Order placement"
+      description: "Creates and confirms orders."
+      qualifiers: ["Java", "Quarkus"]
+      tags:
+        runtime: "quarkus"
+      relationships:
+        - destination: "orders.db"
+          label: "stores orders in"
+        - destination: "platform.notifications"
+          label: "asks to notify"
+        - destination: "platform.broker"
+          label: "publishes order events to"
+    - kind: "container"
+      id: "history"
+      name: "Order history"
+      description: "Read model of past orders."
+      qualifiers: ["Java", "Quarkus"]
+      tags:
+        runtime: "quarkus"
+      relationships:
+        - destination: "orders.db"
+          label: "reads orders from"
+    - kind: "container"
+      id: "db"
+      name: "Orders database"
+      description: "Orders and their events."
+      qualifiers: ["PostgreSQL"]

@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  parent: "prod.cloud.k8s"
+content:
+  id: "platform"
+  name: "Platform namespace"
+  applications:
+    - "platform.notifications"
+    - "discovery.recommender"
+    - "fulfilment.inventory"

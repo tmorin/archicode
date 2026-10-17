@@ -1,0 +1,111 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "inhouse"
+  name: "Build commerce services"
+  horizon: "2026-Q4"
+  patches:
+    # pattern M: the operator changes parent and id, rewrites the references and records replaces
+    - operator: MOVE
+      target: "shop.cache"
+      to: "commerce.cart-store"
+    - operator: SET
+      target: "commerce.cart-store"
+      field: name
+      value: "Cart store"
+    - operator: SET
+      target: "commerce.cart-store"
+      field: description
+      value: "Baskets, one key per shopper."
+    # pattern R: the new containers say replaces, the old components go
+    - operator: REMOVE
+      target: "shop.app.catalog"
+    - operator: REMOVE
+      target: "shop.app.search"
+    - operator: REMOVE
+      target: "shop.app.cart"
+    - operator: REMOVE
+      target: "shop.app.checkout"
+    - operator: REMOVE
+      target: "shop.app.payments"
+    - operator: REMOVE
+      target: "shop.app.promotions"
+    - operator: REMOVE
+      target: "shop.app.orders"
+    - operator: REMOVE
+      target: "shop.app.customers"
+    - operator: REMOVE
+      target: "shop.app.loyalty"
+    # the monolith is reduced
+    - operator: SET
+      target: "shop.app"
+      field: name
+      value: "Legacy core"
+    - operator: SET
+      target: "shop.app"
+      field: description
+      value: "What is left of the monolith: stock levels and notifications."
+    - operator: SET
+      target: "shop.app"
+      field: tags
+      value: {"rendering-stereotypes": "legacy"}
+    # the storefront
+    - operator: SET
+      target: "shop.web"
+      field: description
+      value: "Pages of the shop, served behind the API gateway."
+    - operator: ADD
+      target: "shop.web"
+      field: relationships
+      value: {destination: "commerce.gateway", label: "browses and buys through", qualifiers: ["REST"]}
+    # deployment
+    - operator: ADD
+      target: "prod.cloud.redis"
+      layer: technology
+      field: applications
+      value: ["commerce.cart-store"]
+    - operator: ADD
+      target: "staging.k8s"
+      layer: technology
+      field: applications
+      value: ["commerce.cart-store"]
+    - operator: SET
+      target: "staging.vm"
+      layer: technology
+      field: applications
+      value: ["shop.web", "shop.app", "shop.db", "fulfilment.sync", "backoffice.console"]
+    - operator: REMOVE
+      target: "prod.dc.cache-vm"
+      layer: technology
+    # the staff tools follow
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "commerce.catalog", label: "maintains products in"}
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "commerce.pricing", label: "configures promotions in"}
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "orders.placement", label: "handles orders in"}
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "orders.history", label: "looks up past orders in"}
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "accounts.profiles", label: "looks up customers in"}
+    # the nightly batch
+    - operator: SET
+      target: "fulfilment.sync"
+      field: relationships
+      where: {destination: "shop.db", label: "reads orders, writes stock levels"}
+      value: {label: "writes stock levels"}
+    - operator: ADD
+      target: "fulfilment.sync"
+      field: relationships
+      value: {destination: "orders.db", label: "reads orders from", qualifiers: ["SQL"]}

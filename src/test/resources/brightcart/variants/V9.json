@@ -1,0 +1,13 @@
+{
+  "id": "V9",
+  "kind": "negative variant",
+  "change": "Two `SET` of the same field of the same target in one plateau.",
+  "expected": "A warning; the last one wins.",
+  "class": "warning",
+  "mentions": [
+    "SET",
+    "last"
+  ],
+  "model": null,
+  "status": "described; not run"
+}

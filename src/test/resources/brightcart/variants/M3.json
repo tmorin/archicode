@@ -1,0 +1,12 @@
+{
+  "id": "M3",
+  "kind": "merge scenario",
+  "merge": "`marketplace` into `baseline` (two steps)",
+  "newPresent": "`baseline` resolves to 82 elements, manifests only.",
+  "survivors": "`saas` is refused or dropped. Nothing survives below.",
+  "expected": "The chain has become one node.",
+  "numbers": {
+    "presentElements": 82
+  },
+  "status": "described; not run (the command does not exist: tmorin/archicode#65)"
+}

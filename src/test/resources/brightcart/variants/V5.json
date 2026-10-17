@@ -1,0 +1,16 @@
+{
+  "id": "V5",
+  "kind": "negative variant",
+  "change": "A plateau typo, `plateau: inhous`, in the header of `inhouse/application/commerce.cart.yaml`.",
+  "expected": "Same error in the implicit plateau `inhous`; with a warning that it exists only through one header.",
+  "class": "error and warning",
+  "mentions": [
+    "inhous",
+    "commerce.cart",
+    "parent"
+  ],
+  "model": [
+    "inhous: the parent of commerce.cart does not exist when its manifest is read"
+  ],
+  "status": "described; the model reports the messages above; no tool runs it"
+}

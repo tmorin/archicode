@@ -1,0 +1,90 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "commerce"
+  name: "Commerce services"
+  description: "Services of the shopping journey."
+  elements:
+    - kind: "container"
+      id: "cart-store"
+      name: "Cart store"
+      description: "Baskets, one key per shopper."
+      qualifiers: ["Redis"]
+    - kind: "container"
+      id: "gateway"
+      name: "API gateway"
+      description: "Single entry for the storefront."
+      qualifiers: ["Kong"]
+      tags:
+        rendering-stereotypes: "hot-path"
+      relationships:
+        - destination: "commerce.catalog"
+          label: "routes to"
+        - destination: "discovery.search"
+          label: "routes to"
+        - destination: "commerce.cart"
+          label: "routes to"
+        - destination: "commerce.checkout"
+          label: "routes to"
+        - destination: "commerce.pricing"
+          label: "routes to"
+    - kind: "container"
+      id: "catalog"
+      name: "Catalog service"
+      description: "Products, prices and availability, including offers of marketplace sellers."
+      qualifiers: ["Java", "Quarkus"]
+      tags:
+        runtime: "quarkus"
+      relationships:
+        - destination: "commerce.catalog-db"
+          label: "reads and writes"
+        - destination: "platform.broker"
+          label: "publishes product events to"
+        - destination: "discovery.recommender"
+          label: "asks for suggestions"
+    - kind: "container"
+      id: "catalog-db"
+      name: "Catalog database"
+      description: "Products and prices."
+      qualifiers: ["PostgreSQL"]
+    - kind: "container"
+      id: "cart"
+      name: "Cart service"
+      description: "Keeps the basket of a shopper."
+      qualifiers: ["Java", "Quarkus"]
+      tags:
+        runtime: "quarkus"
+      relationships:
+        - destination: "commerce.cart-store"
+          label: "keeps baskets in"
+    - kind: "container"
+      id: "checkout"
+      name: "Checkout service"
+      description: "Turns a basket into an order."
+      qualifiers: ["Java", "Quarkus"]
+      tags:
+        runtime: "quarkus"
+      relationships:
+        - destination: "commerce.cart"
+          label: "reads baskets from"
+        - destination: "orders.placement"
+          label: "creates orders in"
+        - destination: "payments.orchestrator"
+          label: "pays through"
+        - destination: "tax"
+          label: "computes taxes with"
+          qualifiers: ["HTTPS"]
+        - destination: "fulfilment.inventory"
+          label: "reserves stock in"
+          qualifiers: ["REST"]
+    - kind: "container"
+      id: "pricing"
+      name: "Pricing service"
+      description: "Discount rules and vouchers."
+      qualifiers: ["Java", "Quarkus"]
+      tags:
+        runtime: "quarkus"
+      relationships:
+        - destination: "commerce.catalog"
+          label: "reads prices from"
