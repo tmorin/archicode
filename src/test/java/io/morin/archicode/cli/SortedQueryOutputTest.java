@@ -2,23 +2,29 @@ package io.morin.archicode.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.view.View;
+import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
 /**
@@ -46,6 +52,9 @@ class SortedQueryOutputTest {
 
     @Inject
     GetSchemasQuery getSchemasQuery;
+
+    @Inject
+    WorkspaceFactory workspaceFactory;
 
     private static View view(String id, View.Layer layer, String viewpoint, String name) {
         return View.builder().id(id).layer(layer).viewpoint(viewpoint).name(name).build();
@@ -86,14 +95,22 @@ class SortedQueryOutputTest {
         return keys;
     }
 
-    private static List<String> idsAndLayersOfToml(String toml) {
-        // the TOML of a list has no table to read it back with: the pairs of `id` and `layer` are in the text
+    @SneakyThrows
+    private List<String> idsAndLayersOfToml(String toml) {
+        // the TOML of the command is a table: `views` holds the list, read back by a TOML parser
+        val document = mapperFactory.create(MapperFormat.TOML).readTree(toml);
+        assertEquals(List.of("views"), fieldNames(document), "the document is one table, with the list under `views`");
         val keys = new ArrayList<String>();
-        val matcher = java.util.regex.Pattern.compile("id = '([^']*)'[^}]*?layer = '([^']*)'").matcher(toml);
-        while (matcher.find()) {
-            keys.add(matcher.group(1) + "/" + matcher.group(2));
+        for (val view : document.get("views")) {
+            keys.add(view.get("id").asText() + "/" + view.get("layer").asText());
         }
         return keys;
+    }
+
+    private static List<String> fieldNames(JsonNode node) {
+        val names = new ArrayList<String>();
+        node.fieldNames().forEachRemaining(names::add);
+        return names;
     }
 
     @Test
@@ -114,6 +131,217 @@ class SortedQueryOutputTest {
         assertEquals(expected, json);
         assertEquals(json, idsAndLayers("yaml"));
         assertEquals(json, idsAndLayersOfToml(queryViews("toml").out()));
+    }
+
+    @SneakyThrows
+    @Test
+    void theTomlOfQueryViewsHoldsTheSameViewsAsTheJsonOnceParsed() {
+        val json = mapperFactory.create(MapperFormat.JSON).readTree(queryViews("json").out());
+        val toml = mapperFactory.create(MapperFormat.TOML).readTree(queryViews("toml").out());
+        assertEquals(List.of("views"), fieldNames(toml));
+        assertEquals(json, toml.get("views"));
+    }
+
+    @SneakyThrows
+    @Test
+    void aQueryThatSelectsOneViewIsATableInTomlAndAListIsHeldUnderViews() {
+        val toml = mapperFactory.create(MapperFormat.TOML);
+        val one = CliHarness.run(factory, errorOutput, "-w", WORKSPACE, "query", "views", "-f", "toml", "-q", "$.[0]");
+        assertEquals(0, one.exit(), one.err());
+        val oneView = toml.readTree(one.out());
+        assertTrue(oneView.has("id") && oneView.has("layer"), "a single view is a table already: " + one.out());
+
+        val several = CliHarness.run(
+            factory,
+            errorOutput,
+            "-w",
+            WORKSPACE,
+            "query",
+            "views",
+            "-f",
+            "toml",
+            "-q",
+            "$.[?(@.layer=='technology')]"
+        );
+        assertEquals(0, several.exit(), several.err());
+        val views = toml.readTree(several.out()).get("views");
+        assertTrue(views.size() > 1 && views.size() < queryViewsCount());
+        for (val view : views) {
+            assertEquals("technology", view.get("layer").asText());
+        }
+
+        val ids = CliHarness.run(
+            factory,
+            errorOutput,
+            "-w",
+            WORKSPACE,
+            "query",
+            "views",
+            "-f",
+            "toml",
+            "-q",
+            "$.[*].id"
+        );
+        assertEquals(0, ids.exit(), ids.err());
+        assertEquals(queryViewsCount(), toml.readTree(ids.out()).get("views").size());
+    }
+
+    @SneakyThrows
+    private int queryViewsCount() {
+        return mapperFactory.create(MapperFormat.JSON).readTree(queryViews("json").out()).size();
+    }
+
+    private static final String GRAPH_WORKSPACE = """
+    application:
+      elements:
+        - kind: solution
+          id: warehouse
+          elements:
+            - kind: system
+              id: scanner
+              relationships:
+                - destination: shop.api
+                  label: reports to
+        - kind: solution
+          id: shop
+          elements:
+            - kind: system
+              id: web
+              relationships:
+                - destination: shop.catalog
+                  label: reads
+                - destination: shop.api
+                  label: calls
+                - destination: shop.billing
+                  label: charges
+            - kind: system
+              id: mailer
+            - kind: system
+              id: catalog
+            - kind: system
+              id: billing
+            - kind: system
+              id: api
+        - kind: solution
+          id: audit
+    technology:
+      elements:
+        - kind: environment
+          id: prod
+          elements:
+            - kind: node
+              id: vm_b
+              relationships:
+                - destination: prod.vm_a
+                  label: replicates to
+            - kind: node
+              id: vm_a
+            - kind: node
+              id: db
+        - kind: environment
+          id: edge
+          elements:
+            - kind: node
+              id: proxy
+              relationships:
+                - destination: prod.db
+                  label: reaches
+                - destination: prod.vm_b
+                  label: forwards to
+    """;
+
+    @SneakyThrows
+    private static List<String> references(JsonNode graph, String layer) {
+        val references = new ArrayList<String>();
+        for (val entry : graph.get("elements")) {
+            if (layer.equals(entry.get("layer").asText())) {
+                references.add(entry.get("reference").asText());
+            }
+        }
+        return references;
+    }
+
+    @SneakyThrows
+    @Test
+    void queryGraphListsTheElementsByLayerThenReferenceAndTheRelationshipsBySourceThenAsWritten(@TempDir Path folder) {
+        val workspaceFile = folder.resolve("workspace.yaml");
+        Files.writeString(workspaceFile, GRAPH_WORKSPACE);
+
+        // the input is one whose hash order is not the sorted order: the test would pass by chance otherwise
+        val workspace = workspaceFactory.create(workspaceFile.toAbsolutePath(), null, null);
+        val hashOrder = List.copyOf(workspace.appIndex.listAllElementReferences(element -> true));
+        assertNotEquals(new ArrayList<>(new TreeSet<>(hashOrder)), hashOrder, "hash order of the application");
+        val technologyHashOrder = List.copyOf(workspace.techIndex.listAllElementReferences(element -> true));
+        assertNotEquals(
+            new ArrayList<>(new TreeSet<>(technologyHashOrder)),
+            technologyHashOrder,
+            "hash order of the technology"
+        );
+
+        val result = CliHarness.run(factory, errorOutput, "-w", workspaceFile.toString(), "query", "graph");
+        assertEquals(0, result.exit(), result.err());
+        val graph = mapperFactory.create(MapperFormat.JSON).readTree(result.out());
+
+        assertEquals(
+            List.of(
+                "audit",
+                "shop",
+                "shop.api",
+                "shop.billing",
+                "shop.catalog",
+                "shop.mailer",
+                "shop.web",
+                "warehouse",
+                "warehouse.scanner"
+            ),
+            references(graph, "application")
+        );
+        assertEquals(
+            List.of("edge", "edge.proxy", "prod", "prod.db", "prod.vm_a", "prod.vm_b"),
+            references(graph, "technology")
+        );
+        // the layers come one after the other, the application first
+        val layers = new ArrayList<String>();
+        graph.get("elements").forEach(entry -> layers.add(entry.get("layer").asText()));
+        assertEquals(
+            Stream.concat(
+                Collections.nCopies(9, "application").stream(),
+                Collections.nCopies(6, "technology").stream()
+            ).toList(),
+            layers
+        );
+
+        // by source, then, for one source, as the author wrote them (catalog, api, billing: not alphabetical)
+        val relationships = new ArrayList<String>();
+        for (val entry : graph.get("relationships")) {
+            relationships.add(
+                entry.get("layer").asText() +
+                    ":" +
+                    entry.get("source").asText() +
+                    "->" +
+                    entry.get("relationship").get("destination").asText()
+            );
+        }
+        assertEquals(
+            List.of(
+                "application:shop.web->shop.catalog",
+                "application:shop.web->shop.api",
+                "application:shop.web->shop.billing",
+                "application:warehouse.scanner->shop.api",
+                "technology:edge.proxy->prod.db",
+                "technology:edge.proxy->prod.vm_b",
+                "technology:prod.vm_b->prod.vm_a"
+            ),
+            relationships
+        );
+
+        // and it is one text, whatever the number of times it is asked for
+        for (var run = 0; run < 5; run++) {
+            assertEquals(
+                result.out(),
+                CliHarness.run(factory, errorOutput, "-w", workspaceFile.toString(), "query", "graph").out()
+            );
+        }
     }
 
     /** Walks a schema: the keys of every {@code properties} map are sorted, and so are those of the schemas below it. */

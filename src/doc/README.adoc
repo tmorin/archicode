@@ -1508,6 +1508,27 @@ archicode query views -f custom -t '$d.e("$.[*].id")'
 
 - Sorted Output: the views come sorted, by identifier and then by layer (application before technology), in every output format and before the JSON Path query is applied, so that `$.[0]` is always the same view. Two runs, on the same machine or not, and two builds of the same version give the same output byte for byte, which lets you diff it or keep it in git. Before 0.14.0 the order of the views was not defined and changed from one build to another; the set of views did not. The order of your scripts' results changes once, when you upgrade; if a script relies on the position of a view, select it by its `id` instead.
 
+- TOML Output: a TOML document is a table, so `-f toml` writes the list of views under the key `views`, as `views = [{ id = '...', ... }, ...]`; a JSON Path query that selects one view writes that view as a table, and one that selects anything else (a list of identifiers, say) is written under `views` too. Before 0.14.0 the list was written as an assignment without a key, which no TOML parser reads. The TOML output changes once, when you upgrade; the YAML, JSON and custom outputs did not change.
+
+=== Query graph
+
+.Query Graph - The command line
+[source,shell]
+----
+archicode query graph --help
+----
+
+The "Query Graph" command prints the resolved elements and relationships of the workspace as JSON, with `--plateau <id>` to choose the plateau that is read.
+A relationship whose destination does not exist is an error, as it is for the views.
+
+.Query Graph - Print the graph
+[source,shell]
+----
+archicode query graph
+----
+
+- Sorted Output: the elements come by layer (application, then technology) and, in a layer, by reference; the relationships come by the reference of their source in the same order and, for one source, as the author wrote them. Two runs and two builds of the same version give the same output byte for byte, which lets you diff it or keep it in git. Before 0.14.0 the elements came in the hash order of their references: the same for one workspace and one JDK, but not a promised one. The order of the output changes once, when you upgrade; the elements and the relationships did not change.
+
 [[plateau-add]]
 === Add a plateau
 

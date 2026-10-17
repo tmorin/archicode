@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.SneakyThrows;
@@ -88,7 +89,14 @@ public class GetGraphQuery implements Runnable {
     }
 
     /**
-     * Walk every element of the given index and force resolution of every one of its relationships.
+     * Walk every element of the given index, in the order of their references, and force resolution of every one of
+     * its relationships.
+     * <p>
+     * The index hands out its references in the hash order of a set, which is a function of the references alone but
+     * moves with the order the manifests were read in (a collision bucket) and with the JDK (the hash table). The
+     * references are therefore sorted here (the natural order of the text), so that the elements come in the order of
+     * their references, layer by layer (application, then technology), and the relationships follow their source: by
+     * source, then, for one source, as the author wrote them.
      *
      * @param index         the index to walk
      * @param layer         the layer the index belongs to
@@ -101,7 +109,7 @@ public class GetGraphQuery implements Runnable {
         @NonNull List<ElementEntry> elements,
         @NonNull List<RelationshipEntry> relationships
     ) {
-        for (val reference : index.listAllElementReferences(element -> true)) {
+        for (val reference : new TreeSet<>(index.listAllElementReferences(element -> true))) {
             val element = index.getElementByReference(reference);
             elements.add(ElementEntry.builder().reference(reference).layer(layer).element(element).build());
 

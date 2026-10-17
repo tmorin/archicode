@@ -1,5 +1,7 @@
 package io.morin.archicode.cli;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.jayway.jsonpath.JsonPath;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
@@ -98,7 +100,11 @@ public class GetViewsQuery implements Runnable {
             queryOutputWriter.write(resultAsString);
         } else {
             val resultAsTree = mapperFactory.create(MapperFormat.JSON).readTree(resultAsJson);
-            val resultAsString = mapperFactory.create(outputFormat.mapperFormat).writeValueAsString(resultAsTree);
+            val resultAsString = mapperFactory
+                .create(outputFormat.mapperFormat)
+                .writeValueAsString(
+                    OutputFormat.TOML.equals(outputFormat) ? asTomlDocument(resultAsTree) : resultAsTree
+                );
             queryOutputWriter.write(resultAsString);
         }
     }
@@ -117,6 +123,35 @@ public class GetViewsQuery implements Runnable {
         .thenComparing(View::getName, Comparator.nullsFirst(Comparator.naturalOrder()))
         .thenComparing(View::getDescription, Comparator.nullsFirst(Comparator.naturalOrder()))
         .thenComparing(view -> Objects.toString(view.getProperties(), ""));
+
+    /**
+     * The key of the table that holds the result of the command in TOML, see {@link #asTomlDocument(JsonNode)}.
+     */
+    static final String TOML_ROOT_KEY = "views";
+
+    /**
+     * The result of the command as a document that TOML can hold.
+     * <p>
+     * A TOML document is a table: it has no root list and no root value. The list of the views (or whatever else a
+     * JSON Path query selects that is not an object) is written under the key {@value #TOML_ROOT_KEY}, as
+     * {@code views = [{id = '...', ...}, ...]}; it used to be written as an assignment without a key, which no TOML
+     * parser reads. A result that is an object (a query that selects one view) is a table already and is left as it is.
+     * <p>
+     * An array of tables ({@code [[views]]}) would read better by eye, but the TOML writer of Jackson only writes
+     * inline values, so it would take a writer of our own for the nested properties of a view; the inline form is read
+     * back by any parser to the same data.
+     *
+     * @param result the result, as a JSON tree
+     * @return the tree to write: the result if it is an object, a table holding it otherwise
+     */
+    static JsonNode asTomlDocument(@NonNull JsonNode result) {
+        if (result.isObject()) {
+            return result;
+        }
+        val document = JsonNodeFactory.instance.objectNode();
+        document.set(TOML_ROOT_KEY, result);
+        return document;
+    }
 
     /**
      * Sort the given views in the order of the output, see {@link #VIEW_ORDER}.
