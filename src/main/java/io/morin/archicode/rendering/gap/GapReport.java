@@ -11,9 +11,11 @@ import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.kernel.Comparison;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import lombok.NonNull;
@@ -39,6 +41,11 @@ import lombok.val;
  * candidates that are <em>not applied</em>: the author accepts one by writing {@code replaces}. A comparison without any of
  * it is written as it always was, byte for byte: the new lines and keys exist only when there is something to say, and
  * the candidates only for a plateau that uses {@code replaces} (see {@link #listsCandidates}).
+ *
+ * <p>The kernel does not compare the relationships of an element that was split (which half would own them is a guess),
+ * so those of the halves read as <em>new</em>. The report says it: the row of such a relationship ends with {@code of the
+ * split X} (JSON: {@code of_split}) and the header counts them (see {@link #countOfSplit}). The kernel's answer is not
+ * touched; this is read from its rows.
  */
 @UtilityClass
 public class GapReport {
@@ -105,6 +112,45 @@ public class GapReport {
         return counts.moved() + " moved, " + counts.split() + " split, " + counts.merged() + " merged";
     }
 
+    /** The elements of the comparison that were split, as {@code layer NUL reference}. */
+    private static Set<String> splitElements(Comparison comparison) {
+        val out = new HashSet<String>();
+        for (val element : comparison.getElements()) {
+            if (element.change() == Change.SPLIT) {
+                out.add(element.layer() + "\0" + element.reference());
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The split elements a new relationship belongs to: its source and its destination, when they were split. The kernel
+     * does not compare what a split element had (rule 6), so the relationships of the halves read as new whether the
+     * element had them before the split or not; empty for any other row.
+     */
+    private static List<String> ofSplit(Comparison.Row row, Set<String> splits) {
+        if (splits.isEmpty() || !row.thing().equals("relationship") || row.change() != Change.NEW) {
+            return List.of();
+        }
+        val owners = new LinkedHashSet<String>();
+        for (val end : new String[] { row.reference(), row.destination() }) {
+            if (splits.contains(row.layer() + "\0" + end)) {
+                owners.add(end);
+            }
+        }
+        return List.copyOf(owners);
+    }
+
+    /** How many of the new relationships belong to a split element. */
+    private static long countOfSplit(Comparison comparison) {
+        val splits = splitElements(comparison);
+        return comparison
+            .getChanges()
+            .stream()
+            .filter(row -> !ofSplit(row, splits).isEmpty())
+            .count();
+    }
+
     // ---- text ----
 
     private static String text(Comparison comparison, boolean hideWording) {
@@ -124,6 +170,18 @@ public class GapReport {
         out.append(
             counts("relationships", c.relationships().added(), c.relationships().changed(), c.relationships().removed())
         ).append('\n');
+        val inSplits = countOfSplit(comparison);
+        if (inSplits > 0) {
+            out.append(
+                String.format(
+                    Locale.ROOT,
+                    "%-13s %d of the %d new relationships belong to split elements (not compared with the baseline)",
+                    "of a split",
+                    inSplits,
+                    c.relationships().added()
+                )
+            ).append('\n');
+        }
         out.append(
             String.format(
                 Locale.ROOT,
@@ -147,6 +205,7 @@ public class GapReport {
                 .append('\n');
             return out.toString();
         }
+        val splits = splitElements(comparison);
         val table = new ArrayList<List<String>>();
         table.add(List.of("CHANGE", "THING", "LAYER", "REFERENCE", "NATURES", "DETAILS"));
         rows.forEach(row ->
@@ -157,7 +216,7 @@ public class GapReport {
                     row.layer(),
                     reference(row),
                     natures(row),
-                    String.join("; ", details(row, rows))
+                    String.join("; ", details(row, rows, splits))
                 )
             )
         );
@@ -245,6 +304,18 @@ public class GapReport {
         if (replacing(c.elements()) != null) {
             out.append("Replacing elements: ").append(replacing(c.elements())).append(".\n\n");
         }
+        val inSplits = countOfSplit(comparison);
+        if (inSplits > 0) {
+            out.append("Of the ")
+                .append(c.relationships().added())
+                .append(" new relationships, ")
+                .append(inSplits)
+                .append(
+                    inSplits == 1
+                        ? " belongs to a split element: the comparison does not compare the relationships of a split element with the baseline.\n\n"
+                        : " belong to split elements: the comparison does not compare the relationships of a split element with the baseline.\n\n"
+                );
+        }
         out.append("Wording only: ")
             .append(c.elements().wordingOnly())
             .append(" of the ")
@@ -264,6 +335,7 @@ public class GapReport {
             return out.toString();
         }
         out.append("| Change | Thing | Layer | Reference | Natures | Details |\n|---|---|---|---|---|---|\n");
+        val splits = splitElements(comparison);
         for (val row : rows) {
             out.append("| ")
                 .append(row.change().word())
@@ -276,7 +348,7 @@ public class GapReport {
                 .append(" | ")
                 .append(cell(natures(row)))
                 .append(" | ")
-                .append(cell(String.join("; ", details(row, rows))))
+                .append(cell(String.join("; ", details(row, rows, splits))))
                 .append(" |\n");
         }
         markdownCandidates(out, comparison);
@@ -328,6 +400,11 @@ public class GapReport {
         relationships.put("new", c.relationships().added());
         relationships.put("changed", c.relationships().changed());
         relationships.put("removed", c.relationships().removed());
+        val inSplits = countOfSplit(comparison);
+        if (inSplits > 0) {
+            // the new relationships that belong to a split element, only when there are some
+            relationships.put("of_split", inSplits);
+        }
         if (replacing(c.elements()) != null) {
             // next to new, changed and removed, only when an element replaces another
             elements.put("moved", c.elements().moved());
@@ -336,6 +413,7 @@ public class GapReport {
         }
         root.put("hidden_wording_only", hidden(comparison, hideWording));
         val changes = root.putArray("changes");
+        val splits = splitElements(comparison);
         for (val row : listed(comparison, hideWording)) {
             val node = changes.addObject();
             node.put("thing", row.thing());
@@ -360,6 +438,11 @@ public class GapReport {
             if (!row.replaces().isEmpty()) {
                 val replaces = node.putArray("replaces");
                 row.replaces().forEach(replaces::add);
+            }
+            val owners = ofSplit(row, splits);
+            if (!owners.isEmpty()) {
+                val of = node.putArray("of_split");
+                owners.forEach(of::add);
             }
             if (!row.before().isEmpty() || !row.after().isEmpty()) {
                 val before = node.putObject("before");
@@ -425,12 +508,16 @@ public class GapReport {
      * What changed in a changed row: each property that differs, with what it was and what it is. A new or a removed row
      * has no details (the thing is the change), but for the name of an element. An element that moved, split or merged
      * has its name, what differs from the element it replaces, and for a split the other elements that replace the same
-     * one.
+     * one. A new relationship of a split element says {@code of the split X}.
      */
-    private static List<String> details(Comparison.Row row, List<Comparison.Row> rows) {
+    private static List<String> details(Comparison.Row row, List<Comparison.Row> rows, Set<String> splits) {
         val details = new ArrayList<String>();
         if (!row.replaces().isEmpty()) {
             details.add("from " + String.join(", ", row.replaces()));
+        }
+        val owners = ofSplit(row, splits);
+        if (!owners.isEmpty()) {
+            details.add("of the split " + String.join(", ", owners));
         }
         if (row.change() != Change.CHANGED) {
             if (

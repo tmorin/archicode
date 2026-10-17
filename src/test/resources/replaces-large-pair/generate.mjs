@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Generates the invented harbour of `replaces-large-pair`: three plateaus of manifests, the workspace that lists them and the planted answers.
 //
-//   node src/test/resources/replaces-large-pair/generate.mjs [--sweep [--fp]]
+//   node src/test/resources/replaces-large-pair/generate.mjs [--sweep [--fp] [--rewrite-moves]]
 //
-// `--sweep` also prints what other thresholds would do to this pair (a re-reading of the kernel's rule; at the kernel's own values it lists the same 169 pairs ReplacesLargePairTest records);
+// `--sweep` also prints what other thresholds would do to this pair (a re-reading of the kernel's rule; at the kernel's own values it lists the same 137 pairs ReplacesLargePairTest records);
+// `--rewrite-moves` adds a what-if the pair does not plant: the moved elements that keep their name get a description written again (see the comment at its code);
 // `--fp` adds the false positives by level of the tree. Neither changes the files.
 //
 // The output is committed; this script is kept next to it so that the pair reads as a recipe and can be rebuilt (the same seed gives the same bytes).
@@ -683,11 +684,26 @@ if (process.argv.includes('--sweep')) {
   const norm = (t) => (t ?? '').trim();
   const wordsOf = (t) => new Set(norm(t).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean));
   const flat = (roots) => roots.flatMap((r) => [...walk(r)].map((e) => ({ e, layer: layerOf(e), ref: ref(e) })));
+  // `--rewrite-moves`: a what-if that the pair does not plant: every element moved to another parent with its name kept (6 containers, 2 nodes)
+  // gets a description written again. It shows what a rule that needs the parents to be a pair costs when the move does not keep the description.
+  if (process.argv.includes('--rewrite-moves')) {
+    const moved = new Set(same.filter((a) => a.scenario === 'moved-name-kept' || a.scenario === 'node-moved-name-kept').map((a) => `${a.layer}:${a.to}`));
+    for (const x of flat(targetRoots)) if (moved.has(x.layer + ':' + x.ref)) x.e.description = 'Written again, with no word of the old text, after the move.';
+    console.log(`what-if: the description of ${moved.size} moved elements (name kept) is written again`);
+  }
   const goneAll = flat(baseRoots).filter((x) => !targetRefs.has(x.layer + ':' + x.ref));
   const freshAll = flat(targetRoots).filter((x) => !baseRefs.has(x.layer + ':' + x.ref));
   const parentOf = (x) => (x.ref.includes('.') ? x.ref.slice(0, x.ref.lastIndexOf('.')) : null);
-  const rule = ({ close = 0.6, least = 3, lone = true, names = 'all' }) => {
+  // `names` is how a pair that has only the same name to say for it is treated (the repeated-name question of #60):
+  //   'all'                   every one (the rule until wave 013: 169 pairs, precision 0.450, recall 0.784), 'off' none,
+  //   'unique'                only when the name is unique among the removed and among the new of that kind (the kernel's rule since wave 013, run 0069, issue #60),
+  //   'parents'               only when the parents are themselves a pair (found at the level above; two elements at the top have no parent and pass),
+  //   'unique-or-parents'     when the name is unique, or the parents are a pair,
+  //   'unique-and-parents'    when the name is unique and the parents are a pair.
+  // `same` adds "the same parent element on both sides" to what a pair of parents is.
+  const rule = ({ close = 0.6, least = 3, lone = true, names = 'unique', same: sameParent = false }) => {
     const found = new Set();
+    const depth = (x) => x.ref.split('.').length;
     for (const layer of ['application', 'technology']) {
       const gone = goneAll.filter((x) => x.layer === layer);
       const fr = freshAll.filter((x) => x.layer === layer);
@@ -702,13 +718,28 @@ if (process.argv.includes('--sweep')) {
       gone.forEach((x) => bump(x, 0));
       fr.forEach((x) => bump(x, 1));
       const nameCount = (list, x) => list.filter((y) => norm(y.e.kind) === norm(x.e.kind) && norm(y.e.name).toLowerCase() === norm(x.e.name).toLowerCase()).length;
-      for (const a of gone) {
-        for (const b of fr) {
+      const pairs = [];
+      for (const a of gone) for (const b of fr) pairs.push([a, b]);
+      // shallow pairs first: whether the parents are a pair is known by the time a deeper pair is looked at
+      pairs.sort((p, q) => depth(p[0]) - depth(q[0]));
+      for (const [a, b] of pairs) {
+        {
           const kind = norm(a.e.kind);
           if (!kind || kind !== norm(b.e.kind)) continue;
           const name = norm(a.e.name).toLowerCase();
           let hit = false;
-          if (names !== 'off' && name && name === norm(b.e.name).toLowerCase()) hit = names === 'all' || (nameCount(gone, a) === 1 && nameCount(fr, b) === 1);
+          if (names !== 'off' && name && name === norm(b.e.name).toLowerCase()) {
+            const unique = nameCount(gone, a) === 1 && nameCount(fr, b) === 1;
+            const [pa, pb] = [parentOf(a), parentOf(b)];
+            const parentsPair = pa === null || pb === null ? pa === pb : found.has(layer + ':' + pa + ' -> ' + layer + ':' + pb) || (sameParent && pa === pb);
+            hit = {
+              all: true,
+              unique,
+              parents: parentsPair,
+              'unique-or-parents': unique || parentsPair,
+              'unique-and-parents': unique && parentsPair
+            }[names];
+          }
           if (!hit && close > 0) {
             const [wa, wb] = [wordsOf(a.e.description), wordsOf(b.e.description)];
             if (wa.size >= least && wb.size >= least) {
@@ -738,7 +769,8 @@ if (process.argv.includes('--sweep')) {
         `precision=${(tp / found.size).toFixed(3)} recall=${(tp / sameKeys.size).toFixed(3)} planted-decoys-listed=${listed}/${plantedKeys.length}`
     );
   };
-  row('kernel (close 0.6, least 3, lone, names all)', {});
+  row('kernel (close 0.6, least 3, lone, unique names)', {});
+  row('the kernel until wave 013 (names all)', { names: 'all' });
   if (process.argv.includes('--fp')) {
     const found = rule({});
     const level = (k) => { const [from] = k.split(' -> '); const [layer, r] = from.split(':'); return layer + '/' + r.split('.').length; };
@@ -752,7 +784,11 @@ if (process.argv.includes('--sweep')) {
   for (const least of [2, 4, 5, 6, 8]) row(`least ${least} words`, { least });
   row('lone-sibling rule off', { lone: false });
   row('name rule off', { names: 'off' });
-  row('name rule only when the name is unique', { names: 'unique' });
+  row('name rule only when the parents are a pair', { names: 'parents' });
+  row('  ... or the same parent element', { names: 'parents', same: true });
+  row('name unique, or the parents are a pair', { names: 'unique-or-parents' });
+  row('  ... or the same parent element', { names: 'unique-or-parents', same: true });
+  row('name unique and the parents are a pair', { names: 'unique-and-parents' });
   row('name unique + close 0.7', { names: 'unique', close: 0.7 });
   row('name unique + lone off', { names: 'unique', lone: false });
   row('description rule off', { close: 0 });

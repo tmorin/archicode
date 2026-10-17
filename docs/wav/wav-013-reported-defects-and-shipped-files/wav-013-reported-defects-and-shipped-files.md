@@ -150,7 +150,7 @@ wave_manifest:
       slug: candidates-and-split-reading
       phase: P3
       depends_on: [W-1]
-      run: null
+      run: '0069'
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'

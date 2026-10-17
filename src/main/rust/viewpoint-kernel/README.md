@@ -171,7 +171,8 @@ output: { version,
   an element the union does not hold (the union can be handed to `compute`, whatever was replaced).
 - **Candidates** are listed in `candidates`, never applied, never drawn: pairs (an element only the base has and nothing replaces,
   an element only the target has that replaces nothing) of the same layer and kind, with the reasons `name` (same name, ignoring
-  case), `description` (at least 60 percent of the words in common, three words or more on each side) and `parent` (the only two
+  case, and only when no other removed element and no other new element of that kind has it: a name that repeats would pair every
+  removed one with every new one, wave 013, issue #60), `description` (at least 60 percent of the words in common, three words or more on each side) and `parent` (the only two
   of that kind under the same parent). Sorted by (layer, from, to). The author turns one into a `replaces` or leaves it.
 - **The contract version.** `compare` itself added nothing to version 2; the views of a comparison (below) changed what `compute`
   gives, and moved the contract to 3; `replaces` (new words of `change`, `replaces`, `candidates`, `warnings`) moved it to 4.

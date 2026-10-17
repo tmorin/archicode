@@ -156,3 +156,25 @@ test('E1: the removed node of a comparison deploys what replaced the application
     assert.equal(result.error, undefined, viewpoint + ': ' + JSON.stringify(result.error));
   }
 });
+
+// ---- #60, wave 013 (run 0069): a name that repeats says nothing about which element is which ----
+
+test('the embedded kernel offers a pair for a name only when no other removed and no other new element of that kind has it', async () => {
+  const kernel = await createApp({}).loadViewpointKernel();
+  const component = (reference, extra) => Object.assign({ reference, parent: false, kind: 'component', name: 'Cache' }, extra);
+  const system = (reference) => ({ reference, parent: true });
+  const pairs = (answer) => plain(answer.candidates.map((c) => [c.from, c.to, c.reasons.join('+')]));
+  // `Cache` is on two removed and two new components: four pairs for two answers, so none; the one Broker is alone on each side
+  let answer = kernel.compare({
+    base: { application: [system('a'), component('a.cache'), system('b'), component('b.cache'), component('a.broker', { name: 'Broker' })] },
+    target: { application: [system('a2'), component('a2.cache'), system('b2'), component('b2.cache'), component('a2.broker', { name: 'Broker' })] }
+  });
+  assert.equal(answer.error, undefined);
+  assert.deepEqual(pairs(answer), [['a.broker', 'a2.broker', 'name']], 'no pair for Cache, one for the Broker, whose name is the only one of its kind on each side');
+  // once the author has said what one of the two Cache is, the other is alone on each side and its name tells again
+  answer = kernel.compare({
+    base: { application: [system('a'), component('a.cache'), system('b'), component('b.cache')] },
+    target: { application: [system('a2'), component('a2.cache', { replaces: ['a.cache'] }), system('b2'), component('b2.cache')] }
+  });
+  assert.deepEqual(pairs(answer), [['b.cache', 'b2.cache', 'name']]);
+});

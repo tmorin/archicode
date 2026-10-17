@@ -1,17 +1,17 @@
 # Recorded by ReplacesLargePairTest on replaces-large-pair (an invented harbour): before -> after, no replaces anywhere.
 # Regenerate with: ./mvnw -o test -Dtest=ReplacesLargePairTest -DrecordReplacesLargePair=true
-planted=97 found=169 true-positives=76 false-positives=93 misses=21
-precision=0.450 recall=0.784
+planted=97 found=137 true-positives=76 false-positives=61 misses=21
+precision=0.555 recall=0.784
 level application/1: true-positives=3 false-positives=0 misses=0
 level application/2: true-positives=46 false-positives=21 misses=19
-level application/3: true-positives=16 false-positives=53 misses=0
+level application/3: true-positives=16 false-positives=26 misses=0
 level technology/1: true-positives=1 false-positives=0 misses=0
-level technology/2: true-positives=10 false-positives=19 misses=2
+level technology/2: true-positives=10 false-positives=14 misses=2
 trap close-description-unrelated: listed=9 rejected=3
 trap lone-sibling-different-thing: listed=8 rejected=2
 trap same-name-other-kind: listed=0 rejected=5
 trap same-name-other-layer: listed=0 rejected=2
-trap same-name-other-parent: listed=8 rejected=0
+trap same-name-other-parent: listed=6 rejected=2
 trap short-description-three-words: listed=2 rejected=0
 trap short-description-two-words: listed=0 rejected=2
 scenario container-renamed-with-components: found=1 missed=1

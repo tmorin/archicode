@@ -59,8 +59,11 @@
 //!    so it cannot replace anything.
 //! 7. **Candidates are listed, never applied.** An element only the base has and that nothing replaces, and one only the
 //!    target has that replaces nothing, are a *candidate* pair when they have the same kind in the same layer and at
-//!    least one of: the same name (ignoring case), a close description (at least 60 percent of the words in common, three
-//!    words or more on each side), or the same parent when they are the only two of that kind under it. The pair is
+//!    least one of: the same name (ignoring case) **when no other removed element and no other new element of that kind
+//!    has it**, a close description (at least 60 percent of the words in common, three words or more on each side), or
+//!    the same parent when they are the only two of that kind under it. A name that repeats (a `Cache` under each
+//!    container, a `Message Broker` in each environment) says nothing about which one is which: n removed and m new of
+//!    that name would give n x m pairs for n answers (wave 013, issue #60, measured on `replaces-large-pair`). The pair is
 //!    listed with its reasons; the author decides, by writing `replaces`.
 use super::{null_as_default, Elem, Rel, CONTRACT_VERSION};
 use serde::{Deserialize, Serialize};
@@ -716,8 +719,18 @@ fn close_descriptions(a: &Option<String>, b: &Option<String>) -> bool {
     common / a.union(&b).count() as f64 >= CLOSE_DESCRIPTION
 }
 
-/// The pairs (removed, new) that look like one thing said twice: same layer, same kind, and a name, a description or (when they
-/// are the only two of their kind under a parent) a parent in common. Nothing that is replaced, nothing that replaces.
+/// How many of the elements, of each (kind, name ignoring the case), there are.
+fn count_names(list: &[(&Elem, Props)]) -> HashMap<(String, String), usize> {
+    let mut counts = HashMap::new();
+    for (_, p) in list {
+        *counts.entry((norm_text(&p.kind), norm_text(&p.name).to_lowercase())).or_default() += 1;
+    }
+    counts
+}
+
+/// The pairs (removed, new) that look like one thing said twice: same layer, same kind, and a name (when it is the only one of its kind
+/// among the removed and among the new), a description or (when they are the only two of their kind under a parent) a parent in common.
+/// Nothing that is replaced, nothing that replaces.
 fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String), Identity>, rewrite: &Rewrite) -> Vec<Candidate> {
     let mut out = Vec::new();
     for layer in LAYERS {
@@ -752,6 +765,8 @@ fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String)
                 siblings.entry((parent, norm_text(&p.kind))).or_default().1 += 1;
             }
         }
+        // (kind, name) -> how many removed, how many new: a name that is on several of them does not tell which is which
+        let (gone_names, fresh_names) = (count_names(&gone), count_names(&fresh));
         for (from, fp) in &gone {
             for (to, tp) in &fresh {
                 let kind = norm_text(&fp.kind);
@@ -761,7 +776,10 @@ fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String)
                 let mut reasons: Vec<&'static str> = Vec::new();
                 let name = norm_text(&fp.name).to_lowercase();
                 if !name.is_empty() && name == norm_text(&tp.name).to_lowercase() {
-                    reasons.push("name");
+                    let key = (kind.clone(), name);
+                    if gone_names.get(&key) == Some(&1) && fresh_names.get(&key) == Some(&1) {
+                        reasons.push("name");
+                    }
                 }
                 if close_descriptions(&fp.description, &tp.description) {
                     reasons.push("description");
@@ -1917,6 +1935,37 @@ mod tests {
         );
         assert_eq!(candidate_pairs(&out), [("p.a".to_string(), "p.b".to_string())], "{}", out["candidates"]);
         assert_eq!(out["candidates"][0]["reasons"], json!(["parent"]));
+    }
+
+    #[test]
+    fn a_name_that_repeats_among_the_removed_or_the_new_is_no_reason() {
+        // `Cache` is on two removed and two new components: four pairs for two answers, and nothing says which is which
+        let cache = |reference: &str| el(reference, json!({ "kind": "component", "name": "Cache" }));
+        let out = app(
+            vec![el("a", json!({})), cache("a.cache"), el("b", json!({})), cache("b.cache"), el("c", json!({})), el("c.broker", json!({ "kind": "component", "name": "Broker" }))],
+            vec![el("a2", json!({})), cache("a2.cache"), el("b2", json!({})), cache("b2.cache"), el("c", json!({})), el("c.relay", json!({ "kind": "component", "name": "Broker" }))],
+        );
+        assert_eq!(candidate_pairs(&out), [("c.broker".to_string(), "c.relay".to_string())], "only the Broker is the one removed and the one new of its name: {}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["name", "parent"]));
+        // one side is enough to make the name say nothing: two removed `Cache`, one new
+        let out = app(vec![el("a", json!({})), cache("a.cache"), cache("a.cache2")], vec![el("a", json!({})), cache("a.store")]);
+        assert_eq!(candidate_pairs(&out), [] as [(String, String); 0], "{}", out["candidates"]);
+        // the other reasons still stand for a name that repeats
+        let described = |reference: &str, description: &str| el(reference, json!({ "kind": "component", "name": "Cache", "description": description }));
+        let out = app(
+            vec![el("a", json!({})), described("a.one", "keeps the recent answers of the catalogue in memory"), described("a.two", "holds the sessions of the signed in visitors")],
+            vec![el("a", json!({})), described("a.three", "keeps the recent answers of the catalogue in memory for a minute"), described("a.four", "something else entirely written in other words")],
+        );
+        assert_eq!(candidate_pairs(&out), [("a.one".to_string(), "a.three".to_string())], "{}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["description"]));
+    }
+
+    #[test]
+    fn a_name_is_a_reason_again_once_the_author_has_settled_the_others_that_share_it() {
+        let cache = |reference: &str| el(reference, json!({ "kind": "component", "name": "Cache" }));
+        let out = app(vec![el("a", json!({})), cache("a.cache"), el("b", json!({})), cache("b.cache")], vec![el("a2", json!({})), replacing("a2.cache", json!(["a.cache"]), json!({ "kind": "component", "name": "Cache" })), el("b2", json!({})), cache("b2.cache")]);
+        assert_eq!(candidate_pairs(&out), [("b.cache".to_string(), "b2.cache".to_string())], "a.cache is replaced, so the other Cache is now the only one of its name on each side: {}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["name"]));
     }
 
     #[test]

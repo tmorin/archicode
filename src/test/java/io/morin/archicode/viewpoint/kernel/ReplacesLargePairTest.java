@@ -163,11 +163,12 @@ class ReplacesLargePairTest {
             report.append(String.format("scenario %s: found=%d missed=%d%n", scenario, counts[0], counts[1]))
         );
 
-        // a floor under the recorded numbers (0.45 and 0.78 today), so that a change of the rule that makes the candidates clearly worse fails here
-        // and is not just a new text to record; the pair is invented, so these are not a promise about a real workspace
+        // a floor under the recorded numbers (0.56 and 0.78 today; 0.45 and 0.78 before a repeated name stopped being a reason, issue #60), so that a
+        // change of the rule that makes the candidates clearly worse fails here and is not just a new text to record; the pair is invented, so these
+        // are not a promise about a real workspace
         val precision = truePositives.size() / (double) found.size();
         val recall = truePositives.size() / (double) same.size();
-        assertTrue(precision >= 0.4, "precision of the candidates fell to " + precision);
+        assertTrue(precision > 0.5, "precision of the candidates fell to " + precision);
         assertTrue(recall >= 0.7, "recall of the candidates fell to " + recall);
 
         assertRecorded("recorded-candidates.txt", report.toString());
