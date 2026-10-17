@@ -136,8 +136,10 @@ jobs:
           work="$(mktemp -d)"
           cp -r src/doc/examples/domain_workspace "$work/workspace"
           cp -r src/doc/examples/domain_plateaus "$work/plateaus"
+          cp -r src/test/resources/brightcart/folders "$work/brightcart"
           workspace="$work/workspace/workspace.yaml"
           plateaus="$work/plateaus/workspace.yaml"
+          brightcart="$work/brightcart/workspace.yaml"
           failed=()
 
           # expect <label> <pattern> <command...>: the command succeeds and what it prints has the pattern
@@ -168,6 +170,16 @@ jobs:
           expect "diff" "^comparing " "$runner" -w "$plateaus" diff
           expect "views generate --baseline" "" "$runner" -w "$plateaus" views generate -o views --baseline as-is
           expect "views generate --baseline writes the table" "" test -s "$work/plateaus/views-to-be-vs-as-is/gap.md"
+
+          # Brightcart (src/test/resources/brightcart/folders, a copy: the views are written next to workspace.yaml): four plateaus
+          # whose elements replace others. `replacing` is the line of the moved, split and merged elements; `saas` generates with
+          # its comparison and its facets (`inhouse` and `marketplace` are left to the unit tests)
+          expect "diff on Brightcart" "^replacing " "$runner" -w "$brightcart" diff --plateau inhouse
+          expect "diff on Brightcart, against a sibling" "^comparing inhouse .* with saas" "$runner" -w "$brightcart" diff --plateau inhouse --baseline saas
+          expect "views generate on Brightcart" "" "$runner" -w "$brightcart" views generate --plateau saas
+          expect "views generate on Brightcart writes the plateau" "" test -s "$work/brightcart/views-saas/plantuml/application/shop-overview.puml"
+          expect "views generate on Brightcart writes the comparison" "" test -s "$work/brightcart/views-saas-vs-baseline/gap.json"
+          expect "views generate on Brightcart writes a facet" "" test -s "$work/brightcart/views-saas-journey/plantuml/application/shop-overview.puml"
 
           # the editor page is a resource of the image
           "$runner" -w "$workspace" editor serve --port 0 > "$work/editor.log" 2>&1 &

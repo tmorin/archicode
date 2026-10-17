@@ -90,7 +90,7 @@ wave_manifest:
       slug: brightcart-tests
       phase: P2
       depends_on: [W-1]
-      run: null
+      run: '0061'
       delegation: standard
       likely_paths:
         - 'src/test/java/io/morin/archicode/brightcart/**'
