@@ -128,7 +128,7 @@ wave_manifest:
       slug: anchors-aliases-tags
       phase: P0
       depends_on: []
-      run: null
+      run: 0071
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -142,7 +142,7 @@ wave_manifest:
       slug: editor-validates-like-cli
       phase: P0
       depends_on: []
-      run: null
+      run: 0072
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -156,7 +156,7 @@ wave_manifest:
       slug: editor-odds-and-ends
       phase: P0
       depends_on: []
-      run: null
+      run: 0073
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -166,7 +166,7 @@ wave_manifest:
       slug: wave-013-review-findings
       phase: P0
       depends_on: []
-      run: null
+      run: 0074
       delegation: standard
       likely_paths:
         - 'src/main/**'
@@ -176,7 +176,7 @@ wave_manifest:
       slug: kernel-apply-patches
       phase: P1
       depends_on: []
-      run: null
+      run: 0075
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
