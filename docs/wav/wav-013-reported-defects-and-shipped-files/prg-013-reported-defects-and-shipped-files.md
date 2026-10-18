@@ -1,6 +1,6 @@
 ---
 type: prg
-status: active
+status: completed
 date: 2026-10-17
 related:
   - docs/wav/wav-013-reported-defects-and-shipped-files/wav-013-reported-defects-and-shipped-files.md

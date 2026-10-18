@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 013
-status: proposed
+status: completed
 date: 2026-10-17
 related:
   - docs/wav/wav-012-brightcart-fixture/wav-012-brightcart-fixture.md

@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 013
-status: in-progress
+status: completed
 date: 2026-10-17
 related:
   - docs/wav/wav-013-reported-defects-and-shipped-files/wbc-013-reported-defects-and-shipped-files.md
@@ -47,7 +47,7 @@ workspace that hits none of these defects generates exactly the same views as be
 wave_manifest:
   wave: 013
   slug: reported-defects-and-shipped-files
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P1
@@ -278,3 +278,7 @@ The four phase gates verified; `./mvnw -o verify`, `cargo test`, `embed.sh --che
 "src/**/*.java"` pass on the final tree; the issues #57, #58, #59, #60, #61, #66, #68, #69, #70, #71 are closed by their commits
 or re-filed with the reason; `CLAUDE.md`'s rule about shipped files is met by a test and not only by a sentence; every item a run
 lists as "not verified" is in the final report.
+
+### Outcome
+
+Completed with these exceptions: **#70 is not done** (the kernel gets only `{ base, target }`: telling sibling plateaus from a chain needs a new input to `compare` or a filter in each host; the plan's Open Questions prescribed stopping, the issue stays open and the analysis is in run 0069); **anchors, aliases and tags** are not fixed (#74: the editor's reader refuses them, so such a file is never written); **the editor was driven in the node harness and read in a hidden pane, not seen**, and so was the layout of the header (#69); "the `Native` job is green on the wave's pull request" cannot be known by any run. Gate P1 criterion 3 was reworded during the wave (the editor accepts an unknown header key, which W-7 then fixed). Seven runs `completed`, none `hard_judgment`. The closing keywords (`Fixes #...`) of the commits close #57, #58, #59, #60, #61, #66, #68, #69, #71 and #67 (wave 012) when the pull request is merged.
