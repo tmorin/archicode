@@ -136,7 +136,7 @@ wave_manifest:
       slug: toml-manifests-and-group-kinds
       phase: P0
       depends_on: []
-      run: null
+      run: 0091
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/manifest/**'
