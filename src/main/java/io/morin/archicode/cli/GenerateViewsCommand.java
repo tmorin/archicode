@@ -98,6 +98,12 @@ public class GenerateViewsCommand implements Runnable {
     Path viewsDirPath;
 
     @CommandLine.Option(
+        names = { "--only-changes" },
+        description = "In the views of a comparison (PATH-<plateau>-vs-<against>), draw only what changed: the new, changed, removed, moved, split and merged elements and relationships, the ends of their links, the elements that hold a change, and what encloses them; the context is kept and greyed. The views of the plateau itself are drawn in full, and so is the table of changes. It needs a comparison: a plateau that overrides another one, or --against."
+    )
+    boolean onlyChanges;
+
+    @CommandLine.Option(
         names = { "--properties-content" },
         paramLabel = "PROPERTIES",
         description = "Optional properties of the views."
@@ -140,6 +146,18 @@ public class GenerateViewsCommand implements Runnable {
         // a plateau is compared with the plateau it overrides, or with `--against`: it has one as soon as it is not the root
         // (a comparison doubles the views). Checked before anything is written.
         final String againstId = plateau == null ? null : Against.of(workspace, againstOption.againstId);
+        if (onlyChanges && plateau == null) {
+            throw new ArchiCodeException(
+                "`--only-changes` cannot be used: the workspace declares no plateau, and nothing is compared%s",
+                WorkspaceFactory.NO_PLATEAU
+            );
+        }
+        if (onlyChanges && againstId == null) {
+            throw new ArchiCodeException(
+                "`--only-changes` cannot be used: the plateau `%s` is the root of the plateaus and nothing is before it, so nothing is compared. Name a plateau with `--against`",
+                plateau.getId()
+            );
+        }
 
         // the views of the workspace, or of the plateau drawn
         renderWorkspaces(workspace, null);
@@ -197,6 +215,11 @@ public class GenerateViewsCommand implements Runnable {
             .resolve(workspace.getSettings().getViews().getPath());
     }
 
+    /** Only the views of a comparison are trimmed: without one the kernel keeps the focal item alone, nothing changed. */
+    private boolean drawsOnlyChanges(Comparison comparison) {
+        return onlyChanges && comparison != null;
+    }
+
     public void renderWorkspace(Workspace workspace) {
         renderWorkspace(workspace, null);
     }
@@ -224,7 +247,7 @@ public class GenerateViewsCommand implements Runnable {
                 log.info("render {}", viewId);
                 val viewpoint = viewpointServiceRepository
                     .get(view.getViewpoint())
-                    .createViewpointFactory(comparison, false)
+                    .createViewpointFactory(comparison, drawsOnlyChanges(comparison))
                     .create(workspace, view);
                 renderer.render(viewpoint, rendererName, outputDirPath);
             });
@@ -282,7 +305,7 @@ public class GenerateViewsCommand implements Runnable {
                 log.info("render {}", view.getId());
                 val viewpoint = viewpointServiceRepository
                     .get(view.getViewpoint())
-                    .createViewpointFactory(comparison, false)
+                    .createViewpointFactory(comparison, drawsOnlyChanges(comparison))
                     .create(workspace, view);
                 renderer.render(viewpoint, rendererName, outputDirPath);
             });

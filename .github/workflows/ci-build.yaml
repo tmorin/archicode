@@ -155,6 +155,20 @@ jobs:
             fi
           }
 
+          # expect_exit <label> <code> <command...>: the command ends with this exit code (diff --fail-on: 3 for a change, 1 for an error)
+          expect_exit() {
+            local label="$1" code="$2" rc
+            shift 2
+            # the step runs with `bash -e`: the exit code is read without ending the step
+            "$@" > /dev/null 2>&1 && rc=0 || rc=$?
+            if [ "$rc" -eq "$code" ]; then
+              echo "ok: $label"
+            else
+              echo "::error::native image: $label (exit code $rc, expected $code)"
+              failed+=("$label")
+            fi
+          }
+
           expect "help" "" "$runner" --help
 
           # the kernel (WebAssembly translated to bytecode) assembles the views; the renderer writes PlantUML
@@ -170,6 +184,11 @@ jobs:
           expect "diff" "^comparing " "$runner" -w "$plateaus" diff
           expect "views generate --against" "" "$runner" -w "$plateaus" views generate -o views --against baseline
           expect "views generate --against writes the table" "" test -s "$work/plateaus/views-to-be-vs-baseline/gap.md"
+          # a build fails on a change (exit code 3, 1 for an error) and a view of a comparison keeps only what changed (the customer overview gets shorter)
+          expect_exit "diff --fail-on exits 3 on a change of a listed state" 3 "$runner" -w "$plateaus" diff --fail-on moved,removed
+          expect_exit "diff --fail-on refuses an unknown state" 1 "$runner" -w "$plateaus" diff --fail-on nothing
+          expect "views generate --only-changes" "" "$runner" -w "$plateaus" views generate -o changes --against baseline --only-changes
+          expect "views generate --only-changes draws less" "" test "$(wc -c < "$work/plateaus/changes-to-be-vs-baseline/plantuml/application/customer-overview.puml")" -lt "$(wc -c < "$work/plateaus/views-to-be-vs-baseline/plantuml/application/customer-overview.puml")"
 
           # Brightcart (src/test/resources/brightcart/layered, a copy: the views are written next to workspace.yaml): four plateaus as layers, a `plateau:` header on
           # each manifest and the patches of a plateau in its `Kind: Plateau`, whose elements replace others. The tree forks, so the plateau is always named; the comparison

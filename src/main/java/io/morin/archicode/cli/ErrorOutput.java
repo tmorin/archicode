@@ -33,8 +33,11 @@ import picocli.CommandLine;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class ErrorOutput implements CommandLine.IExecutionExceptionHandler, CommandLine.IExecutionStrategy {
 
-    /** The exit code of a command that failed. Picocli's own code for a usage error is 2; nothing else is reserved. */
+    /** The exit code of a command that failed. Picocli's own code for a usage error is 2. */
     public static final int FAILURE = 1;
+
+    /** The exit code of {@code archicode diff --fail-on} when the comparison holds a change of a state it was told to fail on. */
+    public static final int CHANGES_FOUND = 3;
 
     private static final String PREFIX = "error: ";
 

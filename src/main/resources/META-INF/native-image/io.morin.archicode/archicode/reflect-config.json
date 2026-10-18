@@ -2826,6 +2826,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.cli.FailOn",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.cli.ListPlateausCommand",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
