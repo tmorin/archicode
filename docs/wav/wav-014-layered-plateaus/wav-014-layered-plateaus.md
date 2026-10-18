@@ -277,7 +277,7 @@ wave_manifest:
       slug: remove-settings-plateaus
       phase: P3
       depends_on: [W-4, W-5, W-6]
-      run: null
+      run: 0083
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/**'
