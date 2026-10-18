@@ -350,7 +350,7 @@ wave_manifest:
       slug: layers-manual-and-tutorial
       phase: P4
       depends_on: [W-9, W-10, W-18]
-      run: null
+      run: 0088
       delegation: standard
       likely_paths:
         - 'src/doc/**'
