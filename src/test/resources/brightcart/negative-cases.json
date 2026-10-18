@@ -1,0 +1,595 @@
+{
+  "comment": "The negative variants that today's tools can run, on the complete-folder rendition (settings.plateaus). Each case is Brightcart's folders/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from folders/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (one `error:` line, or a warning line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page switches to and what it compares it with (`@baseline`), then what it shows: fatalError, plateauProblem, baselineProblem, manifestErrors (file -> text), duplicates, warnings (those of the comparison); `comparedWith` is the plateau the comparison draws against. An entry `editor: null` has a `reason`: the page has nothing to type.",
+  "cases": [
+    {
+      "id": "N1",
+      "variant": "V11",
+      "title": "a plateau id declared twice",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "      baseline: \"inhouse\"\nstyles:", "to": "      baseline: \"inhouse\"\n    - id: \"saas\"\n      path: \"plateaus/saas-again\"\nstyles:" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: the plateau id `saas` is used more than once"]
+        },
+        {
+          "args": ["views", "generate"],
+          "exit": 1,
+          "stderr": ["error: the plateau id `saas` is used more than once"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": { "fatalError": "Could not read the plateaus of workspace.yaml:\nthe plateau id `saas` is used more than once" }
+        }
+      ]
+    },
+    {
+      "id": "N2",
+      "variant": "-",
+      "title": "a baseline that names no plateau",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "      baseline: \"baseline\"", "to": "      baseline: \"basline\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: the plateau `saas` has the `baseline` `basline`, which is not in `settings.plateaus` (`baseline`, `saas`, `inhouse`, `marketplace`)"]
+        },
+        {
+          "args": ["diff", "--plateau", "marketplace"],
+          "exit": 1,
+          "stderr": ["error: the plateau `saas` has the `baseline` `basline`, which is not in `settings.plateaus` (`baseline`, `saas`, `inhouse`, `marketplace`)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": { "fatalError": "Could not read the plateaus of workspace.yaml:\nthe plateau `saas` has the `baseline` `basline`, which is not in `settings.plateaus` (`baseline`, `saas`, `inhouse`, `marketplace`)" }
+        }
+      ]
+    },
+    {
+      "id": "N3",
+      "variant": "-",
+      "title": "a baseline that is a cycle (baseline names saas, saas names baseline): accepted, each is compared with the other",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "      path: \"plateaus/baseline\"", "to": "      path: \"plateaus/baseline\"\n      baseline: \"saas\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "baseline"],
+          "exit": 0,
+          "stderr": [],
+          "sameStdoutAs": ["diff", "--plateau", "baseline", "--baseline", "saas"]
+        },
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 0,
+          "stderr": [],
+          "sameStdoutAs": ["diff", "--plateau", "saas", "--baseline", "baseline"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "baseline",
+          "compareTo": "@baseline",
+          "expect": { "comparedWith": "saas" }
+        },
+        {
+          "plateau": "saas",
+          "compareTo": "@baseline",
+          "expect": { "comparedWith": "baseline" }
+        }
+      ]
+    },
+    {
+      "id": "N4",
+      "variant": "-",
+      "title": "the folder of the plateau drawn is missing",
+      "ops": [
+        { "op": "delete", "path": "plateaus/saas" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: the folder `plateaus/saas` of the plateau `saas` does not exist"]
+        },
+        {
+          "args": ["query", "graph", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: the folder `plateaus/saas` of the plateau `saas` does not exist"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": { "plateauProblem": "The folder `plateaus/saas` of the plateau `saas` does not exist." }
+        }
+      ]
+    },
+    {
+      "id": "N5",
+      "variant": "-",
+      "title": "the folder of the baseline is missing",
+      "ops": [
+        { "op": "delete", "path": "plateaus/inhouse" }
+      ],
+      "cli": [
+        {
+          "args": ["diff"],
+          "exit": 1,
+          "stderr": ["error: the folder `plateaus/inhouse` of the plateau `inhouse` does not exist"]
+        },
+        {
+          "args": ["diff", "--plateau", "saas", "--baseline", "inhouse"],
+          "exit": 1,
+          "stderr": ["error: the folder `plateaus/inhouse` of the plateau `inhouse` does not exist"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "marketplace",
+          "compareTo": "@baseline",
+          "expect": { "baselineProblem": "The folder `plateaus/inhouse` of the plateau `inhouse` does not exist." }
+        }
+      ]
+    },
+    {
+      "id": "N6",
+      "variant": "-",
+      "title": "settings.current names no plateau",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "  plateaus:\n", "to": "  current: \"nope\"\n  plateaus:\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff"],
+          "exit": 1,
+          "stderr": ["error: `settings.current` names the plateau `nope`, which is not in `settings.plateaus` (`baseline`, `saas`, `inhouse`, `marketplace`)"]
+        },
+        {
+          "args": ["views", "generate"],
+          "exit": 1,
+          "stderr": ["error: `settings.current` names the plateau `nope`, which is not in `settings.plateaus` (`baseline`, `saas`, `inhouse`, `marketplace`)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": { "fatalError": "Could not read the plateaus of workspace.yaml:\n`settings.current` names the plateau `nope`, which is not in `settings.plateaus` (`baseline`, `saas`, `inhouse`, `marketplace`)" }
+        }
+      ]
+    },
+    {
+      "id": "N7",
+      "variant": "V2",
+      "title": "marketplace declares commerce.cart again, in a file of its own",
+      "ops": [
+        { "op": "write", "file": "plateaus/marketplace/app.cart-again.yaml", "text": "header:\n  kind: \"archicode.morin.io/container\"\n  parent: \"commerce\"\n  version: \"1\"\ncontent:\n  id: \"cart\"\n  name: \"Cart again\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff"],
+          "exit": 1,
+          "stderr": ["error: the reference `commerce.cart` is declared twice: in `plateaus/marketplace/app.cart-again.yaml` and `plateaus/marketplace/app.commerce.yaml`"]
+        },
+        {
+          "args": ["views", "generate", "--plateau", "marketplace"],
+          "exit": 1,
+          "stderr": ["error: the reference `commerce.cart` is declared twice: in `plateaus/marketplace/app.cart-again.yaml` and `plateaus/marketplace/app.commerce.yaml`"]
+        },
+        {
+          "args": ["diff", "--plateau", "inhouse"],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "marketplace",
+          "compareTo": null,
+          "expect": {
+            "duplicates": ["the reference `commerce.cart` is declared twice: in `plateaus/marketplace/app.cart-again.yaml` and `plateaus/marketplace/app.commerce.yaml`"]
+          }
+        },
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N8",
+      "variant": "-",
+      "title": "replaces names an element that is not in the baseline",
+      "ops": [
+        { "op": "replace", "file": "plateaus/inhouse/app.commerce.yaml", "from": "        - \"shop.cache\"", "to": "        - \"shop.nothing\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "inhouse"],
+          "exit": 0,
+          "stderr": ["warning: replaces of commerce.cart-store (application layer): shop.nothing is not an element of the base plateau, ignored"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "inhouse",
+          "compareTo": "@baseline",
+          "expect": {
+            "warnings": ["replaces of commerce.cart-store (application layer): shop.nothing is not an element of the base plateau, ignored"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "N9",
+      "variant": "-",
+      "title": "a mistyped plateau id given to --plateau, to --baseline, and a baseline that is the plateau itself",
+      "ops": [],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saaz"],
+          "exit": 1,
+          "stderr": ["error: unknown plateau `saaz`: the plateaus of this workspace are `baseline`, `saas`, `inhouse`, `marketplace`"]
+        },
+        {
+          "args": ["views", "generate", "--plateau", "saaz"],
+          "exit": 1,
+          "stderr": ["error: unknown plateau `saaz`: the plateaus of this workspace are `baseline`, `saas`, `inhouse`, `marketplace`"]
+        },
+        {
+          "args": ["query", "graph", "--plateau", "saaz"],
+          "exit": 1,
+          "stderr": ["error: unknown plateau `saaz`: the plateaus of this workspace are `baseline`, `saas`, `inhouse`, `marketplace`"]
+        },
+        {
+          "args": ["diff", "--plateau", "saas", "--baseline", "basline"],
+          "exit": 1,
+          "stderr": ["error: unknown baseline `basline`: the plateaus of this workspace are `baseline`, `saas`, `inhouse`, `marketplace`"]
+        },
+        {
+          "args": ["views", "generate", "--plateau", "saas", "--baseline", "basline"],
+          "exit": 1,
+          "stderr": ["error: unknown baseline `basline`: the plateaus of this workspace are `baseline`, `saas`, `inhouse`, `marketplace`"]
+        },
+        {
+          "args": ["diff", "--plateau", "saas", "--baseline", "saas"],
+          "exit": 1,
+          "stderr": ["error: the baseline `saas` is the plateau that is compared: choose another plateau to compare it with"]
+        }
+      ],
+      "editor": null,
+      "reason": "the page offers the plateaus of the workspace in a selector and types no id; the id it remembers for a folder is checked against the plateaus (a stale one falls back to the default plateau), and switchPlateau of an id it does not know does nothing"
+    },
+    {
+      "id": "N10",
+      "variant": "-",
+      "title": "an unknown key in the header of a manifest",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "  version: \"1\"", "to": "  version: \"1\"\n  foo: \"bar\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unknown key `foo` (known: kind, parent, version) at `header.foo` (line 4, column 13)"]
+        },
+        {
+          "args": ["diff", "--plateau", "marketplace"],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unknown key `foo` (known: kind, parent, version) at `header.foo`" }
+          }
+        },
+        {
+          "plateau": "marketplace",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N11",
+      "variant": "-",
+      "title": "the path of a plateau goes up with ..",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "      path: \"plateaus/saas\"", "to": "      path: \"../saas\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff"],
+          "exit": 1,
+          "stderr": ["error: the path `../saas` of the plateau `saas` contains `..`: it must be a folder below the one of workspace.yaml, written relative to it, without `..` (for example `plateaus/saas`)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": { "fatalError": "Could not read the plateaus of workspace.yaml:\nthe path `../saas` of the plateau `saas` contains `..`: it must be a folder below the one of workspace.yaml, written relative to it, without `..` (for example `plateaus/saas`)" }
+        }
+      ]
+    },
+    {
+      "id": "N12",
+      "variant": "-",
+      "title": "the path of a plateau is absolute",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "      path: \"plateaus/saas\"", "to": "      path: \"/srv/saas\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff"],
+          "exit": 1,
+          "stderr": ["error: the path `/srv/saas` of the plateau `saas` is absolute: it must be a folder below the one of workspace.yaml, written relative to it, without `..` (for example `plateaus/saas`)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": { "fatalError": "Could not read the plateaus of workspace.yaml:\nthe path `/srv/saas` of the plateau `saas` is absolute: it must be a folder below the one of workspace.yaml, written relative to it, without `..` (for example `plateaus/saas`)" }
+        }
+      ]
+    },
+    {
+      "id": "N13",
+      "variant": "-",
+      "title": "two plateaus share a folder",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "      path: \"plateaus/saas\"", "to": "      path: \"plateaus/inhouse\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff"],
+          "exit": 1,
+          "stderr": ["error: the plateaus `saas` and `inhouse` share the path `plateaus/inhouse`: each plateau needs a folder of its own"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": { "fatalError": "Could not read the plateaus of workspace.yaml:\nthe plateaus `saas` and `inhouse` share the path `plateaus/inhouse`: each plateau needs a folder of its own" }
+        }
+      ]
+    },
+    {
+      "id": "N14",
+      "variant": "-",
+      "title": "a plateau with a key ArchiCode does not know",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "      path: \"plateaus/saas\"\n", "to": "      path: \"plateaus/saas\"\n      colour: \"red\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff"],
+          "exit": 1,
+          "stderr": ["error: the plateau `saas` has the key `colour`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon`, `path` and `baseline`"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": { "fatalError": "Could not read the plateaus of workspace.yaml:\nthe plateau `saas` has the key `colour`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon`, `path` and `baseline`" }
+        }
+      ]
+    },
+    {
+      "id": "N15",
+      "variant": "-",
+      "title": "plateau add with an id that exists",
+      "ops": [],
+      "cli": [
+        {
+          "args": ["plateau", "add", "saas", "--from", "baseline"],
+          "exit": 1,
+          "stderr": ["error: the plateau `saas` exists already"]
+        }
+      ],
+      "editor": null,
+      "reason": "the page does not add plateaus; archicode plateau add is a command"
+    },
+    {
+      "id": "N16",
+      "variant": "-",
+      "title": "a manifest without header.kind",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "  kind: \"archicode.morin.io/person\"\n", "to": "" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: Missing header.kind"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "Missing header.kind" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N17",
+      "variant": "-",
+      "title": "a manifest without header.version",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "  version: \"1\"\n", "to": "" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: Missing header.version"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "Missing header.version" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N18",
+      "variant": "-",
+      "title": "a manifest without content",
+      "ops": [
+        { "op": "write", "file": "plateaus/saas/app.agent.yaml", "text": "header:\n  kind: \"archicode.morin.io/person\"\n  version: \"1\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: Missing content.id"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "Missing content.id" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N19",
+      "variant": "-",
+      "title": "a manifest whose content has no id",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "  id: \"agent\"\n", "to": "" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: Missing content.id"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "Missing content.id" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N20",
+      "variant": "-",
+      "title": "an empty manifest",
+      "ops": [
+        { "op": "write", "file": "plateaus/saas/app.agent.yaml", "text": "" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: Missing header.kind"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "Missing header.kind" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N21",
+      "variant": "-",
+      "title": "an element nested in a manifest has a kind that is none of the kinds",
+      "ops": [
+        { "op": "replace", "file": "plateaus/inhouse/app.commerce.yaml", "from": "    - kind: \"container\"\n      id: \"cart-store\"", "to": "    - kind: \"containr\"\n      id: \"cart-store\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "inhouse"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/inhouse/app.commerce.yaml` is not valid: unknown kind `containr` (known: container, group) at `elements[0]`"]
+        }
+      ],
+      "editor": null,
+      "reason": "the page does not check the kinds of the elements nested in a manifest, nor their keys (tmorin/archicode#75)"
+    },
+    {
+      "id": "N22",
+      "variant": "-",
+      "title": "an element nested in a manifest has no id",
+      "ops": [
+        { "op": "replace", "file": "plateaus/inhouse/app.commerce.yaml", "from": "    - kind: \"container\"\n      id: \"cart-store\"\n", "to": "    - kind: \"container\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "inhouse"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/inhouse/app.commerce.yaml` is not valid: Missing content.elements[0].id"]
+        }
+      ],
+      "editor": null,
+      "reason": "the page does not check the keys of the elements nested in a manifest (tmorin/archicode#75)"
+    },
+    {
+      "id": "N23",
+      "variant": "-",
+      "title": "a relationship to an element that is not there (the dangling reference within a complete folder, as V8 has it)",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "    - destination: \"", "to": "    - destination: \"nowhere." }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: dangling reference: nowhere.backoffice.console (relationship of agent, in the target plateau)"]
+        },
+        {
+          "args": ["views", "generate", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: dangling reference: nowhere.backoffice.console"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": { "danglingRelationships": 1 }
+        }
+      ]
+    }
+  ]
+}

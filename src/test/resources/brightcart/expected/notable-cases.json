@@ -1,0 +1,394 @@
+[
+  {
+    "id": "N1",
+    "case": "Plain addition",
+    "where": "`commerce.gateway`",
+    "state": "P2: new",
+    "why": "An element with outgoing relationships to five others.",
+    "checks": [
+      {
+        "in": "P2",
+        "layer": "application",
+        "ref": "commerce.gateway",
+        "state": "new"
+      }
+    ]
+  },
+  {
+    "id": "N2",
+    "case": "Removal that reaches another element",
+    "where": "`shop.app.catalog` removed, `backoffice.console`",
+    "state": "P1: removed; console changed",
+    "why": "The cascade of `REMOVE` takes two of the console's relationships, on top of the one it gains by an explicit `ADD`.",
+    "checks": [
+      {
+        "in": "P1",
+        "layer": "application",
+        "ref": "shop.app.catalog",
+        "state": "removed"
+      },
+      {
+        "in": "P1",
+        "layer": "application",
+        "ref": "backoffice.console",
+        "state": "changed"
+      }
+    ]
+  },
+  {
+    "id": "N3",
+    "case": "Label change",
+    "where": "`fulfilment.sync` to `shop.db`",
+    "state": "P1, P2: changed (label)",
+    "why": "One removed and one new relationship between the same pair are one label change.",
+    "checks": [
+      {
+        "in": "P1",
+        "relationship": [
+          "fulfilment.sync",
+          "shop.db",
+          "reads orders, writes stock levels"
+        ],
+        "state": "label-changed"
+      },
+      {
+        "in": "P2",
+        "relationship": [
+          "fulfilment.sync",
+          "shop.db",
+          "reads orders, writes stock levels"
+        ],
+        "state": "label-changed"
+      }
+    ]
+  },
+  {
+    "id": "N4",
+    "case": "Move with a change of kind",
+    "where": "`shop.app.cart` to `commerce.cart`",
+    "state": "P2: moved",
+    "why": "Component to container. Pattern R. `MOVE` cannot do this as designed (section 12).",
+    "checks": [
+      {
+        "in": "P2",
+        "layer": "application",
+        "ref": "commerce.cart",
+        "state": "moved"
+      }
+    ]
+  },
+  {
+    "id": "N5",
+    "case": "Move with the operator",
+    "where": "`shop.cache` to `commerce.cart-store`",
+    "state": "P2: moved",
+    "why": "Pattern M: new parent, new id, new name; `staging.vm` follows.",
+    "checks": [
+      {
+        "in": "P2",
+        "layer": "application",
+        "ref": "commerce.cart-store",
+        "state": "moved"
+      },
+      {
+        "in": "P2",
+        "layer": "technology",
+        "ref": "staging.vm",
+        "state": "changed"
+      }
+    ]
+  },
+  {
+    "id": "N6",
+    "case": "Split",
+    "where": "`shop.app.orders` to `orders.placement`, `orders.history`",
+    "state": "P2: split (2)",
+    "why": "The relationships of a split element are not compared: they all read as new.",
+    "checks": [
+      {
+        "in": "P2",
+        "layer": "application",
+        "ref": "orders.placement",
+        "state": "split"
+      },
+      {
+        "in": "P2",
+        "layer": "application",
+        "ref": "orders.history",
+        "state": "split"
+      }
+    ]
+  },
+  {
+    "id": "N7",
+    "case": "Merge",
+    "where": "`shop.app.customers`, `shop.app.loyalty` to `accounts.profiles`",
+    "state": "P2: merged",
+    "why": "The link between the two merged elements becomes a self-link of the result and reads as removed.",
+    "checks": [
+      {
+        "in": "P2",
+        "layer": "application",
+        "ref": "accounts.profiles",
+        "state": "merged"
+      }
+    ]
+  },
+  {
+    "id": "N8",
+    "case": "Moved twice",
+    "where": "`shop.app.search`, `commerce.search`, `discovery.search`",
+    "state": "P2: moved; P3: moved; P4: moved from `shop.app.search`",
+    "why": "Needs the composition of `replaces` (L9). P6 gets it wrong.",
+    "checks": [
+      {
+        "in": "P2",
+        "layer": "application",
+        "ref": "commerce.search",
+        "state": "moved"
+      },
+      {
+        "in": "P3",
+        "layer": "application",
+        "ref": "discovery.search",
+        "state": "moved"
+      },
+      {
+        "in": "P4",
+        "layer": "application",
+        "ref": "discovery.search",
+        "state": "moved"
+      },
+      {
+        "in": "P6",
+        "layer": "application",
+        "ref": "discovery.search",
+        "state": "new"
+      }
+    ]
+  },
+  {
+    "id": "N9",
+    "case": "Subtree renamed",
+    "where": "`shop`, `shop.web`, `shop.mobile` to `storefront`...",
+    "state": "P3: moved (2), `storefront.mobile` new",
+    "why": "The new child was declared under the old name (L2).",
+    "checks": [
+      {
+        "in": "P3",
+        "layer": "application",
+        "ref": "storefront",
+        "state": "moved"
+      },
+      {
+        "in": "P3",
+        "layer": "application",
+        "ref": "storefront.web",
+        "state": "moved"
+      },
+      {
+        "in": "P3",
+        "layer": "application",
+        "ref": "storefront.mobile",
+        "state": "new"
+      }
+    ]
+  },
+  {
+    "id": "N10",
+    "case": "Destination replaced, qualifier added",
+    "where": "`commerce.checkout` to `fulfilment.inventory`",
+    "state": "P3: changed (relationship)",
+    "why": "The link follows the replaced destination; only its qualifier (`REST`) differs.",
+    "checks": [
+      {
+        "in": "P3",
+        "layer": "application",
+        "ref": "commerce.checkout",
+        "state": "changed"
+      }
+    ]
+  },
+  {
+    "id": "N11",
+    "case": "Render-only change",
+    "where": "`commerce.gateway` tag `hot-path`",
+    "state": "P3: unchanged",
+    "why": "`rendering-*` tags are ignored by `compare`.",
+    "checks": [
+      {
+        "in": "P3",
+        "layer": "application",
+        "ref": "commerce.gateway",
+        "state": "none"
+      }
+    ]
+  },
+  {
+    "id": "N12",
+    "case": "Bulk edit",
+    "where": "12 `Quarkus` containers, tag `runtime`",
+    "state": "P3: changed for the ones that were not already",
+    "why": "Five elements are changed by this and nothing else. The guard `expect: 12` is the contract.",
+    "checks": [
+      {
+        "in": "P3",
+        "layer": "application",
+        "ref": "commerce.pricing",
+        "state": "changed"
+      }
+    ]
+  },
+  {
+    "id": "N13",
+    "case": "Box that only contains changes",
+    "where": "`shop` in P1 and P2, `prod.dc` in P1 to P4",
+    "state": "contains-changes",
+    "why": "No change of its own.",
+    "checks": [
+      {
+        "in": "P1",
+        "layer": "application",
+        "ref": "shop",
+        "state": "contains-changes"
+      },
+      {
+        "in": "P2",
+        "layer": "application",
+        "ref": "shop",
+        "state": "contains-changes"
+      },
+      {
+        "in": "P1",
+        "layer": "technology",
+        "ref": "prod.dc",
+        "state": "contains-changes"
+      },
+      {
+        "in": "P2",
+        "layer": "technology",
+        "ref": "prod.dc",
+        "state": "contains-changes"
+      },
+      {
+        "in": "P3",
+        "layer": "technology",
+        "ref": "prod.dc",
+        "state": "contains-changes"
+      },
+      {
+        "in": "P4",
+        "layer": "technology",
+        "ref": "prod.dc",
+        "state": "contains-changes"
+      }
+    ]
+  },
+  {
+    "id": "N14",
+    "case": "Deployment follows",
+    "where": "`staging.vm`",
+    "state": "P1, P2, P3: changed",
+    "why": "Entry removed by a cascade (P1), replaced by `SET` (P2), cascade and rename (P3).",
+    "checks": [
+      {
+        "in": "P1",
+        "layer": "technology",
+        "ref": "staging.vm",
+        "state": "changed"
+      },
+      {
+        "in": "P2",
+        "layer": "technology",
+        "ref": "staging.vm",
+        "state": "changed"
+      },
+      {
+        "in": "P3",
+        "layer": "technology",
+        "ref": "staging.vm",
+        "state": "changed"
+      }
+    ]
+  },
+  {
+    "id": "N15",
+    "case": "Swap of a partner",
+    "where": "`tax` removed, `commerce-saas` new",
+    "state": "P1",
+    "why": "With their nodes in `partners` and `sandbox`.",
+    "checks": [
+      {
+        "in": "P1",
+        "layer": "application",
+        "ref": "tax",
+        "state": "removed"
+      },
+      {
+        "in": "P1",
+        "layer": "application",
+        "ref": "commerce-saas",
+        "state": "new"
+      },
+      {
+        "in": "P1",
+        "layer": "technology",
+        "ref": "partners.tax-live",
+        "state": "removed"
+      },
+      {
+        "in": "P1",
+        "layer": "technology",
+        "ref": "sandbox.tax-sandbox",
+        "state": "removed"
+      },
+      {
+        "in": "P1",
+        "layer": "technology",
+        "ref": "partners.commerce-live",
+        "state": "new"
+      },
+      {
+        "in": "P1",
+        "layer": "technology",
+        "ref": "sandbox.commerce-sandbox",
+        "state": "new"
+      }
+    ]
+  },
+  {
+    "id": "N16",
+    "case": "Siblings",
+    "where": "`commerce.*` and `commerce-saas`",
+    "state": "P5: `commerce-saas` removed, every `commerce.*` service new",
+    "why": "Neither plateau is the other's past or future.",
+    "checks": [
+      {
+        "in": "P5",
+        "layer": "application",
+        "ref": "commerce-saas",
+        "state": "removed"
+      },
+      {
+        "in": "P5",
+        "layer": "application",
+        "ref": "commerce.gateway",
+        "state": "new"
+      },
+      {
+        "in": "P5",
+        "layer": "application",
+        "ref": "commerce.catalog",
+        "state": "new"
+      }
+    ]
+  },
+  {
+    "id": "N17",
+    "case": "Old reference in a list",
+    "where": "`inhouse` `SET staging.vm applications`",
+    "state": "variant V8",
+    "why": "A list copied into a patch goes stale when the parent plateau changes.",
+    "checks": []
+  }
+]

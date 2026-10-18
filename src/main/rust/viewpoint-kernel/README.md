@@ -165,10 +165,14 @@ output: { version,
   split are not compared (which half would own them is a guess). Elements that are replaced are not `removed`: they have no
   row and no count and are not in the union, with one exception: what a replaced element held is removed unless it is replaced
   too, and a view cannot place a removed child without its parent, so such a replaced element is in the union as `removed` with
-  `replaced_by` (the elements that replace it), still without row or count.
+  `replaced_by` (the elements that replace it), still without row or count. A `removed` element (a place included) says its
+  `applications` and `uses` as the target does: an entry that points at an element that was replaced points at the element
+  that replaced it, and one that points at an element that was split is left out, so that nothing in the union points at
+  an element the union does not hold (the union can be handed to `compute`, whatever was replaced).
 - **Candidates** are listed in `candidates`, never applied, never drawn: pairs (an element only the base has and nothing replaces,
   an element only the target has that replaces nothing) of the same layer and kind, with the reasons `name` (same name, ignoring
-  case), `description` (at least 60 percent of the words in common, three words or more on each side) and `parent` (the only two
+  case, and only when no other removed element and no other new element of that kind has it: a name that repeats would pair every
+  removed one with every new one, wave 013, issue #60), `description` (at least 60 percent of the words in common, three words or more on each side) and `parent` (the only two
   of that kind under the same parent). Sorted by (layer, from, to). The author turns one into a `replaces` or leaves it.
 - **The contract version.** `compare` itself added nothing to version 2; the views of a comparison (below) changed what `compute`
   gives, and moved the contract to 3; `replaces` (new words of `change`, `replaces`, `candidates`, `warnings`) moved it to 4.

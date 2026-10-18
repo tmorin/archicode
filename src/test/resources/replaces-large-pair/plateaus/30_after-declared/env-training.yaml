@@ -1,0 +1,51 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "training"
+  name: "Training"
+  description: "The training machines of the harbour."
+  elements:
+    - kind: "node"
+      id: "monitoring-stack-new"
+      name: "Monitoring Stack New"
+      description: "Does the same job with other words."
+      replaces:
+        - "training.monitoring-stack"
+      applications:
+        - "ferry-ticketing.ferry-planner"
+        - "pollution-control.pollution-forms"
+        - "tug-operations.tug-dashboard"
+    - kind: "node"
+      id: "identity-server-new"
+      name: "Identity Server New"
+      description: "Does the same job with other words."
+      replaces:
+        - "training.identity-server"
+      applications:
+        - "berth-allocation.berth-importer"
+        - "mooring-lines.mooring-reporter"
+        - "safety-inspections.inspection-search"
+    - kind: "node"
+      id: "database-replica"
+      name: "Database Replica"
+      description: "Holds a copy of the data for the reads and the reports."
+      applications:
+        - "berth-allocation.berth-alerts"
+        - "crane-scheduling.crane-dashboard"
+        - "ferry-ticketing.ferry-planner"
+    - kind: "node"
+      id: "cache-cluster"
+      name: "Cache Cluster"
+      description: "Keeps the hot data in memory for the applications."
+      applications:
+        - "gate-control.gate-gateway-core"
+        - "lighthouse-service.lighthouse-forms"
+        - "lock-gates.lock-gateway"
+    - kind: "node"
+      id: "job-scheduler"
+      name: "Job Scheduler"
+      description: "Starts the periodic jobs at the right time."
+      applications:
+        - "customs-clearance.customs-alerts-v2"
+        - "ferry-ticketing.ferry-reporter-next"

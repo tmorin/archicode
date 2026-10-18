@@ -1,0 +1,3042 @@
+{
+  "P1": {
+    "elements": [
+      {
+        "layer": "application",
+        "ref": "backoffice",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "backoffice.console",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce-saas",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.sync",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.cart",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.catalog",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.checkout",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.payments",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.promotions",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.search",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.cache",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.web",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "tax",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners.commerce-live",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners.tax-live",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.cache-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox.commerce-sandbox",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox.tax-sandbox",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.vm",
+        "state": "changed"
+      }
+    ],
+    "relationships": [
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "commerce-saas",
+        "label": "maintains products in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "shop.app.catalog",
+        "label": "maintains products in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "shop.app.promotions",
+        "label": "configures promotions in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "commerce-saas",
+        "destination": "psp",
+        "label": "authorises payments with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce-saas",
+        "destination": "shop.app.orders",
+        "label": "sends order webhooks to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "commerce-saas",
+        "label": "pulls orders from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "shop.db",
+        "label": "reads orders, writes stock levels",
+        "state": "label-changed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.cart",
+        "destination": "shop.cache",
+        "label": "keeps baskets in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.catalog",
+        "destination": "shop.db",
+        "label": "reads and writes",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "shop.app.cart",
+        "label": "reads baskets from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "shop.app.inventory",
+        "label": "reserves stock in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "shop.app.orders",
+        "label": "creates orders in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "shop.app.payments",
+        "label": "pays through",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "tax",
+        "label": "computes taxes with",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.payments",
+        "destination": "psp",
+        "label": "authorises payments with",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.promotions",
+        "destination": "shop.db",
+        "label": "reads rules from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.search",
+        "destination": "shop.db",
+        "label": "queries",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.web",
+        "destination": "commerce-saas",
+        "label": "browses and checks out with",
+        "state": "new"
+      }
+    ]
+  },
+  "P2": {
+    "elements": [
+      {
+        "layer": "application",
+        "ref": "accounts",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "accounts.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "accounts.profiles",
+        "state": "merged"
+      },
+      {
+        "layer": "application",
+        "ref": "backoffice",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "backoffice.console",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.cart",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.cart-store",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.catalog",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.catalog-db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.checkout",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.gateway",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.pricing",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.search",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.sync",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "orders",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.history",
+        "state": "split"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.placement",
+        "state": "split"
+      },
+      {
+        "layer": "application",
+        "ref": "payments",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "payments.orchestrator",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "shop",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.web",
+        "state": "changed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.accounts",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.commerce",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.orders",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.payments",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.pg",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.redis",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.cache-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.k8s",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.vm",
+        "state": "changed"
+      }
+    ],
+    "relationships": [
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "accounts.db",
+        "label": "stores accounts in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "accounts.profiles",
+        "label": "reads accounts from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "shop.db",
+        "label": "stores accounts in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "shop.db",
+        "label": "stores points in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "orders.history",
+        "label": "looks up past orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "orders.placement",
+        "label": "handles orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "commerce.catalog-db",
+        "label": "reads and writes",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "shop.db",
+        "label": "reads and writes",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "orders.placement",
+        "label": "creates orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.cart",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.catalog",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.checkout",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.pricing",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.search",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.pricing",
+        "destination": "commerce.catalog",
+        "label": "reads prices from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.pricing",
+        "destination": "shop.db",
+        "label": "reads rules from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.search",
+        "destination": "commerce.catalog",
+        "label": "indexes products from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.search",
+        "destination": "shop.db",
+        "label": "queries",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "orders.db",
+        "label": "reads orders from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "shop.db",
+        "label": "reads orders, writes stock levels",
+        "state": "label-changed"
+      },
+      {
+        "layer": "application",
+        "source": "orders.history",
+        "destination": "orders.db",
+        "label": "reads orders from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "orders.db",
+        "label": "stores orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "shop.app.notifications",
+        "label": "asks to notify",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "shop.web",
+        "destination": "commerce.gateway",
+        "label": "browses and buys through",
+        "state": "new"
+      }
+    ]
+  },
+  "P3": {
+    "elements": [
+      {
+        "layer": "application",
+        "ref": "accounts",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "accounts.profiles",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.cart",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.catalog",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.checkout",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.pricing",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery.features",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery.recommender",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery.search",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.inventory",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.sync",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "kyc",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.listing",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.seller-portal",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.settlement",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.history",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.placement",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "payments",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "payments.orchestrator",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "platform",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "platform.broker",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "platform.notifications",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "seller",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.db",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "storefront",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "storefront.mobile",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "storefront.web",
+        "state": "moved"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners.kyc-live",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.cdn",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.marketplace",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.platform",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.kafka",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.pg",
+        "state": "changed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.redis",
+        "state": "changed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.app-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.db-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.web-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox.kyc-sandbox",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.platform",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.vm",
+        "state": "changed"
+      }
+    ],
+    "relationships": [
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "discovery.recommender",
+        "label": "asks for suggestions",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "platform.broker",
+        "label": "publishes product events to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "fulfilment.inventory",
+        "label": "reserves stock in",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "source": "discovery.recommender",
+        "destination": "discovery.features",
+        "label": "reads features from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "discovery.recommender",
+        "destination": "platform.broker",
+        "label": "consumes events from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.inventory",
+        "destination": "fulfilment.db",
+        "label": "reads and reserves stock in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.inventory",
+        "destination": "platform.broker",
+        "label": "publishes stock events to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.inventory",
+        "destination": "shop.db",
+        "label": "reads and reserves stock in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "fulfilment.inventory",
+        "label": "writes stock levels to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "shop.db",
+        "label": "writes stock levels",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.listing",
+        "destination": "commerce.catalog",
+        "label": "publishes offers to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.listing",
+        "destination": "kyc",
+        "label": "checks sellers with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.listing",
+        "destination": "marketplace.db",
+        "label": "stores offers in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.seller-portal",
+        "destination": "marketplace.listing",
+        "label": "manages offers with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.seller-portal",
+        "destination": "marketplace.settlement",
+        "label": "reads payouts from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.settlement",
+        "destination": "marketplace.db",
+        "label": "stores balances in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.settlement",
+        "destination": "payments.orchestrator",
+        "label": "pays out through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "platform.broker",
+        "label": "publishes order events to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "platform.notifications",
+        "destination": "platform.broker",
+        "label": "consumes events from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "seller",
+        "destination": "marketplace.seller-portal",
+        "label": "lists offers with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "storefront.mobile",
+        "destination": "commerce.gateway",
+        "label": "browses and buys through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "storefront.web",
+        "destination": "shop.app",
+        "label": "calls",
+        "state": "removed"
+      }
+    ]
+  },
+  "P4": {
+    "elements": [
+      {
+        "layer": "application",
+        "ref": "accounts",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "accounts.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "accounts.profiles",
+        "state": "merged"
+      },
+      {
+        "layer": "application",
+        "ref": "backoffice",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "backoffice.console",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.cart",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.cart-store",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.catalog",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.catalog-db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.checkout",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.gateway",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.pricing",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery.features",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery.recommender",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery.search",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.inventory",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.sync",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "kyc",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.listing",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.seller-portal",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.settlement",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.history",
+        "state": "split"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.placement",
+        "state": "split"
+      },
+      {
+        "layer": "application",
+        "ref": "payments",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "payments.orchestrator",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "platform",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "platform.broker",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "platform.notifications",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "seller",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.db",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "storefront",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "storefront.mobile",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "storefront.web",
+        "state": "moved"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners.kyc-live",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.cdn",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.accounts",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.commerce",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.marketplace",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.orders",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.payments",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.platform",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.kafka",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.pg",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.redis",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.app-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.cache-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.db-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.web-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox.kyc-sandbox",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.k8s",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.platform",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.vm",
+        "state": "changed"
+      }
+    ],
+    "relationships": [
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "accounts.db",
+        "label": "stores accounts in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "accounts.profiles",
+        "label": "reads accounts from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "shop.db",
+        "label": "stores accounts in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "shop.db",
+        "label": "stores points in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "orders.history",
+        "label": "looks up past orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "orders.placement",
+        "label": "handles orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "commerce.catalog-db",
+        "label": "reads and writes",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "discovery.recommender",
+        "label": "asks for suggestions",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "platform.broker",
+        "label": "publishes product events to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "shop.db",
+        "label": "reads and writes",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "fulfilment.inventory",
+        "label": "reserves stock in",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "orders.placement",
+        "label": "creates orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.cart",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.catalog",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.checkout",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.pricing",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "discovery.search",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.pricing",
+        "destination": "commerce.catalog",
+        "label": "reads prices from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.pricing",
+        "destination": "shop.db",
+        "label": "reads rules from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "discovery.recommender",
+        "destination": "discovery.features",
+        "label": "reads features from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "discovery.recommender",
+        "destination": "platform.broker",
+        "label": "consumes events from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "discovery.search",
+        "destination": "commerce.catalog",
+        "label": "indexes products from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "discovery.search",
+        "destination": "shop.db",
+        "label": "queries",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.inventory",
+        "destination": "fulfilment.db",
+        "label": "reads and reserves stock in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.inventory",
+        "destination": "platform.broker",
+        "label": "publishes stock events to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.inventory",
+        "destination": "shop.db",
+        "label": "reads and reserves stock in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "fulfilment.inventory",
+        "label": "writes stock levels to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "orders.db",
+        "label": "reads orders from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "shop.db",
+        "label": "reads orders, writes stock levels",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.listing",
+        "destination": "commerce.catalog",
+        "label": "publishes offers to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.listing",
+        "destination": "kyc",
+        "label": "checks sellers with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.listing",
+        "destination": "marketplace.db",
+        "label": "stores offers in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.seller-portal",
+        "destination": "marketplace.listing",
+        "label": "manages offers with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.seller-portal",
+        "destination": "marketplace.settlement",
+        "label": "reads payouts from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.settlement",
+        "destination": "marketplace.db",
+        "label": "stores balances in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.settlement",
+        "destination": "payments.orchestrator",
+        "label": "pays out through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.history",
+        "destination": "orders.db",
+        "label": "reads orders from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "orders.db",
+        "label": "stores orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "platform.broker",
+        "label": "publishes order events to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "platform.notifications",
+        "label": "asks to notify",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "platform.notifications",
+        "destination": "platform.broker",
+        "label": "consumes events from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "seller",
+        "destination": "marketplace.seller-portal",
+        "label": "lists offers with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "storefront.mobile",
+        "destination": "commerce.gateway",
+        "label": "browses and buys through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "storefront.web",
+        "destination": "commerce.gateway",
+        "label": "browses and buys through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "storefront.web",
+        "destination": "shop.app",
+        "label": "calls",
+        "state": "removed"
+      }
+    ]
+  },
+  "P5": {
+    "elements": [
+      {
+        "layer": "application",
+        "ref": "accounts",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "accounts.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "accounts.profiles",
+        "state": "merged"
+      },
+      {
+        "layer": "application",
+        "ref": "backoffice",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "backoffice.console",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce-saas",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.cart",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.cart-store",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.catalog",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.catalog-db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.checkout",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.gateway",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.pricing",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.search",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.sync",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "orders",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.history",
+        "state": "split"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.placement",
+        "state": "split"
+      },
+      {
+        "layer": "application",
+        "ref": "payments",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "payments.orchestrator",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "shop",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.web",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "tax",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners.commerce-live",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners.tax-live",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.accounts",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.commerce",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.orders",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.payments",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.pg",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.redis",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox.commerce-sandbox",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox.tax-sandbox",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.k8s",
+        "state": "new"
+      }
+    ],
+    "relationships": [
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "accounts.db",
+        "label": "stores accounts in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "accounts.profiles",
+        "label": "reads accounts from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "shop.db",
+        "label": "stores accounts in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "shop.db",
+        "label": "stores points in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "commerce-saas",
+        "label": "maintains products in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "commerce.catalog",
+        "label": "maintains products in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "commerce.pricing",
+        "label": "configures promotions in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "orders.history",
+        "label": "looks up past orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "orders.placement",
+        "label": "handles orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce-saas",
+        "destination": "psp",
+        "label": "authorises payments with",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.cart",
+        "destination": "commerce.cart-store",
+        "label": "keeps baskets in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "commerce.catalog-db",
+        "label": "reads and writes",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "commerce.cart",
+        "label": "reads baskets from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "orders.placement",
+        "label": "creates orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "payments.orchestrator",
+        "label": "pays through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "shop.app.inventory",
+        "label": "reserves stock in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "tax",
+        "label": "computes taxes with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.cart",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.catalog",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.checkout",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.pricing",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.search",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.pricing",
+        "destination": "commerce.catalog",
+        "label": "reads prices from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.search",
+        "destination": "commerce.catalog",
+        "label": "indexes products from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "commerce-saas",
+        "label": "pulls orders from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "orders.db",
+        "label": "reads orders from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.history",
+        "destination": "orders.db",
+        "label": "reads orders from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "orders.db",
+        "label": "stores orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "shop.app.notifications",
+        "label": "asks to notify",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "payments.orchestrator",
+        "destination": "psp",
+        "label": "authorises payments with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "shop.web",
+        "destination": "commerce-saas",
+        "label": "browses and checks out with",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.web",
+        "destination": "commerce.gateway",
+        "label": "browses and buys through",
+        "state": "new"
+      }
+    ]
+  },
+  "P6": {
+    "elements": [
+      {
+        "layer": "application",
+        "ref": "accounts",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "accounts.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "accounts.profiles",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "backoffice",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "backoffice.console",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.cart",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.cart-store",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.catalog",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.catalog-db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.checkout",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.gateway",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "commerce.pricing",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery.features",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery.recommender",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "discovery.search",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.inventory",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "fulfilment.sync",
+        "state": "changed"
+      },
+      {
+        "layer": "application",
+        "ref": "kyc",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.listing",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.seller-portal",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "marketplace.settlement",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.db",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.history",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "orders.placement",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "payments",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "payments.orchestrator",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "platform",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "platform.broker",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "platform.notifications",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "seller",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.cart",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.catalog",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.checkout",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.customers",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.loyalty",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.orders",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.payments",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.promotions",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.app.search",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.cache",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "shop.db",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "ref": "storefront",
+        "state": "moved"
+      },
+      {
+        "layer": "application",
+        "ref": "storefront.mobile",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "ref": "storefront.web",
+        "state": "moved"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "partners.kyc-live",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.cdn",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.accounts",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.commerce",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.marketplace",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.orders",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.payments",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.k8s.platform",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.kafka",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.pg",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.cloud.redis",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.app-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.cache-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.db-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "prod.dc.web-vm",
+        "state": "removed"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "sandbox.kyc-sandbox",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging",
+        "state": "contains-changes"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.k8s",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.platform",
+        "state": "new"
+      },
+      {
+        "layer": "technology",
+        "ref": "staging.vm",
+        "state": "changed"
+      }
+    ],
+    "relationships": [
+      {
+        "layer": "application",
+        "source": "accounts.profiles",
+        "destination": "accounts.db",
+        "label": "stores accounts in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "accounts.profiles",
+        "label": "looks up customers in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "commerce.catalog",
+        "label": "maintains products in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "commerce.pricing",
+        "label": "configures promotions in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "orders.history",
+        "label": "looks up past orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "orders.placement",
+        "label": "handles orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "shop.app.catalog",
+        "label": "maintains products in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "shop.app.customers",
+        "label": "looks up customers in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "shop.app.orders",
+        "label": "handles orders in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "backoffice.console",
+        "destination": "shop.app.promotions",
+        "label": "configures promotions in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.cart",
+        "destination": "commerce.cart-store",
+        "label": "keeps baskets in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "commerce.catalog-db",
+        "label": "reads and writes",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "discovery.recommender",
+        "label": "asks for suggestions",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.catalog",
+        "destination": "platform.broker",
+        "label": "publishes product events to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "commerce.cart",
+        "label": "reads baskets from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "fulfilment.inventory",
+        "label": "reserves stock in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "orders.placement",
+        "label": "creates orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "payments.orchestrator",
+        "label": "pays through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.checkout",
+        "destination": "tax",
+        "label": "computes taxes with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.cart",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.catalog",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.checkout",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "commerce.pricing",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.gateway",
+        "destination": "discovery.search",
+        "label": "routes to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "commerce.pricing",
+        "destination": "commerce.catalog",
+        "label": "reads prices from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "discovery.recommender",
+        "destination": "discovery.features",
+        "label": "reads features from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "discovery.recommender",
+        "destination": "platform.broker",
+        "label": "consumes events from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "discovery.search",
+        "destination": "commerce.catalog",
+        "label": "indexes products from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.inventory",
+        "destination": "fulfilment.db",
+        "label": "reads and reserves stock in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.inventory",
+        "destination": "platform.broker",
+        "label": "publishes stock events to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.inventory",
+        "destination": "shop.db",
+        "label": "reads and reserves stock in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "fulfilment.inventory",
+        "label": "writes stock levels to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "orders.db",
+        "label": "reads orders from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "fulfilment.sync",
+        "destination": "shop.db",
+        "label": "reads orders, writes stock levels",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.listing",
+        "destination": "commerce.catalog",
+        "label": "publishes offers to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.listing",
+        "destination": "kyc",
+        "label": "checks sellers with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.listing",
+        "destination": "marketplace.db",
+        "label": "stores offers in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.seller-portal",
+        "destination": "marketplace.listing",
+        "label": "manages offers with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.seller-portal",
+        "destination": "marketplace.settlement",
+        "label": "reads payouts from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.settlement",
+        "destination": "marketplace.db",
+        "label": "stores balances in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "marketplace.settlement",
+        "destination": "payments.orchestrator",
+        "label": "pays out through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.history",
+        "destination": "orders.db",
+        "label": "reads orders from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "orders.db",
+        "label": "stores orders in",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "platform.broker",
+        "label": "publishes order events to",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "orders.placement",
+        "destination": "platform.notifications",
+        "label": "asks to notify",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "payments.orchestrator",
+        "destination": "psp",
+        "label": "authorises payments with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "platform.notifications",
+        "destination": "platform.broker",
+        "label": "consumes events from",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "seller",
+        "destination": "marketplace.seller-portal",
+        "label": "lists offers with",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.cart",
+        "destination": "shop.cache",
+        "label": "keeps baskets in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.catalog",
+        "destination": "shop.db",
+        "label": "reads and writes",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "fulfilment.inventory",
+        "label": "reserves stock in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "shop.app.cart",
+        "label": "reads baskets from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "shop.app.orders",
+        "label": "creates orders in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "shop.app.payments",
+        "label": "pays through",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.checkout",
+        "destination": "tax",
+        "label": "computes taxes with",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.customers",
+        "destination": "shop.db",
+        "label": "stores accounts in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.loyalty",
+        "destination": "shop.app.customers",
+        "label": "reads accounts from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.loyalty",
+        "destination": "shop.db",
+        "label": "stores points in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.orders",
+        "destination": "platform.notifications",
+        "label": "asks to notify",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.orders",
+        "destination": "shop.db",
+        "label": "stores orders in",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.payments",
+        "destination": "psp",
+        "label": "authorises payments with",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.promotions",
+        "destination": "shop.db",
+        "label": "reads rules from",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "shop.app.search",
+        "destination": "shop.db",
+        "label": "queries",
+        "state": "removed"
+      },
+      {
+        "layer": "application",
+        "source": "storefront.mobile",
+        "destination": "commerce.gateway",
+        "label": "browses and buys through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "storefront.web",
+        "destination": "commerce.gateway",
+        "label": "browses and buys through",
+        "state": "new"
+      },
+      {
+        "layer": "application",
+        "source": "storefront.web",
+        "destination": "shop.app",
+        "label": "calls",
+        "state": "removed"
+      }
+    ]
+  }
+}

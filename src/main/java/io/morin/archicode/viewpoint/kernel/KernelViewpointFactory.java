@@ -135,20 +135,33 @@ public class KernelViewpointFactory implements ViewpointFactory {
                     relationships.add(rel);
                 }
             }
-            if (model.get() instanceof Node technologyNode) {
+            // what the facet left of the deployment: the entries of the union (said as the target says them, also for a node that
+            // only the baseline had) that the faceted workspace still has. The model is not the source: a node of the baseline
+            // still names the application that was replaced, which the union does not hold
+            if (model.get() instanceof Node) {
                 val applications = copy.putArray("applications");
-                new TreeSet<>(Optional.ofNullable(technologyNode.getApplications()).orElseGet(Set::of)).forEach(
-                    applications::add
-                );
+                new TreeSet<String>(strings(node.path("applications")))
+                    .stream()
+                    .filter(reference -> workspace.appIndex.searchElement(reference).isPresent())
+                    .forEach(applications::add);
             }
-            if (model.get() instanceof Environment environment) {
+            if (model.get() instanceof Environment) {
                 val uses = copy.putArray("uses");
-                new TreeSet<>(Optional.ofNullable(environment.getUses()).orElseGet(Set::of)).forEach(uses::add);
+                new TreeSet<String>(strings(node.path("uses")))
+                    .stream()
+                    .filter(reference -> workspace.techIndex.searchElement(reference).isPresent())
+                    .forEach(uses::add);
             }
             kept.add(copy);
         }
         FACETED_UNIONS.put(index, new FacetedUnion(comparison, kept));
         return kept;
+    }
+
+    private static List<String> strings(JsonNode list) {
+        val out = new ArrayList<String>();
+        list.forEach(item -> out.add(item.asText()));
+        return out;
     }
 
     @SneakyThrows

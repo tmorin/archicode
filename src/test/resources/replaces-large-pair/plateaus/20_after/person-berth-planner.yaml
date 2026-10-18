@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "berth-planner"
+  name: "Berth Planner"
+  description: "Plans which vessel goes to which quay and when."
+  relationships:
+    - destination: "bunkering.fuel-calendar-desk"
+      label: "looks at"
+    - destination: "quay-maintenance.quay-billing"
+      label: "looks at"
+    - destination: "cargo-manifests.manifest-alerts"
+      label: "uses"

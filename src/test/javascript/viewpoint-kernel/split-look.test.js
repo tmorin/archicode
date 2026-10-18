@@ -1,5 +1,5 @@
 'use strict';
-// One look for `split` in both tools (run 0054, issue 42, decision D-4 of wave 010). The command line draws a box with `LineStyle: N`, a dash and a gap of N, and
+// One look for `split` in both tools (run 0054, issue 42, decision D-4 of wave 010; the pair went from 6 6 to 8 8 in run 0057, issue 55, see distinct-dashes.test.js). The command line draws a box with `LineStyle: N`, a dash and a gap of N, and
 // cannot draw a dash-dot, so the editor takes the same plain pair; and no other state has it, in either tool, so that the line of `split` is told from the others.
 // The command line is read from its source (`ChangeMarks.java`), so that one side cannot change without the other.
 // Run with: node --test "src/test/javascript/**/*.test.js"
@@ -27,10 +27,10 @@ function commandLineStyles() {
 test('the editor draws `split` with the dash and the gap of the command line', () => {
   const cli = commandLineStyles();
   assert.deepEqual(Object.keys(cli).sort(), ['changed', 'contains-changes', 'merged', 'moved', 'new', 'removed', 'split'], 'every state is read');
-  assert.equal(cli.split, 6);
+  assert.equal(cli.split, 8);
   const sandbox = createApp();
   const look = plain(vm.runInContext('CHANGE_DEFAULT_LOOK', sandbox));
-  assert.equal(look.split['--st-dash'], cli.split + ' ' + cli.split);
+  assert.equal(look.split['--st-dash'], cli.split + ' ' + cli.split); // `split` has no `lineGap`: a gap as long as the dash
 });
 
 test('no other state has the pair of `split`, in either tool, and no line of the editor draws it', () => {
@@ -43,13 +43,13 @@ test('no other state has the pair of `split`, in either tool, and no line of the
   for (const state of Object.keys(look)) if (state !== 'split') assert.notEqual(look[state]['--st-dash'], look.split['--st-dash'], 'the editor: ' + state);
   // the lines of the page that are not a state (a grouped link, a dangling one, the edges of a change) draw other patterns: the CSS is read for any dash array equal to the pair
   const html = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
-  assert.ok(!/stroke-dasharray:\s*6[ ,]6\b/.test(html), 'no other line of the page is drawn with 6 6');
+  assert.ok(!/stroke-dasharray:\s*8[ ,]8\b/.test(html), 'no other line of the page is drawn with 8 8');
 });
 
 test('both keys say the same of `split`: medium dashes', () => {
   assert.match(CHANGE_MARKS, /split, one of several that replace one element: medium dashes/);
   const sandbox = createApp();
-  assert.equal(plain(vm.runInContext('CHANGE_WORDS', sandbox)).split.box, 'medium dashed outline');
+  assert.equal(plain(vm.runInContext('CHANGE_WORDS', sandbox)).split.box, 'medium dashes');
   const html = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
   assert.match(html, /split: 'medium dashes: one of several that replace one'/);
   assert.doesNotMatch(html, /dash-dot/);

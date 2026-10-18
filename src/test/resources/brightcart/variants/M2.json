@@ -1,0 +1,16 @@
+{
+  "id": "M2",
+  "kind": "merge scenario",
+  "merge": "`marketplace` into `inhouse`",
+  "newPresent": "`inhouse` resolves to 82 elements and declares 49. Of the 19 patches of `marketplace`, 11 fold into manifests (they target elements this layer declares, or are the bulk edit); 8 stay patches because they target elements of the baseline: `REMOVE shop.app`, `REMOVE shop.db`, `ADD` on `fulfilment.sync`, `MOVE shop`, `SET` on `storefront.web` and the three `REMOVE` of virtual machines.",
+  "survivors": "`saas` is untouched and still resolves. The new `inhouse` against `baseline` is exactly P4 (+38 ~3 -6, 11 moved, 2 split, 1 merged). `discovery.search` is declared once and replaces `shop.app.search`.",
+  "expected": "The only case where the composition of `replaces` is visible in the files.",
+  "declared": 49,
+  "foldedPatches": 11,
+  "keptPatches": 8,
+  "numbers": {
+    "presentElements": 82,
+    "comparison": "P4"
+  },
+  "status": "described; not run (the command does not exist: tmorin/archicode#65)"
+}

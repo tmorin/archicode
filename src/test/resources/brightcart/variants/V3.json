@@ -1,0 +1,16 @@
+{
+  "id": "V3",
+  "kind": "negative variant",
+  "change": "`marketplace` gets `override: saas`.",
+  "expected": "Error in `marketplace`: the parent of `prod.cloud.cdn` does not exist when its manifest is read.",
+  "class": "error",
+  "mentions": [
+    "marketplace",
+    "prod.cloud.cdn",
+    "parent"
+  ],
+  "model": [
+    "marketplace: the parent of prod.cloud.cdn does not exist when its manifest is read"
+  ],
+  "status": "described; the model reports the messages above; waits for the layered engine"
+}

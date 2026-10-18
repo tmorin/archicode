@@ -1,0 +1,14 @@
+{
+  "id": "V13",
+  "kind": "negative variant",
+  "change": "Merge `marketplace` into `saas`.",
+  "expected": "Error: `saas` is not an ancestor of `marketplace`.",
+  "class": "error",
+  "mentions": [
+    "saas",
+    "marketplace",
+    "ancestor"
+  ],
+  "model": null,
+  "status": "described; waits for the layered engine"
+}

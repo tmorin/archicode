@@ -422,12 +422,18 @@ class PlateauComparisonTest {
             stock
         );
         assertTrue(
-            stock.contains(".merged {\nrectangle {\nLineColor: #56B4E9\nLineStyle: 5\nLineThickness: 2\n}\n}\n"),
+            stock.contains(".merged {\nrectangle {\nLineColor: #56B4E9\nLineStyle: 3-9\nLineThickness: 2\n}\n}\n"),
             stock
         );
         // the legend explains the two the view uses
-        assertTrue(stock.contains("| **<U+2192>** | moved or renamed, replaces one element: long dashes | |"), stock);
-        assertTrue(stock.contains("| **<U+2295>** | merged, replaces several elements: short dashes | |"), stock);
+        assertTrue(
+            stock.contains("| **<U+2192>** | moved or renamed, replaces one element: long dashes, wide gaps | |"),
+            stock
+        );
+        assertTrue(
+            stock.contains("| **<U+2295>** | merged, replaces several elements: short dashes, far apart | |"),
+            stock
+        );
         assertFalse(stock.contains("split"), stock);
         val shop = read("replaces/views-after-vs-before/plantuml/application/shop-detailed.puml");
         assertTrue(
@@ -997,7 +1003,7 @@ class PlateauComparisonTest {
         // removed: the author wrote `line-color: red` for it; every other property is the default's
         assertTrue(
             puml.contains(
-                ".removed {\nrectangle {\nBackgroundColor: #EEEEEE\nLineColor: red\nLineStyle: 7\nLineThickness: 2\nFontColor: #7F7F7F\n}\n}"
+                ".removed {\nrectangle {\nBackgroundColor: #EEEEEE\nLineColor: red\nLineStyle: 16-3\nLineThickness: 2\nFontColor: #7F7F7F\n}\n}"
             ),
             puml
         );
@@ -1094,5 +1100,102 @@ class PlateauComparisonTest {
         assertFalse(without.contains("> shop.mobile"), without);
         assertTrue(without.contains("customer --> shop.web : orders on"), without);
         assertEquals(1, without.split("-> shop.legacy", -1).length - 1, without);
+    }
+
+    // ---- the relationships of a split element (issue #61, wave 013, run 0069)
+
+    private static final Path SPLIT = Path.of("src/test/resources/split-relationships");
+
+    private static final String SPLIT_SHOP = """
+    comparing after with before
+    elements      +0 ~1 -0
+    replacing     0 moved, 2 split, 0 merged
+    relationships +5 ~0 -0
+    of a split    4 of the 5 new relationships belong to split elements (not compared with the baseline)
+    wording only  0 of the 1 changed elements
+
+    CHANGE   THING         LAYER        REFERENCE                                            NATURES              DETAILS
+    split    element       application  shop.orders-billing                                  relationships-added  from shop.orders; name: "Order billing"; split with shop.orders-intake
+    split    element       application  shop.orders-intake                                   relationships-added  from shop.orders; name: "Order intake"; split with shop.orders-billing
+    changed  element       application  shop.web                                             relationships-added
+    new      relationship  application  shop.orders-billing -> shop.mail (asks)              -                    of the split shop.orders-billing
+    new      relationship  application  shop.orders-billing -> shop.orders-intake (follows)  -                    of the split shop.orders-billing, shop.orders-intake
+    new      relationship  application  shop.orders-intake -> shop.db (stores in)            -                    of the split shop.orders-intake
+    new      relationship  application  shop.web -> shop.db (reads)                          -
+    new      relationship  application  shop.web -> shop.orders-intake (places orders with)  -                    of the split shop.orders-intake
+    """;
+
+    @Test
+    void aNewRelationshipOfASplitElementSaysSoInTheTextAndTheHeaderCountsThem() {
+        val result = diff(copy(SPLIT, dir.resolve("split")), "--plateau", "after");
+        assertEquals(0, result.exit, result.err);
+        assertEquals("", result.err);
+        assertEquals(SPLIT_SHOP, result.out);
+    }
+
+    @Test
+    @SneakyThrows
+    void theMarkdownAndTheJsonSayItToo() {
+        val workspace = copy(SPLIT, dir.resolve("split"));
+        val markdown = diff(workspace, "--plateau", "after", "--format", "markdown").out;
+        assertTrue(
+            markdown.contains(
+                "Of the 5 new relationships, 4 belong to split elements: the comparison does not compare the relationships of a split element with the baseline.\n\n"
+            ),
+            markdown
+        );
+        assertTrue(
+            markdown.contains(
+                "| new | relationship | application | shop.orders-billing -> shop.orders-intake (follows) | - | of the split shop.orders-billing, shop.orders-intake |\n"
+            ),
+            markdown
+        );
+        assertTrue(
+            markdown.contains("| new | relationship | application | shop.web -> shop.db (reads) | - |  |\n"),
+            "a really new relationship has no note\n" + markdown
+        );
+        val json = new ObjectMapper().readTree(diff(workspace, "--plateau", "after", "--format", "json").out);
+        assertEquals(4, json.at("/counts/relationships/of_split").asInt());
+        assertEquals(5, json.at("/counts/relationships/new").asInt());
+        val owners = new java.util.TreeMap<String, String>();
+        for (val row : json.get("changes")) {
+            if (row.get("thing").asText().equals("relationship")) {
+                owners.put(
+                    row.get("reference").asText() + " -> " + row.get("destination").asText(),
+                    row.has("of_split") ? row.get("of_split").toString() : "-"
+                );
+            }
+        }
+        assertEquals("-", owners.get("shop.web -> shop.db"));
+        assertEquals("[\"shop.orders-intake\"]", owners.get("shop.web -> shop.orders-intake"));
+        assertEquals(
+            "[\"shop.orders-billing\",\"shop.orders-intake\"]",
+            owners.get("shop.orders-billing -> shop.orders-intake")
+        );
+        assertFalse(
+            json.at("/changes").toString().contains("\"of_split\":[]"),
+            "the key exists only when there is something to say"
+        );
+    }
+
+    @Test
+    @SneakyThrows
+    void theGapFilesOfViewsGenerateSayItAndAComparisonWithoutASplitIsWrittenAsItAlwaysWas() {
+        val workspace = copy(SPLIT, dir.resolve("split"));
+        val generated = generate(workspace, "--plateau", "after", "--baseline", "before");
+        assertEquals(0, generated.exit, generated.err);
+        val gap = Files.readString(dir.resolve("split").resolve("views-after-vs-before/gap.md"));
+        assertTrue(gap.contains("belong to split elements"), gap);
+        assertEquals(
+            diff(workspace, "--plateau", "after", "--format", "json").out,
+            Files.readString(dir.resolve("split").resolve("views-after-vs-before/gap.json"))
+        );
+        // the same pair where nothing is split: no line, no key
+        val bookshop = workspace();
+        for (val format : List.of("text", "markdown", "json")) {
+            val result = diff(bookshop, "--plateau", "to-be", "--format", format);
+            assertFalse(result.out.contains("split"), format + "\n" + result.out);
+            assertFalse(result.out.contains("of_split"), format);
+        }
     }
 }

@@ -1,0 +1,27 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web site"
+      relationships:
+        - destination: "shop.orders"
+          label: "places orders with"
+    - kind: "container"
+      id: "orders"
+      name: "Orders"
+      relationships:
+        - destination: "shop.db"
+          label: "stores in"
+        - destination: "shop.mail"
+          label: "asks"
+    - kind: "container"
+      id: "db"
+      name: "Database"
+    - kind: "container"
+      id: "mail"
+      name: "Mailer"

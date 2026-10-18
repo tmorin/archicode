@@ -47,7 +47,10 @@
 //!    that nothing else replaces), `split` (what it replaces is replaced by others too) or `merged` (it replaces several
 //!    elements, or one and it is itself in the base). An element that is replaced is not `removed` any more: it has no row
 //!    and no count, and it is not in the union, unless something below it was removed, which a view cannot place without
-//!    it (then it is in the union as `removed`, with `replaced_by`, and still has no row and no count). The element that
+//!    it (then it is in the union as `removed`, with `replaced_by`, and still has no row and no count). A `removed` element,
+//!    that place included, says its `applications` and `uses` as the target does (what points at a replaced element points at
+//!    the one that replaces it, and what points at a split element is left out), so that the union points at nothing it does
+//!    not hold and `compute` can draw it. The element that
 //!    replaces it carries `replaces`, and its own changes in `natures` (the properties
 //!    compared with the replaced element for a `moved` one, with its own base version for a `merged` one that had one,
 //!    and the relationships of what was replaced, which follow it when exactly one element replaces it; the relationships
@@ -56,8 +59,11 @@
 //!    so it cannot replace anything.
 //! 7. **Candidates are listed, never applied.** An element only the base has and that nothing replaces, and one only the
 //!    target has that replaces nothing, are a *candidate* pair when they have the same kind in the same layer and at
-//!    least one of: the same name (ignoring case), a close description (at least 60 percent of the words in common, three
-//!    words or more on each side), or the same parent when they are the only two of that kind under it. The pair is
+//!    least one of: the same name (ignoring case) **when no other removed element and no other new element of that kind
+//!    has it**, a close description (at least 60 percent of the words in common, three words or more on each side), or
+//!    the same parent when they are the only two of that kind under it. A name that repeats (a `Cache` under each
+//!    container, a `Message Broker` in each environment) says nothing about which one is which: n removed and m new of
+//!    that name would give n x m pairs for n answers (wave 013, issue #60, measured on `replaces-large-pair`). The pair is
 //!    listed with its reasons; the author decides, by writing `replaces`.
 use super::{null_as_default, Elem, Rel, CONTRACT_VERSION};
 use serde::{Deserialize, Serialize};
@@ -713,8 +719,18 @@ fn close_descriptions(a: &Option<String>, b: &Option<String>) -> bool {
     common / a.union(&b).count() as f64 >= CLOSE_DESCRIPTION
 }
 
-/// The pairs (removed, new) that look like one thing said twice: same layer, same kind, and a name, a description or (when they
-/// are the only two of their kind under a parent) a parent in common. Nothing that is replaced, nothing that replaces.
+/// How many of the elements, of each (kind, name ignoring the case), there are.
+fn count_names(list: &[(&Elem, Props)]) -> HashMap<(String, String), usize> {
+    let mut counts = HashMap::new();
+    for (_, p) in list {
+        *counts.entry((norm_text(&p.kind), norm_text(&p.name).to_lowercase())).or_default() += 1;
+    }
+    counts
+}
+
+/// The pairs (removed, new) that look like one thing said twice: same layer, same kind, and a name (when it is the only one of its kind
+/// among the removed and among the new), a description or (when they are the only two of their kind under a parent) a parent in common.
+/// Nothing that is replaced, nothing that replaces.
 fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String), Identity>, rewrite: &Rewrite) -> Vec<Candidate> {
     let mut out = Vec::new();
     for layer in LAYERS {
@@ -749,6 +765,8 @@ fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String)
                 siblings.entry((parent, norm_text(&p.kind))).or_default().1 += 1;
             }
         }
+        // (kind, name) -> how many removed, how many new: a name that is on several of them does not tell which is which
+        let (gone_names, fresh_names) = (count_names(&gone), count_names(&fresh));
         for (from, fp) in &gone {
             for (to, tp) in &fresh {
                 let kind = norm_text(&fp.kind);
@@ -758,7 +776,10 @@ fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String)
                 let mut reasons: Vec<&'static str> = Vec::new();
                 let name = norm_text(&fp.name).to_lowercase();
                 if !name.is_empty() && name == norm_text(&tp.name).to_lowercase() {
-                    reasons.push("name");
+                    let key = (kind.clone(), name);
+                    if gone_names.get(&key) == Some(&1) && fresh_names.get(&key) == Some(&1) {
+                        reasons.push("name");
+                    }
                 }
                 if close_descriptions(&fp.description, &tp.description) {
                     reasons.push("description");
@@ -844,7 +865,7 @@ fn run(input: &str) -> Result<CompareOutput, String> {
         }
         for (reference, b) in &base {
             if !target.contains_key(reference) && !rewrite.is_replaced(layer, reference) {
-                elements.push(out_element(layer, b, &props_of(b), REMOVED));
+                elements.push(out_element(layer, b, &base_props_of(b, &rewrite), REMOVED));
             }
         }
         // what a replaced element held is removed unless it is replaced too, and a view needs the element it was held by to place it:
@@ -860,7 +881,7 @@ fn run(input: &str) -> Result<CompareOutput, String> {
             .collect();
         for reference in held {
             if let Some(b) = base.get(reference.as_str()) {
-                let mut place = out_element(layer, b, &props_of(b), REMOVED);
+                let mut place = out_element(layer, b, &base_props_of(b, &rewrite), REMOVED);
                 place.replaced_by = rewrite.by[&(layer, reference.clone())].clone();
                 elements.push(place);
             }
@@ -1594,6 +1615,109 @@ mod tests {
         assert_eq!(element(&out, "env")["change"], "none", "{out}");
     }
 
+    /// What `compute` is handed for the comparison: the elements of a layer of the union, each with the relationships of the union it declares.
+    fn union_of(out: &Value, layer: &str) -> Value {
+        let mut elements = Vec::new();
+        for e in out["elements"].as_array().unwrap().iter().filter(|e| e["layer"] == layer) {
+            let mut e = e.clone();
+            let declared: Vec<Value> = out["relationships"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|r| r["layer"] == layer && r["from"] == e["reference"])
+                .cloned()
+                .collect();
+            e["relationships"] = Value::Array(declared);
+            elements.push(e);
+        }
+        Value::Array(elements)
+    }
+
+    /// Every viewpoint of the union, for every focal element of the technology layer and the map: the views of a comparison.
+    fn views_of_the_union(out: &Value) {
+        for viewpoint in ["overview", "detailed", "deep"] {
+            for layer in ["application", "technology"] {
+                let elements = union_of(out, layer);
+                for focal in elements.as_array().unwrap().iter().filter(|e| e["parent"] == true).map(|e| e["reference"].clone()) {
+                    let answer: Value = serde_json::from_str(&crate::compute_json(
+                        &json!({ "viewpoint": viewpoint, "layer": layer, "focal": focal, "elements": elements, "app_elements": union_of(out, "application") }).to_string(),
+                    ))
+                    .unwrap();
+                    assert!(answer.get("error").is_none(), "{viewpoint} of {focal} in the {layer} layer: {answer}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn what_a_removed_node_deploys_is_said_as_the_target_says_it_and_the_union_can_be_drawn() {
+        // E1 of the Brightcart document: the node `n` is removed, and it deployed `s.x`, which `s.y` replaced
+        let base = plateau(vec![el("s", json!({})), el("s.x", json!({}))], vec![el("e", json!({})), el("e.n", json!({ "applications": ["s.x"] }))]);
+        let target = plateau(
+            vec![el("s", json!({})), replacing("s.y", json!(["s.x"]), json!({}))],
+            vec![el("e", json!({})), el("e.m", json!({ "applications": ["s.y"] }))],
+        );
+        let out = compare(base, target);
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(element(&out, "e.n")["change"], "removed");
+        assert_eq!(element(&out, "e.n")["applications"], json!(["s.y"]), "the application that took the place of the one it deployed: {out}");
+        assert!(!has_element(&out, "s.x"), "the replaced application is still not in the union");
+        assert_eq!(out["counts"]["elements"], json!({ "new": 1, "changed": 0, "removed": 1, "wording_only": 0, "moved": 1 }), "the counts are what they were");
+        views_of_the_union(&out);
+    }
+
+    #[test]
+    fn what_a_removed_element_uses_follows_the_element_that_was_replaced() {
+        let base = plateau(
+            vec![],
+            vec![el("env", json!({ "uses": ["old"] })), el("old", json!({})), el("env2", json!({})), el("env2.gone", json!({ "uses": ["old"] }))],
+        );
+        let target = plateau(vec![], vec![el("env", json!({ "uses": ["new"] })), replacing("new", json!(["old"]), json!({})), el("env2", json!({}))]);
+        let out = compare(base, target);
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(element(&out, "env2.gone")["change"], "removed");
+        assert_eq!(element(&out, "env2.gone")["uses"], json!(["new"]), "{out}");
+        views_of_the_union(&out);
+    }
+
+    #[test]
+    fn what_a_removed_node_deploys_is_dropped_when_the_application_was_split() {
+        // `s.x` became `s.y` and `s.z`: which of them the removed node would deploy is a guess, so it deploys none
+        let base = plateau(vec![el("s", json!({})), el("s.x", json!({}))], vec![el("e", json!({})), el("e.n", json!({ "applications": ["s.x", "s.keep"] }))]);
+        let base = {
+            let mut b = base;
+            b["application"].as_array_mut().unwrap().push(el("s.keep", json!({})));
+            b
+        };
+        let target = plateau(
+            vec![el("s", json!({})), el("s.keep", json!({})), replacing("s.y", json!(["s.x"]), json!({})), replacing("s.z", json!(["s.x"]), json!({}))],
+            vec![el("e", json!({}))],
+        );
+        let out = compare(base, target);
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(element(&out, "e.n")["applications"], json!(["s.keep"]), "{out}");
+        views_of_the_union(&out);
+    }
+
+    #[test]
+    fn the_place_that_holds_something_removed_says_its_references_as_the_target_does() {
+        // the replaced node `e.old` is in the union because its child was removed; the application it deployed was replaced
+        let base = plateau(
+            vec![el("s", json!({})), el("s.x", json!({}))],
+            vec![el("e", json!({})), el("e.old", json!({ "applications": ["s.x"] })), el("e.old.child", json!({}))],
+        );
+        let target = plateau(
+            vec![el("s", json!({})), replacing("s.y", json!(["s.x"]), json!({}))],
+            vec![el("e", json!({})), replacing("e.fresh", json!(["e.old"]), json!({ "applications": ["s.y"] }))],
+        );
+        let out = compare(base, target);
+        assert!(out.get("error").is_none(), "{out}");
+        let place = element(&out, "e.old");
+        assert_eq!((place["change"].clone(), place["replaced_by"].clone()), (json!("removed"), json!(["e.fresh"])));
+        assert_eq!(place["applications"], json!(["s.y"]), "{out}");
+        views_of_the_union(&out);
+    }
+
     #[test]
     fn one_element_that_replaces_several_is_merged_and_several_that_replace_one_are_split() {
         // merge: x1 and x2 become y; split: s becomes t1 and t2
@@ -1811,6 +1935,37 @@ mod tests {
         );
         assert_eq!(candidate_pairs(&out), [("p.a".to_string(), "p.b".to_string())], "{}", out["candidates"]);
         assert_eq!(out["candidates"][0]["reasons"], json!(["parent"]));
+    }
+
+    #[test]
+    fn a_name_that_repeats_among_the_removed_or_the_new_is_no_reason() {
+        // `Cache` is on two removed and two new components: four pairs for two answers, and nothing says which is which
+        let cache = |reference: &str| el(reference, json!({ "kind": "component", "name": "Cache" }));
+        let out = app(
+            vec![el("a", json!({})), cache("a.cache"), el("b", json!({})), cache("b.cache"), el("c", json!({})), el("c.broker", json!({ "kind": "component", "name": "Broker" }))],
+            vec![el("a2", json!({})), cache("a2.cache"), el("b2", json!({})), cache("b2.cache"), el("c", json!({})), el("c.relay", json!({ "kind": "component", "name": "Broker" }))],
+        );
+        assert_eq!(candidate_pairs(&out), [("c.broker".to_string(), "c.relay".to_string())], "only the Broker is the one removed and the one new of its name: {}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["name", "parent"]));
+        // one side is enough to make the name say nothing: two removed `Cache`, one new
+        let out = app(vec![el("a", json!({})), cache("a.cache"), cache("a.cache2")], vec![el("a", json!({})), cache("a.store")]);
+        assert_eq!(candidate_pairs(&out), [] as [(String, String); 0], "{}", out["candidates"]);
+        // the other reasons still stand for a name that repeats
+        let described = |reference: &str, description: &str| el(reference, json!({ "kind": "component", "name": "Cache", "description": description }));
+        let out = app(
+            vec![el("a", json!({})), described("a.one", "keeps the recent answers of the catalogue in memory"), described("a.two", "holds the sessions of the signed in visitors")],
+            vec![el("a", json!({})), described("a.three", "keeps the recent answers of the catalogue in memory for a minute"), described("a.four", "something else entirely written in other words")],
+        );
+        assert_eq!(candidate_pairs(&out), [("a.one".to_string(), "a.three".to_string())], "{}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["description"]));
+    }
+
+    #[test]
+    fn a_name_is_a_reason_again_once_the_author_has_settled_the_others_that_share_it() {
+        let cache = |reference: &str| el(reference, json!({ "kind": "component", "name": "Cache" }));
+        let out = app(vec![el("a", json!({})), cache("a.cache"), el("b", json!({})), cache("b.cache")], vec![el("a2", json!({})), replacing("a2.cache", json!(["a.cache"]), json!({ "kind": "component", "name": "Cache" })), el("b2", json!({})), cache("b2.cache")]);
+        assert_eq!(candidate_pairs(&out), [("b.cache".to_string(), "b2.cache".to_string())], "a.cache is replaced, so the other Cache is now the only one of its name on each side: {}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["name"]));
     }
 
     #[test]

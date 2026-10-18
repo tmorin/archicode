@@ -1,0 +1,16 @@
+{
+  "id": "V5",
+  "kind": "negative variant",
+  "change": "A plateau typo, `plateau: inhous`, in the header of `inhouse/application/commerce.cart.yaml`.",
+  "expected": "Same error in the implicit plateau `inhous`; with a warning that it exists only through one header.",
+  "class": "error and warning",
+  "mentions": [
+    "inhous",
+    "commerce.cart",
+    "parent"
+  ],
+  "model": [
+    "inhous: the parent of commerce.cart does not exist when its manifest is read"
+  ],
+  "status": "not run as such (waits for the layered engine); its nearest case a tool runs: a `plateau` key in a header is refused (#30): LayeredPlateauRefusalTest and shipped-files-layered-plateau.test.js; an implicit plateau from a header waits for the layered engine"
+}

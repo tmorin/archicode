@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "shipping-agent"
+  name: "Shipping Agent"
+  description: "Books the berths and the services for the vessel of a shipping line."
+  relationships:
+    - destination: "dredging-works.dredging-archive-store"
+      label: "uses"
+    - destination: "rail-link.rail-dashboard"
+      label: "orders from"
+    - destination: "fire-brigade.fire-archive-store"
+      label: "looks at"

@@ -1,0 +1,143 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "weather-stations-office"
+  name: "Weather Stations Office"
+  description: "Looks after the weather side of the harbour."
+  replaces:
+    - "weather-stations"
+  elements:
+    - kind: "container"
+      id: "weather-registry"
+      name: "Weather Registry"
+      description: "Reconciles the weather bookings for the safety office and reminds the wrong weights each hour."
+      replaces:
+        - "weather-stations.weather-registry"
+      relationships:
+        - destination: "weather-stations-office.weather-notifier"
+          label: "reports to"
+        - destination: "weather-stations-office.weather-search"
+          label: "synchronises with"
+      elements:
+        - kind: "component"
+          id: "cache"
+          name: "Cache"
+          description: "Remembers the last lookups so that the database rests."
+          replaces:
+            - "weather-stations.weather-registry.cache"
+        - kind: "component"
+          id: "mapper"
+          name: "Mapper"
+          description: "Renames and converts the fields on their way out."
+          replaces:
+            - "weather-stations.weather-registry.mapper"
+    - kind: "container"
+      id: "weather-exporter"
+      name: "Weather Exporter"
+      description: "Summarises the weather bookings for the tug captains and weighs the empty tanks during the winter."
+      replaces:
+        - "weather-stations.weather-exporter"
+      relationships:
+        - destination: "weather-stations-office.weather-search"
+          label: "publishes to"
+        - destination: "weather-stations-office.weather-scheduler"
+          label: "reports to"
+        - destination: "weather-stations-office.weather-search"
+          label: "reports to"
+      elements:
+        - kind: "component"
+          id: "queue"
+          name: "Queue"
+          description: "Lines up the jobs and hands them out one by one."
+          replaces:
+            - "weather-stations.weather-exporter.queue"
+        - kind: "component"
+          id: "scanner"
+          name: "Scanner"
+          description: "Looks for new documents every few minutes."
+          replaces:
+            - "weather-stations.weather-exporter.scanner"
+    - kind: "container"
+      id: "weather-scheduler"
+      name: "Weather Scheduler"
+      description: "Forwards the weather counts for the fishing boats and notifies the cargo holds each hour."
+      replaces:
+        - "weather-stations.weather-scheduler"
+      relationships:
+        - destination: "weather-stations-office.weather-notifier"
+          label: "notifies"
+        - destination: "berth-allocation.berth-importer"
+          label: "synchronises with"
+      elements:
+        - kind: "component"
+          id: "cache"
+          name: "Cache"
+          description: "Keeps the latest answers close to the callers."
+          replaces:
+            - "weather-stations.weather-scheduler.cache"
+        - kind: "component"
+          id: "rules"
+          name: "Rules"
+          description: "Applies the rules of the harbour to each record."
+          replaces:
+            - "weather-stations.weather-scheduler.rules"
+    - kind: "container"
+      id: "weather-auditor"
+      name: "Weather Auditor"
+      description: "Tracks the weather records for the pilots on duty and rates the full berths after each call."
+      replaces:
+        - "weather-stations.weather-auditor"
+      relationships:
+        - destination: "weather-stations-office.weather-scheduler"
+          label: "publishes to"
+        - destination: "rail-link.rail-dashboard"
+          label: "sends to"
+    - kind: "container"
+      id: "weather-notifier"
+      name: "Weather Notifier"
+      description: "Collects the weather queues for the tug captains and maps the spare slots at low tide."
+      replaces:
+        - "weather-stations.weather-notifier"
+      relationships:
+        - destination: "weather-stations-office.weather-auditor"
+          label: "fetches from"
+    - kind: "container"
+      id: "weather-tracker"
+      name: "Weather Tracker"
+      description: "Keeps the weather statements for the safety office and stamps the old records twice a day."
+      qualifiers:
+        - "Kafka"
+      replaces:
+        - "weather-stations.weather-tracker"
+      relationships:
+        - destination: "quay-maintenance.quay-billing"
+          label: "reports to"
+    - kind: "container"
+      id: "weather-dashboard"
+      name: "Weather Dashboard"
+      description: "Forwards the weather permits for the visa clerks and updates the expired licences on Mondays."
+      qualifiers:
+        - "PostgreSQL"
+      replaces:
+        - "weather-stations.weather-dashboard"
+      relationships:
+        - destination: "weather-stations-office.weather-notifier"
+          label: "reports to"
+        - destination: "weather-stations-office.weather-registry"
+          label: "synchronises with"
+        - destination: "weather-stations-office.weather-notifier"
+          label: "asks"
+    - kind: "container"
+      id: "weather-search"
+      name: "Weather Search"
+      description: "Converts the weather records for the cold store staff and maps the spare slots on Mondays."
+      qualifiers:
+        - "React"
+      replaces:
+        - "weather-stations.weather-search"
+      relationships:
+        - destination: "weather-stations-office.weather-dashboard"
+          label: "reports to"
+        - destination: "weather-stations-office.weather-exporter"
+          label: "synchronises with"

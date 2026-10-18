@@ -1,0 +1,18 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "staging"
+  name: "Staging"
+  uses:
+    - "sandbox"
+  elements:
+    - kind: "node"
+      id: "vm"
+      name: "Staging VM"
+      applications:
+        - "shop.web"
+        - "shop.app"
+        - "shop.db"
+        - "fulfilment.sync"
+        - "backoffice.console"

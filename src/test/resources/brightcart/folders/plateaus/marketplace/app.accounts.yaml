@@ -1,0 +1,23 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "accounts"
+  name: "Accounts"
+  description: "Who the shoppers are."
+  elements:
+    - kind: "container"
+      id: "profiles"
+      name: "Customer profiles"
+      description: "Accounts, addresses and loyalty points."
+      qualifiers: ["Java", "Quarkus"]
+      tags:
+        runtime: "quarkus"
+      relationships:
+        - destination: "accounts.db"
+          label: "stores accounts in"
+    - kind: "container"
+      id: "db"
+      name: "Accounts database"
+      description: "Accounts and points."
+      qualifiers: ["PostgreSQL"]

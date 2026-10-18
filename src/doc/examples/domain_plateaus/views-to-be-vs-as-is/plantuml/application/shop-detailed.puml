@@ -71,10 +71,10 @@ legend right
 |= Mark |= Box |= Link |
 | **+** | new: thick solid outline | new: thick solid line |
 | **<U+007E>** | changed: dotted outline | changed: dotted line |
-| **<U+2212>** | removed: dashed grey outline, struck title | removed: dashed grey line |
+| **<U+2212>** | removed: long dashes, narrow gaps, grey outline, struck title | removed: dashed grey line |
 | **<U+00B1>** | something inside changed: thin dashed outline | |
 | **<U+22D4>** | split, one of several that replace one element: medium dashes | |
-| **<U+2295>** | merged, replaces several elements: short dashes | |
+| **<U+2295>** | merged, replaces several elements: short dashes, far apart | |
 endlegend
 <style>
 .changed {
@@ -188,7 +188,7 @@ LineThickness: 1
 .merged {
 actor {
 LineColor: #56B4E9
-LineStyle: 5
+LineStyle: 3-9
 LineThickness: 2
 }
 }
@@ -197,7 +197,7 @@ LineThickness: 2
 .merged {
 card {
 LineColor: #56B4E9
-LineStyle: 5
+LineStyle: 3-9
 LineThickness: 2
 }
 }
@@ -206,7 +206,7 @@ LineThickness: 2
 .merged {
 database {
 LineColor: #56B4E9
-LineStyle: 5
+LineStyle: 3-9
 LineThickness: 2
 }
 }
@@ -215,7 +215,7 @@ LineThickness: 2
 .merged {
 node {
 LineColor: #56B4E9
-LineStyle: 5
+LineStyle: 3-9
 LineThickness: 2
 }
 }
@@ -224,7 +224,7 @@ LineThickness: 2
 .merged {
 person {
 LineColor: #56B4E9
-LineStyle: 5
+LineStyle: 3-9
 LineThickness: 2
 }
 }
@@ -233,7 +233,7 @@ LineThickness: 2
 .merged {
 rectangle {
 LineColor: #56B4E9
-LineStyle: 5
+LineStyle: 3-9
 LineThickness: 2
 }
 }
@@ -297,7 +297,7 @@ LineThickness: 3
 actor {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -308,7 +308,7 @@ FontColor: #7F7F7F
 card {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -319,7 +319,7 @@ FontColor: #7F7F7F
 database {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -330,7 +330,7 @@ FontColor: #7F7F7F
 node {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -341,7 +341,7 @@ FontColor: #7F7F7F
 person {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -352,7 +352,7 @@ FontColor: #7F7F7F
 rectangle {
 BackgroundColor: #EEEEEE
 LineColor: #7F7F7F
-LineStyle: 7
+LineStyle: 16-3
 LineThickness: 2
 FontColor: #7F7F7F
 }
@@ -362,7 +362,7 @@ FontColor: #7F7F7F
 .split {
 actor {
 LineColor: #CC79A7
-LineStyle: 6
+LineStyle: 8
 LineThickness: 2
 }
 }
@@ -371,7 +371,7 @@ LineThickness: 2
 .split {
 card {
 LineColor: #CC79A7
-LineStyle: 6
+LineStyle: 8
 LineThickness: 2
 }
 }
@@ -380,7 +380,7 @@ LineThickness: 2
 .split {
 database {
 LineColor: #CC79A7
-LineStyle: 6
+LineStyle: 8
 LineThickness: 2
 }
 }
@@ -389,7 +389,7 @@ LineThickness: 2
 .split {
 node {
 LineColor: #CC79A7
-LineStyle: 6
+LineStyle: 8
 LineThickness: 2
 }
 }
@@ -398,7 +398,7 @@ LineThickness: 2
 .split {
 person {
 LineColor: #CC79A7
-LineStyle: 6
+LineStyle: 8
 LineThickness: 2
 }
 }
@@ -407,7 +407,7 @@ LineThickness: 2
 .split {
 rectangle {
 LineColor: #CC79A7
-LineStyle: 6
+LineStyle: 8
 LineThickness: 2
 }
 }

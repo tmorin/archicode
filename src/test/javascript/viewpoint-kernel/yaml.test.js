@@ -191,7 +191,7 @@ async function openTemp(files) {
   return { sandbox, state, dir };
 }
 
-const MANIFEST = 'header:\n  kind: archicode.morin.io/system\ncontent:\n  id: s1\n  name: S1\n';
+const MANIFEST = 'header:\n  kind: archicode.morin.io/system\n  version: "1"\ncontent:\n  id: s1\n  name: S1\n';
 
 test('saving the settings keeps the other top-level keys of workspace.yaml, in their order, and the unknown settings', async () => {
   const { sandbox, state, dir } = await openTemp({

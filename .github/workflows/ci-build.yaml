@@ -99,3 +99,107 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: "target/site"
+
+  Native:
+    # Builds the native image on every pull request and push, in parallel with Build, so that a missing reflection
+    # registration or resource (src/main/resources/META-INF/native-image, quarkus.native.resources.includes in
+    # application.properties) is seen on the pull request that causes it, not after a release. To run it less often, add
+    # an `if:` here (for example `if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}`).
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 45
+    steps:
+      - uses: "actions/checkout@v7"
+      - name: "Set up Mandrel for JDK 25"
+        # Mandrel is what Quarkus builds native images with by default; with java-version 25 the action takes the latest
+        # Mandrel release of JDK 25, the Java of the project (.sdkmanrc, maven.compiler.release). The image is built with
+        # this local Mandrel (JAVA_HOME / GRAALVM_HOME), not in a builder container.
+        uses: "graalvm/setup-graalvm@v1.6.7"
+        with:
+          java-version: "25"
+          distribution: "mandrel"
+          cache: maven
+      - name: "Build the native image"
+        # No unit tests here (Build runs them) and no manual: the project has no integration test to run against the
+        # image, the next step is what runs the image.
+        run: |
+          ./mvnw verify \
+            --batch-mode \
+            --update-snapshots \
+            -Dnative \
+            -DskipTests \
+            -Dplugin.asciidoctor.skip=true
+      - name: "Run the native image on the examples of the manual"
+        # Every check runs, and the step lists the ones that failed at the end: a gap is found with the next one, not one build later.
+        run: |
+          set -u -o pipefail
+          runner="$(realpath target/*-runner)"
+          work="$(mktemp -d)"
+          cp -r src/doc/examples/domain_workspace "$work/workspace"
+          cp -r src/doc/examples/domain_plateaus "$work/plateaus"
+          cp -r src/test/resources/brightcart/folders "$work/brightcart"
+          workspace="$work/workspace/workspace.yaml"
+          plateaus="$work/plateaus/workspace.yaml"
+          brightcart="$work/brightcart/workspace.yaml"
+          failed=()
+
+          # expect <label> <pattern> <command...>: the command succeeds and what it prints has the pattern
+          expect() {
+            local label="$1" pattern="$2" out
+            shift 2
+            if out="$("$@" 2>&1)" && grep -q -- "$pattern" <<< "$out"; then
+              echo "ok: $label"
+            else
+              echo "::error::native image: $label"
+              head -n 20 <<< "$out"
+              failed+=("$label")
+            fi
+          }
+
+          expect "help" "" "$runner" --help
+
+          # the kernel (WebAssembly translated to bytecode) assembles the views; the renderer writes PlantUML
+          expect "views generate" "" "$runner" -w "$workspace" views generate -o views
+          expect "views generate writes the views" "" test -s "$work/workspace/views/plantuml/application/ArchiCode-overview.puml"
+
+          # Jackson reaches the model and the results by reflection
+          expect "query views" "ArchiCode-deep" "$runner" -w "$workspace" query views
+          expect "query schemas" "urn:jsonschema" "$runner" -w "$workspace" query schemas
+          expect "query graph" '"reference":"ArchiCode"' "$runner" -w "$workspace" query graph
+
+          # plateaus: the comparison goes through the kernel as well
+          expect "diff" "^comparing " "$runner" -w "$plateaus" diff
+          expect "views generate --baseline" "" "$runner" -w "$plateaus" views generate -o views --baseline as-is
+          expect "views generate --baseline writes the table" "" test -s "$work/plateaus/views-to-be-vs-as-is/gap.md"
+
+          # Brightcart (src/test/resources/brightcart/folders, a copy: the views are written next to workspace.yaml): four plateaus
+          # whose elements replace others. `replacing` is the line of the moved, split and merged elements; `saas` generates with
+          # its comparison and its facets (`inhouse` and `marketplace` are left to the unit tests)
+          expect "diff on Brightcart" "^replacing " "$runner" -w "$brightcart" diff --plateau inhouse
+          expect "diff on Brightcart, against a sibling" "^comparing inhouse .* with saas" "$runner" -w "$brightcart" diff --plateau inhouse --baseline saas
+          expect "views generate on Brightcart" "" "$runner" -w "$brightcart" views generate --plateau saas
+          expect "views generate on Brightcart writes the plateau" "" test -s "$work/brightcart/views-saas/plantuml/application/shop-overview.puml"
+          expect "views generate on Brightcart writes the comparison" "" test -s "$work/brightcart/views-saas-vs-baseline/gap.json"
+          expect "views generate on Brightcart writes a facet" "" test -s "$work/brightcart/views-saas-journey/plantuml/application/shop-overview.puml"
+
+          # the editor page is a resource of the image
+          "$runner" -w "$workspace" editor serve --port 0 > "$work/editor.log" 2>&1 &
+          editor=$!
+          trap 'kill "$editor" 2>/dev/null || true' EXIT
+          url=""
+          for _ in $(seq 1 30); do
+            url="$(grep -o 'http://127.0.0.1:[0-9]*/?token=[0-9a-zA-Z_-]*' "$work/editor.log" | head -1 || true)"
+            [ -n "$url" ] && break
+            sleep 1
+          done
+          if [ -n "$url" ]; then
+            expect "editor serve" "<html" curl --fail --silent "$url"
+          else
+            echo "::error::native image: editor serve did not print its address"
+            cat "$work/editor.log"
+            failed+=("editor serve")
+          fi
+
+          if [ "${#failed[@]}" -ne 0 ]; then
+            echo "failed: ${failed[*]}"
+            exit 1
+          fi

@@ -2,6 +2,7 @@ package io.morin.archicode;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -13,6 +14,8 @@ import lombok.val;
  * error output, without a stack trace, and the exit code is 1.
  */
 public class ArchiCodeException extends RuntimeException {
+
+    private static final Pattern KNOWN_KINDS = Pattern.compile("known type ids = \\[([^\\]]*)\\]");
 
     private static final Pattern WRONG_SHAPE = Pattern.compile(
         "^Cannot deserialize value of type `[^`]*` from ([\\w-]+) value"
@@ -72,6 +75,16 @@ public class ArchiCodeException extends RuntimeException {
         val original = e.getOriginalMessage();
         if (original == null) {
             return e.getClass().getSimpleName();
+        }
+        if (e instanceof InvalidTypeIdException unknownKind) {
+            // not the class the reader failed to build: the kind written, and the kinds that are there
+            val known = KNOWN_KINDS.matcher(original);
+            return (
+                "unknown kind `" +
+                unknownKind.getTypeId() +
+                "`" +
+                (known.find() ? " (known: " + known.group(1) + ")" : "")
+            );
         }
         val firstLine = original.lines().findFirst().orElse(original);
         val shape = WRONG_SHAPE.matcher(firstLine);

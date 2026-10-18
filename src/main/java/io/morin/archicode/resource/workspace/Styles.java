@@ -45,8 +45,17 @@ public class Styles {
         @JsonProperty("line-color")
         String lineColor;
 
+        /** The length of a dash of the line (PlantUML's {@code LineStyle}); 0 is a solid line. */
         @JsonProperty("line-style")
         Integer lineStyle;
+
+        /**
+         * The gap between two dashes. Without it the gap is as long as the dash ({@code line-style: 5} is a dash of 5 and a
+         * gap of 5); with it the line is {@code <line-style>-<line-gap>}, so that two lines may have dashes of the same
+         * length and be told apart by their gaps. It means nothing without a {@code line-style}.
+         */
+        @JsonProperty("line-gap")
+        Integer lineGap;
 
         @JsonProperty("line-thickness")
         Integer lineThickness;

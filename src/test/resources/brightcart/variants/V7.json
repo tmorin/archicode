@@ -1,0 +1,16 @@
+{
+  "id": "V7",
+  "kind": "negative variant",
+  "change": "`REMOVE shop.cache` in `marketplace`.",
+  "expected": "Error: no match (`inhouse` already moved it). The stale-patch case.",
+  "class": "error",
+  "mentions": [
+    "marketplace",
+    "shop.cache",
+    "no match"
+  ],
+  "model": [
+    "marketplace: patch 20 (REMOVE shop.cache) has no match for shop.cache"
+  ],
+  "status": "described; the model reports the messages above; waits for the layered engine"
+}

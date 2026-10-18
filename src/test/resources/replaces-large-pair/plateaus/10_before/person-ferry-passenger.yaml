@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+content:
+  id: "ferry-passenger"
+  name: "Ferry Passenger"
+  description: "Travels on a ferry and buys a ticket."
+  relationships:
+    - destination: "fire-brigade.fire-registry"
+      label: "uses"
+    - destination: "gate-control.gate-gateway"
+      label: "uses"
+    - destination: "tariff-billing.tariff-notifier"
+      label: "looks at"

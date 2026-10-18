@@ -1,0 +1,30 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "storefront"
+  name: "Shop"
+  description: "The web shop of the retailer."
+  replaces:
+    - "shop"
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web storefront"
+      description: "Pages of the shop, served from the CDN."
+      qualifiers: ["React"]
+      replaces:
+        - "shop.web"
+      relationships:
+        - destination: "commerce.gateway"
+          label: "browses and buys through"
+          qualifiers: ["REST"]
+    - kind: "container"
+      id: "mobile"
+      name: "Mobile app"
+      description: "The shop in the pocket."
+      qualifiers: ["Kotlin Multiplatform"]
+      relationships:
+        - destination: "commerce.gateway"
+          label: "browses and buys through"
+          qualifiers: ["REST"]

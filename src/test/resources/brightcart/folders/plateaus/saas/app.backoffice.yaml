@@ -1,0 +1,21 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "backoffice"
+  name: "Back office"
+  description: "Tools of the staff."
+  elements:
+    - kind: "container"
+      id: "console"
+      name: "Back-office console"
+      description: "Products, orders and customers for the staff."
+      qualifiers: ["Angular"]
+      relationships:
+        - destination: "shop.app.orders"
+          label: "handles orders in"
+        - destination: "shop.app.customers"
+          label: "looks up customers in"
+        - destination: "commerce-saas"
+          label: "maintains products in"
+          qualifiers: ["HTTPS"]

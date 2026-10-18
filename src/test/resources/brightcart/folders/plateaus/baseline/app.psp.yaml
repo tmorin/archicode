@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "psp"
+  name: "Payment provider"
+  description: "Authorises card and wallet payments."
+  tags:
+    rendering-stereotypes: "external"

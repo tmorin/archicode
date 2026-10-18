@@ -1,0 +1,71 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+content:
+  id: "shop"
+  name: "Shop"
+  description: "The web shop of the retailer."
+  elements:
+    - kind: "container"
+      id: "web"
+      name: "Web storefront"
+      description: "Headless storefront on the commerce platform."
+      qualifiers: ["React", "Next.js"]
+      relationships:
+        - destination: "shop.app"
+          label: "calls"
+          qualifiers: ["JSON/HTTPS"]
+        - destination: "commerce-saas"
+          label: "browses and checks out with"
+          qualifiers: ["GraphQL"]
+    - kind: "container"
+      id: "app"
+      name: "Account and order history"
+      description: "Accounts, loyalty, order history and stock; the rest moved to the platform."
+      qualifiers: ["Java", "Spring Boot"]
+      elements:
+        - kind: "component"
+          id: "orders"
+          name: "Orders"
+          description: "Stores orders and their history."
+          relationships:
+            - destination: "shop.db"
+              label: "stores orders in"
+            - destination: "shop.app.notifications"
+              label: "asks to notify"
+        - kind: "component"
+          id: "customers"
+          name: "Customers"
+          description: "Accounts and addresses."
+          relationships:
+            - destination: "shop.db"
+              label: "stores accounts in"
+        - kind: "component"
+          id: "loyalty"
+          name: "Loyalty"
+          description: "Points earned and spent."
+          relationships:
+            - destination: "shop.db"
+              label: "stores points in"
+            - destination: "shop.app.customers"
+              label: "reads accounts from"
+        - kind: "component"
+          id: "notifications"
+          name: "Notifications"
+          description: "Mails about orders and accounts."
+          relationships:
+            - destination: "mailer"
+              label: "sends mails with"
+              qualifiers: ["SMTP"]
+        - kind: "component"
+          id: "inventory"
+          name: "Inventory"
+          description: "Stock levels and reservations."
+          relationships:
+            - destination: "shop.db"
+              label: "reads and reserves stock in"
+    - kind: "container"
+      id: "db"
+      name: "Shop database"
+      description: "Products, accounts, orders and stock."
+      qualifiers: ["PostgreSQL"]

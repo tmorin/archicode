@@ -1,5 +1,6 @@
 package io.morin.archicode.cli;
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchemaGenerator;
@@ -48,10 +49,30 @@ public class GetSchemasQuery implements Runnable {
     @SneakyThrows
     @Override
     public void run() {
-        val mapper = mapperFactory.create(MapperFormat.JSON).writerWithDefaultPrettyPrinter();
+        val mapper = sortedWriter(mapperFactory);
         val schema = generateSchema(type, mapper);
         val schemaAsJson = mapper.writeValueAsString(schema);
         queryOutputWriter.write(schemaAsJson);
+    }
+
+    /**
+     * The JSON writer the schemas are generated and written with: the JSON mapper of the application, with the
+     * properties of an object in alphabetical order.
+     * <p>
+     * The generator lists the properties of an object in the order Jackson finds them, and for a type that is an
+     * interface (the elements, which are described by their getters) that is the order of {@code getDeclaredMethods},
+     * which the JVM does not fix: about one run in three listed {@code description} before the other properties and
+     * the others after them. Sorting them by name makes the schema the same from one run to the next, and from one
+     * build to the next (a native image keeps the order its build saw).
+     *
+     * @return the writer, with a pretty printer
+     */
+    static ObjectWriter sortedWriter(MapperFactory mapperFactory) {
+        return mapperFactory
+            .create(MapperFormat.JSON)
+            .copy()
+            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+            .writerWithDefaultPrettyPrinter();
     }
 
     /**
