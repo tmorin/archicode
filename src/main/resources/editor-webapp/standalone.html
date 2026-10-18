@@ -224,6 +224,13 @@
   .band-status { font-size: 0.8rem; color: var(--muted); min-width: 0; }
   .band-note { font-size: 0.8rem; }
   .band-readonly { color: var(--muted); }
+  /* Writing in a layer (wave 014, run 0082): where a write goes, and the controls of the plateau drawn. */
+  .band-writing { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.5rem; font-size: 0.8rem; min-width: 0; max-width: 100%; }
+  .band-writing strong { overflow-wrap: anywhere; }
+  .band-writing button { height: 1.75rem; padding: 0 0.7rem !important; font-size: 0.8rem; }
+  .timeline-actions { gap: 0.4rem; flex-wrap: wrap; }
+  .layer-confirm-list { margin: 0.3rem 0 0.2rem 1.2rem; padding: 0; list-style: disc; overflow-wrap: anywhere; }
+  .app-dialog select { width: 100%; box-sizing: border-box; }
   .band-errors { flex-basis: 100%; font-size: 0.8rem; }
   .band-errors ul { margin: 0.2rem 0 0 1.2rem; list-style: disc; }
   .field-origin { margin-left: 0.5rem; font-size: 0.72rem; color: var(--muted); font-style: italic; }
@@ -5246,27 +5253,99 @@ function renderPlateauBandHtml() {
   }
   const readOnly = readOnlyPlateauMessage();
   if (readOnly) html += '<span class="band-note band-readonly" role="status">' + escapeHtml(readOnly) + '</span>';
-  return html + '</nav>';
+  return html + bandWritingHtml() + '</nav>';
 }
-
-// ---- Writing: not in a plateau other than baseline (yet) ----
 
 /**
- * Why nothing is written while this plateau is drawn, or null. An edit of an element is written where the element is declared; for a plateau that overrides another
- * that is often the plateau above, and a value a patch set would not change on the page. The rule that makes an edit land in the plateau drawn (patches, manifests of
- * the plateau) is not there yet: until then the plateaus other than baseline are read, compared and not edited. "Write replaces" (a key of the element that is new in the
- * plateau, written in the manifest that declares it) is the one write the Changes panel offers, and it is allowed.
+ * Where a write goes, and how to make a plateau (wave 014, run 0082): "writing in: <plateau>" says the plateau drawn is the one a write goes to (when the workspace has
+ * layers); the buttons make a plateau that overrides it, and rename it, give it a horizon or another parent.
  */
-function readOnlyPlateauMessage() {
+function bandWritingHtml() {
   const layers = AppState.layers;
-  if (!layers || !AppState.plateauTree || !AppState.plateauTree.layered || layers.current === BASELINE_PLATEAU) return null;
-  return 'This plateau is read-only for now: editing, adding and removing in a plateau other than baseline is not available yet. Draw baseline to edit.';
+  const tree = AppState.plateauTree;
+  if (!layers || !tree || layers.blocked) return '';
+  const id = layers.current;
+  const title = plateauTitle(layerPlateauModel(id));
+  const writing = writingPlateau();
+  const busy = saveInFlight ? ' disabled' : '';
+  return '<span class="band-writing" id="band-writing">' +
+    (writing !== null ? '<span class="band-writing-label" role="status">writing in: <strong>' + escapeHtml(title) + '</strong>' + (title !== id ? ' <code>' + escapeHtml(id) + '</code>' : '') + '</span>' : '') +
+    '<button type="button" data-action="plateau-create" data-plateau="' + escapeHtml(id) + '"' + busy + ' title="Create a plateau that overrides ' + escapeHtml(title) + '">New plateau</button>' +
+    (tree.layered ? '<button type="button" data-action="plateau-edit" data-plateau="' + escapeHtml(id) + '"' + busy + ' title="Rename ' + escapeHtml(title) + ', give it a horizon or another parent">Edit plateau</button>' : '') +
+    '</span>';
 }
 
-/** For a handler of a field (an input, a change): when the plateau drawn is read-only, say it in the top bar, draw the page again (the typed text goes) and tell the caller to stop. */
-function writesRefused() {
-  const message = readOnlyPlateauMessage();
-  if (message === null) return false;
+/** The form of a plateau: a new one that overrides `id` (`create`), or `id` itself (`edit`). */
+function openPlateauDialog(mode, id) {
+  const tree = AppState.plateauTree;
+  if (!AppState.layers || !tree || AppState.layers.blocked) return;
+  if (mode === 'edit') {
+    const node = tree.nodes.get(id);
+    if (!node) return;
+    openAppDialog({ kind: 'plateau-form', mode, plateau: id, values: { id, name: node.name || '', horizon: node.horizon || '', parent: node.parent === null ? '' : node.parent } });
+  } else {
+    openAppDialog({ kind: 'plateau-form', mode: 'create', plateau: null, values: { id: '', name: '', horizon: '', parent: tree.nodes.has(id) ? id : BASELINE_PLATEAU } });
+  }
+}
+
+// ---- Writing in a layer (wave 014, run 0082, W-8) ----
+//
+// A write goes to the plateau drawn ("writing in: <plateau>" on the band), in the file of that plateau and nowhere else:
+//   - a new element, view or story is a manifest whose header says `plateau: <the plateau>` (none for baseline, the default);
+//   - a field of an element the plateau declares is edited in the manifest that declares it, as before;
+//   - a field of an element the plateau inherits is a patch of the plateau (`SET`, `ADD` or `MERGE`, see `patchFor`), found again by (target, field) so that a second
+//     edit of the same field changes that patch and does not add another;
+//   - an element the plateau inherits is removed by a `REMOVE` patch (the cascade is the kernel's);
+//   - a plateau is created, renamed, given a horizon or another parent in its manifest of kind `archicode.morin.io/plateau`.
+// Every one of these runs under `guardedLayerWrite`: the plateaus are resolved again, and the write is kept only if the plateau written gives back the value that was edited,
+// no plateau that resolved before is refused now, and, when other plateaus inherit what was written, the author said yes (a plateau with descendants asks first and lists them).
+// A workspace that is not layered (`writingPlateau()` is null) does not go through any of it and saves exactly as before.
+
+/** The clicks that write and are not available in a plateau other than baseline: the sentence is `layerActionRefusal`'s. */
+const LAYER_UNSUPPORTED_ACTIONS = new Set(['legacy-move']);
+
+/** The plateau a write goes to: the plateau drawn, when the workspace is layered and its plateaus are drawn. Null otherwise (the old rules apply and nothing here runs). */
+function writingPlateau() {
+  const layers = AppState.layers;
+  const tree = AppState.plateauTree;
+  if (!layers || !tree || !tree.layered || layers.blocked || !tree.nodes.has(layers.current)) return null;
+  return layers.current;
+}
+
+/** Why nothing is written while this plateau is drawn, or null: the kernel refused its patches, so there is no graph to edit. */
+function readOnlyPlateauMessage() {
+  const plateau = writingPlateau();
+  if (plateau === null || !AppState.layerUndrawable) return null;
+  return 'The plateau `' + plateau + '` cannot be drawn, so nothing is written in it: repair its patches in Files first.';
+}
+
+/** Why a click that writes is not done, or null: the plateau cannot be drawn, or the action is not available outside baseline. */
+function layerActionRefusal(action) {
+  const plateau = writingPlateau();
+  if (plateau === null) return null;
+  const undrawable = readOnlyPlateauMessage();
+  if (undrawable) return undrawable;
+  if (plateau !== BASELINE_PLATEAU && LAYER_UNSUPPORTED_ACTIONS.has(action)) {
+    return 'Move to manifests writes the views and stories of workspace.yaml as manifests of baseline: draw baseline to do it.';
+  }
+  return null;
+}
+
+/** A view or a story is written in the plateau that declares it: the sentence when it is not the plateau drawn (a patch cannot change a view or a story), else null. */
+function entryWriteRefusal(entry) {
+  const plateau = writingPlateau();
+  if (plateau === null || !entry) return null;
+  const owner = entryOwners.get(entry);
+  const declared = owner ? filePlateauOf(owner) : BASELINE_PLATEAU; // an entry of workspace.yaml belongs to baseline
+  if (declared === plateau) return null;
+  const noun = owner && stripArchicodeKindPrefix(String(owner.header.kind)) === 'story' ? 'story' : 'view';
+  return 'The ' + noun + ' `' + entry.id + '` is declared in the plateau `' + declared + '`, and a patch cannot change a view or a story: draw `' + declared + '` to change it.';
+}
+
+/** For a handler of a field (an input, a change): when nothing can be written (the plateau cannot be drawn, or the view or story is another plateau's), say it in the top bar, draw the page again (the typed text goes) and tell the caller to stop. */
+function writesRefused(entry) {
+  const message = readOnlyPlateauMessage() || entryWriteRefusal(entry);
+  if (!message) return false;
   saveStatus = { state: 'denied', message };
   render();
   return true;
@@ -5276,6 +5355,715 @@ function writesRefused() {
 function requireWritablePlateau() {
   const message = readOnlyPlateauMessage();
   if (message) throw new Error(message);
+}
+
+/** Throws the sentence of `entryWriteRefusal` for a view or a story of another plateau. */
+function requireWritableEntry(entry) {
+  const message = entryWriteRefusal(entry);
+  if (message) throw new Error(message);
+}
+
+/**
+ * Whether a write in the plateau drawn may rewrite this file: it belongs to the plateau drawn or to one that stands on it (a rename, a delete, a move reach what points
+ * at the element, and only those files can). A plateau beside it may declare an element with the same reference, which is another element. True for a workspace that is
+ * not layered and for baseline (every plateau stands on it).
+ */
+function writeScopeHas(mf) {
+  const plateau = writingPlateau();
+  if (plateau === null || plateau === BASELINE_PLATEAU) return true;
+  if (!mf || !mf.header) return false;
+  const owner = manifestKindName(mf.header.kind) === 'plateau' && mf.content ? String(mf.content.id) : plateauOfManifest(mf);
+  return owner === plateau || layerIsBelow(owner, plateau);
+}
+
+/** `writeScopeHas` for a view or a story (an entry of workspace.yaml belongs to baseline). */
+function writeScopeHasEntry(entry) {
+  const owner = entryOwners.get(entry);
+  if (owner) return writeScopeHas(owner);
+  const plateau = writingPlateau();
+  return plateau === null || plateau === BASELINE_PLATEAU;
+}
+
+/** A sentence on one line (the kernel's and the tree's sentences may be told with a line break). */
+function oneLine(text) {
+  return String(text).replace(/\s*\n\s*/g, ' ').trim();
+}
+
+/** The same JSON whatever the order of the keys of an object: what two values must share to be called equal. */
+function canonicalJson(value) {
+  if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
+  if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + canonicalJson(value[key])).join(',') + '}';
+  return JSON.stringify(value === undefined ? null : value);
+}
+
+function sameJson(a, b) {
+  return canonicalJson(a) === canonicalJson(b);
+}
+
+function copyJson(value) {
+  return value === undefined ? undefined : clonePlain(value);
+}
+
+/** The state a write may change, kept so that a write that is refused puts everything back (the manifests as they were, the lists of files, the marks of what is modified). */
+function snapshotWriteState() {
+  const workspace = AppState.workspace;
+  return {
+    files: AppState.manifestFiles.map((mf) => ({ mf, props: Object.assign({}, mf, { header: copyJson(mf.header), content: copyJson(mf.content) }) })),
+    pendingFileRemovals: AppState.pendingFileRemovals.slice(),
+    removedFileBaselines: new Map(AppState.removedFileBaselines),
+    dirtyReferences: new Set(AppState.dirtyReferences),
+    expanded: new Set(AppState.expanded),
+    selection: Object.assign({}, AppState.selection),
+    topLevel: workspace ? copyJson(workspace.topLevel) : undefined,
+    settingsDirty: workspace ? workspace.settingsDirty : undefined,
+    settingsRevision: workspace ? workspace.settingsRevision : undefined,
+    saveStatus,
+    pendingDeleteConfirmation,
+    rawYamlEditDraft,
+    mapPinned: mapPinned.slice(),
+    mapHidden: mapHidden.slice(),
+    mapOpened: mapOpened ? new Set(mapOpened) : mapOpened,
+    navActiveKey
+  };
+}
+
+function restoreWriteState(snapshot) {
+  const files = [];
+  for (const { mf, props } of snapshot.files) {
+    for (const key of Object.keys(mf)) if (!(key in props)) delete mf[key];
+    Object.assign(mf, props);
+    files.push(mf);
+  }
+  AppState.manifestFiles = files;
+  AppState.pendingFileRemovals = snapshot.pendingFileRemovals;
+  AppState.removedFileBaselines = snapshot.removedFileBaselines;
+  AppState.dirtyReferences = snapshot.dirtyReferences;
+  AppState.expanded = snapshot.expanded;
+  AppState.selection = snapshot.selection;
+  const workspace = AppState.workspace;
+  if (workspace) {
+    workspace.topLevel = snapshot.topLevel;
+    workspace.settingsDirty = snapshot.settingsDirty;
+    workspace.settingsRevision = snapshot.settingsRevision;
+  }
+  saveStatus = snapshot.saveStatus;
+  pendingDeleteConfirmation = snapshot.pendingDeleteConfirmation;
+  rawYamlEditDraft = snapshot.rawYamlEditDraft;
+  mapPinned = snapshot.mapPinned;
+  mapHidden = snapshot.mapHidden;
+  mapOpened = snapshot.mapOpened;
+  navActiveKey = snapshot.navActiveKey;
+}
+
+/**
+ * What a write is judged on: for every plateau of the tree, whether it resolves (`fatal`: the kernel refused a patch), what its resolved graph is (as a text, to tell
+ * whether a write changed it) and the sentences the command line refuses it with; and the mistakes of the tree itself.
+ */
+function layerDigest() {
+  const tree = AppState.plateauTree;
+  const settings = AppState.workspace.settings;
+  const digest = {
+    sentences: tree.problems.map(String).concat((tree.redeclared || []).map(String), elementDuplicates().map((d) => 'the reference `' + d.reference + '` is declared twice (' + d.sources.join(', ') + ')')),
+    plateaus: new Map()
+  };
+  if (tree.problems.length || layersBlockedReason()) return digest;
+  for (const id of tree.ids) {
+    const result = layerStateOf(id, settings);
+    if (result.fatal) digest.plateaus.set(id, { fatal: oneLine(result.fatal[0]), graph: null, sentences: result.earlier ? result.earlier.sentences : [] });
+    else digest.plateaus.set(id, { fatal: null, graph: JSON.stringify(result.state.graph), sentences: result.state.problems ? result.state.problems.sentences : [] });
+  }
+  return digest;
+}
+
+/** `{ broken, changed }`: the first sentence of what a write broke (a plateau that resolved no longer does, or the command line refuses it for a new reason), and the plateaus other than `written` whose graph it changed. */
+function judgeLayerWrite(before, after, written) {
+  const fresh = (now, then) => now.find((sentence) => !then.includes(sentence)) || null;
+  const mistake = fresh(after.sentences, before.sentences);
+  if (mistake) return { broken: oneLine(mistake), changed: [] };
+  const changed = [];
+  for (const [id, now] of after.plateaus) {
+    const then = before.plateaus.get(id);
+    if (now.fatal && (!then || !then.fatal)) return { broken: 'the plateau `' + id + '` could no longer be resolved (' + now.fatal + ')', changed: [] };
+    const sentence = fresh(now.sentences, then ? then.sentences : []);
+    if (sentence) return { broken: oneLine(sentence), changed: [] };
+    if (then && id !== written && now.graph !== then.graph) changed.push(id);
+  }
+  return { broken: null, changed };
+}
+
+/**
+ * Runs `spec.write()` (which edits the manifests and ends in `rebuildIndexAndRender`) under the rules of writing in a layer, and keeps it only if all of them hold:
+ *   - `spec.verify(result)`, if given, throws when the resolution does not give back what was edited;
+ *   - no plateau that resolved before is refused now, and no new mistake appears in the tree or in a plateau;
+ *   - the plateaus other than `spec.plateau` whose graph changed are told to the author, who has to say yes (`spec.confirmed`); until then nothing is kept.
+ * A write that is not kept puts everything back (`snapshotWriteState`) and the page is drawn again. A refusal is an `Error` with one sentence. Pending confirmation:
+ * the dialog of `spec.again` is opened and `{ pending: true, plateaus }` is returned. `spec`: { plateau, write, verify, confirmed, again, summary }.
+ */
+function guardedLayerWrite(spec) {
+  if (!AppState.layers || !AppState.workspace || !AppState.plateauTree) return spec.write();
+  if (AppState.plateauTree.layered && !loadedKernel) {
+    throw new Error('The viewpoint kernel is not loaded yet, so the plateaus cannot be resolved and checked: nothing was written. Try again in a moment.');
+  }
+  const before = layerDigest();
+  const snapshot = snapshotWriteState();
+  let result;
+  let verdict;
+  try {
+    result = spec.write();
+    if (spec.verify) spec.verify(result);
+    verdict = judgeLayerWrite(before, layerDigest(), spec.plateau);
+  } catch (e) {
+    restoreWriteState(snapshot);
+    rebuildIndexAndRender();
+    throw e;
+  }
+  if (verdict.broken || (verdict.changed.length && !spec.confirmed)) {
+    restoreWriteState(snapshot);
+    rebuildIndexAndRender();
+    if (verdict.broken) throw new Error('Not written: ' + verdict.broken.replace(/\.$/, '') + '. Nothing was changed.');
+    openAppDialog({ kind: 'layer-confirm', plateau: spec.plateau, summary: spec.summary, changed: verdict.changed.slice(), onConfirm: spec.again, afterConfirm: spec.afterConfirm });
+    return { pending: true, plateaus: verdict.changed.slice() };
+  }
+  return result;
+}
+
+/** What the dialog "this also changes ..." does when the author says yes: the write again, confirmed. A refusal is told in the top bar, as any write's. */
+function confirmLayerWrite(dialog) {
+  try {
+    const result = dialog.onConfirm();
+    if (dialog.afterConfirm) dialog.afterConfirm(result); // what the click that asked would have done next (select what was created, unfold what was moved)
+  } catch (e) {
+    saveStatus = { state: 'error', failedFile: dialog.plateau, message: e && e.message ? e.message : String(e) };
+    render();
+  }
+}
+
+// ---- The plateau manifest and the folder of a plateau ----
+
+/** The manifest of kind `archicode.morin.io/plateau` that declares a plateau (it holds its name, horizon, parent and patches), or null when the plateau exists through headers only, or is `baseline` with none. */
+function plateauManifestFile(id) {
+  const node = AppState.plateauTree && AppState.plateauTree.nodes.get(id);
+  if (!node || !node.manifest) return null;
+  return AppState.manifestFiles.find((mf) => mf.relPath === node.manifest) || null;
+}
+
+/**
+ * The folder a new manifest of a plateau is written in: the folder of a manifest the plateau already has (one of the layer of the element, when it has one), so that the new file
+ * is where the author keeps the plateau's files and in a folder the command line reads; else the first folder of `manifests.paths`.
+ */
+function plateauFolderFor(id, category) {
+  const own = AppState.manifestFiles.filter((mf) => !mf.error && mf.header && mf.content && manifestKindName(mf.header.kind) !== 'plateau' && plateauOfManifest(mf) === id);
+  const pick = (category && own.find((mf) => manifestLayer(mf) === category)) || own[0];
+  if (pick) return pick.relPath.split('/').slice(0, -1).join('/');
+  const dir = firstManifestsDir();
+  return dir === undefined ? 'manifests' : dir;
+}
+
+/** The manifest of a plateau where its patches are written; one with only its id is made (in memory, like any new file) when the plateau has none. */
+function ensurePlateauManifest(id) {
+  const existing = plateauManifestFile(id);
+  if (existing) return existing;
+  const header = { kind: ARCHICODE_KIND_PREFIX + 'plateau', version: '1' };
+  const content = { id };
+  const relPath = allocateManifestRelPath(plateauFolderFor(id), 'plateau.', id);
+  const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
+  adoptRemovedFile(mf);
+  AppState.manifestFiles.push(mf);
+  AppState.manifestFiles.sort((a, b) => compareCodePoints(a.relPath, b.relPath));
+  return mf;
+}
+
+/** The manifest is rewritten from its content (the line-preserving save) and marked modified; an edit that puts the file back as it is on disk leaves it unmodified. */
+function touchManifest(mf) {
+  mf.rawText = reserializeManifestFile(mf);
+  mf.dirty = !(mf.existedOnDisk && typeof mf.savedRawText === 'string' && mf.rawText === mf.savedRawText);
+}
+
+// ---- Patches ----
+
+/** The element a plateau resolves to, as the JSON of its graph (a copy), or null. */
+function resolvedNodeOf(plateau, category, reference) {
+  const result = layerStateOf(plateau, AppState.workspace.settings);
+  if (result.fatal) return null;
+  const node = graphReferencesOf(result.state.graph)[category].get(reference);
+  return node ? clonePlain(node) : null;
+}
+
+/** The `SET`, `ADD` and `MERGE` patches of a plateau that name an element and a field with a `target` (what `patchFor` writes), `[{ patch, rank }]`; the rank is the kernel's (from 1). */
+function plateauPatchesOn(plateau, category, reference, field) {
+  const out = [];
+  AppState.plateauTree.nodes.get(plateau).patches.forEach((patch, i) => {
+    if (!patch || typeof patch !== 'object') return;
+    if (readIsMissing(patch.target) || !readIsMissing(patch['json-path']) || !readIsMissing(patch.json_path)) return;
+    const layer = readIsMissing(patch.layer) ? 'application' : String(patch.layer).toLowerCase();
+    if (String(patch.target) === reference && layer === category && !readIsMissing(patch.field) && String(patch.field) === field && String(patch.operator).toUpperCase() !== 'REMOVE') out.push({ patch, rank: i + 1 });
+  });
+  return out;
+}
+
+/** The value of a field after the patches of `plateau` except `patch`: what the patch that replaces it applies on. `{ known: false }` when that cannot be resolved. */
+function fieldBaseWithout(plateau, patch, category, reference, field) {
+  const settings = AppState.workspace.settings;
+  const node = AppState.plateauTree.nodes.get(plateau);
+  const above = node.parent === null ? null : layerStateOf(node.parent, settings);
+  if (above && above.fatal) return { known: false };
+  const result = resolveLayerStep(above ? above.state : null, Object.assign({}, node, { patches: node.patches.filter((p) => p !== patch) }), { byPlateau: ensureLayerCache(settings).byPlateau, kernel: loadedKernel });
+  if (result.fatal) return { known: false };
+  const found = graphReferencesOf(result.state.graph)[category].get(reference);
+  return found ? { known: true, value: copyJson(found[field]) } : { known: false };
+}
+
+function isPlainJsonObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * The patch that turns the value a field has (`base`) into the one it must have (`after`), or null when they are the same. The operator is the least that says it:
+ *   - a list that gains items at its end: `ADD` (the item, or the list of items);
+ *   - a relationship that is changed in place, found by (destination, label) among the relationships of `base`: `SET` with `where` and the fields that changed;
+ *   - an object (tags) that keeps every key it had: `MERGE` of the keys that are new or changed;
+ *   - anything else, a list that loses or reorders items, an object that loses a key, a text, a number: `SET` of the whole value.
+ * When `base` is not known the value is set whole.
+ */
+function patchFor(field, base, after) {
+  const listy = Array.isArray(after) || (base.known && Array.isArray(base.value));
+  const objecty = isPlainJsonObject(after) || (base.known && isPlainJsonObject(base.value));
+  const empty = listy ? [] : objecty ? {} : undefined;
+  const now = readIsMissing(after) ? empty : after;
+  const was = base.known ? (readIsMissing(base.value) ? empty : base.value) : undefined;
+  if (base.known && sameJson(was, now)) return null;
+  if (Array.isArray(now)) {
+    if (base.known && Array.isArray(was)) {
+      if (now.length > was.length && was.every((item, i) => sameJson(item, now[i]))) {
+        const extra = now.slice(was.length);
+        return { operator: 'ADD', value: extra.length === 1 ? extra[0] : extra };
+      }
+      if (field === 'relationships' && now.length === was.length) {
+        const differing = now.map((item, i) => i).filter((i) => !sameJson(was[i], now[i]));
+        if (differing.length === 1) {
+          const i = differing[0];
+          const old = was[i];
+          const next = now[i];
+          if (isPlainJsonObject(old) && isPlainJsonObject(next) && typeof old.destination === 'string' && Object.keys(old).every((key) => key in next)) {
+            const label = readIsMissing(old.label) ? '' : String(old.label);
+            const same = was.filter((item) => isPlainJsonObject(item) && item.destination === old.destination && (readIsMissing(item.label) ? '' : String(item.label)) === label);
+            if (same.length === 1) {
+              const value = {};
+              for (const key of Object.keys(next)) if (!sameJson(old[key], next[key])) value[key] = next[key];
+              const where = { destination: old.destination };
+              if (label !== '') where.label = label;
+              return { operator: 'SET', where, value };
+            }
+          }
+        }
+      }
+    }
+    return { operator: 'SET', value: now };
+  }
+  if (isPlainJsonObject(now) && base.known && (was === undefined || isPlainJsonObject(was)) && Object.keys(was || {}).every((key) => key in now)) {
+    const value = {};
+    for (const key of Object.keys(now)) if (!was || !sameJson(was[key], now[key])) value[key] = now[key];
+    return { operator: 'MERGE', value };
+  }
+  return { operator: 'SET', value: now };
+}
+
+/** A patch as a manifest holds it, the keys in the order the fixture writes them: operator, target, layer, field, where, value. */
+function newPatchObject(category, reference, field, wanted) {
+  const patch = { operator: wanted.operator, target: reference };
+  if (category === 'technology') patch.layer = 'technology';
+  patch.field = field;
+  if (wanted.where) patch.where = wanted.where;
+  patch.value = wanted.value;
+  return patch;
+}
+
+/** Puts `value` under `key` of `object` just before `beforeKey` (the keys already there keep their order). */
+function insertKeyBefore(object, beforeKey, key, value) {
+  const entries = Object.keys(object).map((k) => [k, object[k]]);
+  for (const [k] of entries) delete object[k];
+  let placed = false;
+  for (const [k, v] of entries) {
+    if (k === beforeKey) { object[key] = value; placed = true; }
+    object[k] = v;
+  }
+  if (!placed) object[key] = value;
+}
+
+/** The patch `patch` of a manifest now says `wanted`: only the keys that differ are written, so the lines of the others stay as the author wrote them. */
+function updatePatchInPlace(patch, wanted) {
+  if (String(patch.operator).toUpperCase() !== wanted.operator) patch.operator = wanted.operator;
+  if (wanted.where) {
+    if (patch.where === undefined) insertKeyBefore(patch, 'value', 'where', wanted.where);
+    else if (!sameJson(patch.where, wanted.where)) patch.where = wanted.where;
+  } else if ('where' in patch) {
+    delete patch.where;
+  }
+  if (!sameJson(patch.value, wanted.value)) patch.value = wanted.value;
+}
+
+/** The items a patch adds, as a list (`value` is one item or a list of them). */
+function patchItems(patch) {
+  return Array.isArray(patch.value) ? patch.value : [patch.value];
+}
+
+/**
+ * Whether the patch `last` can say `delta` (the patch an edit asks for, computed from the value the field has now) instead of a patch after it: a `SET` of the whole value says
+ * the new value (`after`); an `ADD` gains the items, a `MERGE` the keys; a `SET` with `where` takes the fields when it finds the relationship `delta.where` finds once it has
+ * run. Changes the patch and returns true, or leaves it and returns false.
+ */
+function absorbIntoPatch(last, delta, after) {
+  const operator = String(last.operator).toUpperCase();
+  if (operator === 'SET' && !last.where) {
+    last.value = readIsMissing(after) ? (Array.isArray(last.value) ? [] : {}) : after;
+    return true;
+  }
+  if (operator === 'ADD' && delta.operator === 'ADD') {
+    const items = patchItems(last).concat(patchItems(delta));
+    last.value = items.length === 1 ? items[0] : items;
+    return true;
+  }
+  if (operator === 'MERGE' && delta.operator === 'MERGE' && isPlainJsonObject(last.value)) {
+    last.value = Object.assign({}, last.value, delta.value);
+    return true;
+  }
+  if (operator === 'SET' && last.where && delta.operator === 'SET' && delta.where && isPlainJsonObject(last.value) && isPlainJsonObject(delta.value)) {
+    const destination = 'destination' in last.value ? String(last.value.destination) : String(last.where.destination);
+    const label = 'label' in last.value ? String(last.value.label) : (readIsMissing(last.where.label) ? '' : String(last.where.label));
+    if (destination === delta.where.destination && label === (readIsMissing(delta.where.label) ? '' : String(delta.where.label))) {
+      last.value = Object.assign({}, last.value, delta.value);
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Whether a `SET` with `where` only says what the relationship it finds already says without that patch (relabeled and then relabeled back): it can go. */
+function patchSaysNothingNew(plateau, patch, category, reference, field) {
+  const base = fieldBaseWithout(plateau, patch, category, reference, field);
+  if (!base.known || !Array.isArray(base.value) || !isPlainJsonObject(patch.value)) return false;
+  const label = readIsMissing(patch.where.label) ? '' : String(patch.where.label);
+  const found = base.value.filter((item) => isPlainJsonObject(item) && item.destination === patch.where.destination && (readIsMissing(item.label) ? '' : String(item.label)) === label);
+  return found.length === 1 && Object.keys(patch.value).every((key) => sameJson(found[0][key], patch.value[key]));
+}
+
+/**
+ * Writes the change of one field of an inherited element (or of one a patch of the plateau already sets) as a patch of the plateau, and returns the manifest written.
+ *   - the plateau has no patch on (target, field): one is added at the end (`patchFor`, from the value the field has now);
+ *   - it has one that sets the whole value (`SET`): that patch says the new value, or is taken out when the field is back to what it was before it;
+ *   - it has one that adds or merges (`ADD`, `MERGE`, `SET` with `where`): that patch is changed when the edit is of its kind, taken out when the field is back to what it was
+ *     before it, and otherwise a patch for the edit is added at the end (an `ADD` of a relationship stays when another relationship is relabeled). A patch is never put in the middle of the list: the comment above a patch of the author's would end up above the new one.
+ */
+function writePatchChange(plateau, category, reference, change) {
+  const mf = ensurePlateauManifest(plateau);
+  if (!Array.isArray(mf.content.patches)) mf.content.patches = [];
+  const patches = mf.content.patches;
+  const mine = plateauPatchesOn(plateau, category, reference, change.field);
+  const now = { known: true, value: change.before };
+  if (mine.length === 0) {
+    const wanted = patchFor(change.field, now, change.after);
+    if (wanted) patches.push(newPatchObject(category, reference, change.field, wanted));
+  } else if (mine.length > 1) {
+    // several patches on the field (a relationship added, another relabeled): none is rewritten; the last absorbs an edit of its kind, else the edit is a patch at the end
+    const last = mine[mine.length - 1].patch;
+    const delta = patchFor(change.field, now, change.after);
+    if (delta && !absorbIntoPatch(last, delta, change.after)) patches.push(newPatchObject(category, reference, change.field, delta));
+    else if (delta && last.where && patchSaysNothingNew(plateau, last, category, reference, change.field)) patches.splice(patches.indexOf(last), 1); // relabeled and relabeled back
+  } else {
+    const patch = mine[0].patch;
+    const operator = String(patch.operator).toUpperCase();
+    const base = fieldBaseWithout(plateau, patch, category, reference, change.field);
+    const inPlace = patchFor(change.field, base, change.after);
+    if (base.known && !inPlace) {
+      patches.splice(patches.indexOf(patch), 1);
+    } else if (operator === 'SET' && !patch.where) {
+      updatePatchInPlace(patch, { operator: 'SET', value: readIsMissing(change.after) ? (Array.isArray(change.before) ? [] : {}) : change.after });
+    } else if (inPlace && inPlace.operator === operator && sameJson(inPlace.where, patch.where)) {
+      updatePatchInPlace(patch, inPlace);
+    } else {
+      const delta = patchFor(change.field, now, change.after);
+      if (delta) patches.push(newPatchObject(category, reference, change.field, delta));
+    }
+  }
+  if (!patches.length) delete mf.content.patches;
+  return mf;
+}
+
+/** The sentence for a field that cannot be written because of a patch the author wrote by hand (a free `json-path`, which the editor shows and does not edit field by field). */
+function handWrittenPatchSentence(record, field, plateau) {
+  const last = record.patched ? record.patched.get(field) : null;
+  if (!last || last.plateau !== plateau || last.operator === 'REMOVE' || !/^json-path /.test(String(last.selector))) return null;
+  return 'Not written: `' + field + '` of `' + record.reference + '` is set by patch ' + last.rank + ' of the plateau `' + plateau + '` (' + last.operator + ' ' + last.selector + '), which was written by hand with a free `json-path`: the editor shows it and does not edit it field by field. Edit the patch in Files. Nothing was changed.';
+}
+
+/**
+ * What an edit of an element does in a layered plateau. The mutator is tried on a copy of the element as the plateau resolves it; the fields it changes are each written where
+ * they belong (`route`): `manifest` (the element is declared in the plateau, and no patch of the plateau sets the field), else `patch` (the plateau has a patch on the field, or
+ * inherits the element). Returns `{ changes: [{ field, before, after, route }], renamed }`, or throws the sentence that refuses the edit.
+ */
+function planLayerElementEdit(plateau, record, category, reference, mutatorFn) {
+  const resolved = resolvedNodeOf(plateau, category, reference);
+  if (!resolved) throw new Error('"' + reference + '" cannot be found in the plateau `' + plateau + '`; nothing was changed.');
+  const trial = clonePlain(resolved);
+  const outcome = mutatorFn(trial, null, null);
+  const renamed = (outcome && outcome.renamedTo) || (String(trial.id) !== String(resolved.id) ? { from: reference, to: null } : null);
+  if (renamed && plateau !== BASELINE_PLATEAU && record.declaredIn !== plateau) {
+    throw new Error('Not written: `' + reference + '` is declared in the plateau `' + record.declaredIn + '`, and a patch never changes an id: it is renamed where it is declared. Draw `' + record.declaredIn + '` to rename it. Nothing was changed.');
+  }
+  if (String(trial.kind) !== String(resolved.kind)) throw new Error('Not written: the kind of an element is not edited here. Nothing was changed.');
+  const located = plateau !== BASELINE_PLATEAU && record.declaredIn === plateau ? locateContentNode(reference, category, record) : null;
+  const changes = [];
+  for (const field of Array.from(new Set(Object.keys(resolved).concat(Object.keys(trial)))).sort(compareUnits)) {
+    if (field === 'id' || field === 'elements' || field === 'kind') continue;
+    if (sameJson(resolved[field], trial[field])) continue;
+    const change = { field, before: copyJson(resolved[field]), after: copyJson(trial[field]), route: 'manifest' };
+    if (plateau !== BASELINE_PLATEAU) {
+      const handWritten = handWrittenPatchSentence(record, field, plateau);
+      if (handWritten) throw new Error(handWritten);
+      const mine = plateauPatchesOn(plateau, category, reference, field);
+      if (mine.length >= 1 || !located || !sameJson(located.node[field], resolved[field])) change.route = 'patch';
+      if (change.route === 'patch' && readIsMissing(trial[field]) && !Array.isArray(resolved[field]) && !isPlainJsonObject(resolved[field])) {
+        throw new Error('Not written: `' + field + '` of `' + reference + '` comes from another plateau, and a patch can set a value but not take it out. Write a new text, or draw `' + record.declaredIn + '` to clear it. Nothing was changed.');
+      }
+    }
+    changes.push(change);
+  }
+  if (renamed && changes.some((change) => change.route === 'patch')) {
+    throw new Error('Not written: `' + reference + '` is renamed and a patch of the plateau `' + plateau + '` sets a field in the same edit (' + changes.filter((change) => change.route === 'patch').map((change) => change.field).join(', ') + '): save the rename, then the change. Nothing was changed.');
+  }
+  return { changes, renamed };
+}
+
+/** After a write: the resolution of the plateau gives back every field that was edited (an empty list or object stands for an absent one), and the new reference of a renamed element. Throws the sentence otherwise. */
+function verifyLayerElementEdit(plateau, category, reference, plan) {
+  const target = plan.renamed && plan.renamed.to ? plan.renamed.to : reference;
+  const node = resolvedNodeOf(plateau, category, target);
+  const refused = node ? null : layerStateOf(plateau, AppState.workspace.settings);
+  if (refused && refused.fatal) throw new Error('Not written: the plateau `' + plateau + '` could no longer be resolved (' + oneLine(refused.fatal[0]) + '). Nothing was changed.');
+  if (!node) throw new Error('Not written: after the edit the plateau `' + plateau + '` has no element `' + target + '`. Nothing was changed.');
+  for (const change of plan.changes) {
+    const empty = Array.isArray(change.before) || Array.isArray(change.after) ? [] : isPlainJsonObject(change.before) || isPlainJsonObject(change.after) ? {} : undefined;
+    const wanted = readIsMissing(change.after) ? empty : change.after;
+    const got = readIsMissing(node[change.field]) ? empty : node[change.field];
+    if (!sameJson(got, wanted)) {
+      throw new Error('Not written: the resolution of the plateau `' + plateau + '` does not give back the new `' + change.field + '` of `' + target + '` (it reads ' + oneLine(JSON.stringify(got === undefined ? null : got)).slice(0, 80) + '). Nothing was changed.');
+    }
+  }
+}
+
+/** The edit of an element in a layered plateau (see `planLayerElementEdit`), under `guardedLayerWrite`. */
+function commitLayeredElementEdit(plateau, reference, mutatorFn, layer, options) {
+  const category = layerOfReference(reference, layer);
+  const record = category ? AppState.index[category].get(reference) : null;
+  if (!record) return commitElementEditNow(reference, mutatorFn, layer, options); // says it cannot be found
+  const label = record.name || reference;
+  const base = {
+    plateau, confirmed: !!options.confirmed, afterConfirm: options.afterConfirm, summary: 'Edit “' + label + '” in the plateau `' + plateau + '`',
+    again: () => commitElementEdit(reference, mutatorFn, layer, Object.assign({}, options, { confirmed: true }))
+  };
+  if (options.live) {
+    // the mutator edits the file that declares the element itself (a move, a child written in the file of its parent): it must be a file of the plateau written
+    if (plateau !== BASELINE_PLATEAU && record.declaredIn !== plateau) {
+      throw new Error('Not written: `' + reference + '` is declared in the plateau `' + record.declaredIn + '`, not in `' + plateau + '`, and a patch never changes where an element is. Draw `' + record.declaredIn + '` to do it. Nothing was changed.');
+    }
+    return guardedLayerWrite(Object.assign(base, {
+      write: () => commitElementEditNow(reference, mutatorFn, layer, options),
+      verify: (result) => verifyLayerElementEdit(plateau, category, reference, { changes: [], renamed: result && result.renamedTo ? result.renamedTo : null })
+    }));
+  }
+  const plan = planLayerElementEdit(plateau, record, category, reference, mutatorFn);
+  const inherited = plateau !== BASELINE_PLATEAU && record.declaredIn !== plateau;
+  if (!plan.changes.length && !plan.renamed && inherited) { // nothing to say: nothing is written, and the file of another plateau is not marked
+    saveStatus = { state: 'idle' };
+    rebuildIndexAndRender();
+    return undefined;
+  }
+  const write = plan.changes.every((change) => change.route === 'manifest')
+    ? () => commitElementEditNow(reference, mutatorFn, layer, options)
+    : () => writeMixedElementEdit(plateau, record, category, reference, plan);
+  return guardedLayerWrite(Object.assign(base, { write, verify: () => verifyLayerElementEdit(plateau, category, reference, plan) }));
+}
+
+/** An edit whose fields do not all belong in the same file: the ones of the manifest that declares the element are set on it, the others are patches of the plateau. */
+function writeMixedElementEdit(plateau, record, category, reference, plan) {
+  const touched = new Set();
+  for (const change of plan.changes) {
+    if (change.route === 'patch') {
+      touched.add(writePatchChange(plateau, category, reference, change));
+    } else {
+      const located = locateContentNode(reference, category, record);
+      if (readIsMissing(change.after)) delete located.node[change.field]; else located.node[change.field] = clonePlain(change.after);
+      touched.add(located.mf);
+    }
+  }
+  for (const mf of touched) touchManifest(mf);
+  AppState.dirtyReferences.add(nodeKey(reference, category));
+  saveStatus = { state: 'idle' };
+  rebuildIndexAndRender();
+  return undefined;
+}
+
+/** An inherited element is taken out by a `REMOVE` patch at the end of the patches of the plateau: the kernel takes what is in it and what points at it. */
+function writeRemovePatch(plateau, category, reference) {
+  const mf = ensurePlateauManifest(plateau);
+  if (!Array.isArray(mf.content.patches)) mf.content.patches = [];
+  const patch = { operator: 'REMOVE', target: reference };
+  if (category === 'technology') patch.layer = 'technology';
+  mf.content.patches.push(patch);
+  touchManifest(mf);
+  forgetUiReferences(computeDeletedReferenceSet(reference, category), category);
+  pendingDeleteConfirmation = null;
+  saveStatus = { state: 'idle' };
+  rebuildIndexAndRender();
+}
+
+/**
+ * Takes out of the patches of a plateau the ones that name an element that was deleted from its own manifests (their `target`, the relationship they find with `where`, the
+ * relationships they add): left in, the plateau would no longer resolve. Returns whether the manifest of the plateau changed.
+ */
+function prunePatchesNaming(plateau, deletedRefs, category) {
+  const mf = plateauManifestFile(plateau);
+  if (!mf || !Array.isArray(mf.content.patches)) return null;
+  const gone = (value) => (typeof value === 'string' || typeof value === 'number') && deletedRefs.has(String(value));
+  const patchLayer = (patch) => (readIsMissing(patch.layer) ? 'application' : String(patch.layer).toLowerCase());
+  const kept = [];
+  let modified = false;
+  // what a patch adds or sets as a list of references: the destinations of relationships, the applications a node hosts, the elements an environment uses
+  const listOf = (patch) => {
+    const field = String(patch.field);
+    if (field === 'relationships' && patchLayer(patch) === category) return { items: Array.isArray(patch.value) ? patch.value : [patch.value], named: (item) => isPlainJsonObject(item) && gone(item.destination) };
+    if (field === 'applications' && category === 'application' && patchLayer(patch) === 'technology') return { items: Array.isArray(patch.value) ? patch.value : [patch.value], named: gone };
+    if (field === 'uses' && category === 'technology' && patchLayer(patch) === 'technology') return { items: Array.isArray(patch.value) ? patch.value : [patch.value], named: gone };
+    return null;
+  };
+  for (const patch of mf.content.patches) {
+    if (patch && typeof patch === 'object') {
+      if (patchLayer(patch) === category && (gone(readIsMissing(patch.target) ? null : String(patch.target)) || (isPlainJsonObject(patch.where) && gone(patch.where.destination)))) { modified = true; continue; }
+      const operator = String(patch.operator).toUpperCase();
+      const list = !readIsMissing(patch.value) && (operator === 'ADD' || operator === 'SET') && !patch.where ? listOf(patch) : null;
+      if (list) {
+        const left = list.items.filter((item) => !list.named(item));
+        if (left.length !== list.items.length) {
+          modified = true;
+          if (!left.length && operator === 'ADD') continue; // nothing is left to add
+          patch.value = Array.isArray(patch.value) ? left : left[0];
+        }
+      }
+    }
+    kept.push(patch);
+  }
+  if (!modified) return null;
+  if (kept.length) mf.content.patches = kept; else delete mf.content.patches;
+  return mf;
+}
+
+// ---- Plateaus: created, named, given a horizon and a parent ----
+
+const PLATEAU_CONTENT_ORDER = ['id', 'name', 'horizon', 'override', 'patches'];
+
+/** Sets `key` of the content of a plateau manifest (or takes it out when `value` is empty), placing a new key where the order `id, name, horizon, override, patches` puts it. */
+function setPlateauContentKey(content, key, value) {
+  const empty = readIsMissing(value) || String(value).trim() === '';
+  if (empty) {
+    delete content[key];
+    return;
+  }
+  if (key in content) {
+    if (String(content[key]) !== String(value)) content[key] = value;
+    return;
+  }
+  const later = PLATEAU_CONTENT_ORDER.slice(PLATEAU_CONTENT_ORDER.indexOf(key) + 1).find((other) => other in content);
+  if (later) insertKeyBefore(content, later, key, value); else content[key] = value;
+}
+
+/** The sentence that refuses an id for a new plateau, or null. */
+function plateauIdProblem(id) {
+  if (id === '') return 'A plateau needs an id.';
+  if (!LAYER_PLATEAU_ID_PATTERN.test(id)) return 'The id of a plateau uses lowercase letters, digits, `_` and `-` (no dot, no space).';
+  if (AppState.plateauTree.nodes.has(id) || AppState.plateauTree.ids.includes(id)) return 'The plateau `' + id + '` exists already.';
+  return null;
+}
+
+/**
+ * Creates a plateau that overrides `spec.parent` (baseline by default): a manifest of kind `archicode.morin.io/plateau` with its id, name, horizon and `override`
+ * (not written when the parent is baseline, which is what an absent `override` means). Under `guardedLayerWrite`. Returns `{ relPath }` or `{ pending: true }`.
+ */
+function commitPlateauCreate(spec, options) {
+  const id = String(spec.id === undefined || spec.id === null ? '' : spec.id).trim();
+  const parent = readIsMissing(spec.parent) || spec.parent === '' ? BASELINE_PLATEAU : String(spec.parent);
+  const problem = plateauIdProblem(id);
+  if (problem) throw new Error(problem);
+  if (!AppState.plateauTree.nodes.has(parent)) throw new Error('The plateau `' + parent + '` does not exist, so `' + id + '` cannot override it.');
+  const name = readIsMissing(spec.name) ? '' : String(spec.name).trim();
+  const horizon = readIsMissing(spec.horizon) ? '' : String(spec.horizon).trim();
+  return guardedLayerWrite({
+    plateau: id,
+    confirmed: !!(options && options.confirmed),
+    summary: 'Create the plateau `' + id + '` over `' + parent + '`',
+    again: () => commitPlateauCreate(spec, Object.assign({}, options, { confirmed: true })),
+    write: () => {
+      const header = { kind: ARCHICODE_KIND_PREFIX + 'plateau', version: '1' };
+      const content = { id };
+      setPlateauContentKey(content, 'name', name);
+      setPlateauContentKey(content, 'horizon', horizon);
+      if (parent !== BASELINE_PLATEAU) setPlateauContentKey(content, 'override', parent);
+      const dir = firstManifestsDir();
+      const relPath = allocateManifestRelPath(dir === undefined ? 'manifests' : dir, 'plateau.', id);
+      const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
+      adoptRemovedFile(mf);
+      AppState.manifestFiles.push(mf);
+      AppState.manifestFiles.sort((a, b) => compareCodePoints(a.relPath, b.relPath));
+      saveStatus = { state: 'idle' };
+      rebuildIndexAndRender();
+      return { relPath };
+    },
+    verify: () => {
+      const node = AppState.plateauTree.nodes.get(id);
+      if (!node || node.parent !== parent) throw new Error('Not written: the new plateau `' + id + '` does not read back as a plateau over `' + parent + '`. Nothing was changed.');
+    }
+  });
+}
+
+/**
+ * Renames a plateau, gives it a horizon or another parent, in its manifest of kind `archicode.morin.io/plateau` (one is made when the plateau exists through headers only).
+ * `spec`: { id, name, horizon, parent } (`parent` is ignored for baseline, which overrides nothing). A plateau cannot go under itself or under a plateau that overrides it.
+ * Under `guardedLayerWrite`: a new parent changes what the plateau inherits, so the plateaus it changes are told first.
+ */
+function commitPlateauEdit(spec, options) {
+  const id = String(spec.id);
+  const node = AppState.plateauTree.nodes.get(id);
+  if (!node) throw new Error('The plateau `' + id + '` does not exist.');
+  const name = readIsMissing(spec.name) ? '' : String(spec.name).trim();
+  const horizon = readIsMissing(spec.horizon) ? '' : String(spec.horizon).trim();
+  const parent = id === BASELINE_PLATEAU ? null : (readIsMissing(spec.parent) || spec.parent === '' ? BASELINE_PLATEAU : String(spec.parent));
+  if (parent !== null) {
+    if (!AppState.plateauTree.nodes.has(parent)) throw new Error('The plateau `' + parent + '` does not exist, so `' + id + '` cannot override it.');
+    if (parent === id || layerIsBelow(parent, id)) throw new Error('The plateau `' + id + '` cannot override `' + parent + '`: it would override itself.');
+  }
+  const unchanged = (node.name || '') === name && (node.horizon || '') === horizon && node.parent === parent;
+  if (unchanged) return { unchanged: true };
+  return guardedLayerWrite({
+    plateau: id,
+    confirmed: !!(options && options.confirmed),
+    summary: 'Edit the plateau `' + id + '`',
+    again: () => commitPlateauEdit(spec, Object.assign({}, options, { confirmed: true })),
+    write: () => {
+      const mf = ensurePlateauManifest(id);
+      setPlateauContentKey(mf.content, 'name', name);
+      setPlateauContentKey(mf.content, 'horizon', horizon);
+      if (parent !== null && node.parent !== parent) setPlateauContentKey(mf.content, 'override', parent === BASELINE_PLATEAU ? '' : parent);
+      touchManifest(mf);
+      saveStatus = { state: 'idle' };
+      rebuildIndexAndRender();
+      return { relPath: mf.relPath };
+    },
+    verify: () => {
+      const now = AppState.plateauTree.nodes.get(id);
+      if (!now || (now.name || '') !== name || (now.horizon || '') !== horizon || now.parent !== parent) {
+        throw new Error('Not written: the plateau `' + id + '` does not read back as it was edited. Nothing was changed.');
+      }
+    }
+  });
 }
 
 /**
@@ -7080,7 +7868,17 @@ function rebuildIndexAndRender() {
  * rejected action never reaches here, so no validation happens inside.
  */
 function commitElementEdit(reference, mutatorFn, layer, options) {
-  if (!(options && options.allowReadOnly)) requireWritablePlateau(); // wave 014 (run 0080): see `readOnlyPlateauMessage`
+  const given = options || {};
+  if (!given.allowReadOnly) requireWritablePlateau(); // wave 014 (run 0080): see `readOnlyPlateauMessage`
+  // wave 014 (run 0082): in a layered workspace the edit goes where the plateau drawn keeps it (a field of the manifest, or a patch), under `guardedLayerWrite`.
+  // `options.live`: the mutator edits the manifest that declares the element itself (a move, a child written in its parent's file). `options.confirmed`: the author said yes to the plateaus it changes.
+  const plateau = given.allowReadOnly ? null : writingPlateau();
+  if (plateau !== null) return commitLayeredElementEdit(plateau, reference, mutatorFn, layer, given);
+  return commitElementEditNow(reference, mutatorFn, layer, options);
+}
+
+/** `commitElementEdit` in the manifest that declares the element: the edit of a workspace that is not layered, of baseline, and of an element a plateau declares. */
+function commitElementEditNow(reference, mutatorFn, layer, options) {
   const located = locateContentNode(reference, layer, options && options.record);
   if (!located) {
     throw new Error('"' + reference + '" cannot be found in the loaded manifests (it may have been removed or renamed); nothing was changed.');
@@ -7190,8 +7988,23 @@ function adoptRemovedFile(mf) {
  * a rejected submission never reaches it (same discipline W-3's DEC-9
  * already established for every other commit path).
  */
-function commitCreateTopLevelElement({ category, headerKind, attachUnderReference, id, name, description }) {
+function commitCreateTopLevelElement(spec, options) {
   requireWritablePlateau();
+  const plateau = writingPlateau();
+  if (plateau === null) return commitCreateTopLevelElementNow(spec, null);
+  // wave 014 (run 0082): in a layered workspace the new manifest says `plateau: <the plateau drawn>` in its header, under `guardedLayerWrite`
+  return guardedLayerWrite({
+    plateau, confirmed: !!(options && options.confirmed), afterConfirm: options && options.afterConfirm, summary: 'Add “' + spec.id + '” to the plateau `' + plateau + '`',
+    again: () => commitCreateTopLevelElement(spec, Object.assign({}, options, { confirmed: true })),
+    write: () => commitCreateTopLevelElementNow(spec, plateau),
+    verify: (created) => {
+      if (!AppState.index[spec.category].has(created.createdReference)) throw new Error('Not written: the plateau `' + plateau + '` does not read back the new element `' + created.createdReference + '`. Nothing was changed.');
+    }
+  });
+}
+
+/** `commitCreateTopLevelElement`, writing the manifest with `plateau: <plateau>` in its header when `plateau` is a plateau other than baseline. */
+function commitCreateTopLevelElementNow({ category, headerKind, attachUnderReference, id, name, description }, plateau) {
   const idCheck = validateElementId(id);
   if (!idCheck.valid) throw new Error(idCheck.error);
   const reference = attachUnderReference ? (attachUnderReference + '.' + id) : id;
@@ -7199,11 +8012,12 @@ function commitCreateTopLevelElement({ category, headerKind, attachUnderReferenc
     throw new Error('Another element already uses reference "' + reference + '".');
   }
   const header = { kind: ARCHICODE_KIND_PREFIX + headerKind, version: '1' };
+  if (plateau !== null && plateau !== BASELINE_PLATEAU) header.plateau = plateau;
   if (attachUnderReference) header.parent = attachUnderReference;
   const content = { id };
   if (name) content.name = name;
   if (description) content.description = description;
-  const manifestsDir = firstManifestsDir();
+  const manifestsDir = plateau !== null ? plateauFolderFor(plateau, category) : firstManifestsDir();
   const relPath = allocateManifestRelPath(manifestsDir === undefined ? 'manifests' : manifestsDir, category === 'application' ? 'app.' : 'env.', reference);
   const mf = {
     relPath, header, content, error: null,
@@ -7225,7 +8039,7 @@ function commitCreateTopLevelElement({ category, headerKind, attachUnderReferenc
  * `{ ok: true, createdReference }` or `{ ok: false, field: 'kind' | 'id', error }` when the submission is rejected,
  * leaving the model untouched.
  */
-function commitCreateChildElement({ parentReference, layer, kind, id, name, description }) {
+function commitCreateChildElement({ parentReference, layer, kind, id, name, description, confirmed }) {
   const category = layerOfReference(parentReference, layer);
   const parentRecord = category ? AppState.index[category].get(parentReference) : null;
   if (!parentRecord) return { ok: false, field: 'kind', error: 'The parent "' + parentReference + '" does not exist.' };
@@ -7236,18 +8050,33 @@ function commitCreateChildElement({ parentReference, layer, kind, id, name, desc
   if (AppState.index[category].has(createdReference)) {
     return { ok: false, field: 'id', error: 'Another element already uses reference "' + createdReference + '".' };
   }
+  const plateau = writingPlateau();
+  const afterConfirm = () => { AppState.selection = { kind: 'element', key: createdReference, layer: category, mode: 'edit' }; render(); }; // after the author said yes, as after the click
+  // wave 014 (run 0082): a child of an element another plateau declares is a manifest of the plateau drawn, with `header.parent`; it cannot be written in the file of its parent
+  const inheritedParent = plateau !== null && plateau !== BASELINE_PLATEAU && parentRecord.declaredIn !== plateau;
   try {
-    commitElementEdit(parentReference, (node) => {
-      node.elements = Array.isArray(node.elements) ? node.elements.slice() : [];
-      const child = { kind, id: idCheck.id };
-      if (name) child.name = name;
-      if (description) child.description = description;
-      node.elements.push(child);
-    }, category);
+    let written;
+    if (inheritedParent) {
+      const headerKind = kind === 'group' ? parentRecord.level + '-group' : kind;
+      if (!ARCHICODE_KIND_MAP[headerKind]) {
+        return { ok: false, field: 'kind', error: 'A ' + kind + ' under “' + parentReference + '” (declared in the plateau `' + parentRecord.declaredIn + '`) cannot be written in a manifest of its own: draw `' + parentRecord.declaredIn + '` to add it.' };
+      }
+      written = commitCreateTopLevelElement({ category, headerKind, attachUnderReference: parentReference, id: idCheck.id, name, description }, { confirmed, afterConfirm });
+    } else {
+      written = commitElementEdit(parentReference, (node) => {
+        node.elements = Array.isArray(node.elements) ? node.elements.slice() : [];
+        const child = { kind, id: idCheck.id };
+        if (name) child.name = name;
+        if (description) child.description = description;
+        node.elements.push(child);
+        // UX review follow-up: the new child is wholly unsaved on its own, independent of the parent's own dirty state
+        AppState.dirtyReferences.add(nodeKey(createdReference, category));
+      }, category, { live: true, confirmed, afterConfirm });
+    }
+    if (written && written.pending) return { ok: true, pending: true, layer: category };
   } catch (e) {
     return { ok: false, field: 'kind', error: e && e.message ? e.message : String(e) };
   }
-  // UX review follow-up: the new child is wholly unsaved on its own, independent of the parent's own dirty state
   AppState.dirtyReferences.add(nodeKey(createdReference, category));
   return { ok: true, createdReference, layer: category };
 }
@@ -7345,7 +8174,7 @@ function walkContentNodes(mf, fn) {
  */
 function computeDeletedManifestFiles(deletedRefs, category) {
   return AppState.manifestFiles
-    .filter((mf) => manifestLayer(mf) === category && deletedRefs.has(manifestRootReference(mf)))
+    .filter((mf) => manifestLayer(mf) === category && deletedRefs.has(manifestRootReference(mf)) && writeScopeHas(mf))
     .map((mf) => mf.relPath);
 }
 
@@ -7375,8 +8204,28 @@ function computeDeleteImpact(reference, category) {
  * those are rebuilt fresh on every `buildIndex` call (the same reasoning
  * TDD-0009's DEC-4/`locateContentNode` already established).
  */
-function commitDeleteElement(reference, category, affected) {
+function commitDeleteElement(reference, category, affected, options) {
   requireWritablePlateau();
+  const plateau = writingPlateau();
+  if (plateau === null) return commitDeleteElementNow(reference, category, affected, null);
+  // wave 014 (run 0082): an element the plateau declares is deleted from its manifests; one it inherits is taken out by a `REMOVE` patch (the kernel takes what is in it
+  // and what points at it). Either way under `guardedLayerWrite`.
+  category = layerOfReference(reference, category);
+  const record = category ? AppState.index[category].get(reference) : null;
+  if (!record) throw new Error('"' + reference + '" cannot be found in the loaded manifests; nothing was deleted.');
+  const inherited = plateau !== BASELINE_PLATEAU && record.declaredIn !== plateau;
+  return guardedLayerWrite({
+    plateau, confirmed: !!(options && options.confirmed), summary: 'Delete “' + (record.name || reference) + '” in the plateau `' + plateau + '`',
+    again: () => commitDeleteElement(reference, category, affected, Object.assign({}, options, { confirmed: true })),
+    write: () => (inherited ? writeRemovePatch(plateau, category, reference) : commitDeleteElementNow(reference, category, affected, plateau)),
+    verify: () => {
+      if (AppState.index[category].has(reference)) throw new Error('Not written: the plateau `' + plateau + '` still has `' + reference + '` after the delete. Nothing was changed.');
+    }
+  });
+}
+
+/** `commitDeleteElement` in the manifests: the delete of a workspace that is not layered, of baseline, and of an element the plateau drawn declares (the patches of that plateau that name it go too). */
+function commitDeleteElementNow(reference, category, affected, plateau) {
   category = layerOfReference(reference, category);
   const located = category ? locateContentNode(reference, category) : null;
   if (!located) {
@@ -7391,6 +8240,7 @@ function commitDeleteElement(reference, category, affected) {
   const removedFiles = new Set(computeDeletedManifestFiles(deletedRefs, category));
   for (const mf of AppState.manifestFiles) {
     if (removedFiles.has(mf.relPath)) continue; // gone with the subtree: nothing to prune in it
+    if (!writeScopeHas(mf)) continue; // a plateau beside the one drawn may declare the same reference: it is another element
     const mfLayer = manifestLayer(mf);
     if (mfLayer === null) continue;
     walkContentNodes(mf, (node, ownerRef) => {
@@ -7441,6 +8291,10 @@ function commitDeleteElement(reference, category, affected) {
     }
   }
   AppState.manifestFiles = AppState.manifestFiles.filter((f) => !removedFiles.has(f.relPath));
+  if (plateau !== null && plateau !== BASELINE_PLATEAU) { // a patch of the plateau that names a deleted element would no longer resolve
+    const pruned = prunePatchesNaming(plateau, deletedRefs, category);
+    if (pruned) touchedRelPaths.add(pruned.relPath);
+  }
 
   // The deleted elements no longer exist — drop what the UI kept about them (a stale pin on the map would silently
   // come back on a later element with the same reference).
@@ -8083,7 +8937,17 @@ function forgetUiReferences(deletedRefs, layer) {
 function rewriteInboundReferences(oldRef, newRef, layer) {
   const changedFiles = [];
   rewriteSavedViewReferences(oldRef, newRef, layer); // the views of workspace.yaml that point at it follow
+  const layered = writingPlateau() !== null;
   for (const mf of AppState.manifestFiles) {
+    if (!writeScopeHas(mf)) continue;
+    if (layered && !mf.error && mf.header && manifestKindName(mf.header.kind) === 'plateau') { // wave 014 (run 0082): the patches of a plateau name elements too
+      if (rewritePatchReferences(mf, oldRef, newRef, layer)) {
+        mf.rawText = reserializeManifestFile(mf);
+        mf.dirty = true;
+        changedFiles.push(mf.relPath);
+      }
+      continue;
+    }
     const mfLayer = manifestLayer(mf);
     if (mfLayer === null) continue;
     let changed = false;
@@ -8098,6 +8962,10 @@ function rewriteInboundReferences(oldRef, newRef, layer) {
           const destination = rewriteReferenceValue(rel.destination, oldRef, newRef);
           if (destination !== rel.destination) { rel.destination = destination; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
         }
+      }
+      if (layered && mfLayer === layer && Array.isArray(node.replaces)) { // `replaces` names elements of the plateau below: they follow the rename, in a layered workspace
+        const replaces = node.replaces.map((entry) => rewriteReferenceValue(entry, oldRef, newRef));
+        if (replaces.some((entry, i) => entry !== node.replaces[i])) { node.replaces = replaces; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
       }
       if (layer === 'technology' && mfLayer === 'technology' && Array.isArray(node.uses)) {
         const uses = node.uses.map((u) => rewriteReferenceValue(u, oldRef, newRef));
@@ -8115,6 +8983,42 @@ function rewriteInboundReferences(oldRef, newRef, layer) {
     }
   }
   return changedFiles;
+}
+
+/**
+ * The patches of a plateau follow a rename (wave 014, run 0082): the `target` of a patch, the relationship it finds with `where` or adds, and the references an `applications` or
+ * `uses` patch lists. A `json-path` is written by hand and is not rewritten (the plateau is refused if it no longer selects what it did). True when something changed.
+ */
+function rewritePatchReferences(mf, oldRef, newRef, layer) {
+  if (!mf || mf.error || !mf.header || !mf.content || !Array.isArray(mf.content.patches)) return false;
+  let changed = false;
+  const follow = (holder, key) => {
+    if (typeof holder[key] !== 'string') return;
+    const next = rewriteReferenceValue(holder[key], oldRef, newRef);
+    if (next !== holder[key]) { holder[key] = next; changed = true; }
+  };
+  for (const patch of mf.content.patches) {
+    if (!patch || typeof patch !== 'object') continue;
+    const patchLayer = readIsMissing(patch.layer) ? 'application' : String(patch.layer).toLowerCase();
+    const field = readIsMissing(patch.field) ? '' : String(patch.field);
+    if (patchLayer === layer) {
+      if (readIsMissing(patch['json-path']) && readIsMissing(patch.json_path)) follow(patch, 'target');
+      if (patch.where && typeof patch.where === 'object') follow(patch.where, 'destination');
+      if (field === 'relationships') {
+        for (const item of Array.isArray(patch.value) ? patch.value : [patch.value]) if (item && typeof item === 'object') follow(item, 'destination');
+      }
+    }
+    // a node lists the application elements it deploys, an environment the environments and nodes it uses
+    if ((field === 'applications' && layer === 'application' && patchLayer === 'technology') || (field === 'uses' && layer === 'technology' && patchLayer === 'technology')) {
+      if (Array.isArray(patch.value)) {
+        const next = patch.value.map((entry) => rewriteReferenceValue(entry, oldRef, newRef));
+        if (next.some((entry, i) => entry !== patch.value[i])) { patch.value = next; changed = true; }
+      } else {
+        follow(patch, 'value');
+      }
+    }
+  }
+  return changed;
 }
 
 // =====================================================================
@@ -8199,6 +9103,7 @@ function scanMoveReferences(oldRef, layer) {
     if (inside(String(value))) result.unsafe.push(what + ' in ' + file + ' is written as ' + typeof value + ' ' + String(value));
   };
   for (const mf of AppState.manifestFiles) {
+    if (!writeScopeHas(mf)) continue;
     const mfLayer = manifestLayer(mf);
     if (mfLayer === null) continue;
     if (mfLayer === layer) look(mf.header.parent, 'the parent of ' + manifestRootReference(mf), mf.relPath);
@@ -8264,6 +9169,10 @@ function validateMove(reference, layer, newParentReference, options) {
   if (newParentReference.indexOf(reference + '.') === 0) return refuse('“' + newParentReference + '” is inside “' + reference + '”: an element cannot be moved into what it contains.');
   const record = index.get(reference);
   const parentRecord = index.get(newParentReference);
+  const writing = writingPlateau();
+  if (writing !== null && writing !== BASELINE_PLATEAU && record.declaredIn !== writing) { // wave 014 (run 0082)
+    return refuse('“' + reference + '” is declared in the plateau `' + record.declaredIn + '`, and a patch never changes a parent: it is moved where it is declared. Draw `' + record.declaredIn + '` to move it.');
+  }
   const located = locateContentNode(reference, layer);
   if (!located) return refuse('“' + reference + '” cannot be found in the manifests.');
   const parentNow = currentParentOf(reference, located);
@@ -8313,7 +9222,7 @@ function commitMoveElement(reference, layer, newParentReference, options) {
   const withReplaces = !!(options && options.writeReplaces);
   let written = 0;
   try {
-    commitElementEdit(reference, (node, parentArray, indexInParent) => {
+    const moved = commitElementEdit(reference, (node, parentArray, indexInParent) => {
       // the nodes that get a replaces are found now, while the old references still lead to them
       const owners = withReplaces ? plan.replaces.entries.map((entry) => ({ entry, node: locateContentNode(entry.from, plan.layer).node })) : [];
       const located = locateContentNode(reference, plan.layer);
@@ -8340,7 +9249,8 @@ function commitMoveElement(reference, layer, newParentReference, options) {
         written++;
       }
       return { renamedTo: { from: reference, to: plan.newReference } };
-    }, plan.layer);
+    }, plan.layer, { live: true, confirmed: !!(options && options.confirmed), afterConfirm: () => { expandAncestorsOf(plan.newReference, plan.layer); render(); } });
+    if (moved && moved.pending) return { ok: true, pending: true, reference, replaces: 0 };
   } catch (e) {
     return { ok: false, message: e && e.message ? e.message : String(e) };
   }
@@ -8412,6 +9322,13 @@ function openMoveDialog() {
   if (!sel || sel.kind !== 'element') return;
   const layer = layerOfReference(sel.key, sel.layer);
   if (!layer) return;
+  const writing = writingPlateau();
+  const record = AppState.index[layer].get(sel.key);
+  if (writing !== null && writing !== BASELINE_PLATEAU && record && record.declaredIn !== writing) { // wave 014 (run 0082): said at once, not after a parent was chosen
+    saveStatus = { state: 'denied', message: '“' + sel.key + '” is declared in the plateau `' + record.declaredIn + '`, and a patch never changes a parent: it is moved where it is declared. Draw `' + record.declaredIn + '` to move it.' };
+    render();
+    return;
+  }
   openAppDialog({ kind: 'move', reference: sel.key, layer });
 }
 
@@ -10377,11 +11294,12 @@ function commitElementWithDraft(reference, structuralFn) {
   if (!draft.valid) return false;
   try {
     // a rename rewrites the references to the element, in the model and in the UI state, inside the commit (DEC-8)
-    commitElementEdit(reference, (node) => {
+    const written = commitElementEdit(reference, (node) => {
       const renamed = draft.apply(node);
       if (structuralFn) structuralFn(node);
       return renamed;
     }, layer);
+    if (written && written.pending) return false; // wave 014 (run 0082): the author is asked first (the plateaus it changes); nothing is applied yet, and "Save all changes" waits
   } catch (e) {
     saveStatus = { state: 'error', failedFile: reference, message: e && e.message ? e.message : String(e) };
     render();
@@ -10457,6 +11375,10 @@ function renderElementEditionFormHtml(reference) {
     const deletedFiles = pendingDeleteConfirmation.files || [];
     html += '<div class="edition-section delete-confirmation">';
     html += '<h3>Confirm delete</h3>';
+    if (pendingDeleteConfirmation.removal) {
+      const removal = pendingDeleteConfirmation.removal;
+      html += '<p class="delete-removal">This adds a <code>REMOVE</code> patch to the plateau <code>' + escapeHtml(removal.plateau) + '</code>. The element stays in <code>' + escapeHtml(removal.declaredIn) + '</code> and in the plateaus that do not remove it; here the kernel takes it out, with what is inside it and the links towards it.</p>';
+    }
     // the whole subtree goes: what is nested in the element, and the manifests attached below it
     if (deletedReferences.length > 1) {
       html += '<p>This also deletes ' + (deletedReferences.length - 1) + ' element' + (deletedReferences.length === 2 ? '' : 's') + ' inside it:</p>' +
@@ -11797,7 +12719,11 @@ function timelineItemHtml(item, depth) {
       (broken ? '<span class="band-flag" role="img" aria-label="has mistakes" title="' + escapeHtml(broken[0]) + '">!</span>' : '') + '</div>' +
     '<div class="timeline-facts">' + timelineFactsHtml(item) + '</div>' +
     '<div class="timeline-changes">' + timelineChangesHtml(item.id) + '</div>' +
-    (parent && !disabled ? '<div class="timeline-actions"><button type="button" data-action="timeline-changes" data-plateau="' + escapeHtml(item.id) + '" title="Draw this plateau and list what it changes over ' + escapeHtml(item.node.parent) + ' in the Changes panel">Changes</button></div>' : '') +
+    (!layers.blocked || parent ? '<div class="timeline-actions">' +
+      (parent && !disabled ? '<button type="button" data-action="timeline-changes" data-plateau="' + escapeHtml(item.id) + '" title="Draw this plateau and list what it changes over ' + escapeHtml(item.node.parent) + ' in the Changes panel">Changes</button>' : '') +
+      (!layers.blocked ? '<button type="button" data-action="plateau-create" data-plateau="' + escapeHtml(item.id) + '" title="Create a plateau that overrides ' + escapeHtml(plateauTitle(model)) + '">New plateau after this</button>' +
+        (AppState.plateauTree.layered ? '<button type="button" data-action="plateau-edit" data-plateau="' + escapeHtml(item.id) + '" title="Rename this plateau, give it a horizon or another parent">Edit</button>' : '') : '') +
+      '</div>' : '') +
     '</li>';
 }
 
@@ -15317,8 +16243,10 @@ function applySavedView(view) {
 /** A new manifest of the editor's own kinds, in the first manifests folder, as the manifest of a new element is. */
 function createManifestEntry(kind, content) {
   requireWritablePlateau();
+  const plateau = writingPlateau();
   const header = { kind: ARCHICODE_KIND_PREFIX + kind, version: '1' };
-  const manifestsDir = firstManifestsDir();
+  if (plateau !== null && plateau !== BASELINE_PLATEAU) header.plateau = plateau; // wave 014 (run 0082): a new view or story belongs to the plateau drawn
+  const manifestsDir = plateau !== null ? plateauFolderFor(plateau) : firstManifestsDir();
   const relPath = allocateManifestRelPath(manifestsDir === undefined ? 'manifests' : manifestsDir, kind + '.', content.id);
   const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
   adoptRemovedFile(mf);
@@ -15332,6 +16260,7 @@ function createManifestEntry(kind, content) {
 /** The manifest of an entry leaves the model; its file goes with the next save (nothing to do for one that was never written). */
 function removeEntry(entry, key) {
   requireWritablePlateau();
+  requireWritableEntry(entry);
   const owner = entryOwners.get(entry);
   if (owner) {
     if (owner.existedOnDisk && !AppState.pendingFileRemovals.includes(owner.relPath)) {
@@ -15408,9 +16337,10 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
 function rewriteSavedViewReferences(oldRef, newRef, layer) {
   let changed = false;
   for (const view of allSavedViews()) {
-    if (rewriteRecipeReferences(view, oldRef, newRef, layer)) { markEntryChanged(view); changed = true; }
+    if (writeScopeHasEntry(view) && rewriteRecipeReferences(view, oldRef, newRef, layer)) { markEntryChanged(view); changed = true; }
   }
   for (const story of allStories()) {
+    if (!writeScopeHasEntry(story)) continue;
     let storyChanged = false;
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
       if (isPlainObject(step) && !step.view && rewriteRecipeReferences(step, oldRef, newRef, layer)) storyChanged = true;
@@ -15446,6 +16376,7 @@ function editSavedView(change, later) {
   if (writesRefused()) return false;
   const view = libraryPageView();
   if (!view) return false;
+  if (writesRefused(view)) return false;
   if (!isPlainObject(view.properties)) view.properties = {};
   viewEditNotice = null;
   const changed = change(view, view.properties) !== false;
@@ -15666,6 +16597,7 @@ function updateStoryField(field) {
   if (writesRefused()) return;
   const story = findStory(field.getAttribute('data-story'));
   if (!story) return;
+  if (writesRefused(story)) return;
   const name = field.getAttribute('data-story-field');
   const value = field.value;
   let target = story;
@@ -15735,6 +16667,27 @@ function renderAppDialogHtml() {
     title = move.title;
     body = move.body;
     actions = move.actions;
+  } else if (appDialog.kind === 'layer-confirm') {
+    title = 'Writing in ' + appDialog.plateau + ' changes other plateaus';
+    confirmLabel = 'Write in ' + appDialog.plateau;
+    body = '<p class="app-dialog-subject">' + escapeHtml(appDialog.summary) + '</p>' +
+      '<p>' + (appDialog.changed.length === 1 ? 'The plateau that inherits it changes too:' : 'The ' + appDialog.changed.length + ' plateaus that inherit it change too:') + '</p>' +
+      '<ul class="layer-confirm-list">' + appDialog.changed.map((id) => '<li><code>' + escapeHtml(id) + '</code>' + (layerPlateauModel(id).name ? ' ' + escapeHtml(layerPlateauModel(id).name) : '') + '</li>').join('') + '</ul>';
+  } else if (appDialog.kind === 'plateau-form') {
+    const v = appDialog.values;
+    const creating = appDialog.mode === 'create';
+    const tree = AppState.plateauTree;
+    const choices = bandOrderOf(tree).filter((id) => creating || (id !== appDialog.plateau && !layerIsBelow(id, appDialog.plateau)));
+    title = creating ? 'New plateau' : 'Edit the plateau ' + plateauTitle(layerPlateauModel(appDialog.plateau));
+    confirmLabel = creating ? 'Create plateau' : 'Save plateau';
+    body = (creating
+        ? '<label class="app-dialog-field" for="plateau-form-id">Id (lowercase letters, digits, - and _)</label><input type="text" id="plateau-form-id" data-dialog-field="id" data-dialog-autofocus autocomplete="off" value="' + escapeHtml(v.id) + '">'
+        : '<p class="app-dialog-subject"><code>' + escapeHtml(appDialog.plateau) + '</code></p>') +
+      '<label class="app-dialog-field" for="plateau-form-name">Name</label><input type="text" id="plateau-form-name" data-dialog-field="name"' + (creating ? '' : ' data-dialog-autofocus') + ' autocomplete="off" value="' + escapeHtml(v.name) + '">' +
+      '<label class="app-dialog-field" for="plateau-form-horizon">Horizon (a label: 2026-Q4, 2027, …)</label><input type="text" id="plateau-form-horizon" data-dialog-field="horizon" autocomplete="off" value="' + escapeHtml(v.horizon) + '">' +
+      (appDialog.plateau === BASELINE_PLATEAU ? '' :
+        '<label class="app-dialog-field" for="plateau-form-parent">Overrides</label><select id="plateau-form-parent" data-dialog-field="parent">' +
+        choices.map((id) => '<option value="' + escapeHtml(id) + '"' + (id === v.parent ? ' selected' : '') + '>' + escapeHtml(plateauTitle(layerPlateauModel(id))) + (plateauTitle(layerPlateauModel(id)) !== id ? ' (' + escapeHtml(id) + ')' : '') + '</option>').join('') + '</select>');
   } else if (appDialog.kind === 'story-picker') {
     const stories = storiesSorted();
     const preferred = (activeStory && stories.find((story) => story.id === activeStory.id)) || stories.find((story) => story.id === selectedStoryId) || stories[0] || null;
@@ -15755,7 +16708,7 @@ function renderAppDialogHtml() {
     body = '<label class="app-dialog-field" for="app-dialog-text">' + escapeHtml(appDialog.label) + '</label>' +
       '<input type="text" id="app-dialog-text" data-dialog-text data-dialog-autofocus value="' + escapeHtml(appDialog.value || '') + '">';
   }
-  return '<div class="app-dialog-backdrop"><div class="app-dialog' + (appDialog.kind === 'move' ? ' app-dialog-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
+  return '<div class="app-dialog-backdrop"><div class="app-dialog' + (appDialog.kind === 'move' || appDialog.kind === 'layer-confirm' ? ' app-dialog-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
     '<h2 id="app-dialog-title">' + escapeHtml(title) + '</h2>' + body +
     '<div class="app-dialog-error" id="app-dialog-error" role="alert">' + (appDialog.error ? escapeHtml(appDialog.error) : '') + '</div>' +
     '<div class="app-dialog-actions">' + (actions !== null ? actions :
@@ -15768,7 +16721,9 @@ function readAppDialogValues() {
   const text = document.querySelector('[data-dialog-text]');
   const choice = document.querySelector('input[name="story-choice"]:checked');
   const newName = document.querySelector('[data-dialog-new]');
-  return { text: text ? text.value : '', choice: choice ? choice.value : '', newName: newName ? newName.value : '' };
+  const fields = {}; // the form of a plateau (wave 014, run 0082)
+  for (const field of Array.from(document.querySelectorAll('[data-dialog-field]'))) fields[field.getAttribute('data-dialog-field')] = field.value;
+  return { text: text ? text.value : '', choice: choice ? choice.value : '', newName: newName ? newName.value : '', fields };
 }
 
 /** Does what the dialog asked for, with the values typed in it (read from the page unless they are given). */
@@ -15780,6 +16735,28 @@ function submitAppDialog(values) {
     const line = document.getElementById('app-dialog-error');
     if (line) line.textContent = message;
   };
+  if (dialog.kind === 'layer-confirm') { // the author says yes to the plateaus a write changes (see `guardedLayerWrite`)
+    appDialog = null;
+    pendingFocusSelector = dialog.returnFocus;
+    confirmLayerWrite(dialog);
+    return;
+  }
+  if (dialog.kind === 'plateau-form') {
+    const f = v.fields || {};
+    const spec = { id: dialog.mode === 'create' ? f.id : dialog.plateau, name: f.name, horizon: f.horizon, parent: dialog.plateau === BASELINE_PLATEAU ? null : f.parent };
+    let result;
+    try {
+      result = dialog.mode === 'create' ? commitPlateauCreate(spec) : commitPlateauEdit(spec);
+    } catch (e) {
+      fail(e && e.message ? e.message : String(e));
+      return;
+    }
+    if (result && result.pending) return; // the dialog of the plateaus it changes has taken this one's place
+    appDialog = null;
+    pendingFocusSelector = dialog.returnFocus;
+    if (dialog.mode === 'create') drawPlateau(String(spec.id).trim()); else render();
+    return;
+  }
   if (dialog.kind === 'story-picker') {
     const name = String(v.newName || '').trim();
     if (v.choice === NEW_STORY_CHOICE && !name) { fail('Name the new story.'); return; }
@@ -15868,6 +16845,7 @@ function addCurrentViewToStoryChoice(choice) {
     story = storiesList().find((entry) => storyLabel(entry).trim().toLowerCase() === wanted) || createStory(choice.newName.trim());
   }
   if (!definition || !story) { render(); return; }
+  if (writesRefused(story)) return;
   // a view that was named is pointed at; any other diagram goes in the step itself: no file for each diagram of a story
   const named = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
   const step = named ? { view: named.id } : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
@@ -15916,6 +16894,7 @@ function newStory() {
 
 function deleteStory(id) {
   const story = findStory(id);
+  if (story && writesRefused(story)) return;
   if (!story || !confirm('Delete the story “' + storyLabel(story) + '”? Its views stay saved.')) return;
   removeEntry(story, 'stories');
   if (selectedStoryId === id) selectedStoryId = null;
@@ -15929,6 +16908,7 @@ function moveStoryStep(storyId, index, delta) {
   const steps = story && Array.isArray(story.steps) ? story.steps : null;
   const to = index + delta;
   if (!steps || index < 0 || index >= steps.length || to < 0 || to >= steps.length) return;
+  if (writesRefused(story)) return;
   [steps[index], steps[to]] = [steps[to], steps[index]];
   if (activeStory && activeStory.id === storyId) {
     if (activeStory.step === index) activeStory.step = to; else if (activeStory.step === to) activeStory.step = index;
@@ -15945,6 +16925,7 @@ function moveStoryStep(storyId, index, delta) {
 function removeStoryStep(storyId, index) {
   const story = findStory(storyId);
   if (!story || !Array.isArray(story.steps) || index < 0 || index >= story.steps.length) return;
+  if (writesRefused(story)) return;
   removedStep = { storyId, index, step: story.steps[index] };
   story.steps.splice(index, 1);
   if (activeStory && activeStory.id === storyId) {
@@ -15964,6 +16945,7 @@ function undoRemoveStoryStep() {
   const story = removed ? findStory(removed.storyId) : null;
   removedStep = null;
   if (!story) { render(); return; }
+  if (writesRefused(story)) return;
   const steps = writableSteps(story);
   const at = Math.min(removed.index, steps.length);
   steps.splice(at, 0, removed.step);
@@ -15976,6 +16958,7 @@ function undoRemoveStoryStep() {
 function addStoryStep(storyId, viewId) {
   const story = findStory(storyId);
   if (!story || !findSavedView(viewId)) return;
+  if (writesRefused(story)) return;
   writableSteps(story).push({ view: viewId });
   pendingFocusSelector = '#story-add-view';
   markEntryChanged(story);
@@ -15988,6 +16971,7 @@ function repairStoryStep(storyId, index, viewId) {
   const story = findStory(storyId);
   const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
   if (!isPlainObject(step) || !findSavedView(viewId)) return;
+  if (writesRefused(story)) return;
   step.view = viewId;
   markEntryChanged(story);
   render();
@@ -15998,6 +16982,7 @@ function keepStepAsNamedView(storyId, index) {
   const story = findStory(storyId);
   const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
   if (!isPlainObject(step) || step.view || !step.viewpoint) return;
+  if (writesRefused(story)) return;
   openTextDialog('Keep as a named view', 'It is kept in a file of its own; the step then points at it.', describeViewDefinition(step), 'Save view', (name) => {
     const target = findStory(storyId);
     const current = target && Array.isArray(target.steps) ? target.steps[index] : null;
@@ -16063,6 +17048,7 @@ function openSavedView(viewId) {
 function renameSavedView(viewId) {
   const view = findSavedView(viewId);
   if (!view) return;
+  if (writesRefused(view)) return;
   openTextDialog('Rename the view', 'Name of the view', viewLabel(view), 'Rename', (name) => {
     const target = findSavedView(viewId);
     if (target) { target.name = name; markEntryChanged(target); }
@@ -16073,6 +17059,7 @@ function renameSavedView(viewId) {
 function deleteSavedView(viewId) {
   const view = findSavedView(viewId);
   if (!view) return;
+  if (writesRefused(view)) return;
   const used = storiesUsingView(viewId);
   if (!confirm('Delete the view “' + viewLabel(view) + '”?' + (used ? '\n\n' + used + ' step' + (used === 1 ? '' : 's') + ' of stories show it; they will say the view is missing.' : ''))) return;
   removeEntry(view, 'views');
@@ -16528,7 +17515,7 @@ const ACTIONS_LEAVING_THE_FORM = new Set([
   'library-tab', 'select-view', 'library-go-story', 'library-go-view', 'library-open-element', 'select-change'
 ]);
 
-/** The clicks that write, or open a form that writes, an element, a view or a story: refused while a plateau other than baseline is drawn (see `readOnlyPlateauMessage`). */
+/** The clicks that write, or open a form that writes, an element, a view or a story. Each is allowed in the plateau drawn (wave 014, run 0082); `layerActionRefusal` says which are not, and why. */
 const WRITE_ACTIONS = new Set([
   'toggle-element-edit', 'add-qualifier', 'remove-qualifier', 'add-application', 'remove-application', 'add-replaces', 'remove-replaces', 'add-use', 'remove-use',
   'add-tag', 'remove-tag', 'add-relationship', 'remove-relationship', 'open-create-child-form', 'open-create-top-level-form', 'submit-create-child',
@@ -16570,11 +17557,14 @@ function handleAppClick(e) {
   if (action !== 'dialog-submit') storyBarNotice = null;
   if (removedStep && action !== 'story-undo' && action !== 'story-step-remove') removedStep = null;
   if (draftTyped && ACTIONS_LEAVING_THE_FORM.has(action) && !confirmDiscardingDraft()) return;
-  // wave 014 (run 0080): a plateau other than baseline is read, compared and not edited yet (see `readOnlyPlateauMessage`)
-  if (WRITE_ACTIONS.has(action) && readOnlyPlateauMessage() !== null) {
-    saveStatus = { state: 'denied', message: readOnlyPlateauMessage() };
-    render();
-    return;
+  // wave 014 (runs 0080 and 0082): a plateau that cannot be drawn is not written, and a few clicks are not available outside baseline (see `layerActionRefusal`)
+  if (WRITE_ACTIONS.has(action)) {
+    const refusal = layerActionRefusal(action);
+    if (refusal !== null) {
+      saveStatus = { state: 'denied', message: refusal };
+      render();
+      return;
+    }
   }
   switch (action) {
     case 'toggle-help':
@@ -16823,6 +17813,12 @@ function handleAppClick(e) {
       selectedStoryId = target.getAttribute('data-story');
       storyNotice = null;
       setPerspective('library');
+      break;
+    case 'plateau-create':
+      openPlateauDialog('create', target.getAttribute('data-plateau'));
+      break;
+    case 'plateau-edit':
+      openPlateauDialog('edit', target.getAttribute('data-plateau'));
       break;
     case 'dialog-cancel':
       closeAppDialog();
@@ -17335,6 +18331,7 @@ function handleAppClick(e) {
         setInlineErrorText(created.field === 'id' ? 'create-id-error' : 'create-form-error', created.error);
         break;
       }
+      if (created.pending) break; // wave 014 (run 0082): the author is asked first; the form stays until the answer
 
       // FR-3: one extra render after commitElementEdit's own rebuild
       // render, which still carried the stale (create-form) selection.
@@ -17408,9 +18405,16 @@ function handleAppClick(e) {
       const name = normalizeOptionalText(nameInput ? nameInput.value : '');
       const description = normalizeOptionalText(descriptionInput ? descriptionInput.value : '');
 
-      const result = commitCreateTopLevelElement({
-        category, headerKind: chosenKind, attachUnderReference: attachUnder, id, name, description
-      });
+      let result;
+      try {
+        result = commitCreateTopLevelElement({
+          category, headerKind: chosenKind, attachUnderReference: attachUnder, id, name, description
+        }, { afterConfirm: () => { AppState.selection = { kind: 'element', key: newReference, layer: category, mode: 'edit' }; render(); } });
+      } catch (e) { // wave 014 (run 0082): a plateau that cannot take the element says why
+        setInlineErrorText('create-form-error', e && e.message ? e.message : String(e));
+        break;
+      }
+      if (result && result.pending) break; // the author is asked first; the form stays until the answer
 
       // FR-3: one extra render after commitCreateTopLevelElement's own
       // rebuild render, which still carried the stale (create-form) selection.
@@ -17425,7 +18429,11 @@ function handleAppClick(e) {
       const reference = target.getAttribute('data-ref');
       const category = layerOfReference(reference) || 'application'; // the layer of the element being edited (the selection)
       const impact = computeDeleteImpact(reference, category);
-      pendingDeleteConfirmation = { reference, category, affected: impact.affected, files: impact.files, deletedReferences: impact.deletedReferences };
+      // wave 014 (run 0082): an element another plateau declares is not deleted from its manifest: the plateau drawn takes it out with a `REMOVE` patch
+      const writing = writingPlateau();
+      const record = AppState.index[category] ? AppState.index[category].get(reference) : null;
+      const removal = writing !== null && writing !== BASELINE_PLATEAU && record && record.declaredIn !== writing ? { plateau: writing, declaredIn: record.declaredIn } : null;
+      pendingDeleteConfirmation = { reference, category, affected: impact.affected, files: removal ? [] : impact.files, deletedReferences: impact.deletedReferences, removal };
       render();
       break;
     }

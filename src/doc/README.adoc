@@ -1267,14 +1267,58 @@ Under the top bar, every workspace that has no `settings.plateaus` (the one that
 
 *Where a value comes from.* In the panel of an element, each value (name, description, qualifiers, tags, relationships, replaces, uses, applications) says where it comes from: _declared in_ the plateau drawn, _inherited from_ another plateau (the one whose manifest declares the element), or _set by patch N_ of a plateau (with the operator and the selector of the patch, and "inherited" when the patch is one of a plateau above). A block *Origin* lists the plateau that declares the element and the patches that selected it.
 
-*Not written yet.* A plateau other than `baseline` is read and compared, and not edited: editing, adding, moving and removing in it are refused with one sentence, and nothing is written, until the editor writes patches and manifests for a plateau. `baseline` is edited as it always was (an edit lands in the manifest that declares the element, and changes every plateau that stands on it). The text editor of a file in *Files* writes the file whatever plateau is drawn: it is how the manifest of a plateau, a patch included, is repaired.
+*Writing.* The plateau that is drawn is the one a write goes to, and the band says so (_writing in: Buy the commerce platform_). What an edit writes, and what is refused, is in <<editor-writing>>.
+
+[[editor-writing]]
+=== Writing in a plateau
+
+A write goes to the plateau that is drawn, in the files of that plateau, and nowhere else. The band says _writing in: <plateau>_ when the workspace has layers. A workspace that writes no layer, and one that still lists `settings.plateaus`, save as they always did.
+
+[cols="2,3",options="header"]
+|===
+| In the plateau drawn | What is written
+| a field of an element the plateau declares (its manifest says `plateau: <the plateau>`)
+| the field, in the manifest that declares the element, as before
+| a field of an element the plateau inherits (name, description, qualifiers, tags, relationships, applications, uses, replaces)
+| a patch in the manifest of kind `archicode.morin.io/plateau` of the plateau, at the end of its `patches`: `SET` for a value (a list set whole too), `ADD` for items added at the end of a list, `MERGE` for tags that only gain or change keys, `SET` with `where` for one relationship changed (found by its destination and its label)
+| the same field again
+| the patch the plateau already has on that element and that field is changed, and taken out when the field is back to what the plateau above gives it; one patch for the field, not one more for each edit. When the plateau has several patches on the field (a relationship added, another relabeled), none is rewritten: the last one takes an edit of its kind, and any other edit is a patch after it
+| a value a patch of the plateau set
+| that patch
+| a new element (top level, or a child of an element the plateau inherits)
+| a manifest whose header says `plateau: <the plateau>` (and `parent` for a child), in the folder of the manifests the plateau already has. A child of an element the plateau declares is written in the file of its parent, as before
+| a new view or story
+| a manifest whose header says `plateau: <the plateau>`
+| removing an element the plateau inherits
+| a `REMOVE` at the end of the patches (with `layer: technology` for a technology element). The kernel takes what is in the element and what points at it; the manifests of the plateau above are not touched
+| removing an element the plateau declares
+| its manifests are deleted, as before, and the patches of the plateau that name it (their `target`, the relationship they find with `where` or add) are taken out with them
+| a new plateau (_New plateau_ on the band, or on the Timeline page)
+| a manifest of kind `archicode.morin.io/plateau` with its `id`, `name`, `horizon` and `override` (none when it overrides `baseline`)
+| the name, horizon or parent of a plateau (_Edit plateau_)
+| the same manifest; a plateau that exists through headers only gets one
+|===
+
+*Asking first.* A plateau that other plateaus stand on is not written without a word: when an edit changes the resolution of a plateau that overrides the one written, the editor lists those plateaus (the ones that inherit what was written and do not set it themselves) and writes only when you say yes. `baseline` is the plateau most often in that case. A plateau at the end of the chain, or an edit that no other plateau sees, is written at once.
+
+*Only what was meant.* Every write is made on the manifests in memory by the same line-preserving save as ever (the lines the edit does not touch, their comments and quotes, stay as they were written; a flow list or map that an edit changes becomes a block), and it is kept only if the plateaus are resolved again and all of this holds: the plateau written gives back the value that was edited; no plateau that resolved before is refused now, and no new mistake appears in the tree of the plateaus or in a plateau (a rename, a delete or a new parent that would make a patch of another plateau select nothing is refused, and says which plateau and which patch). A write that is refused is one sentence in the top bar, and nothing is changed: not a file, not a mark of what is modified. A new patch is always written at the end of the patches, never between two patches of yours, so that a comment above a patch stays above it.
+
+*Refused, with one sentence.*
+
+- Renaming (`id`) or moving an element the plateau inherits: a patch never changes an id or a parent; draw the plateau that declares the element. Renaming or moving an element the plateau declares works as it does in `baseline`; the `target` of patches, the relationships they add, and the `replaces` entries that name it follow the new reference.
+- A value that comes from another plateau cannot be taken out by a patch (a patch sets a value); write a new text, or draw the plateau that declares it. A list or tags can be emptied (`SET` of an empty list or object).
+- A field that a patch written by hand with a free `json-path` sets (for instance a `MERGE` of tags on every element that has a qualifier): the editor shows it, with its origin, and does not edit it field by field. Edit the patch in *Files*.
+- A view or a story another plateau declares: views and stories cannot be patched; draw the plateau that declares it. A plateau cannot be drawn when the kernel refuses its patches: nothing is written in it until they are repaired in *Files*.
+- *Move to manifests* (the views and stories of `workspace.yaml`) is available in `baseline` only.
+
+Not written by the editor: deleting a plateau, and patches with a free `json-path` or an `expect` (they are written by hand in *Files*). A new plateau manifest is written next to the other manifests (`plateau.<id>.yaml` in the first folder of `manifests.paths`). The text editor of *Files* writes the text of any file whatever plateau is drawn, and is the way to repair or write what the forms do not.
 
 [[editor-timeline]]
 === The Timeline page
 
 *Timeline*, the first page of the perspective of the same name, lists the plateaus where the band draws them as a tree: one entry for each, in the order of the band, each indented by its depth. An entry says the name of the plateau, its id, its `horizon`, whether it is the one drawn or the one compared, and, in a line below, the plateau it overrides, where it is written (`described in inhouse/plateau.yaml`, or `exists only through the plateau key of a header` for a plateau that has no manifest of its own), how many patches it has and how many files belong to it. Below that, what it changes over the plateau it overrides, as the chips of the *Changes* panel, for the elements and for the relationships: new, changed, removed, and moved, split and merged when there are some. They are the counts of `archicode diff --plateau <id>`; a plateau that the command line refuses, or that overrides one it refuses, says it is not counted. The root overrides nothing, and says so.
 
-The name of a plateau draws it, as a click on its node of the band does. *Changes* draws the plateau and compares it with the plateau it overrides in one step, and the *Changes* panel opens on the right with the same lists as on the other pages; a click on one of its rows opens the element in *Elements*, since this page draws none. A workspace that writes no layer has the page too: one entry, `baseline`, and a note on what a plateau is. A workspace that still lists `settings.plateaus` (see <<editor-plateaus>>) has the page with its plateaus listed and a note: they are drawn from the selector in the top bar.
+The name of a plateau draws it, as a click on its node of the band does. *New plateau after this* makes a plateau that overrides it and *Edit* changes its name, horizon or parent (see <<editor-writing>>). *Changes* draws the plateau and compares it with the plateau it overrides in one step, and the *Changes* panel opens on the right with the same lists as on the other pages; a click on one of its rows opens the element in *Elements*, since this page draws none. A workspace that writes no layer has the page too: one entry, `baseline`, and a note on what a plateau is. A workspace that still lists `settings.plateaus` (see <<editor-plateaus>>) has the page with its plateaus listed and a note: they are drawn from the selector in the top bar.
 
 [[editor-compare]]
 === Comparing two plateaus
@@ -1363,7 +1407,7 @@ Only the plateau that is drawn is written, and the plateau compared with never i
 [[editor-move]]
 ==== Moving an element under another parent
 
-In the edit form of an element, *Move* (after *Delete*, before *Add child*) puts the element, and everything inside it, under another parent, without breaking a reference. It is offered for the elements that can have a parent: a system, a container, a component, a group, a node. A solution, a person or an environment is never put under anything, and has no *Move*; a system can go under a solution, and has no *Move* when the workspace has none. It works on the plateau that is drawn, and never on the one it is compared with, which is read-only.
+In the edit form of an element, *Move* (after *Delete*, before *Add child*) puts the element, and everything inside it, under another parent, without breaking a reference. It is offered for the elements that can have a parent: a system, a container, a component, a group, a node. A solution, a person or an environment is never put under anything, and has no *Move*; a system can go under a solution, and has no *Move* when the workspace has none. It works on the plateau that is drawn, and never on the one it is compared with, which is read-only. In a plateau of layers it moves an element that plateau declares; an element it inherits is refused (a patch never changes a parent), and says which plateau declares it.
 
 The dialog has a search field (it keeps the parents that have every word you type in their name, id, reference or kind) and the list of the *valid parents*, in the layer of the element: an element that may hold the kind of this one (the rules that create an element under a parent: a system holds containers and groups, a container holds components and groups, an environment or a node holds nodes), but not the element itself, nor anything inside it, nor the parent it already has, nor a parent that already holds an element with the same id. It says how many elements follow, how many references will be rewritten in how many files, and how many saved views follow.
 

@@ -602,17 +602,21 @@ test('settings.current names the plateau drawn at the opening, and one that is n
 
 // ---- writing ----
 
-test('a plateau other than baseline is read-only for now: every writer refuses with one sentence, and baseline edits as it did', async () => {
-  const { sandbox, state } = await openLayered();
+test('a plateau that cannot be drawn is not written: every writer refuses with one sentence, and baseline edits as it did', async () => {
+  // (run 0082 lifts the rule of run 0080 for the plateau drawn; what stays is a plateau whose patches the kernel refuses: it has no graph to edit)
+  const { sandbox, state } = await openFiles({
+    'app.ferry.yaml': SYSTEM('ferry'),
+    'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n')
+  });
   assert.equal(sandbox.readOnlyPlateauMessage(), null);
-  sandbox.drawPlateau('saas');
+  sandbox.drawPlateau('later');
   const message = sandbox.readOnlyPlateauMessage();
-  assert.match(message, /^This plateau is read-only for now: /);
+  assert.equal(message, 'The plateau `later` cannot be drawn, so nothing is written in it: repair its patches in Files first.');
   assert.match(sandbox.renderPlateauBandHtml(), /band-readonly/);
   for (const write of [
-    () => sandbox.commitElementEdit('shop.web', (node) => { node.name = 'x'; }, 'application'),
+    () => sandbox.commitElementEdit('ferry', (node) => { node.name = 'x'; }, 'application'),
     () => sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', id: 'zz', name: 'zz', description: '' }),
-    () => sandbox.commitDeleteElement('shop.web', 'application', [])
+    () => sandbox.commitDeleteElement('ferry', 'application', [])
   ]) assert.throws(write, (e) => e.message === message);
   assert.ok(state.manifestFiles.every((f) => !f.dirty), 'nothing was marked as modified');
   // the click on a button that writes says it in the top bar and changes nothing
@@ -623,8 +627,8 @@ test('a plateau other than baseline is read-only for now: every writer refuses w
   // baseline: as before
   sandbox.drawPlateau('baseline');
   assert.equal(sandbox.readOnlyPlateauMessage(), null);
-  sandbox.commitElementEdit('shop.web', (node) => { node.name = 'Web shop'; }, 'application');
-  assert.equal(state.index.application.get('shop.web').name, 'Web shop');
+  sandbox.commitElementEdit('ferry', (node) => { node.name = 'Ferry company'; }, 'application');
+  assert.equal(state.index.application.get('ferry').name, 'Ferry company');
   assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 1);
 });
 
@@ -754,7 +758,7 @@ test('what an edit of baseline changes is seen by the plateaus that stand on it:
   sandbox.drawPlateau('inhouse');
   assert.equal(state.index.application.get('commerce.gateway').name, 'API gateway');
   sandbox.drawPlateau('baseline');
-  sandbox.commitElementEdit('shop.web', (node) => { node.name = 'Storefront'; }, 'application');
+  sandbox.commitElementEdit('shop.web', (node) => { node.name = 'Storefront'; }, 'application', { confirmed: true }); // (run 0082: a plateau with plateaus on top of it asks first)
   assert.equal(state.index.application.get('shop.web').name, 'Storefront');
   sandbox.drawPlateau('saas');
   assert.equal(state.index.application.get('shop.web').name, 'Storefront', 'saas inherits the new name');
