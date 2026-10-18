@@ -319,7 +319,7 @@ wave_manifest:
       slug: sibling-candidates
       phase: P4
       depends_on: [W-9]
-      run: null
+      run: 0086
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
