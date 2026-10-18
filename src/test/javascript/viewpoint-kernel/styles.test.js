@@ -840,17 +840,18 @@ test('the badge of a tree row has its rule, reading the variables of its style',
 // ---- 13. The cache ----
 
 test('the cache key of a drawing holds the styles, so that a workspace reloaded with other styles is not drawn with the old look', async () => {
-  const { sandbox } = await openFixture();
-  const source = sandbox.mountDiagramIfNeeded.toString();
-  const keyLine = source.split('\n').find((line) => line.includes('const key ='));
-  assert.ok(keyLine, 'the key is built in mountDiagramIfNeeded');
-  assert.ok(keyLine.includes('JSON.stringify(AppState.workspace.styles'), keyLine);
-  assert.ok(keyLine.includes('JSON.stringify(input)') && keyLine.includes('diagramModelFingerprint()'), 'next to what it already held');
-  assert.match(source, /diagramCache\.key === key/);
-  // the fingerprint of the styles tells two styles apart, and is defined for a workspace with none
-  const key = (styles) => JSON.stringify(styles || null);
-  assert.notEqual(key(userStyles()), key({}));
-  assert.equal(key(undefined), 'null');
+  const { sandbox, state } = await openFixture();
+  assert.match(sandbox.mountDiagramIfNeeded.toString(), /diagramCache\.key === key/, 'the page compares the key it built');
+  const recipe = { isMap: true, reference: '', viewpoint: 'map', facet: null, mapState: { opened: [], pinned: [], hidden: [] }, shows: {}, hideUnlinked: false };
+  const key = () => sandbox.diagramCacheKey(recipe, null, 'map');
+  state.workspace.styles = userStyles();
+  const styled = key();
+  assert.equal(key(), styled, 'the same styles, the same key');
+  state.workspace.styles = {};
+  assert.notEqual(key(), styled, 'other styles, another key');
+  state.workspace.styles = undefined;
+  assert.equal(typeof key(), 'string', 'defined for a workspace with none');
+  assert.notEqual(key(), styled);
 });
 
 // ---- 14. The fold button of a styled box ----

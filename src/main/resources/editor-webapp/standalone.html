@@ -836,6 +836,21 @@
   .grid-rows-\[minmax\(0\,1fr\)_auto_auto\] { grid-template-rows: minmax(0, 1fr) auto auto; }
   .cursor-col-resize { cursor: col-resize; }
   .cursor-row-resize { cursor: row-resize; }
+
+  /* A window of 40rem or less has no room for three columns (wave 014, run 0073): the tree (12rem at least) and the inspection (14rem at least) left the centre panel
+     56 px at 360 px, the header actions of the centre (188 px, they do not shrink) went past the window and the document was 424 px wide. The regions are stacked
+     instead, each as wide as the window: the tree, then the centre, then the inspection, the page scrolling from one to the next. The sizes the user gave the panels
+     (inline widths, by dragging) are for the wide layout: they do not apply here, and neither do the handles that set them. Wider windows are untouched. */
+  @media (max-width: 40rem) {
+    #app { height: auto; min-height: 100vh; }
+    .app-shell { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
+    .app-shell [data-resize] { display: none; }
+    .app-shell > .left-panel { width: auto !important; min-width: 0; max-width: none; max-height: 30vh; border-right: 0; border-bottom: 1px solid var(--border); flex: none; }
+    .app-shell > div.col-start-3, .app-shell > div.col-start-3 > div.grid { display: flex; flex-direction: column; min-width: 0; }
+    .app-shell .center-panel { height: 80vh; min-height: 24rem; flex: none; min-width: 0; }
+    .app-shell .right-panel { width: auto !important; min-width: 0; max-width: none; max-height: 50vh; border-left: 0; border-top: 1px solid var(--border); flex: none; }
+    .app-shell .bottom-panel { flex: none; }
+  }
 </style>
 </head>
 <body>
@@ -3348,6 +3363,7 @@ async function clearLastFolder(id, others) {
  * The version of the two models the comparison reads (run 0045): the plateau drawn (`AppState.index`) and the one it is compared with
  * (`AppState.baseline.index`). `comparisonState()` keeps the answer of the kernel's `compare` for as long as this number, and the two models
  * it was computed from, are what they were: it does not serialise the models to find out (issue #32).
+ * The cache of the diagram and the cache of the quiet references of the tree read it too (issue #37, `modelsKey`): a missing bump shows a drawing that is out of date, there as here.
  *
  * THE RULE: any new way to change one of the two models calls `modelsChanged()` once the change is made and before anything is drawn from it.
  * That is every place that assigns `AppState.index` or `AppState.baseline` (a load, a reload, a change of plateau or of Compare to, a rebuild
@@ -9355,9 +9371,13 @@ function renderWhatChangedHtml(layer, reference, removedPanel) {
   } else if (element.change === 'removed') {
     html += '<p class="inspection-note">Whole element is removed' + (removedPanel ? '. Its properties and its relationships are the ones below.' : ': it is only in “' + escapeHtml(other) + '”.') + '</p>';
     if (removedPanel) {
-      // #71: what the node deployed, as the panel of a changed node says it (Before only), read as the other plateau's file wrote it
+      // #71: what the node deployed, as the panel of a changed node says it (Before only), read as the other plateau's file wrote it;
+      // wave 014 (run 0073): and what an environment used, which the panel of a changed environment says the same way
       const gone = AppState.baseline && AppState.baseline.index[layer] ? AppState.baseline.index[layer].get(reference) : null;
-      if (gone && Array.isArray(gone.applications) && gone.applications.length) html += renderChangeDiffsHtml({ applications: gone.applications }, {}, true);
+      const was = {};
+      if (gone && Array.isArray(gone.applications) && gone.applications.length) was.applications = gone.applications;
+      if (gone && gone.kind === 'environment' && Array.isArray(gone.uses) && gone.uses.length) was.uses = gone.uses;
+      html += renderChangeDiffsHtml(was, {}, true);
     }
     if (Array.isArray(element.replaced_by) && element.replaced_by.length) {
       // wave 009: it is drawn only as the place of what was inside it; the elements that replace it are the ones to read
@@ -12635,16 +12655,41 @@ function diagramFoldTargets(result, focalReference) {
   return { foldable, expandable };
 }
 
-/** What the diagram draws that the kernel input does not carry — names, kinds, relationships to unknown elements. */
-function diagramModelFingerprint() {
-  let s = '';
-  for (const layer of ['application', 'technology']) {
-    for (const r of AppState.index[layer].values()) {
-      s += r.reference + '|' + (r.name || '') + '|' + r.kind + '|' + (r.description || '') + '|' +
-           r.relationships.filter((rel) => !rel.resolved).map((rel) => rel.destination + ':' + rel.rawLabel).join(',') + ';';
-    }
-  }
-  return s;
+/**
+ * Issue #37. The two caches that follow (`diagramCache`, `treeQuietCache`) are keyed on the version of the models (`modelVersion`, bumped by `modelsChanged()`)
+ * and on the small parts that vary, never on the kernel input: that input carries every element of the model (the union of the two plateaus with a comparison
+ * on), and serialising it, or walking the index to fingerprint it, cost a render in proportion to the model for an answer that had not changed.
+ * What a key holds is whatever else a drawing or a quiet set is made from: the facet as the kernel reads it, `changesOnly`, `hideWording`, the plateau
+ * compared with, the text of an empty relationship, the styles. The entry also keeps the two indexes it was made from, and is used only while they are the
+ * ones now (a net under a replacement of a model that forgot `modelsChanged()`, as `comparisonCache` has).
+ */
+function modelsNow() {
+  return { index: AppState.index, baselineIndex: AppState.baseline ? AppState.baseline.index : null };
+}
+
+function modelsAreThoseOf(entry) {
+  return entry.index === AppState.index && entry.baselineIndex === (AppState.baseline ? AppState.baseline.index : null);
+}
+
+/** The part of a cache key that tells which models a kernel input is made from and with what knobs; `comparison` is `comparisonState()`. */
+function modelsKey(comparison, facet) {
+  return [
+    modelVersion,
+    facet ? JSON.stringify(toKernelFacet(facet)) : '',
+    comparison && comparison.layers ? 'vs:' + AppState.baseline.plateau.id + ':' + AppState.changesOnly + ':' + AppState.hideWording : '',
+    AppState.workspace.settings.relationships.defaultSyntheticLabel
+  ].join('~');
+}
+
+/** The key of the drawing `recipe` asks for (see `mountDiagramIfNeeded`): the models and the knobs of the kernel input, then what is drawn from its answer. */
+function diagramCacheKey(recipe, comparison, viewKey) {
+  const { isMap, reference, viewpoint, facet, mapState, shows, hideUnlinked } = recipe;
+  const layer = isMap ? 'application' : (recipe.layer || layerOfReference(reference) || 'technology'); // as `buildKernelInput` settles it
+  return [
+    modelsKey(comparison, facet), viewpoint, layer, reference,
+    isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
+    hideUnlinked, JSON.stringify(shows), JSON.stringify(AppState.workspace.styles || null), viewKey
+  ].join('|');
 }
 
 let treeQuietCache = null;
@@ -12655,14 +12700,18 @@ let treeQuietCache = null;
  * is the kernel's alone. Cached until the model, the facet or the viewpoint changes.
  */
 function quietReferencesThroughFacet(kernel, facet) {
+  // issue #37: found in the cache from the version of the models and the knobs, before any kernel input is built
+  const viewpointKey = currentPerspective === 'map' || elementTab === 'details' ? 'overview' : elementTab;
+  const key = viewpointKey + '|' + modelsKey(comparisonState(), facet);
+  if (treeQuietCache && treeQuietCache.key === key && modelsAreThoseOf(treeQuietCache)) return treeQuietCache.quiet;
   const bases = {};
   const base = (layer, viewpoint) => {
-    const key = layer + '|' + viewpoint;
-    if (!(key in bases)) {
+    const slot = layer + '|' + viewpoint;
+    if (!(slot in bases)) {
       const first = AppState.index[layer].keys().next().value;
-      bases[key] = first === undefined ? null : buildKernelInput(viewpoint, first, { layer, facet }).input;
+      bases[slot] = first === undefined ? null : buildKernelInput(viewpoint, first, { layer, facet }).input;
     }
-    return bases[key];
+    return bases[slot];
   };
   const jobs = [];
   for (const layer of ['application', 'technology']) {
@@ -12672,14 +12721,13 @@ function quietReferencesThroughFacet(kernel, facet) {
       if (input) jobs.push({ reference, input });
     }
   }
-  const key = (currentPerspective === 'map' || elementTab === 'details' ? 'overview' : elementTab) + '|' + JSON.stringify(Object.values(bases).filter(Boolean).map((input) => [input.viewpoint, input.layer, input.elements, input.app_elements, input.facet]));
-  if (treeQuietCache && treeQuietCache.key === key) return treeQuietCache.quiet;
+  const models = modelsNow();
   const quiet = new Set();
   for (const job of jobs) {
     const out = kernel.compute(Object.assign({}, job.input, { focal: job.reference }));
     if (out.error ? !!job.input.facet : !out.links.some((link) => !link.secondary)) quiet.add(job.reference); // an error through a facet: the facet removes the element
   }
-  treeQuietCache = { key, quiet };
+  treeQuietCache = Object.assign({ key, quiet }, models);
   return quiet;
 }
 
@@ -12809,10 +12857,11 @@ function mountDiagramIfNeeded() {
     );
     return;
   }
-  const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, layer: recipe.layer, opened: mapState.opened, pinned: mapState.pinned } : { facet, layer: recipe.layer });
-  if (isMap) input.hidden = mapState.hidden;
+  // issue #37: the key is the version of the models and the small parts that vary, so a render that finds its drawing in `diagramCache` builds no kernel input
+  // and serialises no model. The input is built below, only when the drawing is to be computed.
   const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].concat(readonly ? ['view:' + recipe.view.id] : []).join('|');
-  const key = JSON.stringify(input) + '|' + hideUnlinked + '|' + JSON.stringify(shows) + '|' + diagramModelFingerprint() + '|' + JSON.stringify(AppState.workspace.styles || null) + '|' + viewKey;
+  const comparison = comparisonState();
+  const key = diagramCacheKey(recipe, comparison, viewKey);
   const duplicates = elementDuplicates();
   if (duplicates.length) {
     // a reference declared twice is not chosen between: nothing is drawn from a model that has no single answer
@@ -12821,17 +12870,19 @@ function mountDiagramIfNeeded() {
       duplicates.map((d) => '<li>' + duplicateMessageHtml(d.message) + '</li>').join('') + '</ul></div>', '', '', { width: 0, height: 0 }, null));
     return;
   }
-  const comparison = comparisonState();
   if (comparison && comparison.problems) {
     // the two plateaus cannot be compared (a reference twice in the baseline, a pair the kernel refuses): said, and nothing is drawn from it
     showDiagramScene(buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' + escapeHtml(comparison.problems[0]) + '</strong>' +
       (comparison.problems.length > 1 ? '<ul>' + comparison.problems.slice(1).map((m) => '<li>' + duplicateMessageHtml(m) + '</li>').join('') + '</ul>' : '') + '</div>', '', '', { width: 0, height: 0 }, null));
     return;
   }
-  if (diagramCache && diagramCache.key === key) {
+  if (diagramCache && diagramCache.key === key && modelsAreThoseOf(diagramCache)) {
     showDiagramScene(Object.assign({}, diagramCache.scene));
     return;
   }
+  const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, layer: recipe.layer, opened: mapState.opened, pinned: mapState.pinned } : { facet, layer: recipe.layer });
+  if (isMap) input.hidden = mapState.hidden;
+  const models = modelsNow(); // taken before the drawing is computed: an edit that lands while it is being laid out makes the entry stale, not fresh
   (async () => {
     try {
       const [kernel, elk] = await Promise.all([loadViewpointKernel(), loadElk()]);
@@ -12883,7 +12934,7 @@ function mountDiagramIfNeeded() {
       }
       if (seq !== diagramSeq) return;
       if (isMap && !readonly) Object.assign(scene, diagramFoldTargets(shownResult, reference));
-      diagramCache = { key, scene };
+      diagramCache = Object.assign({ key, scene }, models);
       showDiagramScene(Object.assign({}, scene));
     } catch (e) {
       console.error('Diagram failed', e);
