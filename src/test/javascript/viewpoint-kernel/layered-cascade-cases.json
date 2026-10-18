@@ -1,0 +1,47 @@
+{
+  "_": "The cascade of the REMOVE patches that `archicode diff` lists after the table of changes (the key `cascade` of --format json), one row per effect as `plateau|effect|layer|element|detail`, in the order the command line prints them, for the four comparisons of the layered Brightcart (P1 saas vs baseline, P2 inhouse vs baseline, P3 marketplace vs inhouse, P5 inhouse vs saas). The Java test BrightcartLayeredDiffTest checks the command line against this file and editor-reads-layers.test.js checks the Changes panel of the editor against it.",
+  "P1": [
+    "saas|dropped|application|backoffice.console|relationships: shop.app.catalog (maintains products in)",
+    "saas|dropped|application|shop.app.checkout|relationships: shop.app.cart (reads baskets from)",
+    "saas|dropped|application|backoffice.console|relationships: shop.app.promotions (configures promotions in)",
+    "saas|dropped|technology|prod.dc.cache-vm|applications: shop.cache",
+    "saas|dropped|technology|staging.vm|applications: shop.cache",
+    "saas|dropped|technology|partners.tax-live|applications: tax",
+    "saas|dropped|technology|sandbox.tax-sandbox|applications: tax"
+  ],
+  "P2": [
+    "inhouse|dropped|application|shop.app.cart|relationships: shop.cache (keeps baskets in)",
+    "inhouse|dropped|technology|prod.dc.cache-vm|applications: shop.cache",
+    "inhouse|dropped|technology|staging.vm|applications: shop.cache",
+    "inhouse|dropped|application|backoffice.console|relationships: shop.app.catalog (maintains products in)",
+    "inhouse|dropped|application|shop.app.checkout|relationships: shop.app.cart (reads baskets from)",
+    "inhouse|dropped|application|backoffice.console|relationships: shop.app.promotions (configures promotions in)",
+    "inhouse|dropped|application|backoffice.console|relationships: shop.app.orders (handles orders in)",
+    "inhouse|dropped|application|backoffice.console|relationships: shop.app.customers (looks up customers in)",
+    "inhouse|dropped|application|shop.app.loyalty|relationships: shop.app.customers (reads accounts from)"
+  ],
+  "P3": [
+    "marketplace|removed|application|shop.app.inventory|",
+    "marketplace|removed|application|shop.app.notifications|",
+    "marketplace|dropped|application|commerce.checkout|relationships: shop.app.inventory (reserves stock in)",
+    "marketplace|dropped|application|orders.placement|relationships: shop.app.notifications (asks to notify)",
+    "marketplace|dropped|application|shop.web|relationships: shop.app (calls)",
+    "marketplace|dropped|technology|prod.dc.app-vm|applications: shop.app",
+    "marketplace|dropped|technology|staging.vm|applications: shop.app",
+    "marketplace|dropped|application|fulfilment.sync|relationships: shop.db (writes stock levels)",
+    "marketplace|dropped|technology|prod.dc.db-vm|applications: shop.db",
+    "marketplace|dropped|technology|staging.vm|applications: shop.db",
+    "marketplace|dropped|application|commerce.gateway|relationships: commerce.search (routes to)",
+    "marketplace|dropped|technology|prod.cloud.k8s.commerce|applications: commerce.search",
+    "marketplace|dropped|technology|staging.k8s|applications: commerce.search",
+    "marketplace|removed|application|shop.web|",
+    "marketplace|dropped|application|customer|relationships: shop.web (browses and buys with)",
+    "marketplace|dropped|technology|prod.dc.web-vm|applications: shop.web",
+    "marketplace|dropped|technology|staging.vm|applications: shop.web"
+  ],
+  "P5": [
+    "inhouse|dropped|application|backoffice.console|relationships: shop.app.orders (handles orders in)",
+    "inhouse|dropped|application|backoffice.console|relationships: shop.app.customers (looks up customers in)",
+    "inhouse|dropped|application|shop.app.loyalty|relationships: shop.app.customers (reads accounts from)"
+  ]
+}

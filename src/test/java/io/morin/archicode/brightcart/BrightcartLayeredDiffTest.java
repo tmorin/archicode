@@ -281,6 +281,37 @@ class BrightcartLayeredDiffTest {
         assertEquals(List.of(), cascade(readTree(future.out())).stream().toList());
     }
 
+    /**
+     * The cascade the command line lists for P1, P2, P3 and P5, row by row and in the order it prints them, is the one of
+     * {@code layered-cascade-cases.json}: the file the editor's Changes panel is checked against ({@code
+     * editor-reads-layers.test.js}), so that the two tools cannot drift on what a {@code REMOVE} took.
+     */
+    @Test
+    @SneakyThrows
+    void theCascadeOfEachComparisonIsTheOneTheEditorIsCheckedAgainst() {
+        val cases = Brightcart.MAPPER.readTree(
+            java.nio.file.Files.readString(Path.of("src/test/javascript/viewpoint-kernel/layered-cascade-cases.json"))
+        );
+        for (val id : List.of("P1", "P2", "P3", "P5")) {
+            val rows = new ArrayList<String>();
+            for (val row : json(Brightcart.comparison(id)).path("cascade")) {
+                rows.add(
+                    String.join(
+                        "|",
+                        row.get("plateau").asText(),
+                        row.get("effect").asText(),
+                        row.get("layer").asText(),
+                        row.get("element").asText(),
+                        row.path("detail").asText()
+                    )
+                );
+            }
+            val wanted = new ArrayList<String>();
+            cases.get(id).forEach(r -> wanted.add(r.asText()));
+            assertEquals(wanted, rows, id);
+        }
+    }
+
     /** The layer and reference of each element of a graph, sorted. */
     private static List<String> references(JsonNode graph) {
         val out = new ArrayList<String>();

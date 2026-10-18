@@ -174,6 +174,43 @@
   .plateau-label { font-size: 0.8rem; color: var(--muted); }
   .plateau-horizon { margin-left: 0.4rem; font-size: 0.75rem; opacity: 0.75; }
   .plateau-problem { font-size: 0.8rem; color: var(--danger); }
+  /* The band of plateaus (wave 014, run 0080): the tree of the plateaus under the top bar, then what is compared. It wraps, and the tree scrolls inside itself, so the page never scrolls sideways. */
+  .plateau-band { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 1rem; padding: 0.3rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .plateau-band button { height: 2rem; padding: 0 0.7rem !important; font-size: 0.85rem; line-height: 1.25; white-space: nowrap; }
+  .band-tree, .band-children { list-style: none; margin: 0; padding: 0; }
+  .band-tree { display: flex; align-items: center; min-width: 0; max-width: 100%; overflow-x: auto; }
+  .band-item { display: flex; align-items: center; }
+  .band-children { position: relative; margin-left: 1rem; padding-left: 0.9rem; }
+  .band-children::before { content: ""; position: absolute; left: -1rem; width: 1rem; top: 50%; border-top: 1px solid var(--border); }
+  .band-children > .band-item { position: relative; padding: 0.15rem 0; }
+  .band-children > .band-item::before { content: ""; position: absolute; left: -0.9rem; width: 0.9rem; top: 50%; border-top: 1px solid var(--border); }
+  .band-children > .band-item::after { content: ""; position: absolute; left: -0.9rem; top: 0; bottom: 0; border-left: 1px solid var(--border); }
+  .band-children > .band-item:first-child::after { top: 50%; }
+  .band-children > .band-item:last-child::after { bottom: 50%; }
+  .band-children > .band-item:only-child::after { display: none; }
+  .band-node { display: inline-flex; align-items: center; }
+  .band-draw { display: inline-flex; align-items: center; gap: 0.45rem; }
+  .band-node .band-draw { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+  .band-node .band-draw:only-child { border-radius: 4px !important; }
+  .band-node .band-compare { padding: 0 0.45rem !important; margin-left: -1px; border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
+  .band-node.band-compared .band-compare, .band-compare[aria-pressed="true"] { border-color: var(--accent) !important; color: var(--accent); font-weight: 600; }
+  .band-compare.band-choose { border-color: var(--accent) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .band-horizon { font-size: 0.75rem; opacity: 0.75; }
+  .band-counts { font-size: 0.75rem; font-variant-numeric: tabular-nums; opacity: 0.85; }
+  .band-flag { color: var(--danger); font-weight: 700; }
+  .band-node.band-broken .band-draw { border-color: var(--danger) !important; }
+  .band-compare-control { display: inline-flex; align-items: center; gap: 0.25rem 0.5rem; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  .band-status { font-size: 0.8rem; color: var(--muted); min-width: 0; }
+  .band-note { font-size: 0.8rem; }
+  .band-readonly { color: var(--muted); }
+  .band-errors { flex-basis: 100%; font-size: 0.8rem; }
+  .band-errors ul { margin: 0.2rem 0 0 1.2rem; list-style: disc; }
+  .field-origin { margin-left: 0.5rem; font-size: 0.72rem; color: var(--muted); font-style: italic; }
+  .field-origin[data-origin="patch"] { color: var(--accent); }
+  .origin-block { margin-top: 0.4rem; }
+  .origin-patches { margin: 0; padding-left: 1rem; list-style: disc; font-size: 0.8rem; }
+  .changes-cascade .change-cascade { margin: 0.25rem 0 0.75rem; padding-left: 1rem; list-style: disc; font-size: 0.8rem; line-height: 1.5; }
+  .cascade-effect { font-weight: 600; }
   .compare-control { display: inline-flex; align-items: center; gap: 0.25rem 0.4rem; flex-wrap: wrap; min-width: 0; max-width: 100%; }
   .compare-control select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 14rem; }
   .compare-control button { padding: 0.25rem 0.6rem !important; font-size: 0.8rem; }
@@ -567,7 +604,7 @@
   .button-group button[aria-pressed="true"] { position: relative; z-index: 1; }
   /* The neighbours overlap by one border (margin -1px): the hovered or focused button rises above them, so none of its borders is hidden. */
   .button-group button:hover, .button-group button:focus-visible { position: relative; z-index: 2; }
-  .perspective-tabs button[aria-pressed="true"], .plateau-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .perspective-tabs button[aria-pressed="true"], .plateau-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"], .band-draw[aria-pressed="true"], .band-toggles button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
   /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
   .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -833,6 +870,7 @@
   .grid-cols-\[auto_auto_minmax\(0\,1fr\)\] { grid-template-columns: auto auto minmax(0, 1fr); }
   .grid-cols-\[minmax\(0\,1fr\)_auto_auto\] { grid-template-columns: minmax(0, 1fr) auto auto; }
   .grid-rows-\[auto_minmax\(0\,1fr\)\] { grid-template-rows: auto minmax(0, 1fr); }
+  .grid-rows-\[auto_auto_minmax\(0\,1fr\)\] { grid-template-rows: auto auto minmax(0, 1fr); }
   .grid-rows-\[minmax\(0\,1fr\)_auto_auto\] { grid-template-rows: minmax(0, 1fr) auto auto; }
   .cursor-col-resize { cursor: col-resize; }
   .cursor-row-resize { cursor: row-resize; }
@@ -3388,6 +3426,9 @@ function createInitialAppState() {
     index: { application: new Map(), technology: new Map() },
     relationshipStats: { total: 0, dangling: 0 },
     duplicateReferences: [], // [{ layer, reference, sources, message }]: a reference declared twice is reported, never chosen (see buildIndex)
+    layers: null, // wave 014 (run 0080): what the band says, { current, compare, blocked } (see createLayers); null while a workspace has `settings.plateaus`, which has its own selector
+    layerProblems: null, // the sentences of the first layer of the chain of the plateau drawn that the command line refuses, else null (see layerModelOf)
+    layerUndrawable: false, // the plateau drawn has no graph (the kernel refused the patches of a layer): its index is empty
     plateauTree: null, // the tree of the layered plateaus the manifests write (see buildPlateauTree): { nodes, ids, problems, redeclared, warnings, layered, layeredBy }
     plateau: null, // { id, name, horizon, path } of the plateau read; null for a workspace without `settings.plateaus` (see selectPlateau)
     plateaus: [], // every plateau of settings.plateaus, in the order of the file: what the selector of the header lists
@@ -3584,9 +3625,9 @@ function checkPlateauStructure(plateaus) {
 /**
  * Check every rule on the plateaus and choose the one to read: `requested` (an id), else `settings.current`, else the last
  * one. `{ problems }` when a rule is broken (one message each, the words of the command line); else `{ plateau, path }`,
- * both null for a workspace that has no plateaus (one set of manifests, `manifests.paths`).
+ * both null for a workspace that has no plateaus (one set of manifests, `manifests.paths`). `deferCurrent`: leave the check of `settings.current` of a workspace with no `settings.plateaus` to the caller.
  */
-function selectPlateau(settings, requested) {
+function selectPlateau(settings, requested, deferCurrent) {
   const structure = checkPlateauStructure(settings.plateaus);
   if (structure.length) return { problems: structure };
   const plateaus = settings.plateaus || [];
@@ -3597,7 +3638,8 @@ function selectPlateau(settings, requested) {
       const sentence = manifestsPathSentence(path);
       if (sentence !== null) problems.push(sentence);
     }
-    if (current !== null) problems.push('`settings.current` is `' + current + '` but the workspace declares no `settings.plateaus`');
+    // `deferCurrent` (wave 014, run 0080): whether `settings.current` names a plateau is known once the manifests are read, as the command line does (`Plateaus.requireNoPlateaus`): see `layersOfSettingsCurrent`
+    if (current !== null && !deferCurrent) problems.push('`settings.current` is `' + current + '` but the workspace declares no `settings.plateaus`');
     if (requested !== null && requested !== undefined) problems.push('`--plateau ' + requested + '` cannot be used: the workspace declares no `settings.plateaus`');
     return problems.length ? { problems } : { plateau: null, path: null };
   }
@@ -3778,6 +3820,7 @@ function validCompareChoice(choice, plateaus) {
  * the baseline, and coming back, finds the comparison again.
  */
 function compareTargetPlateau() {
+  if (AppState.layers) return layerCompareOther();
   if (!AppState.plateau || AppState.plateaus.length < 2 || !AppState.compareTo) return null;
   const target = AppState.compareTo === COMPARE_BASELINE_CHOICE
     ? ownBaselineOf(AppState.plateau, AppState.plateaus)
@@ -3792,6 +3835,7 @@ function compareTargetPlateau() {
  * is not there is told (`problem`), as for the plateau drawn; neither stops the plateau from loading.
  */
 async function loadBaseline(rootHandle, settings) {
+  if (AppState.layers) return;
   const target = compareTargetPlateau();
   if (!target) { AppState.baseline = null; modelsChanged(); return; }
   const relDir = normalizePlateauPath(target.path);
@@ -3811,6 +3855,7 @@ async function loadBaseline(rootHandle, settings) {
 
 /** `loadBaseline` that never throws: a folder the browser cannot read is the baseline's problem, said in the header, not an error of the page. */
 async function loadBaselineSafely(rootHandle, settings) {
+  if (AppState.layers) return; // the plateau compared with is another resolution of the manifests already read (see `syncLayers`), not a folder
   try {
     await loadBaseline(rootHandle, settings);
   } catch (e) {
@@ -3823,7 +3868,7 @@ async function loadBaselineSafely(rootHandle, settings) {
 
 /** Reload the baseline from the disk (the Reload button: the folder may have changed while the page stayed open) and draw again. */
 async function reloadBaseline() {
-  if (!AppState.workspace || !AppState.folder || !AppState.folder.handle || !compareTargetPlateau()) return;
+  if (AppState.layers || !AppState.workspace || !AppState.folder || !AppState.folder.handle || !compareTargetPlateau()) return;
   await loadBaselineSafely(AppState.folder.handle, AppState.workspace.settings);
   diagramCache = null;
   render();
@@ -3942,7 +3987,7 @@ function stripArchicodeKindPrefix(fullKind) {
  * the manifest root's own `level` once, from its un-generalized
  * `bareKind`, before ever calling this function for that root.
  */
-function indexElementRecursive(node, kind, reference, sourceFile, category, index, settings, level, declarations) {
+function indexElementRecursive(node, kind, reference, sourceFile, category, index, settings, level, declarations, attachedRoots) {
   const rawRelationships = Array.isArray(node.relationships) ? node.relationships : [];
   const relationships = rawRelationships.map((r) => {
     const rel = r && typeof r === 'object' ? r : {};
@@ -3988,12 +4033,15 @@ function indexElementRecursive(node, kind, reference, sourceFile, category, inde
     if (!childNode || typeof childNode !== 'object' || !childNode.id) continue;
     // ASM-3b: a nested element carries its own *bare* kind discriminator
     // directly (no prefix stripping, unlike header.kind).
-    const childKind = childNode.kind;
     const childReference = reference + '.' + childNode.id;
+    // wave 014 (run 0080): in a graph resolved from layers, the root of a manifest that says `header.parent` sits inside the element it names: it keeps
+    // the kind, the level and the file of its own manifest (`attachedRoots`: Map layer|reference -> { kind, level, file }); the old callers pass none
+    const attached = attachedRoots ? attachedRoots.get(category + '|' + childReference) : undefined;
+    const childKind = attached ? attached.kind : childNode.kind;
     // DEC-3: a 'group' has no level of its own — it always inherits its
     // caller's level; every other kind's level is simply its own kind.
-    const childLevel = (childKind === 'group') ? level : childKind;
-    const childRecord = indexElementRecursive(childNode, childKind, childReference, sourceFile, category, index, settings, childLevel, declarations);
+    const childLevel = attached ? attached.level : (childKind === 'group') ? level : childKind;
+    const childRecord = indexElementRecursive(childNode, childKind, childReference, attached ? attached.file : sourceFile, category, index, settings, childLevel, declarations, attachedRoots);
     record.children.push(childRecord);
   }
 
@@ -4258,6 +4306,922 @@ function checkPlateauRedeclarations(model, declarations) {
 /** The sentence for a workspace that has `settings.plateaus` and uses layered plateaus; the command line says the same (`WorkspaceFactory`). */
 function layeredAndSettingsPlateausSentence(model) {
   return '`settings.plateaus` and layered plateaus are both used: ' + model.layeredBy + '. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`';
+}
+
+
+// =====================================================================
+// The layers (wave 014, run 0080). A plateau is drawn as its chain: for each plateau from `baseline` down to it, the elements whose manifests say
+// `plateau: <layer>` are added to the graph of the plateau above, then the ordered patches of the layer change that graph (the kernel's `apply_patches`),
+// then the layer is checked: what the graph points at must be there, and what the views and stories placed in the layer name too. A mistake names the
+// layer, in the sentences of the command line (`LayerLoader.java`: keep them alike). The first layer that is wrong ends the chain.
+//
+// The result of a layer is a *state* (the JSON graph, who declared each root, which patch set which field, the REMOVE patches with their cascade) and is
+// kept per plateau, so that a plateau reuses the state of the plateau it overrides and a click on the band resolves nothing twice. The states and the models
+// drawn from them (`layerModelOf`) are kept for as long as the tree of the plateaus (`AppState.plateauTree`, rebuilt by every load and every edit) and the
+// text of the manifests are what they were; any edit ends in `rebuildIndexAndRender`, which builds a new tree, so a cache that was not told is not used.
+// =====================================================================
+
+const LAYER_NAMES = ['application', 'technology'];
+
+/**
+ * The date a horizon label reads as, as a number that sorts (`yyyymmdd`), or null when it reads as none: `2026`, `2026-10`, `2026-10-18`, a quarter
+ * (`2026-Q4`, `2026Q4`) or a half (`2026-H2`). The first day of the period is the date.
+ */
+function horizonDate(label) {
+  if (label === null || label === undefined) return null;
+  const text = String(label).trim();
+  const valid = (year, month, day) => {
+    const d = new Date(Date.UTC(year, month - 1, day));
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day ? year * 10000 + month * 100 + day : null;
+  };
+  let m = /^(\d{4})$/.exec(text);
+  if (m) return valid(Number(m[1]), 1, 1);
+  m = /^(\d{4})-(\d{2})$/.exec(text);
+  if (m) return valid(Number(m[1]), Number(m[2]), 1);
+  m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (m) return valid(Number(m[1]), Number(m[2]), Number(m[3]));
+  m = /^(\d{4})-?Q([1-4])$/i.exec(text);
+  if (m) return valid(Number(m[1]), (Number(m[2]) - 1) * 3 + 1, 1);
+  m = /^(\d{4})-?H([12])$/i.exec(text);
+  if (m) return valid(Number(m[1]), (Number(m[2]) - 1) * 6 + 1, 1);
+  return null;
+}
+
+/**
+ * The order of the siblings in the band (the Open Question "the order of the layers in a band"): the plateaus whose horizon reads as a date come first, by date
+ * and then by id; the others follow, by id (code units, as the rest of the plateaus are sorted). A total order, so the band is the same on every opening.
+ */
+function compareBandSiblings(a, b) {
+  const da = horizonDate(a.horizon);
+  const db = horizonDate(b.horizon);
+  if (da !== null && db !== null) return da - db || compareUnits(a.id, b.id);
+  if (da !== null) return -1;
+  if (db !== null) return 1;
+  return compareUnits(a.id, b.id);
+}
+
+/** The tree of the band: `{ id, node, children: [...] }` from `baseline` down, the siblings in the order of `compareBandSiblings`. Null when the tree has no nodes. */
+function bandTreeOf(tree) {
+  if (!tree || !tree.nodes || !tree.nodes.has(BASELINE_PLATEAU)) return null;
+  const children = new Map();
+  for (const node of tree.nodes.values()) {
+    if (node.parent === null) continue;
+    if (!children.has(node.parent)) children.set(node.parent, []);
+    children.get(node.parent).push(node);
+  }
+  const build = (node) => ({ id: node.id, node, children: (children.get(node.id) || []).slice().sort(compareBandSiblings).map(build) });
+  return build(tree.nodes.get(BASELINE_PLATEAU));
+}
+
+/** The ids of the band in reading order (a plateau, then what overrides it): the order the band lists its nodes in. */
+function bandOrderOf(tree) {
+  const out = [];
+  const walk = (item) => { out.push(item.id); item.children.forEach(walk); };
+  const root = bandTreeOf(tree);
+  if (root) walk(root);
+  return out;
+}
+
+/** A plateau of the tree as the page holds a plateau (`plateauModel`): `{ id, name, horizon, path, baseline }`; `path` is empty, a layer has no folder of its own. */
+function layerPlateauModel(id) {
+  const node = AppState.plateauTree && AppState.plateauTree.nodes.get(id);
+  return { id, name: node && node.name ? node.name : '', horizon: node && node.horizon ? node.horizon : '', path: '', baseline: node && node.parent ? node.parent : '' };
+}
+
+function clonePlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+/** A patch as the kernel takes it: the operator in capitals, the layer in lower case, `json-path` as the manifest writes it (the reader also accepts `json_path`). */
+function layerKernelPatch(raw) {
+  const patch = { operator: String(raw.operator).toUpperCase() };
+  const text = (value) => String(value);
+  if (!readIsMissing(raw.target)) patch.target = text(raw.target);
+  if (!readIsMissing(raw.layer)) patch.layer = text(raw.layer).toLowerCase();
+  const jsonPath = !readIsMissing(raw['json-path']) ? raw['json-path'] : raw.json_path;
+  if (!readIsMissing(jsonPath)) patch['json-path'] = text(jsonPath);
+  if (!readIsMissing(raw.expect)) patch.expect = Number(raw.expect);
+  if (!readIsMissing(raw.field)) patch.field = text(raw.field);
+  if (!readIsMissing(raw.where) && typeof raw.where === 'object') {
+    patch.where = { destination: text(raw.where.destination) };
+    if (!readIsMissing(raw.where.label)) patch.where.label = text(raw.where.label);
+  }
+  if (!readIsMissing(raw.value)) patch.value = raw.value;
+  return patch;
+}
+
+/** What the manifests of each plateau declare: Map plateau id -> `{ elements, views, stories }` (the manifests, in the order of the files); a file with an error declares nothing. */
+function layerManifestsByPlateau(manifestFiles) {
+  const out = new Map();
+  for (const mf of manifestFiles) {
+    if (mf.error || !mf.header || !mf.header.kind || !mf.content || mf.content.id === undefined) continue;
+    const bare = stripArchicodeKindPrefix(mf.header.kind);
+    if (bare === 'plateau') continue;
+    const plateau = plateauOfManifest(mf);
+    if (!out.has(plateau)) out.set(plateau, { elements: [], views: [], stories: [] });
+    const own = out.get(plateau);
+    if (bare === 'view') own.views.push(mf);
+    else if (bare === 'story') own.stories.push(mf);
+    else if (ARCHICODE_KIND_MAP[bare]) own.elements.push(mf);
+  }
+  return out;
+}
+
+function emptyLayerState() {
+  return {
+    graph: { application: { elements: [] }, technology: { elements: [] } },
+    roots: new Map(), // layer|reference -> { kind, level, file, plateau }: the root of every manifest, where it was declared
+    patched: new Map(), // layer|reference -> Map field -> { plateau, rank, operator, selector }: the last patch that set the field
+    touched: new Map(), // layer|reference -> [{ plateau, rank, operator, selector, field }]: every patch that selected the element
+    removals: [], // [{ plateau, rank, operator, selector, touched, removed, dropped }]: the REMOVE patches of the chain, in the order they were applied
+    unplaced: new Map(), // layer|id -> reference: a root that says `header.parent` of an element the graph does not have stays at the top, under the reference its manifest gives it
+    problems: null // { plateau, sentences }: the mistakes of the first layer of the chain that has some (the command line stops there); the plateau is drawn all the same, so that it can be repaired
+  };
+}
+
+function cloneLayerState(state) {
+  return {
+    graph: clonePlain(state.graph),
+    roots: new Map(state.roots),
+    patched: new Map(Array.from(state.patched, ([key, fields]) => [key, new Map(fields)])),
+    touched: new Map(Array.from(state.touched, ([key, list]) => [key, list.slice()])),
+    removals: state.removals.slice(),
+    unplaced: new Map(state.unplaced),
+    problems: state.problems
+  };
+}
+
+/** Every element of a graph by reference, per layer: Map reference -> the JSON node. */
+function graphReferencesOf(graph) {
+  const out = { application: new Map(), technology: new Map() };
+  const walk = (layer, node, reference) => {
+    out[layer].set(reference, node);
+    for (const child of Array.isArray(node.elements) ? node.elements : []) {
+      if (!child || typeof child !== 'object' || !child.id) continue;
+      walk(layer, child, reference + '.' + child.id);
+    }
+  };
+  for (const layer of LAYER_NAMES) {
+    for (const root of graph[layer].elements) if (root && typeof root === 'object' && root.id) walk(layer, root, String(root.id));
+  }
+  return out;
+}
+
+/** The references the properties of a view name: `element`, and the entries of `pinned`, `opened` and `hidden` (sorted, once each). */
+function namedByProperties(properties) {
+  const names = new Set();
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return [];
+  if (typeof properties.element === 'string') names.add(properties.element);
+  for (const key of ['pinned', 'opened', 'hidden']) {
+    for (const entry of Array.isArray(properties[key]) ? properties[key] : []) if (typeof entry === 'string') names.add(entry);
+  }
+  return Array.from(names).sort(compareUnits);
+}
+
+/**
+ * What a layer is checked for (`LayerLoader.problems`, `viewProblems`, `storyProblems`): a relationship, an entry of `uses` and an application hosted on a node
+ * must name an element of the graph, and so must what the views and the stories placed in the layer name. Sorted by element, then by what it points at.
+ */
+function layerProblemsOf(plateau, graph, own) {
+  const refs = graphReferencesOf(graph);
+  const found = [];
+  const in_ = 'in the plateau `' + plateau + '`, ';
+  for (const layer of LAYER_NAMES) {
+    for (const [reference, node] of refs[layer]) {
+      for (const rel of Array.isArray(node.relationships) ? node.relationships : []) {
+        if (!rel || typeof rel !== 'object') continue;
+        const destination = kernelStringOf(rel.destination);
+        if (destination !== null && !refs[layer].has(destination)) found.push({ element: reference, other: destination, sentence: in_ + '`' + reference + '` has a relationship towards `' + destination + '`, which does not exist' });
+      }
+      if (node.kind === 'environment') {
+        for (const used of kernelStringsOf(node.uses)) {
+          if (!refs[layer].has(used)) found.push({ element: reference, other: used, sentence: in_ + '`' + reference + '` uses `' + used + '`, which does not exist' });
+        }
+      }
+      if (node.kind === 'node') {
+        for (const application of kernelStringsOf(node.applications)) {
+          if (!refs.application.has(application)) found.push({ element: reference, other: application, sentence: in_ + '`' + reference + '` hosts `' + application + '`, which does not exist' });
+        }
+      }
+    }
+  }
+  found.sort((a, b) => compareUnits(a.element, b.element) || compareUnits(a.other, b.other) || compareUnits(a.sentence, b.sentence));
+  const out = new Set(found.map((p) => p.sentence));
+  const layerOf = (value) => (String(value === undefined || value === null ? '' : value).toLowerCase() === 'technology' ? 'technology' : 'application');
+  for (const mf of own.views) {
+    for (const name of namedByProperties(mf.content.properties)) {
+      if (!refs[layerOf(mf.content.layer)].has(name)) out.add(in_ + 'the view `' + mf.content.id + '` (`' + mf.relPath + '`) names `' + name + '`, which does not exist');
+    }
+  }
+  for (const mf of own.stories) {
+    for (const step of Array.isArray(mf.content.steps) ? mf.content.steps : []) {
+      if (!step || typeof step !== 'object') continue;
+      for (const name of namedByProperties(step.properties)) {
+        if (!refs[layerOf(step.layer)].has(name)) out.add(in_ + 'the story `' + mf.content.id + '` (`' + mf.relPath + '`) names `' + name + '`, which does not exist');
+      }
+    }
+  }
+  return Array.from(out);
+}
+
+/**
+ * One layer: the state of the plateau above (null for the root) with the elements of the manifests of `node` added, then its patches applied by the kernel, then
+ * the checks. Returns `{ state }` (`state.problems` holds the sentences of the first layer of the chain that is wrong, told by the command line, which stops there; the
+ * graph is built all the same), or `{ fatal, plateau }` when the kernel refuses the patches of the layer: there is no graph then.
+ */
+function resolveLayerStep(parent, node, context) {
+  const state = parent ? cloneLayerState(parent) : emptyLayerState();
+  const own = context.byPlateau.get(node.id) || { elements: [], views: [], stories: [] };
+  const refs = graphReferencesOf(state.graph);
+  const register = (category, json, reference) => {
+    const walk = (item, ref) => {
+      refs[category].set(ref, item);
+      for (const child of Array.isArray(item.elements) ? item.elements : []) if (child && typeof child === 'object' && child.id) walk(child, ref + '.' + child.id);
+    };
+    walk(json, reference);
+  };
+  const waiting = [];
+  for (const mf of own.elements) {
+    const bare = stripArchicodeKindPrefix(mf.header.kind);
+    const { category, rootKind } = ARCHICODE_KIND_MAP[bare];
+    const groupLevel = /^(.+)-group$/.exec(bare);
+    const level = groupLevel ? groupLevel[1] : rootKind;
+    const parentReference = mf.header.parent ? String(mf.header.parent) : null;
+    const reference = parentReference ? parentReference + '.' + mf.content.id : String(mf.content.id);
+    const json = clonePlain(mf.content);
+    json.kind = rootKind;
+    const item = { mf, category, rootKind, level, parentReference, reference, json };
+    if (parentReference === null) {
+      state.graph[category].elements.push(json);
+      register(category, json, reference);
+      state.roots.set(category + '|' + reference, { kind: rootKind, level, file: mf.relPath, plateau: node.id });
+    } else {
+      waiting.push(item);
+    }
+  }
+  // a manifest that says `header.parent` goes inside the element it names, whichever file comes first
+  let pending = waiting;
+  while (pending.length) {
+    const left = [];
+    for (const item of pending) {
+      const host = refs[item.category].get(item.parentReference);
+      if (!host) { left.push(item); continue; }
+      if (!Array.isArray(host.elements)) host.elements = [];
+      host.elements.push(item.json);
+      register(item.category, item.json, item.reference);
+      state.roots.set(item.category + '|' + item.reference, { kind: item.rootKind, level: item.level, file: item.mf.relPath, plateau: node.id });
+    }
+    if (left.length === pending.length) break;
+    pending = left;
+  }
+  // before the patches: a patch may remove a parent, and the elements declared under it go with it. A manifest whose parent is not there is told, and stays at the top
+  // (the editor draws what it can, so that the mistake can be repaired in it)
+  let mine = [];
+  if (pending.length) {
+    const sentences = new Map();
+    for (const item of pending) {
+      sentences.set(item.reference, 'in the plateau `' + node.id + '`, `' + item.reference + '` is declared under `' + item.parentReference + '`, which does not exist');
+      state.graph[item.category].elements.push(item.json);
+      state.unplaced.set(item.category + '|' + item.json.id, item.reference);
+      state.roots.set(item.category + '|' + item.reference, { kind: item.rootKind, level: item.level, file: item.mf.relPath, plateau: node.id });
+    }
+    mine = Array.from(sentences.keys()).sort(compareUnits).map((k) => sentences.get(k));
+  }
+
+  if (node.patches.length) {
+    // the command line stops at the first layer that is wrong and tells it: a layer before this one (or this one's own parents) that is wrong is what is told, though nothing is drawn
+    const earlier = state.problems || (mine.length ? { plateau: node.id, sentences: mine } : null);
+    if (!context.kernel) return { fatal: ['the viewpoint kernel is not loaded, so the patches of the plateau `' + node.id + '` cannot be applied'], plateau: node.id, earlier };
+    const patches = node.patches.map((raw) => ({ raw, kernel: layerKernelPatch(raw) }));
+    const answer = context.kernel.applyPatches({ workspace: { application: state.graph.application, technology: state.graph.technology }, plateau: node.id, patches: patches.map((p) => p.kernel) });
+    if (answer.error) return { fatal: [answer.error], plateau: node.id, earlier };
+    const layerOf = (value) => ({ elements: value && Array.isArray(value.elements) ? value.elements : [] });
+    state.graph = { application: layerOf(answer.workspace && answer.workspace.application), technology: layerOf(answer.workspace && answer.workspace.technology) };
+    for (const report of answer.patches || []) {
+      const sent = patches[report.rank - 1] ? patches[report.rank - 1].kernel : {};
+      const origin = { plateau: node.id, rank: report.rank, operator: report.operator, selector: report.selector };
+      if (report.operator === 'REMOVE') {
+        state.removals.push(Object.assign({ touched: report.touched || [], removed: report.removed || [], dropped: report.dropped || [] }, origin));
+        // what the cascade took out of an element that stays is a change of that element's field, made by this patch
+        for (const gone of report.dropped || []) {
+          const key = gone.layer + '|' + gone.reference;
+          if (!state.patched.has(key)) state.patched.set(key, new Map());
+          state.patched.get(key).set(gone.field, origin);
+          if (!state.touched.has(key)) state.touched.set(key, []);
+          state.touched.get(key).push(Object.assign({ field: gone.field }, origin));
+        }
+        continue;
+      }
+      const field = sent.field || (sent.where ? 'relationships' : null);
+      for (const element of report.touched || []) {
+        const key = element.layer + '|' + element.reference;
+        if (!state.touched.has(key)) state.touched.set(key, []);
+        state.touched.get(key).push(Object.assign({ field }, origin));
+        if (field) {
+          if (!state.patched.has(key)) state.patched.set(key, new Map());
+          state.patched.get(key).set(field, origin);
+        }
+      }
+    }
+  }
+
+  // the checks of the layer; told alone when a parent is missing, as the command line tells that first (and stops)
+  if (!mine.length) mine = layerProblemsOf(node.id, state.graph, own);
+  if (!state.problems && mine.length) state.problems = { plateau: node.id, sentences: mine };
+  return { state };
+}
+
+/** The cache of the states and models of the plateaus, for one tree of plateaus and one text of the manifests (see the note above). */
+let layerCache = null;
+
+function layerCacheSignature(manifestFiles) {
+  return manifestFiles.map((mf) => [mf, mf.rawText]);
+}
+
+function layerCacheHolds(settings) {
+  if (!layerCache || layerCache.tree !== AppState.plateauTree || layerCache.settings !== settings || layerCache.kernel !== loadedKernel) return false;
+  if (layerCache.label !== settings.relationships.defaultSyntheticLabel || layerCache.signature.length !== AppState.manifestFiles.length) return false;
+  return layerCache.signature.every(([mf, text], i) => AppState.manifestFiles[i] === mf && mf.rawText === text);
+}
+
+function ensureLayerCache(settings) {
+  if (!layerCacheHolds(settings)) {
+    const filePlateau = new Map();
+    for (const mf of AppState.manifestFiles) filePlateau.set(mf.relPath, plateauOfManifest(mf));
+    layerCache = {
+      tree: AppState.plateauTree, settings, kernel: loadedKernel, label: settings.relationships.defaultSyntheticLabel, signature: layerCacheSignature(AppState.manifestFiles),
+      byPlateau: layerManifestsByPlateau(AppState.manifestFiles), filePlateau, states: new Map(), models: new Map(), counters: { steps: 0, models: 0 }
+    };
+  }
+  return layerCache;
+}
+
+/** The state of a plateau: `{ state }` or `{ fatal, plateau }`. A plateau whose ancestor has no graph has none. */
+function layerStateOf(id, settings) {
+  const cache = ensureLayerCache(settings);
+  if (cache.states.has(id)) return cache.states.get(id);
+  const node = cache.tree.nodes.get(id);
+  const above = node.parent === null ? null : layerStateOf(node.parent, settings);
+  let result;
+  if (above && above.fatal) {
+    result = above;
+  } else {
+    cache.counters.steps++;
+    result = resolveLayerStep(above ? above.state : null, node, { byPlateau: cache.byPlateau, kernel: loadedKernel });
+  }
+  cache.states.set(id, result);
+  return result;
+}
+
+/**
+ * The model of a plateau, as the page draws it: `{ id, plateau, index, roots, stats, removals, problems, failedAt, undrawable }`. `index` holds the records of every
+ * element of the chain, each with where it was declared (`declaredIn`, `sourceFile`) and the fields a patch set (`patched`), `roots` the records with no parent per layer;
+ * `problems` is null, or the sentences of the first layer of the chain that is wrong (`failedAt`), which the command line refuses the plateau for. The plateau is drawn
+ * all the same (a link to nothing, a parent that is not there), so that it can be repaired, unless `undrawable`: the kernel refused the patches of a layer, there is no
+ * graph, the index is empty and `problems` holds the kernel's sentence.
+ */
+function layerModelOf(id, settings) {
+  const cache = ensureLayerCache(settings);
+  if (cache.models.has(id)) return cache.models.get(id);
+  const result = layerStateOf(id, settings);
+  const index = { application: new Map(), technology: new Map() };
+  const roots = { application: [], technology: [] };
+  let stats = { total: 0, dangling: 0 };
+  let removals = [];
+  if (!result.fatal) {
+    const state = result.state;
+    for (const category of LAYER_NAMES) {
+      for (const root of state.graph[category].elements) {
+        if (!root || typeof root !== 'object' || !root.id) continue;
+        const reference = state.unplaced.get(category + '|' + root.id) || String(root.id);
+        const info = state.roots.get(category + '|' + reference);
+        const kind = info ? info.kind : root.kind;
+        const level = info ? info.level : kind;
+        roots[category].push(indexElementRecursive(root, kind, reference, info ? info.file : '', category, index, settings, level, null, state.roots));
+      }
+    }
+    for (const category of LAYER_NAMES) {
+      for (const record of index[category].values()) {
+        record.declaredIn = cache.filePlateau.get(record.sourceFile) || BASELINE_PLATEAU;
+        const key = category + '|' + record.reference;
+        record.patched = state.patched.get(key) || null;
+        record.touchedBy = state.touched.get(key) || [];
+      }
+    }
+    stats = resolveRelationships(index);
+    removals = state.removals;
+  }
+  cache.counters.models++;
+  const told = result.fatal ? result.earlier : result.state.problems; // `{ plateau, sentences }` of the first layer of the chain that is wrong, if any
+  const problems = told ? told.sentences : result.fatal ? result.fatal : null;
+  const failedAt = told ? told.plateau : result.fatal ? result.plateau : null;
+  const model = { id, plateau: layerPlateauModel(id), index, roots, stats, removals, problems, failedAt, undrawable: !!result.fatal };
+  cache.models.set(id, model);
+  return model;
+}
+
+// ---- Where a value comes from ----
+
+/**
+ * Where a field of an element of the plateau drawn comes from: `{ kind: 'patch', plateau, rank, operator, selector, inherited }` when a patch set it (the last one),
+ * else `{ kind: 'declared' | 'inherited', plateau }`, the plateau of the manifest that declares the element. `inherited` is true when that plateau is not the one drawn.
+ * Null for a record of a workspace that has no layers.
+ */
+function fieldOriginOf(record, field, drawn) {
+  if (!record || record.declaredIn === undefined) return null;
+  const now = drawn || (AppState.layers ? AppState.layers.current : BASELINE_PLATEAU);
+  const set = record.patched ? record.patched.get(field) : null;
+  if (set) return { kind: 'patch', plateau: set.plateau, rank: set.rank, operator: set.operator, selector: set.selector, inherited: set.plateau !== now };
+  return { kind: record.declaredIn === now ? 'declared' : 'inherited', plateau: record.declaredIn, inherited: record.declaredIn !== now };
+}
+
+/** The origin as a sentence: `declared in saas`, `inherited from baseline`, `set by patch 3 of saas (SET target shop.web)`, `inherited from inhouse: set by patch 3 ...`. */
+function originText(origin) {
+  if (!origin) return '';
+  if (origin.kind === 'patch') return (origin.operator === 'REMOVE' ? 'taken out by patch ' : 'set by patch ') + origin.rank + ' of ' + origin.plateau + ' (' + origin.operator + ' ' + origin.selector + ')' + (origin.inherited ? ', inherited' : '');
+  return origin.kind === 'declared' ? 'declared in ' + origin.plateau : 'inherited from ' + origin.plateau;
+}
+
+/** The small note after a value: where it comes from. `forPlateau`: the plateau the record is read in (the plateau drawn when omitted). '' for a workspace that has no layers. */
+function originNoteHtml(record, field, forPlateau) {
+  const origin = AppState.layers && AppState.plateauTree && AppState.plateauTree.layered ? fieldOriginOf(record, field, forPlateau) : null;
+  if (!origin) return '';
+  return ' <span class="field-origin" data-origin="' + origin.kind + '" data-field="' + escapeHtml(field) + '" title="' + escapeHtml(originText(origin)) + '">' + escapeHtml(originText(origin)) + '</span>';
+}
+
+/** The patches that selected an element without naming a field it sets (a `json-path` that replaces nodes), as lines of the origin block. */
+function renderOriginBlockHtml(record, forPlateau) {
+  if (!AppState.layers || !AppState.plateauTree || !AppState.plateauTree.layered || record.declaredIn === undefined) return '';
+  const now = forPlateau || AppState.layers.current;
+  const patches = (record.touchedBy || []).map((t) => '<li>patch ' + t.rank + ' of ' + escapeHtml(t.plateau) + ': ' + escapeHtml(t.operator + ' ' + t.selector) + (t.field ? ' <span class="muted">(' + escapeHtml(t.field) + ')</span>' : '') + '</li>').join('');
+  return '<section class="origin-block" aria-label="Origin" data-declared-in="' + escapeHtml(record.declaredIn) + '">' +
+    renderFieldRowHtml('Plateau', escapeHtml(record.declaredIn === now ? 'declared in ' + record.declaredIn : 'inherited from ' + record.declaredIn)) +
+    (patches ? renderFieldRowHtml('Patches', '<ul class="origin-patches">' + patches + '</ul>', record.touchedBy.length) : '') + '</section>';
+}
+
+// ---- The cascade of a REMOVE ----
+
+/**
+ * What the REMOVE patches of the chain of the plateau compared took besides the elements they select, among what the other plateau has (`Removal.cascade`):
+ * the elements that left with the selected ones, then the entries taken out of the elements that stay. `[{ plateau, rank, patch, effect, layer, element, detail }]`.
+ * `base`: the index of the plateau the target is compared with.
+ */
+function cascadeOf(removals, base) {
+  const out = [];
+  for (const removal of removals) {
+    const patch = removal.operator + ' ' + removal.selector;
+    const selected = new Set((removal.touched || []).map((r) => r.layer + '|' + r.reference));
+    const gone = (removal.removed || [])
+      .filter((r) => !selected.has(r.layer + '|' + r.reference) && base[r.layer] && base[r.layer].has(r.reference))
+      .sort((a, b) => compareUnits(a.layer, b.layer) || compareUnits(a.reference, b.reference));
+    for (const r of gone) out.push({ plateau: removal.plateau, rank: removal.rank, patch, effect: 'removed', layer: r.layer, element: r.reference, detail: '' });
+    const dropped = [];
+    for (const d of removal.dropped || []) {
+      const holder = base[d.layer] ? base[d.layer].get(d.reference) : null;
+      if (!holder) continue;
+      const entry = d.entry && typeof d.entry === 'object' ? d.entry : null;
+      const destination = entry ? String(entry.destination) : String(d.entry);
+      const label = entry && entry.label !== undefined && entry.label !== null ? String(entry.label) : null;
+      let held = false;
+      if (d.field === 'relationships') held = holder.relationships.some((r) => String(r.destination) === destination && (r.rawLabel === null || r.rawLabel === undefined ? '' : String(r.rawLabel)) === (label === null ? '' : label));
+      else if (d.field === 'uses') held = holder.kind === 'environment' && kernelStringsOf(holder.uses).includes(destination);
+      else if (d.field === 'applications') held = holder.kind === 'node' && kernelStringsOf(holder.applications).includes(destination);
+      if (held) dropped.push({ layer: d.layer, holder: d.reference, field: d.field, text: destination + (label === null ? '' : ' (' + label + ')') });
+    }
+    dropped.sort((a, b) => compareUnits(a.layer, b.layer) || compareUnits(a.holder, b.holder) || compareUnits(a.field, b.field) || compareUnits(a.text, b.text));
+    for (const d of dropped) out.push({ plateau: removal.plateau, rank: removal.rank, patch, effect: 'dropped', layer: d.layer, element: d.holder, detail: d.field + ': ' + d.text });
+  }
+  return out;
+}
+
+// =====================================================================
+// The band of plateaus (wave 014, run 0080). Always on the page of a workspace that has no `settings.plateaus` (which has its own selector): `baseline` alone when no
+// manifest says `plateau:`, else one node per plateau placed by the tree. A click on a node draws that plateau (the whole editor draws it: `AppState.index` is its
+// resolved model); two toggles compare it with the past (the plateau it overrides) or the future (the plateau that overrides it; the band asks which when there are
+// several); a button on any other node compares the two. The comparison is the machinery of Compare to (run 0039): `AppState.baseline` is the plateau compared with.
+// =====================================================================
+
+/**
+ * The layers of the workspace on screen: `{ current, compare, blocked }`, or null when the workspace has `settings.plateaus`.
+ * `current`: the id of the plateau drawn. `compare`: null, or `{ mode, other, chosen }`: `mode` is `past` (`other` is the plateau it overrides: the base), `future`
+ * (`other` is a plateau that overrides it: the target; null while the band waits for the choice) or `other` (any other plateau: the base); `chosen` says that the
+ * target was picked on the band. `blocked`: null, or why only `baseline` is drawn (a mistake in the tree, a reference declared twice).
+ */
+function createLayers(current, compare) {
+  return { current: current || BASELINE_PLATEAU, compare: compare || null, blocked: null };
+}
+
+/** Why the plateaus other than baseline are not drawn, or null: the tree has a mistake, or a reference is declared twice (the command line refuses the workspace). */
+function layersBlockedReason() {
+  const tree = AppState.plateauTree;
+  if (!tree || !tree.layered) return null;
+  if (tree.problems.length) return tree.problems.length === 1 ? 'The plateaus have a mistake (see the note in Elements or Files), so only baseline is drawn.' : 'The plateaus have ' + tree.problems.length + ' mistakes (see the note in Elements or Files), so only baseline is drawn.';
+  if ((tree.redeclared || []).length) return 'A reference, a view or a story is declared again in a plateau that overrides the one that declares it (see the note in Elements or Files), so only baseline is drawn.';
+  if (elementDuplicates().length) return 'A reference is declared twice (see the note in Elements or Files), so only baseline is drawn.';
+  return null;
+}
+
+/** The ancestors of a plateau, nearest first. */
+function layerAncestorsOf(id) {
+  const out = [];
+  const nodes = AppState.plateauTree.nodes;
+  for (let at = nodes.get(id); at && at.parent !== null; at = nodes.get(at.parent)) out.push(at.parent);
+  return out;
+}
+
+/** The plateaus that override a plateau directly, in the order of the band. */
+function layerChildrenOf(id) {
+  return Array.from(AppState.plateauTree.nodes.values()).filter((n) => n.parent === id).sort(compareBandSiblings).map((n) => n.id);
+}
+
+/** Whether a plateau is below another in the tree (it overrides it, directly or not). */
+function layerIsBelow(id, ancestor) {
+  return layerAncestorsOf(id).includes(ancestor);
+}
+
+/**
+ * The comparison after the plateau drawn changed (or the tree did): `past` follows the plateau it overrides, `future` follows the one that overrides it (waiting for the
+ * choice when there are several, keeping a target picked on the band while it is still below), `other` stays while it is another plateau. Nothing when nothing is left to compare.
+ */
+function normalizedLayerCompare(layers) {
+  const c = layers.compare;
+  if (!c) return null;
+  const tree = AppState.plateauTree;
+  if (c.mode === 'past') {
+    const node = tree.nodes.get(layers.current);
+    return node && node.parent !== null ? { mode: 'past', other: node.parent, chosen: false } : null;
+  }
+  if (c.mode === 'future') {
+    if (c.chosen && c.other && tree.nodes.has(c.other) && layerIsBelow(c.other, layers.current)) return c;
+    const children = layerChildrenOf(layers.current);
+    if (!children.length) return null;
+    return { mode: 'future', other: children.length === 1 ? children[0] : null, chosen: false };
+  }
+  if (!c.other || c.other === layers.current || !tree.nodes.has(c.other)) return null;
+  // a plateau chosen on the band is read as it stands to the plateau drawn now: the future when it overrides it, the past when it is the plateau it overrides, whichever way it was reached
+  if (layerIsBelow(c.other, layers.current)) return { mode: 'future', other: c.other, chosen: true };
+  if (tree.nodes.get(layers.current).parent === c.other) return { mode: 'past', other: c.other, chosen: false };
+  return { mode: 'other', other: c.other, chosen: true };
+}
+
+/** The plateau compared with, as a plateau of the page, or null (nothing compared, or the band still waits for the choice of the future). */
+function layerCompareOther() {
+  const layers = AppState.layers;
+  if (!layers || !layers.compare || !layers.compare.other || layers.compare.other === layers.current || !AppState.plateauTree.nodes.has(layers.compare.other)) return null;
+  return layerPlateauModel(layers.compare.other);
+}
+
+/** The comparison is with the future: the plateau drawn is the base and the other one the target. */
+function layerCompareIsFuture() {
+  return !!(AppState.layers && AppState.layers.compare && AppState.layers.compare.mode === 'future' && layerCompareOther());
+}
+
+/**
+ * Make `AppState` hold what the band says: the model of the plateau drawn is `AppState.index` (with its roots and its relationships), the plateau compared with is
+ * `AppState.baseline`. Resolves what is not resolved yet (see `layerModelOf`); a workspace that is not layered, or whose plateaus cannot be drawn (`blocked`), keeps the
+ * index of `buildIndex`, which holds the manifests of baseline.
+ */
+function syncLayers() {
+  const layers = AppState.layers;
+  if (!layers || !AppState.workspace) return;
+  const tree = AppState.plateauTree;
+  layers.blocked = layersBlockedReason();
+  AppState.layerProblems = null;
+  AppState.layerUndrawable = false;
+  if (!tree || !tree.layered || layers.blocked) {
+    layers.current = BASELINE_PLATEAU;
+    layers.compare = null;
+    AppState.baseline = null;
+    modelsChanged();
+    return;
+  }
+  if (!tree.nodes.has(layers.current)) layers.current = BASELINE_PLATEAU;
+  layers.compare = normalizedLayerCompare(layers);
+  const settings = AppState.workspace.settings;
+  const model = layerModelOf(layers.current, settings);
+  const other = layerCompareOther();
+  const otherModel = other ? layerModelOf(other.id, settings) : null;
+  AppState.index = model.index;
+  AppState.baseline = other ? { plateau: other, files: [], index: otherModel.index, duplicates: [], problem: otherModel.problems ? otherModel.problems.join('\n') : null, undrawable: otherModel.undrawable } : null;
+  modelsChanged();
+  AppState.workspace.application.elements = model.roots.application;
+  AppState.workspace.technology.elements = model.roots.technology;
+  AppState.relationshipStats = model.stats;
+  AppState.layerProblems = model.problems;
+  AppState.layerUndrawable = model.undrawable;
+}
+
+/** Draw the plateau of a node of the band. The folder is not read again and nothing is lost: the manifests stay what they are, the model drawn is another resolution of them. */
+function drawPlateau(id) {
+  const layers = AppState.layers;
+  if (!layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.nodes.has(id) || layers.blocked || layers.current === id) return;
+  layers.current = id;
+  rememberLayerChoice();
+  settleAfterLayerChange();
+}
+
+/** After another plateau is drawn or another comparison is chosen: the page is drawn again from the new models, and what it held that is not in them is let go. */
+function settleAfterLayerChange() {
+  syncLayers();
+  const selection = AppState.selection;
+  if (selection.kind === 'element') {
+    if (selection.mode === 'edit') selection.mode = 'view';
+    const layer = selection.layer || layerOfReference(selection.key, selection.layer);
+    if (!layer || !AppState.index[layer] || !AppState.index[layer].has(selection.key)) AppState.selection = { kind: 'none', key: null, mode: 'view' };
+  } else if (selection.kind === 'link' || selection.kind === 'create') {
+    AppState.selection = { kind: 'none', key: null, mode: 'view' };
+  }
+  pendingDeleteConfirmation = null;
+  removedPick = null;
+  changesTabPick = null;
+  candidateMessage = null;
+  mapSelectionCheck = true;
+  diagramCache = null;
+  render();
+}
+
+/** The Past toggle: compare the plateau drawn with the plateau it overrides, or stop. Nothing for `baseline`, which overrides nothing. */
+function toggleCompareWithPast() {
+  const layers = AppState.layers;
+  if (!layers || layers.blocked || !AppState.plateauTree.nodes.has(layers.current)) return;
+  if (layers.compare && layers.compare.mode === 'past') layers.compare = null;
+  else if (AppState.plateauTree.nodes.get(layers.current).parent !== null) layers.compare = { mode: 'past', other: AppState.plateauTree.nodes.get(layers.current).parent, chosen: false };
+  else return;
+  rememberLayerChoice();
+  settleAfterLayerChange();
+}
+
+/**
+ * The Future toggle: compare the plateau drawn with the plateau that overrides it, or stop. With several plateaus on top of it the choice is made on the band
+ * (`compareWithPlateau` on one of them); until then the band says so and nothing is compared.
+ */
+function toggleCompareWithFuture() {
+  const layers = AppState.layers;
+  if (!layers || layers.blocked) return;
+  if (layers.compare && layers.compare.mode === 'future') layers.compare = null;
+  else if (layerChildrenOf(layers.current).length) layers.compare = { mode: 'future', other: null, chosen: false };
+  else return;
+  layers.compare = normalizedLayerCompare(layers);
+  rememberLayerChoice();
+  settleAfterLayerChange();
+}
+
+/**
+ * Compare the plateau drawn with any other plateau of the band. One that the drawn plateau overrides is the past, one that overrides it is the future (the target,
+ * picked on the band), any other (a sibling, a cousin) is the base the drawn plateau is compared with, as `archicode diff --plateau <drawn> --against <id>`.
+ * The same node again stops the comparison.
+ */
+function compareWithPlateau(id) {
+  const layers = AppState.layers;
+  if (!layers || layers.blocked || !AppState.plateauTree.nodes.has(id)) return;
+  const node = AppState.plateauTree.nodes.get(layers.current);
+  if (id === layers.current || (layers.compare && layers.compare.other === id)) {
+    layers.compare = null;
+  } else if (layerIsBelow(id, layers.current)) {
+    layers.compare = { mode: 'future', other: id, chosen: true };
+  } else if (id === node.parent) {
+    layers.compare = { mode: 'past', other: id, chosen: false };
+  } else {
+    layers.compare = { mode: 'other', other: id, chosen: true };
+  }
+  rememberLayerChoice();
+  settleAfterLayerChange();
+}
+
+/** What is remembered for this folder in this browser: the plateau drawn, and the comparison as `past`, `future`, `future:<id>`, `other:<id>` or empty. */
+function layerCompareChoice() {
+  const c = AppState.layers && AppState.layers.compare;
+  if (!c) return '';
+  if (c.mode === 'past') return 'past';
+  return c.mode + (c.chosen && c.other ? ':' + c.other : '');
+}
+
+function rememberLayerChoice() {
+  if (!AppState.layers) return;
+  rememberPlateauId(AppState.layers.current);
+  rememberCompareTo(layerCompareChoice());
+}
+
+/** A remembered or addressed comparison as `{ mode, other, chosen }`, or null when it says nothing the tree can honour. */
+function layerCompareFromChoice(choice) {
+  if (typeof choice !== 'string' || choice === '') return null;
+  const [mode, other] = [choice.split(':')[0], choice.includes(':') ? choice.slice(choice.indexOf(':') + 1) : null];
+  if (mode === 'past') return { mode: 'past', other: null, chosen: false };
+  if (mode === 'future') return { mode: 'future', other, chosen: !!other };
+  if (mode === 'other' && other) return { mode: 'other', other, chosen: true };
+  return null;
+}
+
+/** `settings.current` of a workspace with no `settings.plateaus`: the sentence of the command line when it names no plateau of the layers (`WorkspaceFactory.chosen`, `Plateaus.requireNoPlateaus`), else null. */
+function layersOfSettingsCurrentProblem(current, tree) {
+  if (!tree.layered) return '`settings.current` is `' + current + '` but the workspace declares no `settings.plateaus`';
+  if (tree.problems.length || tree.nodes.has(current)) return null;
+  return '`settings.current` names the plateau `' + current + '`, which is not a plateau of this workspace (the plateaus are ' + tree.ids.map((id) => '`' + id + '`').join(', ') + ')';
+}
+
+/** The plateau the address names (`plateau=`), or null. */
+function plateauFromHash() {
+  const queryIdx = location.hash.indexOf('?');
+  if (queryIdx === -1) return null;
+  return new URLSearchParams(location.hash.slice(queryIdx + 1)).get('plateau');
+}
+
+/**
+ * The band of a workspace that has no `settings.plateaus`: the plateau drawn is the one the address names, else the one this browser last drew in this folder, else
+ * `settings.current`, else `baseline` (the command line asks for a name when the plateaus fork; the editor starts from the root, where it can edit); the comparison is the
+ * one of the address, else the one this browser last chose. The kernel is loaded first when there are layers to resolve, since the patches are applied by it.
+ */
+async function openLayers(settings, tree) {
+  const known = (id) => !!id && tree.layered && !tree.problems.length && tree.nodes.has(id);
+  const current = [plateauFromHash(), recalledPlateauId(), settings.current === '' ? null : settings.current].find(known) || BASELINE_PLATEAU;
+  const fromAddress = compareFromHash();
+  AppState.layers = createLayers(current, layerCompareFromChoice(fromAddress !== null ? fromAddress : recalledCompareTo()));
+  if (tree.layered && !layersBlockedReason()) {
+    try {
+      await loadViewpointKernel();
+    } catch (e) {
+      console.error('ArchiCode: the viewpoint kernel could not be loaded, the patches of the plateaus are not applied', e);
+    }
+  }
+  syncLayers();
+}
+
+// ---- What each node says: the changes it brings over the plateau it overrides ----
+
+/** The counts of a plateau compared with its parent (`{ elements: { new, changed, removed }, relationships }`), or null for the root, a plateau that cannot be drawn, or before the kernel is loaded. Kept with the models. */
+function layerNodeCounts(id) {
+  const settings = AppState.workspace.settings;
+  const node = AppState.plateauTree.nodes.get(id);
+  if (!node || node.parent === null || !loadedKernel) return null;
+  const cache = ensureLayerCache(settings);
+  if (!cache.counts) cache.counts = new Map();
+  if (cache.counts.has(id)) return cache.counts.get(id);
+  const target = layerModelOf(id, settings);
+  const base = layerModelOf(node.parent, settings);
+  let counts = null;
+  if (!target.problems && !base.problems) {
+    const answer = loadedKernel.compare(comparisonInputBetween(base.index, target.index, true));
+    if (!answer.error) counts = answer.counts;
+  }
+  cache.counts.set(id, counts);
+  return counts;
+}
+
+/** Compute the counts of the nodes that have none yet, one per turn of the event loop, and draw the band again as they come (a big tree does not hold the first drawing). */
+let bandCountsTimer = null;
+function scheduleBandCounts() {
+  if (bandCountsTimer !== null || !AppState.layers || !loadedKernel || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
+  const settings = AppState.workspace.settings;
+  const missing = () => {
+    const cache = ensureLayerCache(settings);
+    return AppState.plateauTree.ids.filter((id) => AppState.plateauTree.nodes.get(id).parent !== null && !(cache.counts && cache.counts.has(id)));
+  };
+  if (!missing().length) return;
+  bandCountsTimer = setTimeout(function step() {
+    bandCountsTimer = null;
+    if (!AppState.layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
+    const next = missing()[0];
+    if (next === undefined) return;
+    layerNodeCounts(next);
+    // the counts are put into the buttons where they are (the band is not drawn again: a button that has the focus keeps it)
+    if (typeof document !== 'undefined' && document.querySelectorAll) {
+      for (const button of Array.from(document.querySelectorAll('.band-draw'))) {
+        const id = button.getAttribute('data-plateau');
+        const counts = AppState.plateauTree.nodes.has(id) ? layerNodeCounts(id) : null;
+        if (!counts || button.querySelector('.band-counts')) continue;
+        button.insertAdjacentHTML('beforeend', '<span class="band-counts" data-counts="' + escapeHtml(id) + '">' + escapeHtml(bandCountsText(counts)) + '</span>');
+        button.setAttribute('title', bandNodeTitle(id));
+      }
+    }
+    if (missing().length) bandCountsTimer = setTimeout(step, 0);
+  }, 0);
+}
+
+/** The counts as the band says them: `+3 ~5 −11` (new, changed, removed elements), the three signs always there so that a node reads the same everywhere. */
+function bandCountsText(counts) {
+  const e = counts.elements;
+  return '+' + e.new + ' ~' + e.changed + ' −' + e.removed;
+}
+
+// ---- The band ----
+
+/** What the tooltip of a node says: its id, its horizon, the plateau it overrides, the changes it brings over it, and what is wrong with it. */
+function bandNodeTitle(id) {
+  const node = AppState.plateauTree.nodes.get(id);
+  const cache = AppState.workspace ? ensureLayerCache(AppState.workspace.settings) : null;
+  const counts = node && node.parent !== null && cache && cache.counts ? cache.counts.get(id) : null;
+  const parts = [id];
+  if (node && node.horizon) parts.push(node.horizon);
+  if (node && node.parent !== null) parts.push('overrides ' + node.parent);
+  if (counts) parts.push(bandCountsText(counts) + ' over ' + node.parent);
+  const broken = layerModelBroken(id);
+  return parts.join(' · ') + (broken ? ' · ' + (layerModelOf(id, AppState.workspace.settings).undrawable ? 'cannot be drawn: ' : 'refused by the command line: ') + broken[0] : '');
+}
+
+function bandNodeHtml(item, tree) {
+  const layers = AppState.layers;
+  const model = layerPlateauModel(item.id);
+  const drawn = item.id === layers.current;
+  const compared = layers.compare && layers.compare.other === item.id && !!layerCompareOther();
+  const disabled = layers.blocked && item.id !== BASELINE_PLATEAU;
+  const target = layerModelBroken(item.id);
+  const counts = item.node.parent === null ? null : (AppState.workspace && ensureLayerCache(AppState.workspace.settings).counts ? ensureLayerCache(AppState.workspace.settings).counts.get(item.id) : null);
+  const title = bandNodeTitle(item.id);
+  const pending = layers.compare && layers.compare.mode === 'future' && !layers.compare.other && layerIsBelow(item.id, layers.current) && AppState.plateauTree.nodes.get(item.id).parent === layers.current;
+  let html = '<li class="band-item"><div class="band-node' + (drawn ? ' band-drawn' : '') + (compared ? ' band-compared' : '') + (target ? ' band-broken' : '') + '" data-plateau="' + escapeHtml(item.id) + '">' +
+    '<button type="button" class="band-draw" data-action="draw-plateau" data-plateau="' + escapeHtml(item.id) + '" aria-pressed="' + drawn + '"' + (drawn ? ' aria-current="true"' : '') + (disabled ? ' disabled' : '') + ' title="' + escapeHtml(title) + '">' +
+      '<span class="band-name">' + escapeHtml(plateauTitle(model)) + '</span>' +
+      (item.node.horizon ? '<span class="band-horizon">' + escapeHtml(item.node.horizon) + '</span>' : '') +
+      (counts ? '<span class="band-counts" data-counts="' + escapeHtml(item.id) + '">' + escapeHtml(bandCountsText(counts)) + '</span>' : '') +
+      (target ? '<span class="band-flag" role="img" aria-label="has mistakes">!</span>' : '') +
+    '</button>';
+  if (!drawn && !disabled) {
+    const label = 'Compare ' + plateauTitle(layerPlateauModel(layers.current)) + ' with ' + plateauTitle(model); // the label stays; `aria-pressed` says whether it is on
+    html += '<button type="button" class="band-compare' + (pending ? ' band-choose' : '') + '" data-action="compare-plateau" data-plateau="' + escapeHtml(item.id) + '" aria-pressed="' + compared + '" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '">⇄</button>';
+  }
+  html += '</div>';
+  if (item.children.length) html += '<ul class="band-children">' + item.children.map((child) => bandNodeHtml(child, tree)).join('') + '</ul>';
+  return html + '</li>';
+}
+
+/** The sentences of the first layer of the chain of a plateau that the command line refuses, or null (resolves the plateau if it was not: a click on its node would). */
+function layerModelBroken(id) {
+  if (!AppState.layers || AppState.layers.blocked || !AppState.plateauTree.layered) return null; // a workspace with no layer has the one plateau, drawn from its manifests
+  return layerModelOf(id, AppState.workspace.settings).problems;
+}
+
+/** The band: the tree of the plateaus, the two toggles, what is compared, and the mistakes of the plateau drawn. Null (nothing) when the workspace has `settings.plateaus`. */
+function renderPlateauBandHtml() {
+  const layers = AppState.layers;
+  if (!layers || !AppState.workspace || !AppState.plateauTree) return '';
+  const tree = AppState.plateauTree;
+  const root = bandTreeOf(tree) || { id: BASELINE_PLATEAU, node: { id: BASELINE_PLATEAU, name: null, horizon: null, parent: null }, children: [] };
+  const busy = saveInFlight ? ' disabled' : '';
+  const compare = layers.compare;
+  const other = layerCompareOther();
+  const node = tree.nodes.get(layers.current);
+  const canPast = !layers.blocked && !!node && node.parent !== null;
+  const canFuture = !layers.blocked && layerChildrenOf(layers.current).length > 0;
+  const status = !compare ? 'Nothing compared.'
+    : !other ? 'Choose the future on the band: press ⇄ on one of the plateaus that override ' + plateauTitle(layerPlateauModel(layers.current)) + '.'
+    : (layerCompareIsFuture() ? plateauTitle(layerPlateauModel(layers.current)) + ' compared with its future, ' + plateauTitle(other) + '.' : plateauTitle(layerPlateauModel(layers.current)) + ' compared with ' + plateauTitle(other) + '.');
+  let html = '<nav class="plateau-band col-span-3" id="plateau-band" aria-label="Plateaus">' +
+    '<span class="plateau-label" id="band-label">Plateaus</span>' +
+    '<ul class="band-tree" aria-labelledby="band-label">' + bandNodeHtml(root, tree) + '</ul>' +
+    '<span class="band-compare-control"><span class="plateau-label" id="band-compare-label">Compare with</span>' +
+    '<span class="button-group band-toggles" role="group" aria-labelledby="band-compare-label">' +
+      '<button type="button" data-action="compare-past" aria-pressed="' + !!(compare && compare.mode === 'past') + '"' + (canPast && !busy ? '' : ' disabled') + ' title="The plateau drawn compared with the plateau it overrides: what it adds, changes and removes">Past</button>' +
+      '<button type="button" data-action="compare-future" aria-pressed="' + !!(compare && compare.mode === 'future') + '"' + (canFuture && !busy ? '' : ' disabled') + ' title="The plateau drawn compared with the plateau that overrides it: what the next plateau adds, changes and removes">Future</button>' +
+    '</span>';
+  if (other) {
+    html += '<span class="button-group changes-switch" role="group" aria-label="What the diagrams draw of the comparison">' +
+      '<button type="button" data-action="set-changes-only" data-value="0" aria-pressed="' + !AppState.changesOnly + '" title="Draw the whole plateau, with what changed marked">Everything</button>' +
+      '<button type="button" data-action="set-changes-only" data-value="1" aria-pressed="' + AppState.changesOnly + '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>';
+  }
+  html += '<span class="band-status" role="status">' + escapeHtml(status) + '</span></span>';
+  if (layers.blocked) html += '<span class="plateau-problem band-note" role="alert">' + escapeHtml(layers.blocked) + '</span>';
+  if (AppState.layerProblems) {
+    const name = plateauTitle(layerPlateauModel(layers.current));
+    html += '<div class="plateau-problem band-errors" role="alert"><strong>' + escapeHtml(AppState.layerUndrawable ? name + ' cannot be drawn.' : name + ' is drawn, and the command line refuses it:') + '</strong><ul>' +
+      AppState.layerProblems.map((p) => '<li>' + duplicateMessageHtml(p) + '</li>').join('') + '</ul></div>';
+  }
+  if (AppState.baseline && AppState.baseline.problem) {
+    const name = plateauTitle(AppState.baseline.plateau);
+    html += '<div class="plateau-problem band-errors" role="alert"><strong>' + escapeHtml(AppState.baseline.undrawable ? name + ', which the drawing is compared with, cannot be drawn.' : name + ', which the drawing is compared with, is refused by the command line:') + '</strong><ul>' +
+      AppState.baseline.problem.split('\n').map((p) => '<li>' + duplicateMessageHtml(p) + '</li>').join('') + '</ul></div>';
+  }
+  const readOnly = readOnlyPlateauMessage();
+  if (readOnly) html += '<span class="band-note band-readonly" role="status">' + escapeHtml(readOnly) + '</span>';
+  return html + '</nav>';
+}
+
+// ---- Writing: not in a plateau other than baseline (yet) ----
+
+/**
+ * Why nothing is written while this plateau is drawn, or null. An edit of an element is written where the element is declared; for a plateau that overrides another
+ * that is often the plateau above, and a value a patch set would not change on the page. The rule that makes an edit land in the plateau drawn (patches, manifests of
+ * the plateau) is not there yet: until then the plateaus other than baseline are read, compared and not edited. "Write replaces" (a key of the element that is new in the
+ * plateau, written in the manifest that declares it) is the one write the Changes panel offers, and it is allowed.
+ */
+function readOnlyPlateauMessage() {
+  const layers = AppState.layers;
+  if (!layers || !AppState.plateauTree || !AppState.plateauTree.layered || layers.current === BASELINE_PLATEAU) return null;
+  return 'This plateau is read-only for now: editing, adding and removing in a plateau other than baseline is not available yet. Draw baseline to edit.';
+}
+
+/** For a handler of a field (an input, a change): when the plateau drawn is read-only, say it in the top bar, draw the page again (the typed text goes) and tell the caller to stop. */
+function writesRefused() {
+  const message = readOnlyPlateauMessage();
+  if (message === null) return false;
+  saveStatus = { state: 'denied', message };
+  render();
+  return true;
+}
+
+/** Throws the sentence of `readOnlyPlateauMessage` when the plateau drawn cannot be written. Every writer of an element, a view or a story starts with it. */
+function requireWritablePlateau() {
+  const message = readOnlyPlateauMessage();
+  if (message) throw new Error(message);
 }
 
 /**
@@ -4841,6 +5805,10 @@ async function loadWorkspace(dirHandle) {
   AppState.workspace = null;
   AppState.manifestFiles = [];
   AppState.unreadManifestFiles = [];
+  AppState.layers = null;
+  AppState.layerProblems = null;
+  AppState.layerUndrawable = false;
+  layerCache = null;
   AppState.index = { application: new Map(), technology: new Map() };
   AppState.relationshipStats = { total: 0, dangling: 0 };
   AppState.duplicateReferences = [];
@@ -4890,7 +5858,7 @@ async function loadWorkspace(dirHandle) {
   // folder) is refused like the command line refuses it, with its words.
   const remembered = recalledPlateauId();
   const stillThere = remembered !== null && Array.isArray(settings.plateaus) && settings.plateaus.some((p) => p && typeof p === 'object' && plateauText(p.id) === remembered);
-  const selection = selectPlateau(settings, stillThere ? remembered : null);
+  const selection = selectPlateau(settings, stillThere ? remembered : null, true);
   if (selection.problems) {
     AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + selection.problems.join('\n');
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
@@ -4947,6 +5915,16 @@ async function loadWorkspace(dirHandle) {
     render();
     return;
   }
+  // wave 014 (run 0080): `settings.current` of a workspace with no `settings.plateaus` names a plateau of the layers, as the command line reads it (`WorkspaceFactory.chosen`)
+  if (!selection.plateau && settings.current !== '') {
+    const sentence = layersOfSettingsCurrentProblem(settings.current, plateauTree);
+    if (sentence !== null) {
+      AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + sentence;
+      AppState.selection = { kind: 'none', key: null, mode: 'view' };
+      render();
+      return;
+    }
+  }
   const relationshipStats = resolveRelationships(index);
   AppState.index = index;
   modelsChanged();
@@ -4967,6 +5945,7 @@ async function loadWorkspace(dirHandle) {
     settingsLastKnownDiskModified: workspaceLastKnownDiskModified,
     rawText: workspaceText
   };
+  if (!selection.plateau) await openLayers(settings, plateauTree);
   await loadBaselineSafely(dirHandle, settings); // the plateau compared with, if any: read-only, apart from the plateau drawn
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   render();
@@ -5723,8 +6702,10 @@ function currentRouteHash() {
   if (removed) {
     params.push('removed=' + encodeURIComponent(removed.reference));
     if (removed.layer === 'technology') params.push('removed-layer=technology');
-    params.push('compare=' + encodeURIComponent(AppState.compareTo));
+    params.push('compare=' + encodeURIComponent(AppState.layers ? layerCompareChoice() : AppState.compareTo));
   }
+  // wave 014 (run 0080): the plateau of the band, when it is not the root
+  if (AppState.layers && AppState.plateauTree && AppState.plateauTree.layered && AppState.layers.current !== BASELINE_PLATEAU) params.push('plateau=' + encodeURIComponent(AppState.layers.current));
   return '/' + currentPerspective + (currentPerspective === 'library' ? '/' + libraryTab : '') + (params.length ? '?' + params.join('&') : '');
 }
 
@@ -5905,8 +6886,8 @@ function findElementRecord(reference, layer) {
  * or `null` if `reference` does not resolve (should not happen for a
  * reference `findElementRecord` itself returned — see DEC-4's rationale).
  */
-function locateContentNode(reference, layer) {
-  const record = findElementRecord(reference, layer);
+function locateContentNode(reference, layer, given) {
+  const record = given || findElementRecord(reference, layer); // `given`: the record of an element of the plateau compared with, when the edit is made on that one (see `acceptLayeredCandidate`)
   if (!record) return null;
   const mf = AppState.manifestFiles.find((f) => f.relPath === record.sourceFile);
   if (!mf || !mf.header || !mf.content) return null;
@@ -5972,6 +6953,7 @@ function rebuildIndexAndRender() {
   AppState.workspace.technology.elements = rootsByCategory.technology;
   AppState.relationshipStats = resolveRelationships(index);
   modelsChanged(); // every edit of the plateau drawn ends here (see `modelVersion`)
+  syncLayers(); // wave 014 (run 0080): the plateau on the band is resolved again from the manifests as they are now (nothing for a workspace with no layers)
   render();
 }
 
@@ -5987,13 +6969,14 @@ function rebuildIndexAndRender() {
  * A caller must run DEC-9 validation *before* calling this function: a
  * rejected action never reaches here, so no validation happens inside.
  */
-function commitElementEdit(reference, mutatorFn, layer) {
-  const located = locateContentNode(reference, layer);
+function commitElementEdit(reference, mutatorFn, layer, options) {
+  if (!(options && options.allowReadOnly)) requireWritablePlateau(); // wave 014 (run 0080): see `readOnlyPlateauMessage`
+  const located = locateContentNode(reference, layer, options && options.record);
   if (!located) {
     throw new Error('"' + reference + '" cannot be found in the loaded manifests (it may have been removed or renamed); nothing was changed.');
   }
   const { mf, node, parentArray, indexInParent } = located;
-  const elementLayer = layerOfReference(reference, layer);
+  const elementLayer = options && options.record ? (layer || 'application') : layerOfReference(reference, layer);
   const result = mutatorFn(node, parentArray, indexInParent);
   let dirtyReference = reference;
   if (result && result.renamedTo) {
@@ -6098,6 +7081,7 @@ function adoptRemovedFile(mf) {
  * already established for every other commit path).
  */
 function commitCreateTopLevelElement({ category, headerKind, attachUnderReference, id, name, description }) {
+  requireWritablePlateau();
   const idCheck = validateElementId(id);
   if (!idCheck.valid) throw new Error(idCheck.error);
   const reference = attachUnderReference ? (attachUnderReference + '.' + id) : id;
@@ -6282,6 +7266,7 @@ function computeDeleteImpact(reference, category) {
  * TDD-0009's DEC-4/`locateContentNode` already established).
  */
 function commitDeleteElement(reference, category, affected) {
+  requireWritablePlateau();
   category = layerOfReference(reference, category);
   const located = category ? locateContentNode(reference, category) : null;
   if (!located) {
@@ -8755,15 +9740,16 @@ function mountFileEditorIfNeeded() {
  * below and the Diagram perspective's "Properties" panel render the exact
  * same fields from the exact same code.
  */
-function renderElementPropertiesHtml(record) {
+function renderElementPropertiesHtml(record, forPlateau) {
   let html = '';
+  const origin = (field) => originNoteHtml(record, field, forPlateau);
   html += '<div class="field-row"><span class="field-label">Id</span><span class="field-value">' + escapeHtml(record.id) + '</span></div>';
   html += '<div class="field-row"><span class="field-label">Reference</span><span class="field-value">' + escapeHtml(record.reference) + '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' + (record.name != null ? escapeHtml(record.name) : '<span class="muted">none</span>') + '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' + (record.description != null ? escapeHtml(record.description) : '<span class="muted">none</span>') + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Name</span><span class="field-value">' + (record.name != null ? escapeHtml(record.name) : '<span class="muted">none</span>') + origin('name') + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Description</span><span class="field-value">' + (record.description != null ? escapeHtml(record.description) : '<span class="muted">none</span>') + origin('description') + '</span></div>';
 
-  html += '<div class="field-row"><span class="field-label">Qualifiers</span><span class="field-value">' + renderQualifierPillsHtml(record.qualifiers) + '</span></div>';
-  html += '<div class="field-row"><span class="field-label">Tags</span><span class="field-value">' + renderTagListHtml(record.tags) + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Qualifiers</span><span class="field-value">' + renderQualifierPillsHtml(record.qualifiers) + origin('qualifiers') + '</span></div>';
+  html += '<div class="field-row"><span class="field-label">Tags</span><span class="field-value">' + renderTagListHtml(record.tags) + origin('tags') + '</span></div>';
   return html;
 }
 
@@ -8870,19 +9856,19 @@ function renderElementHierarchyHtml(record) {
     html += renderFieldRowHtml('Replaces', renderItemListHtml(record.replaces.map((entry) => {
       const flag = replacesFlagOf(record, entry);
       return '<span class="change-ref">' + escapeHtml(entry) + '</span>' + (flag ? '<span class="replaces-flag">' + escapeHtml(flag) + '</span>' : '');
-    })), record.replaces.length);
+    })) + originNoteHtml(record, 'replaces'), record.replaces.length);
   }
   if (record.kind === 'environment') {
     const uses = record.uses || [];
-    html += renderFieldRowHtml('Uses', uses.length
+    html += renderFieldRowHtml('Uses', (uses.length
       ? renderItemListHtml(uses.map((used) => renderReferenceItemHtml(used, 'technology')))
-      : renderNoneHtml(), uses.length);
+      : renderNoneHtml()) + originNoteHtml(record, 'uses'), uses.length);
   }
   if (layer === 'technology' && record.kind !== 'environment') {
     const applications = record.applications || [];
-    html += renderFieldRowHtml('Applications', applications.length
+    html += renderFieldRowHtml('Applications', (applications.length
       ? renderItemListHtml(applications.map((application) => renderReferenceItemHtml(application, 'application')))
-      : renderNoneHtml(), applications.length);
+      : renderNoneHtml()) + originNoteHtml(record, 'applications'), applications.length);
   }
   return html;
 }
@@ -8907,7 +9893,8 @@ function renderElementViewHtml(reference) {
   html += renderElementPropertiesHtml(record);
   html += renderElementHierarchyHtml(record);
   const relationships = record.relationships || [];
-  html += renderFieldRowHtml('Relationships', renderElementRelationshipsHtml(record), relationships.length);
+  html += renderFieldRowHtml('Relationships', renderElementRelationshipsHtml(record) + originNoteHtml(record, 'relationships'), relationships.length);
+  html += renderOriginBlockHtml(record);
   html += '</div>'; // .element-qualitative
 
   html += '</div>'; // .element-view
@@ -9407,7 +10394,7 @@ function replacesSectionShown(record) {
 function replacesFlagOf(record, reference) {
   const layer = record.layer || 'application';
   if (AppState.index[layer].has(String(reference))) return 'still in this plateau: ignored';
-  if (!AppState.baseline) return '';
+  if (!AppState.baseline || layerCompareIsFuture()) return ''; // with the future the plateau compared with is the one that comes after: it names no element this one replaces
   return AppState.baseline.index[layer].has(String(reference)) ? '' : 'not in “' + plateauTitle(AppState.baseline.plateau) + '”';
 }
 
@@ -9576,17 +10563,23 @@ function removedInspectionOf(sel, mode) {
 function renderRemovedInspectionHtml(picked, mode) {
   const record = AppState.baseline.index[picked.layer].get(picked.reference);
   const other = AppState.baseline.plateau;
+  const comparison = comparisonState();
+  const unionElement = comparison && comparison.records ? comparison.records.get(picked.layer + '|' + picked.reference) : null;
+  const onlyChange = unionElement && CHANGE_STATES.includes(unionElement.change) ? unionElement.change : 'removed';
   const relationships = record.relationships.map((rel) => '<li>' + escapeHtml(rel.destination) + (rel.rawLabel ? ' : ' + escapeHtml(rel.rawLabel) : '') +
     (rel.qualifiers && rel.qualifiers.length ? ' <span class="muted">[' + escapeHtml(rel.qualifiers.join(', ')) + ']</span>' : '') + '</li>').join('');
   return '<div class="inspection inspection-removed" data-inspection-ref="' + escapeHtml(record.reference) + '" data-inspection-layer="' + escapeHtml(picked.layer) + '">' +
     '<div class="inspection-head"><h3>Selected element</h3><button type="button" class="inspection-close" data-action="close-removed" aria-label="Close the panel" title="Close the panel">&times;</button></div>' +
-    '<div class="inspection-name"><span>' + escapeHtml(record.name || record.id) + '</span><span class="stereotype-badge" style="' + escapeHtml(styleVarsText(stereotypeBadgeVarsOf('removed'))) + '">removed</span></div>' +
-    '<p class="inspection-note">Removed: this element is only in “' + escapeHtml(plateauTitle(other)) + '”, the plateau this one is compared with. What you read is that plateau’s; it is not part of the plateau drawn, and nothing here is edited or saved.</p>' +
+    '<div class="inspection-name"><span>' + escapeHtml(record.name || record.id) + '</span><span class="stereotype-badge" style="' + escapeHtml(styleVarsText(stereotypeBadgeVarsOf(onlyChange))) + '">' + escapeHtml(CHANGE_WORDS[onlyChange].word) + '</span></div>' +
+    (layerCompareIsFuture()
+      ? '<p class="inspection-note">' + escapeHtml(CHANGE_WORDS[onlyChange].word.charAt(0).toUpperCase() + CHANGE_WORDS[onlyChange].word.slice(1)) + ': this element is only in “' + escapeHtml(plateauTitle(other)) + '”, the plateau that overrides this one. What you read is that plateau’s; it is not part of the plateau drawn, and nothing here is edited or saved.</p>'
+      : '<p class="inspection-note">Removed: this element is only in “' + escapeHtml(plateauTitle(other)) + '”, the plateau this one is compared with. What you read is that plateau’s; it is not part of the plateau drawn, and nothing here is edited or saved.</p>') +
     renderWhatChangedHtml(picked.layer, record.reference, true) +
     renderFieldRowHtml('Kind', escapeHtml(record.kind)) +
     renderFieldRowHtml('Layer', escapeHtml(picked.layer)) +
-    renderElementPropertiesHtml(record) +
+    renderElementPropertiesHtml(record, other.id) +
     renderFieldRowHtml('Source file', escapeHtml(record.sourceFile)) +
+    renderOriginBlockHtml(record, other.id) +
     renderFieldRowHtml('Relationships', relationships ? '<ul class="removed-relationships">' + relationships + '</ul>' : renderNoneHtml(), record.relationships.length) +
     '</div>';
 }
@@ -9622,6 +10615,7 @@ function inspectionPanelHtml(sel, mode) {
   html += renderFieldRowHtml('Layer', escapeHtml(layer));
   html += renderElementPropertiesHtml(record);
   html += renderFieldRowHtml('Source file', record.sourceFile ? escapeHtml(record.sourceFile) : renderNoneHtml());
+  html += renderOriginBlockHtml(record);
   if (mode === 'library') {
     html += '<button type="button" class="inspection-open with-icon" data-action="library-open-element" data-ref="' + escapeHtml(record.reference) + '" data-layer="' + escapeHtml(layer) + '"' +
       ' title="Leave this page for the element: select it in Elements, on the tab you left there">' + controlIconHtml(CONTROL_ICON_PATHS.elements) + '<span>Show in Elements</span></button>';
@@ -9709,14 +10703,16 @@ function changedRelationshipsOf(state, layer, reference) {
 
 /** An element of the other plateau that the element replaces: its name and its reference, and whether the other plateau has it (an unknown reference is told, not hidden). */
 function replacedElementHtml(reference, layer) {
-  const record = AppState.baseline && AppState.baseline.index[layer] ? AppState.baseline.index[layer].get(String(reference)) : null;
+  const baseIndex = AppState.baseline ? baseSideIndex() : null;
+  const record = baseIndex && baseIndex[layer] ? baseIndex[layer].get(String(reference)) : null;
   return '<span class="change-name">' + escapeHtml(record && record.name ? record.name : String(reference).split('.').pop()) + '</span> <span class="change-ref">' + escapeHtml(reference) + '</span>' +
     (record ? '' : '<span class="replaces-flag">not in the other plateau</span>');
 }
 
 /** An element of the plateau drawn that replaces the one being read (`replaced_by`): its name and its reference. */
 function replacingElementHtml(reference, layer) {
-  const record = AppState.index[layer] ? AppState.index[layer].get(String(reference)) : null;
+  const targetIndex = AppState.baseline ? targetSideIndex() : AppState.index;
+  const record = targetIndex[layer] ? targetIndex[layer].get(String(reference)) : null;
   return '<span class="change-name">' + escapeHtml(record && record.name ? record.name : String(reference).split('.').pop()) + '</span> <span class="change-ref">' + escapeHtml(reference) + '</span>';
 }
 
@@ -9881,7 +10877,7 @@ function renderChangeRowHtml(row, selected, rows, splits) {
 function changeRowIsSelected(row, pick) {
   const sel = AppState.selection;
   if (row.thing === 'relationship') return sel.kind === 'link' && sel.from === row.reference && sel.to === row.destination;
-  if (row.change === 'removed') return !!pick && pick.reference === row.reference && pick.layer === row.layer;
+  if (elementIsOnlyInTheOtherPlateau(row.layer, row.reference, row.change)) return !!pick && pick.reference === row.reference && pick.layer === row.layer;
   const element = elementSelection();
   return element.kind === 'element' && element.key === row.reference && layerOfReference(element.key, element.layer) === row.layer;
 }
@@ -9915,7 +10911,7 @@ function renderChangesPanelHtml(state) {
     '<label class="changes-toggle" title="A change of the description alone is wording, not structure: leave it out of the drawing, the list and the counts"><input type="checkbox" data-action="toggle-hide-wording"' + (AppState.hideWording ? ' checked' : '') + '> Hide wording-only changes</label>' +
     wording + ofSplitNote +
     (candidateMessage ? '<p class="changes-message" role="alert">' + escapeHtml(candidateMessage) + '</p>' : '') +
-    renderCandidatesHtml(state) + renderWarningsHtml(state) + renderStateWordsHtml(state) +
+    renderCandidatesHtml(state) + renderWarningsHtml(state) + renderStateWordsHtml(state) + renderCascadeHtml(state) +
     (rows.length ? '' : '<p class="inspection-note">Nothing differs between the two plateaus.</p>') +
     group('element', 'Elements') + group('relationship', 'Relationships') + '</div>';
 }
@@ -9974,6 +10970,22 @@ function renderCandidatesHtml(state) {
   return html + '</section>';
 }
 
+/**
+ * The Cascade of the removals section of the Changes panel (wave 014, run 0080): what the REMOVE patches of the more recent plateau took besides the elements they
+ * select, among what the other plateau has, as the table of `archicode diff` lists it after the changes (`GapReport`, `Removal.cascade`). '' when there is none.
+ */
+function renderCascadeHtml(state) {
+  const cascade = state.cascade || [];
+  if (!cascade.length) return '';
+  return '<section class="changes-cascade" aria-label="Cascade of the removals"><h4 class="inspection-subhead changes-subhead">Cascade of the removals <span class="field-count">' + cascade.length + '</span></h4>' +
+    '<p class="changes-note">What a <code>REMOVE</code> took besides the elements it selects, in the plateaus the target adds to the one it is compared with.</p>' +
+    '<ul class="change-cascade">' + cascade.map((row) => '<li class="change-cascade-row" data-effect="' + escapeHtml(row.effect) + '" data-plateau="' + escapeHtml(row.plateau) + '" data-element="' + escapeHtml(row.element) + '">' +
+      '<span class="cascade-patch">' + escapeHtml(row.plateau + ' \u00b7 ' + row.rank + ' ' + row.patch) + '</span> ' +
+      '<span class="cascade-effect">' + escapeHtml(row.effect) + '</span> ' +
+      '<span class="change-ref">' + escapeHtml(row.element) + '</span>' + (row.layer === 'technology' ? ' <span class="change-layer">technology</span>' : '') +
+      (row.detail ? ' <span class="cascade-detail muted">' + escapeHtml(row.detail) + '</span>' : '') + '</li>').join('') + '</ul></section>';
+}
+
 /** What the kernel ignored in the `replaces` it was given, as it says it. */
 function renderWarningsHtml(state) {
   const warnings = state.warnings || [];
@@ -10028,7 +11040,7 @@ function stateWordSentence(reference, word, source, state, target, base) {
  * drawn, as the command line reads the plateau it is given (`StateTags.warnings(target, ...)`): an element that only the baseline has (a removed one) is told by neither.
  */
 function stateWordHintsFor(state, layer, reference) {
-  if (!state || !state.full || !state.full.records) return [];
+  if (!state || !state.full || !state.full.records || state.future) return []; // with the future the plateau drawn is the base: the command line tells these words of the target
   const record = AppState.index[layer] && AppState.index[layer].get(reference);
   if (!record) return [];
   const computed = computedStateOf(state.full, layer, reference);
@@ -10071,7 +11083,8 @@ function renderStateWordHintsHtml(layer, reference) {
 function acceptCandidate(candidate) {
   const refuse = (message) => { candidateMessage = message; render(); return { ok: false, message }; };
   const state = comparisonState();
-  if (!state || !state.records) return refuse('Nothing is compared: choose a plateau in Compare to first.');
+  if (!state || !state.records) return refuse(AppState.layers ? 'Nothing is compared: press Past, Future or ⇄ on the band first.' : 'Nothing is compared: choose a plateau in Compare to first.');
+  if (AppState.layers) return acceptLayeredCandidate(candidate, state, refuse);
   const layer = candidate.layer || 'application';
   const drawn = AppState.plateau, base = AppState.baseline.plateau;
   const direction = replacesDirectionProblem();
@@ -10091,6 +11104,45 @@ function acceptCandidate(candidate) {
   candidateMessage = null;
   try {
     commitElementEdit(candidate.to, (node) => { node.replaces = replacesWith(node.replaces, candidate.from); }, layer);
+  } catch (e) {
+    candidateMessage = e && e.message ? e.message : String(e);
+    render();
+    return { ok: false, message: candidateMessage };
+  }
+  return { ok: true };
+}
+
+/**
+ * "Write replaces" for two plateaus of the band, whichever is drawn: `replaces: [from]` goes on the element `to` of the more recent plateau of the comparison (the
+ * target) and only there, in the manifest that declares it. An element the target inherits from a plateau above is declared there: writing it would change that plateau
+ * and the ones that override it, so it is refused with the plateau to compare. The write is the same edit as any other (`commitElementEdit`): it keeps the lines it does
+ * not touch, marks the file as modified, and ends in `rebuildIndexAndRender`; it is allowed in a plateau that is read-only for the rest, since it is the one thing the
+ * Changes panel offers and it lands in the plateau the comparison is about.
+ */
+function acceptLayeredCandidate(candidate, state, refuse) {
+  const layer = candidate.layer || 'application';
+  const base = state.base, target = state.target;
+  const baseIndex = baseSideIndex(), targetIndex = targetSideIndex();
+  const record = targetIndex[layer] ? targetIndex[layer].get(candidate.to) : null;
+  if (!record) {
+    return refuse(baseIndex[layer] && baseIndex[layer].has(candidate.to)
+      ? '“' + candidate.to + '” belongs to “' + plateauTitle(base) + '”, the older plateau of the comparison. replaces goes on an element of “' + plateauTitle(target) + '”, the more recent one.'
+      : '“' + candidate.to + '” is not an element of “' + plateauTitle(target) + '” any more; nothing was written.');
+  }
+  if (!baseIndex[layer] || !baseIndex[layer].has(candidate.from)) return refuse('“' + candidate.from + '” is not an element of “' + plateauTitle(base) + '”; nothing was written.');
+  if (targetIndex[layer].has(candidate.from)) return refuse('“' + candidate.from + '” is still an element of “' + plateauTitle(target) + '”: a replaces that names it would be ignored.');
+  if (record.declaredIn !== undefined && record.declaredIn !== target.id) {
+    return refuse('“' + candidate.to + '” is declared in the plateau “' + record.declaredIn + '”, not in “' + plateauTitle(target) + '”: replaces is written in the manifest that declares the element, which would change “' +
+      record.declaredIn + '” and the plateaus that override it. Compare “' + record.declaredIn + '” with “' + plateauTitle(base) + '” to write it there; nothing was written.');
+  }
+  const located = locateContentNode(candidate.to, layer, record);
+  if (!located) return refuse('“' + candidate.to + '” cannot be found in the manifests of “' + plateauTitle(target) + '”; nothing was written.');
+  if (located.node.replaces !== undefined && located.node.replaces !== null && !Array.isArray(located.node.replaces)) {
+    return refuse('The replaces of “' + candidate.to + '” is not a list; fix it by hand, nothing was written.');
+  }
+  candidateMessage = null;
+  try {
+    commitElementEdit(candidate.to, (node) => { node.replaces = replacesWith(node.replaces, candidate.from); }, layer, { record, allowReadOnly: true });
   } catch (e) {
     candidateMessage = e && e.message ? e.message : String(e);
     render();
@@ -10216,7 +11268,7 @@ function selectChange(row) {
   if (onMap) diagramScale = 'auto'; // Center: the thing is put in the middle
   const layer = row.layer || 'application';
   const onMapLayer = onMap && layer === 'application';
-  if (row.thing === 'element' && row.change === 'removed') {
+  if (row.thing === 'element' && elementIsOnlyInTheOtherPlateau(layer, row.ref, row.change)) {
     if (onMapLayer) openOnMap(row.ref);
     if (onMap) AppState.selection = { kind: 'none', key: null, mode: 'view' };
     removedPick = { reference: row.ref, layer, selection: JSON.stringify(AppState.selection) };
@@ -10637,13 +11689,13 @@ let navActiveKey = null;
  * the twins apart (the tab, the zoom direction, the perspective). Null for anything else, which keeps no focus.
  */
 function headerControlSelector(el) {
-  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select') : null;
+  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band button') : null;
   if (!control) return null;
   if (control.id) return '#' + control.id;
   const action = control.getAttribute('data-action');
   if (!action) return null;
   let selector = '[data-action="' + action + '"]';
-  for (const attribute of ['data-tab', 'data-dir', 'data-perspective', 'data-show', 'data-format']) {
+  for (const attribute of ['data-tab', 'data-dir', 'data-perspective', 'data-show', 'data-format', 'data-plateau', 'data-value']) {
     const value = control.getAttribute(attribute);
     if (value) selector += '[' + attribute + '="' + value + '"]';
   }
@@ -10763,6 +11815,10 @@ function loadViewpointKernel() {
         // run 0039: the union of two plateaus, where every element and relationship says what changed (see `buildComparison`)
         compare(input) {
           return call('compare', input);
+        },
+        // wave 014 (run 0080): the ordered patches of a plateau applied to the elements of the graph the manifests of its layer gave (see `resolveLayerStep`)
+        applyPatches(input) {
+          return call('apply_patches', input);
         }
       };
       loadedKernel = kernel; // the synchronous builders of a comparison need it; the drawing waits for the promise before it asks
@@ -10854,13 +11910,48 @@ function toKernelElements(map, withProperties) {
 
 // ---- The comparison of two plateaus (run 0039) ----
 
-/** The input of the kernel's `compare`: both layers of the baseline and of the plateau drawn, with the properties a comparison reads (kind, name, description). */
+/** The plateau drawn, as a plateau of the page: the one of the band, or the one of `settings.plateaus`. */
+function drawnPlateau() {
+  return AppState.layers ? layerPlateauModel(AppState.layers.current) : AppState.plateau;
+}
+
+/** The cascade of the REMOVE patches of the target of the comparison on screen, among what the base has (see `cascadeOf`): what the command line lists after the table of changes. */
+function layeredCascadeNow(future) {
+  const targetId = future ? AppState.layers.compare.other : AppState.layers.current;
+  return cascadeOf(layerModelOf(targetId, AppState.workspace.settings).removals, future ? AppState.index : AppState.baseline.index);
+}
+
+/**
+ * The input of the kernel's `compare`: both layers of the two plateaus, with the properties a comparison reads (kind, name, description). The plateau drawn is the
+ * target and the plateau compared with the base, except with the future (the layers): there the plateau drawn is the base.
+ */
 function comparisonInput() {
+  const future = layerCompareIsFuture();
+  return comparisonInputBetween(future ? AppState.index : AppState.baseline.index, future ? AppState.baseline.index : AppState.index, !!AppState.layers);
+}
+
+/**
+ * The input of `compare` for two models. `layered`: the target is a layer, which holds with its own elements the ones it inherits, and an inherited element keeps the
+ * `replaces` of the layer that declared it. Compared with a plateau that has that layer the entry says nothing the comparison does not know, and the kernel would warn,
+ * for every one, that it names nothing of the base: the `replaces` that the base writes the same way for the same element are left out of the target
+ * (`PlateauComparer.dropInheritedReplaces`).
+ */
+function comparisonInputBetween(baseIndex, targetIndex, layered) {
   const layers = (indexes) => ({
     application: toKernelElements(indexes.application, true).elements,
     technology: toKernelElements(indexes.technology, true).elements
   });
-  return { base: layers(AppState.baseline.index), target: layers(AppState.index) };
+  const input = { base: layers(baseIndex), target: layers(targetIndex) };
+  if (layered) {
+    for (const layer of LAYER_NAMES) {
+      const known = new Map();
+      for (const element of input.base[layer]) if (element.replaces) known.set(element.reference, JSON.stringify(element.replaces));
+      for (const element of input.target[layer]) {
+        if (element.replaces && JSON.stringify(element.replaces) === known.get(element.reference)) delete element.replaces;
+      }
+    }
+  }
+  return input;
 }
 
 /**
@@ -10932,15 +12023,18 @@ function setWordingAside(value) {
 function comparisonState() {
   const target = compareTargetPlateau();
   if (!target || !AppState.baseline || !AppState.baseline.plateau || AppState.baseline.plateau.id !== target.id) return null;
+  if (AppState.layers && AppState.layerUndrawable) return { problems: ['The plateau “' + plateauTitle(drawnPlateau()) + '” cannot be drawn, so there is nothing to compare:'].concat(AppState.layerProblems || []) };
+  if (AppState.baseline.undrawable) return { problems: ['The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, cannot be drawn:'].concat(AppState.baseline.problem.split('\n')) };
   if (AppState.baseline.duplicates.length) {
     return { problems: ['The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, has references declared more than once:'].concat(AppState.baseline.duplicates.map((d) => d.message)) };
   }
   if (!loadedKernel) return { pending: true };
   // run 0045: the answer is kept while the version of the models is the one it was computed at (the two models themselves are compared too, a net
   // under a replacement that forgot `modelsChanged()`): a plain render serialises nothing and builds no input
-  if (!comparisonCache || comparisonCache.version !== modelVersion || comparisonCache.index !== AppState.index || comparisonCache.baselineIndex !== AppState.baseline.index) {
+  const future = layerCompareIsFuture();
+  if (!comparisonCache || comparisonCache.version !== modelVersion || comparisonCache.index !== AppState.index || comparisonCache.baselineIndex !== AppState.baseline.index || comparisonCache.future !== future) {
     const answer = loadedKernel.compare(comparisonInput());
-    comparisonCache = { version: modelVersion, index: AppState.index, baselineIndex: AppState.baseline.index, value: answer.error ? { error: answer.error } : Object.assign({ answer }, unionLayersOf(answer)) };
+    comparisonCache = { version: modelVersion, index: AppState.index, baselineIndex: AppState.baseline.index, future, value: answer.error ? { error: answer.error } : Object.assign({ answer, cascade: AppState.layers ? layeredCascadeNow(future) : [] }, unionLayersOf(answer)) };
   }
   const value = comparisonCache.value;
   if (value.error) return { problems: ['The comparison with “' + plateauTitle(target) + '” could not be made: ' + value.error] };
@@ -10954,7 +12048,8 @@ function comparisonState() {
   }
   // wave 009: the pairs the kernel proposes as one thing said twice (never applied) and what it ignored in the `replaces` it was given; neither depends on the wording toggle
   // `full`: the answer with every change in it, whatever the wording toggle says (what the hand-written state words are compared with, see `stateWordHintsOf`)
-  return Object.assign({ base: AppState.baseline.plateau, target: AppState.plateau, candidates: value.answer.candidates || [], warnings: value.answer.warnings || [], full: value.shown.full }, value.shown[AppState.hideWording ? 'quiet' : 'full']);
+  const drawn = drawnPlateau();
+  return Object.assign({ base: future ? drawn : AppState.baseline.plateau, target: future ? AppState.baseline.plateau : drawn, future, cascade: value.cascade, candidates: value.answer.candidates || [], warnings: value.answer.warnings || [], full: value.shown.full }, value.shown[AppState.hideWording ? 'quiet' : 'full']);
 }
 
 /** Whether the references of the union (the elements of both plateaus) include this one in the application layer: the map can open a removed box. */
@@ -11538,13 +12633,17 @@ function diagramItemText(item, show, layer, focalReference) {
   const state = context ? null : changeStateOfItem(item);
   const look = stereotypeLookOf(stereotypes, state);
   const name = record ? (record.name || record.id) : item.reference;
+  // with the future the plateau drawn is the base: the plateau compared with is the next one, and what a moved, split or merged box replaces is in the plateau drawn
+  const future = layerCompareIsFuture();
+  const withThat = future ? 'the plateau that overrides the one drawn' : 'the plateau it is compared with';
+  const ofBase = future ? 'the plateau drawn' : 'the plateau it is compared with';
   const says = state === null ? '' : '\n' + CHANGE_WORDS[state].word.charAt(0).toUpperCase() + CHANGE_WORDS[state].word.slice(1) + ': ' + (
-    state === 'new' ? 'this element is not in the plateau it is compared with.' :
-    state === 'removed' ? 'this element is only in the plateau it is compared with, not in the one drawn.' :
-    state === 'changed' ? 'it differs from the plateau it is compared with' + (Array.isArray(item.natures) && item.natures.length ? ' (' + item.natures.join(', ') + ')' : '') + '.' :
-    state === 'moved' ? 'it replaces ' + (item.replaces || []).join(', ') + ' of the plateau it is compared with' + (Array.isArray(item.natures) && item.natures.length ? ' and differs from it (' + item.natures.join(', ') + ')' : '') + '.' :
-    state === 'split' ? 'it is one of several elements that replace ' + (item.replaces || []).join(', ') + ' of the plateau it is compared with.' :
-    state === 'merged' ? 'it replaces several elements of the plateau it is compared with (' + (item.replaces || []).join(', ') + ').' :
+    state === 'new' ? (future ? 'this element is only in ' + withThat + ', not in the one drawn.' : 'this element is not in the plateau it is compared with.') :
+    state === 'removed' ? (future ? 'this element is not in ' + withThat + '.' : 'this element is only in the plateau it is compared with, not in the one drawn.') :
+    state === 'changed' ? 'it differs from ' + withThat + (Array.isArray(item.natures) && item.natures.length ? ' (' + item.natures.join(', ') + ')' : '') + '.' :
+    state === 'moved' ? 'it replaces ' + (item.replaces || []).join(', ') + ' of ' + ofBase + (Array.isArray(item.natures) && item.natures.length ? ' and differs from it (' + item.natures.join(', ') + ')' : '') + '.' :
+    state === 'split' ? 'it is one of several elements that replace ' + (item.replaces || []).join(', ') + ' of ' + ofBase + '.' :
+    state === 'merged' ? 'it replaces several elements of ' + ofBase + ' (' + (item.replaces || []).join(', ') + ').' :
     'it did not change by itself, but something inside it did.') + (item.replacedBy ? '\nThis element is replaced by ' + item.replacedBy.join(', ') + '; it is drawn because something that was inside it is removed.' : '');
   return {
     badges: look.styled,
@@ -11584,6 +12683,25 @@ function diagramTitleHtml(line, text) {
 }
 
 /**
+ * Whether a thing of the comparison is only in the plateau compared with, not in the one drawn: the model of the page has no record of it, so its box is drawn from the
+ * union and a click shows what the other plateau says of it, read-only. With the past these are the removed elements; with the future (the plateau drawn is the base)
+ * they are the ones the plateau compared with adds, whatever their state (new, or the new place of a moved, split or merged one).
+ */
+function elementIsOnlyInTheOtherPlateau(layer, reference, change) {
+  if (!layerCompareIsFuture()) return change === 'removed';
+  return !!AppState.baseline && AppState.baseline.index[layer] && AppState.baseline.index[layer].has(String(reference)) && !(AppState.index[layer] && AppState.index[layer].has(String(reference)));
+}
+
+/** The side of the comparison that is the base / the target: the plateau drawn is the target, but with the future. */
+function baseSideIndex() {
+  return layerCompareIsFuture() ? AppState.index : AppState.baseline.index;
+}
+
+function targetSideIndex() {
+  return layerCompareIsFuture() ? AppState.baseline.index : AppState.index;
+}
+
+/**
  * A comparison is on: the boxes the kernel calls removed are elements of the baseline, not of the plateau drawn. Tell each what it was (name, kind,
  * description, qualifiers) from the union, so that it is drawn like the others and a click on it can say more. `layer`: the layer of the drawing.
  * Wave 009: the answer of `compute` does not say what a box replaces, the union does. A moved, split or merged box is told what it replaces
@@ -11591,13 +12709,14 @@ function diagramTitleHtml(line, text) {
  */
 function tellRemovedItems(result, comparison, layer) {
   for (const item of result.items) {
-    if (item.change !== 'removed' && !IDENTITY_STATES.includes(item.change)) continue;
     const itemLayer = item.id === item.reference ? layer : 'application';
+    const onlyThere = elementIsOnlyInTheOtherPlateau(itemLayer, item.reference, item.change);
+    if (item.change !== 'removed' && !IDENTITY_STATES.includes(item.change) && !onlyThere) continue;
     const element = comparison.records.get(itemLayer + '|' + item.reference);
     if (!element) continue;
     if (Array.isArray(element.replaces) && element.replaces.length && IDENTITY_STATES.includes(item.change)) item.replaces = element.replaces.slice();
     if (Array.isArray(element.replaced_by) && element.replaced_by.length && item.change === 'removed') item.replacedBy = element.replaced_by.slice();
-    if (item.change !== 'removed') continue;
+    if (!onlyThere) continue;
     item.removed = {
       layer: itemLayer,
       id: String(item.reference).split('.').pop(),
@@ -13063,7 +14182,7 @@ function modelsKey(comparison, facet) {
   return [
     modelVersion,
     facet ? JSON.stringify(toKernelFacet(facet)) : '',
-    comparison && comparison.layers ? 'vs:' + AppState.baseline.plateau.id + ':' + AppState.changesOnly + ':' + AppState.hideWording : '',
+    comparison && comparison.layers ? 'vs:' + AppState.baseline.plateau.id + (comparison.future ? ':future' : '') + ':' + AppState.changesOnly + ':' + AppState.hideWording : '',
     AppState.workspace.settings.relationships.defaultSyntheticLabel
   ].join('~');
 }
@@ -13842,6 +14961,7 @@ function applySavedView(view) {
 
 /** A new manifest of the editor's own kinds, in the first manifests folder, as the manifest of a new element is. */
 function createManifestEntry(kind, content) {
+  requireWritablePlateau();
   const header = { kind: ARCHICODE_KIND_PREFIX + kind, version: '1' };
   const manifestsDir = firstManifestsDir();
   const relPath = allocateManifestRelPath(manifestsDir === undefined ? 'manifests' : manifestsDir, kind + '.', content.id);
@@ -13856,6 +14976,7 @@ function createManifestEntry(kind, content) {
 
 /** The manifest of an entry leaves the model; its file goes with the next save (nothing to do for one that was never written). */
 function removeEntry(entry, key) {
+  requireWritablePlateau();
   const owner = entryOwners.get(entry);
   if (owner) {
     if (owner.existedOnDisk && !AppState.pendingFileRemovals.includes(owner.relPath)) {
@@ -13967,6 +15088,7 @@ function refuseViewEdit(view, field, text, typed) {
  * `refuseViewEdit`): then the view is not marked and the page is only redrawn to say the refusal. `later`: redraw a moment later. Returns whether the view changed.
  */
 function editSavedView(change, later) {
+  if (writesRefused()) return false;
   const view = libraryPageView();
   if (!view) return false;
   if (!isPlainObject(view.properties)) view.properties = {};
@@ -14186,6 +15308,7 @@ function handleAppChange(e) {
 
 /** A text field of a story, typed in: the model follows at once (there is no form to apply), and "Save all changes" lights up. */
 function updateStoryField(field) {
+  if (writesRefused()) return;
   const story = findStory(field.getAttribute('data-story'));
   if (!story) return;
   const name = field.getAttribute('data-story-field');
@@ -14506,6 +15629,7 @@ function addStoryStep(storyId, viewId) {
 
 /** A step whose view is gone points at another one. */
 function repairStoryStep(storyId, index, viewId) {
+  if (writesRefused()) return;
   const story = findStory(storyId);
   const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
   if (!isPlainObject(step) || !findSavedView(viewId)) return;
@@ -14962,8 +16086,11 @@ function renderActivePerspectiveHtml() {
  * grid-template-columns.
  */
 function renderShellHtml() {
-  let html = '<div class="app-shell grid grid-cols-[auto_auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">';
+  // wave 014 (run 0080): the band of plateaus sits under the top bar, for a workspace that has no `settings.plateaus` (which has its own selector in the bar)
+  const band = AppState.workspace && !AppState.fatalError && AppState.layers ? renderPlateauBandHtml() : '';
+  let html = '<div class="app-shell grid grid-cols-[auto_auto_minmax(0,1fr)] ' + (band ? 'grid-rows-[auto_auto_minmax(0,1fr)]' : 'grid-rows-[auto_minmax(0,1fr)]') + '">';
   html += renderTopPanelHtml();
+  html += band;
   if (AppState.fatalError) {
     html += '<div class="col-span-3 min-h-0"><div class="error-panel shell-error-panel"><strong>Error:</strong> ' + escapeHtml(AppState.fatalError) + '</div></div>';
   } else if (!AppState.workspace) {
@@ -15018,10 +16145,20 @@ async function cancelChanges() {
 
 /** The clicks that replace the form on screen. Without a "Save all changes" first, what was typed in it is lost. */
 const ACTIONS_LEAVING_THE_FORM = new Set([
+  'draw-plateau', 'compare-plateau', 'compare-past', 'compare-future',
   'set-perspective', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
   'select-link', 'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
   'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
   'library-tab', 'select-view', 'library-go-story', 'library-go-view', 'library-open-element', 'select-change'
+]);
+
+/** The clicks that write, or open a form that writes, an element, a view or a story: refused while a plateau other than baseline is drawn (see `readOnlyPlateauMessage`). */
+const WRITE_ACTIONS = new Set([
+  'toggle-element-edit', 'add-qualifier', 'remove-qualifier', 'add-application', 'remove-application', 'add-replaces', 'remove-replaces', 'add-use', 'remove-use',
+  'add-tag', 'remove-tag', 'add-relationship', 'remove-relationship', 'open-create-child-form', 'open-create-top-level-form', 'submit-create-child',
+  'submit-create-top-level', 'request-delete-element', 'confirm-delete-element', 'open-move-dialog', 'move-confirm', 'fix-dangling', 'legacy-move',
+  'name-view', 'add-to-story', 'story-new', 'story-delete', 'story-edit', 'story-bar-edit', 'story-step-up', 'story-step-down', 'story-step-remove',
+  'story-add-step', 'story-step-name', 'story-undo', 'saved-view-rename', 'saved-view-delete', 'view-list-remove'
 ]);
 
 /** Asks before throwing away what was typed in a form and not applied. True when the user accepts (the draft is then gone). */
@@ -15057,6 +16194,12 @@ function handleAppClick(e) {
   if (action !== 'dialog-submit') storyBarNotice = null;
   if (removedStep && action !== 'story-undo' && action !== 'story-step-remove') removedStep = null;
   if (draftTyped && ACTIONS_LEAVING_THE_FORM.has(action) && !confirmDiscardingDraft()) return;
+  // wave 014 (run 0080): a plateau other than baseline is read, compared and not edited yet (see `readOnlyPlateauMessage`)
+  if (WRITE_ACTIONS.has(action) && readOnlyPlateauMessage() !== null) {
+    saveStatus = { state: 'denied', message: readOnlyPlateauMessage() };
+    render();
+    return;
+  }
   switch (action) {
     case 'toggle-help':
       // e.detail is 0 for a click made with the keyboard (Enter, Space): then the focus goes along
@@ -15092,6 +16235,18 @@ function handleAppClick(e) {
       break;
     case 'set-plateau':
       switchPlateau(target.getAttribute('data-plateau'));
+      break;
+    case 'draw-plateau': // wave 014 (run 0080): the band
+      drawPlateau(target.getAttribute('data-plateau'));
+      break;
+    case 'compare-plateau':
+      compareWithPlateau(target.getAttribute('data-plateau'));
+      break;
+    case 'compare-past':
+      toggleCompareWithPast();
+      break;
+    case 'compare-future':
+      toggleCompareWithFuture();
       break;
     case 'reload-baseline':
       reloadBaseline();
@@ -16294,6 +17449,7 @@ function render() {
     if (activeRow && activeRow.scrollIntoView) activeRow.scrollIntoView({ block: 'nearest' });
   }
   syncHashFromState();
+  scheduleBandCounts(); // what each node of the band says is computed after the drawing, one node per turn
 }
 
 // =====================================================================

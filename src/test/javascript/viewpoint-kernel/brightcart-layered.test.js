@@ -3,9 +3,8 @@
 // `plateau:` header and a `Kind: Plateau` with its patches. Two things are asked here, the command line is asked the rest (BrightcartLayeredDiffTest, BrightcartLayeredViewsTest):
 //   - the generator is the source of the committed files: run in a copy of its folder, it writes `folders/`, `layered/`, `variants/` and `expected/` byte for byte as they are committed
 //     (the node tests are the only ones that run it; the Java tests read what it wrote);
-//   - the editor opens `layered/` and reads its plateaus. The editor reads the tree of the plateaus and the manifests that name no plateau; it does not read the layers yet
-//     (the chain is W-6), so what it draws is `baseline` alone. The test pins that: the tree is the four plateaus of the document with no problem, no manifest is unread, and the
-//     elements it draws are the sizes of `baseline`. When the editor resolves the chain, this is the test to change.
+//   - the editor opens `layered/` and reads its plateaus: the tree, every manifest, and the chain of each plateau (wave 014, run 0080: the band draws a plateau as its chain, the
+//     elements it draws are the sizes of that plateau in expected/sizes.json; the counts of the Changes panel are checked in editor-reads-layers.test.js).
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -90,10 +89,18 @@ test('the editor opens layered/: the tree of the four plateaus, every manifest r
   assert.deepEqual(Array.from(state.manifestFiles.map((f) => f.relPath)).sort(), written, 'the editor reads every file the generator wrote, in every folder');
 });
 
-test('the editor draws baseline alone, the sizes of baseline, until the chain is resolved (W-6)', async () => {
-  const { state } = await openLayered();
-  assert.deepEqual(Array.from(state.plateaus.map((p) => p.id)), [], 'no settings.plateaus: the selector has nothing to list');
-  const baseline = expected('sizes').plateaus.baseline;
-  assert.equal(state.index.application.size, baseline.application);
-  assert.equal(state.index.technology.size, baseline.technology);
+test('the editor draws baseline when it opens, and each plateau at its sizes when its node of the band is chosen', async () => {
+  const { sandbox, state } = await openLayered();
+  assert.deepEqual(Array.from(state.plateaus.map((p) => p.id)), [], 'no settings.plateaus: the selector has nothing to list, the band is the way');
+  const sizes = expected('sizes').plateaus;
+  assert.equal(state.layers.current, 'baseline');
+  assert.equal(state.index.application.size, sizes.baseline.application);
+  assert.equal(state.index.technology.size, sizes.baseline.technology);
+  for (const id of ['saas', 'inhouse', 'marketplace']) {
+    sandbox.drawPlateau(id);
+    assert.equal(state.layers.current, id);
+    assert.equal(state.layerProblems, null, id + ' resolves');
+    assert.equal(state.index.application.size, sizes[id].application, id);
+    assert.equal(state.index.technology.size, sizes[id].technology, id);
+  }
 });
