@@ -151,8 +151,9 @@ public class GenerateViewsCommand implements Runnable {
         }
         val base = workspaceFactory.create(workspacePath, viewsDirPath, againstId);
         val comparison = new PlateauComparer(mapperFactory.createLazy(MapperFormat.JSON)).compare(base, workspace);
+        // from the plateau already loaded: a comparison loads each of its two plateaus once
         val union = workspaceFactory.withViewsPath(
-            workspaceFactory.createUnion(workspacePath, viewsDirPath, plateau.getId(), base, comparison),
+            workspaceFactory.createUnion(workspace, base, comparison),
             workspace.getSettings().getViews().getPath() + "-vs-" + againstId
         );
         warnings.warnAll(comparison.getWarnings());

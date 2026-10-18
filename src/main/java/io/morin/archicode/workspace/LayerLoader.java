@@ -89,6 +89,8 @@ public class LayerLoader {
         val chain = parsed.plateaus().chain(plateauId);
         var resources = start;
         val removals = new ArrayList<Removal>();
+        // one mapper for the load (built by the first layer that has patches), not one for each of them
+        ObjectMapper json = null;
         for (val node : chain) {
             log.info("load the plateau {}", node.id());
             val own = parsed.ofPlateau(node.id());
@@ -96,7 +98,8 @@ public class LayerLoader {
             // before the patches: a patch may remove a parent, and the elements declared under it go with it
             tell(parentProblems(node.id(), indexes, own.elements()));
             if (!node.patches().isEmpty()) {
-                resources = applyPatches(node, resources, removals);
+                json = json == null ? patchMapper() : json;
+                resources = applyPatches(json, node, resources, removals);
                 indexes = index(resources, Map.of());
             }
             val problems = new LinkedHashSet<String>(problems(node.id(), indexes));
@@ -147,10 +150,16 @@ public class LayerLoader {
     /**
      * Hand the graph and the patches of a layer to the kernel, and read the graph back. The kernel is given the elements
      * of the two layers as JSON, the document it takes for a facet, and nothing else of the workspace.
+     *
+     * @param json the mapper of the load (see {@link #patchMapper})
      */
     @SneakyThrows
-    private Workspace applyPatches(PlateauTree.Node node, Workspace resources, List<Removal> removals) {
-        val json = patchMapper();
+    private Workspace applyPatches(
+        ObjectMapper json,
+        PlateauTree.Node node,
+        Workspace resources,
+        List<Removal> removals
+    ) {
         val workspace = json.createObjectNode();
         workspace.set("application", layerOf(json, resources.getApplication()));
         workspace.set("technology", layerOf(json, resources.getTechnology()));

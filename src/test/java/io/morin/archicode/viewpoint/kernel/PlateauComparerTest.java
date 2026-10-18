@@ -548,7 +548,7 @@ class PlateauComparerTest {
         val base = workspaceFactory.create(REPLACES, null, "before");
         val target = workspaceFactory.create(REPLACES, null, "after");
         val comparison = new PlateauComparer(objectMapper).compare(base, target);
-        val union = workspaceFactory.createUnion(REPLACES, null, "after", base, comparison);
+        val union = workspaceFactory.createUnion(target, base, comparison);
         val view = ResourceFixtures.createDeepViewBuilder("view", "stock").layer(View.Layer.APPLICATION).build();
 
         val viewpoint = new KernelViewpointFactory("deep", objectMapper, comparison, false).create(union, view);

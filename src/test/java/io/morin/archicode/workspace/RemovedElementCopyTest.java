@@ -252,7 +252,7 @@ class RemovedElementCopyTest {
         val base = workspaceFactory.create(workspace, null, "a");
         val target = workspaceFactory.create(workspace, null, "b");
         val comparison = new PlateauComparer(new ObjectMapper()).compare(base, target);
-        val union = workspaceFactory.createUnion(workspace, null, "b", base, comparison);
+        val union = workspaceFactory.createUnion(target, base, comparison);
 
         for (val reference : new String[] { "shop", "prod" }) {
             val layerBase = reference.equals("shop") ? base.appIndex : base.techIndex;

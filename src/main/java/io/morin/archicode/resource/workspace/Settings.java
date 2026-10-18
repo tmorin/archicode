@@ -2,6 +2,7 @@ package io.morin.archicode.resource.workspace;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 import lombok.Builder;
@@ -135,10 +136,13 @@ public class Settings {
         String directoryNameTemplate = "%s-%s";
 
         /**
-         * The custom facets.
+         * The custom facets, in the order of the file: the views of each are written, and its warnings told, in that order. A
+         * hash set would give an order that is no function of the workspace (an {@code Action} holds an enum, whose hash is
+         * the identity hash of the JVM), so the set the file is read into is a linked one.
          */
         @Builder.Default
-        Set<Facet> customs = new HashSet<>();
+        @JsonDeserialize(as = LinkedHashSet.class)
+        Set<Facet> customs = new LinkedHashSet<>();
 
         @Value
         @Jacksonized
@@ -152,9 +156,10 @@ public class Settings {
             String name;
 
             /**
-             * A set of expression.
+             * A set of expression, applied in the order of the file.
              */
             @Builder.Default
+            @JsonDeserialize(as = LinkedHashSet.class)
             Set<Action> actions = new LinkedHashSet<>();
 
             /**

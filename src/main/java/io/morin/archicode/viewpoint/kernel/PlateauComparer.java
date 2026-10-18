@@ -1,11 +1,10 @@
 package io.morin.archicode.viewpoint.kernel;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.morin.archicode.workspace.ElementIndex;
 import io.morin.archicode.workspace.Workspace;
-import java.util.HashMap;
-import java.util.List;
+import java.util.function.Predicate;
 import lombok.AccessLevel;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -71,45 +70,59 @@ public class PlateauComparer {
     @SneakyThrows
     public Comparison compare(@NonNull Workspace base, @NonNull Workspace target, boolean onOneChain) {
         val input = objectMapper.createObjectNode();
-        val baseSide = side(base);
-        val targetSide = side(target);
-        if (target.getPlateauTree() != null) {
-            dropInheritedReplaces(baseSide, targetSide);
-        }
-        input.set("base", baseSide);
-        input.set("target", targetSide);
+        input.set("base", side(base, null));
+        input.set("target", side(target, base));
         input.put("on_one_chain", onOneChain);
         val answer = ViewpointKernel.getInstance().compare(objectMapper.writeValueAsString(input));
         return Comparison.of(objectMapper.readTree(answer)).between(base.getPlateau(), target.getPlateau());
     }
 
     /**
-     * A layered plateau holds, with its own elements, the ones it inherits from the plateaus above it, and an inherited element
-     * keeps the {@code replaces} of the layer that declared it. Compared with a plateau that has that layer, the entry says
-     * nothing the comparison does not already know (the element it replaced went in the layer above), and the kernel would
-     * warn, for every one, that it names nothing of the base. So the {@code replaces} that the target and the base write
-     * the same for the same element are left out of the target: what is left is what the target alone says.
+     * The elements of a plateau as the kernel takes them. A layered plateau holds, with its own elements, the ones it inherits
+     * from the plateaus above it, and an inherited element keeps the {@code replaces} of the layer that declared it. Compared
+     * with a plateau that holds the same element saying the same, the entry says nothing the comparison does not already know
+     * (the element it replaced went in the layer above), and the kernel would warn, for every one, that it names nothing of
+     * the base. So the {@code replaces} of the target are given unless the base says exactly the same for the same element:
+     * what is left is what the target alone says. Whether an entry is news depends on the plateau it is compared with (the
+     * root has not got the layer that wrote it, a plateau that moved the element again has lost it), which is why the load
+     * of one plateau cannot take it out, and why it is decided here, once, for every pair.
+     *
+     * @param workspace the plateau
+     * @param base      the plateau it is compared with, or null for the base itself, whose {@code replaces} are all given
      */
-    private static void dropInheritedReplaces(ObjectNode base, ObjectNode target) {
-        for (val layer : List.of("application", "technology")) {
-            val known = new HashMap<String, JsonNode>();
-            base.path(layer).forEach(e -> {
-                if (e.has("replaces")) {
-                    known.put(e.path("reference").asText(), e.get("replaces"));
-                }
-            });
-            target.path(layer).forEach(e -> {
-                if (e.has("replaces") && e.get("replaces").equals(known.get(e.path("reference").asText()))) {
-                    ((ObjectNode) e).remove("replaces");
-                }
-            });
-        }
+    private ObjectNode side(Workspace workspace, Workspace base) {
+        val side = objectMapper.createObjectNode();
+        side.set(
+            "application",
+            KernelGraph.of(
+                workspace.appIndex,
+                objectMapper,
+                true,
+                carries(workspace.appIndex, base == null ? null : base.appIndex)
+            )
+        );
+        side.set(
+            "technology",
+            KernelGraph.of(
+                workspace.techIndex,
+                objectMapper,
+                true,
+                carries(workspace.techIndex, base == null ? null : base.techIndex)
+            )
+        );
+        return side;
     }
 
-    private ObjectNode side(Workspace workspace) {
-        val side = objectMapper.createObjectNode();
-        side.set("application", KernelGraph.of(workspace.appIndex, objectMapper, true));
-        side.set("technology", KernelGraph.of(workspace.techIndex, objectMapper, true));
-        return side;
+    /** Whether the {@code replaces} of an element of {@code index} are given: not when the base says exactly the same. */
+    private static Predicate<String> carries(ElementIndex index, ElementIndex base) {
+        if (base == null) {
+            return reference -> true;
+        }
+        return reference -> {
+            val known = base.searchElement(reference).map(KernelGraph::replacesAsWritten).orElse(null);
+            return (
+                known == null || !known.equals(KernelGraph.replacesAsWritten(index.getElementByReference(reference)))
+            );
+        };
     }
 }

@@ -3615,7 +3615,7 @@ function compareCodePoints(a, b) {
 
 /**
  * Whether a folder found below an entry that ends in `/**` is one of the generated views: the folder `views.path` names, or a sibling that begins with its
- * name and a dash (`views-to-be`, `views-to-be-vs-as-is`, `views-shop`). `folder` is its segments from the folder of workspace.yaml.
+ * name and a dash (`views-to-be`, `views-to-be-vs-baseline`, `views-shop`). `folder` is its segments from the folder of workspace.yaml.
  */
 function isGeneratedViewsFolder(folder, viewsPath) {
   if (typeof viewsPath === 'number' || typeof viewsPath === 'boolean') viewsPath = String(viewsPath); // a scalar is read as the text it is, as the command line reads it
@@ -3626,6 +3626,18 @@ function isGeneratedViewsFolder(folder, viewsPath) {
   const name = views[views.length - 1];
   const found = folder[folder.length - 1];
   return found === name || found.startsWith(name + '-');
+}
+
+/** The files a comparison writes beside its views, always together (`ManifestDiscovery.COMPARISON_FILES`). */
+const COMPARISON_FILES = ['gap.json', 'gap.md'];
+
+/**
+ * Whether a folder, given as the entries it lists (`[name, handle]`), is the folder of a comparison `views generate` wrote: it holds both files of the table of changes
+ * (`ManifestDiscovery.holdsComparison`). Its `gap.json` is no manifest, and which `--output` the run was given is not known to the tool that reads the folder next; a lone
+ * `gap.json` is read, since it may be an author's manifest.
+ */
+function holdsComparisonFiles(listed) {
+  return COMPARISON_FILES.every((file) => listed.some(([name, handle]) => name === file && handle.kind === 'file'));
 }
 
 /** The entries of `settings.manifests.paths` the command line refuses before it reads any manifest (`ManifestDiscovery.pathProblems`), in its words, sorted as it sorts them. */
@@ -6443,7 +6455,7 @@ const WORKSPACE_FILE_NAME = 'workspace.yaml'; // the only workspace file the edi
  *
  * With `options.recursive` (an entry of `manifests.paths` that ends in `/**`, run 0076, issue #73) the folders below are read too, the way the command line
  * reads them (`ManifestDiscovery.java`): not a file or a folder whose name begins with a dot, not the folders of the generated views
- * (`options.viewsPath`, see `isGeneratedViewsFolder`), not a folder that is a symbolic link (the served folder says which are: `symbolicLink`) and not a folder
+ * (`options.viewsPath`, see `isGeneratedViewsFolder`), not a folder that holds the files of a comparison (`holdsComparisonFiles`), not a folder that is a symbolic link (the served folder says which are: `symbolicLink`) and not a folder
  * that is one of those it is inside of (a browser may follow a link: that loop is cut with `isSameEntry`). The records are not sorted here.
  */
 async function readManifestFolder(rootHandle, relDir, options) {
@@ -6458,7 +6470,11 @@ async function readManifestFolder(rootHandle, relDir, options) {
     return result;
   }
   const visit = async (handle, dir, ancestors) => {
-    for await (const [name, entryHandle] of handle.entries()) {
+    const listed = [];
+    for await (const entry of handle.entries()) listed.push(entry);
+    // below the entry, the folder of a comparison is no folder of manifests (the entry itself is read whatever it holds)
+    if (recursive && dir !== relDir && holdsComparisonFiles(listed)) return;
+    for (const [name, entryHandle] of listed) {
       if (recursive && name.startsWith('.')) continue; // a hidden file or folder below the entry is not read
       if (entryHandle.kind === 'directory') {
         if (!recursive || entryHandle.symbolicLink) continue;
@@ -12925,7 +12941,7 @@ function plateausOnOneChain(first, second) {
  * The input of `compare` for two models. The target is a layer, which holds with its own elements the ones it inherits, and an inherited element keeps the
  * `replaces` of the layer that declared it. Compared with a plateau that has that layer the entry says nothing the comparison does not know, and the kernel would warn,
  * for every one, that it names nothing of the base: the `replaces` that the base writes the same way for the same element are left out of the target
- * (`PlateauComparer.dropInheritedReplaces`). `onOneChain`: whether one of the two plateaus is the past of the other (`plateausOnOneChain`), required by the kernel (contract 5).
+ * (`PlateauComparer.carries`). `onOneChain`: whether one of the two plateaus is the past of the other (`plateausOnOneChain`), required by the kernel (contract 5).
  */
 function comparisonInputBetween(baseIndex, targetIndex, onOneChain) {
   const layers = (indexes) => ({

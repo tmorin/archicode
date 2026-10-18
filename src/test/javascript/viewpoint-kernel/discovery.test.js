@@ -227,3 +227,12 @@ test('a views path that YAML reads as a number is the text it is, as the command
   assert.equal(isGeneratedViewsFolder(['2024-to-be'], 2024), true);
   assert.equal(isGeneratedViewsFolder(['2025'], 2024), false);
 });
+
+test('a folder of a comparison is told by the two files a comparison writes, and by nothing else', () => {
+  const { holdsComparisonFiles } = createApp({});
+  const listing = (...entries) => entries.map(([name, kind]) => [name, { kind }]);
+  assert.equal(holdsComparisonFiles(listing(['gap.json', 'file'], ['gap.md', 'file'], ['a.puml', 'file'])), true);
+  assert.equal(holdsComparisonFiles(listing(['gap.json', 'file'])), false, 'a lone gap.json may be a manifest');
+  assert.equal(holdsComparisonFiles(listing(['gap.md', 'file'])), false);
+  assert.equal(holdsComparisonFiles(listing(['gap.json', 'file'], ['gap.md', 'directory'])), false, 'a folder called gap.md is no file');
+});

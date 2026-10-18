@@ -621,6 +621,70 @@
           "views/v.yaml"
         ]
       }
+    },
+    {
+      "id": "D34",
+      "what": "a folder that holds both files a comparison writes, gap.json and gap.md, is left out at any depth, whatever its name and whatever settings.views.path says (issue #88: a command that reads does not know the --output of the one that wrote it); a folder that holds only one of the two is read, since a gap.json may be an author's manifest",
+      "paths": [
+        "./**"
+      ],
+      "files": {
+        "manifests/a.yaml": "a",
+        "out-next-vs-baseline/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "out-next-vs-baseline/gap.md": {
+          "raw": "# the changes\n"
+        },
+        "sub/report/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "sub/report/gap.md": {
+          "raw": "# the changes\n"
+        },
+        "sub/report/deeper/inside.yaml": "inside",
+        "only-json/gap.json": "gapjson",
+        "only-json/x.yaml": "x",
+        "only-md/gap.md": {
+          "raw": "# the changes\n"
+        },
+        "only-md/y.yaml": "y"
+      },
+      "expect": {
+        "read": [
+          "manifests/a.yaml",
+          "only-json/gap.json",
+          "only-json/x.yaml",
+          "only-md/y.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D35",
+      "what": "the entry of a path that ends in /** is read whatever it holds: a folder named by the path that holds both files of a comparison is read, and the folders below it are left out by the rule of D34",
+      "paths": [
+        "reports/**"
+      ],
+      "files": {
+        "reports/gap.json": "report",
+        "reports/gap.md": {
+          "raw": "# the changes\n"
+        },
+        "reports/a.yaml": "a",
+        "reports/old/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "reports/old/gap.md": {
+          "raw": "# the changes\n"
+        },
+        "reports/old/z.yaml": "z"
+      },
+      "expect": {
+        "read": [
+          "reports/a.yaml",
+          "reports/gap.json"
+        ]
+      }
     }
   ]
 }

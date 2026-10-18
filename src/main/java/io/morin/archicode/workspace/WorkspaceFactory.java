@@ -167,37 +167,56 @@ public class WorkspaceFactory {
     }
 
     /**
-     * Read the plateau {@code plateauId} again, holding in addition what only the baseline had, so that the views of the
-     * comparison can draw it: the elements the comparison calls removed, each with what it holds, under its parent. The
-     * plateau is read afresh, so that nothing merged here shows in the workspace the plain views are drawn from.
+     * The workspace of a comparison: the plateau that is compared, holding in addition what only the baseline had, so that the
+     * views of the comparison can draw it: the elements the comparison calls removed, each with what it holds, under its parent.
+     * The plateau is not read again: the union is made from a copy of the tree of its elements, so that nothing merged here
+     * shows in the workspace the plain views are drawn from, and the manifests are parsed once for each plateau a comparison
+     * loads.
      *
-     * @param path         the workspace file
-     * @param viewsDirPath the folder the views are written to, as for {@link #create(Path, Path, String)}
-     * @param plateauId    the plateau that is compared
-     * @param base         the baseline, loaded on its own: where the removed elements are taken from
-     * @param comparison   what {@code base} and the plateau do not share
+     * @param target     the plateau that is compared, as {@link #create(Path, Path, String)} read it
+     * @param base       the baseline, loaded on its own: where the removed elements are taken from
+     * @param comparison what {@code base} and {@code target} do not share
      * @return the workspace of the plateau and the removed elements of the baseline
      */
-    @SneakyThrows
     public io.morin.archicode.workspace.Workspace createUnion(
-        Path path,
-        Path viewsDirPath,
-        String plateauId,
+        io.morin.archicode.workspace.Workspace target,
         io.morin.archicode.workspace.Workspace base,
         Comparison comparison
     ) {
-        val loaded = load(path, viewsDirPath, plateauId);
+        // the index puts the removed elements under their parents: it must not be the tree of the target
+        val resources = target
+            .getResources()
+            .toBuilder()
+            .application((Application) copyOf(target.getApplication()))
+            .technology((Technology) copyOf(target.getTechnology()))
+            .build();
         val manifests = new HashMap<Class<?>, Set<ManifestParser.Candidate>>();
-        loaded.elements().forEach((category, candidates) -> manifests.put(category, new HashSet<>(candidates)));
         addRemoved(manifests, Application.class, "application", base.appIndex, comparison);
         addRemoved(manifests, Technology.class, "technology", base.techIndex, comparison);
-        return create(loaded.resources(), manifests)
+        return create(resources, manifests)
             .toBuilder()
-            .plateau(loaded.plateau())
-            .plateauTree(loaded.tree())
-            .removals(loaded.removals())
+            .plateau(target.getPlateau())
+            .plateauTree(target.getPlateauTree())
+            .removals(target.getRemovals())
             .baseline(base.getPlateau())
             .build();
+    }
+
+    /**
+     * The tree of a layer as new objects (the leaves are shared: indexing adds elements to the sets of the parents and
+     * changes nothing else). The copy is made by the classes themselves, as in {@link #onlyWhatIsRemoved}.
+     */
+    private static <C extends Element> Parent<C> copyOf(Parent<C> parent) {
+        val children = new LinkedHashSet<C>();
+        for (val child : parent.getElements()) {
+            children.add(copyOfChild(child));
+        }
+        return parent.withElements(children);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <C extends Element> C copyOfChild(C child) {
+        return child instanceof Parent<?> grandParent ? (C) copyOf(grandParent) : child;
     }
 
     /**
@@ -465,23 +484,27 @@ public class WorkspaceFactory {
         return new Loaded(loaded.resources(), Map.of(), plateau, tree, loaded.removals());
     }
 
-    /** The plateau to read: the one asked for, else {@code settings.current}, else the end of a tree that is one line. */
+    /**
+     * The plateau to read: the one asked for, else {@code settings.current}, else the end of a tree that is one line. The plateau
+     * asked for comes first: {@code settings.current} is looked at only when nothing was asked, so that {@code --plateau} can
+     * get past a {@code current} that names a plateau that is gone (after a rename).
+     */
     private static String chosen(String current, PlateauTree tree, String requested) {
-        if (current != null && !tree.contains(current)) {
-            throw new ArchiCodeException(
-                "`settings.current` names the plateau `%s`, which is not a plateau of this workspace (the plateaus are %s)",
-                current,
-                tree
-                    .ids()
-                    .stream()
-                    .map(i -> "`" + i + "`")
-                    .collect(Collectors.joining(", "))
-            );
-        }
         if (requested != null) {
             return tree.node(requested).id();
         }
         if (current != null) {
+            if (!tree.contains(current)) {
+                throw new ArchiCodeException(
+                    "`settings.current` names the plateau `%s`, which is not a plateau of this workspace (the plateaus are %s)",
+                    current,
+                    tree
+                        .ids()
+                        .stream()
+                        .map(i -> "`" + i + "`")
+                        .collect(Collectors.joining(", "))
+                );
+            }
             return current;
         }
         for (val node : tree.nodes()) {

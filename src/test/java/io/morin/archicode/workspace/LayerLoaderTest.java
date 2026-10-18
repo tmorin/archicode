@@ -7,12 +7,18 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.LayeredFixtures;
+import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.technology.Node;
+import io.morin.archicode.viewpoint.Change;
+import io.morin.archicode.viewpoint.kernel.Comparison;
+import io.morin.archicode.viewpoint.kernel.PlateauComparer;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.val;
@@ -488,16 +494,6 @@ class LayerLoaderTest {
     }
 
     @Test
-    void aPlateauWithAnInvalidCurrentIsToldWhateverThePlateauAskedFor() {
-        val files = LayeredFixtures.files();
-        files.put(LayeredFixtures.WORKSPACE, files.get(LayeredFixtures.WORKSPACE) + "  current: nope\n");
-        val expected =
-            "`settings.current` names the plateau `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse`, `marketplace`, `saas`)";
-        assertEquals(expected, errorOf(files, "saas"));
-        assertEquals(expected, errorOf(files, null));
-    }
-
-    @Test
     void theMistakesOfALayerAreToldTogetherAndSorted() {
         val files = LayeredFixtures.files();
         files.put(
@@ -546,6 +542,94 @@ class LayerLoaderTest {
             "`settings.current` names the plateau `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse`, `marketplace`, `saas`)",
             errorOf(files, null)
         );
+    }
+
+    @Test
+    void anExplicitPlateauGetsPastACurrentThatNamesNothingAnyMore() {
+        // `settings.current` names a plateau that was renamed: --plateau must not wait for workspace.yaml to be edited first
+        val files = LayeredFixtures.files();
+        files.put(LayeredFixtures.WORKSPACE, files.get(LayeredFixtures.WORKSPACE) + "  current: renamed\n");
+        assertEquals("inhouse", load(files, "inhouse").getPlateau().getId());
+        assertEquals("saas", load(files, "saas").getPlateau().getId());
+        assertEquals(
+            "`settings.current` names the plateau `renamed`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse`, `marketplace`, `saas`)",
+            errorOf(files, null),
+            "and it is still refused when nothing else says which plateau to read"
+        );
+        assertEquals(
+            "unknown plateau `nope`: the plateaus of this workspace are `baseline`, `inhouse`, `marketplace` and `saas`",
+            errorOf(files, "nope"),
+            "a plateau that does not exist is told as it always was"
+        );
+    }
+
+    /** The fixture with a `replaces` written by inhouse (the cart took the place of the cache) and one by marketplace (the sellers took the console's). */
+    private Map<String, String> withReplaces() {
+        val files = LayeredFixtures.files();
+        files.computeIfPresent("plateaus/inhouse/commerce.yaml", (k, v) ->
+            v.replace("name: \"Cart\"", "name: \"Cart\"\n      replaces: [\"shop.cache\"]")
+        );
+        files.computeIfPresent("plateaus/marketplace/sellers.yaml", (k, v) ->
+            v.replace("name: \"Sellers\"", "name: \"Sellers\"\n  replaces: [\"backoffice.console\"]")
+        );
+        return files;
+    }
+
+    private static Change changeOf(Comparison comparison, String reference) {
+        return comparison
+            .getElements()
+            .stream()
+            .filter(e -> e.reference().equals(reference))
+            .findFirst()
+            .orElseThrow()
+            .change();
+    }
+
+    @Test
+    void aComparisonLeavesOutTheReplacesTheBaseAlreadySaysAndKeepsTheOthers() {
+        val files = withReplaces();
+        val comparer = new PlateauComparer(new ObjectMapper());
+        val inhouse = load(files, "inhouse");
+        val marketplace = load(files, "marketplace");
+
+        // inhouse wrote that the cart replaces the cache, and marketplace inherits the cart as it was (and tags it): nothing is news.
+        // Without the rule the kernel would warn that `shop.cache`, which inhouse removed, is not an element of the base, and the
+        // cart would read as moved
+        val onTopOfIt = comparer.compare(inhouse, marketplace);
+        assertEquals(List.of(), onTopOfIt.getWarnings());
+        assertEquals(Change.CHANGED, changeOf(onTopOfIt, "commerce.cart"));
+        assertEquals(Change.MOVED, changeOf(onTopOfIt, "sellers"), "what marketplace wrote itself is the news");
+
+        // the root has not got the layer inhouse: what inhouse wrote is the news, and the cart took the place of the cache
+        val fromTheRoot = comparer.compare(load(files, "baseline"), marketplace);
+        assertEquals(Change.MOVED, changeOf(fromTheRoot, "commerce.cart"));
+    }
+
+    @Test
+    void theUnionOfAComparisonIsBuiltOnACopyAndTheTargetIsAsItWas() {
+        val base = load("baseline");
+        val target = load("inhouse");
+        val comparison = new PlateauComparer(new ObjectMapper()).compare(base, target);
+        val union = workspaceFactory.createUnion(target, base, comparison);
+
+        // inhouse removed `shop.cache`, which is below a system below the root of the layer: the copy goes down to it
+        assertTrue(union.appIndex.searchElement("shop.cache").isPresent());
+        assertTrue(target.appIndex.searchElement("shop.cache").isEmpty());
+        assertFalse(
+            ((Parent<?>) target.appIndex.getElementByReference("shop"))
+                .getElements()
+                .stream()
+                .anyMatch(e -> e.getId().equals("cache")),
+            "the tree of the target does not hold what only the baseline had"
+        );
+        assertTrue(
+            ((Parent<?>) union.appIndex.getElementByReference("shop"))
+                .getElements()
+                .stream()
+                .anyMatch(e -> e.getId().equals("cache"))
+        );
+        assertEquals("inhouse", union.getPlateau().getId());
+        assertEquals("baseline", union.getBaseline().getId());
     }
 
     @Test

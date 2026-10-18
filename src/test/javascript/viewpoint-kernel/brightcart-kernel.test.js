@@ -54,7 +54,7 @@ function brightcart() {
   return opened;
 }
 
-/** A layer holds the elements it inherits with the `replaces` of the layer that declared them: the ones the base writes the same way are left out of the target, as the tools do (`PlateauComparer.dropInheritedReplaces`). */
+/** A layer holds the elements it inherits with the `replaces` of the layer that declared them: the ones the base writes the same way are left out of the target, as the tools do (`PlateauComparer.carries`). */
 function withoutInheritedReplaces(base, target) {
   const out = plain(target);
   for (const layer of ['application', 'technology']) {

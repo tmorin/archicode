@@ -300,7 +300,7 @@ class ReplacedElementsViewsTest {
         val base = workspaceFactory.create(workspace, null, "before");
         val target = workspaceFactory.create(workspace, null, "after");
         val comparison = new PlateauComparer(new ObjectMapper()).compare(base, target);
-        val union = workspaceFactory.createUnion(workspace, null, "after", base, comparison);
+        val union = workspaceFactory.createUnion(target, base, comparison);
 
         assertTrue(union.appIndex.searchElement("shop").isPresent(), "the place that holds what was removed");
         assertTrue(union.appIndex.searchElement("shop.old").isPresent(), "what was removed");

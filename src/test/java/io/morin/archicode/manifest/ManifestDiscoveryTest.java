@@ -371,4 +371,16 @@ class ManifestDiscoveryTest {
         assertNull(ManifestDiscovery.patternProblem("a*b/*"));
         assertTrue(ManifestDiscovery.patternProblem("**").startsWith("uses `**`"));
     }
+
+    @Test
+    void theFilesThatMarkTheFolderOfAComparisonAreTheOnesViewsGenerateWrites() {
+        // GenerateViewsCommand writes "gap." + the extension of each of these two formats
+        assertEquals(
+            Set.of(
+                "gap." + io.morin.archicode.rendering.gap.GapFormat.JSON.extension(),
+                "gap." + io.morin.archicode.rendering.gap.GapFormat.MARKDOWN.extension()
+            ),
+            Set.copyOf(ManifestDiscovery.COMPARISON_FILES)
+        );
+    }
 }

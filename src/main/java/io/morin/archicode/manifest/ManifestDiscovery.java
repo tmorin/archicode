@@ -33,8 +33,10 @@ import lombok.val;
  *       with a dot, in a symbolic link to a folder (a link is never followed, so that a loop cannot happen; a link to a
  *       file is a file), or in the folder of the generated views: {@link #excludesViews the folder named by {@code
  *       views.path} and its siblings that begin with its name and a dash}, which is where the views of a plateau
- *       ({@code views-to-be}), of a comparison ({@code views-to-be-vs-as-is}) and of a facet ({@code views-shop})
- *       are written, and which hold a {@code gap.json} that is no manifest.
+ *       ({@code views-to-be}), of a comparison ({@code views-to-be-vs-baseline}) and of a facet ({@code views-shop})
+ *       are written, and which hold a {@code gap.json} that is no manifest; nor in a folder that holds the pair of files a
+ *       comparison writes ({@link #holdsComparison a {@code gap.json} and a {@code gap.md}}), whichever command reads and
+ *       whatever {@code --output} named when it was written.
  *   <li>{@code **} means something only at the end of an entry, after a {@code /}. Anywhere else it is an error, told in
  *       one line, not a pattern that matches nothing.
  *   <li>The files are listed once, whichever entries find them, sorted by their path from the folder of the workspace,
@@ -162,6 +164,23 @@ public final class ManifestDiscovery {
         return viewsPaths.stream().anyMatch(viewsPath -> beginsLike(folder, viewsPath));
     }
 
+    /** The files a comparison writes beside its views, always together (see {@code GenerateViewsCommand}). */
+    static final List<String> COMPARISON_FILES = List.of("gap.json", "gap.md");
+
+    /**
+     * Whether a folder is the folder of a comparison that {@code views generate} wrote: it holds the table of changes in both
+     * its forms, {@code gap.json} and {@code gap.md}. The tools that read the manifests do not know what {@code --output} a
+     * run was given, and the {@code gap.json} of such a folder would be read as a manifest and refused; what the folder
+     * holds says what it is. A lone {@code gap.json} is not enough, since an author's manifest may be called so, and a
+     * folder of manifests must never be left out in silence.
+     *
+     * @param folder a folder below the entry
+     * @return whether the folder holds both files
+     */
+    static boolean holdsComparison(Path folder) {
+        return COMPARISON_FILES.stream().allMatch(name -> Files.isRegularFile(folder.resolve(name)));
+    }
+
     private static boolean beginsLike(List<String> folder, String viewsPath) {
         if (viewsPath == null || viewsPath.startsWith("/") || viewsPath.startsWith("\\")) {
             return false;
@@ -283,7 +302,7 @@ public final class ManifestDiscovery {
                 if (Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)) {
                     val below = new ArrayList<>(relative);
                     below.add(name);
-                    if (!excludesViews(below, viewsPaths)) {
+                    if (!excludesViews(below, viewsPaths) && !holdsComparison(entry)) {
                         walk(entry, below, viewsPaths, found, wksDir);
                     }
                 } else if (Files.isSymbolicLink(entry) && Files.isDirectory(entry)) {

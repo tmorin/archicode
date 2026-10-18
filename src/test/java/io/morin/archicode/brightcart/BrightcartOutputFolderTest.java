@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -74,5 +75,43 @@ class BrightcartOutputFolderTest {
         val second = cli.in(workspace, List.of("views", "generate", "--plateau", "saas", "--output", "out"));
         assertEquals(0, second.exit(), second.err());
         assertEquals("", second.err());
+    }
+
+    /**
+     * Issue #88, the half run 0085 left: the other commands know no {@code --output}, so they find the folder of a comparison by
+     * what it holds (a {@code gap.json} and a {@code gap.md}), whatever the run that wrote it named it.
+     */
+    @Test
+    void shouldLetTheOtherCommandsLeaveOutTheFolderOfAComparisonWhateverOutputNamedIt() {
+        val workspace = Brightcart.copy(dir);
+        val cli = new Brightcart.Cli(factory, errorOutput);
+        val first = cli.in(workspace, List.of("views", "generate", "--plateau", "saas", "--output", "out"));
+        assertEquals(0, first.exit(), first.err());
+        assertTrue(Files.exists(dir.resolve("out-saas-vs-baseline").resolve("gap.json")));
+        assertTrue(Files.exists(dir.resolve("out-saas-vs-baseline").resolve("gap.md")));
+
+        for (val arguments : List.of(
+            List.of("diff", "--plateau", "saas"),
+            List.of("query", "graph", "--plateau", "saas"),
+            List.of("plateau", "list"),
+            List.of("query", "views", "--plateau", "saas")
+        )) {
+            val result = cli.in(workspace, arguments);
+            assertEquals(0, result.exit(), arguments + ": " + result.err());
+            assertEquals("", result.err(), arguments.toString());
+        }
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldStillReadTheFolderThatHoldsOnlyOneOfTheTwoFiles() {
+        // a gap.json alone may be an author's manifest: leaving its folder out in silence would hide manifests, so it is refused
+        val workspace = Brightcart.copy(dir);
+        Files.createDirectories(dir.resolve("notes"));
+        Files.writeString(dir.resolve("notes/gap.json"), "{\"gap\": true}\n");
+        val result = new Brightcart.Cli(factory, errorOutput).in(workspace, List.of("plateau", "list"));
+        assertEquals(1, result.exit(), result.out());
+        assertTrue(result.err().startsWith("error: "), result.err());
+        assertTrue(result.err().contains("notes/gap.json"), result.err());
     }
 }
