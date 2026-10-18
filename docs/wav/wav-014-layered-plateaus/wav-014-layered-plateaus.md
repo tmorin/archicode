@@ -111,7 +111,7 @@ wave_manifest:
       name: Remove the old mechanism
       gate:
         criteria:
-          - '`git grep -n "settings.plateaus\|plateaus:" -- src docs/*.adoc` finds only the one error message, tests of it, and history in `docs/wav` and `docs/fixtures`; every shipped workspace that had `settings.plateaus` is layered, and `ShippedFilesTest` and `shipped-files.test.js` pass with an empty list of exceptions'
+          - '`git grep -n "settings.plateaus\|plateaus:" -- src docs/*.adoc` finds only the one error message, tests of it, and history in `docs/wav` and `docs/fixtures`, apart from `src/doc/README.adoc`, which W-13 rewrites and the P4 gate checks; every shipped workspace that had `settings.plateaus` is layered, and `ShippedFilesTest` and `shipped-files.test.js` pass with an empty list of exceptions'
           - 'a workspace with `settings.plateaus` gives, on the command line and in the editor, exit 1 and one `error:` line that says the key no longer exists and what to write instead (a `plateau:` header and a `Kind: Plateau`), with no stack trace; `plateau add` and `--baseline` are gone (`--baseline` gives picocli''s usage error), `--against` and `plateau list` work; the directories of the views are named `views-<plateau>` and `views-<plateau>-vs-<against>`'
           - 'the editor has no plateau selector, no *Compare to* list, no plateau section in Settings and no code that reads `settings.plateaus` (the message aside); the Brightcart `folders/` rendition and the tests that read it are gone, replaced by the layered rendition'
           - '`git grep -n -e "--baseline" -- .github README.md src` finds no use of the option other than the test that expects picocli''s usage error; every `expect` line of the Native smoke step of `.github/workflows/ci-build.yaml`, converted to layers (`--against`, the layered `domain_plateaus` and Brightcart), run by hand with the JVM jar, passes; the sentences of `README.md` that name `--baseline` say `--against`'
@@ -122,7 +122,7 @@ wave_manifest:
         criteria:
           - 'V1, V3 and V6 to V10 of the Brightcart document run on the layered tools and each gives the class of message the document expects, one line, from the command line and from the editor, pinned by tests; `negative-cases.json` is rewritten for the new form'
           - '#70: `diff --plateau inhouse --against saas` on the layered Brightcart no longer lists the pairs `commerce-live`/`tax-live` and `commerce-sandbox`/`tax-sandbox`, and `saas` against its parent `baseline` still proposes them; #34: the kernel says whether a `contains-changes` state is computed, the three lists of the seven state words are one; the kernel contract is 5 and its README says what changed'
-          - 'the manual describes the layers (`plateau:`, `Kind: Plateau`, patches and their operators, `--against`, `plateau list`, the timeline), the example `domain_plateaus` is layered and loaded by the manual test, the tutorial follows it, and `CLAUDE.md` describes the new mechanism where it described `settings.plateaus`'
+          - '`git grep -n "settings.plateaus\|plateau add\|--baseline" -- src/doc` finds only the note that the key, the command and the option no longer exist; the manual describes the layers (`plateau:`, `Kind: Plateau`, patches and their operators, `--against`, `plateau list`, the timeline), the example `domain_plateaus` is layered and loaded by the manual test, the tutorial follows it, and `CLAUDE.md` describes the new mechanism where it described `settings.plateaus`'
           - 'the views of every workspace of the repository that has no plateau are byte-identical to those of a jar built from `25471b3`'
           - '`./mvnw -o verify`, `cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml`, `src/main/rust/viewpoint-kernel/embed.sh --check`, `node --test "src/test/javascript/**/*.test.js"` and `npx prettier --check "src/**/*.java"` pass'
   runs:
@@ -293,7 +293,7 @@ wave_manifest:
       slug: remove-plateau-selector
       phase: P3
       depends_on: [W-9, W-8]
-      run: null
+      run: 0084
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
