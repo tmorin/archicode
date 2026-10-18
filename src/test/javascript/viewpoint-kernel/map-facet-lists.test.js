@@ -72,3 +72,52 @@ test('a pinned element that the facet leaves still pins the Map', async () => {
   const drawn = boxes(page);
   assert.ok(drawn.includes('shop') && !drawn.includes('backoffice'), drawn.join(', '));
 });
+
+// Wave 014, run 0074 (#77 item 4): the kernel names every entry of the lists it cannot find (`dangling` of its error), so the page drops them all and computes the Map twice
+// (the refusal, the Map), however many references the facet removed. It computed once more for each (k + 1 computations, the kernel naming one reference at a time).
+test('the Map through a facet is computed twice, whatever the number of references the facet removes', async () => {
+  const page = await baselineMap();
+  const { sandbox } = page;
+  const journey = run(sandbox, 'AppState.workspace.settings.facets.customs.find((facet) => facet.name === "journey")');
+  const removed = ['agent', 'backoffice', 'fulfilment', 'merchandiser']; // four boxes of the baseline that `journey` removes (backoffice.console and fulfilment.sync go with their parents)
+  let computes = 0;
+  const kernel = { compute: (input) => { computes++; return page.kernel.compute(input); } };
+  const lists = (opened, pinned, hidden) => {
+    const { input } = run(sandbox, '(function () { return buildKernelInput("map", "", { facet: AppState.workspace.settings.facets.customs.find((f) => f.name === "journey"), layer: "application" }); })()');
+    return Object.assign(input, { opened, pinned, hidden });
+  };
+  assert.ok(journey, 'the facet exists');
+  for (const [opened, pinned, hidden] of [
+    [removed.concat(['backoffice.console']), ['shop'], ['shop.cache']],
+    [['shop'], removed, []],
+    [[], ['shop'], removed.concat(['fulfilment.sync'])],
+    [['shop', 'backoffice'], ['agent', 'shop', 'merchandiser'], ['backoffice.console', 'fulfilment', 'tax']]
+  ]) {
+    computes = 0;
+    const input = lists(opened, pinned, hidden);
+    const result = sandbox.computeMapThroughFacet(kernel, input);
+    assert.equal(result.error, undefined, 'drawn: ' + result.error);
+    assert.ok(computes <= 2, computes + ' computations for ' + JSON.stringify({ opened, pinned, hidden }));
+    for (const list of ['opened', 'pinned', 'hidden']) {
+      assert.ok(input[list].every((reference) => !reference.startsWith('backoffice') && !reference.startsWith('fulfilment') && reference !== 'agent' && reference !== 'merchandiser'), list + ': ' + input[list].join(', '));
+    }
+  }
+  // what the facet leaves is kept, and nothing is computed twice when nothing was removed
+  computes = 0;
+  const input = lists(['shop'], ['shop.web'], ['tax']);
+  assert.equal(sandbox.computeMapThroughFacet(kernel, input).error, undefined);
+  assert.equal(computes, 1);
+  assert.deepEqual(plain(input.opened.concat(input.pinned, input.hidden)), ['shop', 'shop.web', 'tax']);
+  // an entry that no plateau has is dropped with the others: the lists name it
+  computes = 0;
+  const unknown = lists([], ['nowhere', 'shop'], ['agent']);
+  assert.equal(sandbox.computeMapThroughFacet(kernel, unknown).error, undefined);
+  assert.ok(computes <= 2);
+  assert.deepEqual(plain(unknown.pinned), ['shop']);
+  // an error that is not about the lists stays an error, and costs one computation
+  computes = 0;
+  const other = lists([], [], []);
+  other.viewpoint = 'nonsense';
+  assert.match(sandbox.computeMapThroughFacet(kernel, other).error, /unsupported viewpoint/);
+  assert.equal(computes, 1);
+});

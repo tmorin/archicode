@@ -85,6 +85,8 @@
 //! `change` (above) are what moved the version to 3.
 //! Version 4 added what an element can say it replaces (`replaces`), the words `moved`, `split` and `merged`, the `candidates` and
 //! `warnings` of `compare`; nothing of it appears without a `replaces` in the input (but the empty list of candidates).
+//! A map that fails on `pinned`, `opened` or `hidden` (`dangling reference: x`, the first of them) also lists all the entries it cannot find, in
+//! `dangling` of the error: a key of the error only, added to version 4 (an input that worked gives the same output).
 mod compare;
 mod facet;
 
@@ -1381,6 +1383,8 @@ fn check_changes(input: &mut Input) -> Result<(), String> {
 }
 
 pub fn compute_json(input: &str) -> String {
+    // the entries of `pinned`, `opened` and `hidden` that the map cannot find, when it fails on one of them (see `dangling_in_lists`)
+    let mut dangling: Vec<String> = Vec::new();
     let result = serde_json::from_str::<Input>(input)
         .map_err(|e| format!("invalid input: {e}"))
         .and_then(|mut input| {
@@ -1393,7 +1397,10 @@ pub fn compute_json(input: &str) -> String {
                 }
                 None => Vec::new(),
             };
-            let (mut items, links) = build(&input)?;
+            let (mut items, links) = build(&input).map_err(|e| {
+                dangling = dangling_in_lists(&input);
+                e
+            })?;
             if input.viewpoint != "deep" {
                 mark_expandable(&mut items, &links, &mut input);
             }
@@ -1401,7 +1408,33 @@ pub fn compute_json(input: &str) -> String {
             Ok(Output { version: CONTRACT_VERSION, items, links, warnings })
         })
         .and_then(|out| serde_json::to_string(&out).map_err(|e| format!("cannot write the view: {e}")));
-    result.unwrap_or_else(|e| serde_json::json!({ "error": e }).to_string())
+    result.unwrap_or_else(|e| {
+        let mut out = serde_json::json!({ "error": e });
+        if !dangling.is_empty() {
+            out["dangling"] = serde_json::json!(dangling);
+        }
+        out.to_string()
+    })
+}
+
+/// The entries of `pinned`, `opened` and `hidden` (in this order, each once) that are not elements of the layer, when the
+/// map is the view that failed: the map checks the three lists before it draws, so a failure of the map with such an entry
+/// is that failure, and `error` names the first of them. A caller that edits the lists (the editor, after a facet removed
+/// what they name) asks for all of them at once instead of one computation each. Empty for any other failure.
+fn dangling_in_lists(input: &Input) -> Vec<String> {
+    if input.viewpoint != "map" {
+        return Vec::new();
+    }
+    let known: HashSet<&str> = input.elements.iter().map(|e| e.reference.as_str()).collect();
+    let mut seen: HashSet<&str> = HashSet::new();
+    input
+        .pinned
+        .iter()
+        .chain(input.opened.iter())
+        .chain(input.hidden.iter())
+        .filter(|r| !known.contains(r.as_str()) && seen.insert(r.as_str()))
+        .cloned()
+        .collect()
 }
 
 // ---- tiny C ABI, usable from any host (browser, Node, Chicory) without glue code ----
@@ -1891,6 +1924,24 @@ mod tests {
         assert_eq!(kept["application"]["elements"].as_array().unwrap().len(), 2, "shop and all that it holds are gone");
         assert_eq!(destinations(&kept, "/application/elements/0/relationships"), Vec::<String>::new(), "payments pointed at shop.catalog");
         assert_eq!(destinations(&kept, "/application/elements/1/relationships"), ["ghost"], "see the next test");
+    }
+
+    #[test]
+    fn a_map_that_fails_on_its_lists_names_every_entry_it_cannot_find() {
+        let out = map_of(&["sys", "gone-1", "sys"], &["gone-2", "ext"], &["gone-1", "gone-3", "other"]);
+        assert_eq!(error(&out), "dangling reference: gone-2", "the message is the first one, pinned before opened before hidden");
+        assert_eq!(out["dangling"], json!(["gone-2", "gone-1", "gone-3"]), "all of them, each once, in the order they are checked");
+        // a map whose lists are all known has no such key, and neither has a map that fails for another reason
+        assert!(map_of(&["sys"], &["ext"], &["other"]).get("dangling").is_none());
+        let elsewhere = compute(json!({
+            "viewpoint": "map", "layer": "application", "pinned": ["a"],
+            "elements": [{ "reference": "a", "relationships": [{ "destination": "z" }] }]
+        }));
+        assert_eq!(error(&elsewhere), "dangling reference: z");
+        assert!(elsewhere.get("dangling").is_none(), "the lists are not what failed: {elsewhere}");
+        // the other viewpoints have no lists
+        let overview = run("overview", "nowhere", &[]);
+        assert!(overview.get("dangling").is_none(), "{overview}");
     }
 
     #[test]

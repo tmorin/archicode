@@ -81,6 +81,9 @@ Two things worth knowing before touching the code:
   (`tags`, and `relationships[].tags`) and are part of what makes two links, or two captions, the same.
 - A JSON `null` is read as "not given" (`default_synthetic_label: null` is "uses"). A dangling reference, in any
   viewpoint, is an `error`, never a trap.
+  When the map fails on an entry of `pinned`, `opened` or `hidden`, the error also has `dangling`: every entry the layer
+  does not have, each once, in the order the map checks them (`error` names the first). The editor drops them all at once
+  after a facet removed what they name, instead of computing again for each.
 - Facets are standard JSONPath (RFC 9535, the `serde_json_path` crate), evaluated by the kernel and nowhere else:
   the CLI gives `apply_facet` the JSON of the workspace, the editor gives `compute` the elements of the view, and
   both get the same answer. A path selects nodes and the action `REMOVE` deletes them (relationships, but elements

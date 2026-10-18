@@ -3,7 +3,6 @@ package io.morin.archicode.workspace;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.morin.archicode.ArchiCodeException;
@@ -25,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -141,9 +141,8 @@ public class WorkspaceFactory {
         val loaded = load(path, viewsDirPath, plateauId);
         val manifests = new HashMap<Class<?>, Set<ManifestParser.Candidate>>();
         loaded.elements().forEach((category, candidates) -> manifests.put(category, new HashSet<>(candidates)));
-        val mapper = mapperFactory.create(MapperFormat.JSON);
-        addRemoved(manifests, Application.class, "application", base.appIndex, comparison, mapper);
-        addRemoved(manifests, Technology.class, "technology", base.techIndex, comparison, mapper);
+        addRemoved(manifests, Application.class, "application", base.appIndex, comparison);
+        addRemoved(manifests, Technology.class, "technology", base.techIndex, comparison);
         return create(loaded.resources(), manifests)
             .toBuilder()
             .plateau(loaded.selection() == null ? null : loaded.selection().plateau())
@@ -163,8 +162,7 @@ public class WorkspaceFactory {
         Class<?> category,
         String layer,
         ElementIndex baseIndex,
-        Comparison comparison,
-        ObjectMapper mapper
+        Comparison comparison
     ) {
         val removed = new TreeSet<String>();
         comparison
@@ -183,9 +181,7 @@ public class WorkspaceFactory {
                     ManifestParser.Candidate.builder()
                         .parent(parent.orElse(null))
                         .reference(reference)
-                        .element(
-                            onlyWhatIsRemoved(baseIndex.getElementByReference(reference), reference, removed, mapper)
-                        )
+                        .element(onlyWhatIsRemoved(baseIndex.getElementByReference(reference), reference, removed))
                         .build()
                 );
         }
@@ -208,32 +204,31 @@ public class WorkspaceFactory {
     /**
      * The element, as it is when it holds only elements of {@code kept} (the very object of the baseline: nothing is copied
      * for the usual case, a removed element that holds only removed ones); else a copy without the others, so that the
-     * baseline is not changed.
+     * baseline is not changed. The copy is made by the classes themselves ({@link Parent#withElements}), not by writing
+     * the element as JSON and reading it back: what the mapper leaves out or writes differently (an empty text, the
+     * {@code replaces} as the author wrote them) must not change in an element that is only being filtered.
      */
-    @SneakyThrows
-    private static Element onlyWhatIsRemoved(Element element, String reference, Set<String> kept, ObjectMapper mapper) {
-        if (!holdsOthers(element, reference, kept)) {
+    private static Element onlyWhatIsRemoved(Element element, String reference, Set<String> kept) {
+        if (!(element instanceof Parent<?> parent) || !holdsOthers(element, reference, kept)) {
             return element;
         }
-        val tree = (ObjectNode) mapper.valueToTree(element);
-        leaveOut(tree, reference, kept);
-        return mapper.treeToValue(tree, element.getClass());
+        return (Element) withOnly(parent, reference, kept);
     }
 
-    private static void leaveOut(ObjectNode node, String reference, Set<String> kept) {
-        if (!node.path("elements").isArray()) {
-            return;
-        }
-        val children = (ArrayNode) node.get("elements");
-        for (int i = children.size() - 1; i >= 0; i--) {
-            val child = (ObjectNode) children.get(i);
-            val childReference = reference + "." + child.path("id").asText();
+    @SuppressWarnings("unchecked")
+    private static <C extends Element> Parent<C> withOnly(Parent<C> parent, String reference, Set<String> kept) {
+        val children = new LinkedHashSet<C>();
+        for (val child : parent.getElements()) {
+            val childReference = reference + "." + child.getId();
             if (kept.contains(childReference)) {
-                leaveOut(child, childReference, kept);
-            } else {
-                children.remove(i);
+                children.add(
+                    child instanceof Parent<?> grandParent && holdsOthers(child, childReference, kept)
+                        ? (C) withOnly(grandParent, childReference, kept)
+                        : child
+                );
             }
         }
+        return parent.withElements(children);
     }
 
     /**

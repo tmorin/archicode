@@ -19,4 +19,9 @@ public class Container extends AbstractElement implements Parent<ContainerElemen
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<ContainerElement> elements = new LinkedHashSet<>();
+
+    @Override
+    public Container withElements(Set<ContainerElement> elements) {
+        return toBuilder().elements(elements).build();
+    }
 }

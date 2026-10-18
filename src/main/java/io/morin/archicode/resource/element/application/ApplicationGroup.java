@@ -19,4 +19,9 @@ public class ApplicationGroup extends AbstractElement implements Parent<Applicat
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<ApplicationElement> elements = new LinkedHashSet<>();
+
+    @Override
+    public ApplicationGroup withElements(Set<ApplicationElement> elements) {
+        return toBuilder().elements(elements).build();
+    }
 }

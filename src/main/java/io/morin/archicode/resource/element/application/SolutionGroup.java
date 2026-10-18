@@ -19,4 +19,9 @@ public class SolutionGroup extends AbstractElement implements Parent<SolutionEle
     @Singular
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<SolutionElement> elements;
+
+    @Override
+    public SolutionGroup withElements(Set<SolutionElement> elements) {
+        return toBuilder().elements(elements).build();
+    }
 }

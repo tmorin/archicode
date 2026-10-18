@@ -19,4 +19,9 @@ public class SystemGroup extends AbstractElement implements Parent<SystemElement
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<SystemElement> elements = new LinkedHashSet<>();
+
+    @Override
+    public SystemGroup withElements(Set<SystemElement> elements) {
+        return toBuilder().elements(elements).build();
+    }
 }

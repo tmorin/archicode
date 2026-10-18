@@ -17,4 +17,9 @@ public class Application implements Parent<ApplicationElement> {
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<ApplicationElement> elements = new LinkedHashSet<>();
+
+    @Override
+    public Application withElements(Set<ApplicationElement> elements) {
+        return toBuilder().elements(elements).build();
+    }
 }

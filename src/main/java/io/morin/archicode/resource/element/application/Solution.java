@@ -19,4 +19,9 @@ public class Solution extends AbstractElement implements Parent<SolutionElement>
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<SolutionElement> elements = new LinkedHashSet<>();
+
+    @Override
+    public Solution withElements(Set<SolutionElement> elements) {
+        return toBuilder().elements(elements).build();
+    }
 }

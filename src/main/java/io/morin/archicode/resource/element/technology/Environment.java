@@ -31,4 +31,9 @@ public class Environment extends AbstractElement implements Parent<EnvironmentEl
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<String> uses = new LinkedHashSet<>();
+
+    @Override
+    public Environment withElements(Set<EnvironmentElement> elements) {
+        return toBuilder().elements(elements).build();
+    }
 }

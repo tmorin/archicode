@@ -18,4 +18,9 @@ public class Technology implements Parent<TechnologyElement> {
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<TechnologyElement> elements = new LinkedHashSet<>();
+
+    @Override
+    public Technology withElements(Set<TechnologyElement> elements) {
+        return toBuilder().elements(elements).build();
+    }
 }

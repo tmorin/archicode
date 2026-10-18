@@ -61,7 +61,7 @@ test('a new relationship of a split element says so in its row, and the panel co
     'shop.web -> shop.db new',
     'shop.web -> shop.orders-intake new'
   ]);
-  assert.equal(rows.filter((row) => sandbox.ofSplitOf(row, state.changes).length).length, 4, 'the panel finds four of the five');
+  assert.equal(rows.filter((row) => sandbox.ofSplitOf(row, sandbox.splitElementsOf(state.changes)).length).length, 4, 'the panel finds four of the five');
 
   const panel = sandbox.renderChangesPanelHtml(state);
   const row = (needle) => (panel.match(new RegExp('<li><button[^>]*data-ref="' + needle + '"[^>]*>[\\s\\S]*?</button></li>')) || [''])[0];
@@ -87,4 +87,29 @@ test('a comparison without a split has no note, and neither has a split element 
   const sandbox = await open({ target: quiet });
   assert.equal(sandbox.comparisonState().counts.elements.split, 2);
   assert.doesNotMatch(sandbox.renderChangesPanelHtml(sandbox.comparisonState()), /of-split|of the split/);
+});
+
+// Wave 014, run 0074 (#77 item 3): the set of the split elements is built once per render of the panel, not once per row. The rows are counted, not timed: every read of a
+// property of a row goes through a proxy, and a table of 2000 new relationships (four of the ends are split halves) may be read a number of times that grows with its size,
+// not with its size squared (the scan of every row for each end of each row read about 16 million times).
+test('the Changes panel reads each row of a long table a few times, not once per other row', async () => {
+  const sandbox = await open();
+  const real = sandbox.comparisonState();
+  const N = 2000;
+  const row = (props) => Object.assign({ natures: [], wording_only: false }, props);
+  const rows = [
+    row({ thing: 'element', layer: 'application', reference: 'shop.orders-intake', name: 'Order intake', change: 'split', replaces: ['shop.orders'] }),
+    row({ thing: 'element', layer: 'application', reference: 'shop.orders-billing', name: 'Order billing', change: 'split', replaces: ['shop.orders'] })
+  ];
+  for (let i = 0; i < N; i++) {
+    const end = i % 3 === 0 ? 'shop.orders-intake' : 'shop.client' + i;
+    rows.push(row({ thing: 'relationship', layer: 'application', reference: i % 7 === 0 ? 'shop.orders-billing' : 'shop.web' + i, destination: end, label: 'uses ' + i, change: 'new' }));
+  }
+  const expected = rows.filter((r) => r.thing === 'relationship' && (r.reference === 'shop.orders-billing' || r.destination === 'shop.orders-intake')).length;
+  let reads = 0;
+  const counted = rows.map((r) => new Proxy(r, { get(target, key) { reads++; return target[key]; } }));
+  const panel = sandbox.renderChangesPanelHtml(Object.assign({}, real, { changes: counted }));
+  assert.ok(panel.includes('data-of-split="' + expected + '"'), 'the count is the one of a scan: ' + expected);
+  assert.equal((panel.match(/of the split/g) || []).length, expected, 'every such row says so');
+  assert.ok(reads < 80 * rows.length, 'the rows were read ' + reads + ' times for ' + rows.length + ' rows');
 });

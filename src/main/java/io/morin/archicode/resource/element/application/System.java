@@ -19,4 +19,9 @@ public class System extends AbstractElement implements ApplicationElement, Paren
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
     Set<SystemElement> elements = new LinkedHashSet<>();
+
+    @Override
+    public System withElements(Set<SystemElement> elements) {
+        return toBuilder().elements(elements).build();
+    }
 }
