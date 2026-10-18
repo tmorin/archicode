@@ -27,8 +27,9 @@ import lombok.val;
  * Building the tree checks it, and every mistake is told, one sentence each: an id outside {@code [a-z0-9_-]} (so no dot),
  * a plateau declared by two manifests, an {@code override} that names no plateau, a {@code baseline} that overrides
  * something, a cycle. What is odd without being wrong is a warning: a plateau that only headers
- * name, two ids one letter apart. The editor builds the same tree with the same sentences ({@code buildPlateauTree} in
- * {@code standalone.html}): keep them alike.
+ * name, two ids one letter apart when at least one of the two only has headers to name it (the typo; two plateaus with a
+ * manifest each, such as {@code p1} and {@code p2}, are the author's choice, decided on 2026-10-18). The editor builds the
+ * same tree with the same sentences ({@code buildPlateauTree} in {@code standalone.html}): keep them alike.
  * <p>
  * Loading a plateau is {@link #chain(String) its chain}: for each plateau from the root, the manifests that say {@code
  * plateau: <layer>} are added to the graph, then the patches of the layer are applied (the work of the loader). The tree
@@ -276,7 +277,10 @@ public final class PlateauTree {
         val ids = new ArrayList<>(sorted.keySet());
         for (int i = 0; i < ids.size(); i++) {
             for (int j = i + 1; j < ids.size(); j++) {
-                if (oneLetterApart(ids.get(i), ids.get(j))) {
+                if (
+                    oneLetterApart(ids.get(i), ids.get(j)) &&
+                    (sorted.get(ids.get(i)).headerOnly() || sorted.get(ids.get(j)).headerOnly())
+                ) {
                     out.add(
                         "the plateaus `" +
                             ids.get(i) +

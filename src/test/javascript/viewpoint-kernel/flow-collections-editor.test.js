@@ -335,6 +335,7 @@ async function open(manifest, compare) {
   }
   const files = layeredFiles(PLATEAU_LIST, { 'plateaus/10_base/app.garden.yaml': manifest, 'plateaus/20_target/app.garden.yaml': manifest });
   const { sandbox, state, mem } = await openLayered(createApp, memFolder, files, { drawn: 'target', compared: 'base' });
+  sandbox.replacesAncestorProblem = () => null; // the base is a sibling here: set aside the rule of #95 (see openOffering in move-editor.test.js) to pin what the move writes once replaces is offered
   return { sandbox, state, mem, file: () => mem.files.get('plateaus/20_target/app.garden.yaml').text };
 }
 

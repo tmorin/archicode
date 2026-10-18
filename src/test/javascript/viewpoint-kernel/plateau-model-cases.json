@@ -22,7 +22,7 @@
     },
     {
       "id": "M02",
-      "what": "a manifest of kind plateau takes id, name, horizon, override and patches, and a patch takes the keys the kernel takes (operator, one of target and json-path, layer, expect, field, where, value)",
+      "what": "a manifest of kind plateau takes id, name, horizon, override and patches, and a patch takes the keys the kernel takes (operator, one of target and json-path, layer, expect, field, where, value); `saas` and `saas2` have a manifest each, so they are not told as one letter apart (A1)",
       "files": {
         "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
         "manifests/saas.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n  name: \"Buy\"\n  horizon: \"2026-Q4\"\n",
@@ -32,9 +32,7 @@
         "loaded": [
           "shop"
         ],
-        "warnings": [
-          "the plateaus `saas` and `saas2` have ids one letter apart: check that one of them is not a typo"
-        ]
+        "warnings": []
       }
     },
     {
@@ -554,7 +552,7 @@
     },
     {
       "id": "M35",
-      "what": "a null plateau, a null patches and a null item of patches are absent: nothing is told",
+      "what": "a null plateau, a null patches and a null item of patches are absent: nothing is told (`a` and `b` have a manifest each: no warning for ids one letter apart, A1)",
       "files": {
         "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: ~\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
         "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  override:\n  patches: [~]\n",
@@ -564,9 +562,7 @@
         "loaded": [
           "shop"
         ],
-        "warnings": [
-          "the plateaus `a` and `b` have ids one letter apart: check that one of them is not a typo"
-        ]
+        "warnings": []
       }
     },
     {
@@ -864,6 +860,62 @@
           "the horizon `2026-06-30` of the plateau `early` is earlier than the horizon `2026Q4` of the plateau it overrides, `mid`",
           "the horizon `2026-H1` of the plateau `first` is earlier than the horizon `2026-H2` of the plateau it overrides, `second`",
           "the horizon `2026-09` of the plateau `september` is earlier than the horizon `2026-10` of the plateau it overrides, `october`"
+        ]
+      }
+    },
+    {
+      "id": "M62",
+      "what": "A1 (decided by the author on 2026-10-18): plateaus that each have a manifest of kind plateau and ids one letter apart (`p1` and `p2`, `q1` to `q4`) give no warning, whether they stack or not",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/p1.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n",
+        "manifests/p2.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n",
+        "manifests/q1.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"q1\"\n",
+        "manifests/q2.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"q2\"\n",
+        "manifests/q3.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"q3\"\n  override: \"q2\"\n",
+        "manifests/q4.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"q4\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M63",
+      "what": "A1: two ids one letter apart warn when both plateaus only have headers to name them (each is told, then the pair once, the ids in order)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"later\"\n  name: \"LATER\"\n",
+        "manifests/latex.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: latex\ncontent:\n  id: \"latex\"\n  name: \"LATEX\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `later` exists only through the `plateau` key of the header of `manifests/later.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name",
+          "the plateau `latex` exists only through the `plateau` key of the header of `manifests/latex.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name",
+          "the plateaus `later` and `latex` have ids one letter apart: check that one of them is not a typo"
+        ]
+      }
+    },
+    {
+      "id": "M64",
+      "what": "A1: `baseline` is the implicit root and has no manifest here, but it is not a plateau that headers alone name: a plateau with a manifest whose id is one letter from it is not a typo, and one that only a header names still is",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/baselines.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"baselines\"\n",
+        "manifests/baselin.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: baselin\ncontent:\n  id: \"baselin\"\n  name: \"BASELIN\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `baselin` exists only through the `plateau` key of the header of `manifests/baselin.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name",
+          "the plateaus `baselin` and `baseline` have ids one letter apart: check that one of them is not a typo"
         ]
       }
     }

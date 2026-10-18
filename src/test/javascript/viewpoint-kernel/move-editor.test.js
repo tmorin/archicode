@@ -12,7 +12,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
-const { inPlateau, layeredFiles, openLayered } = require('./layered-folders');
+const { inPlateau, layeredFiles, openLayered, compareWith } = require('./layered-folders');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
@@ -150,8 +150,17 @@ async function open(options = {}) {
     return openLayered(createApp, memFolder, files, {});
   }
   const files = layeredFiles(PLATEAU_LIST, Object.assign({}, folder('10_base', options.base || manifests), folder('20_target', manifests)));
-  return openLayered(createApp, memFolder, files, { drawn: 'target', compared: options.compare === false ? undefined : 'base' });
+  const page = await openLayered(createApp, memFolder, files, { drawn: 'target', compared: options.compare === false ? undefined : 'base' });
+  if (options.offering) page.sandbox.replacesAncestorProblem = () => null; // see openOffering
+  return page;
 }
+/**
+ * `open`, with the rule of #95 set aside. *Move and write replaces* is offered only against a plateau the plateau drawn overrides (section 6 pins the rule), and in a layered
+ * workspace the old reference of a moved element is never in that plateau (the element would be declared in both, which the tree refuses, and an inherited one cannot be
+ * moved), while the two plateaus of `open` are siblings, so the check says no. What the machinery writes once it is offered (the keys, the lists, the lines, the comparison
+ * after it) is still pinned by the tests of sections 1 to 5, which use this: they stub `replacesAncestorProblem`, nothing else.
+ */
+const openOffering = (options = {}) => open(Object.assign({}, options, { offering: true }));
 /** The manifests as the target holds them on disk: the same texts, with the plateau in their header. */
 const ON_DISK = Object.fromEntries(Object.entries(MANIFESTS).map(([name, body]) => [name, inPlateau('target', body)]));
 const fileOf = (mem, name) => mem.files.get(target(name)).text;
@@ -237,7 +246,7 @@ test('a manifest that is not nested changes one line, its header.parent, and the
 
 test('a system goes under a solution: every reference to it and to what it holds follows, in every file', async () => {
   const withSolution = Object.assign({}, MANIFESTS, { 'app.suite.yaml': element('solution', null, 'suite', 'Suite') });
-  const { sandbox, state, mem } = await open({ manifests: withSolution });
+  const { sandbox, state, mem } = await openOffering({ manifests: withSolution });
   assert.equal(sandbox.moveIsPossible('bakery', 'application'), true);
   assert.deepEqual(plain(sandbox.moveParentCandidates('bakery', 'application').parents.map((p) => p.reference)), ['suite']);
   assert.equal(move(sandbox, 'bakery', 'suite', true).ok, true);
@@ -280,17 +289,17 @@ test('a node of the technology layer moves, and what uses it follows; the applic
 test('a move alone reads as removed plus new in the comparison; the move with replaces reads as moved, for the element and for each element inside it', async () => {
   const rows = (page) => Object.fromEntries(page.sandbox.comparisonState().changes.filter((r) => /^bakery\.(tools\.)?oven/.test(r.reference)).map((r) => [r.reference, r.change]));
   // before: nothing differs
-  const before = await open();
+  const before = await openOffering();
   assert.deepEqual(rows(before), {});
 
-  const alone = await open();
+  const alone = await openOffering();
   assert.equal(move(alone.sandbox, 'bakery.oven', 'bakery.tools', false).ok, true);
   assert.deepEqual(rows(alone), {
     'bakery.oven': 'removed', 'bakery.oven.gauge': 'removed', 'bakery.oven.timer': 'removed',
     'bakery.tools.oven': 'new', 'bakery.tools.oven.gauge': 'new', 'bakery.tools.oven.timer': 'new'
   });
 
-  const both = await open();
+  const both = await openOffering();
   const version = run(both.sandbox, 'modelVersion');
   const result = move(both.sandbox, 'bakery.oven', 'bakery.tools', true);
   assert.deepEqual(plain(result), { ok: true, reference: 'bakery.tools.oven', replaces: 3 });
@@ -314,11 +323,11 @@ test('only the container told, its children read as removed: why a move writes r
 });
 
 test('the lines "Move and write replaces" adds are the key and the old reference of each element, and nothing else of the block changes', async () => {
-  const page = await open();
+  const page = await openOffering();
   assert.equal(move(page.sandbox, 'bakery.oven', 'bakery.tools', true).ok, true);
   await page.sandbox.saveAllChanges();
   const moved = fileOf(page.mem, 'app.bakery.yaml');
-  const alone = await open();
+  const alone = await openOffering();
   assert.equal(move(alone.sandbox, 'bakery.oven', 'bakery.tools', false).ok, true);
   await alone.sandbox.saveAllChanges();
   assert.deepEqual(lineDiff(fileOf(alone.mem, 'app.bakery.yaml'), moved), {
@@ -330,7 +339,7 @@ test('the lines "Move and write replaces" adds are the key and the old reference
     ]
   });
   // a manifest that is not nested gets the key at the end of its content, the others around it are as they were
-  const root = await open();
+  const root = await openOffering();
   assert.equal(move(root.sandbox, 'shop.till', 'delivery', true).ok, true);
   await root.sandbox.saveAllChanges();
   assert.deepEqual(lineDiff(ON_DISK['app.shop.till.yaml'], fileOf(root.mem, 'app.shop.till.yaml')), { removed: ['  parent: "shop"'], added: ['  parent: "delivery"', '  replaces:', '    - "shop.till"'] });
@@ -341,7 +350,7 @@ test('replaces is added to the list the element already has, and an element the 
   // the gauge already says it replaces something; the timer is new in the plateau drawn (the base does not have it)
   const withReplaces = BAKERY.replace('          id: "gauge"\n          name: "Gauge"\n', '          id: "gauge"\n          name: "Gauge"\n          replaces: [bakery.old-gauge]\n');
   const base = Object.assign({}, MANIFESTS, { 'app.bakery.yaml': BAKERY.replace('        - kind: component\n          id: "timer"\n          name: "Timer"\n', '') });
-  const page = await open({ manifests: Object.assign({}, MANIFESTS, { 'app.bakery.yaml': withReplaces }), base });
+  const page = await openOffering({ manifests: Object.assign({}, MANIFESTS, { 'app.bakery.yaml': withReplaces }), base });
   const plan = plain(page.sandbox.planMoveReplaces('bakery.oven', 'application', 'bakery.tools.oven'));
   assert.deepEqual(plan.entries.map((e) => e.from), ['bakery.oven', 'bakery.oven.gauge']);
   assert.deepEqual(plan.skipped, ['bakery.oven.timer']);
@@ -368,7 +377,7 @@ function snapshot(page) {
 }
 
 async function refusing(options, reference, parent, expected, extra = {}) {
-  const page = await open(options);
+  const page = await openOffering(options);
   const before = snapshot(page);
   const result = move(page.sandbox, reference, parent, extra.replaces, extra.layer);
   assert.equal(result.ok, false);
@@ -452,8 +461,8 @@ test('a reference that cannot be rewritten as text, a manifest that cannot be re
 
 test('replaces that is not a list refuses "Move and write replaces", and "Move only" still works', async () => {
   const odd = Object.assign({}, MANIFESTS, { 'app.shop.till.yaml': MANIFESTS['app.shop.till.yaml'].replace('  name: "Till"\n', '  name: "Till"\n  replaces: shop.till\n') });
-  await refusing({ manifests: odd }, 'shop.till', 'delivery', /The replaces of “shop\.till” is not a list; fix it by hand/, { replaces: true });
-  const page = await open({ manifests: odd });
+  await refusing({ manifests: odd, offering: true }, 'shop.till', 'delivery', /The replaces of “shop\.till” is not a list; fix it by hand/, { replaces: true });
+  const page = await openOffering({ manifests: odd });
   assert.equal(move(page.sandbox, 'shop.till', 'delivery', false).ok, true);
 });
 
@@ -505,7 +514,7 @@ test('the edit form of an element that can move has a Move button; one that neve
 });
 
 test('"Move" opens a dialog that lists the valid parents only: same layer, able to hold the kind, not the element, not what it contains, not its parent, in its own file', async () => {
-  const page = await open();
+  const page = await openOffering();
   edit(page, 'bakery.oven');
   click(page.sandbox, { 'data-action': 'open-move-dialog', 'data-ref': 'bakery.oven' });
   const dialog = page.sandbox.renderAppDialogHtml();
@@ -570,7 +579,7 @@ test('with no comparison the dialog offers one button and says how to get replac
 });
 
 test('confirming moves the element: the dialog closes, the panel follows the element at its new reference, the row is unfolded, and "Save all changes" lights', async () => {
-  const page = await open();
+  const page = await openOffering();
   edit(page, 'bakery.oven');
   click(page.sandbox, { 'data-action': 'open-move-dialog', 'data-ref': 'bakery.oven' });
   const result = page.sandbox.submitMoveDialog(true, { parent: 'bakery.tools' });
@@ -622,7 +631,7 @@ test('opening the dialog applies what was typed in the form first (and keeps the
 // ---- 5. Give up, save, and the layouts of the files ----
 
 test('"Cancel" gives a move up like any other edit: the folder is read again, nothing was written', async () => {
-  const page = await open();
+  const page = await openOffering();
   assert.equal(move(page.sandbox, 'bakery.oven', 'bakery.tools', true).ok, true);
   assert.notEqual(page.sandbox.countUnsavedChanges(), 0);
   const version = run(page.sandbox, 'modelVersion');
@@ -721,6 +730,77 @@ test('the Move offered by the page ends in the choke point of the cache: a rende
   const second = page.sandbox.comparisonState();
   assert.notEqual(run(page.sandbox, 'comparisonCache'), first);
   assert.ok(second.changes.some((r) => r.reference === 'bakery.tools.oven' && r.change === 'new'));
+});
+
+// ---- 6. #95: Move and write replaces is offered only against a plateau the plateau drawn overrides ----
+
+/**
+ * `leaf` overrides `left`; `leaf2` (a sibling of `leaf`) and `right` (a cousin: it overrides the root, as `left` does) each declare the same bakery. `leaf` is drawn. The
+ * old reference of an element of `leaf` is in the sibling and in the cousin, never in `left` (it would be declared twice).
+ */
+async function openLine() {
+  const stub = element('system', null, 'plain', 'Plain');
+  const line = [
+    { id: 'left', name: 'Left', path: 'plateaus/10_left' },
+    { id: 'leaf', name: 'Leaf', path: 'plateaus/20_leaf', override: 'left' },
+    { id: 'leaf2', name: 'Leaf two', path: 'plateaus/30_leaf2', override: 'left' },
+    { id: 'right', name: 'Right', path: 'plateaus/40_right' }
+  ];
+  const files = layeredFiles(line, Object.assign({}, folder('10_left', { 'app.plain.yaml': stub }), folder('20_leaf', MANIFESTS), folder('30_leaf2', MANIFESTS), folder('40_right', MANIFESTS)));
+  return openLayered(createApp, memFolder, files, { drawn: 'leaf' });
+}
+const NOT_AN_ANCESTOR = /is not a plateau that “Leaf” overrides/;
+
+test('Move and write replaces is not offered against a sibling or a cousin: the plan, the move, the files and the dialog say so', async () => {
+  for (const other of ['leaf2', 'right']) {
+    const page = await openLine();
+    page.sandbox.compareWithPlateau(other);
+    assert.equal(page.state.layers.compare.mode, 'other', other + ' is neither the past nor the future');
+    assert.ok(page.state.baseline.index.application.has('bakery.oven'), other + ' has the old reference: before the rule, replaces was written against it');
+    // the plan
+    const plan = plain(page.sandbox.planMoveReplaces('bakery.oven', 'application', 'bakery.tools.oven'));
+    assert.equal(plan.offered, false);
+    assert.deepEqual(plan.entries, []);
+    assert.match(plan.reason, NOT_AN_ANCESTOR);
+    // the move that asks for it is refused, whole
+    const before = snapshot(page);
+    const refused = move(page.sandbox, 'bakery.oven', 'bakery.tools', true);
+    assert.equal(refused.ok, false);
+    assert.match(refused.message, NOT_AN_ANCESTOR);
+    assert.match(refused.message, /Nothing was changed\.$/);
+    assert.equal(snapshot(page), before, 'not the models, not the text, not the disk');
+    // the dialog offers the move and says why not the rest
+    edit(page, 'bakery.oven');
+    click(page.sandbox, { 'data-action': 'open-move-dialog', 'data-ref': 'bakery.oven' });
+    const dialog = page.sandbox.renderAppDialogHtml();
+    assert.doesNotMatch(dialog, /data-replaces="1"/);
+    assert.doesNotMatch(dialog, /Move and write replaces/);
+    assert.match(dialog, /class="btn-primary" data-action="move-confirm" data-replaces="0">Move<\/button>/);
+    assert.match(text(dialog), NOT_AN_ANCESTOR);
+    // "Move" itself works, and writes no replaces
+    assert.deepEqual(plain(page.sandbox.submitMoveDialog(false, { parent: 'bakery.tools' })), { ok: true, reference: 'bakery.tools.oven', replaces: 0 });
+    await page.sandbox.saveAllChanges();
+    for (const file of page.mem.writes) assert.doesNotMatch(page.mem.files.get(file).text, /replaces/, file);
+  }
+});
+
+test('Move and write replaces keeps its rule for an ancestor, the plateau overridden or one further up: the plateau drawn overrides it, whichever way the band reached it', async () => {
+  for (const [other, mode] of [['left', 'past'], ['baseline', 'other']]) {
+    const page = await openLine();
+    page.sandbox.compareWithPlateau(other);
+    assert.equal(page.state.layers.compare.mode, mode);
+    assert.equal(page.sandbox.replacesAncestorProblem(), null, other + ' is an ancestor of Leaf');
+    // the element of Leaf is not in the ancestor (it would be declared in both): the offer is the one that was always there, nothing to replace
+    const plan = plain(page.sandbox.planMoveReplaces('bakery.oven', 'application', 'bakery.tools.oven'));
+    assert.equal(plan.offered, false);
+    assert.doesNotMatch(plan.reason, NOT_AN_ANCESTOR);
+    assert.match(plan.reason, /None of these elements is in “[^”]*”: there is nothing to replace\./);
+  }
+  const page = await openLine();
+  page.sandbox.compareWithPlateau('right');
+  assert.match(page.sandbox.replacesAncestorProblem(), NOT_AN_ANCESTOR);
+  page.sandbox.compareWithPlateau('right'); // the same node again stops the comparison
+  assert.match(page.sandbox.planMoveReplaces('bakery.oven', 'application', 'bakery.tools.oven').reason, /To write replaces, compare the plateau with another one on the band/, 'no comparison: the answer is the one it always was');
 });
 
 test('the manual describes the move, and the texts about replaces and rename point at it', () => {

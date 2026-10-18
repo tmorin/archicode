@@ -3946,6 +3946,11 @@ function plateauNames(names, all) {
   return quoted.slice(0, 3).join(', ') + ' and ' + (quoted.length - 3) + ' more';
 }
 
+/** A plateau that only headers name: no manifest of kind plateau, not the root (`PlateauTree.Node.headerOnly`). */
+function plateauIsHeaderOnly(node) {
+  return node.manifest === null && node.id !== BASELINE_PLATEAU && node.headers.length > 0;
+}
+
 /** Whether two ids differ by one letter added, removed or changed. */
 function oneLetterApart(a, b) {
   if (a === b || Math.abs(a.length - b.length) > 1) return false;
@@ -4088,13 +4093,14 @@ function buildPlateauTree(manifestFiles) {
   const sorted = Array.from(model.nodes.keys()).sort(compareUnits);
   for (const id of sorted) {
     const node = model.nodes.get(id);
-    if (node.manifest === null && id !== BASELINE_PLATEAU && node.headers.length) {
+    if (plateauIsHeaderOnly(node)) {
       model.warnings.push('the plateau `' + id + '` exists only through the `plateau` key of the header of ' + plateauNames(node.headers) + ': it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name');
     }
   }
   for (let i = 0; i < sorted.length; i++) {
     for (let j = i + 1; j < sorted.length; j++) {
-      if (oneLetterApart(sorted[i], sorted[j])) model.warnings.push('the plateaus `' + sorted[i] + '` and `' + sorted[j] + '` have ids one letter apart: check that one of them is not a typo');
+      // only a plateau that headers alone name can be a typo: two plateaus with a manifest each (`p1`, `p2`) are the author's choice (A1)
+      if (oneLetterApart(sorted[i], sorted[j]) && (plateauIsHeaderOnly(model.nodes.get(sorted[i])) || plateauIsHeaderOnly(model.nodes.get(sorted[j])))) model.warnings.push('the plateaus `' + sorted[i] + '` and `' + sorted[j] + '` have ids one letter apart: check that one of them is not a typo');
     }
   }
   for (const id of sorted) {
@@ -8970,7 +8976,7 @@ function planMoveReplaces(reference, layer, newReference) {
   const none = (reason) => ({ offered: false, reason, entries: [], skipped: [] });
   if (!AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return none(null);
   if (!AppState.baseline) return none('To write replaces, compare the plateau with another one on the band: it names references of that plateau.');
-  const direction = replacesDirectionProblem();
+  const direction = replacesDirectionProblem() || replacesAncestorProblem();
   if (direction) return none(direction);
   const entries = [];
   const skipped = [];
@@ -11992,6 +11998,19 @@ function replacesDirectionProblem() {
   if (!AppState.baseline || !layerCompareIsFuture()) return null;
   const drawn = drawnPlateau(), base = AppState.baseline.plateau;
   return '“' + plateauTitle(drawn) + '” comes before “' + plateauTitle(base) + '” in the plateaus of this workspace. replaces is written on the element of the more recent plateau: draw “' + plateauTitle(base) + '” and compare it with “' + plateauTitle(drawn) + '”.';
+}
+
+/**
+ * Why *Move and write replaces* is not offered for the comparison on screen, or null: it is offered only against a plateau that the plateau drawn overrides, directly or not
+ * (decided by the author on 2026-10-18, #95). `replaces` names references of an earlier plateau of the same line; against a sibling or a cousin the key would name a reference
+ * that is not in the ancestors of the plateau, and compared with its real past the plateau would get the kernel's warning "is not an element of the base plateau, ignored".
+ * (The future is `replacesDirectionProblem`'s.)
+ */
+function replacesAncestorProblem() {
+  if (!AppState.baseline || layerCompareIsFuture()) return null;
+  const drawn = drawnPlateau(), base = AppState.baseline.plateau;
+  if (layerIsBelow(drawn.id, base.id)) return null;
+  return '“' + plateauTitle(base) + '” is not a plateau that “' + plateauTitle(drawn) + '” overrides, so replaces is not written against it: the key names references of an earlier plateau of the same line (compare with the plateau it overrides, or with one further up).';
 }
 
 /** The list `replaces` becomes when `reference` is added to it: appended, and not twice. */

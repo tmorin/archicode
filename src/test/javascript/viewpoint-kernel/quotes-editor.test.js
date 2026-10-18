@@ -104,7 +104,9 @@ const disk = (text) => inPlateau('target', text);
 
 /** The workspace opened as the editor opens a folder, as layers (see layered-folders.js: siblings over an empty baseline), the target drawn and compared with the base. */
 async function open(files, baseFiles) {
-  return openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, Object.assign({}, dir('10_base', baseFiles || files), dir('20_target', files))), { drawn: 'target', compared: 'base' });
+  const page = await openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, Object.assign({}, dir('10_base', baseFiles || files), dir('20_target', files))), { drawn: 'target', compared: 'base' });
+  page.sandbox.replacesAncestorProblem = () => null; // the base is a sibling here: set aside the rule of #95 (see openOffering in move-editor.test.js) to pin what the move writes once replaces is offered
+  return page;
 }
 const saved = (mem, file) => mem.files.get(path(file)).text;
 /** The names of the target files whose text is not the original. */
