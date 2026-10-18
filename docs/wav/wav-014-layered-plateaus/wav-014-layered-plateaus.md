@@ -190,7 +190,7 @@ wave_manifest:
       slug: recursive-discovery
       phase: P1
       depends_on: []
-      run: null
+      run: 0076
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/manifest/**'
