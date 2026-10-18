@@ -81,6 +81,31 @@ class ReplacedElementsViewsTest {
         );
     }
 
+    /** The two plateaus: {@code before} is an empty layer over the root, {@code after} overrides it with these patches. */
+    private void plateaus(String patches) {
+        write(
+            "plateaus/a/plateau.yaml",
+            """
+            header:
+              kind: "archicode.morin.io/plateau"
+              version: "1"
+            content:
+              id: "before"
+            """
+        );
+        write(
+            "plateaus/b/plateau.yaml",
+            """
+            header:
+              kind: "archicode.morin.io/plateau"
+              version: "1"
+            content:
+              id: "after"
+              override: "before"
+            """ + patches
+        );
+    }
+
     private Path workspace() {
         write(
             "workspace.yaml",
@@ -92,12 +117,18 @@ class ReplacedElementsViewsTest {
                     actions:
                       - operator: REMOVE
                         json-path: "$.application..elements[?(@.id == 'zzz')]"
-              plateaus:
-                - id: "a"
-                  path: "plateaus/a"
-                - id: "b"
-                  path: "plateaus/b"
-                  baseline: "a"
+              manifests:
+                paths: ["plateaus/**"]
+            """
+        );
+        plateaus(
+            """
+              patches:
+                - operator: REMOVE
+                  target: "s.x"
+                - operator: REMOVE
+                  target: "e.n"
+                  layer: technology
             """
         );
         write(
@@ -123,28 +154,34 @@ class ReplacedElementsViewsTest {
             )
         );
         write(
-            "plateaus/b/app.yaml",
-            system(
-                """
-                    - kind: "container"
-                      id: "y"
-                      name: "Y"
-                      replaces:
-                        - "s.x"
-                """
-            )
+            "plateaus/b/app.y.yaml",
+            """
+            header:
+              kind: "archicode.morin.io/container"
+              version: "1"
+              plateau: "after"
+              parent: "s"
+            content:
+              id: "y"
+              name: "Y"
+              replaces:
+                - "s.x"
+            """
         );
         write(
-            "plateaus/b/tec.yaml",
-            environment(
-                """
-                    - kind: "node"
-                      id: "m"
-                      name: "M"
-                      applications:
-                        - "s.y"
-                """
-            )
+            "plateaus/b/tec.m.yaml",
+            """
+            header:
+              kind: "archicode.morin.io/node"
+              version: "1"
+              plateau: "after"
+              parent: "e"
+            content:
+              id: "m"
+              name: "M"
+              applications:
+                - "s.y"
+            """
         );
         return dir.resolve("workspace.yaml");
     }
@@ -168,28 +205,31 @@ class ReplacedElementsViewsTest {
     @Test
     void theComparisonViewsOfAPlateauWhoseElementReplacesAnotherAreGenerated() {
         val workspace = workspace();
-        val diff = run("-w", workspace.toString(), "diff", "--plateau", "b");
+        val diff = run("-w", workspace.toString(), "diff", "--plateau", "after");
         assertEquals(0, diff.exit(), diff.err());
 
-        val result = run("-w", workspace.toString(), "views", "generate", "--plateau", "b");
+        val result = run("-w", workspace.toString(), "views", "generate", "--plateau", "after");
 
         assertEquals(0, result.exit(), result.err());
         assertEquals("", result.err());
-        assertTrue(Files.isDirectory(dir.resolve("views-b")), "the views of the plateau");
-        assertTrue(Files.isDirectory(dir.resolve("views-b-vs-a")), "the views of the comparison");
-        assertTrue(Files.exists(dir.resolve("views-b-vs-a/gap.json")), "the table of changes");
+        assertTrue(Files.isDirectory(dir.resolve("views-after")), "the views of the plateau");
+        assertTrue(Files.isDirectory(dir.resolve("views-after-vs-before")), "the views of the comparison");
+        assertTrue(Files.exists(dir.resolve("views-after-vs-before/gap.json")), "the table of changes");
         // a facet draws the comparison from the workspace the facet left: the removed node still deploys what replaced its application
-        assertTrue(Files.isDirectory(dir.resolve("views-b-vs-a-nothing")), "the views of a facet of the comparison");
+        assertTrue(
+            Files.isDirectory(dir.resolve("views-after-vs-before-nothing")),
+            "the views of a facet of the comparison"
+        );
     }
 
     @Test
     void theRemovedNodeOfTheComparisonDeploysWhatReplacedTheApplicationItDeployed() {
         val workspace = workspace();
-        val result = run("-w", workspace.toString(), "views", "generate", "--plateau", "b");
+        val result = run("-w", workspace.toString(), "views", "generate", "--plateau", "after");
         assertEquals(0, result.exit(), result.err());
 
         // the removed node `n` stays in the comparison, on the application that took the place of `s.x`
-        val views = dir.resolve("views-b-vs-a");
+        val views = dir.resolve("views-after-vs-before");
         val text = tree(views);
         assertFalse(text.isEmpty(), "something was drawn");
         assertTrue(text.contains("N"), "the removed node is drawn");
@@ -202,12 +242,15 @@ class ReplacedElementsViewsTest {
             "workspace.yaml",
             """
             settings:
-              plateaus:
-                - id: "a"
-                  path: "plateaus/a"
-                - id: "b"
-                  path: "plateaus/b"
-                  baseline: "a"
+              manifests:
+                paths: ["plateaus/**"]
+            """
+        );
+        plateaus(
+            """
+              patches:
+                - operator: REMOVE
+                  target: "shop"
             """
         );
         write(
@@ -234,6 +277,7 @@ class ReplacedElementsViewsTest {
             header:
               kind: "archicode.morin.io/system"
               version: "1"
+              plateau: "after"
             content:
               id: "storefront"
               name: "Storefront"
@@ -253,10 +297,10 @@ class ReplacedElementsViewsTest {
     @Test
     void aReplacedBoxThatHoldsSomethingRemovedIsInTheWorkspaceOfTheComparisonWithoutWhatWasReplaced() {
         val workspace = workspaceWithAReplacedBox();
-        val base = workspaceFactory.create(workspace, null, "a");
-        val target = workspaceFactory.create(workspace, null, "b");
+        val base = workspaceFactory.create(workspace, null, "before");
+        val target = workspaceFactory.create(workspace, null, "after");
         val comparison = new PlateauComparer(new ObjectMapper()).compare(base, target);
-        val union = workspaceFactory.createUnion(workspace, null, "b", base, comparison);
+        val union = workspaceFactory.createUnion(workspace, null, "after", base, comparison);
 
         assertTrue(union.appIndex.searchElement("shop").isPresent(), "the place that holds what was removed");
         assertTrue(union.appIndex.searchElement("shop.old").isPresent(), "what was removed");
@@ -265,9 +309,9 @@ class ReplacedElementsViewsTest {
         // the baseline is as it was
         assertTrue(base.appIndex.searchElement("shop.web").isPresent());
 
-        val result = run("-w", workspace.toString(), "views", "generate", "--plateau", "b");
+        val result = run("-w", workspace.toString(), "views", "generate", "--plateau", "after");
         assertEquals(0, result.exit(), result.err());
-        assertTrue(Files.isDirectory(dir.resolve("views-b-vs-a")));
+        assertTrue(Files.isDirectory(dir.resolve("views-after-vs-before")));
     }
 
     @SneakyThrows

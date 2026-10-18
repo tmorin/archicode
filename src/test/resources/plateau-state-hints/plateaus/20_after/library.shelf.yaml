@@ -1,0 +1,8 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  plateau: "after"
+  parent: "library.catalog"
+content:
+  id: "shelf"
+  name: "Shelf search"

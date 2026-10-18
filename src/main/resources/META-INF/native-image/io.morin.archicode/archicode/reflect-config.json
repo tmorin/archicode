@@ -54,15 +54,6 @@
     "allPublicFields": true
   },
   {
-    "name": "io.morin.archicode.cli.AddPlateauCommand",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
     "name": "io.morin.archicode.cli.CommandLineConfiguration",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -1800,60 +1791,6 @@
     "allPublicFields": true
   },
   {
-    "name": "io.morin.archicode.workspace.PlateauAdder",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.workspace.PlateauAdder$1",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.workspace.PlateauAdder$2",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.workspace.PlateauAdder$Added",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.workspace.Plateaus",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.workspace.Plateaus$Selection",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
     "name": "io.morin.archicode.workspace.ViewIndex",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -2035,15 +1972,6 @@
   },
   {
     "name": "io.morin.archicode.viewpoint.kernel.PlateauComparer",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.cli.BaselineOption",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,
@@ -2880,7 +2808,7 @@
     "allPublicFields": true
   },
   {
-    "name": "io.morin.archicode.cli.LayeredAgainst",
+    "name": "io.morin.archicode.cli.Against",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,

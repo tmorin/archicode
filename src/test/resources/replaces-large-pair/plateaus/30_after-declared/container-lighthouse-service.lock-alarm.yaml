@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lighthouse-service"
+content:
+  id: "lock-alarm"
+  name: "Lock Alarm"
+  description: "Warns the duty officer when a lock gate is stuck."

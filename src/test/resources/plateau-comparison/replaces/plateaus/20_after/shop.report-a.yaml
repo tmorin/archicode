@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "shop"
+content:
+  id: "report-a"
+  name: "Sales report"
+  replaces:
+    - "shop.report"

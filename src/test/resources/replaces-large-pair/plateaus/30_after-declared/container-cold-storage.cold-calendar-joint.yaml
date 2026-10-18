@@ -1,0 +1,23 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "cold-storage"
+content:
+  id: "cold-calendar-joint"
+  name: "Cold Calendar Joint"
+  description: "Forwards the police queues for the tug captains and summarises the spare slots on request."
+  replaces:
+    - "cold-storage.cold-calendar"
+    - "port-police.police-statistics"
+  relationships:
+    - destination: "fire-brigade.fire-alerts-follow-up"
+      label: "reports to"
+    - destination: "cold-storage.cold-sync-all"
+      label: "publishes to"
+    - destination: "cold-storage.cold-notifier"
+      label: "synchronises with"
+    - destination: "port-police.police-planner"
+      label: "asks"
+    - destination: "port-police.police-alerts"
+      label: "synchronises with"

@@ -1,12 +1,6 @@
+# the plateaus are layers: the manifests of `plateaus/10_as-is` have no `plateau:` header and are the root, `baseline`; `as-is` is
+# the first state, an empty layer over it; `to-be` overrides it with its own manifests (they say `plateau: "to-be"`) and the patches of its `plateau.yaml`
 settings:
   name: "Bookshop"
-  # the states of the architecture, in the order of their life; the last one is drawn unless `current` names another
-  plateaus:
-    - id: "as-is"
-      name: "As is"
-      horizon: "2026-Q3"
-      path: "plateaus/10_as-is"
-    - id: "to-be"
-      name: "To be"
-      horizon: "2027-Q1"
-      path: "plateaus/20_to-be"
+  manifests:
+    paths: ["plateaus/**"]

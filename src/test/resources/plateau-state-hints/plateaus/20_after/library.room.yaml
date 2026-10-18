@@ -1,0 +1,15 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "library"
+content:
+  id: "room"
+  name: "Room"
+  replaces:
+    - "library.hall"
+    - "library.annex"
+  qualifiers:
+    - "changed"
+  tags:
+    rendering-stereotypes: "merged"

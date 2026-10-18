@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lighthouse-service"
+content:
+  id: "rail-map"
+  name: "Rail Map"
+  description: "Draws the railway sidings on a map of the harbour."

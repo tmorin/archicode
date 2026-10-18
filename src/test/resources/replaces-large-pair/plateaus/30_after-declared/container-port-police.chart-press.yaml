@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "port-police"
+content:
+  id: "chart-press"
+  name: "Chart Press"
+  description: "Keeps a log"

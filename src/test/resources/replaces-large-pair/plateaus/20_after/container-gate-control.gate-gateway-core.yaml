@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "gate-control"
+content:
+  id: "gate-gateway-core"
+  name: "Gate Gateway Core"
+  description: "Schedules the gate counts for the harbour auditors and stamps the empty tanks during the winter."
+  qualifiers:
+    - "Python"
+  relationships:
+    - destination: "buoy-network.buoy-importer"
+      label: "reports to"

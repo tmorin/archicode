@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "to-be"
+  parent: "shop"
+content:
+  id: "notifications"
+  name: "Notifications"
+  elements:
+    - kind: "component"
+      id: "sender"
+      name: "Sender"

@@ -18,7 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
 /**
- * The plateaus from the command line: {@code --plateau} on the commands that load a workspace, and {@code plateau add}.
+ * The plateaus from the command line: {@code --plateau} on the commands that load a workspace.
  */
 @QuarkusTest
 class PlateauCliTest {
@@ -43,16 +43,31 @@ class PlateauCliTest {
         """.formatted(id, name);
     }
 
+    private static String plateau(String id, String override) {
+        return """
+        header:
+          kind: "archicode.morin.io/plateau"
+          version: "1"
+        content:
+          id: "%s"
+        %s""".formatted(id, override == null ? "" : "  override: \"" + override + "\"\n");
+    }
+
+    /** Two states: {@code as-is} is an empty layer over the shop, {@code to-be} adds a system on top of it. */
     @SneakyThrows
     private Path workspace() {
         Files.createDirectories(dir.resolve("plateaus/10_as-is"));
         Files.createDirectories(dir.resolve("plateaus/20_to-be"));
         Files.writeString(dir.resolve("plateaus/10_as-is/shop.yaml"), system("shop", "Shop"));
-        Files.writeString(dir.resolve("plateaus/20_to-be/shop.yaml"), system("shop", "Shop"));
-        Files.writeString(dir.resolve("plateaus/20_to-be/crm.yaml"), system("crm", "CRM"));
+        Files.writeString(dir.resolve("plateaus/10_as-is/plateau.yaml"), plateau("as-is", null));
+        Files.writeString(dir.resolve("plateaus/20_to-be/plateau.yaml"), plateau("to-be", "as-is"));
+        Files.writeString(
+            dir.resolve("plateaus/20_to-be/crm.yaml"),
+            system("crm", "CRM").replace("version: \"1\"\n", "version: \"1\"\n  plateau: \"to-be\"\n")
+        );
         Files.writeString(
             dir.resolve("workspace.yaml"),
-            "# two states\nsettings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n    - id: to-be\n      path: plateaus/20_to-be\n"
+            "# two states\nsettings:\n  manifests:\n    paths: [\"plateaus/**\"]\n"
         );
         return dir.resolve("workspace.yaml");
     }
@@ -109,67 +124,10 @@ class PlateauCliTest {
         val result = run("-w", workspace().toString(), "views", "generate", "--plateau", "nope");
         assertEquals(1, result.exit);
         assertTrue(
-            result.err.contains("unknown plateau `nope`: the plateaus of this workspace are `as-is`, `to-be`"),
+            result.err.contains(
+                "unknown plateau `nope`: the plateaus of this workspace are `baseline`, `as-is` and `to-be`"
+            ),
             result.err
         );
-    }
-
-    @Test
-    @SneakyThrows
-    void plateauAddCopiesTheFolderAndKeepsTheComments() {
-        val workspace = workspace();
-        val result = run(
-            "-w",
-            workspace.toString(),
-            "plateau",
-            "add",
-            "p3",
-            "--from",
-            "to-be",
-            "--name",
-            "Phase 3",
-            "--horizon",
-            "2028"
-        );
-        assertEquals(0, result.exit, result.err);
-        assertTrue(result.out.contains("plateau `p3` added"), result.out);
-        assertTrue(Files.exists(dir.resolve("plateaus/30_p3/crm.yaml")));
-        val text = Files.readString(workspace);
-        assertTrue(text.startsWith("# two states\n"), text);
-        assertTrue(
-            text.endsWith(
-                "    - id: p3\n      name: \"Phase 3\"\n      horizon: \"2028\"\n      path: plateaus/30_p3\n"
-            ),
-            text
-        );
-        // the new plateau is the last: it is the one read by default
-        val graph = run("-w", workspace.toString(), "query", "graph");
-        assertEquals(0, graph.exit, graph.err);
-    }
-
-    @Test
-    @SneakyThrows
-    void plateauAddCanWriteTheBaselineOfTheNewPlateau() {
-        val workspace = workspace();
-        val result = run("-w", workspace.toString(), "plateau", "add", "p3", "--from", "to-be", "--baseline", "as-is");
-        assertEquals(0, result.exit, result.err);
-        val text = Files.readString(workspace);
-        assertTrue(text.endsWith("    - id: p3\n      path: plateaus/30_p3\n      baseline: as-is\n"), text);
-        // the baseline is read back, and is the one `diff` compares with
-        val diff = run("-w", workspace.toString(), "diff");
-        assertEquals(0, diff.exit, diff.err);
-        assertTrue(diff.out.startsWith("comparing p3 with as-is\n"), diff.out);
-        // an unknown baseline stops the command before anything is copied
-        val unknown = run("-w", workspace.toString(), "plateau", "add", "p4", "--from", "to-be", "--baseline", "nope");
-        assertEquals(1, unknown.exit);
-        assertTrue(unknown.err.contains("unknown baseline `nope`"), unknown.err);
-        assertFalse(Files.exists(dir.resolve("plateaus/40_p4")));
-    }
-
-    @Test
-    void plateauAddNeedsFrom() {
-        val result = run("-w", workspace().toString(), "plateau", "add", "p3");
-        assertEquals(2, result.exit);
-        assertTrue(result.err.contains("--from"), result.err);
     }
 }

@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "lock-gates"
+content:
+  id: "terminal-sync"
+  name: "Terminal Sync"
+  description: "Summarises the terminal reports for the cold store staff and ranks the changed plans twice a day."
+  relationships:
+    - destination: "lock-gates.terminal-statistics-x"
+      label: "fetches from"
+    - destination: "passenger-terminal.terminal-gateway"
+      label: "synchronises with"

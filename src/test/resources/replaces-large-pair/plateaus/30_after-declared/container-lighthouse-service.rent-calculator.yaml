@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lighthouse-service"
+content:
+  id: "rent-calculator"
+  name: "Rent Calculator"
+  description: "Computes the rent of a plot from its surface and the length of the lease."

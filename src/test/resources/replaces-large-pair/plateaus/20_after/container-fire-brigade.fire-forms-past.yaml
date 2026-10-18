@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "fire-brigade"
+content:
+  id: "fire-forms-past"
+  name: "Past Fire"
+  description: "Keeps what happened before for the harbour master."
+  relationships:
+    - destination: "weather-stations-office.weather-registry"
+      label: "notifies"

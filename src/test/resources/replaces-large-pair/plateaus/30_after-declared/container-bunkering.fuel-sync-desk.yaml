@@ -1,0 +1,18 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "bunkering"
+content:
+  id: "fuel-sync-desk"
+  name: "Fuel Sync Desk"
+  description: "Handles the fuel counts for the safety office and compares the open permits at low tide."
+  qualifiers:
+    - "Java"
+  replaces:
+    - "bunkering.fuel-sync"
+  relationships:
+    - destination: "bunkering.fuel-gateway"
+      label: "fetches from"
+    - destination: "bunkering.fuel-archive-store"
+      label: "reads from"

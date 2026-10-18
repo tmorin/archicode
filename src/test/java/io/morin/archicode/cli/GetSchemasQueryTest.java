@@ -2,6 +2,7 @@ package io.morin.archicode.cli;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
@@ -22,7 +23,7 @@ class GetSchemasQueryTest {
 
     @Test
     @SneakyThrows
-    void theSchemaOfTheWorkspaceDescribesThePlateaus() {
+    void theSchemaOfTheWorkspaceNoLongerDescribesAListOfPlateaus() {
         val writer = mapperFactory.create(MapperFormat.JSON).writerWithDefaultPrettyPrinter();
         val schema = mapperFactory
             .create(MapperFormat.JSON)
@@ -30,12 +31,10 @@ class GetSchemasQueryTest {
                 writer.writeValueAsString(getSchemasQuery.generateSchema(GetSchemasQuery.SchemaType.WORKSPACE, writer))
             );
         val settings = schema.at("/properties/settings");
-        assertEquals("array", settings.at("/properties/plateaus/type").asText());
         assertEquals("string", settings.at("/properties/current/type").asText());
-        val plateau = settings.at("/properties/plateaus/items");
-        for (val key : new String[] { "id", "name", "horizon", "path" }) {
-            assertEquals("string", plateau.at("/properties/" + key + "/type").asText(), key);
-        }
+        // a plateau is a layer now (a header and a manifest): the settings list none
+        assertEquals("", settings.at("/properties/plateaus/type").asText());
+        assertTrue(settings.at("/properties/plateaus/items").isMissingNode());
     }
 
     @Test

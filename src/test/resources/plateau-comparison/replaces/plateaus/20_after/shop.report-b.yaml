@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "shop"
+content:
+  id: "report-b"
+  name: "Stock report"
+  replaces:
+    - "shop.report"
+    - "shop.nowhere"

@@ -1,0 +1,1070 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "after"
+  name: "After"
+  override: "before"
+  patches:
+    - operator: REMOVE
+      target: "auditor"
+    - operator: REMOVE
+      target: "berth-allocation.berth-exporter"
+    - operator: REMOVE
+      target: "bunkering.fuel-calendar"
+    - operator: REMOVE
+      target: "bunkering.fuel-statistics"
+    - operator: REMOVE
+      target: "bunkering.fuel-sync"
+    - operator: REMOVE
+      target: "buoy-network.agent-digest"
+    - operator: REMOVE
+      target: "buoy-network.berth-map"
+    - operator: REMOVE
+      target: "buoy-network.crane-health"
+    - operator: REMOVE
+      target: "buoy-network.fee-calculator"
+    - operator: REMOVE
+      target: "buoy-network.hull-ledger"
+    - operator: REMOVE
+      target: "buoy-network.night-report"
+    - operator: REMOVE
+      target: "buoy-network.permit-check"
+    - operator: REMOVE
+      target: "buoy-network.quay-watch"
+    - operator: REMOVE
+      target: "buoy-network.queue-board"
+    - operator: REMOVE
+      target: "buoy-network.roster-interface"
+    - operator: REMOVE
+      target: "buoy-network.slot-offer"
+    - operator: REMOVE
+      target: "buoy-network.vessel-counter"
+    - operator: REMOVE
+      target: "cargo-manifests.manifest-archive-store"
+    - operator: REMOVE
+      target: "cargo-manifests.manifest-validator"
+    - operator: REMOVE
+      target: "cold-storage.cold-archive-store"
+    - operator: REMOVE
+      target: "cold-storage.cold-calendar"
+    - operator: REMOVE
+      target: "cold-storage.cold-forms"
+    - operator: REMOVE
+      target: "cold-storage.cold-reporter"
+    - operator: REMOVE
+      target: "cold-storage.cold-statistics"
+    - operator: REMOVE
+      target: "cold-storage.cold-sync"
+    - operator: REMOVE
+      target: "cold-storage.cold-validator"
+    - operator: REMOVE
+      target: "container-yard.yard-forms"
+    - operator: REMOVE
+      target: "container-yard.yard-scheduler"
+    - operator: REMOVE
+      target: "crane-scheduling.crane-validator"
+    - operator: REMOVE
+      target: "crew-visas.crew-exporter"
+    - operator: REMOVE
+      target: "customs-clearance.customs-alerts"
+    - operator: REMOVE
+      target: "customs-clearance.customs-reporter"
+    - operator: REMOVE
+      target: "customs-clearance.customs-search"
+    - operator: REMOVE
+      target: "dredging-works.dredging-reporter"
+    - operator: REMOVE
+      target: "dredging-works.dredging-tracker"
+    - operator: REMOVE
+      target: "dredging-works.dredging-validator"
+    - operator: REMOVE
+      target: "ferry-passenger"
+    - operator: REMOVE
+      target: "ferry-ticketing.ferry-archive-store"
+    - operator: REMOVE
+      target: "ferry-ticketing.ferry-exporter"
+    - operator: REMOVE
+      target: "ferry-ticketing.ferry-reporter"
+    - operator: REMOVE
+      target: "fire-brigade.fire-alerts"
+    - operator: REMOVE
+      target: "fire-brigade.fire-forms"
+    - operator: REMOVE
+      target: "fire-brigade.fire-statistics"
+    - operator: REMOVE
+      target: "fish-market.fishing-registry.formatter"
+    - operator: REMOVE
+      target: "fish-market.fishing-tracker"
+    - operator: REMOVE
+      target: "gate-control.gate-gateway"
+    - operator: REMOVE
+      target: "land-leases.lease-billing"
+    - operator: REMOVE
+      target: "land-leases.lease-validator.rules"
+    - operator: REMOVE
+      target: "lock-gates.lock-calendar"
+    - operator: REMOVE
+      target: "lock-gates.lock-importer"
+    - operator: REMOVE
+      target: "lock-gates.lock-planner"
+    - operator: REMOVE
+      target: "lock-gates.lock-tracker"
+    - operator: REMOVE
+      target: "mooring-lines.mooring-planner"
+    - operator: REMOVE
+      target: "mooring-lines.mooring-registry"
+    - operator: REMOVE
+      target: "passenger-terminal.terminal-alerts"
+    - operator: REMOVE
+      target: "passenger-terminal.terminal-calendar"
+    - operator: REMOVE
+      target: "passenger-terminal.terminal-notifier"
+    - operator: REMOVE
+      target: "passenger-terminal.terminal-planner"
+    - operator: REMOVE
+      target: "passenger-terminal.terminal-reporter"
+    - operator: REMOVE
+      target: "passenger-terminal.terminal-statistics"
+    - operator: REMOVE
+      target: "passenger-terminal.terminal-sync"
+    - operator: REMOVE
+      target: "passenger-terminal.terminal-tracker"
+    - operator: REMOVE
+      target: "passenger-terminal.terminal-validator"
+    - operator: REMOVE
+      target: "pilot-dispatch.pilot-calendar"
+    - operator: REMOVE
+      target: "pollution-control.pollution-calendar"
+    - operator: REMOVE
+      target: "pollution-control.pollution-validator.mapper"
+    - operator: REMOVE
+      target: "port-police.dock-ticket"
+    - operator: REMOVE
+      target: "port-police.entry-permit"
+    - operator: REMOVE
+      target: "port-police.gate-pass"
+    - operator: REMOVE
+      target: "port-police.police-statistics"
+    - operator: REMOVE
+      target: "port-police.visitor-badge"
+    - operator: REMOVE
+      target: "quay-maintenance.bell-ringer"
+    - operator: REMOVE
+      target: "quay-maintenance.file-share"
+    - operator: REMOVE
+      target: "quay-maintenance.message-broker"
+    - operator: REMOVE
+      target: "quay-maintenance.rope-check"
+    - operator: REMOVE
+      target: "quay-maintenance.sign-writer"
+    - operator: REMOVE
+      target: "quay-maintenance.stamp-counter"
+    - operator: REMOVE
+      target: "quay-planner"
+    - operator: REMOVE
+      target: "rail-link.rail-importer"
+    - operator: REMOVE
+      target: "safety-inspections.inspection-gateway"
+    - operator: REMOVE
+      target: "salvage-office.alerts"
+    - operator: REMOVE
+      target: "salvage-office.archive"
+    - operator: REMOVE
+      target: "salvage-office.calendar"
+    - operator: REMOVE
+      target: "salvage-office.forms"
+    - operator: REMOVE
+      target: "salvage-office.search"
+    - operator: REMOVE
+      target: "salvage-office.statistics"
+    - operator: REMOVE
+      target: "shipping-agent"
+    - operator: REMOVE
+      target: "tariff-billing.tariff-billing"
+    - operator: REMOVE
+      target: "tariff-billing.tariff-exporter"
+    - operator: REMOVE
+      target: "tariff-billing.tariff-tracker"
+    - operator: REMOVE
+      target: "tariff-billing.tariff-validator"
+    - operator: REMOVE
+      target: "tide-forecast.tide-planner"
+    - operator: REMOVE
+      target: "truck-parking.parking-notifier"
+    - operator: REMOVE
+      target: "truck-parking.parking-registry.client"
+    - operator: REMOVE
+      target: "tug-operations.tug-notifier"
+    - operator: REMOVE
+      target: "waste-reception.waste-archive-store"
+    - operator: REMOVE
+      target: "weather-stations"
+    - operator: REMOVE
+      target: "dr"
+      layer: technology
+    - operator: REMOVE
+      target: "preprod.cache-cluster"
+      layer: technology
+    - operator: REMOVE
+      target: "preprod.identity-server"
+      layer: technology
+    - operator: REMOVE
+      target: "prod.cache-cluster"
+      layer: technology
+    - operator: REMOVE
+      target: "prod.edge-cluster"
+      layer: technology
+    - operator: REMOVE
+      target: "qa.monitoring-stack"
+      layer: technology
+    - operator: REMOVE
+      target: "sandbox.batch-runner"
+      layer: technology
+    - operator: REMOVE
+      target: "staging.batch-runner"
+      layer: technology
+    - operator: REMOVE
+      target: "staging.database-replica"
+      layer: technology
+    - operator: REMOVE
+      target: "staging.identity-server"
+      layer: technology
+    - operator: REMOVE
+      target: "test.backup-vault"
+      layer: technology
+    - operator: REMOVE
+      target: "training.identity-server"
+      layer: technology
+    - operator: REMOVE
+      target: "training.monitoring-stack"
+      layer: technology
+    - operator: SET
+      target: "berth-allocation.berth-billing"
+      field: relationships
+      value:
+        - destination: "berth-allocation.berth-exporter-service"
+          label: "synchronises with"
+    - operator: SET
+      target: "bunkering.fuel-registry"
+      field: relationships
+      value:
+        - destination: "bunkering.fuel-gateway"
+          label: "reports to"
+        - destination: "tug-operations.tug-notifier-service"
+          label: "synchronises with"
+        - destination: "bunkering.fuel-validator"
+          label: "synchronises with"
+    - operator: SET
+      target: "bunkering.fuel-scheduler"
+      field: relationships
+      value:
+        - destination: "tariff-billing.tariff-tracker-2"
+          label: "notifies"
+    - operator: SET
+      target: "buoy-network.buoy-gateway"
+      field: relationships
+      value:
+        - destination: "quay-maintenance.quay-dashboard"
+          label: "fetches from"
+    - operator: SET
+      target: "buoy-network.buoy-importer"
+      field: relationships
+      value:
+        - destination: "bunkering.fuel-sync-desk"
+          label: "reads from"
+        - destination: "buoy-network.buoy-sync"
+          label: "reads from"
+    - operator: SET
+      target: "buoy-network.buoy-notifier"
+      field: relationships
+      value:
+        - destination: "tide-forecast.tide-planner-service"
+          label: "synchronises with"
+        - destination: "buoy-network.buoy-registry"
+          label: "reports to"
+        - destination: "buoy-network.buoy-gateway"
+          label: "publishes to"
+    - operator: SET
+      target: "buoy-network.buoy-registry"
+      field: relationships
+      value:
+        - destination: "mooring-lines.mooring-gateway"
+          label: "publishes to"
+        - destination: "pilot-dispatch.pilot-auditor"
+          label: "cross-checks with"
+    - operator: SET
+      target: "buoy-network.buoy-sync"
+      field: relationships
+      value:
+        - destination: "buoy-network.buoy-alerts"
+          label: "sends to"
+        - destination: "visitor-centre.visitor-sync"
+          label: "synchronises with"
+        - destination: "pollution-control.pollution-gateway"
+          label: "synchronises with"
+        - destination: "land-leases.lease-importer"
+          label: "subscribes to"
+    - operator: SET
+      target: "buoy-network.buoy-tracker"
+      field: relationships
+      value:
+        - destination: "buoy-network.buoy-registry"
+          label: "fetches from"
+        - destination: "buoy-network.buoy-sync"
+          label: "reads from"
+        - destination: "buoy-network.buoy-importer"
+          label: "fetches from"
+        - destination: "port-police.police-notifier"
+          label: "subscribes to"
+    - operator: SET
+      target: "cargo-manifests.manifest-alerts"
+      field: relationships
+      value:
+        - destination: "cargo-manifests.manifest-planner"
+          label: "notifies"
+        - destination: "container-yard.yard-calendar"
+          label: "publishes to"
+    - operator: SET
+      target: "cargo-manifests.manifest-calendar"
+      field: relationships
+      value:
+        - destination: "cargo-manifests.manifest-search"
+          label: "asks"
+        - destination: "cargo-manifests.manifest-archive-store-v2"
+          label: "reads from"
+    - operator: SET
+      target: "cargo-manifests.manifest-notifier"
+      field: relationships
+      value:
+        - destination: "cargo-manifests.manifest-validator-v2"
+          label: "publishes to"
+        - destination: "gate-control.gate-sync"
+          label: "asks"
+    - operator: SET
+      target: "cargo-manifests.manifest-search"
+      field: relationships
+      value:
+        - destination: "cargo-manifests.manifest-validator-v2"
+          label: "reports to"
+    - operator: SET
+      target: "cold-storage.cold-notifier"
+      field: relationships
+      value:
+        - destination: "cold-storage.cold-tracker"
+          label: "notifies"
+        - destination: "cold-storage.cold-scheduler"
+          label: "sends to"
+        - destination: "cold-storage.cold-sync-all"
+          label: "synchronises with"
+    - operator: SET
+      target: "cold-storage.cold-planner"
+      field: relationships
+      value:
+        - destination: "waste-reception.waste-importer"
+          label: "reads from"
+        - destination: "cold-storage.cold-tracker"
+          label: "reads from"
+        - destination: "cold-storage.combined-statistics"
+          label: "reports to"
+    - operator: SET
+      target: "cold-storage.cold-search"
+      field: relationships
+      value:
+        - destination: "cold-storage.cold-alerts"
+          label: "fetches from"
+        - destination: "pollution-control.pollution-tracker"
+          label: "reports to"
+        - destination: "safety-inspections.inspection-archive-store"
+          label: "subscribes to"
+    - operator: SET
+      target: "cold-storage.cold-tracker"
+      field: relationships
+      value:
+        - destination: "cold-storage.cold-archive-store-and-forms"
+          label: "notifies"
+        - destination: "cold-storage.cold-sync-all"
+          label: "synchronises with"
+        - destination: "tug-operations.tug-billing"
+          label: "reports to"
+    - operator: SET
+      target: "container-yard.yard-auditor"
+      field: relationships
+      value:
+        - destination: "container-yard.yard-scheduler-hub"
+          label: "publishes to"
+    - operator: SET
+      target: "container-yard.yard-importer"
+      field: relationships
+      value:
+        - destination: "container-yard.yard-forms-hub"
+          label: "fetches from"
+    - operator: SET
+      target: "container-yard.yard-sync"
+      field: relationships
+      value:
+        - destination: "container-yard.yard-forms-hub"
+          label: "reports to"
+        - destination: "berth-allocation.berth-auditor"
+          label: "notifies"
+    - operator: SET
+      target: "crane-scheduling.crane-archive-store"
+      field: relationships
+      value:
+        - destination: "crane-scheduling.crane-tracker"
+          label: "notifies"
+        - destination: "crane-scheduling.crane-validator-service"
+          label: "notifies"
+        - destination: "crane-scheduling.crane-tracker"
+          label: "sends to"
+    - operator: SET
+      target: "crew-visas.crew-sync"
+      field: relationships
+      value:
+        - destination: "crew-visas.crew-calendar"
+          label: "notifies"
+        - destination: "dredging-works.dredging-registry"
+          label: "cross-checks with"
+    - operator: SET
+      target: "customs-clearance.customs-auditor"
+      field: relationships
+      value:
+        - destination: "customs-clearance.customs-reporter-v2"
+          label: "notifies"
+    - operator: SET
+      target: "customs-clearance.customs-dashboard"
+      field: relationships
+      value:
+        - destination: "customs-clearance.customs-forms"
+          label: "asks"
+        - destination: "buoy-network.buoy-auditor"
+          label: "sends to"
+        - destination: "customs-clearance.customs-search-v2"
+          label: "reports to"
+    - operator: SET
+      target: "customs-clearance.customs-forms"
+      field: relationships
+      value: []
+    - operator: SET
+      target: "dredging-works.dredging-search"
+      field: relationships
+      value:
+        - destination: "dredging-works.dredging-gateway"
+          label: "fetches from"
+    - operator: SET
+      target: "dredging-works.dredging-sync"
+      field: relationships
+      value:
+        - destination: "truck-parking.parking-forms"
+          label: "notifies"
+    - operator: SET
+      target: "ferry-ticketing.ferry-dashboard"
+      field: relationships
+      value:
+        - destination: "ferry-ticketing.ferry-exporter-next"
+          label: "synchronises with"
+    - operator: SET
+      target: "ferry-ticketing.ferry-gateway"
+      field: relationships
+      value:
+        - destination: "ferry-ticketing.ferry-reporter-next"
+          label: "asks"
+    - operator: SET
+      target: "ferry-ticketing.ferry-planner"
+      field: relationships
+      value:
+        - destination: "ferry-ticketing.ferry-archive-store-next"
+          label: "publishes to"
+        - destination: "crew-visas.crew-statistics"
+          label: "synchronises with"
+        - destination: "ferry-ticketing.ferry-scheduler"
+          label: "sends to"
+    - operator: SET
+      target: "ferry-ticketing.ferry-search"
+      field: relationships
+      value:
+        - destination: "ferry-ticketing.ferry-sync"
+          label: "notifies"
+        - destination: "ferry-ticketing.ferry-calendar"
+          label: "reports to"
+        - destination: "tide-forecast.tide-forms"
+          label: "cross-checks with"
+    - operator: SET
+      target: "fire-brigade.fire-archive-store"
+      field: relationships
+      value:
+        - destination: "fire-brigade.fire-statistics-archive"
+          label: "notifies"
+        - destination: "fire-brigade.fire-gateway"
+          label: "publishes to"
+    - operator: SET
+      target: "fire-brigade.fire-calendar"
+      field: relationships
+      value:
+        - destination: "fire-brigade.fire-archive-store"
+          label: "reports to"
+        - destination: "fire-brigade.fire-reporter"
+          label: "fetches from"
+        - destination: "cold-storage.combined-statistics"
+          label: "notifies"
+    - operator: SET
+      target: "fire-brigade.fire-planner"
+      field: relationships
+      value:
+        - destination: "fire-brigade.fire-forms-live"
+          label: "asks"
+        - destination: "fire-brigade.fire-statistics-archive"
+          label: "reports to"
+    - operator: SET
+      target: "fire-brigade.fire-reporter"
+      field: relationships
+      value:
+        - destination: "fire-brigade.fire-forms-past"
+          label: "reads from"
+        - destination: "gate-control.gate-validator"
+          label: "mirrors"
+    - operator: SET
+      target: "fire-brigade.fire-scheduler"
+      field: relationships
+      value:
+        - destination: "fire-brigade.fire-forms-live"
+          label: "publishes to"
+    - operator: SET
+      target: "fire-brigade.fire-sync"
+      field: relationships
+      value:
+        - destination: "fire-brigade.fire-forms-past"
+          label: "publishes to"
+        - destination: "fire-brigade.fire-planner"
+          label: "fetches from"
+    - operator: SET
+      target: "fire-brigade.fire-tracker"
+      field: relationships
+      value:
+        - destination: "fire-brigade.fire-gateway"
+          label: "asks"
+        - destination: "fire-brigade.fire-sync"
+          label: "reads from"
+        - destination: "fire-brigade.fire-statistics-live"
+          label: "sends to"
+    - operator: SET
+      target: "fish-market.fishing-archive-store"
+      field: relationships
+      value:
+        - destination: "fish-market.fishing-planner"
+          label: "fetches from"
+        - destination: "fish-market.fishing-importer"
+          label: "synchronises with"
+        - destination: "lock-gates.terminal-planner"
+          label: "asks"
+    - operator: SET
+      target: "fish-market.fishing-importer"
+      field: relationships
+      value: []
+    - operator: SET
+      target: "fish-market.fishing-search"
+      field: relationships
+      value:
+        - destination: "fish-market.fishing-sync"
+          label: "asks"
+        - destination: "fire-brigade.fire-sync"
+          label: "cross-checks with"
+    - operator: SET
+      target: "fish-market.fishing-sync"
+      field: relationships
+      value: []
+    - operator: SET
+      target: "gate-control.gate-exporter"
+      field: relationships
+      value:
+        - destination: "gate-control.gate-gateway-core"
+          label: "publishes to"
+        - destination: "gate-control.gate-importer"
+          label: "reports to"
+    - operator: SET
+      target: "gate-control.gate-importer"
+      field: relationships
+      value:
+        - destination: "gate-control.gate-gateway-core"
+          label: "asks"
+        - destination: "gate-control.gate-auditor"
+          label: "synchronises with"
+    - operator: SET
+      target: "gate-control.gate-statistics"
+      field: relationships
+      value:
+        - destination: "gate-control.gate-validator"
+          label: "synchronises with"
+        - destination: "berth-allocation.berth-scheduler"
+          label: "subscribes to"
+    - operator: SET
+      target: "land-leases.lease-forms"
+      field: relationships
+      value:
+        - destination: "land-leases.lease-registry"
+          label: "publishes to"
+        - destination: "visitor-centre.visitor-dashboard"
+          label: "subscribes to"
+    - operator: SET
+      target: "land-leases.lease-gateway"
+      field: relationships
+      value: []
+    - operator: SET
+      target: "land-leases.lease-importer"
+      field: relationships
+      value:
+        - destination: "land-leases.lease-calendar"
+          label: "fetches from"
+    - operator: SET
+      target: "land-leases.lease-scheduler"
+      field: relationships
+      value:
+        - destination: "crane-scheduling.crane-validator-service"
+          label: "synchronises with"
+        - destination: "passenger-terminal.terminal-dashboard"
+          label: "subscribes to"
+    - operator: SET
+      target: "lighthouse-service.lighthouse-alerts"
+      field: relationships
+      value:
+        - destination: "tariff-billing.tariff-exporter-next"
+          label: "reads from"
+        - destination: "lighthouse-service.lighthouse-auditor"
+          label: "publishes to"
+        - destination: "mooring-lines.mooring-forms"
+          label: "cross-checks with"
+    - operator: SET
+      target: "lighthouse-service.lighthouse-planner"
+      field: relationships
+      value:
+        - destination: "lighthouse-service.lighthouse-forms"
+          label: "reports to"
+        - destination: "cold-storage.cold-archive-store-and-forms"
+          label: "sends to"
+    - operator: SET
+      target: "lighthouse-service.lighthouse-scheduler"
+      field: relationships
+      value:
+        - destination: "lighthouse-service.lighthouse-sync"
+          label: "sends to"
+        - destination: "buoy-network.buoy-forms"
+          label: "subscribes to"
+    - operator: SET
+      target: "lock-gates.lock-alerts"
+      field: relationships
+      value:
+        - destination: "passenger-terminal.lock-planner-moved"
+          label: "asks"
+        - destination: "lock-gates.lock-gateway"
+          label: "sends to"
+    - operator: SET
+      target: "lock-gates.lock-registry"
+      field: relationships
+      value:
+        - destination: "passenger-terminal.lock-importer-moved"
+          label: "publishes to"
+        - destination: "lock-gates.lock-statistics"
+          label: "reads from"
+    - operator: SET
+      target: "lock-gates.lock-search"
+      field: relationships
+      value:
+        - destination: "berth-allocation.berth-gateway"
+          label: "notifies"
+    - operator: SET
+      target: "lock-gates.lock-statistics"
+      field: relationships
+      value:
+        - destination: "passenger-terminal.lock-planner-moved"
+          label: "reports to"
+        - destination: "passenger-terminal.lock-planner-moved"
+          label: "synchronises with"
+    - operator: SET
+      target: "lock-gates.lock-validator"
+      field: relationships
+      value:
+        - destination: "passenger-terminal.lock-calendar-moved"
+          label: "reports to"
+        - destination: "tug-operations.tug-gateway"
+          label: "cross-checks with"
+    - operator: SET
+      target: "mooring-lines.mooring-exporter"
+      field: relationships
+      value:
+        - destination: "mooring-lines.mooring-gateway"
+          label: "synchronises with"
+        - destination: "mooring-lines.mooring-planner-south"
+          label: "sends to"
+        - destination: "bunkering.fuel-validator"
+          label: "subscribes to"
+    - operator: SET
+      target: "mooring-lines.mooring-forms"
+      field: relationships
+      value:
+        - destination: "mooring-lines.mooring-validator"
+          label: "asks"
+        - destination: "mooring-lines.mooring-registry-two"
+          label: "publishes to"
+        - destination: "mooring-lines.mooring-scheduler"
+          label: "publishes to"
+    - operator: SET
+      target: "mooring-lines.mooring-gateway"
+      field: relationships
+      value:
+        - destination: "passenger-terminal.lock-tracker-moved"
+          label: "notifies"
+    - operator: SET
+      target: "mooring-lines.mooring-notifier"
+      field: relationships
+      value:
+        - destination: "mooring-lines.mooring-registry-one"
+          label: "asks"
+        - destination: "mooring-lines.mooring-gateway"
+          label: "synchronises with"
+        - destination: "mooring-lines.mooring-planner-north"
+          label: "reads from"
+    - operator: SET
+      target: "mooring-lines.mooring-reporter"
+      field: relationships
+      value:
+        - destination: "mooring-lines.mooring-planner-south"
+          label: "notifies"
+        - destination: "mooring-lines.mooring-planner-quay"
+          label: "fetches from"
+    - operator: SET
+      target: "mooring-lines.mooring-validator"
+      field: relationships
+      value:
+        - destination: "mooring-lines.mooring-planner-north"
+          label: "reports to"
+    - operator: SET
+      target: "passenger-terminal.terminal-auditor"
+      field: relationships
+      value:
+        - destination: "rail-link.rail-auditor"
+          label: "asks"
+        - destination: "lock-gates.terminal-calendar-x"
+          label: "publishes to"
+        - destination: "passenger-terminal.terminal-gateway"
+          label: "publishes to"
+    - operator: SET
+      target: "passenger-terminal.terminal-dashboard"
+      field: relationships
+      value:
+        - destination: "passenger-terminal.terminal-gateway"
+          label: "notifies"
+        - destination: "port-police.police-planner"
+          label: "reports to"
+        - destination: "lock-gates.terminal-tracker"
+          label: "synchronises with"
+    - operator: SET
+      target: "passenger-terminal.terminal-gateway"
+      field: relationships
+      value:
+        - destination: "passenger-terminal.terminal-dashboard"
+          label: "asks"
+        - destination: "salvage-office.salvage-search"
+          label: "mirrors"
+    - operator: SET
+      target: "passenger-terminal.terminal-registry"
+      field: relationships
+      value:
+        - destination: "lock-gates.terminal-tracker"
+          label: "asks"
+        - destination: "cold-storage.combined-statistics"
+          label: "notifies"
+    - operator: SET
+      target: "passenger-terminal.terminal-scheduler"
+      field: relationships
+      value: []
+    - operator: SET
+      target: "pilot-dispatch.pilot-statistics"
+      field: relationships
+      value:
+        - destination: "pilot-dispatch.pilot-auditor"
+          label: "synchronises with"
+        - destination: "crew-visas.crew-search"
+          label: "subscribes to"
+    - operator: SET
+      target: "pilot-dispatch.pilot-validator"
+      field: relationships
+      value:
+        - destination: "pilot-dispatch.pilot-tracker"
+          label: "reads from"
+        - destination: "cold-storage.cold-archive-store-and-forms"
+          label: "sends to"
+    - operator: SET
+      target: "port-police.police-sync"
+      field: relationships
+      value:
+        - destination: "weather-stations-office.weather-dashboard"
+          label: "publishes to"
+    - operator: SET
+      target: "quay-maintenance.quay-forms"
+      field: relationships
+      value:
+        - destination: "gate-control.gate-sync"
+          label: "synchronises with"
+    - operator: SET
+      target: "quay-maintenance.quay-registry"
+      field: relationships
+      value:
+        - destination: "customs-clearance.customs-search-v2"
+          label: "synchronises with"
+    - operator: SET
+      target: "safety-inspections.inspection-alerts"
+      field: relationships
+      value:
+        - destination: "tug-operations.tug-exporter"
+          label: "fetches from"
+        - destination: "crane-scheduling.crane-statistics"
+          label: "publishes to"
+        - destination: "weather-stations-office.weather-exporter"
+          label: "notifies"
+    - operator: SET
+      target: "safety-inspections.inspection-auditor"
+      field: relationships
+      value:
+        - destination: "safety-inspections.inspection-validator"
+          label: "notifies"
+        - destination: "safety-inspections.inspection-planner"
+          label: "reports to"
+        - destination: "tide-forecast.tide-tracker"
+          label: "synchronises with"
+        - destination: "dredging-works.dredging-statistics"
+          label: "cross-checks with"
+    - operator: SET
+      target: "safety-inspections.inspection-calendar"
+      field: relationships
+      value:
+        - destination: "safety-inspections.inspection-billing"
+          label: "asks"
+        - destination: "fire-brigade.fire-gateway"
+          label: "subscribes to"
+    - operator: SET
+      target: "safety-inspections.inspection-exporter"
+      field: relationships
+      value:
+        - destination: "safety-inspections.inspection-sync"
+          label: "asks"
+        - destination: "tug-operations.tug-notifier-service"
+          label: "notifies"
+    - operator: SET
+      target: "safety-inspections.inspection-validator"
+      field: relationships
+      value:
+        - destination: "safety-inspections.inspection-auditor"
+          label: "asks"
+        - destination: "lighthouse-service.lighthouse-importer"
+          label: "asks"
+    - operator: SET
+      target: "tariff-billing.tariff-importer"
+      field: relationships
+      value: []
+    - operator: SET
+      target: "tariff-billing.tariff-planner"
+      field: relationships
+      value:
+        - destination: "tariff-billing.tariff-exporter-next"
+          label: "reads from"
+        - destination: "rail-link.rail-statistics"
+          label: "fetches from"
+    - operator: SET
+      target: "tariff-billing.tariff-scheduler"
+      field: relationships
+      value:
+        - destination: "tariff-billing.tariff-tracker-2"
+          label: "asks"
+    - operator: SET
+      target: "tariff-billing.tariff-sync"
+      field: relationships
+      value:
+        - destination: "waste-reception.waste-validator"
+          label: "synchronises with"
+    - operator: SET
+      target: "tide-forecast.tide-dashboard"
+      field: relationships
+      value: []
+    - operator: SET
+      target: "truck-parking.parking-reporter"
+      field: relationships
+      value:
+        - destination: "pilot-dispatch.pilot-notifier"
+          label: "fetches from"
+        - destination: "visitor-centre.visitor-billing"
+          label: "cross-checks with"
+    - operator: SET
+      target: "truck-parking.parking-tracker"
+      field: relationships
+      value:
+        - destination: "truck-parking.parking-planner"
+          label: "notifies"
+    - operator: SET
+      target: "tug-operations.tug-auditor"
+      field: relationships
+      value:
+        - destination: "tug-operations.tug-planner"
+          label: "reports to"
+        - destination: "tug-operations.tug-statistics"
+          label: "sends to"
+        - destination: "pollution-control.pollution-tracker"
+          label: "subscribes to"
+    - operator: SET
+      target: "tug-operations.tug-exporter"
+      field: relationships
+      value: []
+    - operator: SET
+      target: "tug-operations.tug-planner"
+      field: relationships
+      value:
+        - destination: "tug-operations.tug-notifier-service"
+          label: "synchronises with"
+        - destination: "truck-parking.parking-reporter"
+          label: "synchronises with"
+    - operator: SET
+      target: "tug-operations.tug-search"
+      field: relationships
+      value:
+        - destination: "tug-operations.tug-gateway"
+          label: "synchronises with"
+        - destination: "berth-allocation.berth-importer"
+          label: "notifies"
+        - destination: "pilot-dispatch.pilot-tracker"
+          label: "subscribes to"
+    - operator: SET
+      target: "tug-operations.tug-validator"
+      field: relationships
+      value:
+        - destination: "tug-operations.tug-exporter"
+          label: "reads from"
+        - destination: "tug-operations.tug-notifier-service"
+          label: "synchronises with"
+        - destination: "customs-clearance.customs-planner"
+          label: "subscribes to"
+    - operator: SET
+      target: "waste-reception.waste-auditor"
+      field: relationships
+      value:
+        - destination: "waste-reception.waste-gateway"
+          label: "sends to"
+        - destination: "waste-reception.waste-forms"
+          label: "reads from"
+        - destination: "customs-clearance.customs-gateway"
+          label: "cross-checks with"
+    - operator: SET
+      target: "waste-reception.waste-importer"
+      field: relationships
+      value:
+        - destination: "waste-reception.waste-archive-store-desk"
+          label: "reports to"
+        - destination: "waste-reception.waste-scheduler"
+          label: "publishes to"
+        - destination: "lock-gates.lock-statistics"
+          label: "fetches from"
+    - operator: SET
+      target: "preprod.backup-vault"
+      layer: technology
+      field: applications
+      value:
+        - "bunkering.fuel-sync-desk"
+        - "ferry-ticketing.ferry-billing"
+        - "truck-parking.parking-importer"
+    - operator: SET
+      target: "preprod.reverse-proxy"
+      layer: technology
+      field: applications
+      value:
+        - "cargo-manifests.manifest-auditor"
+        - "tariff-billing.tariff-planner"
+        - "tide-forecast.tide-dashboard"
+        - "weather-stations-office.weather-auditor"
+    - operator: SET
+      target: "prod.backup-vault"
+      layer: technology
+      field: applications
+      value:
+        - "passenger-terminal.terminal-auditor"
+        - "waste-reception.waste-reporter"
+        - "weather-stations-office.weather-search"
+    - operator: SET
+      target: "prod.database-replica"
+      layer: technology
+      field: applications
+      value:
+        - "pilot-dispatch.pilot-validator"
+        - "pollution-control.pollution-tracker"
+        - "tug-operations.tug-exporter"
+        - "weather-stations-office.weather-search"
+    - operator: SET
+      target: "prod.message-broker"
+      layer: technology
+      field: applications
+      value:
+        - "salvage-office.salvage-alerts"
+        - "visitor-centre.visitor-calendar"
+    - operator: SET
+      target: "qa.file-share"
+      layer: technology
+      field: applications
+      value:
+        - "crane-scheduling.crane-sync"
+        - "lighthouse-service.lighthouse-importer"
+        - "rail-link.rail-scheduler"
+    - operator: SET
+      target: "sandbox.database-replica"
+      layer: technology
+      field: applications
+      value:
+        - "bunkering.fuel-exporter"
+        - "tide-forecast.tide-registry"
+        - "weather-stations-office.weather-tracker"
+    - operator: SET
+      target: "sandbox.job-scheduler"
+      layer: technology
+      field: applications
+      value:
+        - "berth-allocation.berth-exporter-service"
+        - "pilot-dispatch.pilot-dashboard"
+    - operator: SET
+      target: "staging.cache-cluster"
+      layer: technology
+      field: applications
+      value:
+        - "container-yard.yard-billing"
+        - "container-yard.yard-forms-hub"
+    - operator: SET
+      target: "staging.edge-cluster"
+      layer: technology
+      field: applications
+      value:
+        - "cargo-manifests.manifest-validator-v2"
+        - "crew-visas.crew-validator"
+    - operator: SET
+      target: "staging.message-broker"
+      layer: technology
+      field: applications
+      value:
+        - "fire-brigade.fire-alerts-intake"
+        - "port-police.police-billing"
+        - "tug-operations.tug-planner"
+    - operator: SET
+      target: "test.database-replica"
+      layer: technology
+      field: applications
+      value:
+        - "customs-clearance.customs-calendar"
+    - operator: SET
+      target: "training.cache-cluster"
+      layer: technology
+      field: applications
+      value:
+        - "gate-control.gate-gateway-core"
+        - "lighthouse-service.lighthouse-forms"
+        - "lock-gates.lock-gateway"
+    - operator: SET
+      target: "training.job-scheduler"
+      layer: technology
+      field: applications
+      value:
+        - "customs-clearance.customs-alerts-v2"
+        - "ferry-ticketing.ferry-reporter-next"

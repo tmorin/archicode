@@ -11,7 +11,7 @@ import lombok.val;
 import picocli.CommandLine;
 
 /**
- * List the layered plateaus of the workspace: each, the plateau it overrides, and where its existence comes from.
+ * List the plateaus of the workspace: each, the plateau it overrides, and where its existence comes from.
  */
 @Slf4j
 @CommandLine.Command(

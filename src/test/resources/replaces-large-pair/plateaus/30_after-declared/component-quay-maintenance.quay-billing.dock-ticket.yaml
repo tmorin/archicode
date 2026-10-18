@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  plateau: "after-declared"
+  parent: "quay-maintenance.quay-billing"
+content:
+  id: "dock-ticket"
+  name: "Dock Ticket"
+  description: "Another thing, filed under the same name."

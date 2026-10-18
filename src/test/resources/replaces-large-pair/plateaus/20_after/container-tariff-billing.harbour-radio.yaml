@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "tariff-billing"
+content:
+  id: "harbour-radio"
+  name: "Harbour Radio"
+  description: "Relays the calls of the vessels to the quay offices."
+  relationships:
+    - destination: "tariff-billing.tariff-reporter"
+      label: "reads from"

@@ -1,6 +1,7 @@
 header:
   kind: "archicode.morin.io/system"
   version: "1"
+  plateau: "after-declared"
 content:
   id: "weather-stations-office"
   name: "Weather Stations Office"

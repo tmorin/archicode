@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after"
+  parent: "prod"
+content:
+  id: "spare"
+  name: "Spare"
+  tags:
+    rendering-stereotypes: "changed"

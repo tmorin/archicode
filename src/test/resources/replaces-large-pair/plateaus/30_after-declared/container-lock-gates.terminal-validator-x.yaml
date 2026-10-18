@@ -1,0 +1,20 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lock-gates"
+content:
+  id: "terminal-validator-x"
+  name: "Terminal Validator X"
+  description: "Keeps the terminal statements for the lock keepers and lists the broken sensors on request."
+  qualifiers:
+    - "Kafka"
+  replaces:
+    - "passenger-terminal.terminal-validator"
+  relationships:
+    - destination: "passenger-terminal.terminal-registry"
+      label: "synchronises with"
+    - destination: "pollution-control.pollution-validator"
+      label: "sends to"
+    - destination: "lock-gates.terminal-planner"
+      label: "reports to"

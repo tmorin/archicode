@@ -1,6 +1,7 @@
 header:
   kind: "archicode.morin.io/container"
   version: "1"
+  plateau: "to-be"
   parent: "warehouse"
 content:
   id: "inventory"

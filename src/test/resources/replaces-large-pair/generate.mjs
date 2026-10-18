@@ -8,7 +8,7 @@
 // `--fp` adds the false positives by level of the tree. Neither changes the files.
 //
 // The output is committed; this script is kept next to it so that the pair reads as a recipe and can be rebuilt (the same seed gives the same bytes).
-//   plateaus/10_before          the harbour as it was: persons, systems (containers, components), environments (nodes), about five hundred elements.
+//   plateaus/10_before          the harbour as it was: persons, systems (containers, components), environments (nodes), about five hundred elements (the root, `baseline`; `plateau.yaml` declares `before`, an empty layer over it).
 //   plateaus/20_after           the harbour a year later, with renames, moves, splits, merges, decoys, plain additions and removals, and NO `replaces`:
 //                               the pair the candidates of the kernel are measured on (ReplacesLargePairTest).
 //   plateaus/30_after-declared  the same plateau where the author wrote `replaces` for every planted answer. `archicode diff` lists the candidates only
@@ -565,77 +565,135 @@ function resolve(dest) {
 const fromOf = (c) => (c.from.length ? c.from : c.origin && ref(c.origin) !== ref(c) ? [c.origin] : []);
 const yamlText = (s) => JSON.stringify(s);
 
-function emitElement(e, sideName, declared, indent, root) {
-  const pad = ' '.repeat(indent);
-  const lines = [];
-  const head = root ? '' : '- ';
-  const p = root ? pad : pad + '  ';
-  const first = (text) => lines.push((root ? pad : pad + '- ') + text);
-  const more = (text) => lines.push((root ? pad : pad + '  ') + text);
-  const key = (name, text) => (lines.length === 0 ? first(`${name}: ${text}`) : more(`${name}: ${text}`));
-  if (!root) key('kind', yamlText(e.kind));
-  key('id', yamlText(e.id));
-  key('name', yamlText(e.name));
-  if (e.description) key('description', yamlText(e.description));
-  if (e.qualifiers.length) {
-    key('qualifiers', '');
-    lines[lines.length - 1] = lines[lines.length - 1].replace(/: $/, ':');
-    e.qualifiers.forEach((q) => lines.push(p + '  - ' + yamlText(q)));
-  }
-  if (declared && sideName === 'target') {
-    const from = fromOf(e).map(refOf).sort();
-    if (from.length) {
-      key('replaces', '');
-      lines[lines.length - 1] = lines[lines.length - 1].replace(/: $/, ':');
-      from.forEach((r) => lines.push(p + '  - ' + yamlText(r)));
-    }
-  }
-  void head;
+// What an element says in a manifest, as data (the manifests of every plateau are written from it).
+function dataOf(e, sideName, declared) {
+  const data = { kind: e.kind, id: e.id, name: e.name, description: e.description || '', qualifiers: [...e.qualifiers], replaces: [], applications: [], relationships: [], children: [] };
+  if (declared && sideName === 'target') data.replaces = fromOf(e).map(refOf).sort();
   const resolveApp = (a) => (sideName === 'base' ? a : resolve(a));
-  const apps = [...new Set(e.applications.map(resolveApp).filter(Boolean).map(refOf))].sort();
-  if (apps.length) {
-    key('applications', '');
-    lines[lines.length - 1] = lines[lines.length - 1].replace(/: $/, ':');
-    apps.forEach((a) => lines.push(p + '  - ' + yamlText(a)));
-  }
-  const rels = [];
+  data.applications = [...new Set(e.applications.map(resolveApp).filter(Boolean).map(refOf))].sort();
   for (const r of e.rels) {
     const dest = sideName === 'base' ? r.dest : resolve(r.dest);
-    if (dest && !rels.some((x) => x.dest === refOf(dest) && x.label === r.label)) rels.push({ dest: refOf(dest), label: r.label });
+    if (dest && !data.relationships.some((x) => x.destination === refOf(dest) && x.label === r.label)) data.relationships.push({ destination: refOf(dest), label: r.label });
   }
-  if (rels.length) {
+  for (const c of e.children) data.children.push(dataOf(c, sideName, declared));
+  return data;
+}
+function emitData(data, indent, root) {
+  const pad = ' '.repeat(indent);
+  const lines = [];
+  const p = root ? pad : pad + '  ';
+  const key = (name, text) => lines.push((lines.length === 0 && !root ? pad + '- ' : p) + `${name}${text ? ': ' + text : ':'}`);
+  if (!root) key('kind', yamlText(data.kind));
+  key('id', yamlText(data.id));
+  key('name', yamlText(data.name));
+  if (data.description) key('description', yamlText(data.description));
+  const list = (name, items) => {
+    if (!items.length) return;
+    key(name, '');
+    items.forEach((q) => lines.push(p + '  - ' + yamlText(q)));
+  };
+  list('qualifiers', data.qualifiers);
+  list('replaces', data.replaces);
+  list('applications', data.applications);
+  if (data.relationships.length) {
     key('relationships', '');
-    lines[lines.length - 1] = lines[lines.length - 1].replace(/: $/, ':');
-    for (const r of rels) {
-      lines.push(p + '  - destination: ' + yamlText(r.dest));
+    for (const r of data.relationships) {
+      lines.push(p + '  - destination: ' + yamlText(r.destination));
       lines.push(p + '    label: ' + yamlText(r.label));
     }
   }
-  if (e.children.length) {
+  if (data.children.length) {
     key('elements', '');
-    lines[lines.length - 1] = lines[lines.length - 1].replace(/: $/, ':');
-    for (const c of e.children) lines.push(...emitElement(c, sideName, declared, indent + (root ? 2 : 4), false));
+    for (const c of data.children) lines.push(...emitData(c, indent + (root ? 2 : 4), false));
   }
   return lines;
 }
-function emitRoot(e, sideName, declared) {
-  const header = ['header:', `  kind: "archicode.morin.io/${e.kind}"`, '  version: "1"', 'content:'];
-  return header.concat(emitElement(e, sideName, declared, 2, true)).join('\n') + '\n';
+const manifestHeader = (kind, plateau, parent) =>
+  ['header:', `  kind: "archicode.morin.io/${kind}"`, '  version: "1"', ...(plateau ? [`  plateau: ${yamlText(plateau)}`] : []), ...(parent ? [`  parent: ${yamlText(parent)}`] : []), 'content:'];
+function emitRoot(data) {
+  return manifestHeader(data.kind).concat(emitData(data, 2, true)).join('\n') + '\n';
 }
-function writePlateau(dir, roots, sideName, declared) {
+const fileOf = (layer, kind, reference) => `${layer === 'technology' ? (kind === 'environment' ? 'env' : kind) : kind}-${reference}.yaml`;
+function writeBase(dir, roots) {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
-  for (const r of roots) fs.writeFileSync(path.join(dir, `${r.layer === 'technology' ? 'env' : r.kind}-${r.id}.yaml`), emitRoot(r, sideName, declared));
+  for (const r of roots) fs.writeFileSync(path.join(dir, fileOf(r.layer, r.kind, r.id)), emitRoot(dataOf(r, 'base', false)));
+  fs.writeFileSync(path.join(dir, 'plateau.yaml'), plateauManifest({ id: 'before', name: 'Before' }, []));
+}
+
+// A plateau is a layer over `before` (the layers of wave 014): the elements it adds are manifests that say `plateau:` in their header, and
+// everything else it changes is a patch of its `plateau.yaml`: a REMOVE for what only `before` has (what pointed at it goes with it), a SET
+// for a field of an element both have. The result is the same graph as the complete folder this generator used to write.
+const yamlBlock = (value, indent) => {
+  const pad = ' '.repeat(indent);
+  if (Array.isArray(value)) {
+    if (!value.length) return ' []';
+    return '\n' + value.map((item) => (typeof item === 'object' ? `${pad}- destination: ${yamlText(item.destination)}\n${pad}  label: ${yamlText(item.label)}` : `${pad}- ${yamlText(item)}`)).join('\n');
+  }
+  return ' ' + yamlText(value);
+};
+function plateauManifest({ id, name, override }, patches) {
+  const lines = ['header:', '  kind: "archicode.morin.io/plateau"', '  version: "1"', 'content:', `  id: ${yamlText(id)}`];
+  if (name) lines.push(`  name: ${yamlText(name)}`);
+  if (override) lines.push(`  override: ${yamlText(override)}`);
+  if (patches.length) {
+    lines.push('  patches:');
+    for (const patch of patches) {
+      lines.push(`    - operator: ${patch.operator}`, `      target: ${yamlText(patch.target)}`);
+      if (patch.layer === 'technology') lines.push('      layer: technology');
+      if (patch.field) lines.push(`      field: ${patch.field}`, `      value:${yamlBlock(patch.value, 8)}`);
+    }
+  }
+  return lines.join('\n') + '\n';
+}
+function writeLayer(dir, plateau, baseData, targetData) {
+  const baseMap = new Map();
+  const targetMap = new Map();
+  for (const [map, datas, roots] of [[baseMap, baseData, baseRoots], [targetMap, targetData, targetRoots]]) {
+    const visit = (data, layer, reference, parentKey) => {
+      const key = `${layer}:${reference}`;
+      map.set(key, { data, layer, reference, parentKey });
+      for (const c of data.children) visit(c, layer, `${reference}.${c.id}`, key);
+    };
+    roots.forEach((r, i) => visit(datas[i], r.layer, r.id, null));
+  }
+  const patches = [];
+  // what only `before` has: the top-most of each removed subtree
+  for (const [key, x] of [...baseMap].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    if (targetMap.has(key) || (x.parentKey && !targetMap.has(x.parentKey))) continue;
+    patches.push({ operator: 'REMOVE', target: x.reference, layer: x.layer });
+  }
+  // a field of an element both have
+  for (const [key, x] of [...targetMap].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    const before = baseMap.get(key);
+    if (!before) continue;
+    if (before.data.kind !== x.data.kind) throw new Error('the kind of ' + key + ' changed');
+    for (const field of ['name', 'description', 'qualifiers', 'applications', 'relationships']) {
+      if (JSON.stringify(before.data[field]) !== JSON.stringify(x.data[field])) patches.push({ operator: 'SET', target: x.reference, layer: x.layer, field, value: x.data[field] });
+    }
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'plateau.yaml'), plateauManifest(plateau, patches));
+  // what only the plateau has: the top-most of each new subtree is a manifest (a nested element goes with its parent)
+  for (const [key, x] of targetMap) {
+    if (baseMap.has(key) || (x.parentKey && !baseMap.has(x.parentKey))) continue;
+    const parent = x.parentKey ? x.parentKey.slice(x.parentKey.indexOf(':') + 1) : null;
+    const text = manifestHeader(x.data.kind, plateau.id, parent).concat(emitData(x.data, 2, true)).join('\n') + '\n';
+    fs.writeFileSync(path.join(dir, fileOf(x.layer, x.data.kind, x.reference)), text);
+  }
+  return patches.length;
 }
 const plateaus = path.join(here, 'plateaus');
-writePlateau(path.join(plateaus, '10_before'), baseRoots, 'base', false);
+writeBase(path.join(plateaus, '10_before'), baseRoots);
+const baseData = baseRoots.map((r) => dataOf(r, 'base', false));
 // resolve() rotates the pieces of a split, so the plain and the declared plateau must see the same rotation: reset it before each write
 const snapshot = new Map([...redirect].map(([k, v]) => [k, [...v]]));
 const reset = () => snapshot.forEach((v, k) => redirect.set(k, [...v]));
 reset();
-writePlateau(path.join(plateaus, '20_after'), targetRoots, 'target', false);
+writeLayer(path.join(plateaus, '20_after'), { id: 'after', name: 'After', override: 'before' }, baseData, targetRoots.map((r) => dataOf(r, 'target', false)));
 reset();
-writePlateau(path.join(plateaus, '30_after-declared'), targetRoots, 'target', true);
+writeLayer(path.join(plateaus, '30_after-declared'), { id: 'after-declared', name: 'After, declared', override: 'before' }, baseData, targetRoots.map((r) => dataOf(r, 'target', true)));
 
 // ---- the answers
 const layerOf = (e) => (e.parent ? layerOf(e.parent) : e.layer);

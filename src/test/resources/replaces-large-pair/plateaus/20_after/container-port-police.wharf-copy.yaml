@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "port-police"
+content:
+  id: "wharf-copy"
+  name: "Wharf Copy"
+  description: "Prints the page"

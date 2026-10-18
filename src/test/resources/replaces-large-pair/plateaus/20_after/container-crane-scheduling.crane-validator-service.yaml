@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "crane-scheduling"
+content:
+  id: "crane-validator-service"
+  name: "Crane Validator"
+  description: "Checks the crane notices for the duty officer and flags the changed plans after each call."
+  relationships:
+    - destination: "crane-scheduling.crane-statistics"
+      label: "sends to"
+    - destination: "dredging-works.dredging-statistics"
+      label: "asks"

@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "fire-brigade"
+content:
+  id: "fire-statistics-live"
+  name: "Fire Statistics"
+  description: "Takes over the part that has to stay in the harbour."
+  replaces:
+    - "fire-brigade.fire-statistics"
+  relationships:
+    - destination: "fire-brigade.fire-reporter"
+      label: "fetches from"
+    - destination: "fire-brigade.fire-forms-live"
+      label: "asks"

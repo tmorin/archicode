@@ -1,6 +1,6 @@
 'use strict';
 // #71 (wave 013, run 0066): the panel of a removed node lists the applications it deployed, as the panel of a changed node does, with the same label
-// ("Applications deployed") and the Before line alone (a node that is gone has no After). On the Brightcart folders (invented, src/test/resources/brightcart/folders),
+// ("Applications deployed") and the Before line alone (a node that is gone has no After). On the layered Brightcart (invented, src/test/resources/brightcart/layered),
 // `inhouse` drawn and compared with `baseline`: the removed `Cache VM` (prod.dc.cache-vm) deployed `shop.cache` in the baseline's own file, and the changed `staging.vm`
 // shows its applications before and after. What the removed panel reads is the other plateau's file as it was written: `shop.cache`, as the relationships of the same panel
 // are listed with the destinations the file wrote. (The Before of `staging.vm` reads a reference to an element that another replaced as the replacing one, `commerce.cart-store`,
@@ -12,20 +12,20 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 
-const FOLDERS = path.resolve(__dirname, '../../resources/brightcart/folders');
+const LAYERED = path.resolve(__dirname, '../../resources/brightcart/layered');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
 async function inhouseAgainstBaseline() {
   const sandbox = createApp();
   const state = sandbox.__state();
-  const handle = makeDirHandle(FOLDERS);
-  state.folder = { handle, name: 'folders' };
+  const handle = makeDirHandle(LAYERED);
+  state.folder = { handle, name: 'layered' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(handle);
   await sandbox.loadViewpointKernel();
-  await sandbox.switchPlateau('inhouse');
-  await sandbox.setCompareTo('baseline');
+  sandbox.drawPlateau('inhouse');
+  sandbox.compareWithPlateau('baseline');
   assert.equal(state.baseline.plateau.id, 'baseline');
   return { sandbox, state };
 }

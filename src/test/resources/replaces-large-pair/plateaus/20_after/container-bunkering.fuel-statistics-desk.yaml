@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "bunkering"
+content:
+  id: "fuel-statistics-desk"
+  name: "Fuel Statistics Desk"
+  description: "Keeps all the fuel statements for the harbour master and informs the duplicate entries at dusk."
+  relationships:
+    - destination: "bunkering.fuel-gateway"
+      label: "reads from"

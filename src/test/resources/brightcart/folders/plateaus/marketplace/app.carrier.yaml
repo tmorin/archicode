@@ -1,9 +1,0 @@
-header:
-  kind: "archicode.morin.io/system"
-  version: "1"
-content:
-  id: "carrier"
-  name: "Carrier API"
-  description: "Books parcels and returns tracking numbers."
-  tags:
-    rendering-stereotypes: "external"

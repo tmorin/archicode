@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "customs-clearance"
+content:
+  id: "customs-reporter-v2"
+  name: "Customs Reporter"
+  description: "Summarises the customs counts for the tug captains and alerts the idle cranes twice a day."
+  relationships:
+    - destination: "customs-clearance.customs-forms"
+      label: "reads from"

@@ -1,0 +1,36 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "after"
+  name: "After"
+  override: "before"
+  patches:
+    # the loans changed; the author's words on them are not the state
+    - operator: SET
+      target: "library.loans"
+      field: description
+      value: "Lends the books for three weeks."
+    - operator: SET
+      target: "library.loans"
+      field: tags
+      value: {rendering-stereotypes: "removed new"}
+    - operator: SET
+      target: "library.catalog"
+      field: tags
+      value: {rendering-stereotypes: "changed contains-changes"}
+    # what the new elements replace
+    - operator: REMOVE
+      target: "library.counter"
+    - operator: REMOVE
+      target: "library.report"
+    - operator: REMOVE
+      target: "library.hall"
+    - operator: REMOVE
+      target: "library.annex"
+    # the vault is only in `before`
+    - operator: REMOVE
+      target: "library.vault"
+    - operator: REMOVE
+      target: "prod.backup"
+      layer: technology

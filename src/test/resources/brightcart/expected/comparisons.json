@@ -23,9 +23,7 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau saas",
-    "layeredCommand": "archicode diff --plateau saas",
-    "layeredGives": null,
-    "layeredIgnoredReplaces": 0,
+    "gives": null,
     "ignoredReplaces": 0,
     "note": null
   },
@@ -53,9 +51,7 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau inhouse",
-    "layeredCommand": "archicode diff --plateau inhouse",
-    "layeredGives": null,
-    "layeredIgnoredReplaces": 0,
+    "gives": null,
     "ignoredReplaces": 0,
     "note": null
   },
@@ -83,9 +79,7 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau marketplace",
-    "layeredCommand": "archicode diff --plateau marketplace",
-    "layeredGives": null,
-    "layeredIgnoredReplaces": 0,
+    "gives": null,
     "ignoredReplaces": 0,
     "note": null
   },
@@ -113,9 +107,8 @@
       "removed": 9
     },
     "verified": "model only",
-    "command": null,
-    "layeredCommand": "archicode diff --plateau marketplace --against baseline",
-    "layeredGives": [
+    "command": "archicode diff --plateau marketplace --against baseline",
+    "gives": [
       39,
       3,
       7,
@@ -126,9 +119,8 @@
       1,
       9
     ],
-    "layeredIgnoredReplaces": 1,
-    "ignoredReplaces": null,
-    "note": "Needs the composition of `replaces` (L9). The old tool cannot say this, and the layered tool does not compose them either: it gives one move less (see `layeredGives`)."
+    "ignoredReplaces": 1,
+    "note": "Needs the composition of `replaces` (L9). The tool does not compose them: it gives one move less (see `gives`)."
   },
   {
     "id": "P5",
@@ -153,10 +145,8 @@
       "removed": 7
     },
     "verified": "archicode diff",
-    "command": "archicode diff --plateau inhouse --baseline saas",
-    "layeredCommand": "archicode diff --plateau inhouse --against saas",
-    "layeredGives": null,
-    "layeredIgnoredReplaces": 7,
+    "command": "archicode diff --plateau inhouse --against saas",
+    "gives": null,
     "ignoredReplaces": 7,
     "note": null
   },
@@ -182,12 +172,10 @@
       "changed": 0,
       "removed": 22
     },
-    "verified": "archicode diff",
-    "command": "archicode diff --plateau marketplace --baseline baseline",
-    "layeredCommand": null,
-    "layeredGives": null,
-    "layeredIgnoredReplaces": null,
-    "ignoredReplaces": 1,
-    "note": "What the current tool prints: only the last step's `replaces` count."
+    "verified": "model only",
+    "command": null,
+    "gives": null,
+    "ignoredReplaces": null,
+    "note": "What a tool that reads only the last step's `replaces` prints (the tool of waves 008 to 013, whose option for it no longer exists)."
   }
 ]

@@ -1,9 +1,0 @@
-header:
-  kind: "archicode.morin.io/person"
-  version: "1"
-content:
-  id: "customer"
-  name: "Customer"
-  relationships:
-    - destination: "shop.web"
-      label: "orders on"

@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  plateau: "after-declared"
+  parent: "quay-maintenance.quay-tracker"
+content:
+  id: "gate-pass"
+  name: "Gate Pass"
+  description: "Another thing, filed under the same name."

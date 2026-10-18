@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after"
+  parent: "preprod"
+content:
+  id: "identity-server-main"
+  name: "Identity Server"
+  description: "Signs the users in and tells the applications who they are."
+  applications:
+    - "cold-storage.combined-statistics"
+    - "container-yard.yard-forms-hub"
+    - "weather-stations-office.weather-dashboard"

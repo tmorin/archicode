@@ -49,14 +49,17 @@ async function startPage(options) {
     appState.folder = { handle: mem.handle, name: 'ws' };
     appState.permissionState = 'granted';
     opened = { sandbox: app, state: appState, kernel: await app.loadViewpointKernel() };
-  } else if (options && options.dir) { // a folder of the repository, read in place (the Brightcart folders), on the plateau asked for
+  } else if (options && options.dir) { // a folder of the repository, read in place (the layered Brightcart), on the plateau asked for
     const app = createApp();
     const handle = makeDirHandle(options.dir);
     const appState = app.__state();
     appState.folder = { handle, name: path.basename(options.dir) };
     appState.permissionState = 'granted';
     await app.loadWorkspace(handle);
-    if (options.plateau) await app.switchPlateau(options.plateau);
+    if (options.plateau) {
+      if (appState.layers) app.drawPlateau(options.plateau); // layers: a click on a node of the band
+      else await app.switchPlateau(options.plateau);
+    }
     opened = { sandbox: app, state: appState, kernel: await app.loadViewpointKernel() };
   } else {
     opened = await openFixture();

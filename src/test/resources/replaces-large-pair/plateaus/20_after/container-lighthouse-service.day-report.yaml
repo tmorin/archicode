@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "lighthouse-service"
+content:
+  id: "day-report"
+  name: "Day Report"
+  description: "Prints the list of the lorries that stay in the car park overnight."

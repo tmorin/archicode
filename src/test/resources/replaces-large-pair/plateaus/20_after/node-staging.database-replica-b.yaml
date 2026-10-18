@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after"
+  parent: "staging"
+content:
+  id: "database-replica-b"
+  name: "Database Replica B"
+  description: "Holds a copy of the data for the reads and the reports."
+  applications:
+    - "crew-visas.crew-billing"
+    - "weather-stations-office.weather-search"

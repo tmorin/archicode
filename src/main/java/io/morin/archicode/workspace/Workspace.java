@@ -47,7 +47,7 @@ public class Workspace {
 
     /**
      * The plateaus of a workspace that has layered plateaus (see {@link io.morin.archicode.resource.plateau.PlateauTree}),
-     * which {@link #plateau} is one of; null for a workspace without plateaus and for one that has {@code settings.plateaus}.
+     * which {@link #plateau} is one of; null for a workspace without plateaus.
      */
     @JsonIgnore
     @Getter

@@ -1,0 +1,39 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "to-be"
+  name: "To be"
+  override: "as-is"
+  patches:
+    # the legacy batch goes, with the links towards it and its place in the cluster
+    - operator: REMOVE
+      target: "shop.legacy"
+    - operator: SET
+      target: "shop.web"
+      field: qualifiers
+      value: ["React", "SPA"]
+    # the label of one relationship changes
+    - operator: SET
+      target: "shop.api"
+      field: relationships
+      where: {destination: "shop.db", label: "reads"}
+      value: {label: "reads and writes"}
+    - operator: SET
+      target: "shop.db"
+      field: description
+      value: "Holds the catalog."
+    # reworded only
+    - operator: SET
+      target: "warehouse.stock"
+      field: name
+      value: "Stock keeping"
+    - operator: ADD
+      target: "customer"
+      field: relationships
+      value: {destination: "shop.mobile", label: "orders on", qualifiers: ["HTTPS"]}
+    - operator: ADD
+      target: "prod.cluster"
+      layer: technology
+      field: applications
+      value: ["shop.notifications"]

@@ -72,7 +72,10 @@ class UnionWorkspaceTest {
             "views-to-be",
             workspaceFactory.create(WORKSPACE, null, "to-be").getSettings().getViews().getPath()
         );
-        assertEquals("views-later", workspaceFactory.create(WORKSPACE).getSettings().getViews().getPath());
+        assertEquals(
+            "views-later",
+            workspaceFactory.create(WORKSPACE, null, "later").getSettings().getViews().getPath()
+        );
         assertEquals(
             "out-as-is",
             workspaceFactory.create(WORKSPACE, Path.of("out"), "as-is").getSettings().getViews().getPath()

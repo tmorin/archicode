@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "lighthouse-service"
+content:
+  id: "truck-counter"
+  name: "Truck Counter"
+  description: "Counts the trucks that enter the terminal every hour and shows the total on the screen."

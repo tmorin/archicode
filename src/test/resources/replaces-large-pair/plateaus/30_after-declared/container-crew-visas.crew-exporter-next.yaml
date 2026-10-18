@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "crew-visas"
+content:
+  id: "crew-exporter-next"
+  name: "Crew Exporter Next"
+  description: "Tracks the crew reports for the harbour auditors and summarises the new vessels during the winter."
+  qualifiers:
+    - "REST"
+  replaces:
+    - "crew-visas.crew-exporter"
+  relationships:
+    - destination: "crew-visas.crew-gateway"
+      label: "notifies"

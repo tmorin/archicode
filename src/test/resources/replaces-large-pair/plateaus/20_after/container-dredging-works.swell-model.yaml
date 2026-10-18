@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "dredging-works"
+content:
+  id: "swell-model"
+  name: "Swell Model"
+  description: "Predicts the height of the waves at the entrance of the harbour."
+  relationships:
+    - destination: "fire-brigade.fire-reporter"
+      label: "reads from"

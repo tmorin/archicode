@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "customs-clearance"
+content:
+  id: "customs-search-v2"
+  name: "Customs Search"
+  description: "Reconciles the customs readings for the shipping agents and compares the night shifts after every storm."
+  qualifiers:
+    - "Kafka"
+  replaces:
+    - "customs-clearance.customs-search"
+  relationships:
+    - destination: "customs-clearance.customs-archive-store"
+      label: "reads from"

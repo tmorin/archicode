@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "mooring-lines"
+content:
+  id: "mooring-registry-two"
+  name: "Mooring Registry Two"
+  description: "Mirrors the mooring reports for the dredging teams and lists the extra charges at dusk."
+  replaces:
+    - "mooring-lines.mooring-registry"
+  relationships:
+    - destination: "lock-gates.lock-statistics"
+      label: "sends to"

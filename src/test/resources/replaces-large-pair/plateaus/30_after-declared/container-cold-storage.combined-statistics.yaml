@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "cold-storage"
+content:
+  id: "combined-statistics"
+  name: "Combined Statistics"
+  description: "Checks the cold-store requests for the port police and weighs the night shifts once a week."
+  replaces:
+    - "cold-storage.cold-reporter"
+    - "cold-storage.cold-statistics"
+  relationships:
+    - destination: "cold-storage.cold-tracker"
+      label: "reports to"
+    - destination: "dredging-works.dredging-exporter"
+      label: "synchronises with"

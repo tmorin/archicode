@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lighthouse-service"
+content:
+  id: "shift-board"
+  name: "Shift Board"
+  description: "Shows the crews waiting at the dock and their expected time of duty."

@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "mooring-lines"
+content:
+  id: "mooring-registry-one"
+  name: "Mooring Registry One"
+  description: "Reconciles the mooring reports for the dredging teams and lists the extra charges at dusk."
+  replaces:
+    - "mooring-lines.mooring-registry"
+  relationships:
+    - destination: "fire-brigade.fire-alerts-intake"
+      label: "sends to"
+    - destination: "mooring-lines.mooring-search"
+      label: "synchronises with"

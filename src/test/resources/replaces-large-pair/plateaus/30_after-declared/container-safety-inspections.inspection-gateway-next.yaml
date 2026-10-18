@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "safety-inspections"
+content:
+  id: "inspection-gateway-next"
+  name: "Inspection Gateway Next"
+  description: "Validates the inspection readings for the fishing boats and maps the extra charges during the winter."
+  replaces:
+    - "safety-inspections.inspection-gateway"
+  relationships:
+    - destination: "safety-inspections.inspection-billing"
+      label: "synchronises with"

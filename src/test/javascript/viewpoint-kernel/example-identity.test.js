@@ -36,18 +36,20 @@ async function editorOnTheExample() {
   await sandbox.loadWorkspace(handle);
   assert.equal(state.fatalError, null);
   await sandbox.loadViewpointKernel();
+  sandbox.drawPlateau('to-be');
   return { sandbox, state };
 }
 
-test('the example loads in the editor with its two plateaus, the last one drawn', async () => {
-  const { state } = await editorOnTheExample();
-  assert.deepEqual(plain(state.plateaus.map((p) => p.id)), ['as-is', 'to-be']);
-  assert.equal(state.plateau.id, 'to-be');
+test('the example loads in the editor as layers: the root, the two plateaus, and to-be drawn when it is asked for', async () => {
+  const { sandbox, state } = await editorOnTheExample();
+  assert.deepEqual(plain([...state.plateauTree.nodes.keys()].sort()), ['as-is', 'baseline', 'to-be']);
+  sandbox.drawPlateau('to-be');
+  assert.equal(state.layers.current, 'to-be');
 });
 
 test('the editor reads the same moved, split and merged elements and the same candidate as the table of the manual', async () => {
   const { sandbox, state } = await editorOnTheExample();
-  await sandbox.setCompareTo('as-is');
+  await sandbox.compareWithPlateau('as-is');
   assert.equal(state.baseline.plateau.id, 'as-is');
   const comparison = sandbox.comparisonState();
   const quoted = quotedTable();
@@ -60,7 +62,7 @@ test('the editor reads the same moved, split and merged elements and the same ca
 
 test('what moved with its child, and what points at it, is one change and no other', async () => {
   const { sandbox } = await editorOnTheExample();
-  await sandbox.setCompareTo('as-is');
+  await sandbox.compareWithPlateau('as-is');
   const comparison = sandbox.comparisonState();
   const byReference = (reference) => comparison.changes.find((row) => row.thing === 'element' && row.reference === reference);
   assert.deepEqual(plain(byReference('warehouse.inventory').replaces), ['shop.inventory']);

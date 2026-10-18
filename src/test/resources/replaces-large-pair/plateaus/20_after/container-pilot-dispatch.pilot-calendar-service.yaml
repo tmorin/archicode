@@ -1,0 +1,18 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "pilot-dispatch"
+content:
+  id: "pilot-calendar-service"
+  name: "Pilot Calendar"
+  description: "Tracks the pilot requests for the harbour auditors and compares the damaged goods on Mondays."
+  qualifiers:
+    - "Java"
+  relationships:
+    - destination: "visitor-centre.visitor-scheduler"
+      label: "sends to"
+    - destination: "pilot-dispatch.pilot-notifier"
+      label: "fetches from"
+    - destination: "pilot-dispatch.pilot-reporter"
+      label: "reports to"

@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "office"
+content:
+  id: "window"
+  name: "Window"
+  tags:
+    rendering-stereotypes: "new"

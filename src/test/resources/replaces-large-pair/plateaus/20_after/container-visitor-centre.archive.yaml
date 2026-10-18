@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "visitor-centre"
+content:
+  id: "archive"
+  name: "Archive"
+  description: "Publishes the lock schedules for the port authority board and reminds the heavy loads after each call."

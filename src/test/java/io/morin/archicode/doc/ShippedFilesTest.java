@@ -5,11 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.ArchiCodeException;
-import io.morin.archicode.MapperFactory;
-import io.morin.archicode.MapperFormat;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -39,9 +36,6 @@ class ShippedFilesTest {
 
     @Inject
     WorkspaceFactory workspaceFactory;
-
-    @Inject
-    MapperFactory mapperFactory;
 
     /** Every {@code workspace.yaml} under the roots, from the root of the repository, with {@code /}, sorted. */
     @SneakyThrows
@@ -98,28 +92,18 @@ class ShippedFilesTest {
     }
 
     /**
-     * The plateaus of a workspace, in the order of the file, or of the tree for layered plateaus (a plateau is then named with
-     * {@code --plateau}, since a tree that forks has no default); none for a workspace that declares none.
+     * The plateaus of a workspace, in the order of the tree (a plateau is then named with {@code --plateau}, since a tree that
+     * forks has no default); none for a workspace that declares none.
      */
-    @SneakyThrows
     private List<String> plateausOf(Path workspace) {
         val ids = new ArrayList<String>();
-        for (JsonNode plateau : mapperFactory
-            .create(MapperFormat.YAML)
-            .readTree(workspace.toFile())
-            .path("settings")
-            .path("plateaus")) {
-            ids.add(plateau.path("id").asText());
-        }
-        if (ids.isEmpty()) {
-            try {
-                val tree = workspaceFactory.plateauTree(workspace);
-                if (tree.isLayered()) {
-                    ids.addAll(tree.ids());
-                }
-            } catch (RuntimeException e) {
-                // a workspace the tree cannot be read of is loaded once, and tells why
+        try {
+            val tree = workspaceFactory.plateauTree(workspace);
+            if (tree.isLayered()) {
+                ids.addAll(tree.ids());
             }
+        } catch (RuntimeException e) {
+            // a workspace the tree cannot be read of is loaded once, and tells why
         }
         return ids;
     }
@@ -128,7 +112,6 @@ class ShippedFilesTest {
     void shouldFindTheWorkspacesOfTheRepository() {
         val found = workspaces();
         assertTrue(found.size() >= 17, "the manual and the fixtures ship at least 17 workspaces: " + found);
-        assertTrue(found.contains("src/test/resources/brightcart/folders/workspace.yaml"), found.toString());
         assertTrue(found.contains("src/doc/examples/domain_plateaus/workspace.yaml"), found.toString());
         assertTrue(found.contains("src/test/resources/brightcart/layered/workspace.yaml"), found.toString());
     }

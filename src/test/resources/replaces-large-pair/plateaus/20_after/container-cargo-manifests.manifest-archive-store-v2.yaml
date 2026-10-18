@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "cargo-manifests"
+content:
+  id: "manifest-archive-store-v2"
+  name: "Manifest Archive Store"
+  description: "Computes the manifest bookings for the port authority board and rates the late arrivals each hour."
+  relationships:
+    - destination: "truck-parking.parking-search"
+      label: "reads from"
+    - destination: "cargo-manifests.manifest-search"
+      label: "sends to"

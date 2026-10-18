@@ -1,0 +1,20 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "cold-storage"
+content:
+  id: "cold-archive-store-and-forms"
+  name: "Cold Archive Store"
+  description: "Publishes the cold-store notices for the terminal operators and files the spill reports at low tide."
+  relationships:
+    - destination: "cold-storage.cold-notifier"
+      label: "notifies"
+    - destination: "lighthouse-service.lighthouse-statistics"
+      label: "synchronises with"
+    - destination: "cold-storage.cold-sync-all"
+      label: "asks"
+    - destination: "cold-storage.cold-archive-store-and-forms"
+      label: "fetches from"
+    - destination: "cold-storage.cold-archive-store-and-forms"
+      label: "reads from"

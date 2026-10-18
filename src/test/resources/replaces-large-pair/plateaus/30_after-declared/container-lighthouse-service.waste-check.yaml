@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lighthouse-service"
+content:
+  id: "waste-check"
+  name: "Waste Check"
+  description: "Checks every outgoing waste declaration against the harbour regulations."

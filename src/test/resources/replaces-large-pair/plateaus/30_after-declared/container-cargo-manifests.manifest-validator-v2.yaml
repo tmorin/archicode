@@ -1,0 +1,18 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "cargo-manifests"
+content:
+  id: "manifest-validator-v2"
+  name: "Manifest Validator"
+  description: "Summarises the manifest statements for the ferry crews and notifies the missing papers after each call."
+  replaces:
+    - "cargo-manifests.manifest-validator"
+  relationships:
+    - destination: "cargo-manifests.manifest-billing"
+      label: "asks"
+    - destination: "buoy-network.buoy-alerts"
+      label: "reports to"
+    - destination: "customs-clearance.customs-reporter-v2"
+      label: "notifies"

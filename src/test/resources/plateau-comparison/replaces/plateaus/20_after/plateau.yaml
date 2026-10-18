@@ -1,0 +1,30 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "after"
+  override: "before"
+  patches:
+    # the till moved to the stock system (`stock.till` says it replaces `shop.till`), and what pointed at it follows
+    - operator: REMOVE
+      target: "shop.till"
+    - operator: ADD
+      target: "shop.web"
+      field: relationships
+      value: {destination: "stock.till", label: "takes payments with"}
+    - operator: ADD
+      target: "prod.cluster"
+      layer: technology
+      field: applications
+      value: ["stock.till"]
+    # the report was split in two
+    - operator: REMOVE
+      target: "shop.report"
+    # the mailer was rewritten under another name, and nobody said so
+    - operator: REMOVE
+      target: "shop.mailer"
+    # the bin and the shelf were merged into a place
+    - operator: REMOVE
+      target: "stock.bin"
+    - operator: REMOVE
+      target: "stock.shelf"

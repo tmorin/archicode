@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "after"
+  override: "before"
+  patches:
+    # the order service is split in two (`orders-intake` and `orders-billing` say they replace it); what pointed at it follows
+    - operator: REMOVE
+      target: "shop.orders"
+    - operator: ADD
+      target: "shop.web"
+      field: relationships
+      value:
+        - {destination: "shop.orders-intake", label: "places orders with"}
+        # one relationship of the web site is plainly new
+        - {destination: "shop.db", label: "reads"}

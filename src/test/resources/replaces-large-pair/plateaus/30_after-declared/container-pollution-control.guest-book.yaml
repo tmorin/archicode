@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "pollution-control"
+content:
+  id: "guest-book"
+  name: "Guest Book"
+  description: "Lets the visitors of the port leave a message."

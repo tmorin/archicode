@@ -18,7 +18,7 @@ const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
-const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart/folders');
+const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart/layered');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
@@ -346,13 +346,13 @@ test('#37: on the 82 elements of the Brightcart marketplace plateau, with a comp
   const handle = makeDirHandle(BRIGHTCART);
   const sandbox = createApp();
   const state = sandbox.__state();
-  state.folder = { handle, name: 'folders' };
+  state.folder = { handle, name: 'layered' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(handle);
   await sandbox.loadViewpointKernel();
-  await sandbox.switchPlateau('marketplace');
+  sandbox.drawPlateau('marketplace');
   assert.equal(state.index.application.size + state.index.technology.size, 82);
-  await sandbox.setCompareTo('inhouse');
+  sandbox.compareWithPlateau('inhouse');
   const ctx = { sandbox, state };
   const realGet = sandbox.document.getElementById.bind(sandbox.document);
   sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? { id } : realGet(id));

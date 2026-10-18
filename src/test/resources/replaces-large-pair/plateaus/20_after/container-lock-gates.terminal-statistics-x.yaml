@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "lock-gates"
+content:
+  id: "terminal-statistics-x"
+  name: "Terminal Statistics X"
+  description: "Records the terminal statements for the shipping agents and rates the idle cranes after each call."
+  relationships:
+    - destination: "lock-gates.terminal-tracker"
+      label: "fetches from"
+    - destination: "land-leases.lease-importer"
+      label: "reports to"

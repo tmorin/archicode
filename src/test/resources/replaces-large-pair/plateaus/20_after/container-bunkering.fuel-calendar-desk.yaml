@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "bunkering"
+content:
+  id: "fuel-calendar-desk"
+  name: "Fuel Calendar Desk"
+  description: "Converts the fuel readings for the safety office and files the late arrivals each hour and the port authority."
+  qualifiers:
+    - "React"
+  relationships:
+    - destination: "bunkering.fuel-exporter"
+      label: "notifies"

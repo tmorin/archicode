@@ -28,8 +28,8 @@ async function open(compare) {
   await sandbox.loadWorkspace(handle);
   assert.equal(state.fatalError, null);
   await sandbox.loadViewpointKernel();
-  await sandbox.switchPlateau('after');
-  if (compare) await sandbox.setCompareTo('before');
+  await sandbox.drawPlateau('after');
+  if (compare) await sandbox.compareWithPlateau('before');
   return { sandbox, state };
 }
 

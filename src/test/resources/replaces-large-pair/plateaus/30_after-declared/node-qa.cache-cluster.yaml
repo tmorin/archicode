@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after-declared"
+  parent: "qa"
+content:
+  id: "cache-cluster"
+  name: "Cache Cluster"
+  description: "Keeps the hot data in memory for the applications."
+  replaces:
+    - "preprod.cache-cluster"
+  applications:
+    - "quay-maintenance.quay-notifier"
+    - "tide-forecast.tide-dashboard"

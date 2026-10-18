@@ -50,34 +50,15 @@ public class ManifestParser {
     }
 
     /**
-     * Read the manifests that the entries name: a folder (the files directly in it), or a folder and {@code /**} (the
-     * files below it, see {@link ManifestDiscovery}).
+     * Read the manifests, and say what is wrong with the plateaus they write (see {@link PlateauTree}): every mistake of the
+     * tree, then the references declared twice in a plateau, then those declared again in an ancestor, one sentence each.
      *
      * @param workspaceFile the workspace file, or null
      * @param viewsPath     {@code settings.views.path} as written in the workspace file: the folders of the generated views
      *                      are not read below a path that ends in {@code /**}
      */
-    public Parsed parse(Path wksDir, Set<String> manifestsDirs, Path workspaceFile, String viewsPath) {
-        return parse(wksDir, manifestsDirs, workspaceFile, viewsPath, true);
-    }
-
-    /**
-     * Read the manifests, and say what is wrong with the plateaus they write (see {@link PlateauTree}): every mistake of the
-     * tree, then the references declared twice in a plateau, then those declared again in an ancestor, one sentence each.
-     *
-     * @param workspaceFile the workspace file, or null
-     * @param viewsPath     {@code settings.views.path} as written in the workspace file
-     * @param layersAllowed false for a workspace that has {@code settings.plateaus}: it is then an error that a manifest uses
-     *                      layered plateaus, and it is the only thing told about them
-     */
     @SneakyThrows
-    public Parsed parse(
-        Path wksDir,
-        Set<String> manifestsDirs,
-        Path workspaceFile,
-        String viewsPath,
-        boolean layersAllowed
-    ) {
+    public Parsed parse(Path wksDir, Set<String> manifestsDirs, Path workspaceFile, String viewsPath) {
         val map = new HashMap<Class<?>, Set<Candidate>>();
         val views = new ArrayList<Placed<View>>();
         val stories = new ArrayList<Placed<Story>>();
@@ -171,11 +152,6 @@ public class ManifestParser {
                     layeredBy = "`" + source + "` is a manifest of kind `archicode.morin.io/plateau`";
                 }
             }
-        }
-        // `settings.plateaus` and layered plateaus are two ways to say the same thing: a workspace uses one, and nothing else is
-        // told about the layers of one that uses both
-        if (!layersAllowed && layeredBy != null) {
-            throw new ArchiCodeException("%s", settingsPlateausAndLayers(layeredBy));
         }
         // the mistakes of the tree of the plateaus (an id, a parent, a cycle), then what each plateau declares: a reference
         // declared twice in a plateau, or again in one of its ancestors (which needs a tree that is right)
@@ -294,21 +270,6 @@ public class ManifestParser {
             )
         );
         return messages.values().stream().flatMap(Set::stream).toList();
-    }
-
-    /**
-     * The sentence for a workspace that has {@code settings.plateaus} and uses layered plateaus. The editor says the same
-     * ({@code layeredAndSettingsPlateausSentence} in {@code standalone.html}): keep them alike.
-     *
-     * @param layeredBy how the first manifest that uses layers does so (see {@link PlateauTree#layeredBy()})
-     */
-    static String settingsPlateausAndLayers(String layeredBy) {
-        return (
-            "`settings.plateaus` and layered plateaus are both used: " +
-            layeredBy +
-            ". Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind" +
-            " `archicode.morin.io/plateau`"
-        );
     }
 
     /**

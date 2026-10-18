@@ -29,11 +29,9 @@ function untidyFixture() {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'archicode-labels-'));
   folders.push(folder);
   fs.cpSync(FIXTURE, folder, { recursive: true });
-  const web = 'id: "web"\n      name: "Web site"\n      qualifiers:\n        - "React"\n        - "SPA"\n      relationships:\n        - destination: "shop.api"\n          label: "calls"';
-  replaceIn(folder, 'plateaus/20_to-be/shop.yaml', web, web.replace('"calls"', '"calls "'));
-  const mobile = 'id: "mobile"\n      name: "Mobile app"\n      relationships:\n        - destination: "shop.api"\n          label: "calls"';
-  replaceIn(folder, 'plateaus/20_to-be/shop.yaml', mobile, mobile.replace('"calls"', '""'));
-  replaceIn(folder, 'plateaus/20_to-be/customer.yaml', '- destination: "shop.mobile"\n      label: "orders on"', '- destination: "shop.mobile"\n      label: "orders on "');
+  replaceIn(folder, 'plateaus/20_to-be/plateau.yaml', '    - operator: ADD\n      target: "customer"', '    - operator: SET\n      target: "shop.web"\n      field: relationships\n      where: {destination: "shop.api", label: "calls"}\n      value: {label: "calls "}\n    - operator: ADD\n      target: "customer"');
+  replaceIn(folder, 'plateaus/20_to-be/shop.mobile.yaml', 'label: "calls"', 'label: ""');
+  replaceIn(folder, 'plateaus/20_to-be/plateau.yaml', 'label: "orders on"', 'label: "orders on "');
   replaceIn(folder, 'plateaus/10_as-is/shop.yaml', 'label: "delegates to"', 'label: "delegates to "');
   return folder;
 }
@@ -47,8 +45,8 @@ async function open(folder) {
   await sandbox.loadWorkspace(handle);
   assert.equal(state.fatalError, null);
   await sandbox.loadViewpointKernel();
-  await sandbox.switchPlateau(EXPECTED.plateau);
-  await sandbox.setCompareTo(EXPECTED.baseline);
+  await sandbox.drawPlateau(EXPECTED.plateau);
+  await sandbox.compareWithPlateau(EXPECTED.baseline);
   return { sandbox, state };
 }
 

@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "visitor-centre"
+content:
+  id: "statistics"
+  name: "Statistics"
+  description: "Keeps the lock records for the fire crews and maps the unpaid fees twice a day."

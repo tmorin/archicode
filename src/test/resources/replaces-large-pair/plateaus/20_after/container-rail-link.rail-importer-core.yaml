@@ -1,0 +1,18 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "rail-link"
+content:
+  id: "rail-importer-core"
+  name: "Rail Importer Core"
+  description: "Forwards the rail records for the customs officers and informs the old records at low tide."
+  qualifiers:
+    - "REST"
+  relationships:
+    - destination: "rail-link.rail-gateway"
+      label: "publishes to"
+    - destination: "pollution-control.pollution-validator"
+      label: "fetches from"
+    - destination: "cold-storage.cold-sync-all"
+      label: "sends to"

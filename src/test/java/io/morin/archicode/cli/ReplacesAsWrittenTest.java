@@ -43,18 +43,38 @@ class ReplacesAsWrittenTest {
         %s""".formatted(id, id, replaces);
     }
 
-    /** Two plateaus: the mailer and the web site, then the postman, which says {@code replaces} as given, and the web site. */
+    private static String plateau(String id, String override, String patches) {
+        return """
+        header:
+          kind: "archicode.morin.io/plateau"
+          version: "1"
+        content:
+          id: "%s"
+        %s%s""".formatted(id, override == null ? "" : "  override: \"" + override + "\"\n", patches);
+    }
+
+    /**
+     * Two plateaus: the mailer and the web site, then the postman, which says {@code replaces} as given, and the mailer is
+     * removed.
+     */
     @SneakyThrows
     private Path workspace(String replaces) {
         Files.createDirectories(dir.resolve("plateaus/10_before"));
         Files.createDirectories(dir.resolve("plateaus/20_after"));
         Files.writeString(dir.resolve("plateaus/10_before/mailer.yaml"), system("mailer", ""));
         Files.writeString(dir.resolve("plateaus/10_before/web.yaml"), system("web", ""));
-        Files.writeString(dir.resolve("plateaus/20_after/postman.yaml"), system("postman", replaces));
-        Files.writeString(dir.resolve("plateaus/20_after/web.yaml"), system("web", ""));
+        Files.writeString(dir.resolve("plateaus/10_before/plateau.yaml"), plateau("before", null, ""));
+        Files.writeString(
+            dir.resolve("plateaus/20_after/plateau.yaml"),
+            plateau("after", "before", "  patches:\n    - operator: REMOVE\n      target: \"mailer\"\n")
+        );
+        Files.writeString(
+            dir.resolve("plateaus/20_after/postman.yaml"),
+            system("postman", replaces).replace("version: \"1\"\n", "version: \"1\"\n  plateau: \"after\"\n")
+        );
         return Files.writeString(
             dir.resolve("workspace.yaml"),
-            "settings:\n  plateaus:\n    - id: before\n      path: plateaus/10_before\n    - id: after\n      path: plateaus/20_after\n"
+            "settings:\n  manifests:\n    paths: [\"plateaus/**\"]\n"
         );
     }
 
@@ -119,7 +139,7 @@ class ReplacesAsWrittenTest {
             workspace("  replaces:\n    - \"mailer\"\n    - \"mailer\"\n").toString(),
             "views",
             "generate",
-            "--baseline",
+            "--against",
             "before"
         );
         assertEquals(0, result.exit(), result.err());

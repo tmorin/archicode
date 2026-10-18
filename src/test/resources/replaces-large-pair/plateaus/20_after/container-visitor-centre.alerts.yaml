@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "visitor-centre"
+content:
+  id: "alerts"
+  name: "Alerts"
+  description: "Forwards the lock counts for the cold store staff and notifies the extra charges during the winter."

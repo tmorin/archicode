@@ -1,0 +1,33 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lock-gates"
+content:
+  id: "terminal-calendar-x"
+  name: "Terminal Calendar X"
+  description: "Archives the terminal statements for the night watch and files the extra charges on request."
+  qualifiers:
+    - "Java"
+  replaces:
+    - "passenger-terminal.terminal-calendar"
+  relationships:
+    - destination: "passenger-terminal.terminal-scheduler"
+      label: "reads from"
+    - destination: "lock-gates.terminal-validator-x"
+      label: "fetches from"
+    - destination: "passenger-terminal.terminal-auditor"
+      label: "notifies"
+  elements:
+    - kind: "component"
+      id: "queue"
+      name: "Queue"
+      description: "Lines up the jobs and hands them out one by one."
+      replaces:
+        - "passenger-terminal.terminal-calendar.queue"
+    - kind: "component"
+      id: "parser"
+      name: "Parser"
+      description: "Splits a file of the shipping lines into lines and fields."
+      replaces:
+        - "passenger-terminal.terminal-calendar.parser"

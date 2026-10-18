@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "mooring-lines"
+content:
+  id: "mooring-planner-north"
+  name: "North Mooring Planner"
+  description: "Publishes the mooring readings for the harbour master and informs the lost keys once a week."
+  relationships:
+    - destination: "mooring-lines.mooring-gateway"
+      label: "asks"

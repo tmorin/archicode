@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "quay-maintenance"
+content:
+  id: "ferry-passenger"
+  name: "Ferry Passenger"
+  description: "Receives the passengers of a ferry at the terminal."

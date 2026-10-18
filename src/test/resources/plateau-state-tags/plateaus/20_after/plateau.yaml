@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "after"
+  name: "After"
+  override: "before"
+  patches:
+    # renamed: the printer carries `new` and has changed
+    - operator: SET
+      target: "office.printer"
+      field: name
+      value: "Ticket printer"

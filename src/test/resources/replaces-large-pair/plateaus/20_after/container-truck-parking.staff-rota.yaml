@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "truck-parking"
+content:
+  id: "staff-rota"
+  name: "Staff Rota"
+  description: "Lists who works on which shift at the port authority."

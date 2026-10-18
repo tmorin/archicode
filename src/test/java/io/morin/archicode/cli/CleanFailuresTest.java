@@ -81,17 +81,29 @@ class CleanFailuresTest {
         return Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
     }
 
-    /** A workspace with two plateaus, whose plateaus are valid. */
+    /** A workspace with two plateaus ({@code before}, an empty layer over the root, and {@code after}), which are valid. */
     @SneakyThrows
     private Path withPlateaus() {
         Files.createDirectories(dir.resolve("plateaus/10_before"));
         Files.createDirectories(dir.resolve("plateaus/20_after"));
         Files.writeString(dir.resolve("plateaus/10_before/shop.yaml"), system("shop", null));
-        Files.writeString(dir.resolve("plateaus/20_after/shop.yaml"), system("shop", null));
+        Files.writeString(
+            dir.resolve("plateaus/10_before/plateau.yaml"),
+            "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: before\n"
+        );
+        Files.writeString(
+            dir.resolve("plateaus/20_after/plateau.yaml"),
+            "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: after\n  override: before\n"
+        );
         return Files.writeString(
             dir.resolve("workspace.yaml"),
-            "settings:\n  plateaus:\n    - id: before\n      path: plateaus/10_before\n    - id: after\n      path: plateaus/20_after\n"
+            "settings:\n  manifests:\n    paths: [\"plateaus/**\"]\n"
         );
+    }
+
+    /** A manifest of the layer {@code after}. */
+    private static String inAfter(String system) {
+        return system.replace("version: \"1\"\n", "version: \"1\"\n  plateau: \"after\"\n");
     }
 
     private static void assertOneLine(CliHarness.Result result, String expected) {
@@ -117,13 +129,19 @@ class CleanFailuresTest {
     @Test
     void queryViewsSaysWhichPlateauIsUnknown() {
         val result = run("-w", withPlateaus().toString(), "query", "views", "--plateau", "nope", "-f", "json");
-        assertOneLine(result, "error: unknown plateau `nope`: the plateaus of this workspace are `before`, `after`");
+        assertOneLine(
+            result,
+            "error: unknown plateau `nope`: the plateaus of this workspace are `baseline`, `before` and `after`"
+        );
     }
 
     @Test
     void viewsGenerateSaysWhichPlateauIsUnknown() {
         val result = run("-w", withPlateaus().toString(), "views", "generate", "--plateau", "nope");
-        assertOneLine(result, "error: unknown plateau `nope`: the plateaus of this workspace are `before`, `after`");
+        assertOneLine(
+            result,
+            "error: unknown plateau `nope`: the plateaus of this workspace are `baseline`, `before` and `after`"
+        );
     }
 
     @Test
@@ -133,27 +151,20 @@ class CleanFailuresTest {
         val result = run("-w", workspace.toString(), "diff");
         assertEquals(1, result.exit(), result.err());
         assertEquals(1, result.err().lines().count(), result.err());
-        assertTrue(result.err().startsWith("error: the workspace declares no `settings.plateaus`"), result.err());
+        assertTrue(
+            result.err().startsWith("error: the workspace declares no plateau: there is nothing to compare"),
+            result.err()
+        );
         assertFalse(result.err().contains("\tat "), result.err());
         assertEquals("", result.out());
     }
 
     @Test
-    void diffSaysThatTheFirstPlateauHasNothingBeforeIt() {
-        val result = run("-w", withPlateaus().toString(), "diff", "--plateau", "before");
+    void diffSaysThatTheRootHasNothingBeforeIt() {
+        val result = run("-w", withPlateaus().toString(), "diff", "--plateau", "baseline");
         assertEquals(1, result.exit(), result.err());
-        assertTrue(result.err().startsWith("error: the plateau `before` is the first plateau"), result.err());
+        assertTrue(result.err().startsWith("error: the plateau `baseline` is the root of the plateaus"), result.err());
         assertEquals(1, result.err().lines().count(), result.err());
-    }
-
-    @Test
-    void plateauAddSaysWhichPlateauItCopiesFromIsUnknown() {
-        val result = run("-w", withPlateaus().toString(), "plateau", "add", "later", "--from", "nope");
-        assertEquals(1, result.exit(), result.err());
-        assertEquals(1, result.err().lines().count(), result.err());
-        assertTrue(result.err().startsWith("error: "), result.err());
-        assertTrue(result.err().contains("nope"), result.err());
-        assertFalse(result.err().contains("\tat "), result.err());
     }
 
     @Test
@@ -212,9 +223,10 @@ class CleanFailuresTest {
     void aMessageOfSeveralLinesHasTheMarkOnEachLine() {
         // two references declared twice: one line for each
         val workspace = withPlateaus();
-        Files.writeString(dir.resolve("plateaus/20_after/again.yaml"), system("shop", null));
-        Files.writeString(dir.resolve("plateaus/20_after/crm.yaml"), system("crm", null));
-        Files.writeString(dir.resolve("plateaus/20_after/crm_again.yaml"), system("crm", null));
+        Files.writeString(dir.resolve("plateaus/20_after/app.yaml"), inAfter(system("app", null)));
+        Files.writeString(dir.resolve("plateaus/20_after/app_again.yaml"), inAfter(system("app", null)));
+        Files.writeString(dir.resolve("plateaus/20_after/crm.yaml"), inAfter(system("crm", null)));
+        Files.writeString(dir.resolve("plateaus/20_after/crm_again.yaml"), inAfter(system("crm", null)));
         val result = run("-w", workspace.toString(), "views", "generate");
         assertEquals(1, result.exit(), result.err());
         assertTrue(
@@ -225,7 +237,7 @@ class CleanFailuresTest {
             result.err()
         );
         assertEquals(2, result.err().lines().count(), result.err());
-        assertTrue(result.err().contains("the reference `shop` is declared twice"), result.err());
+        assertTrue(result.err().contains("the reference `app` is declared twice"), result.err());
         assertTrue(result.err().contains("the reference `crm` is declared twice"), result.err());
     }
 

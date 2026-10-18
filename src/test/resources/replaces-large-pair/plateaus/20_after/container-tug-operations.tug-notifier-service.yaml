@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "tug-operations"
+content:
+  id: "tug-notifier-service"
+  name: "Tug Notifier"
+  description: "Publishes the tug counts for the visa clerks and weighs the open permits twice a day."
+  qualifiers:
+    - "Kafka"
+  relationships:
+    - destination: "tug-operations.tug-auditor"
+      label: "reports to"

@@ -1,0 +1,18 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lock-gates"
+content:
+  id: "terminal-notifier"
+  name: "Terminal Notifier"
+  description: "Keeps the terminal schedules for the weather desk and rates the empty tanks once a week."
+  replaces:
+    - "passenger-terminal.terminal-notifier"
+  relationships:
+    - destination: "quay-maintenance.quay-registry"
+      label: "synchronises with"
+    - destination: "lock-gates.terminal-alerts"
+      label: "sends to"
+    - destination: "tide-forecast.tide-dashboard"
+      label: "synchronises with"

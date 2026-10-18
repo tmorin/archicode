@@ -3,18 +3,18 @@
 // no longer turns the Map into `dangling reference: <reference>`. The kernel checks `opened`, `pinned` and `hidden` against the elements the facet leaves;
 // the editor drops from the three lists, before the kernel draws, what the facet removes (it keeps the user's choices: the lists of the page are untouched,
 // so Facet: none brings back the open box, the pin or the hidden one). The page is the real `render()` over the real kernel and a fake layout engine, on the
-// Brightcart folders (src/test/resources/brightcart/folders, invented), plateau baseline: the facet `journey` removes `backoffice`, among others.
+// layered Brightcart (src/test/resources/brightcart/layered, invented), plateau baseline: the facet `journey` removes `backoffice`, among others.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { run, plain, startPage, click } = require('./library-page');
 
-const FOLDERS = path.resolve(__dirname, '../../resources/brightcart/folders');
+const LAYERED = path.resolve(__dirname, '../../resources/brightcart/layered');
 
 /** The Map of the plateau `baseline`, drawn, with the kernel and the page's own state. */
 async function baselineMap() {
-  const page = await startPage({ dir: FOLDERS, plateau: 'baseline' });
+  const page = await startPage({ dir: LAYERED, plateau: 'baseline' });
   await page.go('map');
   assert.equal(run(page.sandbox, 'currentPerspective'), 'map');
   return page;

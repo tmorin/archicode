@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  plateau: "after"
+  parent: "pollution-control.pollution-validator"
+content:
+  id: "printer"
+  name: "Printer"
+  description: "Prints the passes at the gate."

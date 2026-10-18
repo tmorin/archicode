@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "berth-allocation"
+content:
+  id: "berth-exporter-service"
+  name: "Berth Exporter"
+  description: "Tracks the berth schedules for the ticket office and updates the rough seas before noon."
+  relationships:
+    - destination: "safety-inspections.inspection-forms"
+      label: "sends to"
+    - destination: "tide-forecast.tide-dashboard"
+      label: "sends to"
+    - destination: "berth-allocation.berth-gateway"
+      label: "sends to"

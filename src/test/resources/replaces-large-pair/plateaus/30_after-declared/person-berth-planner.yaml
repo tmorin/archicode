@@ -1,6 +1,7 @@
 header:
   kind: "archicode.morin.io/person"
   version: "1"
+  plateau: "after-declared"
 content:
   id: "berth-planner"
   name: "Berth Planner"

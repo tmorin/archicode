@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  plateau: "after"
+  parent: "fish-market.fishing-registry"
+content:
+  id: "translator"
+  name: "Translator"
+  description: "Translates the messages into the language of the vessel."

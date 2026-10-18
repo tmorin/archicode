@@ -5,13 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.cli.ErrorOutput;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.val;
@@ -24,16 +26,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine;
 
 /**
- * {@code views generate} on the layered Brightcart (wave 014, run 0079): the four plateaus, each with its comparison with
+ * {@code views generate} on the layered Brightcart (waves 012 and 014): the four plateaus, each with its comparison with
  * the plateau it overrides and the views of the three facets, through the real command line, on a copy of
  * {@code layered/}. Three things are asked:
  *
  * <ul>
  *   <li>the four plateaus generate, exit 0 with an empty error output, and write the number of PlantUML files that
  *       {@code expected/sizes.json} gives, the comparison folders {@code views-<plateau>-vs-<against>} with their table;
- *   <li>the views are those of the complete folders, file for file: the layered engine and the old mechanism draw the same
- *       plateaus, so the PlantUML is the same bytes (the table of a comparison differs by the cascade of the {@code REMOVE},
- *       which only the layers know);
+ *   <li>the facets do what their actions say on every plateau;
  *   <li>two runs give the same bytes.
  * </ul>
  */
@@ -51,7 +51,7 @@ class BrightcartLayeredViewsTest {
     }
 
     private Brightcart.Generated generated() {
-        return Brightcart.firstLayeredRun(cli());
+        return Brightcart.firstRun(cli());
     }
 
     private static int sizeOfViews(String plateau) {
@@ -117,7 +117,7 @@ class BrightcartLayeredViewsTest {
         assertTrue(Files.isRegularFile(folder.resolve("gap.md")), folderName);
         assertTrue(Brightcart.puml(folder) > 0, folderName);
         // the table is the one `archicode diff` prints for the same pair, byte for byte
-        val diff = cli().layeredDiff(generated().workspace(), Brightcart.comparison(id), "json");
+        val diff = cli().diff(generated().workspace(), Brightcart.comparison(id), "json");
         assertEquals(0, diff.exit(), diff.err());
         assertEquals(diff.out(), read(folder.resolve("gap.json")), folderName);
         assertTrue(read(folder.resolve("gap.md")).contains("## Cascade of the removals"), folderName);
@@ -168,43 +168,6 @@ class BrightcartLayeredViewsTest {
         }
     }
 
-    /**
-     * The proof of the two mechanisms against each other, on the drawings: every folder of views that the run on
-     * {@code folders/} wrote, the layered run wrote, with the same files and the same bytes. The only differences are in the
-     * two files of a comparison that hold the table: the layers know the cascade of a {@code REMOVE}, the complete folders do
-     * not, so {@code gap.json} has one more key and {@code gap.md} one more section at its end.
-     */
-    @Test
-    void theViewsAreTheOnesOfTheCompleteFoldersFileForFile() {
-        val old = Brightcart.firstRun(cli());
-        val names = viewFolders(generated().workspace());
-        assertEquals(viewFolders(old.workspace()), names, "the same folders of views");
-        var compared = 0;
-        for (val name : names) {
-            val layered = Brightcart.tree(generated().views(name));
-            val complete = Brightcart.tree(old.views(name));
-            assertEquals(complete.keySet(), layered.keySet(), name + ": the same files");
-            for (val file : complete.keySet()) {
-                if (file.equals("gap.json")) {
-                    val one = readTree(complete.get(file));
-                    val two = readTree(layered.get(file));
-                    assertTrue(two.has("cascade"), name + " lists the cascade");
-                    ((ObjectNode) two).remove("cascade");
-                    assertEquals(one, two, name + "/gap.json without the cascade");
-                } else if (file.equals("gap.md")) {
-                    assertTrue(
-                        layered.get(file).startsWith(complete.get(file).stripTrailing()),
-                        name + "/gap.md is the same table, the cascade after it"
-                    );
-                } else {
-                    assertEquals(complete.get(file), layered.get(file), name + "/" + file);
-                }
-                compared++;
-            }
-        }
-        assertTrue(compared > 1000, "files compared: " + compared);
-    }
-
     // ---- stable output
 
     /**
@@ -217,7 +180,7 @@ class BrightcartLayeredViewsTest {
     @Test
     void twoRunsOnTwoCopiesWriteTheSameFilesWithTheSameBytes(@TempDir Path dir) {
         val first = generated();
-        val second = Brightcart.generateLayered(cli(), dir, TWICE);
+        val second = Brightcart.generate(cli(), dir, TWICE);
         for (val plateau : TWICE) {
             assertEquals(
                 first.results().get(plateau),
@@ -243,7 +206,7 @@ class BrightcartLayeredViewsTest {
     @Test
     void aRunInTheFolderWhereTheViewsAlreadyAreChangesNothing(@TempDir Path dir) {
         val first = generated();
-        val again = Brightcart.copyLayered(dir);
+        val again = Brightcart.copy(dir);
         for (val plateau : List.of("baseline", "saas")) {
             assertEquals(0, cli().generate(again, plateau).exit(), plateau);
             assertEquals(0, cli().generate(again, plateau).exit(), plateau);
@@ -267,6 +230,65 @@ class BrightcartLayeredViewsTest {
             assertTrue(Files.isDirectory(folder.resolve("plantuml/application")), plateau + " " + facet);
             assertTrue(Brightcart.puml(folder) > 0, plateau + " " + facet);
         }
+    }
+
+    private static Set<String> applicationViews(Path views) {
+        try (val files = Files.list(views.resolve("plantuml/application"))) {
+            return files.map(f -> f.getFileName().toString()).collect(Collectors.toCollection(TreeSet::new));
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    private static boolean about(String file, String id) {
+        return file.startsWith(id + "-") || file.startsWith(id + "_");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "baseline", "saas", "inhouse", "marketplace" })
+    void journeyLeavesNoStaffToolsAndNoFulfilment(String plateau) {
+        val plain = applicationViews(generated().views("views-" + plateau));
+        val journey = applicationViews(generated().views("views-" + plateau + "-journey"));
+        for (val id : List.of("agent", "merchandiser", "backoffice", "fulfilment")) {
+            assertTrue(plain.stream().anyMatch(f -> about(f, id)), plateau + " has " + id + " in its own views");
+            assertTrue(journey.stream().noneMatch(f -> about(f, id)), plateau + " journey: " + id);
+        }
+        assertTrue(journey.size() < plain.size());
+        assertTrue(plain.containsAll(journey), "a facet only takes away");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "baseline", "saas", "inhouse", "marketplace" })
+    void noExternalsLeavesNoPaymentProviderSystem(String plateau) {
+        val plain = applicationViews(generated().views("views-" + plateau));
+        val without = applicationViews(generated().views("views-" + plateau + "-no-externals"));
+        assertTrue(plain.contains("psp-overview.puml"), plateau);
+        assertFalse(without.contains("psp-overview.puml"), plateau);
+        assertTrue(without.size() < plain.size());
+        assertTrue(plain.containsAll(without), "a facet only takes away");
+    }
+
+    @Test
+    void withoutCartTakesTheCartAwayWhereThereIsOneAndSelectsNothingInSaasAndStillGenerates() {
+        for (val plateau : List.of("baseline", "inhouse", "marketplace")) {
+            val plain = applicationViews(generated().views("views-" + plateau));
+            val without = applicationViews(generated().views("views-" + plateau + "-without-cart"));
+            val cart = plain
+                .stream()
+                .filter(f -> about(f, "shop_app_cart") || about(f, "commerce_cart"))
+                .toList();
+            assertFalse(cart.isEmpty(), plateau + " has a cart in its own views");
+            assertTrue(without.size() < plain.size(), plateau);
+        }
+        // `saas` has no cart (the commerce platform has it): the facet selects nothing, the views are the same files
+        val plain = generated().views("views-saas");
+        val without = generated().views("views-saas-without-cart");
+        assertEquals(applicationViews(plain), applicationViews(without));
+        assertEquals(Brightcart.puml(plain), Brightcart.puml(without));
+        // and the application views are the same bytes: only the technology views, which a facet draws as flows, differ
+        val applicationOfPlain = Brightcart.tree(plain.resolve("plantuml/application"));
+        assertFalse(applicationOfPlain.isEmpty());
+        assertEquals(applicationOfPlain, Brightcart.tree(without.resolve("plantuml/application")));
     }
 
     /** The names of the folders of views next to the workspace. */

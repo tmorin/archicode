@@ -1,24 +1,18 @@
 # An invented bookshop in three states, used to test what a plateau changes (see PlateauComparisonTest).
+# The plateaus are layers: the manifests of `plateaus/10_as-is` have no `plateau:` header and are the root, `baseline`; `as-is` is
+# the first state, an empty layer over it; `to-be` and `later` override `as-is`, each in its folder (the manifests that say
+# `plateau:` and its `plateau.yaml`, whose patches change what it inherits).
 # as-is -> to-be: a new mobile app and a new notification service, the legacy batch is removed, one container is
 # reworded, one is renamed inside a system that does not change by itself (the system only contains a change), a
-# label changes. `later` is compared with `as-is` (its own `baseline`), not with `to-be`.
+# label changes. `later` also overrides `as-is`, not `to-be`.
 styles:
   by-tags:
     removed:
       line-color: "red"
 settings:
   name: "Bookshop"
-  plateaus:
-    - id: "as-is"
-      name: "As is"
-      horizon: "2026"
-      path: "plateaus/10_as-is"
-    - id: "to-be"
-      name: "To be"
-      path: "plateaus/20_to-be"
-    - id: "later"
-      path: "plateaus/30_later"
-      baseline: "as-is"
+  manifests:
+    paths: ["plateaus/**"]
   facets:
     customs:
       # reads what the comparison says: leaves out what only the baseline had (an element and what points at it)

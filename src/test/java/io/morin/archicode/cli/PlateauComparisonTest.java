@@ -22,9 +22,9 @@ import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
 /**
- * What a plateau changes, from the command line: {@code archicode diff} and {@code views generate --baseline}, through
+ * What a plateau changes, from the command line: {@code archicode diff} and {@code views generate --against}, through
  * the real picocli command line, on the invented bookshop of {@code src/test/resources/plateau-comparison} (three
- * plateaus: {@code as-is}, {@code to-be}, and {@code later}, whose own {@code baseline} is {@code as-is}).
+ * plateaus: {@code as-is}, {@code to-be}, and {@code later}, which both override {@code as-is}).
  */
 @QuarkusTest
 class PlateauComparisonTest {
@@ -137,6 +137,11 @@ class PlateauComparisonTest {
     removed  relationship  application  shop.api -> shop.legacy (delegates to)  -
     removed  relationship  application  shop.legacy -> shop.db (loads)          -
     new      relationship  application  shop.mobile -> shop.api (calls)         -
+
+    cascade of the removals (what a REMOVE took besides the elements it selects, in the plateaus the target adds to the one it is compared with)
+    PLATEAU  PATCH                        EFFECT   LAYER        ELEMENT       DETAIL
+    to-be    1 REMOVE target shop.legacy  dropped  application  shop.api      relationships: shop.legacy (delegates to)
+    to-be    1 REMOVE target shop.legacy  dropped  technology   prod.cluster  applications: shop.legacy
     """;
 
     // ---- replaces: an element that says what it replaces is moved, split or merged, never removed and new
@@ -163,6 +168,12 @@ class PlateauComparisonTest {
     candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)
     LAYER        FROM         TO            REASONS
     application  shop.mailer  shop.postman  description, parent
+
+    cascade of the removals (what a REMOVE took besides the elements it selects, in the plateaus the target adds to the one it is compared with)
+    PLATEAU  PATCH                        EFFECT   LAYER        ELEMENT            DETAIL
+    after    1 REMOVE target shop.till    dropped  application  shop.web           relationships: shop.till (takes payments with)
+    after    1 REMOVE target shop.till    dropped  technology   prod.cluster       applications: shop.till
+    after    4 REMOVE target shop.report  removed  application  shop.report.chart
     """;
 
     @Test
@@ -362,14 +373,14 @@ class PlateauComparisonTest {
     }
 
     @Test
-    void theWarningsOfTheComparisonAreOnTheErrorOutputOfViewsGenerateWithABaselineAndOnlyThere() {
+    void theWarningsOfTheComparisonAreOnTheErrorOutputOfViewsGenerate() {
         val workspace = replacesWorkspace();
-        val result = generate(workspace, "--plateau", "after", "--baseline", "before");
+        val result = generate(workspace, "--plateau", "after", "--against", "before");
         assertEquals(0, result.exit, result.err);
         assertEquals(REPLACES_WARNING + "\n", result.err);
         assertEquals("", result.out);
-        // without a comparison nothing is compared, so there is nothing to say about what a plateau replaces
-        val plain = generate(replacesWorkspace(), "--plateau", "after");
+        // a plateau that replaces nothing has nothing to say about it (the warnings are those of the comparison, and `before` is compared with the root, which has the same elements)
+        val plain = generate(replacesWorkspace(), "--plateau", "before");
         assertEquals(0, plain.exit, plain.err);
         assertEquals("", plain.err);
     }
@@ -378,13 +389,13 @@ class PlateauComparisonTest {
     @SneakyThrows
     void everyReplacesTheComparisonIgnoresIsToldWithTheElementThatSaidIt() {
         val workspace = replacesWorkspace();
-        val shop = workspace.getParent().resolve("plateaus/20_after/shop.yaml");
+        val shop = workspace.getParent().resolve("plateaus/20_after/shop.postman.yaml");
         // the web site is still in the plateau, and the mailer is listed twice (the kernel is given the list as written)
         Files.writeString(
             shop,
             Files.readString(shop).replace(
-                "      name: \"Postman\"\n",
-                "      name: \"Postman\"\n      replaces:\n        - \"shop.web\"\n        - \"shop.mailer\"\n        - \"shop.mailer\"\n"
+                "  name: \"Postman\"\n",
+                "  name: \"Postman\"\n  replaces:\n    - \"shop.web\"\n    - \"shop.mailer\"\n    - \"shop.mailer\"\n"
             )
         );
         val result = diff(workspace, "--plateau", "after");
@@ -406,7 +417,7 @@ class PlateauComparisonTest {
     @Test
     void theViewsOfTheComparisonDrawTheThreeStatesWithAGlyphAndTheirOwnLine() {
         val workspace = replacesWorkspace();
-        val result = generate(workspace, "--plateau", "after", "--baseline", "before");
+        val result = generate(workspace, "--plateau", "after", "--against", "before");
         assertEquals(0, result.exit, result.err);
         val stock = read("replaces/views-after-vs-before/plantuml/application/stock-detailed.puml");
         assertTrue(
@@ -458,7 +469,7 @@ class PlateauComparisonTest {
     @SneakyThrows
     void theGapFilesNextToTheViewsTellTheSameAsTheTableAndTheCandidates() {
         val workspace = replacesWorkspace();
-        assertEquals(0, generate(workspace, "--plateau", "after", "--baseline", "before").exit);
+        assertEquals(0, generate(workspace, "--plateau", "after", "--against", "before").exit);
         val markdown = read("replaces/views-after-vs-before/gap.md");
         assertEquals(diff(workspace, "--plateau", "after", "--format", "markdown").out, markdown);
         val json = read("replaces/views-after-vs-before/gap.json");
@@ -551,7 +562,7 @@ class PlateauComparisonTest {
             workspace,
             "--plateau",
             expected.get("plateau").asText(),
-            "--baseline",
+            "--against",
             expected.get("baseline").asText(),
             "--format",
             "json"
@@ -575,14 +586,14 @@ class PlateauComparisonTest {
         }
         // what `--no-wording` says it hides is what the editor's toggle hides
         val quiet = mapper.readTree(
-            diff(workspace, "--plateau", "to-be", "--baseline", "as-is", "--no-wording", "-f", "json").out
+            diff(workspace, "--plateau", "to-be", "--against", "as-is", "--no-wording", "-f", "json").out
         );
         assertEquals(expected.get("hidden_wording_only"), quiet.get("hidden_wording_only"));
         // the text and the Markdown forms print the same counts
         val c = expected.get("counts");
         val e = c.get("elements");
         val r = c.get("relationships");
-        val text = diff(workspace, "--plateau", "to-be", "--baseline", "as-is").out;
+        val text = diff(workspace, "--plateau", "to-be", "--against", "as-is").out;
         assertTrue(
             text.contains(
                 "elements      +%d ~%d -%d".formatted(
@@ -603,7 +614,7 @@ class PlateauComparisonTest {
             ),
             text
         );
-        val markdown = diff(workspace, "--plateau", "to-be", "--baseline", "as-is", "-f", "markdown").out;
+        val markdown = diff(workspace, "--plateau", "to-be", "--against", "as-is", "-f", "markdown").out;
         assertTrue(
             markdown.contains(
                 "| elements | %d | %d | %d |".formatted(
@@ -643,10 +654,10 @@ class PlateauComparisonTest {
     }
 
     @Test
-    void theBaselineOfAPlateauIsTheOneBeforeItUnlessItNamesAnother() {
+    void theBaselineOfAPlateauIsTheOneItOverridesUnlessItNamesAnother() {
         val workspace = workspace();
-        // `later` has `baseline: as-is`, though `to-be` comes before it; it is also the plateau read by default
-        val later = diff(workspace);
+        // `later` overrides `as-is`, though `to-be` is declared before it; the tree forks, so the plateau is named
+        val later = diff(workspace, "--plateau", "later");
         assertEquals(0, later.exit, later.err);
         assertTrue(later.out.startsWith("comparing later with as-is (As is)\n"), later.out);
         assertTrue(later.out.contains("elements      +3 ~6 -2\n"), later.out);
@@ -656,43 +667,49 @@ class PlateauComparisonTest {
     @Test
     void theBaselineAskedForWins() {
         val workspace = workspace();
-        val result = diff(workspace, "--plateau", "later", "--baseline", "to-be");
+        val result = diff(workspace, "--plateau", "later", "--against", "to-be");
         assertEquals(0, result.exit, result.err);
         assertTrue(result.out.startsWith("comparing later with to-be (To be)\n"), result.out);
         assertTrue(result.out.contains("elements      +0 ~0 -1\n"), result.out);
         assertTrue(result.out.contains("warehouse.picking"), result.out);
         // the first plateau can be compared with a later one when asked
-        val reverse = diff(workspace, "--plateau", "as-is", "--baseline", "to-be");
+        val reverse = diff(workspace, "--plateau", "as-is", "--against", "to-be");
         assertEquals(0, reverse.exit, reverse.err);
         assertTrue(reverse.out.contains("elements      +1 ~6 -3\n"), reverse.out);
     }
 
     @Test
-    void aPlateauWithNothingBeforeItAndNoBaselineHasNothingToBeComparedWith() {
-        val result = diff(workspace(), "--plateau", "as-is");
+    void theRootHasNothingBeforeItAndNoPlateauToBeComparedWithUnlessOneIsNamed() {
+        val workspace = workspace();
+        val result = diff(workspace, "--plateau", "baseline");
         assertEquals(1, result.exit);
         assertTrue(
-            result.err.contains("the plateau `as-is` is the first plateau and nothing is before it"),
+            result.err.contains("the plateau `baseline` is the root of the plateaus and nothing is before it"),
             result.err
         );
-        assertTrue(result.err.contains("`--baseline`"), result.err);
+        assertTrue(result.err.contains("`--against`"), result.err);
         assertEquals("", result.out);
+        // and the first state is a layer over the root, which has the same elements
+        val first = diff(workspace, "--plateau", "as-is");
+        assertEquals(0, first.exit, first.err);
+        assertTrue(first.out.startsWith("comparing as-is (As is) with baseline\n"), first.out);
+        assertTrue(first.out.endsWith("no difference\n"), first.out);
     }
 
     @Test
-    void anUnknownBaselineFailsWithTheListOfThePlateaus() {
+    void anUnknownPlateauToCompareWithFailsWithTheListOfThePlateaus() {
         val workspace = workspace();
-        val result = diff(workspace, "--baseline", "nope");
+        val result = diff(workspace, "--plateau", "to-be", "--against", "nope");
         assertEquals(1, result.exit);
         assertTrue(
             result.err.contains(
-                "unknown baseline `nope`: the plateaus of this workspace are `as-is`, `to-be`, `later`"
+                "unknown plateau `nope`: the plateaus of this workspace are `baseline`, `as-is`, `later` and `to-be`"
             ),
             result.err
         );
-        val itself = diff(workspace, "--plateau", "to-be", "--baseline", "to-be");
+        val itself = diff(workspace, "--plateau", "to-be", "--against", "to-be");
         assertEquals(1, itself.exit);
-        assertTrue(itself.err.contains("the baseline `to-be` is the plateau that is compared"), itself.err);
+        assertTrue(itself.err.contains("`--against to-be` is the plateau that is compared"), itself.err);
     }
 
     @Test
@@ -701,10 +718,7 @@ class PlateauComparisonTest {
         Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  name: plain\n");
         val result = diff(dir.resolve("workspace.yaml"));
         assertEquals(1, result.exit);
-        assertTrue(
-            result.err.contains("the workspace declares no `settings.plateaus`: there is nothing to compare"),
-            result.err
-        );
+        assertTrue(result.err.contains("the workspace declares no plateau: there is nothing to compare"), result.err);
         assertEquals("", result.out);
     }
 
@@ -724,7 +738,7 @@ class PlateauComparisonTest {
     }
 
     @Test
-    void aPlateauHasItsOwnFolderAndNoComparisonUnlessItIsAskedFor() {
+    void aPlateauHasItsOwnFolderAndTheRootIsDrawnAlone() {
         val workspace = workspace();
         val result = generate(workspace, "--plateau", "to-be");
         assertEquals(0, result.exit, result.err);
@@ -733,35 +747,51 @@ class PlateauComparisonTest {
         assertTrue(Files.isDirectory(dir.resolve("views-to-be-no-orders/plantuml")));
         assertTrue(Files.isDirectory(dir.resolve("views-to-be-without-removed/plantuml")));
         assertFalse(Files.exists(dir.resolve("views")));
-        // `to-be` has `as-is` before it, which is the baseline of `diff`: a comparison doubles the views and is asked for
-        try (val children = Files.list(dir)) {
-            assertEquals(
-                List.of(
-                    "plateaus",
-                    "views-to-be",
-                    "views-to-be-no-orders",
-                    "views-to-be-without-removed",
-                    "workspace.yaml"
-                ),
-                children
-                    .map(p -> p.getFileName().toString())
-                    .sorted()
-                    .collect(Collectors.toList())
-            );
-        } catch (java.io.IOException e) {
-            throw new AssertionError(e);
-        }
+        // `to-be` overrides `as-is`: the comparison with it is drawn next to the plateau, in a folder named after both
+        assertEquals(
+            List.of(
+                "plateaus",
+                "views-to-be",
+                "views-to-be-no-orders",
+                "views-to-be-vs-as-is",
+                "views-to-be-vs-as-is-no-orders",
+                "views-to-be-vs-as-is-without-removed",
+                "views-to-be-without-removed",
+                "workspace.yaml"
+            ),
+            folders()
+        );
         // and the plain views of a plateau say nothing of changes
         val plain = read("views-to-be/plantuml/application/shop-detailed.puml");
         assertFalse(plain.contains("legend"), plain);
         assertFalse(plain.contains("<<new>>"), plain);
         assertFalse(plain.contains("<U+"), plain);
+        // the root overrides nothing: it is drawn alone
+        assertEquals(0, generate(workspace, "--plateau", "baseline", "-o", "root").exit);
+        assertTrue(Files.isDirectory(dir.resolve("root-baseline/plantuml/application")));
+        assertTrue(
+            folders()
+                .stream()
+                .noneMatch(f -> f.startsWith("root-baseline-vs-")),
+            folders().toString()
+        );
+    }
+
+    private List<String> folders() {
+        try (val children = Files.list(dir)) {
+            return children
+                .map(p -> p.getFileName().toString())
+                .sorted()
+                .collect(Collectors.toList());
+        } catch (java.io.IOException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test
     void theBaselineWritesTheViewsOfThePlateauAndTheViewsOfTheComparison() {
         val workspace = workspace();
-        val result = generate(workspace, "--plateau", "to-be", "--baseline", "as-is");
+        val result = generate(workspace, "--plateau", "to-be", "--against", "as-is");
         assertEquals(0, result.exit, result.err);
         assertTrue(Files.isDirectory(dir.resolve("views-to-be/plantuml/application")));
         assertTrue(Files.isDirectory(dir.resolve("views-to-be-vs-as-is/plantuml/application")));
@@ -786,20 +816,20 @@ class PlateauComparisonTest {
     @Test
     void generateAndDiffGiveTheSameCounts() {
         val workspace = workspace();
-        val generated = generate(workspace, "--plateau", "to-be", "--baseline", "as-is");
+        val generated = generate(workspace, "--plateau", "to-be", "--against", "as-is");
         assertEquals(0, generated.exit, generated.err);
-        val diff = diff(workspace, "--plateau", "to-be", "--baseline", "as-is", "-f", "json");
+        val diff = diff(workspace, "--plateau", "to-be", "--against", "as-is", "-f", "json");
         // gap.json is the table of the comparison, wording included: the very report `diff --format json` prints
         assertEquals(diff.out, read("views-to-be-vs-as-is/gap.json"));
-        val markdown = diff(workspace, "--plateau", "to-be", "--baseline", "as-is", "-f", "markdown");
+        val markdown = diff(workspace, "--plateau", "to-be", "--against", "as-is", "-f", "markdown");
         assertEquals(markdown.out, read("views-to-be-vs-as-is/gap.md"));
     }
 
     @Test
-    void aPlateauThatNamesItsBaselineIsComparedWithoutBeingToldTo() {
+    void aPlateauIsComparedWithThePlateauItOverridesWithoutBeingToldTo() {
         val workspace = workspace();
-        // `later` is the last plateau: the one read by default, and its `baseline` is `as-is`
-        val result = generate(workspace);
+        // `later` overrides `as-is`, though `to-be` is declared before it
+        val result = generate(workspace, "--plateau", "later");
         assertEquals(0, result.exit, result.err);
         assertTrue(Files.isDirectory(dir.resolve("views-later/plantuml")));
         assertTrue(Files.isDirectory(dir.resolve("views-later-vs-as-is/plantuml")));
@@ -810,7 +840,7 @@ class PlateauComparisonTest {
     @Test
     void theOutputOptionIsTheBeginningOfTheNameOfTheFolders() {
         val workspace = workspace();
-        val result = generate(workspace, "--plateau", "to-be", "--baseline", "as-is", "-o", "out");
+        val result = generate(workspace, "--plateau", "to-be", "--against", "as-is", "-o", "out");
         assertEquals(0, result.exit, result.err);
         assertTrue(Files.isDirectory(dir.resolve("out-to-be/plantuml")));
         assertTrue(Files.isDirectory(dir.resolve("out-to-be-vs-as-is/plantuml")));
@@ -821,7 +851,7 @@ class PlateauComparisonTest {
 
     @Test
     @SneakyThrows
-    void aWorkspaceWithoutPlateausKeepsItsFoldersAndRefusesABaseline() {
+    void aWorkspaceWithoutPlateausKeepsItsFoldersAndRefusesAnAgainst() {
         Files.createDirectories(dir.resolve("manifests"));
         Files.writeString(
             dir.resolve("manifests/shop.yaml"),
@@ -845,29 +875,31 @@ class PlateauComparisonTest {
                     .collect(Collectors.toList())
             );
         }
-        val refused = generate(dir.resolve("workspace.yaml"), "--baseline", "as-is", "-o", "other");
+        val refused = generate(dir.resolve("workspace.yaml"), "--against", "as-is", "-o", "other");
         assertEquals(1, refused.exit);
         assertTrue(
-            refused.err.contains("`--baseline as-is` cannot be used: the workspace declares no `settings.plateaus`"),
+            refused.err.contains(
+                "`--against as-is` cannot be used: the workspace declares no plateau (a `plateau` key in a header"
+            ),
             refused.err
         );
         assertFalse(Files.exists(dir.resolve("other")), "nothing is written when the options are refused");
     }
 
     @Test
-    void anUnknownBaselineIsRefusedBeforeAnythingIsWritten() {
+    void anUnknownPlateauToCompareWithIsRefusedBeforeAnythingIsWritten() {
         val workspace = workspace();
-        val result = generate(workspace, "--plateau", "to-be", "--baseline", "nope");
+        val result = generate(workspace, "--plateau", "to-be", "--against", "nope");
         assertEquals(1, result.exit);
-        assertTrue(result.err.contains("unknown baseline `nope`"), result.err);
+        assertTrue(result.err.contains("unknown plateau `nope`"), result.err);
         assertFalse(Files.exists(dir.resolve("views-to-be")));
     }
 
     @Test
     void twoGenerationsOfTheSamePairAreByteIdentical() {
         val workspace = workspace();
-        assertEquals(0, generate(workspace, "--plateau", "to-be", "--baseline", "as-is", "-o", "one").exit);
-        assertEquals(0, generate(workspace, "--plateau", "to-be", "--baseline", "as-is", "-o", "two").exit);
+        assertEquals(0, generate(workspace, "--plateau", "to-be", "--against", "as-is", "-o", "one").exit);
+        assertEquals(0, generate(workspace, "--plateau", "to-be", "--against", "as-is", "-o", "two").exit);
         for (val folder : List.of("to-be-vs-as-is", "to-be-vs-as-is-without-removed", "to-be-vs-as-is-no-orders")) {
             val first = files("one-" + folder);
             assertEquals(first, files("two-" + folder));
@@ -886,7 +918,7 @@ class PlateauComparisonTest {
     @Test
     void theBoxesAndTheLinksTellWhatChangedWithGlyphsAndLines() {
         val workspace = workspace();
-        assertEquals(0, generate(workspace, "--plateau", "to-be", "--baseline", "as-is").exit);
+        assertEquals(0, generate(workspace, "--plateau", "to-be", "--against", "as-is").exit);
         val puml = read("views-to-be-vs-as-is/plantuml/application/shop-detailed.puml");
         // the state is the first stereotype of the box (PlantUML lets the first win) and the glyph is in its label
         assertTrue(puml.contains("rectangle shop.mobile <<new>> <<container>> <<atomic>> [\n+ Mobile app\n"), puml);
@@ -914,7 +946,7 @@ class PlateauComparisonTest {
     @Test
     void theTechnologyLayerIsDrawnWithItsChangesToo() {
         val workspace = workspace();
-        assertEquals(0, generate(workspace, "--plateau", "to-be", "--baseline", "as-is").exit);
+        assertEquals(0, generate(workspace, "--plateau", "to-be", "--against", "as-is").exit);
         val puml = read("views-to-be-vs-as-is/plantuml/technology/prod-deep.puml");
         // the node changed (what it hosts), an application deployed on it is new, another one changed
         assertTrue(
@@ -942,13 +974,12 @@ class PlateauComparisonTest {
     @Test
     void aPlateauThatIsTheSameAsItsBaselineHasNoDifferenceAndSaysSo() {
         val workspace = workspace();
-        val added = run("-w", workspace.toString(), "plateau", "add", "same", "--from", "to-be", "--baseline", "to-be");
-        assertEquals(0, added.exit, added.err);
-        val result = diff(workspace, "--plateau", "same");
+        // `as-is` is an empty layer over the root: the same plateau as the root
+        val result = diff(workspace, "--plateau", "as-is");
         assertEquals(0, result.exit, result.err);
         assertEquals(
             """
-            comparing same with to-be (To be)
+            comparing as-is (As is) with baseline
             elements      +0 ~0 -0
             relationships +0 ~0 -0
             wording only  0 of the 0 changed elements
@@ -957,18 +988,18 @@ class PlateauComparisonTest {
             """,
             result.out
         );
-        assertTrue(diff(workspace, "--plateau", "same", "-f", "markdown").out.endsWith("No difference.\n"));
-        assertTrue(diff(workspace, "--plateau", "same", "-f", "json").out.contains("\"changes\": [ ]"));
+        assertTrue(diff(workspace, "--plateau", "as-is", "-f", "markdown").out.endsWith("No difference.\n"));
+        assertTrue(diff(workspace, "--plateau", "as-is", "-f", "json").out.contains("\"changes\": [ ]"));
         // the views of that comparison have nothing marked, and a gap that says so
-        assertEquals(0, generate(workspace, "--plateau", "same").exit);
-        assertTrue(read("views-same-vs-to-be/gap.md").endsWith("No difference.\n"));
-        assertFalse(read("views-same-vs-to-be/plantuml/application/shop-detailed.puml").contains("legend"));
+        assertEquals(0, generate(workspace, "--plateau", "as-is").exit);
+        assertTrue(read("views-as-is-vs-baseline/gap.md").endsWith("No difference.\n"));
+        assertFalse(read("views-as-is-vs-baseline/plantuml/application/shop-detailed.puml").contains("legend"));
     }
 
     @Test
     void aViewWithNoChangeInItIsDrawnAsItAlwaysWasAndHasNoLegend() {
         val workspace = workspace();
-        assertEquals(0, generate(workspace, "--plateau", "to-be", "--baseline", "as-is").exit);
+        assertEquals(0, generate(workspace, "--plateau", "to-be", "--against", "as-is").exit);
         // nothing of the auditor changed, and nothing around it
         val puml = read("views-to-be-vs-as-is/plantuml/application/auditor-overview.puml");
         assertFalse(puml.contains("legend"), puml);
@@ -983,7 +1014,7 @@ class PlateauComparisonTest {
     @Test
     void theDefaultStylesAreWrittenForTheStatesAViewUsesAndTheAuthorsStyleWinsPropertyByProperty() {
         val workspace = workspace();
-        assertEquals(0, generate(workspace, "--plateau", "to-be", "--baseline", "as-is").exit);
+        assertEquals(0, generate(workspace, "--plateau", "to-be", "--against", "as-is").exit);
         val puml = read("views-to-be-vs-as-is/plantuml/application/shop-detailed.puml");
         // new: a thick solid outline
         assertTrue(
@@ -1018,7 +1049,7 @@ class PlateauComparisonTest {
     @Test
     void aFacetCanReadWhatChangedAndAnOrdinaryFacetKeepsWorking() {
         val workspace = workspace();
-        assertEquals(0, generate(workspace, "--plateau", "to-be", "--baseline", "as-is").exit);
+        assertEquals(0, generate(workspace, "--plateau", "to-be", "--against", "as-is").exit);
 
         // `without-removed` selects on `change`: what only the baseline had, and what points at it, is gone
         val without = files("views-to-be-vs-as-is-without-removed");
@@ -1059,30 +1090,22 @@ class PlateauComparisonTest {
         // the target says "calls " where the baseline says "calls" (nothing changed), says "orders on " for a new link, and
         // leaves the label of another new link empty (a label that is empty is no label); the baseline says "delegates to " for a link the target removed
         replaceIn(
-            "plateaus/20_to-be/shop.yaml",
-            "id: \"web\"\n      name: \"Web site\"\n      qualifiers:\n        - \"React\"\n        - \"SPA\"\n      relationships:\n        - destination: \"shop.api\"\n          label: \"calls\"",
-            "id: \"web\"\n      name: \"Web site\"\n      qualifiers:\n        - \"React\"\n        - \"SPA\"\n      relationships:\n        - destination: \"shop.api\"\n          label: \"calls \""
+            "plateaus/20_to-be/plateau.yaml",
+            "    - operator: ADD\n      target: \"customer\"",
+            "    - operator: SET\n      target: \"shop.web\"\n      field: relationships\n      where: {destination: \"shop.api\", label: \"calls\"}\n      value: {label: \"calls \"}\n    - operator: ADD\n      target: \"customer\""
         );
-        replaceIn(
-            "plateaus/20_to-be/shop.yaml",
-            "id: \"mobile\"\n      name: \"Mobile app\"\n      relationships:\n        - destination: \"shop.api\"\n          label: \"calls\"",
-            "id: \"mobile\"\n      name: \"Mobile app\"\n      relationships:\n        - destination: \"shop.api\"\n          label: \"\""
-        );
-        replaceIn(
-            "plateaus/20_to-be/customer.yaml",
-            "- destination: \"shop.mobile\"\n      label: \"orders on\"",
-            "- destination: \"shop.mobile\"\n      label: \"orders on \""
-        );
+        replaceIn("plateaus/20_to-be/shop.mobile.yaml", "label: \"calls\"", "label: \"\"");
+        replaceIn("plateaus/20_to-be/plateau.yaml", "label: \"orders on\"", "label: \"orders on \"");
         replaceIn("plateaus/10_as-is/shop.yaml", "label: \"delegates to\"", "label: \"delegates to \"");
         replaceIn(
             "workspace.yaml",
             "    customs:\n",
             "    customs:\n      - name: \"without-new\"\n        actions:\n          - operator: \"REMOVE\"\n            json-path: \"$..relationships[?(@.change == 'new')]\"\n"
         );
-        val result = generate(workspace, "--plateau", "to-be", "--baseline", "as-is");
+        val result = generate(workspace, "--plateau", "to-be", "--against", "as-is");
         assertEquals(0, result.exit, result.err);
         // the same comparison as without the spaces
-        val diff = diff(workspace, "--plateau", "to-be", "--baseline", "as-is", "-f", "json");
+        val diff = diff(workspace, "--plateau", "to-be", "--against", "as-is", "-f", "json");
         assertEquals(0, diff.exit, diff.err);
         assertEquals(diff.out, read("views-to-be-vs-as-is/gap.json"));
         val counts = new ObjectMapper().readTree(diff.out).at("/counts/relationships");
@@ -1123,6 +1146,10 @@ class PlateauComparisonTest {
     new      relationship  application  shop.orders-intake -> shop.db (stores in)            -                    of the split shop.orders-intake
     new      relationship  application  shop.web -> shop.db (reads)                          -
     new      relationship  application  shop.web -> shop.orders-intake (places orders with)  -                    of the split shop.orders-intake
+
+    cascade of the removals (what a REMOVE took besides the elements it selects, in the plateaus the target adds to the one it is compared with)
+    PLATEAU  PATCH                        EFFECT   LAYER        ELEMENT   DETAIL
+    after    1 REMOVE target shop.orders  dropped  application  shop.web  relationships: shop.orders (places orders with)
     """;
 
     @Test
@@ -1182,7 +1209,7 @@ class PlateauComparisonTest {
     @SneakyThrows
     void theGapFilesOfViewsGenerateSayItAndAComparisonWithoutASplitIsWrittenAsItAlwaysWas() {
         val workspace = copy(SPLIT, dir.resolve("split"));
-        val generated = generate(workspace, "--plateau", "after", "--baseline", "before");
+        val generated = generate(workspace, "--plateau", "after", "--against", "before");
         assertEquals(0, generated.exit, generated.err);
         val gap = Files.readString(dir.resolve("split").resolve("views-after-vs-before/gap.md"));
         assertTrue(gap.contains("belong to split elements"), gap);

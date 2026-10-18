@@ -1,0 +1,20 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lock-gates"
+content:
+  id: "terminal-alerts"
+  name: "Terminal Alerts"
+  description: "Collects the terminal records for the lease managers and summarises the damaged goods at dusk."
+  qualifiers:
+    - "PostgreSQL"
+  replaces:
+    - "passenger-terminal.terminal-alerts"
+  relationships:
+    - destination: "cargo-manifests.manifest-calendar"
+      label: "asks"
+    - destination: "ferry-ticketing.ferry-exporter-next"
+      label: "publishes to"
+    - destination: "lock-gates.terminal-statistics-x"
+      label: "notifies"

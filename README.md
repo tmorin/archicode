@@ -26,10 +26,11 @@ docker run \
 
 **Compare two plateaus**
 
-A workspace can list its states, the plateaus, in `settings.plateaus`, each a complete folder of manifests.
-`diff` tells what is new, changed and removed from the plateau before to the last one, and what moved, was split
-or merged when an element says what it `replaces`; `--baseline` also draws the comparison next to the views.
-See "States of an architecture (plateaus)" in the manual.
+A workspace can have states, the plateaus, each a layer over another one: the manifests that say `plateau: <id>`
+in their header, and a manifest of kind `archicode.morin.io/plateau` that lists what the layer changes.
+`diff` tells what is new, changed and removed in a plateau, compared with the plateau it overrides, and what moved,
+was split or merged when an element says what it `replaces`; `--against` names another plateau to compare with, and
+`views generate` draws the comparison next to the views. See "States of an architecture (plateaus)" in the manual.
 
 ```shell
 docker run \
@@ -42,7 +43,7 @@ docker run \
 docker run \
   -u "$(id -u):$(id -g)" \
   -v "$(pwd):/workdir" -w "/workdir" \
-  --rm ghcr.io/tmorin/archicode views generate --baseline as-is
+  --rm ghcr.io/tmorin/archicode views generate --against as-is
 ```
 
 **Get the JSON schema for the Workspace resource**

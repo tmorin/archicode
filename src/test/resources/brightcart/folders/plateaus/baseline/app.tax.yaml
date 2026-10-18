@@ -1,9 +1,0 @@
-header:
-  kind: "archicode.morin.io/system"
-  version: "1"
-content:
-  id: "tax"
-  name: "Tax service"
-  description: "Computes sales taxes per destination."
-  tags:
-    rendering-stereotypes: "external"

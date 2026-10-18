@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "dredging-works"
+content:
+  id: "parking-permits"
+  name: "Parking Permits"
+  description: "Issues the permits of the staff who park near the terminals."
+  relationships:
+    - destination: "tariff-billing.tariff-sync"
+      label: "reads from"

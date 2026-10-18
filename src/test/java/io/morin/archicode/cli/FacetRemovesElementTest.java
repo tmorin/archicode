@@ -122,7 +122,7 @@ class FacetRemovesElementTest {
     @Test
     void theFacetsOfTheComparisonThatRemoveWhatTheyAreAskedToWriteTheirViews() {
         val workspace = copy(dir.resolve("facets"), true);
-        val result = generate(workspace, "--baseline", "as-is");
+        val result = generate(workspace, "--against", "as-is");
         assertEquals(0, result.exit(), result.err());
         assertEquals("", result.err(), "a comparison computes the states: nothing to tell");
 
@@ -152,8 +152,8 @@ class FacetRemovesElementTest {
     void aWorkspaceWithTheseFacetsGeneratesTheSameUnfacetedViewsAsOneWithout() {
         val with = copy(dir.resolve("with"), true);
         val without = copy(dir.resolve("without"), false);
-        assertEquals(0, generate(with, "--baseline", "as-is").exit());
-        assertEquals(0, generate(without, "--baseline", "as-is").exit());
+        assertEquals(0, generate(with, "--against", "as-is").exit());
+        assertEquals(0, generate(without, "--against", "as-is").exit());
         for (val folder : new String[] { "views-to-be", "views-to-be-vs-as-is" }) {
             try (val files = Files.walk(without.resolveSibling(folder))) {
                 for (val file : files.filter(Files::isRegularFile).toList()) {

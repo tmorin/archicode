@@ -1,8 +1,8 @@
 'use strict';
-// Brightcart (wave 012, run 0061): the kernel's `compare` on the complete-folder rendition of the invented shopping solution, against the answers the document records
+// Brightcart (wave 012, run 0061): the kernel's `compare` on the layered rendition of the invented shopping solution, against the answers the document records
 // (docs/fixtures/brightcart-spec.md, sections 10 and 11). Nothing here is typed from the document: the counts, the tables of changes and the notable cases are read from
-// src/test/resources/brightcart/expected/ (written by generate.mjs), and the plateaus are read from src/test/resources/brightcart/folders/ through the editor's own loader
-// (loadWorkspace, toKernelElements) and the embedded module (`compare`, then `compute` for the state a box gets from what is below it). The Java side is in
+// src/test/resources/brightcart/expected/ (written by generate.mjs), and the plateaus are read from src/test/resources/brightcart/layered/ through the editor's own loader
+// (loadWorkspace, drawPlateau, toKernelElements) and the embedded module (`compare`, then `compute` for the state a box gets from what is below it). The Java side is in
 // src/test/java/io/morin/archicode/brightcart/: `archicode diff` gives the same counts and the same table from the same files.
 // Only the comparisons that the current tools can say are asserted (`verified: "archicode diff"`): P4 is the model's alone (it needs the composition of `replaces`).
 // The `deep` view of `inhouse` and `marketplace` against their baselines is drawn (E1 of the document, section 12, fixed by W-3 of wave 012): see "E1" below.
@@ -15,7 +15,7 @@ const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart');
-const FOLDERS = path.join(BRIGHTCART, 'folders');
+const LAYERED = path.join(BRIGHTCART, 'layered');
 const expected = (name) => JSON.parse(fs.readFileSync(path.join(BRIGHTCART, 'expected', name + '.json'), 'utf8'));
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
@@ -26,23 +26,24 @@ const CASES = expected('notable-cases');
 const VERIFIED = COMPARISONS.filter((c) => c.verified === 'archicode diff');
 
 let opened = null;
-/** The editor on `folders/`, the kernel loaded, and the elements of each plateau as the editor sends them to the kernel. */
+/** The editor on `layered/`, the kernel loaded, and the elements of each plateau as the editor sends them to the kernel. */
 function brightcart() {
   if (!opened) {
     opened = (async () => {
       const sandbox = createApp();
       const state = sandbox.__state();
-      const handle = makeDirHandle(FOLDERS);
-      state.folder = { handle, name: 'folders' };
+      const handle = makeDirHandle(LAYERED);
+      state.folder = { handle, name: 'layered' };
       state.permissionState = 'granted';
       await sandbox.loadWorkspace(handle);
       assert.equal(state.fatalError, null);
       const kernel = await sandbox.loadViewpointKernel();
       const sides = {};
-      for (const plateau of state.plateaus) {
-        await sandbox.switchPlateau(plateau.id);
-        assert.equal(state.fatalError, null, plateau.id);
-        sides[plateau.id] = plain({
+      for (const id of state.plateauTree.nodes.keys()) {
+        sandbox.drawPlateau(id);
+        assert.equal(state.fatalError, null, id);
+        assert.equal(state.layers.current, id);
+        sides[id] = plain({
           application: sandbox.toKernelElements(state.index.application, true).elements,
           technology: sandbox.toKernelElements(state.index.technology, true).elements
         });
@@ -53,10 +54,21 @@ function brightcart() {
   return opened;
 }
 
+/** A layer holds the elements it inherits with the `replaces` of the layer that declared them: the ones the base writes the same way are left out of the target, as the tools do (`PlateauComparer.dropInheritedReplaces`). */
+function withoutInheritedReplaces(base, target) {
+  const out = plain(target);
+  for (const layer of ['application', 'technology']) {
+    const known = new Map();
+    for (const e of base[layer]) if (e.replaces) known.set(e.reference, JSON.stringify(e.replaces));
+    for (const e of out[layer]) if (e.replaces && JSON.stringify(e.replaces) === known.get(e.reference)) delete e.replaces;
+  }
+  return out;
+}
+
 async function compare(comparison) {
   const { kernel, sides } = await brightcart();
   const [base, target] = comparison.chain;
-  const out = plain(kernel.compare({ base: sides[base], target: sides[target] })); // plain objects of this realm
+  const out = plain(kernel.compare({ base: sides[base], target: withoutInheritedReplaces(sides[base], sides[target]) })); // plain objects of this realm
   assert.equal(out.error, undefined, comparison.id);
   return out;
 }
@@ -78,9 +90,10 @@ for (const comparison of VERIFIED) {
   });
 }
 
-test('the baseline of a comparison is the one the file says: P5 compares siblings, P6 skips a plateau', () => {
+test('the baseline of a comparison is the one the file says: P5 compares siblings, P6 skips a plateau and is the model\'s', () => {
   assert.deepEqual(byId('P5').chain, ['saas', 'inhouse']);
   assert.deepEqual(byId('P6').chain, ['baseline', 'marketplace']);
+  assert.equal(byId('P6').verified, 'model only', 'the tool has one answer for that question: P4, and it does not compose the replaces either');
   assert.equal(byId('P4').verified, 'model only', 'the composed comparison is not something a tool says today');
 });
 
@@ -139,7 +152,7 @@ for (const notable of CASES) {
 test('the notable cases name every case N1 to N17, and the ones that are not run are the model\'s or a variant', () => {
   assert.deepEqual(CASES.map((c) => c.id), Array.from({ length: 17 }, (_, i) => 'N' + (i + 1)));
   const skipped = CASES.flatMap((c) => c.checks.filter((k) => byId(k.in).verified !== 'archicode diff').map((k) => c.id + ' in ' + k.in));
-  assert.deepEqual(skipped, ['N8 in P4', 'N13 in P4'], 'only the composed comparison P4 is not run here');
+  assert.deepEqual(skipped, ['N8 in P4', 'N8 in P6', 'N13 in P4'], 'only the composed comparison P4 and the question of P6, which the tool answers as P4, are not run here');
   assert.deepEqual(CASES.find((c) => c.id === 'N17').checks, [], 'N17 is variant V8, described and not run');
 });
 
@@ -170,8 +183,9 @@ test('N10, N12: the link follows the replaced destination and only its qualifier
 /** The stereotypes `compute` gives each box of the picture of a comparison: the states of the drawing. */
 async function drawn(comparison, viewpoint, reference, layer) {
   const { sandbox, state, kernel } = await brightcart();
-  await sandbox.switchPlateau(comparison.chain[1]);
-  await sandbox.setCompareTo(comparison.chain[0]);
+  sandbox.drawPlateau(comparison.chain[1]);
+  // a click on the plateau already compared with ends the comparison: ask only when it is not the one made
+  if (!(state.layers.compare && state.layers.compare.other === comparison.chain[0])) sandbox.compareWithPlateau(comparison.chain[0]);
   vm.runInContext("currentPerspective = 'map';", sandbox);
   const options = viewpoint === 'map' ? { opened: Array.from(state.index.application.keys()) } : { layer };
   const { input } = sandbox.buildKernelInput(viewpoint, reference, options);
@@ -200,7 +214,7 @@ test('E1: every view of every environment of the union is drawn for inhouse agai
   const { state, sides } = await brightcart();
   const environments = sides.inhouse.technology.filter((e) => !e.reference.includes('.')).map((e) => e.reference);
   assert.ok(environments.length >= 3, 'the environments of the fixture: ' + environments.join(', '));
-  assert.ok(state.plateaus.length === 4);
+  assert.ok(state.plateauTree.nodes.size === 4);
   for (const id of ['P2', 'P3']) {
     for (const environment of environments) {
       for (const viewpoint of ['overview', 'detailed', 'deep']) {

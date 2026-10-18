@@ -1,0 +1,23 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "cold-storage"
+content:
+  id: "cold-sync-all"
+  name: "Cold Sync All"
+  description: "Keeps the cold-store schedules for the insurance surveyors and weighs the fog warnings on request and the rest."
+  replaces:
+    - "cold-storage.cold-sync"
+    - "cold-storage.cold-validator"
+  relationships:
+    - destination: "cold-storage.cold-archive-store-and-forms"
+      label: "publishes to"
+    - destination: "cold-storage.combined-statistics"
+      label: "synchronises with"
+    - destination: "cold-storage.cold-alerts"
+      label: "sends to"
+    - destination: "cold-storage.cold-tracker"
+      label: "synchronises with"
+    - destination: "cold-storage.cold-search"
+      label: "reads from"

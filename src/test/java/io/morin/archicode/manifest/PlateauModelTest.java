@@ -160,8 +160,8 @@ class PlateauModelTest {
             val lines = new ArrayList<String>();
             words(expect.get("errors")).forEach(e -> lines.add("error: " + e));
             assertOneMistake(result, lines, label);
-        } else if (expect.has("settingsConflict")) {
-            assertOneMistake(result, List.of("error: " + expect.get("settingsConflict").asText()), label);
+        } else if (expect.has("removedKey")) {
+            assertOneMistake(result, List.of("error: " + expect.get("removedKey").asText()), label);
         } else {
             assertEquals(0, result.exit(), label + " -> " + result.err());
             val told = new ArrayList<String>();
@@ -200,7 +200,7 @@ class PlateauModelTest {
             "(found an array) at `override`", // a list given to override
             "exists only through", // a plateau that headers alone name
             "ids one letter apart", // an id one letter from another
-            "`settings.plateaus` and layered plateaus are both used" // both mechanisms
+            "`settings.plateaus` no longer exists" // the key of the old mechanism
         )) {
             assertTrue(text.contains(rule), "a case pins: " + rule);
         }

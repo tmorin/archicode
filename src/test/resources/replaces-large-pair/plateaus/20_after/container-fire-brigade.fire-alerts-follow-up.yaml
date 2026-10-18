@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "fire-brigade"
+content:
+  id: "fire-alerts-follow-up"
+  name: "Fire Alerts Follow-up"
+  description: "Chases the missing items and closes the files."
+  relationships:
+    - destination: "fire-brigade.fire-archive-store"
+      label: "reports to"

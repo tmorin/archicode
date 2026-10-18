@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "ferry-ticketing"
+content:
+  id: "ferry-exporter-next"
+  name: "Ferry Exporter Next"
+  description: "Records the ferry requests for the harbour master and alerts the extra charges each hour."
+  qualifiers:
+    - "Go"

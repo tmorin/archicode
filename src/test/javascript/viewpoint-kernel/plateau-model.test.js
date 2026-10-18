@@ -27,8 +27,10 @@ for (const c of DOCUMENT.cases) {
   test(c.id + ': ' + c.what, async () => {
     const { state } = await open(c);
     const expect = c.expect;
-    if (expect.settingsConflict !== undefined) {
-      assert.equal(state.fatalError, 'Could not read the plateaus of workspace.yaml:\n' + expect.settingsConflict);
+    if (expect.removedKey !== undefined) {
+      // the command line refuses the key with this sentence; the page reads the key until W-10 removes its reading (the case says so: `editor: null`)
+      assert.equal(expect.editor, null);
+      assert.ok(typeof expect.editorReason === 'string' && expect.editorReason.includes('W-10'), 'the case says why the editor waits, and for which run');
       return;
     }
     assert.equal(state.fatalError, null, 'the folder opens: ' + state.fatalError);

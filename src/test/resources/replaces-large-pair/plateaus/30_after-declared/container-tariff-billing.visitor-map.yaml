@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "tariff-billing"
+content:
+  id: "visitor-map"
+  name: "Visitor Map"
+  description: "Draws the quays on a map for the visitors."
+  relationships:
+    - destination: "mooring-lines.mooring-importer"
+      label: "reads from"

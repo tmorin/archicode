@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after"
+  parent: "test"
+content:
+  id: "batch-runner"
+  name: "Batch Runner"
+  description: "A different machine with the same name."

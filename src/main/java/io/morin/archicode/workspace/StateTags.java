@@ -138,7 +138,7 @@ public class StateTags {
         );
         if (comparison == null) {
             return String.format(
-                "%s, which is a state of a comparison, and nothing is compared here: %s. Compare two plateaus (`--baseline`) and the states are computed, or drop the word.",
+                "%s, which is a state of a comparison, and nothing is compared here: %s. Compare two plateaus (`--against`, or a plateau that overrides another one) and the states are computed, or drop the word.",
                 head,
                 own
             );

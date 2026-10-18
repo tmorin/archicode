@@ -319,9 +319,6 @@ export function build() {
 
 export const ORDER = ['baseline', 'saas', 'inhouse', 'marketplace'];
 
-// The plateau a plateau is compared with by its `baseline` key in the complete-folder rendition (the key is written for every plateau but the first, see E2).
-export const BASELINE_KEY = { baseline: null, saas: 'baseline', inhouse: 'baseline', marketplace: 'inhouse' };
-
 // The number of PlantUML files `views generate` writes for each plateau (default views, no manifest views yet), as the current command line gives it.
 export const VIEWS = { baseline: 109, saas: 93, inhouse: 147, marketplace: 181 };
 
@@ -360,22 +357,22 @@ export const WORKSPACE_STYLES = `styles:
       round-corner: 20
 `;
 
-// The comparisons of section 10. `chain` is the list of plateaus handed to the model (the first is the baseline); `tool` says how the command line is asked the same question of
-// `folders/` (`--baseline`), `layered` of `layered/` (`--against`; the plateau a plateau overrides is the default).
+// The comparisons of section 10. `chain` is the list of plateaus handed to the model (the first is the baseline); `command` says how the command line is asked the same question of
+// `layered/` (`--against`; the plateau a plateau overrides is the default), or null when only the model answers.
 export const COMPARISONS = [
-  { id: 'P1', title: '`saas` vs `baseline`', chain: ['baseline', 'saas'], tool: 'archicode diff --plateau saas', layered: 'archicode diff --plateau saas', source: 'tool' },
-  { id: 'P2', title: '`inhouse` vs `baseline`', chain: ['baseline', 'inhouse'], tool: 'archicode diff --plateau inhouse', layered: 'archicode diff --plateau inhouse', source: 'tool' },
-  { id: 'P3', title: '`marketplace` vs `inhouse`', chain: ['inhouse', 'marketplace'], tool: 'archicode diff --plateau marketplace', layered: 'archicode diff --plateau marketplace', source: 'tool' },
-  { id: 'P4', title: '`marketplace` vs `baseline`, composed', chain: ['baseline', 'inhouse', 'marketplace'], tool: null,
-    layered: 'archicode diff --plateau marketplace --against baseline',
-    // What the layered tool prints for the same question: it reads the `replaces` of every layer of the chain, relative to the plateau compared with, and does not compose them (L9),
+  { id: 'P1', title: '`saas` vs `baseline`', chain: ['baseline', 'saas'], command: 'archicode diff --plateau saas', source: 'tool' },
+  { id: 'P2', title: '`inhouse` vs `baseline`', chain: ['baseline', 'inhouse'], command: 'archicode diff --plateau inhouse', source: 'tool' },
+  { id: 'P3', title: '`marketplace` vs `inhouse`', chain: ['inhouse', 'marketplace'], command: 'archicode diff --plateau marketplace', source: 'tool' },
+  { id: 'P4', title: '`marketplace` vs `baseline`, composed', chain: ['baseline', 'inhouse', 'marketplace'],
+    command: 'archicode diff --plateau marketplace --against baseline',
+    // What the tool prints for the same question: it reads the `replaces` of every layer of the chain, relative to the plateau compared with, and does not compose them (L9),
     // so `discovery.search` (which replaces `commerce.search`, itself a replacement of `shop.app.search`) is new and `shop.app.search` removed: one move less.
-    layeredGives: [39, 3, 7, 10, 2, 1, 35, 1, 9],
-    layeredIgnored: 1,
+    gives: [39, 3, 7, 10, 2, 1, 35, 1, 9],
+    ignored: 1,
     source: 'model',
-    note: 'Needs the composition of `replaces` (L9). The old tool cannot say this, and the layered tool does not compose them either: it gives one move less (see `layeredGives`).' },
-  { id: 'P5', title: '`inhouse` vs `saas` (siblings)', chain: ['saas', 'inhouse'], tool: 'archicode diff --plateau inhouse --baseline saas', layered: 'archicode diff --plateau inhouse --against saas', source: 'tool' },
-  { id: 'P6', title: '`marketplace` vs `baseline`, last step only', chain: ['baseline', 'marketplace'], tool: 'archicode diff --plateau marketplace --baseline baseline', layered: null, source: 'tool', note: 'What the current tool prints: only the last step\'s `replaces` count.' }
+    note: 'Needs the composition of `replaces` (L9). The tool does not compose them: it gives one move less (see `gives`).' },
+  { id: 'P5', title: '`inhouse` vs `saas` (siblings)', chain: ['saas', 'inhouse'], command: 'archicode diff --plateau inhouse --against saas', source: 'tool' },
+  { id: 'P6', title: '`marketplace` vs `baseline`, last step only', chain: ['baseline', 'marketplace'], command: null, source: 'model', note: 'What a tool that reads only the last step\'s `replaces` prints (the tool of waves 008 to 013, whose option for it no longer exists).' }
 ];
 
 // The notable cases of section 10. `checks` are asserted against the model by the generator: { in: comparison, layer, ref, state } or { in, relationship: [source, destination, label], state }.
@@ -593,7 +590,6 @@ export const VARIANTS = [
     change: '`inhouse/application/commerce.cart.yaml` loses its `plateau: inhouse` header (the folder does not say the plateau: a manifest without the header is the `baseline`\'s).',
     expected: 'The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. (A warning that the folder `inhouse` holds a manifest of `baseline` is W-7\'s, the editor\'s Files page.)',
     class: 'error and warning',
-    kin: 'cases N4 and N5 of negative-cases.json (a plateau folder that is missing): the complete folders have no header to lose',
     mentions: ['baseline', 'commerce.cart', 'parent'],
     mutate: (P) => {
       const e = withoutManifest(P.inhouse, 'commerce.cart');
@@ -670,7 +666,7 @@ export const VARIANTS = [
     change: 'Two plateaus with the same `override` and the same `id`.',
     expected: 'Error: plateau declared twice.',
     class: 'error',
-    run: 'case N1 of negative-cases.json: a fifth plateau with the id `saas`, which the complete folders say as "the plateau id `saas` is used more than once"; same two tests',
+    run: 'the cases of plateau-model-cases.json (a plateau declared by two manifests), read by a Java and a node test',
     mentions: ['plateau', 'declared twice']
   },
   {

@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "library"
+content:
+  id: "report-b"
+  name: "Stock report"
+  replaces:
+    - "library.report"
+  tags:
+    rendering-stereotypes: "merged"

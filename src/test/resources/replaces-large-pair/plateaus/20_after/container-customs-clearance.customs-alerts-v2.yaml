@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "customs-clearance"
+content:
+  id: "customs-alerts-v2"
+  name: "Customs Alerts"
+  description: "Reconciles the customs bookings for the duty officer and sorts the missing papers each hour."
+  relationships:
+    - destination: "gate-control.gate-importer"
+      label: "synchronises with"

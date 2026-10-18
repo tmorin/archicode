@@ -2,16 +2,13 @@
 # state-tags.test.js, which read the same files). before -> after: the kiosk is new, the printer is renamed. The counter and
 # the queue did not change, and still carry the tags their author wrote by hand, `new` and `changed`; the printer carries
 # `new` and has changed; the window is new and carries `new` too (the tag agrees with the comparison).
+# The plateaus are layers: the manifests of `plateaus/10_before` have no `plateau:` header and are the root, `baseline`; `before` is
+# the first state, an empty layer over it; `after` overrides it with its own manifests and the patches of its `plateau.yaml`.
 styles:
   by-tags:
     new:
       line-color: "#7B3FA0"
 settings:
   name: "Ticket office"
-  plateaus:
-    - id: "before"
-      name: "Before"
-      path: "plateaus/10_before"
-    - id: "after"
-      name: "After"
-      path: "plateaus/20_after"
+  manifests:
+    paths: ["plateaus/**"]

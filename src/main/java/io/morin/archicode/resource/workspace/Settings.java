@@ -2,6 +2,7 @@ package io.morin.archicode.resource.workspace;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 import lombok.Builder;
@@ -24,15 +25,16 @@ public class Settings {
     Manifests manifests = Manifests.builder().build();
 
     /**
-     * The plateaus of the architecture: the states it goes through, each one a complete folder of manifests. An ordered
-     * list (the order is the one of the author, the last is the latest), never a set. Empty for a workspace that has
-     * one set of manifests, which is {@link Manifests#getPaths()}.
+     * The key of the plateaus of waves 008 to 013, which no longer exists: a plateau is a layer now. It is read as it is
+     * written, never used and never written, so that the tools that list the keys of the settings still know it while the
+     * editor does (the command line refuses a workspace file that has it before it reads anything else).
      */
-    @Builder.Default
-    List<Plateau> plateaus = new ArrayList<>();
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    JsonNode plateaus;
 
     /**
-     * The id of the plateau that is drawn when none is asked for. Optional: the last plateau of the list when absent.
+     * The id of the plateau that is drawn when none is asked for. Optional: the last plateau when the plateaus form one
+     * line.
      */
     String current;
 
@@ -46,8 +48,8 @@ public class Settings {
     Facets facets = Facets.builder().build();
 
     /**
-     * A plateau: the architecture at a point of its life, as a folder of manifests below the folder of the workspace.
-     * The key {@code from} is reserved (a plateau built as an increment on top of another one) and refused for now.
+     * A plateau as the commands and the comparison read it: the architecture at a point of its life. It is made from the
+     * tree of the layers ({@code io.morin.archicode.resource.plateau.PlateauTree}), never read from a file.
      */
     @Value
     @Jacksonized
@@ -71,13 +73,7 @@ public class Settings {
         String horizon;
 
         /**
-         * The folder of the manifests, relative to the folder of the workspace file, below it.
-         */
-        String path;
-
-        /**
-         * The id of the plateau this one is compared with. Optional: the plateau before this one in the list when
-         * absent, and none for the first plateau. It must be another plateau of the list.
+         * The id of the plateau this one overrides, and is compared with by default; null for {@code baseline}, the root.
          */
         String baseline;
     }

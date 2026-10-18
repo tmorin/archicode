@@ -1,12 +1,12 @@
 'use strict';
 // Brightcart (wave 012, run 0061): the editor on the invented shopping solution of docs/fixtures/brightcart-spec.md (sections 10 and 11), read from
-// src/test/resources/brightcart/. Three things, each against the answers the generator wrote in expected/ and not against numbers typed here:
-//   - the editor opens each of the four plateaus of `folders/` and finds the sizes of the document;
-//   - the Changes panel of each comparison that a tool can say today (P1, P2, P3, P5, P6) shows the counts `archicode diff` prints (BrightcartDiffTest.java reads the same file);
-//   - the save keeps what an edit does not touch (the line-preserving save of run 0055 and wave 011): every manifest of `folders/` (73 files) is
-//     saved as it was when nothing changed, an edit of its name changes its name line and no other, an addition keeps every line it had; and the editor itself, on the whole of `folders/`,
-//     writes a rename and writes it back to the bytes of the file on the disk.
-// The layered rendition `layered/` (wave 014, run 0079) is committed: its files go through the same saves as the 73 files of `folders/` (brightcart-layered.test.js opens it).
+// src/test/resources/brightcart/layered/ (the plateaus are layers). Three things, each against the answers the generator wrote in expected/ and not against numbers typed here:
+//   - the editor draws each of the four plateaus and finds the sizes of the document;
+//   - the Changes panel of each comparison that a tool can say today (P1, P2, P3, P5) shows the counts `archicode diff` prints (BrightcartLayeredDiffTest.java reads the same file);
+//   - the save keeps what an edit does not touch (the line-preserving save of run 0055 and wave 011): every manifest of `layered/` (50 files) is
+//     saved as it was when nothing changed, an edit of its name changes its name line and no other, an addition keeps every line it had; and the editor itself
+//     writes a rename in the manifests a plateau declares and writes it back to the bytes of the file on the disk.
+// brightcart-layered.test.js opens the same folder and says what the editor reads of it.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,13 +16,13 @@ const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
 
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart');
-const FOLDERS = path.join(BRIGHTCART, 'folders');
 const LAYERED = path.join(BRIGHTCART, 'layered');
 const expected = (name) => JSON.parse(fs.readFileSync(path.join(BRIGHTCART, 'expected', name + '.json'), 'utf8'));
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 const SIZES = expected('sizes').plateaus;
 const COMPARISONS = expected('comparisons').filter((c) => c.verified === 'archicode diff');
+const ALL_COMPARISONS = expected('comparisons');
 const RENDITIONS = expected('renditions');
 
 /** Every `.yaml` file below `root`, as a path relative to it with `/`, sorted. */
@@ -39,11 +39,11 @@ function yamlFiles(root) {
   return out.sort();
 }
 
-async function openFolders(options = {}) {
+async function openLayered(options = {}) {
   const sandbox = createApp(options);
   const state = sandbox.__state();
-  const handle = options.handle || makeDirHandle(FOLDERS);
-  state.folder = { handle, name: 'folders' };
+  const handle = options.handle || makeDirHandle(LAYERED);
+  state.folder = { handle, name: 'layered' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(handle);
   assert.equal(state.fatalError, null);
@@ -53,18 +53,18 @@ async function openFolders(options = {}) {
 
 // ---- the four plateaus ----
 
-test('the editor lists the four plateaus in the order of the workspace, each with the baseline its key says', async () => {
-  const { state } = await openFolders();
-  assert.deepEqual(plain(state.plateaus.map((p) => p.id)), Object.keys(SIZES));
-  assert.equal(state.plateau.id, 'marketplace', 'the last plateau is drawn when none is asked for');
+test('the editor has the four plateaus of the document in its tree, the root drawn when none is asked for', async () => {
+  const { state } = await openLayered();
+  assert.deepEqual(plain([...state.plateauTree.nodes.keys()].sort()), Object.keys(SIZES).sort());
+  assert.equal(state.layers.current, 'baseline');
 });
 
 for (const id of Object.keys(SIZES)) {
-  test('plateau ' + id + ': the editor opens it with the elements and the relationships of the document', async () => {
-    const { sandbox, state } = await openFolders();
-    await sandbox.switchPlateau(id);
+  test('plateau ' + id + ': the editor draws it with the elements and the relationships of the document', async () => {
+    const { sandbox, state } = await openLayered();
+    sandbox.drawPlateau(id);
     assert.equal(state.fatalError, null);
-    assert.equal(state.plateau.id, id);
+    assert.equal(state.layers.current, id);
     const want = SIZES[id];
     assert.equal(state.index.application.size, want.application);
     assert.equal(state.index.technology.size, want.technology);
@@ -72,7 +72,7 @@ for (const id of Object.keys(SIZES)) {
     const relationships = sandbox.toKernelElements(state.index.application, true).elements.reduce((n, e) => n + (e.relationships || []).length, 0);
     assert.equal(relationships, want.relationships);
     assert.deepEqual(plain(state.duplicateReferences), []);
-    assert.deepEqual(plain(state.manifestFiles.map((f) => f.relPath)), yamlFiles(FOLDERS).filter((f) => f.startsWith('plateaus/' + id + '/')), 'the manifests of the folder of the plateau, no other');
+    assert.deepEqual(plain(state.manifestFiles.map((f) => f.relPath).sort()), yamlFiles(LAYERED).filter((f) => f !== 'workspace.yaml'), 'every manifest of the folder is read, whatever the plateau drawn');
   });
 }
 
@@ -98,11 +98,11 @@ function listedRows(html, title) {
 
 for (const comparison of COMPARISONS) {
   test(comparison.id + ': the Changes panel of ' + comparison.comparison + ' has the counts of archicode diff', async () => {
-    const { sandbox, state } = await openFolders();
+    const { sandbox, state } = await openLayered();
     const [base, target] = comparison.chain;
-    await sandbox.switchPlateau(target);
-    await sandbox.setCompareTo(base);
-    assert.equal(state.plateau.id, target);
+    sandbox.drawPlateau(target);
+    sandbox.compareWithPlateau(base);
+    assert.equal(state.layers.current, target);
     assert.equal(state.baseline.plateau.id, base);
     const view = sandbox.comparisonState();
     assert.equal(view.problems, undefined, JSON.stringify(view.problems));
@@ -121,24 +121,26 @@ for (const comparison of COMPARISONS) {
   });
 }
 
-test('P4 is not asked of the editor: no plateau compares marketplace with baseline through inhouse, and the comparison with baseline is P6', async () => {
-  const { sandbox, state } = await openFolders();
-  await sandbox.switchPlateau('marketplace');
-  await sandbox.setCompareTo('baseline');
-  const p6 = COMPARISONS.find((c) => c.id === 'P6');
-  assert.equal(sandbox.comparisonState().counts.elements.removed, p6.elements.removed, 'the last step\'s `replaces` only: 16 removed, where the model says the real change is fewer');
-  assert.equal(state.plateau.id, 'marketplace');
+test('P4 is not asked of the editor as the model answers it: no plateau compares marketplace with baseline through inhouse, and the editor gives the counts of the tool', async () => {
+  const { sandbox, state } = await openLayered();
+  sandbox.drawPlateau('marketplace');
+  sandbox.compareWithPlateau('baseline');
+  const p4 = ALL_COMPARISONS.find((c) => c.id === 'P4');
+  const [added, changed, removed, moved, split, merged] = p4.gives;
+  const elements = sandbox.comparisonState().counts.elements;
+  assert.deepEqual({ new: elements.new, changed: elements.changed, removed: elements.removed, moved: elements.moved, split: elements.split, merged: elements.merged }, { new: added, changed, removed, moved, split, merged }, 'the `replaces` of the last step only: one move less than the model\'s');
+  assert.equal(state.layers.current, 'marketplace');
 });
 
 // ---- the save: every manifest of the complete-folder rendition ----
 
-const FOLDERS_FILES = yamlFiles(FOLDERS).filter((f) => f !== 'workspace.yaml');
 const LAYERED_FILES = yamlFiles(LAYERED).filter((f) => f !== 'workspace.yaml');
 const app = createApp({});
 const parse = (text) => plain(app.parseYaml(text));
 
-test('the two renditions are the files the document counts', () => {
-  for (const [name, root, files] of [['folders', FOLDERS, FOLDERS_FILES], ['layered', LAYERED, LAYERED_FILES]]) {
+test('the rendition is the files the document counts', () => {
+  {
+    const [name, root, files] = ['layered', LAYERED, LAYERED_FILES];
     const texts = files.map((f) => fs.readFileSync(path.join(root, f), 'utf8'));
     assert.equal(files.length, RENDITIONS[name].files, name + ' files');
     assert.equal(texts.reduce((n, t) => n + t.split('\n').length - 1, 0), RENDITIONS[name].lines, name + ' lines');
@@ -158,7 +160,7 @@ const renamed = (text, name) => {
   return app.patchYamlText(text, value);
 };
 
-for (const [rendition, root, files] of [['folders', FOLDERS, FOLDERS_FILES], ['layered', LAYERED, LAYERED_FILES]]) {
+for (const [rendition, root, files] of [['layered', LAYERED, LAYERED_FILES]]) {
   test('save, ' + rendition + ': a file read and written back with no edit is the file, byte for byte (' + files.length + ' files)', () => {
     for (const file of files.concat(['workspace.yaml'])) {
       const text = fs.readFileSync(path.join(root, file), 'utf8');
@@ -203,31 +205,33 @@ for (const [rendition, root, files] of [['folders', FOLDERS, FOLDERS_FILES], ['l
   });
 }
 
-/** `folders/` as a writable in-memory folder: the files as the generator wrote them. */
-function foldersInMemory() {
-  const initial = { 'workspace.yaml': fs.readFileSync(path.join(FOLDERS, 'workspace.yaml'), 'utf8') };
-  for (const f of FOLDERS_FILES) initial[f] = fs.readFileSync(path.join(FOLDERS, f), 'utf8');
+/** `layered/` as a writable in-memory folder: the files as the generator wrote them. */
+function layeredInMemory() {
+  const initial = { 'workspace.yaml': fs.readFileSync(path.join(LAYERED, 'workspace.yaml'), 'utf8') };
+  for (const f of LAYERED_FILES) initial[f] = fs.readFileSync(path.join(LAYERED, f), 'utf8');
   return { mem: memFolder(initial), initial };
 }
 
 for (const id of Object.keys(SIZES)) {
-  test('the editor saves a rename in every manifest of plateau ' + id + ': one line per file, then writes the bytes of the disk back', async () => {
-    const { mem, initial } = foldersInMemory();
-    const { sandbox, state } = await openFolders({ handle: mem.handle });
-    await sandbox.switchPlateau(id);
-    assert.equal(state.plateau.id, id);
-    const manifests = plain(state.manifestFiles.map((mf) => mf.relPath));
-    assert.ok(manifests.length >= 10, id + ' has its manifests');
+  test('the editor saves a rename in every manifest that plateau ' + id + ' declares: one line per file, then writes the bytes of the disk back', async () => {
+    const { mem, initial } = layeredInMemory();
+    const { sandbox, state } = await openLayered({ handle: mem.handle });
+    sandbox.drawPlateau(id);
+    assert.equal(state.layers.current, id);
+    // the elements the plateau declares: the manifests that say `plateau: <id>` (the root's say none), a plateau's own manifest and the views and stories excepted
+    const declared = state.manifestFiles.filter((mf) => (mf.header.plateau || 'baseline') === id && !/plateau$/.test(mf.header.kind));
+    const manifests = plain(declared.map((mf) => mf.relPath));
+    assert.ok(manifests.length >= 3, id + ' declares its manifests');
     const edit = (suffix) => {
-      for (const mf of state.manifestFiles.slice()) {
+      for (const mf of declared) {
         const reference = mf.header.parent ? mf.header.parent + '.' + mf.content.id : String(mf.content.id);
-        const layer = /environment$/.test(mf.header.kind) ? 'technology' : 'application';
-        sandbox.commitElementEdit(reference, (node) => { node.name = String(node.name).replace(/ \(edited\)$/, '') + suffix; }, layer);
+        const layer = /environment$|node$/.test(mf.header.kind) ? 'technology' : 'application';
+        sandbox.commitElementEdit(reference, (node) => { node.name = String(node.name).replace(/ \(edited\)$/, '') + suffix; }, layer, { confirmed: true });
       }
     };
     edit(' (edited)');
     await sandbox.saveAllChanges();
-    assert.deepEqual(mem.writes.slice().sort(), manifests.slice().sort(), 'every manifest of the plateau was written, and nothing else');
+    assert.deepEqual(mem.writes.slice().sort(), manifests.slice().sort(), 'every manifest the plateau declares was written, and nothing else');
     for (const file of manifests) {
       const before = initial[file].split('\n');
       const after = mem.files.get(file).text.split('\n');

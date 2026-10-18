@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lighthouse-service"
+content:
+  id: "buoy-health"
+  name: "Buoy Health"
+  description: "Collects the readings of the sensors on the buoys and stores them for later."

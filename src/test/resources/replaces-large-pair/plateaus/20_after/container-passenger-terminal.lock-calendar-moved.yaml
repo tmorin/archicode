@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "passenger-terminal"
+content:
+  id: "lock-calendar-moved"
+  name: "Lock Calendar Moved"
+  description: "Converts the lock reports for the dredging teams and notifies the rough seas after every storm."
+  relationships:
+    - destination: "lock-gates.lock-alerts"
+      label: "synchronises with"

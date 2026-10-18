@@ -1,0 +1,15 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "shop"
+content:
+  id: "orders-billing"
+  name: "Order billing"
+  replaces:
+    - "shop.orders"
+  relationships:
+    - destination: "shop.mail"
+      label: "asks"
+    - destination: "shop.orders-intake"
+      label: "follows"

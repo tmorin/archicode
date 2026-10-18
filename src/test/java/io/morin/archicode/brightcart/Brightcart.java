@@ -22,26 +22,24 @@ import lombok.val;
 import picocli.CommandLine;
 
 /**
- * Brightcart (wave 012), as the tests of this package read it: the files of
+ * Brightcart (waves 012 and 014), as the tests of this package read it: the files of
  * {@code src/test/resources/brightcart/} that {@code generate.mjs} wrote, never the generator (no test runs node). The
- * complete-folder rendition {@code folders/} is the workspace; {@code expected/} holds the answers the document records
- * (sizes, the comparisons P1 to P6 with the command that gives each, the table of changes, the notable cases N1 to
- * N17). A test asserts the tool against those files and types no number of its own. The layered rendition
- * {@code layered/} (wave 014, run 0079) is the other workspace: the same plateaus as layers, asked the same questions
- * with {@code --against} in place of {@code --baseline}.
+ * layered rendition {@code layered/} is the workspace (the plateaus are layers: a {@code plateau:} header on the manifests and a
+ * {@code Kind: Plateau} with the patches); {@code expected/} holds the answers the document records (sizes, the comparisons P1
+ * to P6 with the command that gives each, the table of changes, the notable cases N1 to N17). A test asserts the tool against
+ * those files and types no number of its own.
  *
  * <p>The command line is run in the process, through the real picocli command line, on a <strong>copy</strong> of
- * {@code folders/} in a temporary folder: {@code views generate} writes {@code views-*} folders next to
+ * {@code layered/} in a temporary folder: {@code views generate} writes {@code views-*} folders next to
  * {@code workspace.yaml}, and the repository is never written.
  */
 final class Brightcart {
 
     static final Path ROOT = Path.of("src/test/resources/brightcart");
-    static final Path FOLDERS = ROOT.resolve("folders");
     static final Path LAYERED = ROOT.resolve("layered");
     static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /** The four plateaus, in the order of {@code settings.plateaus}. */
+    /** The four plateaus, the root first. */
     static final List<String> PLATEAUS = List.of("baseline", "saas", "inhouse", "marketplace");
 
     /** The three facets of the workspace of section 4 of the document. */
@@ -76,7 +74,7 @@ final class Brightcart {
         return out;
     }
 
-    /** The ids of the verified comparisons, for a parameterized test. */
+    /** The ids of the verified comparisons (P1, P2, P3 and P5), for a parameterized test. */
     static Stream<String> verifiedIds() {
         return verifiedComparisons()
             .stream()
@@ -101,30 +99,8 @@ final class Brightcart {
         return words.subList(1, words.size());
     }
 
-    /** The comparisons the layered tool answers like the old one ({@code layeredCommand}, a verified comparison). */
-    static Stream<String> layeredIds() {
-        return verifiedComparisons()
-            .stream()
-            .filter(c -> !c.get("layeredCommand").isNull())
-            .map(c -> c.get("id").asText());
-    }
-
-    /** The arguments after {@code archicode} of the command that asks a comparison of {@code layered/}. */
-    static List<String> layeredArguments(JsonNode comparison) {
-        val words = Arrays.asList(comparison.get("layeredCommand").asText().split(" "));
-        if (!words.get(0).equals("archicode")) {
-            throw new IllegalArgumentException(comparison.get("layeredCommand").asText());
-        }
-        return words.subList(1, words.size());
-    }
-
-    /** A copy of {@code folders/} into {@code into}; returns its {@code workspace.yaml}. */
-    static Path copyFolders(Path into) {
-        return copy(FOLDERS, into);
-    }
-
     /** A copy of {@code layered/} into {@code into}; returns its {@code workspace.yaml}. */
-    static Path copyLayered(Path into) {
+    static Path copy(Path into) {
         return copy(LAYERED, into);
     }
 
@@ -323,44 +299,25 @@ final class Brightcart {
             return in(workspace, arguments(comparison), "--format", format);
         }
 
-        /** The same question asked of {@code layered/}: {@code --against} in place of {@code --baseline}. */
-        Result layeredDiff(Path workspace, JsonNode comparison, String format) {
-            return in(workspace, layeredArguments(comparison), "--format", format);
-        }
-
         Result generate(Path workspace, String plateau) {
             return in(workspace, List.of("views", "generate", "--plateau", plateau));
         }
     }
 
-    /** What {@code views generate} writes for each plateau, in one copy of {@code folders/}. */
+    /** What {@code views generate} writes for each plateau, in one copy of {@code layered/}. */
     record Generated(Path workspace, Map<String, Result> results) {
         Path views(String folder) {
             return workspace.getParent().resolve(folder);
         }
     }
 
-    /** {@code views generate --plateau <id>} for the four plateaus, one after the other, on a copy in {@code into}. */
-    static Generated generateAll(Cli cli, Path into) {
-        return generate(cli, into, PLATEAUS);
-    }
-
     /**
-     * {@code views generate --plateau <id>} for the given plateaus, one after the other, on a copy in {@code into}: a
-     * run takes about twenty seconds per plateau, so a test that needs the files of two runs asks for two plateaus.
+     * {@code views generate --plateau <id>} for the given plateaus, one after the other, on a copy of {@code layered/} in
+     * {@code into}: the tree forks, so the plateau is named. A run takes about twenty seconds per plateau, so a test that
+     * needs the files of two runs asks for two plateaus.
      */
     static Generated generate(Cli cli, Path into, List<String> plateaus) {
-        val workspace = copyFolders(into);
-        val results = new TreeMap<String, Result>();
-        for (val plateau : plateaus) {
-            results.put(plateau, cli.generate(workspace, plateau));
-        }
-        return new Generated(workspace, results);
-    }
-
-    /** The same on a copy of {@code layered/}: {@code views generate --plateau <id>} names the plateau, the tree forks. */
-    static Generated generateLayered(Cli cli, Path into, List<String> plateaus) {
-        val workspace = copyLayered(into);
+        val workspace = copy(into);
         val results = new TreeMap<String, Result>();
         for (val plateau : plateaus) {
             results.put(plateau, cli.generate(workspace, plateau));
@@ -369,31 +326,19 @@ final class Brightcart {
     }
 
     private static Generated shared;
-    private static Generated sharedLayered;
 
     /**
-     * The first run of {@link #generateAll}, made once for the whole test run (it is the longest thing the package does)
-     * and read by the tests that look at what was written. A test that wants a second run makes its own.
+     * The first run of {@link #generate} for the four plateaus, made once for the whole test run (it is the longest thing
+     * the package does) and read by the tests that look at what was written. A test that wants a second run makes its own.
      */
     @SneakyThrows
     static synchronized Generated firstRun(Cli cli) {
         if (shared == null) {
             val dir = Files.createTempDirectory("brightcart-views");
             Runtime.getRuntime().addShutdownHook(new Thread(() -> deleteQuietly(dir)));
-            shared = generateAll(cli, dir);
+            shared = generate(cli, dir, PLATEAUS);
         }
         return shared;
-    }
-
-    /** The first run of {@link #generateLayered} for the four plateaus, made once for the whole test run, like {@link #firstRun}. */
-    @SneakyThrows
-    static synchronized Generated firstLayeredRun(Cli cli) {
-        if (sharedLayered == null) {
-            val dir = Files.createTempDirectory("brightcart-layered-views");
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> deleteQuietly(dir)));
-            sharedLayered = generateLayered(cli, dir, PLATEAUS);
-        }
-        return sharedLayered;
     }
 
     private static void deleteQuietly(Path dir) {

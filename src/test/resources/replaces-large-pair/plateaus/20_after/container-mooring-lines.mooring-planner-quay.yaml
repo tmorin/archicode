@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "mooring-lines"
+content:
+  id: "mooring-planner-quay"
+  name: "Quay Mooring Planner"
+  description: "Collects the mooring reports for the port authority board and updates the rough seas before noon."
+  relationships:
+    - destination: "tide-forecast.tide-gateway"
+      label: "synchronises with"

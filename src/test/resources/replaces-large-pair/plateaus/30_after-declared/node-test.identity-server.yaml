@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after-declared"
+  parent: "test"
+content:
+  id: "identity-server"
+  name: "Identity Server"
+  description: "A different machine with the same name."

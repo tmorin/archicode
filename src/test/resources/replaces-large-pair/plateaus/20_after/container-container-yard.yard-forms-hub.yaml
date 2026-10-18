@@ -1,0 +1,25 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "container-yard"
+content:
+  id: "yard-forms-hub"
+  name: "Yard Forms Hub"
+  description: "Archives the yard statements for the ship chandlers and weighs the crew lists once a week."
+  relationships:
+    - destination: "container-yard.yard-sync"
+      label: "synchronises with"
+  elements:
+    - kind: "component"
+      id: "formatter"
+      name: "Formatter"
+      description: "Lays out the results for the screen and for the printer."
+    - kind: "component"
+      id: "cache"
+      name: "Cache"
+      description: "Keeps the latest answers close to the callers."
+    - kind: "component"
+      id: "mapper"
+      name: "Mapper"
+      description: "Renames and converts the fields on their way out."

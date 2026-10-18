@@ -43,12 +43,42 @@ class RemovedElementCopyTest {
             "workspace.yaml",
             """
             settings:
-              plateaus:
-                - id: "a"
-                  path: "plateaus/a"
-                - id: "b"
-                  path: "plateaus/b"
-                  baseline: "a"
+              manifests:
+                paths: ["plateaus/**"]
+            """
+        );
+        // `a` is an empty layer over the root, `b` removes everything `a` has and brings the two elements that take the place of
+        // a child of each of the two parents
+        write(
+            "plateaus/a/plateau.yaml",
+            """
+            header:
+              kind: "archicode.morin.io/plateau"
+              version: "1"
+            content:
+              id: "a"
+            """
+        );
+        write(
+            "plateaus/b/plateau.yaml",
+            """
+            header:
+              kind: "archicode.morin.io/plateau"
+              version: "1"
+            content:
+              id: "b"
+              override: "a"
+              patches:
+                - operator: REMOVE
+                  target: "shop"
+                - operator: REMOVE
+                  target: "billing"
+                - operator: REMOVE
+                  target: "prod"
+                  layer: technology
+                - operator: REMOVE
+                  target: "other"
+                  layer: technology
             """
         );
         write(
@@ -98,6 +128,7 @@ class RemovedElementCopyTest {
             header:
               kind: "archicode.morin.io/system"
               version: "1"
+              plateau: "b"
             content:
               id: "storefront"
               name: "Storefront"
@@ -115,6 +146,7 @@ class RemovedElementCopyTest {
             header:
               kind: "archicode.morin.io/environment"
               version: "1"
+              plateau: "b"
             content:
               id: "cloud"
               name: "Cloud"

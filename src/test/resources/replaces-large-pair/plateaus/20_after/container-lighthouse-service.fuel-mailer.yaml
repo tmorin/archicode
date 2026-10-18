@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "lighthouse-service"
+content:
+  id: "fuel-mailer"
+  name: "Fuel Mailer"
+  description: "Sends a daily summary of the fuel orders to the shipping agents."

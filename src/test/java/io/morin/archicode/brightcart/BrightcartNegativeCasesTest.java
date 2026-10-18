@@ -25,8 +25,8 @@ import picocli.CommandLine;
 
 /**
  * The negative variants of the document that today's tools can run (wave 013, run 0070), on the command line: each case of
- * {@code negative-cases.json} is the folders of Brightcart with one alteration, built in a temporary folder from
- * {@code folders/} (nothing negative is committed as a workspace), and the command gives one {@code error:} line, or a warning,
+ * {@code negative-cases.json} is the layered Brightcart with one alteration, built in a temporary folder from
+ * {@code layered/} (nothing negative is committed as a workspace), and the command gives one {@code error:} line, or a warning,
  * and exit code 1 or 0, without a stack trace. The editor runs the same file in {@code brightcart-negative.test.js} and says
  * the same sentence.
  */
@@ -64,7 +64,7 @@ class BrightcartNegativeCasesTest {
         throw new IllegalArgumentException("no case " + id);
     }
 
-    /** The alteration of a case: the operations on the copy of {@code folders/}. */
+    /** The alteration of a case: the operations on the copy of {@code layered/}. */
     @SneakyThrows
     static void alter(Path root, JsonNode ops) {
         for (val op : ops) {
@@ -109,7 +109,7 @@ class BrightcartNegativeCasesTest {
     @MethodSource("caseIds")
     void shouldGiveTheSentenceOfTheCase(String id) {
         val c = caseOf(id);
-        val workspace = Brightcart.copyFolders(dir);
+        val workspace = Brightcart.copy(dir);
         alter(dir, c.get("ops"));
         val cli = new Brightcart.Cli(factory, errorOutput);
         for (val command : c.get("cli")) {

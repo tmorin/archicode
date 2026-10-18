@@ -1,0 +1,38 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "later"
+  override: "as-is"
+  patches:
+    - operator: REMOVE
+      target: "shop.legacy"
+    # the warehouse keeps stock only
+    - operator: REMOVE
+      target: "warehouse.picking"
+    - operator: SET
+      target: "shop.web"
+      field: qualifiers
+      value: ["React", "SPA"]
+    - operator: SET
+      target: "shop.api"
+      field: relationships
+      where: {destination: "shop.db", label: "reads"}
+      value: {label: "reads and writes"}
+    - operator: SET
+      target: "shop.db"
+      field: description
+      value: "Holds the catalog."
+    - operator: SET
+      target: "warehouse.stock"
+      field: name
+      value: "Stock keeping"
+    - operator: ADD
+      target: "customer"
+      field: relationships
+      value: {destination: "shop.mobile", label: "orders on", qualifiers: ["HTTPS"]}
+    - operator: ADD
+      target: "prod.cluster"
+      layer: technology
+      field: applications
+      value: ["shop.notifications"]

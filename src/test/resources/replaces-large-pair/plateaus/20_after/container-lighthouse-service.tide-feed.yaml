@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "lighthouse-service"
+content:
+  id: "tide-feed"
+  name: "Tide Feed"
+  description: "Exposes the interface of the tide table to the other systems of the harbour."

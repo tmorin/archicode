@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "to-be"
+  parent: "shop"
+content:
+  id: "mobile"
+  name: "Mobile app"
+  relationships:
+    - destination: "shop.api"
+      label: "calls"
+      qualifiers:
+        - "REST"

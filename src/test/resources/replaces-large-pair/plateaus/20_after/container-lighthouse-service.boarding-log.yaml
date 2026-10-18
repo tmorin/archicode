@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "lighthouse-service"
+content:
+  id: "boarding-log"
+  name: "Boarding Log"
+  description: "Keeps the history of every pilot boarding for the harbour auditors."

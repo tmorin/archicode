@@ -1,6 +1,6 @@
 'use strict';
 // The negative variants of the document that today's tools can run (wave 013, run 0070), in the editor: each case of
-// src/test/resources/brightcart/negative-cases.json is the folders of Brightcart with one alteration, built in a temporary folder from folders/
+// src/test/resources/brightcart/negative-cases.json is the layered Brightcart with one alteration, built in a temporary folder from layered/
 // (nothing negative is committed as a workspace), opened as the editor opens a folder, and the page says the sentence of the command line
 // (`BrightcartNegativeCasesTest.java` runs the same file) or its stated equivalent: the editor's banners start with a capital and end with a
 // full stop, the plateau rules come under "Could not read the plateaus of workspace.yaml:", and the keys and shapes of workspace.yaml under "Could not read/parse workspace.yaml: " (run 0072).
@@ -13,13 +13,13 @@ const path = require('node:path');
 const { createApp, makeDirHandle } = require('./harness');
 
 const ROOT = path.resolve(__dirname, '../../resources/brightcart');
-const FOLDERS = path.join(ROOT, 'folders');
+const LAYERED = path.join(ROOT, 'layered');
 const CASES = JSON.parse(fs.readFileSync(path.join(ROOT, 'negative-cases.json'), 'utf8')).cases;
 
-/** The alteration of a case, on a copy of folders/ in a temporary folder, which is returned. */
+/** The alteration of a case, on a copy of layered/ in a temporary folder, which is returned. */
 function altered(ops) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'brightcart-negative-'));
-  fs.cpSync(FOLDERS, dir, { recursive: true });
+  fs.cpSync(LAYERED, dir, { recursive: true });
   for (const op of ops) {
     if (op.op === 'replace') {
       const file = path.join(dir, op.file);
@@ -55,7 +55,8 @@ async function open(dir) {
 function said(sandbox, state, compared) {
   const out = {};
   if (state.fatalError) out.fatalError = state.fatalError;
-  if (state.plateauProblem) out.plateauProblem = state.plateauProblem;
+  if (state.plateauTree && state.plateauTree.problems && state.plateauTree.problems.length) out.treeProblems = state.plateauTree.problems;
+  if (state.layerProblems) out.layerProblems = state.layerProblems;
   if (state.baseline && state.baseline.problem) out.baselineProblem = state.baseline.problem;
   const errors = state.manifestFiles.filter((f) => f.error);
   if (errors.length) out.manifestErrors = Object.fromEntries(errors.map((f) => [f.relPath, f.error]));
@@ -82,17 +83,10 @@ for (const c of CASES) {
       for (const step of c.editor) {
         const label = c.id + ' plateau ' + step.plateau + ' compare ' + step.compareTo;
         if (!state.fatalError) {
-          if (step.plateau !== null && state.plateau.id !== step.plateau) await sandbox.switchPlateau(step.plateau);
-          if (step.compareTo !== null) await sandbox.setCompareTo(step.compareTo);
+          if (step.plateau !== null) sandbox.drawPlateau(step.plateau);
+          if (step.compareTo === '@past') sandbox.toggleCompareWithPast();
         }
-        const expect = Object.assign({}, step.expect);
-        const comparedWith = expect.comparedWith;
-        delete expect.comparedWith;
-        assert.deepEqual(said(sandbox, state, step.compareTo !== null), expect, label);
-        if (comparedWith !== undefined) {
-          assert.equal(state.baseline.plateau.id, comparedWith, label + ': the plateau it is compared with');
-          assert.equal(state.baseline.problem, null, label);
-        }
+        assert.deepEqual(said(sandbox, state, step.compareTo !== null), step.expect, label);
       }
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -109,7 +103,7 @@ test('the editor sentences are the command line sentences, up to the capital, th
     for (const step of c.editor) {
       const texts = [];
       for (const [key, value] of Object.entries(step.expect)) {
-        if (key === 'comparedWith' || typeof value === 'number') continue;
+        if (typeof value === 'number' || key === 'layerProblems') continue; // layerProblems: what the elements a wrong manifest cannot declare leave behind, which the command line does not get to (it stops at the first sentence)
         if (typeof value === 'string') texts.push(value);
         else if (Array.isArray(value)) texts.push(...value);
         else texts.push(...Object.values(value));
@@ -119,14 +113,12 @@ test('the editor sentences are the command line sentences, up to the capital, th
   }
 });
 
-test('a plateau id the editor does not know changes nothing: it offers the ones the workspace has', async () => {
-  const { sandbox, state } = await open(FOLDERS);
-  const before = state.plateau.id;
-  const compareBefore = state.compareTo;
-  await sandbox.switchPlateau('saaz');
-  assert.equal(state.plateau.id, before);
-  assert.equal(state.plateauProblem, null);
+test('a plateau id the editor does not know changes nothing: it stays on the plateau it draws', async () => {
+  const { sandbox, state } = await open(LAYERED);
+  const before = state.layers.current;
+  sandbox.drawPlateau('saaz');
+  assert.equal(state.layers.current, before);
   assert.equal(state.fatalError, null);
-  await sandbox.setCompareTo('basline');
-  assert.equal(state.compareTo, compareBefore, 'a comparison it does not know does not replace the choice');
+  sandbox.compareWithPlateau('basline');
+  assert.equal(state.layers.compare, null, 'a comparison it does not know is not made');
 });

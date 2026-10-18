@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lock-gates"
+content:
+  id: "terminal-planner"
+  name: "Terminal Planner"
+  description: "Publishes the terminal notices for the tug captains and files the spare slots twice a day."
+  replaces:
+    - "passenger-terminal.terminal-planner"

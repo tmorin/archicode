@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "dredging-works"
+content:
+  id: "lost-property"
+  name: "Lost Property"
+  description: "Lists the objects found on the quays and gives them back."
+  relationships:
+    - destination: "passenger-terminal.terminal-scheduler"
+      label: "reads from"

@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "passenger-terminal"
+content:
+  id: "lock-importer-moved"
+  name: "Lock Importer Moved"
+  description: "Collects the lock readings for the ship chandlers and copies the night shifts on Mondays."
+  relationships:
+    - destination: "passenger-terminal.lock-tracker-moved"
+      label: "notifies"
+    - destination: "lock-gates.lock-alerts"
+      label: "fetches from"
+    - destination: "lock-gates.lock-auditor"
+      label: "synchronises with"

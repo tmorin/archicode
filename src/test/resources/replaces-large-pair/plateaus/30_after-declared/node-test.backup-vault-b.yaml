@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after-declared"
+  parent: "test"
+content:
+  id: "backup-vault-b"
+  name: "Backup Vault B"
+  description: "Keeps the copies of the data far from the machines they come from."
+  replaces:
+    - "test.backup-vault"
+  applications:
+    - "container-yard.yard-billing"
+    - "ferry-ticketing.ferry-sync"
+    - "tariff-billing.tariff-importer"
+    - "weather-stations-office.weather-dashboard"

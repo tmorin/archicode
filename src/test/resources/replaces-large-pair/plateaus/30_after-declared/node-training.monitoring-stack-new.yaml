@@ -1,0 +1,15 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after-declared"
+  parent: "training"
+content:
+  id: "monitoring-stack-new"
+  name: "Monitoring Stack New"
+  description: "Does the same job with other words."
+  replaces:
+    - "training.monitoring-stack"
+  applications:
+    - "ferry-ticketing.ferry-planner"
+    - "pollution-control.pollution-forms"
+    - "tug-operations.tug-dashboard"

@@ -1,7 +1,6 @@
 package io.morin.archicode.workspace;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.RawValue;
@@ -9,12 +8,14 @@ import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.Warnings;
+import io.morin.archicode.manifest.ManifestDiscovery;
 import io.morin.archicode.manifest.ManifestParser;
 import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.resource.plateau.PlateauTree;
+import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.resource.workspace.Settings.Facets.Facet;
 import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.viewpoint.Change;
@@ -23,12 +24,12 @@ import io.morin.archicode.viewpoint.kernel.ViewpointKernel;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -111,59 +112,46 @@ public class WorkspaceFactory {
      * @param viewsDirPath the folder the views are written to, or null for the one of the settings. For a workspace
      *                     that has plateaus, it is the beginning of the name of the folder of each plateau (see below)
      * @param plateauId    the plateau to read ({@code --plateau}), or null for {@code settings.current}, else the last
-     *                     one of {@code settings.plateaus}, or of layered plateaus when they form one line; it must be
-     *                     null for a workspace that has no plateaus
+     *                     one of the plateaus when they form one line; it must be null for a workspace that has no plateaus
      */
     @SneakyThrows
     public io.morin.archicode.workspace.Workspace create(Path path, Path viewsDirPath, String plateauId) {
         val loaded = load(path, viewsDirPath, plateauId);
         return create(loaded.resources(), loaded.elements())
             .toBuilder()
-            .plateau(loaded.selection() == null ? null : loaded.selection().plateau())
+            .plateau(loaded.plateau())
             .plateauTree(loaded.tree())
             .removals(loaded.removals())
             .build();
     }
 
     /**
-     * The plateaus of a workspace that has layered plateaus, and how they stack. A workspace without plateaus has
-     * {@code baseline} alone.
+     * The plateaus of a workspace, and how they stack. A workspace without plateaus has {@code baseline} alone.
      *
      * @param path the workspace file
      * @return the tree of the plateaus
-     * @throws ArchiCodeException when the workspace has {@code settings.plateaus} (the plateaus are then not layers), or
-     *                            when a manifest or the tree of the plateaus is wrong
+     * @throws ArchiCodeException when the workspace file has the key that no longer exists, or when a manifest or the tree of
+     *                            the plateaus is wrong
      */
     @SneakyThrows
     public PlateauTree plateauTree(Path path) {
         val source = read(path);
-        val plateaus = source.rawWorkspace().getSettings().getPlateaus();
-        if (plateaus != null && !plateaus.isEmpty()) {
-            throw new ArchiCodeException(
-                "this workspace lists its plateaus in `settings.plateaus`, which are not layers: `plateau list` lists the plateaus of a workspace whose manifests say `plateau: <id>` (the plateaus here are %s)",
-                plateaus
-                    .stream()
-                    .map(p -> "`" + p.getId() + "`")
-                    .collect(Collectors.joining(", "))
-            );
-        }
         val settings = source.rawWorkspace().getSettings();
-        Plateaus.select(settings, source.manifestsPathsWritten(), null);
-        val parsed = parse(path, source, settings.getManifests().getPaths(), true);
-        if (!parsed.plateaus().isLayered()) {
-            Plateaus.requireNoPlateaus(settings, null);
+        requireReadablePaths(settings, null);
+        val tree = parse(path, source, settings.getManifests().getPaths()).plateaus();
+        if (!tree.isLayered()) {
+            requireNoPlateaus(settings, null);
         }
-        return parsed.plateaus();
+        return tree;
     }
 
     /** Read the manifests of the folders, and tell the warnings of the tree of the plateaus they write. */
-    private ManifestParser.Parsed parse(Path path, Source source, Set<String> manifestsDirs, boolean layersAllowed) {
+    private ManifestParser.Parsed parse(Path path, Source source, Set<String> manifestsDirs) {
         val parsed = manifestParser.parse(
             source.wksDir(),
             manifestsDirs,
             path,
-            source.rawWorkspace().getSettings().getViews().getPath(),
-            layersAllowed
+            source.rawWorkspace().getSettings().getViews().getPath()
         );
         warnings.warnAll(parsed.plateaus().warnings());
         return parsed;
@@ -196,7 +184,7 @@ public class WorkspaceFactory {
         addRemoved(manifests, Technology.class, "technology", base.techIndex, comparison);
         return create(loaded.resources(), manifests)
             .toBuilder()
-            .plateau(loaded.selection() == null ? null : loaded.selection().plateau())
+            .plateau(loaded.plateau())
             .plateauTree(loaded.tree())
             .removals(loaded.removals())
             .baseline(base.getPlateau())
@@ -319,20 +307,29 @@ public class WorkspaceFactory {
      * @param resources the workspace
      * @param elements  the elements the manifests declare, still to be added to {@code resources} (none for a layered
      *                  plateau, whose chain was built into {@code resources})
-     * @param selection the plateau that was read, or null for a workspace without plateaus
-     * @param tree      the tree of the plateaus of a layered workspace, else null
-     * @param removals  the {@code REMOVE} patches applied to build a layered plateau
+     * @param plateau   the plateau that was read, or null for a workspace without plateaus
+     * @param tree      the tree of the plateaus of a workspace that has some, else null
+     * @param removals  the {@code REMOVE} patches applied to build a plateau
      */
     private record Loaded(
         Workspace resources,
         Map<Class<?>, Set<ManifestParser.Candidate>> elements,
-        Plateaus.Selection selection,
+        Settings.Plateau plateau,
         PlateauTree tree,
         List<Removal> removals
     ) {}
 
     /** What the workspace file says, before any manifest is read. */
-    private record Source(Workspace rawWorkspace, boolean manifestsPathsWritten, Path wksDir) {}
+    private record Source(Workspace rawWorkspace, Path wksDir) {}
+
+    /**
+     * The sentence for a workspace file that still has the key of the plateaus of waves 008 to 013. The editor says the same
+     * thing in its own words once it stops reading the key.
+     */
+    public static final String REMOVED_KEY =
+        "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of" +
+        " the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau`" +
+        " (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)";
 
     @SneakyThrows
     private Source read(Path path) {
@@ -344,15 +341,11 @@ public class WorkspaceFactory {
 
         // create the RawWorkspace
         val workspaceMapper = mapperFactory.create(path);
-        // what the author wrote: the plateaus are checked on it, and so is whether `manifests.paths` is written (its
-        // default is not, and does not count)
-        final JsonNode tree;
+        // what the author wrote: the key that no longer exists is told before anything else is read
         final Workspace rawWorkspace;
         try {
-            tree = workspaceMapper.readTree(path.toFile());
-            val structure = Plateaus.checkStructure(tree.path("settings").path("plateaus"));
-            if (!structure.isEmpty()) {
-                throw new ArchiCodeException("%s", String.join("\n", structure));
+            if (workspaceMapper.readTree(path.toFile()).path("settings").has("plateaus")) {
+                throw new ArchiCodeException("%s", REMOVED_KEY);
             }
             rawWorkspace = workspaceMapper.readValue(path.toFile(), Workspace.class);
         } catch (JsonProcessingException e) {
@@ -360,68 +353,85 @@ public class WorkspaceFactory {
                 .map(reason -> new ArchiCodeException("`%s` is not valid: %s", path.getFileName().toString(), reason))
                 .orElseGet(() -> ArchiCodeException.unreadable(path.getFileName().toString(), e, true));
         }
-        return new Source(
-            rawWorkspace,
-            tree.path("settings").path("manifests").has("paths"),
-            path.toFile().getParentFile().toPath()
-        );
+        return new Source(rawWorkspace, path.toFile().getParentFile().toPath());
     }
 
     @SneakyThrows
     private Loaded load(Path path, Path viewsDirPath, String plateauId) {
         val source = read(path);
         val rawWorkspace = source.rawWorkspace();
-        val wksDir = source.wksDir();
+        requireReadablePaths(rawWorkspace.getSettings(), plateauId);
 
-        // the plateau to read; none for a workspace that has one set of manifests (manifests.paths), or layered plateaus
-        val selection = Plateaus.select(rawWorkspace.getSettings(), source.manifestsPathsWritten(), plateauId);
-
-        // The folder of the views. With plateaus, each plateau has its own, named after it (`views-to-be`, or `out-to-be`
-        // for `--output out`), so that drawing two plateaus does not overwrite one with the other; without plateaus it is
-        // the folder it has always been (the layered plateaus add their own name once the plateau is known).
-        val viewsPath = Optional.ofNullable(viewsDirPath)
-            .map(Path::toString)
-            .orElseGet(() -> rawWorkspace.getSettings().getViews().getPath());
-        val plateauViewsPath = selection == null ? viewsPath : viewsPath + "-" + selection.plateau().getId();
+        // The folder of the views: the one of the settings, or the one asked for. The plateaus add their own name once the
+        // plateau is known (`views-saas`, or `out-saas` for `--output out`), so that drawing two plateaus does not overwrite
+        // one with the other; without plateaus it is the folder it has always been.
         val fixedRawWorkspace =
-            viewsDirPath == null && selection == null ? rawWorkspace : withViewsPath(rawWorkspace, plateauViewsPath);
-
-        val manifestsDirs =
-            selection == null
-                ? fixedRawWorkspace.getSettings().getManifests().getPaths()
-                : Set.of(selection.path().isEmpty() ? "." : selection.path());
-        if (selection != null && !wksDir.resolve(manifestsDirs.iterator().next()).toFile().isDirectory()) {
-            throw new ArchiCodeException(
-                "the folder `%s` of the plateau `%s` does not exist",
-                selection.path(),
-                selection.plateau().getId()
-            );
-        }
-        if (selection != null) {
-            log.info("read the plateau {} from {}", selection.plateau().getId(), selection.path());
-        }
+            viewsDirPath == null ? rawWorkspace : withViewsPath(rawWorkspace, viewsDirPath.toString());
 
         // parse the manifests: the elements, and the views and the stories that are manifests of their own, which join
-        // the ones of workspace.yaml. One call per plateau: a reference declared twice is an error inside a plateau,
-        // and the same reference in two plateaus is the very point of having two. Layered plateaus (a `plateau` in a header, a
-        // manifest of kind plateau) and `settings.plateaus` are two ways to say the same thing: a workspace uses one
-        val parsed = parse(path, source, manifestsDirs, selection == null);
-        if (selection == null && parsed.plateaus().isLayered()) {
+        // the ones of workspace.yaml. A reference declared twice is an error inside a plateau and in a plateau and its
+        // ancestors, and the same reference in two plateaus that do not stack is the very point of having two
+        val parsed = parse(path, source, fixedRawWorkspace.getSettings().getManifests().getPaths());
+        if (parsed.plateaus().isLayered()) {
             return loadLayered(fixedRawWorkspace, parsed, plateauId);
         }
-        if (selection == null) {
-            // not layered either: there are no plateaus, and `--plateau` and `settings.current` have nothing to name
-            Plateaus.requireNoPlateaus(rawWorkspace.getSettings(), plateauId);
-        }
+        // there are no plateaus, and `--plateau` and `settings.current` have nothing to name
+        requireNoPlateaus(rawWorkspace.getSettings(), plateauId);
 
         return new Loaded(
             fixedRawWorkspace.toBuilder().views(parsed.views()).stories(parsed.stories()).build(),
             parsed.elements(),
-            selection,
+            null,
             null,
             List.of()
         );
     }
+
+    /**
+     * Refuse the entries of {@code settings.manifests.paths} that leave the folder of the workspace or use {@code **} where
+     * it is not read, before any manifest is read. The sentences of {@code settings.current} and {@code --plateau} that name
+     * nothing come with them, as they always did.
+     */
+    private void requireReadablePaths(Settings settings, String requested) {
+        val problems = new ArrayList<String>(ManifestDiscovery.pathProblems(settings.getManifests().getPaths()));
+        if (!problems.isEmpty()) {
+            problems.addAll(noPlateausProblems(settings, requested));
+            throw new ArchiCodeException("%s", String.join("\n", problems));
+        }
+    }
+
+    /**
+     * Refuse {@code settings.current} and {@code --plateau} for a workspace that has no plateau at all: there is nothing for
+     * them to name.
+     */
+    private void requireNoPlateaus(Settings settings, String requested) {
+        val problems = noPlateausProblems(settings, requested);
+        if (!problems.isEmpty()) {
+            throw new ArchiCodeException("%s", String.join("\n", problems));
+        }
+    }
+
+    private static List<String> noPlateausProblems(Settings settings, String requested) {
+        val problems = new ArrayList<String>();
+        if (settings.getCurrent() != null) {
+            problems.add(
+                "`settings.current` is `" +
+                    settings.getCurrent() +
+                    "` but the workspace declares no plateau" +
+                    NO_PLATEAU
+            );
+        }
+        if (requested != null) {
+            problems.add(
+                "`--plateau " + requested + "` cannot be used: the workspace declares no plateau" + NO_PLATEAU
+            );
+        }
+        return problems;
+    }
+
+    /** What makes a plateau: said wherever a workspace has none and is asked for one. */
+    public static final String NO_PLATEAU =
+        " (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)";
 
     /**
      * A layered plateau: the plateau asked for, else {@code settings.current}, else the last one of a tree that is one line;
@@ -431,7 +441,7 @@ public class WorkspaceFactory {
         val tree = parsed.plateaus();
         val id = chosen(workspace.getSettings().getCurrent(), tree, requested);
         val node = tree.node(id);
-        val plateau = io.morin.archicode.resource.workspace.Settings.Plateau.builder()
+        val plateau = Settings.Plateau.builder()
             .id(id)
             .name(node.name())
             .horizon(node.horizon())
@@ -442,7 +452,7 @@ public class WorkspaceFactory {
             parsed,
             id
         );
-        return new Loaded(loaded.resources(), Map.of(), new Plateaus.Selection(plateau, ""), tree, loaded.removals());
+        return new Loaded(loaded.resources(), Map.of(), plateau, tree, loaded.removals());
     }
 
     /** The plateau to read: the one asked for, else {@code settings.current}, else the end of a tree that is one line. */

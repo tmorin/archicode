@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  plateau: "after"
+  parent: "land-leases.lease-validator"
+content:
+  id: "reminder"
+  name: "Reminder"
+  description: "Reminds the agents of the documents they still owe."

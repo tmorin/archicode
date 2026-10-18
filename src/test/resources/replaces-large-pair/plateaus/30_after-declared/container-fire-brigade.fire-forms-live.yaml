@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "fire-brigade"
+content:
+  id: "fire-forms-live"
+  name: "Live Fire"
+  description: "Shows what is happening now for the duty officer."
+  replaces:
+    - "fire-brigade.fire-forms"
+  relationships:
+    - destination: "fire-brigade.fire-reporter"
+      label: "fetches from"
+    - destination: "berth-allocation.berth-planner"
+      label: "reports to"

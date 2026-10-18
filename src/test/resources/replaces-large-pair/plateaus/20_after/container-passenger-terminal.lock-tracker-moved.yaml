@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "passenger-terminal"
+content:
+  id: "lock-tracker-moved"
+  name: "Lock Tracker Moved"
+  description: "Publishes the lock incidents for the lock keepers and alerts the full berths during the winter."
+  relationships:
+    - destination: "bunkering.fuel-calendar-desk"
+      label: "publishes to"
+    - destination: "lock-gates.lock-registry"
+      label: "notifies"
+    - destination: "fire-brigade.fire-statistics-live"
+      label: "synchronises with"

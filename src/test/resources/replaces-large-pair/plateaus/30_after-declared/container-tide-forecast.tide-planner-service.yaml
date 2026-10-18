@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "tide-forecast"
+content:
+  id: "tide-planner-service"
+  name: "Tide Planner"
+  description: "Archives the tide incidents for the fuel suppliers and ranks the damaged goods after every storm."
+  qualifiers:
+    - "React"
+  replaces:
+    - "tide-forecast.tide-planner"
+  relationships:
+    - destination: "tide-forecast.tide-scheduler"
+      label: "asks"

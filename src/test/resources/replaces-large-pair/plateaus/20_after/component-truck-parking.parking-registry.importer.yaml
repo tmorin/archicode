@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  plateau: "after"
+  parent: "truck-parking.parking-registry"
+content:
+  id: "importer"
+  name: "Importer"
+  description: "Loads the files of the shipping lines."

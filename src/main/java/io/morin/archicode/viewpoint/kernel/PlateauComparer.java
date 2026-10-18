@@ -54,9 +54,7 @@ public class PlateauComparer {
      * keeps the {@code replaces} of the layer that declared it. Compared with a plateau that has that layer, the entry says
      * nothing the comparison does not already know (the element it replaced went in the layer above), and the kernel would
      * warn, for every one, that it names nothing of the base. So the {@code replaces} that the target and the base write
-     * the same for the same element are left out of the target: what is left is what the target alone says. (The complete
-     * folders of {@code settings.plateaus} write only the {@code replaces} of their own plateau, which is why they never
-     * warn: their elements are not touched.)
+     * the same for the same element are left out of the target: what is left is what the target alone says.
      */
     private static void dropInheritedReplaces(ObjectNode base, ObjectNode target) {
         for (val layer : List.of("application", "technology")) {

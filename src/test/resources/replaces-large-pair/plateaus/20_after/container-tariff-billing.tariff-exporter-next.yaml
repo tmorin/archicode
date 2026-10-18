@@ -1,0 +1,25 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "tariff-billing"
+content:
+  id: "tariff-exporter-next"
+  name: "Tariff Exporter Next"
+  description: "Schedules the tariff notices for the tug captains and ranks the changed plans each morning."
+  qualifiers:
+    - "Go"
+  relationships:
+    - destination: "quay-maintenance.quay-validator"
+      label: "asks"
+    - destination: "safety-inspections.inspection-sync"
+      label: "notifies"
+  elements:
+    - kind: "component"
+      id: "scanner"
+      name: "Scanner"
+      description: "Watches the incoming folder for new files."
+    - kind: "component"
+      id: "mapper"
+      name: "Mapper"
+      description: "Maps the fields of a record to the ones the other systems expect."

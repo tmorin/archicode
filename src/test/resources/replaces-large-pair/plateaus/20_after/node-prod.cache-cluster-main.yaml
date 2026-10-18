@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after"
+  parent: "prod"
+content:
+  id: "cache-cluster-main"
+  name: "Cache Cluster"
+  description: "Keeps the hot data in memory for the applications."
+  applications:
+    - "ferry-ticketing.ferry-calendar"
+    - "tug-operations.tug-statistics"

@@ -107,30 +107,6 @@ class LayeredCommandsTest {
     }
 
     @Test
-    void plateauListOfAWorkspaceThatListsItsPlateausInTheSettingsIsOneLine() {
-        LayeredFixtures.write(
-            dir,
-            Map.of(
-                "workspace.yaml",
-                "settings:\n  plateaus:\n    - id: a\n      path: p/a\n    - id: b\n      path: p/b\n",
-                "p/a/s.yaml",
-                "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
-                "p/b/s.yaml",
-                "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
-            )
-        );
-        val result = run("plateau", "list");
-        assertEquals(1, result.exit());
-        assertEquals(
-            List.of(
-                "error: this workspace lists its plateaus in `settings.plateaus`, which are not layers: `plateau list` lists the plateaus of a workspace whose manifests say `plateau: <id>` (the plateaus here are `a`, `b`)"
-            ),
-            errors(result)
-        );
-        assertFalse(result.err().contains("\tat "), "no stack trace");
-    }
-
-    @Test
     void plateauListFailsInOneLineOnAWrongTree() {
         val files = LayeredFixtures.files();
         files.put(
@@ -246,42 +222,7 @@ class LayeredCommandsTest {
             ),
             errors(run("diff", "--plateau", "inhouse", "--against", "inhouse"))
         );
-        val baseline = run("diff", "--plateau", "inhouse", "--baseline", "baseline");
-        assertEquals(1, baseline.exit());
-        assertEquals(
-            List.of(
-                "error: `--baseline baseline` cannot be used: the plateaus of this workspace are layers (`plateau:` in a header, a manifest of kind `archicode.morin.io/plateau`): compare with `--against`"
-            ),
-            errors(baseline)
-        );
-        val generate = run("views", "generate", "--plateau", "inhouse", "--baseline", "baseline");
-        assertEquals(errors(baseline), errors(generate), "the same on views generate");
         assertFalse(Files.exists(dir.resolve("views-inhouse")), "nothing is written before the mistake is told");
-    }
-
-    @Test
-    void againstOnAWorkspaceThatListsItsPlateausInTheSettingsIsOneLine() {
-        val system = "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n";
-        LayeredFixtures.write(
-            dir,
-            Map.of(
-                "workspace.yaml",
-                "settings:\n  plateaus:\n    - id: a\n      path: p/a\n    - id: b\n      path: p/b\n",
-                "p/a/s.yaml",
-                system,
-                "p/b/s.yaml",
-                system
-            )
-        );
-        val expected = List.of(
-            "error: `--against a` cannot be used: the plateaus of this workspace are listed in `settings.plateaus`: compare with `--baseline`"
-        );
-        assertEquals(expected, errors(run("diff", "--plateau", "b", "--against", "a")));
-        assertEquals(expected, errors(run("views", "generate", "--plateau", "b", "--against", "a")));
-        // the old option is untouched
-        val old = run("diff", "--plateau", "b", "--baseline", "a");
-        assertEquals(0, old.exit(), old.err());
-        assertTrue(old.out().startsWith("comparing b with a\n"), old.out());
     }
 
     @Test
@@ -349,15 +290,17 @@ class LayeredCommandsTest {
             dir,
             Map.of("workspace.yaml", "settings:\n  current: x\n  manifests:\n    paths: [m]\n", "m/s.yaml", system)
         );
-        val current = "error: `settings.current` is `x` but the workspace declares no `settings.plateaus`";
+        val current =
+            "error: `settings.current` is `x` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)";
         assertEquals(List.of(current), errors(run("views", "generate")));
         assertEquals(List.of(current), errors(run("plateau", "list")));
         assertEquals(
-            List.of(current, "error: `--plateau y` cannot be used: the workspace declares no `settings.plateaus`"),
+            List.of(
+                current,
+                "error: `--plateau y` cannot be used: the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)"
+            ),
             errors(run("diff", "--plateau", "y"))
         );
-        // `plateau add` said it first, and still does
-        assertEquals(List.of(current), errors(run("plateau", "add", "p", "--from", "q")));
     }
 
     // ---- views generate ----

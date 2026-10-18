@@ -15,6 +15,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeSet;
+import java.util.regex.Pattern;
 import lombok.val;
 
 /**
@@ -77,6 +79,59 @@ public final class ManifestDiscovery {
             );
         }
         return null;
+    }
+
+    private static final Pattern DRIVE = Pattern.compile("^[A-Za-z]:.*");
+
+    /**
+     * Why a path may not name a folder of manifests, or null when it may: it is empty, absolute (a leading slash or backslash,
+     * or a drive letter) or goes up with a {@code ..} segment (either slash).
+     *
+     * @param path an entry of {@code settings.manifests.paths}
+     * @return the reason, which is the end of the sentence that begins with the path, or null
+     */
+    public static String pathProblem(String path) {
+        if (path == null || path.isBlank()) {
+            return "is empty";
+        }
+        if (path.startsWith("/") || path.startsWith("\\") || DRIVE.matcher(path).matches()) {
+            return "is absolute";
+        }
+        for (String segment : path.split("[/\\\\]", -1)) {
+            if (segment.equals("..")) {
+                return "contains `..`";
+            }
+        }
+        return null;
+    }
+
+    /**
+     * What is wrong with the entries of {@code settings.manifests.paths} before any is read: a path that leaves the folder of
+     * the workspace, or uses {@code **} where it is not read. The rules, and their words, are the ones of the editor
+     * ({@code manifestsPathSentence} in {@code standalone.html}): keep them alike.
+     *
+     * @param paths the entries of {@code settings.manifests.paths}
+     * @return one sentence for each entry that is wrong, in the order of the sorted entries; empty when they are right
+     */
+    public static List<String> pathProblems(Collection<String> paths) {
+        val problems = new ArrayList<String>();
+        for (String path : new TreeSet<>(paths)) {
+            val problem = pathProblem(path);
+            if (problem != null) {
+                problems.add(
+                    "the path `" +
+                        path +
+                        "` of `settings.manifests.paths` " +
+                        problem +
+                        ": a manifests folder must be below the folder of workspace.yaml, written relative to it, without `..`." +
+                        " Move the folder below workspace.yaml (or move workspace.yaml up, to a folder that holds both) and change" +
+                        " the path to match"
+                );
+            } else if (patternProblem(path) != null) {
+                problems.add("the path `" + path + "` of `settings.manifests.paths` " + patternProblem(path));
+            }
+        }
+        return problems;
     }
 
     /**

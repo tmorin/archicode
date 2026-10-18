@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "fire-brigade"
+content:
+  id: "fire-statistics-archive"
+  name: "Fire Statistics Archive"
+  description: "Keeps the old items for the auditors."
+  relationships:
+    - destination: "customs-clearance.customs-tracker"
+      label: "fetches from"

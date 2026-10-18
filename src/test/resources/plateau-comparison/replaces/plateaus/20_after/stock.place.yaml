@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "stock"
+content:
+  id: "place"
+  name: "Place"
+  replaces:
+    - "stock.shelf"
+    - "stock.bin"

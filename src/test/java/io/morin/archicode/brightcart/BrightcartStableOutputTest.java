@@ -8,14 +8,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.morin.archicode.cli.ErrorOutput;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import lombok.SneakyThrows;
 import lombok.val;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -23,13 +21,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine;
 
 /**
- * The same files give the same bytes (wave 012, run 0061): {@code views generate} for the four plateaus and their
- * facets, and again for {@code saas} and {@code marketplace} on a second copy of {@code folders/} (and once more in the
- * folder where the views already are; wave 013, run 0064: the second run no longer repeats the four plateaus, it takes
- * minutes);
- * {@code diff} in its three formats; {@code query views} and {@code query graph}, sorted and identical from one run to
- * the next (wave 011, issues #48, #49 and the sorted output of the CLI). The four plateaus exit 0, the comparison views
- * of {@code inhouse} and {@code marketplace} among the files compared (E1 of the document, fixed by W-3 of wave 012).
+ * The same files give the same bytes (wave 012, run 0061; the views themselves, run twice, are in {@code
+ * BrightcartLayeredViewsTest}): {@code diff} in its three formats; {@code query views} and {@code query graph}, sorted and
+ * identical from one run to the next (wave 011, issues #48, #49 and the sorted output of the CLI), on the layered
+ * Brightcart.
  */
 @QuarkusTest
 class BrightcartStableOutputTest {
@@ -44,89 +39,10 @@ class BrightcartStableOutputTest {
         return new Brightcart.Cli(factory, errorOutput);
     }
 
-    /** The names of the folders of views next to the workspace. */
-    @SneakyThrows
-    private static List<String> viewFolders(Path workspace) {
-        try (val files = Files.list(workspace.getParent())) {
-            return files
-                .filter(Files::isDirectory)
-                .map(p -> p.getFileName().toString())
-                .filter(n -> n.startsWith("views-"))
-                .sorted()
-                .toList();
-        }
-    }
-
-    /**
-     * The plateaus run twice: {@code saas} (a plateau with a baseline and its comparison views) and {@code marketplace}
-     * (the deepest one, whose comparison views stopped on E1). A run of a plateau takes about twenty seconds, so the
-     * second run does not repeat the four; the first one, shared with the other tests, still draws the four.
-     */
-    private static final List<String> TWICE = List.of("saas", "marketplace");
-
-    @Test
-    void twoRunsOnTwoCopiesWriteTheSameFilesWithTheSameBytes(@TempDir Path dir) {
-        val first = Brightcart.firstRun(cli());
-        val second = Brightcart.generate(cli(), dir, TWICE);
-        for (val plateau : TWICE) {
-            assertEquals(
-                first.results().get(plateau),
-                second.results().get(plateau),
-                plateau + ": exit code, output and messages"
-            );
-        }
-        for (val plateau : Brightcart.PLATEAUS) {
-            assertEquals(0, first.results().get(plateau).exit(), plateau + " exits 0");
-        }
-        val folders = viewFolders(first.workspace());
-        assertTrue(
-            folders.size() >= 16,
-            "the views of four plateaus, their facets and the comparisons that were drawn: " + folders
-        );
-        val again = viewFolders(second.workspace());
-        val compared = folders
-            .stream()
-            .filter(f -> TWICE.stream().anyMatch(p -> isViewsOf(f, p)))
-            .toList();
-        assertEquals(compared, again, "the folders of the plateaus run twice");
-        for (val folder : compared) {
-            val files = Brightcart.tree(first.views(folder));
-            assertFalse(files.isEmpty(), folder);
-            assertEquals("", Brightcart.difference(files, Brightcart.tree(second.views(folder))), folder);
-        }
-        assertTrue(compared.size() >= 8, "the folders compared: " + compared);
-        // the comparisons of the two plateaus that replace elements are among the folders of the first run (they stopped on E1, and half written)
-        assertTrue(folders.contains("views-inhouse-vs-baseline"), folders.toString());
-        assertTrue(folders.contains("views-marketplace-vs-inhouse"), folders.toString());
-        assertTrue(compared.contains("views-marketplace-vs-inhouse"), compared.toString());
-    }
-
-    /** {@code views-<plateau>}, its facets and its comparisons: {@code views-<plateau>-...}. */
-    private static boolean isViewsOf(String folder, String plateau) {
-        return folder.equals("views-" + plateau) || folder.startsWith("views-" + plateau + "-");
-    }
-
-    @Test
-    void aRunInTheFolderWhereTheViewsAlreadyAreChangesNothing(@TempDir Path dir) {
-        val first = Brightcart.firstRun(cli());
-        val again = Brightcart.copyFolders(dir);
-        for (val plateau : List.of("baseline", "saas")) {
-            cli().generate(again, plateau);
-            assertEquals(0, cli().generate(again, plateau).exit(), plateau);
-        }
-        for (val folder : viewFolders(again)) {
-            assertEquals(
-                Brightcart.tree(first.views(folder)),
-                Brightcart.tree(again.getParent().resolve(folder)),
-                folder
-            );
-        }
-    }
-
     @ParameterizedTest(name = "{0}")
     @MethodSource("io.morin.archicode.brightcart.Brightcart#verifiedIds")
     void diffGivesTheSameTextMarkdownAndJsonEveryTime(String id, @TempDir Path dir) {
-        val workspace = Brightcart.copyFolders(dir);
+        val workspace = Brightcart.copy(dir);
         val comparison = Brightcart.comparison(id);
         for (val format : List.of("text", "markdown", "json")) {
             val one = cli().diff(workspace, comparison, format);
@@ -140,7 +56,7 @@ class BrightcartStableOutputTest {
     @ParameterizedTest
     @ValueSource(strings = { "baseline", "saas", "inhouse", "marketplace" })
     void queryViewsListsTheViewsSortedByIdThenLayerAndTheSameWayEveryTime(String plateau, @TempDir Path dir) {
-        val workspace = Brightcart.copyFolders(dir);
+        val workspace = Brightcart.copy(dir);
         val one = cli().in(workspace, List.of("query", "views", "--plateau", plateau), "-f", "json");
         val two = cli().in(workspace, List.of("query", "views", "--plateau", plateau), "-f", "json");
         assertEquals(0, one.exit(), one.err());
@@ -158,7 +74,7 @@ class BrightcartStableOutputTest {
     @ParameterizedTest
     @ValueSource(strings = { "baseline", "saas", "inhouse", "marketplace" })
     void queryGraphIsTheSameEveryTime(String plateau, @TempDir Path dir) {
-        val workspace = Brightcart.copyFolders(dir);
+        val workspace = Brightcart.copy(dir);
         val one = cli().in(workspace, List.of("query", "graph", "--plateau", plateau));
         assertEquals(0, one.exit(), one.err());
         assertEquals(one, cli().in(workspace, List.of("query", "graph", "--plateau", plateau)));

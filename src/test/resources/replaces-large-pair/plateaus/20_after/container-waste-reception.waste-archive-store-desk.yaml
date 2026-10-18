@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "waste-reception"
+content:
+  id: "waste-archive-store-desk"
+  name: "Waste Archive Store Desk"
+  description: "Schedules the waste permits for the lock keepers and flags the rough seas dusk at."
+  qualifiers:
+    - "React"
+  relationships:
+    - destination: "waste-reception.waste-forms"
+      label: "sends to"

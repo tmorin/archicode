@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after"
+  parent: "training"
+content:
+  id: "identity-server-new"
+  name: "Identity Server New"
+  description: "Does the same job with other words."
+  applications:
+    - "berth-allocation.berth-importer"
+    - "mooring-lines.mooring-reporter"
+    - "safety-inspections.inspection-search"

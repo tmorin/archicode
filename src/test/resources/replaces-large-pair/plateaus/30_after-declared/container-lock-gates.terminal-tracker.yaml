@@ -1,0 +1,16 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "lock-gates"
+content:
+  id: "terminal-tracker"
+  name: "Terminal Tracker"
+  description: "Summarises the terminal records for the yard supervisors and signs the safety notes once a week."
+  replaces:
+    - "passenger-terminal.terminal-tracker"
+  relationships:
+    - destination: "lock-gates.terminal-validator-x"
+      label: "synchronises with"
+    - destination: "lock-gates.terminal-calendar-x"
+      label: "reads from"

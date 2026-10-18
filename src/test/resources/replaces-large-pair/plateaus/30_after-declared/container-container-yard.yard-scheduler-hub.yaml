@@ -1,0 +1,18 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "container-yard"
+content:
+  id: "yard-scheduler-hub"
+  name: "Yard Scheduler Hub"
+  description: "Checks the yard queues for the tug captains and compares the expired licences before noon."
+  replaces:
+    - "container-yard.yard-scheduler"
+  relationships:
+    - destination: "container-yard.yard-dashboard"
+      label: "reads from"
+    - destination: "container-yard.yard-notifier"
+      label: "synchronises with"
+    - destination: "truck-parking.parking-tracker"
+      label: "fetches from"

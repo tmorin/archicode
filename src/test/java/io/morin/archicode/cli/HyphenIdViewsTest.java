@@ -159,7 +159,7 @@ class HyphenIdViewsTest {
     @SneakyThrows
     void theViewsOfAComparisonUseNamesThatPlantumlReadsToo() {
         val folder = copy(REPLACES, "replaces");
-        generate(folder, "--plateau", "after", "--baseline", "before");
+        generate(folder, "--plateau", "after", "--against", "before");
         val comparison = pumls(folder.resolve("views-after-vs-before"));
         assertFalse(comparison.isEmpty());
         val shop = Files.readString(folder.resolve("views-after-vs-before/plantuml/application/shop-detailed.puml"));
@@ -182,7 +182,7 @@ class HyphenIdViewsTest {
         val hyphens = copy(HYPHENS, "hyphen-ids");
         generate(hyphens);
         val replaces = copy(REPLACES, "replaces");
-        generate(replaces, "--plateau", "after", "--baseline", "before");
+        generate(replaces, "--plateau", "after", "--against", "before");
 
         val java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         val refused = new HashSet<String>();

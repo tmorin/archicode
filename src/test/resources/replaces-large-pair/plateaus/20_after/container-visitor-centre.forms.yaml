@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "visitor-centre"
+content:
+  id: "forms"
+  name: "Forms"
+  description: "Records the lock bookings for the crane drivers and notifies the changed plans after each call."

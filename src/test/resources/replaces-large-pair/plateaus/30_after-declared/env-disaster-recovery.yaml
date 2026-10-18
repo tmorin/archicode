@@ -1,6 +1,7 @@
 header:
   kind: "archicode.morin.io/environment"
   version: "1"
+  plateau: "after-declared"
 content:
   id: "disaster-recovery"
   name: "Disaster Recovery"

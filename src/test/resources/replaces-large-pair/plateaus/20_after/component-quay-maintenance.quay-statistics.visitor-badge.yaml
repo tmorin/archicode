@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/component"
+  version: "1"
+  plateau: "after"
+  parent: "quay-maintenance.quay-statistics"
+content:
+  id: "visitor-badge"
+  name: "Visitor Badge"
+  description: "Another thing, filed under the same name."

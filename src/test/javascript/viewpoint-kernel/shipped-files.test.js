@@ -66,6 +66,7 @@ function problemsOf(state) {
   const problems = [];
   if (state.fatalError) problems.push(state.fatalError);
   if (state.plateauProblem) problems.push(state.plateauProblem);
+  if (state.layerProblems) problems.push(...state.layerProblems); // the first layer of the chain of the plateau drawn that the command line refuses
   for (const f of state.manifestFiles) if (f.error) problems.push('`' + f.relPath + '` is not valid: ' + f.error);
   for (const d of state.duplicateReferences) problems.push(d.message);
   if (state.plateauTree) problems.push(...state.plateauTree.problems, ...state.plateauTree.redeclared); // the tree of the layered plateaus (run 0077)
@@ -75,8 +76,8 @@ function problemsOf(state) {
 }
 
 /**
- * Opens the folder of a workspace as the editor opens it, and draws each of its plateaus (the one it picks, then the others), each compared with
- * its baseline; a workspace without plateaus is opened once. Returns `[label, problems]` for every one.
+ * Opens the folder of a workspace as the editor opens it, and draws each of its plateaus (the root first), each compared with the plateau it
+ * overrides; a workspace without plateaus is opened once. Returns `[label, problems]` for every one.
  */
 async function openEveryPlateau(dir) {
   const sandbox = createApp();
@@ -87,12 +88,11 @@ async function openEveryPlateau(dir) {
   await sandbox.loadWorkspace(handle);
   await sandbox.loadViewpointKernel();
   const results = [];
-  const ids = state.plateaus.map((p) => p.id);
+  const ids = state.plateauTree && state.plateauTree.layered && !state.fatalError ? Array.from(state.plateauTree.nodes.keys()) : [];
   if (ids.length === 0) results.push(['the workspace', problemsOf(state)]);
   for (const id of ids) {
-    if (state.fatalError) { results.push(['the plateaus', problemsOf(state)]); break; }
-    if (state.plateau.id !== id) await sandbox.switchPlateau(id);
-    await sandbox.setCompareTo('@baseline'); // the plateau before it, if it has one: its folder is read too
+    sandbox.drawPlateau(id);
+    if (state.layers && !state.layers.compare) sandbox.toggleCompareWithPast(); // the plateau it overrides, if it has one: its layers are read too
     results.push(['plateau `' + id + '`', problemsOf(state)]);
   }
   return results;
@@ -101,7 +101,6 @@ async function openEveryPlateau(dir) {
 test('the repository ships the workspaces this test looks for', () => {
   const found = workspaces();
   assert.ok(found.length >= 17, 'the manual and the fixtures ship at least 17 workspaces: ' + found.join(', '));
-  assert.ok(found.includes('src/test/resources/brightcart/folders/workspace.yaml'));
   assert.ok(found.includes('src/test/resources/brightcart/layered/workspace.yaml'));
   assert.ok(found.includes('src/doc/examples/domain_plateaus/workspace.yaml'));
 });
@@ -127,8 +126,8 @@ for (const workspace of workspaces()) {
 }
 
 test('every plateau of a workspace that has plateaus is opened, each compared with its baseline', async () => {
-  const opened = await openEveryPlateau(path.join(REPO, 'src/test/resources/brightcart/folders'));
-  assert.deepEqual(opened.map(([label]) => label), ['plateau `baseline`', 'plateau `saas`', 'plateau `inhouse`', 'plateau `marketplace`']);
+  const opened = await openEveryPlateau(path.join(REPO, 'src/test/resources/brightcart/layered'));
+  assert.deepEqual(opened.map(([label]) => label).sort(), ['plateau `baseline`', 'plateau `inhouse`', 'plateau `marketplace`', 'plateau `saas`']);
   assert.deepEqual(opened.flatMap(([, problems]) => problems), []);
 });
 

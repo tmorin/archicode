@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "lighthouse-service"
+content:
+  id: "seat-offer"
+  name: "Seat Offer"
+  description: "Offers a free seat to the next passenger in the queue."

@@ -32,6 +32,12 @@ async function openLayered() {
   return { sandbox, state };
 }
 
+/** A workspace of the old mechanism, `settings.plateaus` (W-10 removes the editor's reading of it), in memory: two plateaus, each a folder. */
+const OLD_MECHANISM = [
+  'settings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n    - id: to-be\n      path: plateaus/20_to-be\n',
+  { 'plateaus/10_as-is/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n', 'plateaus/20_to-be/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n' }
+];
+
 async function openFiles(files, settings) {
   const mem = memFolder(Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
   const sandbox = createApp({});
@@ -365,12 +371,7 @@ test('a workspace with no other plateau has the Timeline page too: baseline alon
 });
 
 test('a workspace with settings.plateaus has the Timeline page, with its plateaus listed and a word on the selector, and no band', async () => {
-  const sandbox = createApp({});
-  const state = sandbox.__state();
-  const handle = makeDirHandle(path.resolve(__dirname, '../../resources/plateau-comparison'));
-  state.folder = { handle, name: 'plateau-comparison' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(handle);
+  const { sandbox, state } = await openFiles(OLD_MECHANISM[1], OLD_MECHANISM[0]);
   assert.equal(state.layers, null);
   sandbox.setPerspective('timeline');
   const page = sandbox.renderActivePerspectiveHtml();
@@ -565,12 +566,7 @@ test('Settings has no plateau section for a layered or a plateau-less workspace;
     assert.match(center, /<h3>Manifests<\/h3>/, 'the folders of the manifests, as before');
     assert.doesNotMatch(center, /settings\.plateaus|plateau add/, 'and no sentence about the old key');
   }
-  const old = createApp({});
-  const state = old.__state();
-  const handle = makeDirHandle(path.resolve(__dirname, '../../resources/plateau-comparison'));
-  state.folder = { handle, name: 'plateau-comparison' };
-  state.permissionState = 'granted';
-  await old.loadWorkspace(handle);
+  const { sandbox: old } = await openFiles(OLD_MECHANISM[1], OLD_MECHANISM[0]);
   old.setPerspective('settings');
   assert.match(old.renderActivePerspectiveHtml().center, /id="settings-plateaus"/, 'W-10 removes it with the selector');
 });

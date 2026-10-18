@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "visitor-centre"
+content:
+  id: "calendar"
+  name: "Calendar"
+  description: "Validates the lock notices for the ship chandlers and stamps the long queues each morning."

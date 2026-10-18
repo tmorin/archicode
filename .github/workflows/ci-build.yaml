@@ -136,12 +136,10 @@ jobs:
           work="$(mktemp -d)"
           cp -r src/doc/examples/domain_workspace "$work/workspace"
           cp -r src/doc/examples/domain_plateaus "$work/plateaus"
-          cp -r src/test/resources/brightcart/folders "$work/brightcart"
-          cp -r src/test/resources/brightcart/layered "$work/brightcart-layered"
+          cp -r src/test/resources/brightcart/layered "$work/brightcart"
           workspace="$work/workspace/workspace.yaml"
           plateaus="$work/plateaus/workspace.yaml"
           brightcart="$work/brightcart/workspace.yaml"
-          layered="$work/brightcart-layered/workspace.yaml"
           failed=()
 
           # expect <label> <pattern> <command...>: the command succeeds and what it prints has the pattern
@@ -168,32 +166,23 @@ jobs:
           expect "query schemas" "urn:jsonschema" "$runner" -w "$workspace" query schemas
           expect "query graph" '"reference":"ArchiCode"' "$runner" -w "$workspace" query graph
 
-          # plateaus: the comparison goes through the kernel as well
+          # plateaus (layers: the manifests of `as-is` are the root, `to-be` overrides it): the comparison goes through the kernel as well
           expect "diff" "^comparing " "$runner" -w "$plateaus" diff
-          expect "views generate --baseline" "" "$runner" -w "$plateaus" views generate -o views --baseline as-is
-          expect "views generate --baseline writes the table" "" test -s "$work/plateaus/views-to-be-vs-as-is/gap.md"
+          expect "views generate --against" "" "$runner" -w "$plateaus" views generate -o views --against as-is
+          expect "views generate --against writes the table" "" test -s "$work/plateaus/views-to-be-vs-as-is/gap.md"
 
-          # Brightcart (src/test/resources/brightcart/folders, a copy: the views are written next to workspace.yaml): four plateaus
-          # whose elements replace others. `replacing` is the line of the moved, split and merged elements; `saas` generates with
+          # Brightcart (src/test/resources/brightcart/layered, a copy: the views are written next to workspace.yaml): four plateaus as layers, a `plateau:` header on
+          # each manifest and the patches of a plateau in its `Kind: Plateau`, whose elements replace others. The tree forks, so the plateau is always named; the comparison
+          # is made with the plateau it overrides unless `--against` names another. `replacing` is the line of the moved, split and merged elements; `saas` generates with
           # its comparison and its facets (`inhouse` and `marketplace` are left to the unit tests)
+          expect "plateau list on Brightcart" "^marketplace  *inhouse" "$runner" -w "$brightcart" plateau list
           expect "diff on Brightcart" "^replacing " "$runner" -w "$brightcart" diff --plateau inhouse
-          expect "diff on Brightcart, against a sibling" "^comparing inhouse .* with saas" "$runner" -w "$brightcart" diff --plateau inhouse --baseline saas
+          expect "diff on Brightcart, against a sibling" "^comparing inhouse .* with saas" "$runner" -w "$brightcart" diff --plateau inhouse --against saas
           expect "views generate on Brightcart" "" "$runner" -w "$brightcart" views generate --plateau saas
           expect "views generate on Brightcart writes the plateau" "" test -s "$work/brightcart/views-saas/plantuml/application/shop-overview.puml"
           expect "views generate on Brightcart writes the comparison" "" test -s "$work/brightcart/views-saas-vs-baseline/gap.json"
+          expect "views generate on Brightcart lists the cascade of a REMOVE" '"cascade"' cat "$work/brightcart/views-saas-vs-baseline/gap.json"
           expect "views generate on Brightcart writes a facet" "" test -s "$work/brightcart/views-saas-journey/plantuml/application/shop-overview.puml"
-
-          # Brightcart, layered (src/test/resources/brightcart/layered, a copy): the same four plateaus as layers, a `plateau:` header on
-          # each manifest and the patches of a plateau in its `Kind: Plateau`. The tree forks, so the plateau is always named; the comparison
-          # is made with the plateau it overrides unless `--against` names another. The `folders` lines above stay until the old mechanism goes.
-          expect "plateau list on layered Brightcart" "^marketplace  *inhouse" "$runner" -w "$layered" plateau list
-          expect "diff on layered Brightcart" "^replacing " "$runner" -w "$layered" diff --plateau inhouse
-          expect "diff on layered Brightcart, against a sibling" "^comparing inhouse .* with saas" "$runner" -w "$layered" diff --plateau inhouse --against saas
-          expect "views generate on layered Brightcart" "" "$runner" -w "$layered" views generate --plateau saas
-          expect "views generate on layered Brightcart writes the plateau" "" test -s "$work/brightcart-layered/views-saas/plantuml/application/shop-overview.puml"
-          expect "views generate on layered Brightcart writes the comparison" "" test -s "$work/brightcart-layered/views-saas-vs-baseline/gap.json"
-          expect "views generate on layered Brightcart lists the cascade of a REMOVE" '"cascade"' cat "$work/brightcart-layered/views-saas-vs-baseline/gap.json"
-          expect "views generate on layered Brightcart writes a facet" "" test -s "$work/brightcart-layered/views-saas-journey/plantuml/application/shop-overview.puml"
 
           # the editor page is a resource of the image
           "$runner" -w "$workspace" editor serve --port 0 > "$work/editor.log" 2>&1 &

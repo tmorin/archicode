@@ -9,5 +9,5 @@
     "declared twice"
   ],
   "model": null,
-  "status": "run by a tool: case N1 of negative-cases.json: a fifth plateau with the id `saas`, which the complete folders say as \"the plateau id `saas` is used more than once\"; same two tests"
+  "status": "run by a tool: the cases of plateau-model-cases.json (a plateau declared by two manifests), read by a Java and a node test"
 }

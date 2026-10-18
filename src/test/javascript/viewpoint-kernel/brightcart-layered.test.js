@@ -1,7 +1,7 @@
 'use strict';
 // The layered Brightcart (wave 014, run 0079): `src/test/resources/brightcart/layered/`, the four plateaus of docs/fixtures/brightcart-spec.md written as manifests with a
 // `plateau:` header and a `Kind: Plateau` with its patches. Two things are asked here, the command line is asked the rest (BrightcartLayeredDiffTest, BrightcartLayeredViewsTest):
-//   - the generator is the source of the committed files: run in a copy of its folder, it writes `folders/`, `layered/`, `variants/` and `expected/` byte for byte as they are committed
+//   - the generator is the source of the committed files: run in a copy of its folder, it writes `layered/`, `variants/` and `expected/` byte for byte as they are committed
 //     (the node tests are the only ones that run it; the Java tests read what it wrote);
 //   - the editor opens `layered/` and reads its plateaus: the tree, every manifest, and the chain of each plateau (wave 014, run 0080: the band draws a plateau as its chain, the
 //     elements it draws are the sizes of that plateau in expected/sizes.json; the counts of the Changes panel are checked in editor-reads-layers.test.js).
@@ -32,21 +32,21 @@ function files(root) {
   return out;
 }
 
-test('the generator writes the committed files byte for byte, and the resolver agrees with the complete folders', () => {
+test('the generator writes the committed files byte for byte, and the resolver agrees with the model', () => {
   const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'brightcart-generator-'));
   try {
     for (const name of ['generate.mjs', 'description.mjs']) fs.copyFileSync(path.join(BRIGHTCART, name), path.join(copy, name));
     const run = childProcess.spawnSync(process.execPath, [path.join(copy, 'generate.mjs')], { encoding: 'utf8' });
     assert.equal(run.status, 0, run.stderr + run.stdout);
-    assert.match(run.stdout, /ok: the description matches the document, and the layered rendition resolves to folders\/ for the four plateaus/);
-    for (const folder of ['folders', 'layered', 'variants', 'expected']) {
+    assert.match(run.stdout, /ok: the description matches the document, and the layered rendition resolves to the model for the four plateaus/);
+    for (const folder of ['layered', 'variants', 'expected']) {
       const written = files(path.join(copy, folder));
       const committed = files(path.join(BRIGHTCART, folder));
       assert.deepEqual(Array.from(written.keys()), Array.from(committed.keys()), folder + ': the same files');
       for (const [file, text] of written) assert.equal(text, committed.get(file), folder + '/' + file);
     }
     // nothing else is written next to the generator
-    assert.deepEqual(fs.readdirSync(copy).sort(), ['description.mjs', 'expected', 'folders', 'generate.mjs', 'layered', 'variants']);
+    assert.deepEqual(fs.readdirSync(copy).sort(), ['description.mjs', 'expected', 'generate.mjs', 'layered', 'variants']);
   } finally {
     fs.rmSync(copy, { recursive: true, force: true });
   }

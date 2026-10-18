@@ -25,15 +25,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine;
 
 /**
- * {@code archicode diff} on the layered Brightcart {@code layered/} (wave 014, run 0079): the same four plateaus as
- * {@code folders/}, written as manifests with a {@code plateau:} header and a {@code Kind: Plateau} with its patches, and
- * read by the layered engine. This is the proof of the two mechanisms against each other: for P1, P2, P3 and P5 the
- * counts, the text, the table of changes and the notable cases are the ones {@code BrightcartDiffTest} requires of
- * {@code folders/}, read from the same files of {@code expected/}, and the table is equal to the one {@code folders/} gives.
+ * {@code archicode diff} on the layered Brightcart {@code layered/} (waves 012 and 014): the four plateaus written as
+ * manifests with a {@code plateau:} header and a {@code Kind: Plateau} with its patches, and read by the command line. For P1,
+ * P2, P3 and P5 the counts, the text, the table of changes and the notable cases are the ones of {@code expected/}, which the
+ * model of the generator computes.
  *
  * <p>The fixture forks ({@code inhouse} and {@code saas} both override {@code baseline}), so the plateau is always named:
- * without {@code --plateau} the command tells so. P4 (composed) is the model's alone and the layered tool does not compose
- * the {@code replaces} of the steps, which the last test pins as what it prints, with the one element that differs.
+ * without {@code --plateau} the command tells so. P4 (composed) is the model's alone and the tool does not compose the
+ * {@code replaces} of the steps, which the test of P4 pins as what it prints, with the one element that differs.
  */
 @QuarkusTest
 class BrightcartLayeredDiffTest {
@@ -47,11 +46,7 @@ class BrightcartLayeredDiffTest {
     @TempDir
     static Path dir;
 
-    @TempDir
-    static Path foldersDir;
-
     private static Path workspace;
-    private static Path folders;
 
     private Brightcart.Cli cli() {
         return new Brightcart.Cli(factory, errorOutput);
@@ -59,14 +54,13 @@ class BrightcartLayeredDiffTest {
 
     @BeforeAll
     static void copy() {
-        workspace = Brightcart.copyLayered(dir);
-        folders = Brightcart.copyFolders(foldersDir);
+        workspace = Brightcart.copy(dir);
     }
 
     /** The JSON of {@code diff} for a comparison, asked once: the fixture is read only. */
     private JsonNode json(JsonNode comparison) {
         return JSON.computeIfAbsent(comparison.get("id").asText(), id -> {
-            val result = cli().layeredDiff(workspace, comparison, "json");
+            val result = cli().diff(workspace, comparison, "json");
             assertEquals(0, result.exit(), result.err());
             return readTree(result.out());
         });
@@ -80,7 +74,7 @@ class BrightcartLayeredDiffTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("io.morin.archicode.brightcart.Brightcart#layeredIds")
+    @MethodSource("io.morin.archicode.brightcart.Brightcart#verifiedIds")
     void theCountsAreTheOnesOfTheDocument(String id) {
         val comparison = Brightcart.comparison(id);
         val counts = json(comparison).get("counts");
@@ -103,10 +97,10 @@ class BrightcartLayeredDiffTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("io.morin.archicode.brightcart.Brightcart#layeredIds")
+    @MethodSource("io.morin.archicode.brightcart.Brightcart#verifiedIds")
     void theTextSaysTheCountsInTheWordsOfTheDocument(String id) {
         val comparison = Brightcart.comparison(id);
-        val lines = cli().layeredDiff(workspace, comparison, "text").out().lines().toList();
+        val lines = cli().diff(workspace, comparison, "text").out().lines().toList();
         assertTrue(
             lines.get(0).startsWith("comparing " + comparison.get("chain").get(1).asText() + " ("),
             lines.get(0)
@@ -129,7 +123,7 @@ class BrightcartLayeredDiffTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("io.morin.archicode.brightcart.Brightcart#layeredIds")
+    @MethodSource("io.morin.archicode.brightcart.Brightcart#verifiedIds")
     void theTableOfChangesIsTheOneInExpectedChanges(String id) {
         val got = json(Brightcart.comparison(id)).get("changes");
         assertEquals(Brightcart.expectedElementRows(id), Brightcart.elementRows(got), id + " elements");
@@ -137,30 +131,17 @@ class BrightcartLayeredDiffTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("io.morin.archicode.brightcart.Brightcart#layeredIds")
-    void theTableIsTheOneTheCompleteFoldersGive(String id) {
-        val comparison = Brightcart.comparison(id);
-        val old = cli().diff(folders, comparison, "json");
-        assertEquals(0, old.exit(), old.err());
-        val one = readTree(old.out());
-        val other = json(comparison);
-        assertEquals(one.get("counts"), other.get("counts"), id + " counts");
-        assertEquals(one.get("changes"), other.get("changes"), id + " table of changes, row by row");
-        assertEquals(one.get("hidden_wording_only"), other.get("hidden_wording_only"), id);
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("io.morin.archicode.brightcart.Brightcart#layeredIds")
+    @MethodSource("io.morin.archicode.brightcart.Brightcart#verifiedIds")
     void theToolWarnsAboutEveryReplacesItIgnoresAndAboutNothingElse(String id) {
         val comparison = Brightcart.comparison(id);
-        val result = cli().layeredDiff(workspace, comparison, "json");
+        val result = cli().diff(workspace, comparison, "json");
         val warnings = result
             .err()
             .lines()
             .filter(l -> l.startsWith("warning: "))
             .toList();
-        // the same warnings the complete folders print: P3 prints none (the `replaces` that `inhouse` wrote are its own history, not a claim of `marketplace`)
-        assertEquals(comparison.get("layeredIgnoredReplaces").asInt(), warnings.size(), result.err());
+        // P3 prints none (the `replaces` that `inhouse` wrote are its own history, not a claim of `marketplace`)
+        assertEquals(comparison.get("ignoredReplaces").asInt(), warnings.size(), result.err());
         assertTrue(
             warnings
                 .stream()
@@ -183,9 +164,6 @@ class BrightcartLayeredDiffTest {
                 val comparison = Brightcart.comparison(check.get("in").asText());
                 if (!comparison.get("verified").asText().equals("archicode diff")) {
                     continue; // P4: the model's alone
-                }
-                if (comparison.get("layeredCommand").isNull()) {
-                    continue; // P6 is what the old mechanism prints for the question of P4
                 }
                 if (check.get("state").asText().equals("contains-changes")) {
                     continue; // a state of the drawing: see BrightcartLayeredViewsTest
@@ -269,7 +247,7 @@ class BrightcartLayeredDiffTest {
         );
         // the text and the Markdown say it in their own section
         for (val format : List.of("text", "markdown")) {
-            val out = cli().layeredDiff(workspace, Brightcart.comparison("P1"), format).out();
+            val out = cli().diff(workspace, Brightcart.comparison("P1"), format).out();
             assertTrue(out.toLowerCase(java.util.Locale.ROOT).contains("cascade"), format + ": " + out);
         }
         // against a descendant nothing is removed between the two: no cascade
@@ -312,13 +290,6 @@ class BrightcartLayeredDiffTest {
         }
     }
 
-    /** The layer and reference of each element of a graph, sorted. */
-    private static List<String> references(JsonNode graph) {
-        val out = new ArrayList<String>();
-        graph.get("elements").forEach(e -> out.add(e.get("layer").asText() + "|" + e.get("reference").asText()));
-        return out.stream().sorted().toList();
-    }
-
     private static TreeSet<String> cascade(JsonNode diff) {
         val rows = new TreeSet<String>();
         for (val row : diff.path("cascade")) {
@@ -354,13 +325,6 @@ class BrightcartLayeredDiffTest {
             }
             assertEquals(want.get(layer).asInt(), n, plateau + " " + layer);
         }
-        // and the graph is the one of the complete folders: the same elements and the same relationships (the order of the children
-        // inside an element is the order of the manifests, which the two renditions do not share)
-        val old = cli().in(folders, List.of("query", "graph", "--plateau", plateau));
-        assertEquals(0, old.exit(), old.err());
-        val oldGraph = readTree(old.out());
-        assertEquals(references(oldGraph), references(graph), plateau + " elements, one by one");
-        assertEquals(oldGraph.get("relationships"), graph.get("relationships"), plateau + " relationships, one by one");
     }
 
     /**
@@ -373,10 +337,10 @@ class BrightcartLayeredDiffTest {
     @Test
     void marketplaceAgainstBaselineIsP4ButForTheMoveThatTookTwoSteps() {
         val p4 = Brightcart.comparison("P4");
-        val result = cli().layeredDiff(workspace, p4, "json");
+        val result = cli().diff(workspace, p4, "json");
         assertEquals(0, result.exit(), result.err());
         val diff = readTree(result.out());
-        val want = p4.get("layeredGives");
+        val want = p4.get("gives");
         val counts = diff.get("counts");
         val got = List.of(
             counts.at("/elements/new").asInt(),
@@ -418,7 +382,7 @@ class BrightcartLayeredDiffTest {
             differences
         );
         assertEquals(
-            p4.get("layeredIgnoredReplaces").asInt(),
+            p4.get("ignoredReplaces").asInt(),
             result
                 .err()
                 .lines()
@@ -472,11 +436,11 @@ class BrightcartLayeredDiffTest {
     @Test
     void diffWritesNothingNextToTheWorkspaceAndTwoRunsGiveTheSameBytes() {
         val before = Brightcart.tree(workspace.getParent());
-        for (val id : Brightcart.layeredIds().toList()) {
+        for (val id : Brightcart.verifiedIds().toList()) {
             val comparison = Brightcart.comparison(id);
             for (val format : List.of("text", "markdown", "json")) {
-                val one = cli().layeredDiff(workspace, comparison, format);
-                val two = cli().layeredDiff(workspace, comparison, format);
+                val one = cli().diff(workspace, comparison, format);
+                val two = cli().diff(workspace, comparison, format);
                 assertEquals(0, one.exit(), one.err());
                 assertEquals(one, two, id + " " + format);
                 assertFalse(one.out().isBlank());

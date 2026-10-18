@@ -1,10 +1,9 @@
 # An invented shop in two states, used to test how the table of changes reads the relationships of a split element (see PlateauComparisonTest).
 # before -> after: the order service is split in two; the web site now talks to the intake half and reads the database; one relationship of the
 # mailer is plainly new.
+# The plateaus are layers: the manifests of `plateaus/10_before` have no `plateau:` header and are the root, `baseline`; `before` is
+# the first state, an empty layer over it; `after` overrides it with its own manifests and the patches of its `plateau.yaml`.
 settings:
   name: "Split shop"
-  plateaus:
-    - id: "before"
-      path: "plateaus/10_before"
-    - id: "after"
-      path: "plateaus/20_after"
+  manifests:
+    paths: ["plateaus/**"]

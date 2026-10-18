@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "lock-gates"
+content:
+  id: "terminal-reporter"
+  name: "Terminal Reporter"
+  description: "Publishes the terminal records for the visa clerks and counts the heavy loads at low tide."
+  relationships:
+    - destination: "passenger-terminal.terminal-auditor"
+      label: "notifies"
+    - destination: "passenger-terminal.terminal-scheduler"
+      label: "publishes to"

@@ -677,45 +677,48 @@
     },
     {
       "id": "M50",
-      "what": "settings.plateaus and a header that names a plateau are two ways to say the same thing",
+      "what": "settings.plateaus and a header that names a plateau are not mixed: the key is told, and nothing else",
       "settings": "settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n",
       "files": {
         "plateaus/a/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
         "plateaus/a/mail.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"mail\"\n  name: \"Mail\"\n"
       },
       "expect": {
-        "settingsConflict": "`settings.plateaus` and layered plateaus are both used: `plateaus/a/mail.yaml` says `plateau: later` in its header. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`"
+        "removedKey": "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)",
+        "editor": null,
+        "editorReason": "wave 014 W-10 removes the editor's reading of settings.plateaus and says this sentence; until then the page still reads the key (and says the sentence of the conflict when layers come with it)"
       }
     },
     {
       "id": "M51",
-      "what": "settings.plateaus and a manifest of kind plateau",
+      "what": "settings.plateaus and a manifest of kind plateau: the key is told, and nothing else",
       "settings": "settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n",
       "files": {
         "plateaus/a/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
         "plateaus/a/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n"
       },
       "expect": {
-        "settingsConflict": "`settings.plateaus` and layered plateaus are both used: `plateaus/a/later.yaml` is a manifest of kind `archicode.morin.io/plateau`. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`"
+        "removedKey": "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)",
+        "editor": null,
+        "editorReason": "wave 014 W-10 removes the editor's reading of settings.plateaus and says this sentence; until then the page still reads the key (and says the sentence of the conflict when layers come with it)"
       }
     },
     {
       "id": "M52",
-      "what": "settings.plateaus alone is what it always was",
+      "what": "settings.plateaus alone is the key that no longer exists",
       "settings": "settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n",
       "files": {
         "plateaus/a/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
       },
       "expect": {
-        "loaded": [
-          "shop"
-        ],
-        "warnings": []
+        "removedKey": "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)",
+        "editor": null,
+        "editorReason": "wave 014 W-10 removes the editor's reading of settings.plateaus and says this sentence; until then the page still reads the key (and says the sentence of the conflict when layers come with it)"
       }
     },
     {
       "id": "M53",
-      "what": "settings.plateaus and layered plateaus: the conflict is all that is told, not the mistakes of the layers",
+      "what": "settings.plateaus and layered plateaus: the key is all that is told, not the mistakes of the layers",
       "settings": "settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n",
       "files": {
         "plateaus/a/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
@@ -723,7 +726,9 @@
         "plateaus/a/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n  override: \"nothing\"\n"
       },
       "expect": {
-        "settingsConflict": "`settings.plateaus` and layered plateaus are both used: `plateaus/a/later.yaml` is a manifest of kind `archicode.morin.io/plateau`. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`"
+        "removedKey": "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)",
+        "editor": null,
+        "editorReason": "wave 014 W-10 removes the editor's reading of settings.plateaus and says this sentence; until then the page still reads the key (and says the sentence of the conflict when layers come with it)"
       }
     }
   ]

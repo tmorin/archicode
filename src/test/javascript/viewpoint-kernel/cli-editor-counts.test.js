@@ -32,9 +32,9 @@ async function editorOnTheFixture() {
   await sandbox.loadWorkspace(handle);
   assert.equal(state.fatalError, null);
   await sandbox.loadViewpointKernel();
-  await sandbox.switchPlateau(EXPECTED.plateau);
-  await sandbox.setCompareTo(EXPECTED.baseline);
-  assert.equal(state.plateau.id, EXPECTED.plateau);
+  await sandbox.drawPlateau(EXPECTED.plateau);
+  await sandbox.compareWithPlateau(EXPECTED.baseline);
+  assert.equal(state.layers.current, EXPECTED.plateau);
   assert.equal(state.baseline.plateau.id, EXPECTED.baseline);
   return { sandbox, state };
 }

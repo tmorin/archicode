@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "to-be"
+  parent: "shop"
+content:
+  id: "payments"
+  name: "Payments"
+  tags:
+    rendering-stereotypes: "new"

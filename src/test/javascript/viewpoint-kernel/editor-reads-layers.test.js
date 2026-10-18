@@ -34,6 +34,12 @@ async function openLayered() {
   return { sandbox, state };
 }
 
+/** A workspace of the old mechanism, `settings.plateaus` (W-10 removes the editor's reading of it), in memory: two plateaus, each a folder. */
+const OLD_MECHANISM = [
+  'settings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n    - id: to-be\n      path: plateaus/20_to-be\n',
+  { 'plateaus/10_as-is/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n', 'plateaus/20_to-be/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n' }
+];
+
 async function openFiles(files, settings) {
   const mem = memFolder(Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
   const sandbox = createApp({});
@@ -141,12 +147,7 @@ test('the band of the layered Brightcart has one node per plateau, baseline draw
 });
 
 test('a workspace with settings.plateaus has no band and keeps its selector and Compare to', async () => {
-  const sandbox = createApp({});
-  const state = sandbox.__state();
-  const handle = makeDirHandle(path.resolve(__dirname, '../../resources/plateau-comparison'));
-  state.folder = { handle, name: 'plateau-comparison' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(handle);
+  const { sandbox, state } = await openFiles(OLD_MECHANISM[1], OLD_MECHANISM[0]);
   assert.equal(state.fatalError, null);
   assert.equal(state.layers, null);
   assert.equal(sandbox.renderPlateauBandHtml(), '');

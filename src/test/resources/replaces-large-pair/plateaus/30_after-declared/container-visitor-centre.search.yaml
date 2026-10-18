@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "visitor-centre"
+content:
+  id: "search"
+  name: "Search"
+  description: "Keeps the lock notices for the lock keepers and signs the extra charges each morning."

@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "land-leases"
+content:
+  id: "ice-watch"
+  name: "Ice Watch"
+  description: "Reports the ice on the water in the winter months."

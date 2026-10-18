@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "stock"
+content:
+  id: "till"
+  name: "Cash desk"
+  description: "Takes the payment of a basket at the counter and prints the receipt."
+  replaces:
+    - "shop.till"
+  relationships:
+    - destination: "stock.place"
+      label: "reserves"

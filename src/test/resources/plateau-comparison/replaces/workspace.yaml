@@ -2,10 +2,9 @@
 # before -> after: the till moved from the shop to the stock system, and was renamed on the way; the report was split in two; the bin and the shelf were
 # merged into a place; the mailer was rewritten under another name and nobody said so (a candidate, never applied); and one
 # `replaces` points at a reference the base does not have.
+# The plateaus are layers: the manifests of `plateaus/10_before` have no `plateau:` header and are the root, `baseline`; `before` is
+# the first state, an empty layer over it; `after` overrides it with its own manifests and the patches of its `plateau.yaml`.
 settings:
   name: "Warehouse"
-  plateaus:
-    - id: "before"
-      path: "plateaus/10_before"
-    - id: "after"
-      path: "plateaus/20_after"
+  manifests:
+    paths: ["plateaus/**"]

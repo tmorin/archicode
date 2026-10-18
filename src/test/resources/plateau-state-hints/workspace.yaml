@@ -3,12 +3,9 @@
 # desk did not change, the loans changed, the catalog holds a new shelf, the kiosk is new, the till is the old counter moved,
 # the report is split in two, the hall and the annex are merged into a room, the vault is only in before (removed). Every element carries a word that is the name of a
 # state, some of which are its own state (nothing to say) and some are not (a sentence each); one is written as a qualifier.
+# The plateaus are layers: the manifests of `plateaus/10_before` have no `plateau:` header and are the root, `baseline`; `before` is
+# the first state, an empty layer over it; `after` overrides it with its own manifests and the patches of its `plateau.yaml`.
 settings:
   name: "Library"
-  plateaus:
-    - id: "before"
-      name: "Before"
-      path: "plateaus/10_before"
-    - id: "after"
-      name: "After"
-      path: "plateaus/20_after"
+  manifests:
+    paths: ["plateaus/**"]

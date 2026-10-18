@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after-declared"
+  parent: "sandbox"
+content:
+  id: "edge-cluster"
+  name: "Edge Cluster"
+  description: "Receives the traffic from outside and hands it to the applications."
+  replaces:
+    - "prod.edge-cluster"
+  applications:
+    - "quay-maintenance.quay-validator"

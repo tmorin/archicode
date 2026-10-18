@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after-declared"
+  parent: "sandbox"
+content:
+  id: "mock-customs"
+  name: "Mock Customs"
+  description: "Answers like the customs service, for the tests of the partners."

@@ -1,0 +1,35 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "tariff-billing"
+content:
+  id: "tariff-tracker-2"
+  name: "Tariff Tracker"
+  description: "Publishes the tariff schedules for the lock keepers and updates the missing papers twice a day."
+  replaces:
+    - "tariff-billing.tariff-tracker"
+  relationships:
+    - destination: "port-police.police-registry"
+      label: "sends to"
+    - destination: "safety-inspections.inspection-billing"
+      label: "fetches from"
+  elements:
+    - kind: "component"
+      id: "parser"
+      name: "Parser"
+      description: "Reads the incoming files and turns them into records."
+      replaces:
+        - "tariff-billing.tariff-tracker.parser"
+    - kind: "component"
+      id: "mapper"
+      name: "Mapper"
+      description: "Maps the fields of a record to the ones the other systems expect."
+      replaces:
+        - "tariff-billing.tariff-tracker.mapper"
+    - kind: "component"
+      id: "queue"
+      name: "Queue"
+      description: "Lines up the jobs and hands them out one by one."
+      replaces:
+        - "tariff-billing.tariff-tracker.queue"

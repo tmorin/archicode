@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "mooring-lines"
+content:
+  id: "mooring-planner-south"
+  name: "South Mooring Planner"
+  description: "Tracks the mooring notices for the fishing boats and lists the unpaid fees twice a day."
+  replaces:
+    - "mooring-lines.mooring-planner"
+  relationships:
+    - destination: "tide-forecast.tide-notifier"
+      label: "synchronises with"

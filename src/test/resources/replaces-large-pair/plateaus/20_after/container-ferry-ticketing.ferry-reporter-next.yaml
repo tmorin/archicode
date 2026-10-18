@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "ferry-ticketing"
+content:
+  id: "ferry-reporter-next"
+  name: "Ferry Reporter Next"
+  description: "Computes the ferry notices for the fishing boats and compares the unpaid fees twice a day."
+  relationships:
+    - destination: "ferry-ticketing.ferry-gateway"
+      label: "asks"
+    - destination: "ferry-ticketing.ferry-search"
+      label: "reads from"

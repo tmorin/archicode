@@ -1,0 +1,13 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "shop"
+content:
+  id: "orders-intake"
+  name: "Order intake"
+  replaces:
+    - "shop.orders"
+  relationships:
+    - destination: "shop.db"
+      label: "stores in"

@@ -2,7 +2,7 @@
 // #69 (wave 013, run 0066): with four plateaus of ordinary names the plateau buttons are 901 px wide on their own and the header needed about 1275 px; below that the page
 // scrolled sideways and `Compare to` was off screen. The rule that fixes it is that the plateau switch is never wider than the bar and that its buttons, and Compare to, wrap
 // inside their own groups. The harness has no layout engine, so this is the rule, read from the stylesheet the browser is given and resolved the way the cascade does for
-// the elements of the header, plus the markup on the Brightcart folders (four plateaus, names as long as the fixture's). What a window shows at 800 px is a measure in a
+// the elements of the header, plus the markup on a workspace of four plateaus listed in `settings.plateaus` (names as long as the fixture of Brightcart's). What a window shows at 800 px is a measure in a
 // browser (the run says whether it was made). Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +12,15 @@ const { createApp, makeDirHandle } = require('./harness');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
-const FOLDERS = path.resolve(__dirname, '../../resources/brightcart/folders');
+const { memFolder } = require('./mem-folder');
+
+/** Four plateaus of the old mechanism, with the long names of the Brightcart fixture (the controls under test are the old selector's: W-10 removes them with it). */
+const NAMES = ['Monolith kept as it is today', 'Buy the commerce platform and keep the back office', 'Build commerce services in house', 'Open a marketplace of sellers and partners'];
+const IDS = ['baseline', 'saas', 'inhouse', 'marketplace'];
+const OLD_WORKSPACE = Object.assign(
+  { 'workspace.yaml': 'settings:\n  plateaus:\n' + IDS.map((id, i) => '    - id: ' + id + '\n      name: "' + NAMES[i] + '"\n      path: plateaus/' + id + '\n').join('') },
+  Object.fromEntries(IDS.map((id) => ['plateaus/' + id + '/app.shop.yaml', 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n']))
+);
 
 /** The rules of the top level of the stylesheet whose selectors are class names joined by descendant combinators (the ones the header uses), in source order. */
 function simpleRules() {
@@ -53,8 +61,8 @@ const COMPARE = [HEADER, ['plateau-switch'], ['compare-control']];
 async function brightcart() {
   const sandbox = createApp();
   const state = sandbox.__state();
-  const handle = makeDirHandle(FOLDERS);
-  state.folder = { handle, name: 'folders' };
+  const handle = memFolder(OLD_WORKSPACE).handle;
+  state.folder = { handle, name: 'long-names' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(handle);
   assert.equal(state.fatalError, null);
@@ -88,7 +96,7 @@ test('the perspective tabs still keep their size (the plateau switch was the onl
   assert.equal(computed([HEADER, ['perspective-tabs', 'button-group']])['flex-shrink'], '0');
 });
 
-test('on the Brightcart folders the four plateaus and Compare to are inside the switch, the buttons in the group that wraps', async () => {
+test('on four plateaus of the old mechanism the four plateaus and Compare to are inside the switch, the buttons in the group that wraps', async () => {
   const { sandbox, state } = await brightcart();
   assert.equal(state.plateaus.length, 4);
   const html = sandbox.renderPlateauTabsHtml();

@@ -1,6 +1,6 @@
 # Brightcart
 
-An invented online retailer whose architecture changes over four plateaus (`baseline`, the alternatives `saas` and `inhouse`, then `marketplace` under `inhouse`). It is a shared fixture: the tests of the layered tools read `layered/`, the tests of the old mechanism (`settings.plateaus`) read `folders/`, and both are generated from one description. The story, the tables and the reasons are in `docs/fixtures/brightcart-spec.md`; this folder is the specification as files.
+An invented online retailer whose architecture changes over four plateaus (`baseline`, the alternatives `saas` and `inhouse`, then `marketplace` under `inhouse`). It is a shared fixture: the tests of the command line and of the editor read `layered/`, which is generated from one description. The story, the tables and the reasons are in `docs/fixtures/brightcart-spec.md`; this folder is the specification as files.
 
 Nothing here comes from a real workspace. Every name, id and label is invented.
 
@@ -10,14 +10,14 @@ Nothing here comes from a real workspace. Every name, id and label is invented.
 node src/test/resources/brightcart/generate.mjs
 ```
 
-Everything below, except `description.mjs`, `generate.mjs`, `negative-cases.json` and this file, is written by that command, and a second run gives the same bytes (`brightcart-layered.test.js` runs it in a copy and compares). It empties `layered/`, `folders/`, `variants/` and `expected/` before it writes them,
+Everything below, except `description.mjs`, `generate.mjs`, `negative-cases.json` and this file, is written by that command, and a second run gives the same bytes (`brightcart-layered.test.js` runs it in a copy and compares). It empties `layered/`, `variants/` and `expected/` before it writes them,
 so do not edit those by hand: change `description.mjs` (the data) or `generate.mjs` (the rules), and regenerate.
 
 The generator fails (exit code 1, the differences printed) when:
 
 - the description stops giving the sizes (50, 42, 66 and 82 elements) or the comparisons P1 to P6 that the document records;
 - a notable case N1 to N17 stops holding in the model's comparisons;
-- the resolver finds a difference between the two renditions: it reads `layered/` back from the files, applies the patches plateau after plateau, and compares each result, element by element, with what it reads from `folders/`;
+- the resolver finds a difference with the model: it reads `layered/` back from the files, applies the patches plateau after plateau, and compares each result, element by element, with what the model resolved;
 - a negative variant V1 to V8 stops failing in the model with the words it expects.
 
 ## What is here
@@ -26,13 +26,10 @@ The generator fails (exit code 1, the differences printed) when:
 | --- | --- | --- |
 | `description.mjs` | The data: elements, manifests (files), patches, the numbers of the document, the variants, the notable cases. | `generate.mjs` |
 | `generate.mjs` | The port of the throwaway model of the specification: layers, the patch operators, the rules of `compare`, the YAML emitter, the resolver. | you |
-| `layered/` | The layered rendition: a folder per plateau (`baseline/`, `saas/`, `inhouse/`, `marketplace/`) with a `plateau.yaml` (`Kind: Plateau`: `id`, `name`, `horizon`, `override` when the parent is not `baseline`, and the `patches`) and its manifests, each with a `plateau: <id>` header (the `baseline`'s have none). `workspace.yaml` has no `settings.plateaus` and `settings.manifests.paths: ["./**"]`. | the layered tools: `archicode diff --plateau <id> [--against <id>]`, `views generate --plateau <id>`, `plateau list`; the editor opens it and draws `baseline` |
-| `folders/` | The complete-folder rendition: each plateau a whole folder of manifests under `plateaus/`, `settings.plateaus` in `workspace.yaml` with the `baseline` key of every plateau but the first (E2), `replaces` relative to that key. The three facets and the styles of the document are in the workspace. It goes with the old mechanism (wave 014 W-9). | the old mechanism: `archicode diff`, `views generate`, the editor's plateau selector |
-| `variants/` | V1 to V14 (negative variants) and M1 to M3 (merge scenarios), one JSON description each, with the expected class of message and a `status` that says whether a tool runs it. V2 and V11 are run on the complete folders (see `negative-cases.json`); V4 and V5 have a nearest case that is run; the layered engine reads V1, V3 to V8 (tried by hand; a test of V1, V3 and V6 to V10 is wave 014 W-11), V12 to V14 and M1 to M3 wait for `plateau merge`. V1 to V8 also carry what the model reports. | the tests of the variants and `plateau merge` |
-| `negative-cases.json` | The negative cases today's tools run on the complete folders (a plateau declared twice, a baseline that names nothing or loops, a folder that is missing, a `current` that names nothing, a reference declared twice, a `replaces` that names nothing, a mistyped `--plateau`, an unknown key in a header, ...): for each, the alteration of `folders/` (applied in a temporary folder by the tests, so nothing negative is a committed workspace), the commands with their exit code and error output, and what the editor says. Written by hand; `generate.mjs` does not touch it. | `BrightcartNegativeCasesTest` (command line), `brightcart-negative.test.js` (editor) |
-| `expected/` | `sizes.json`, `renditions.json` (files, lines and bytes of the two renditions), `comparisons.json` (P1 to P6, with `verified`: `archicode diff` or `model only`, the `command` of `folders/` and the `layeredCommand` of `layered/`, and what the layered tool prints for P4: `layeredGives`), `changes.json` (the table of changes of each comparison), `notable-cases.json` (N1 to N17). | the tests |
-
-The rendition `folders/` is generated by resolving the layered plateaus in the model, so the two describe the same plateaus by construction; the resolver proves it again from the files, and the tools prove it a third time (below).
+| `layered/` | The layered rendition: a folder per plateau (`baseline/`, `saas/`, `inhouse/`, `marketplace/`) with a `plateau.yaml` (`Kind: Plateau`: `id`, `name`, `horizon`, `override` when the parent is not `baseline`, and the `patches`) and its manifests, each with a `plateau: <id>` header (the `baseline`'s have none). `workspace.yaml` has `settings.manifests.paths: ["./**"]` and no other word about plateaus. | the layered tools: `archicode diff --plateau <id> [--against <id>]`, `views generate --plateau <id>`, `plateau list`; the editor opens it and draws `baseline` |
+| `variants/` | V1 to V14 (negative variants) and M1 to M3 (merge scenarios), one JSON description each, with the expected class of message and a `status` that says whether a tool runs it. V2 is run on `layered/` (case N7 of `negative-cases.json`) and V11 is the case N43; the layered engine reads V1, V3 to V8 (tried by hand; a test of V1, V3 and V6 to V10 is wave 014 W-11), V12 to V14 and M1 to M3 wait for `plateau merge`. V1 to V8 also carry what the model reports. | the tests of the variants and `plateau merge` |
+| `negative-cases.json` | The negative cases today's tools run on `layered/` (a plateau declared twice, a `current` that names nothing, a reference declared twice, a `replaces` that names nothing, a mistyped `--plateau` or `--against`, an unknown key in a header, a workspace that still has `settings.plateaus`, ...): for each, the alteration of `layered/` (applied in a temporary folder by the tests, so nothing negative is a committed workspace), the commands with their exit code and error output, and what the editor says. Written by hand; `generate.mjs` does not touch it. | `BrightcartNegativeCasesTest` (command line), `brightcart-negative.test.js` (editor) |
+| `expected/` | `sizes.json`, `renditions.json` (files, lines and bytes of the rendition), `comparisons.json` (P1 to P6, with `verified`: `archicode diff` or `model only`, the `command` that asks the question of `layered/`, and what the tool prints for P4: `gives`), `changes.json` (the table of changes of each comparison), `notable-cases.json` (N1 to N17). | the tests |
 
 ## The layered rendition
 
@@ -52,28 +49,7 @@ archicode -w /tmp/brightcart-layered/workspace.yaml views generate --plateau mar
 archicode -w /tmp/brightcart-layered/workspace.yaml query graph --plateau inhouse
 ```
 
-`archicode diff` without `--plateau` fails on this fixture (``the plateaus of this workspace are not one line``). `BrightcartLayeredDiffTest` requires, for P1, P2, P3 and P5, the counts, the text, the table of changes (equal to `expected/changes.json` and to the one `folders/` gives), the notable cases N1 to N12 and N14 to N16 (N13, a state of the drawing, is read in the views) and the cascade of a `REMOVE`; `BrightcartLayeredViewsTest` that `views generate` for the four plateaus writes the PlantUML files of `folders/`, byte for byte, and, run twice for `saas` and `marketplace`, gives the same bytes.
-
-## Using the complete folders with the old mechanism
-
-Run the command line on a **copy** of `folders/`: `views generate` writes `views-*` folders next to `workspace.yaml`.
-
-```
-cp -r src/test/resources/brightcart/folders /tmp/brightcart
-archicode -w /tmp/brightcart/workspace.yaml diff --plateau saas                              # P1
-archicode -w /tmp/brightcart/workspace.yaml diff --plateau inhouse                           # P2
-archicode -w /tmp/brightcart/workspace.yaml diff --plateau marketplace                       # P3
-archicode -w /tmp/brightcart/workspace.yaml diff --plateau inhouse --baseline saas           # P5
-archicode -w /tmp/brightcart/workspace.yaml diff --plateau marketplace --baseline baseline   # P6: what the tool prints, not the real change (P4)
-archicode -w /tmp/brightcart/workspace.yaml views generate --plateau saas
-```
-
-`--baseline` is written for P5 and P6 only; for the others the `baseline` key of the plateau says what it is compared with. Rendering needs PlantUML (`PLANTUML_JAR`).
-
-`views generate` makes the comparison of a plateau that has a `baseline` key: `views-<plateau>-vs-<baseline>` is written next to the plateau's own views. For `inhouse` and `marketplace` that comparison used to stop with a
-`dangling reference` (E1 of the specification, section 12, fixed by commit `ce452a2`); the four plateaus now exit 0.
-
-`expected/changes.json` is the model's table of changes; for P1, P2, P3, P5 and P6 it agrees, element by element, with the `changes` of `archicode diff -f json` (the label change of N3 is listed there under the new label).
+`archicode diff` without `--plateau` fails on this fixture (``the plateaus of this workspace are not one line``). `BrightcartLayeredDiffTest` requires, for P1, P2, P3 and P5, the counts, the text, the table of changes (equal to `expected/changes.json`), the notable cases N1 to N12 and N14 to N16 (N13, a state of the drawing, is read in the views) and the cascade of a `REMOVE`; `BrightcartLayeredViewsTest` that `views generate` for the four plateaus writes the number of PlantUML files of `expected/sizes.json`, the comparison folders with their table and the facets, and, run twice for `saas` and `marketplace`, gives the same bytes.
 
 ## Not here
 

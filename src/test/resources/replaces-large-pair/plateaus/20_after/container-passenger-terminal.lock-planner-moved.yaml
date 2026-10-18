@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "passenger-terminal"
+content:
+  id: "lock-planner-moved"
+  name: "Lock Planner Moved"
+  description: "Archives the lock schedules for the ticket office and rates the broken sensors at dusk."
+  qualifiers:
+    - "Go"
+  relationships:
+    - destination: "fire-brigade.fire-sync"
+      label: "reports to"

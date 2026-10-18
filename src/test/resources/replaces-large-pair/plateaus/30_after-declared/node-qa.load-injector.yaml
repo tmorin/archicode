@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "after-declared"
+  parent: "qa"
+content:
+  id: "load-injector"
+  name: "Load Injector"
+  description: "Plays back the traffic of the busiest day."

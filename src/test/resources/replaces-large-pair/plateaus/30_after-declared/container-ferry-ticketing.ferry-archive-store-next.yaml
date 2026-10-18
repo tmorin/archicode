@@ -1,0 +1,18 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after-declared"
+  parent: "ferry-ticketing"
+content:
+  id: "ferry-archive-store-next"
+  name: "Ferry Archive Store Next"
+  description: "Reconciles the ferry schedules for the weather desk and notifies the new vessels on Mondays."
+  qualifiers:
+    - "Go"
+  replaces:
+    - "ferry-ticketing.ferry-archive-store"
+  relationships:
+    - destination: "ferry-ticketing.ferry-exporter-next"
+      label: "reports to"
+    - destination: "ferry-ticketing.ferry-gateway"
+      label: "asks"

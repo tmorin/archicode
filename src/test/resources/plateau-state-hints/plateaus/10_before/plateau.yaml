@@ -1,0 +1,6 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "before"
+  name: "Before"

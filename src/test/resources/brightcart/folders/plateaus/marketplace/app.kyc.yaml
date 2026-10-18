@@ -1,9 +1,0 @@
-header:
-  kind: "archicode.morin.io/system"
-  version: "1"
-content:
-  id: "kyc"
-  name: "KYC provider"
-  description: "Checks the identity of sellers."
-  tags:
-    rendering-stereotypes: "external"

@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "fire-brigade"
+content:
+  id: "fire-alerts-intake"
+  name: "Fire Alerts Intake"
+  description: "Schedules the fire readings for the port police and reminds the urgent requests on request as they come in."
+  relationships:
+    - destination: "rail-link.rail-statistics"
+      label: "notifies"
+    - destination: "gate-control.gate-importer"
+      label: "synchronises with"

@@ -108,7 +108,7 @@ class StateTagRuleTest {
     @Test
     void aWordWrittenByHandOnABoxWithoutTheStateDoesNotGetTheDefaultLookOfTheState() {
         val workspace = office(dir);
-        val result = run("-w", workspace.toString(), "views", "generate", "--baseline", "before");
+        val result = run("-w", workspace.toString(), "views", "generate", "--against", "before");
         assertEquals(0, result.exit, result.err);
         val puml = view("views-after-vs-before", "office-detailed.puml");
 
@@ -146,7 +146,7 @@ class StateTagRuleTest {
     @Test
     void theAuthorIsToldOnTheErrorOutputWhereAWordAndTheComparisonDisagree() {
         val workspace = office(dir);
-        val result = run("-w", workspace.toString(), "views", "generate", "--baseline", "before");
+        val result = run("-w", workspace.toString(), "views", "generate", "--against", "before");
         assertEquals(0, result.exit, result.err);
         // on the error output, not in the log (the log level is ERROR and hides log.warn), and not on the standard output
         val warnings = result.err.lines().toList();
@@ -191,16 +191,16 @@ class StateTagRuleTest {
     @Test
     void withoutAComparisonTheWordIsTheAuthorsOwnAndTheViewsAreWhatTheyWere() {
         val workspace = office(dir);
-        val result = run("-w", workspace.toString(), "views", "generate", "--plateau", "after");
+        val result = run("-w", workspace.toString(), "views", "generate", "--plateau", "baseline");
         assertEquals(0, result.exit, result.err);
-        // the plateau has plateaus and nothing is compared: every word is a state nobody computed
+        // the root is drawn alone and nothing is compared: every word is a state nobody computed
         val warnings = result.err.lines().toList();
-        assertEquals(4, warnings.size(), result.err);
+        assertEquals(3, warnings.size(), result.err);
         assertTrue(warnings.get(0).startsWith("warning: the element `office.counter` carries `new`"), warnings.get(0));
         assertTrue(warnings.get(0).contains("nothing is compared here"), warnings.get(0));
-        assertTrue(warnings.stream().anyMatch(l -> l.contains("`office.window` carries `new`")), result.err);
+        assertTrue(warnings.stream().anyMatch(l -> l.contains("`office.queue` carries `changed`")), result.err);
         // and the stereotype is the word itself, with the style the author gave it, as before
-        val puml = view("views-after", "office-detailed.puml");
+        val puml = view("views-baseline", "office-detailed.puml");
         assertTrue(boxOf(puml, "office.counter").contains("<<new>>"), boxOf(puml, "office.counter"));
         assertFalse(puml.contains("written-"), puml);
     }
@@ -230,7 +230,7 @@ class StateTagRuleTest {
     @SneakyThrows
     void aWorkspaceWithoutPlateausHasNothingToDisagreeWithAndSaysNothing() {
         Files.createDirectories(dir.resolve("manifests"));
-        Files.copy(FIXTURE.resolve("plateaus/20_after/office.yaml"), dir.resolve("manifests/office.yaml"));
+        Files.copy(FIXTURE.resolve("plateaus/10_before/office.yaml"), dir.resolve("manifests/office.yaml"));
         Files.writeString(
             dir.resolve("workspace.yaml"),
             "styles:\n  by-tags:\n    new:\n      line-color: \"#7B3FA0\"\nsettings:\n  name: \"Ticket office\"\n"

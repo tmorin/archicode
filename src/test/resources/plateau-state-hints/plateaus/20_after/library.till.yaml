@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "after"
+  parent: "library"
+content:
+  id: "till"
+  name: "Till"
+  replaces:
+    - "library.counter"
+  qualifiers:
+    - "moved"
+  tags:
+    rendering-stereotypes: "contains-changes"
