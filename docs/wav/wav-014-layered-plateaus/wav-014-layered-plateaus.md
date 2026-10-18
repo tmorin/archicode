@@ -245,7 +245,7 @@ wave_manifest:
       slug: editor-reads-layers
       phase: P2
       depends_on: [W-1, W-2, W-3, W-5]
-      run: null
+      run: 0080
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
