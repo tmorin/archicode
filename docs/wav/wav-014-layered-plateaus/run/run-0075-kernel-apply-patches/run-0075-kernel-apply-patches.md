@@ -1,10 +1,98 @@
 ---
 type: run
 run: 0075
-status: proposed
+status: completed
 wave: 014
 ---
 
 # Run 0075: Kernel apply patches
 
 Wave 014 (`layered-plateaus`), item W-1 (phase P1). Focus: resolve the changes of a plateau on the graph the manifests loaded, with an error that says which patch missed.
+
+Document profile: `single-document`. The design fork the brief points at (the shape of the patch input and of the per-patch report) is one table and ten small decisions below, all about one function of one crate; a TDD would restate them and a pln would restate the task list. The review passes are kept (KDMLLC, C scan, open questions) and answered in this file. There is no prd, tdd or pln: the task list below is the plan, and its state is the state of the run.
+
+## Scope
+
+A fourth entry point of the viewpoint kernel, `apply_patches`, beside `compute`, `apply_facet` and `compare`: it takes the JSON of a workspace and the ordered patches of a plateau and returns the changed JSON and, per patch, what it touched. The operators are `REMOVE`, `SET`, `ADD`, `MERGE` (decision D3 of the wave), with the semantics of A3, A4 and A9 and the rules L3, L4, L5 and L7 of `docs/fixtures/brightcart-spec.md`.
+
+In: the Rust (`src/patch.rs`, the small changes to `src/facet.rs` that share the cascade), the export in `lib.rs`, the wasm re-embedded with `embed.sh`, one list of cases read by `cargo test` and by a node test through the embedded wasm, the thin Java call and one Java test (the project tests every entry point from Java: `ViewpointKernelTest` has `applyFacet`), the README of the kernel.
+
+Out: the loading of layers (W-4: the manifests of a layer are added to the graph by Java, then this function is called once per layer), the validation of references after a layer (W-4), `MOVE` and `RENAME` (non-goals of the wave), views and stories as patch targets (L10, not in this wave), the editor's use (W-6).
+
+## The shape of the entry point
+
+```
+apply_patches
+  input : { workspace, plateau?, patches: [patch] }
+  patch : { operator: "REMOVE" | "SET" | "ADD" | "MERGE",
+            target?    (a full reference, one element),   layer? ("application" by default | "technology"),
+            json-path? (RFC 9535, also written json_path), expect? (integer >= 1),
+            field?, where? { destination, label? }, value? }
+  output: { version, workspace,
+            patches: [ { rank, operator, selector, matched, touched: [{layer, reference}],
+                         removed?: [{layer, reference}], dropped?: [{layer, reference, field, entry}] } ] }
+        | { error, patch?: { plateau?, rank, operator?, selector? } }
+```
+
+| operator | `target` + | `json-path` + |
+|---|---|---|
+| `REMOVE` | nothing else: the element and its subtree go, with what points at them (the cascade of the facets, L5) | nothing else: the selected nodes go, the cascade applies when an element goes |
+| `SET` | `field`, `value`: the field is replaced (a list is replaced). With `where` (and `field: relationships`): `value` is an object, each of its keys replaces that field of the one relationship found (L7) | `value`, and `field` if the nodes are objects whose field is set; without `field` the selected nodes are replaced by `value` |
+| `ADD` | `field`, `value`: the list gets the item, or each item if `value` is a list; a missing list is created | the same on the selected lists, or on the `field` of the selected objects |
+| `MERGE` | `field`, `value` (an object): the keys of `value` are set in the object of the field, the others kept; a missing object is created | the same on the selected objects, or on the `field` of the selected objects |
+
+## Decisions
+
+- **D1. The input is the YAML of the fixture, in JSON.** The patch has exactly the keys the fixture writes (`operator`, `target`, `layer`, `field`, `where`, `value`, `json-path`, `expect`); the kernel takes `json-path` as the manifest writes it and `json_path` as the facets' actions write it (a serde alias), so that W-4 hands the manifest's patches through and the editor can read them as they are in the file. An unknown key is an error naming it (`deny_unknown_fields`): a patch is never half read. `value: null` is "not given" (the kernel's rule for a null everywhere): to clear something, `REMOVE` it.
+- **D2. The workspace goes in and comes out whole.** The same document as `apply_facet` (`application.elements`, `technology.elements`, everything else untouched and in the same order of keys); a patch can only select inside the elements of the two layers (an element or anything below it). A node outside them (`$.styles`, `$.application.elements`) is an error, because views and stories are not patchable in this wave.
+- **D3. The rank is 1-based**, as the fixture's generator counts (`patch 3 (SET target shop.web)`). The error names the plateau (the `plateau` of the input, left out when the caller gives none or an empty one), the rank, the operator and the selector, and `error.patch` carries the same as data, so that the editor can mark the patch without parsing the sentence. The selector is read from the patch as it was written, so that a patch refused for its shape still says which one it is.
+- **D4. The cascade of `REMOVE` is the facets' code.** `facet.rs` keeps the one routine (`remove_nodes`: delete the nodes from the greatest path down, then take out what points at an element that left); a facet ignores what it reports, a patch gives it to the caller. A relationship whose destination left, an entry of `uses`, an entry of `applications` go; the node that hosted an element stays (L5), a reference that led nowhere before is not touched.
+- **D5. What is reported.** `touched`: the elements the patch selected (the element a selected node is, or lies in), sorted by (layer, reference); an element that only lost an entry to the cascade is in `dropped`, not in `touched`. `matched`: the nodes selected. For `REMOVE` only: `removed` (every element that left the graph, the subtree included) and `dropped` (the entries taken out of the elements that stay: the holder, the field, and the entry itself). W-4 writes `gap.md`'s cascade from `removed` and `dropped`; nothing is computed twice.
+- **D6. `target` and `json-path` are exclusive; `expect` goes with `json-path` only (at least 1), `layer` with `target` only, `where` with a `target`, `SET` and `field: relationships` only.** A combination that the spec does not give a meaning is an error that says so, not a silent choice. `target` selects exactly one element (A3); `json-path` selects at least one, or exactly `expect` (A3, L3). When the other layer holds the reference of a `target`, the error says to write `layer`.
+- **D7. `SET` replaces, `MERGE` merges one level (A4).** The generator's model assigns the keys of `tags` for a `SET` (`Object.assign`), `SET` of A4 replaces the object: a layered fixture that sets one tag on elements that have others writes `MERGE` (Findings, F1). `MERGE` is shallow on purpose: `tags` are flat, and a deep merge is a rule more to explain. A relationship is found by `(destination, label)` (L7), an absent label being none, as in `compare`; zero or several matches is an error.
+- **D8. A patch never changes an `id` or a `parent` (non-goal of the wave).** The fields `id`, `parent` and `elements` are refused by name, a `REMOVE` cannot select an `id`, and every `SET`, `ADD` and `MERGE` is followed by a check that the set of references of both layers is unchanged (that catches a free `json-path` that reaches an `id` or the `elements` of an element). A `REMOVE` of an element is the only patch that makes a reference leave.
+- **D9. The patches are applied in order, on the result of the previous one, and the first miss ends the call (A9).** A patch sees what the previous patches did, and what the layer added before the call, so it can touch an element of the layer. There is no partial result: an error returns no workspace.
+- **D10. `ADD` does not deduplicate, no patch validates a value.** An `ADD` that repeats an item repeats it (the author wrote it); a relationship without a destination, or towards an element that does not exist, is the loader's error after the layer (W-4: "references, views and stories are validated after each layer"), with the layer's name. A first version checked that an added relationship has a `destination`; the review of this run took it out, as the one check of a shape that `SET` did not make either.
+
+## Contract number
+
+None. `apply_patches` is additive: no input and no output of `compute`, `apply_facet` or `compare` changes (checked by the existing tests and by the byte-identity of the views, below), and the answer says `version: 4`. This is the precedent of `compare` ("`compare` itself added nothing to version 2"). A host that needs `apply_patches` (W-4, W-6) ships with the wasm that has it, as it does for the other entry points. Contract 5 is W-12's.
+
+## Canonical impact
+
+None to the architecture model (no TDD, no `CI-arc` or `CI-dom` packet; the repository declares no register for it). The README of the kernel and the header of `lib.rs` carry the contract.
+
+## Review passes, answered
+
+- **KDMLLC (a `general-purpose` sub-agent at the standard tier, read-only, run on the document and the code; nine findings).** Applied: **F1 (S2)** a `REMOVE` with a `json-path` that selected an `id` succeeded and left an element without one, with no cascade, because `REMOVE` skips the reference check: a `REMOVE` that selects an `id` is now refused (case `a REMOVE cannot select an id`). **F2 (S2)** the one check of a value's shape (an added relationship has a `destination`) was undocumented and `SET` did not make it: taken out, D10 says so, a case pins that a relationship towards nowhere passes. **F3 (S2)** the mismatch with the fixture's bulk edit: recorded as Findings F1, owner W-5, A4 not changed. **F4 (S2)** the rules were written four times: the header of `patch.rs` is the one statement, the README keeps the grammar and four short bullets that point to it. **F5** a test that compared a facet with a `REMOVE` patch could not fail (both call `remove_nodes`): removed from Rust and from node; T4 says what is tested once in each language. **F6** the coverage test claimed more than it checked: renamed, and the empty `field` has a case. **F7** a comment, D3, D5, D8 and the empty `plateau` said different things from the code: fixed. **F8** the README promised a verification before it was done and carried wave codes: reworded, the verification is below. **F9** one key-insertion loop was written twice and the reference diff took fifteen lines: `merge_into` is used by the `where` branch, `differing` is one helper. Left alone, on purpose: the eight cells of `json-path` x `field` x three writers (the reviewer's trade-off: the `field` form is the only way to create a missing `tags`, which the fixture's bulk edit needs).
+- **C scan (the document, the README, the header of `lib.rs` and `patch.rs`, the tests, against A3, A4, A9 and L3 to L7).** A3: a miss is an error with plateau, rank and selector (cases `a target that is not an element...`, `a json-path that selects nothing...`, `expect` cases); `target` selects one element, `json-path` at least one or `expect`. A4: `SET` replaces a list and an object (cases), `ADD` adds a list item or a relationship, `MERGE` merges an object, a relationship is found by `(destination, label)` (cases with and without label, none, several), the cascade of `REMOVE` is the facets' (case `does not take the empty node that hosted the element`, and the facet tests that run the same routine). A9: a later patch sees the earlier ones (case `a patch sees the result of the patches before it`). L5: the node that hosted stays; L7: no relationship id. No rule of the spec had to be set aside. The generator's model assigns the keys of a map on `SET`: that is the fixture's rule, not A4's (Findings F1). The README example sentence is character for character the one of a case.
+- **Open questions.** The wave plan asks whether the entry point needs a contract number: no (section "Contract number"). Nothing else was open: the shape of the input is the YAML of the fixture and the shape of the report is D5.
+
+## Tasks
+
+- [x] T1. Read the wave plan, the spec rules L0 to L11, the fixture's generator (the model of the operators), `facet.rs` (the cascade), `lib.rs` (the export and the contract), the Java and node tests of `apply_facet`.
+- [x] T2. `facet.rs`: share the removal and report what the cascade dropped, without changing a facet's output (`hard_judgment`, inline: it is the cascade of every facet).
+- [x] T3. `patch.rs` and the export `apply_patches` in `lib.rs` (`hard_judgment`, inline: A3, A4, A9 are applied here and the decisions D1 to D10 are made here).
+- [x] T4. `src/test/javascript/viewpoint-kernel/patch-cases.json`, the cases read by `cargo test` (`src/patch_tests.rs`) and by `patches.test.js` through the embedded wasm; one case per operator and per error; tests of what the list cannot say (key order, determinism, no patch, what is not a request), once in Rust and once through the wasm.
+- [x] T5. `ViewpointKernel.applyPatches` and one Java test through Chicory.
+- [x] T6. `embed.sh`; README and header of `lib.rs`.
+- [x] T7. The gate commands, the byte-identity of the views against a jar of `25471b3`, the review passes, one commit.
+
+Routing (Delegation Policy): T2 and T3 are `hard_judgment` and stay inline. T4 to T6 are standard, and were not dispatched: they are the same function in four languages' worth of glue, written from the one list of cases that T3 settles, and a brief that carried D1 to D10 would be longer than the files. The bytes-identity run (T7) is a script, not a task for a model.
+
+## Verification
+
+With `JAVA_HOME=/home/tibo/.sdkman/candidates/java/25.0.4-tem` and `PLANTUML_JAR=/home/tibo/git-perso/plantuml-libs/.workdir/.cache/plantuml-1.2024.7.jar`, on the final tree (the gate commands ran after the last edit of code, tests, page and wasm; this document and the commit came after).
+
+- `./mvnw -o verify`: BUILD SUCCESS, 484 tests, 0 failures, 0 errors, 0 skipped (482 before, with the PlantUML jar set: +2, `ViewpointKernelTest.shouldApplyThePatchesOfAPlateauToTheJsonOfAWorkspace` and `shouldNameThePlateauTheRankAndTheSelectorOfThePatchThatMissed`, which call the export through Chicory).
+- `cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml`: 182 passed (176 before: +6, the shared list of 84 cases in one test, and five tests of what a list cannot say). `src/main/rust/viewpoint-kernel/embed.sh --check`: "the committed WebAssembly is the one the sources build (712646 bytes)", exit 0 (661735 bytes before: +51 KB, `serde` derives and the formatting of the sentences). `node --test "src/test/javascript/**/*.test.js"`: 1219 tests, 1219 pass (1131 before: +88, `patches.test.js`: 84 cases and four tests). `npx prettier --check "src/**/*.java"`: clean.
+- **The tests can fail.** Two mutations of `patch.rs` (a `SET` that merges an object; a json-path that selects nothing returning no error) each failed the shared list on the named case, and were reverted. The review's probe of `REMOVE ...id` is a case now.
+- **Byte-identity of the views.** `identity.py` (scratchpad): a jar built from `git archive 25471b3` outside the repository (`base25`; its sources are identical to the archive, checked with `diff -rq` apart from `target`, `.claude`, `.mvn`) against the jar of the working tree (`target/quarkus-app`, built by `verify`), on **19** `workspace.yaml`: the 18 of the repository (`git ls-files | grep workspace.yaml$`: `src/doc/examples/domain_application`, `domain_plateaus`, `domain_technology`, `domain_viewpoint_views`, `domain_workspace`, `facet_example_step_1` to `_4`; `src/test/resources/brightcart/folders`, `hyphen-ids`, `plateau-comparison/replaces`, `plateau-comparison`, `plateau-state-hints`, `plateau-state-tags`, `replaces-large-pair`, `split-relationships`, `viewpoint-kernel/workspace`) and one more outside the repository (`replaced-box`). For each, on a copy: `views generate`, `query graph`, `diff`, and for each plateau `views generate --plateau <id>` and `diff --plateau <id>`: 101 commands, exit code, standard output, error output and a hash of every file written compared. 100 commands are identical (19,522 files hashed in all). **One differs, and it is the known one (issue #83, found by run 0074): `src/test/resources/viewpoint-kernel/workspace/workspace.yaml views generate` writes the same files (the hash of the whole tree is the same for both jars) and the same warnings on the error output in another order**, because the order of the facets is the iteration order of a `HashSet<Facet>` whose hash goes down to an identity hash. Checked: each jar prints the same order every time (two runs each), the old one `[a, b]`, the new one `[b, a]`, and the sorted lines are identical (`sort | md5sum` equal). No facet, view or file differs.
+
+## Findings
+
+- **F1. For W-5: the fixture's bulk edit is not the same patch under A4.** The document of the fixture (section 8, the last patch of `marketplace`) and its generator write `SET` with `json-path: "$.application..elements[?(@.qualifiers[?(@ == 'Quarkus')])].tags"`, `value: {runtime: quarkus}`, `expect: 12`, and the generator's model assigns the keys of `tags` (`Object.assign`). Under A4 as implemented, `SET` replaces the object and the path selects the `tags` nodes, which an element that has no tags does not have (the JSON of the CLI leaves empty values out), so the path would select fewer than 12 nodes or none. The layered form of that patch is `MERGE`, with `json-path: "$.application..elements[?(@.qualifiers[?(@ == 'Quarkus')])]"`, `field: tags`, `expect: 12` (case `MERGE with a json-path and a field is the bulk edit that keeps the tags an element has`). The data of the fixture do not collide today (the gateway is `Kong`, the Quarkus containers carry no tags), so the counts of the tables do not move. Not a change of rule: A4 stands, the fixture's wording is the model's.
+- **F2. For W-4: what the Java side has to do.** Hand the kernel `{workspace, plateau, patches}` once per layer, the manifests of the layer already added; the patches of a `Kind: Plateau` manifest are read as written (`json-path` with a hyphen is the key of the manifest; `expect`, `layer`, `where` too). On `error`, the sentence is the one to print after `error:` and `error.patch` carries `plateau`, `rank`, `operator`, `selector`. The report of `REMOVE` has what `gap.md` needs for the cascade: `removed` (the elements that left, subtree included) and `dropped` (holder, field, entry). The kernel does not validate a destination or a `uses` entry: the loader does, after the layer. `views` and `stories` are not in the document and are not patchable (L10).
+- **F3. The contract number does not move** (decision of this run, section "Contract number"); the wasm is re-embedded (712,646 bytes, 661,735 before: the editor page grows by about 68 KB of base64). W-12 changes `compare`'s input and takes 5.
+- **F4. Not seen.** The page in a browser (the page does not call the new export; its use is W-6's), the native image (no class added, `NativeReflectionConfigTest` passes in `verify`, the native runner was not run), a workspace of thousands of elements (each patch computes the references of the document twice, linear in its size; a layer has tens of patches, nothing was measured). A `json-path` with `match()` or `search()` is refused by the library as for the facets.
+- **F5. Out of scope, no issue filed.** `MOVE` and `RENAME` are non-goals of the wave; a patch cannot remove one relationship by `where` (a `json-path` can: case `REMOVE with a json-path takes the relationships it selects`); that is a choice of this run's rules (D6), not a defect, and W-8 can ask for it if the editor needs it.

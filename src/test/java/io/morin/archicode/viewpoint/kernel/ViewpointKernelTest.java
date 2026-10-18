@@ -103,4 +103,50 @@ class ViewpointKernelTest {
         Assertions.assertTrue(out.indexOf("\"new\"") < out.indexOf("\"changed\""), out);
         Assertions.assertTrue(out.indexOf("\"styles\"") < out.indexOf("\"application\""), out);
     }
+
+    @Test
+    @SneakyThrows
+    void shouldApplyThePatchesOfAPlateauToTheJsonOfAWorkspace() {
+        val out = objectMapper.readTree(
+            ViewpointKernel.getInstance().applyPatches(
+                """
+                {"plateau":"saas","workspace":{"application":{"elements":[
+                   {"id":"a","relationships":[{"destination":"b","label":"calls"}]},{"id":"b"}]},
+                 "technology":{"elements":[{"id":"n","applications":["a","b"]}]}},
+                 "patches":[
+                   {"operator":"SET","target":"a","field":"name","value":"A"},
+                   {"operator":"REMOVE","target":"b"}]}
+                """
+            )
+        );
+        Assertions.assertEquals(ViewpointKernel.CONTRACT_VERSION, out.get("version").asInt());
+        Assertions.assertEquals("A", out.at("/workspace/application/elements/0/name").asText());
+        Assertions.assertEquals(0, out.at("/workspace/application/elements/0/relationships").size());
+        Assertions.assertEquals(1, out.at("/workspace/technology/elements/0/applications").size());
+        Assertions.assertEquals(2, out.get("patches").size());
+        Assertions.assertEquals("b", out.at("/patches/1/removed/0/reference").asText());
+        Assertions.assertEquals("relationships", out.at("/patches/1/dropped/0/field").asText());
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldNameThePlateauTheRankAndTheSelectorOfThePatchThatMissed() {
+        val out = objectMapper.readTree(
+            ViewpointKernel.getInstance().applyPatches(
+                """
+                {"plateau":"saas","workspace":{"application":{"elements":[{"id":"a"}]}},
+                 "patches":[{"operator":"SET","target":"a","field":"name","value":"A"},
+                            {"operator":"REMOVE","target":"cart"}]}
+                """
+            )
+        );
+        Assertions.assertEquals(
+            "plateau saas: patch 2 (REMOVE target cart): selects nothing, there is no element cart in the application layer",
+            out.get("error").asText()
+        );
+        Assertions.assertEquals(2, out.at("/patch/rank").asInt());
+        Assertions.assertEquals("saas", out.at("/patch/plateau").asText());
+        Assertions.assertEquals("target cart", out.at("/patch/selector").asText());
+        Assertions.assertFalse(out.has("workspace"));
+    }
 }

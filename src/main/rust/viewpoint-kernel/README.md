@@ -10,8 +10,9 @@ that reached it among its children. `pinned` keeps the relationships that touch 
 elements out. Pinned on one element with nothing open it draws that element's overview, which the tests check against
 the views the CLI generates.
 
-A second and a third entry point sit next to `compute`: `apply_facet` (the facets, see below) and `compare`, which says what
-changed between two plateaus of an architecture (see "Comparing two plateaus"). What `compare` says can be drawn: `compute`
+A second, a third and a fourth entry point sit next to `compute`: `apply_facet` (the facets, see below), `compare`, which says what
+changed between two plateaus of an architecture (see "Comparing two plateaus"), and `apply_patches`, which changes the graph of a
+plateau by the ordered patches of its layer (see "Applying the patches of a plateau"). What `compare` says can be drawn: `compute`
 tells every box and link of a view what changed (see "Views of a comparison").
 
 It is written once and runs in both places that draw views, so they cannot disagree:
@@ -237,3 +238,43 @@ output link  : { ..., relationships: [{ ..., change? }], change? }
   replaces others): they are states like `new`, they end the stereotypes (`moved`, `split`, `merged`), make the containers above
   say `contains-changes`, and `only_changes` keeps them. A relationship says only `none`, `new`, `changed` or `removed`: the others
   are an `error` there, as is any other word. Nothing changes for an input without those words.
+
+## Applying the patches of a plateau
+
+A plateau is a layer over its parent: the host adds the manifests of the layer to the graph of the parent, then hands
+`apply_patches` the JSON of that graph and the ordered `patches` of the layer (`src/patch.rs`, the exported function
+`apply_patches`, `apply_patches_json` in Rust). The rules are written at the top of `src/patch.rs`; the cases are in
+`src/test/javascript/viewpoint-kernel/patch-cases.json`, one list read by `cargo test` (`src/patch_tests.rs`) and by a node test
+(`patches.test.js`) through the embedded WebAssembly, and a Java test calls the export through Chicory.
+
+```
+input : { workspace, plateau?, patches: [ patch ] }
+patch : { operator: "REMOVE" | "SET" | "ADD" | "MERGE",
+          target?    (a full reference: selects exactly that element),  layer? ("application" by default, or "technology"),
+          json-path? (RFC 9535, also written json_path),  expect? (a whole number, 1 or more),
+          field?, where? { destination, label? }, value? }
+output: { version,
+          workspace,                                     (the document, patched; every other key as it was, in the same order)
+          patches: [ { rank, operator, selector, matched,
+                       touched: [ { layer, reference } ],                        (the elements selected, or the ones that hold the nodes selected; sorted)
+                       removed?: [ { layer, reference } ],                      (REMOVE: every element that left, the subtree included)
+                       dropped?: [ { layer, reference, field, entry } ] } ] }   (REMOVE: what was taken out of the elements that stay)
+      | { error, patch?: { plateau?, rank, operator?, selector? } }
+```
+
+- **The rules are written at the top of `src/patch.rs`** (the header is the one statement of them). In short: the patches run in
+  order, each on the result of the one before, and the first that fails ends the call (an error returns no workspace); `rank` counts
+  from 1; a `target` selects one element, a `json-path` (no rewriting of the old dialect of facets) at least one node or exactly
+  `expect`, and a miss is an error that names the plateau, the rank and the selector, for example
+  `plateau saas: patch 2 (REMOVE target shop.cart): selects nothing, there is no element shop.cart in the application layer`.
+- **`REMOVE`** takes the selected nodes out and, when an element goes, what points at it in the same step (the cascade of the facets:
+  `facet.rs` has the one routine), and not the node that hosted it. **`SET`** replaces a field (a list or an object is replaced, not
+  added to; a `SET` of `tags` that keeps the other tags is a `MERGE`); with `where` it replaces the fields of the one relationship
+  found by `(destination, label)`. **`ADD`** appends to a list. **`MERGE`** sets the keys of an object, one level deep.
+- **A patch never changes an `id` or a `parent`**, and no combination of keys is guessed: what has no meaning is an error that says
+  which key. Nothing else is checked: a relationship added towards an element that does not exist is the loader's error after the
+  layer, which names the layer.
+- **The contract number does not move.** `apply_patches` is additive: nothing `compute`, `apply_facet` or `compare` take or give
+  changes (the views of every workspace of the repository are byte for byte those of the commit before) and the answer says the
+  version, 4. A host that needs it ships with a kernel that has it, as for the other entry points. Contract 5 is reserved for the
+  next change of `compare`'s input.

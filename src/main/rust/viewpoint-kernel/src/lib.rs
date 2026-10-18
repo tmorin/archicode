@@ -85,13 +85,21 @@
 //! `change` (above) are what moved the version to 3.
 //! Version 4 added what an element can say it replaces (`replaces`), the words `moved`, `split` and `merged`, the `candidates` and
 //! `warnings` of `compare`; nothing of it appears without a `replaces` in the input (but the empty list of candidates).
+//! A fourth entry point changes the graph of a plateau, `apply_patches` (see `patch.rs` for the rules):
+//!   input : { workspace, plateau?, patches: [{operator: "REMOVE"|"SET"|"ADD"|"MERGE", target? | json-path?, expect?, layer?, field?, where?, value?}] }
+//!   output: { version, workspace, patches: [{rank, operator, selector, matched, touched, removed?, dropped?}] }
+//!         | { error, patch?: {plateau?, rank, operator?, selector?} }
+//! It is additive: it changed neither the input nor the output of the other entry points and did not move the version (the
+//! answer says the version, 4). A patch that selects nothing is an `error` that names the plateau, the rank and the selector.
 //! A map that fails on `pinned`, `opened` or `hidden` (`dangling reference: x`, the first of them) also lists all the entries it cannot find, in
 //! `dangling` of the error: a key of the error only, added to version 4 (an input that worked gives the same output).
 mod compare;
 mod facet;
+mod patch;
 
 pub use compare::compare_json;
 pub use facet::apply_facet_json;
+pub use patch::apply_patches_json;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -1486,6 +1494,12 @@ pub unsafe extern "C" fn compare(ptr: *const u8, len: usize) -> usize {
     respond(ptr, len, compare_json)
 }
 
+/// The patches of a plateau: see `apply_patches_json`.
+#[no_mangle]
+pub unsafe extern "C" fn apply_patches(ptr: *const u8, len: usize) -> usize {
+    respond(ptr, len, apply_patches_json)
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn result_ptr() -> *const u8 {
     #[allow(static_mut_refs)]
@@ -1494,6 +1508,9 @@ pub unsafe extern "C" fn result_ptr() -> *const u8 {
 
 #[cfg(test)]
 mod change_tests;
+
+#[cfg(test)]
+mod patch_tests;
 
 #[cfg(test)]
 mod tests {

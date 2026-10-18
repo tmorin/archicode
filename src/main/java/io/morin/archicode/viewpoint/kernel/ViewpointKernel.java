@@ -57,6 +57,18 @@ public final class ViewpointKernel {
     }
 
     /**
+     * Apply the ordered patches of a plateau ({@code REMOVE}, {@code SET}, {@code ADD}, {@code MERGE}) to the JSON of a
+     * workspace. A patch that selects nothing is an error that names the plateau, the rank of the patch and its selector.
+     *
+     * @param json {@code {"workspace": {...}, "plateau": "id", "patches": [{"operator": "REMOVE", "target": "shop.web"}]}}
+     * @return {@code {"version", "workspace", "patches": [{"rank", "operator", "selector", "matched", "touched", ...}]}},
+     *         or {@code {"error": "...", "patch": {"plateau", "rank", "operator", "selector"}}}
+     */
+    public synchronized String applyPatches(String json) {
+        return call("apply_patches", json);
+    }
+
+    /**
      * Compare two plateaus of an architecture: what is new, changed and removed from one to the other.
      *
      * @param json {@code {"base": {"application": [element], "technology": [element]}, "target": {...}}}, the elements

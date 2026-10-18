@@ -1,0 +1,239 @@
+{
+ "about": "Shared by `cargo test` (src/patch_tests.rs) and by `node --test` (patches.test.js): the same cases, the first through Rust, the second through the embedded WebAssembly. A case is a call of apply_patches on `workspace` with `plateau` and `patches`; it expects either `error` (the exact sentence; or `error_contains`, pieces of it, where a library writes part of the sentence) and `error_patch`, or the `workspace` that results (the base with `edits` applied in order: `set` and `append` and `remove` at a JSON pointer) and the `reports` (the `patches` of the answer, exactly).",
+ "workspace": {
+  "name": "Demo",
+  "application": {
+   "elements": [
+    {
+     "id": "shop",
+     "kind": "system",
+     "name": "Shop",
+     "description": "Sells things.",
+     "elements": [
+      {
+       "id": "web",
+       "kind": "container",
+       "name": "Web",
+       "qualifiers": [
+        "React"
+       ],
+       "tags": {
+        "zone": "edge"
+       },
+       "relationships": [
+        {
+         "destination": "shop.api",
+         "label": "calls",
+         "qualifiers": [
+          "REST"
+         ]
+        },
+        {
+         "destination": "shop.api",
+         "label": "reads"
+        },
+        {
+         "destination": "tax"
+        }
+       ]
+      },
+      {
+       "id": "api",
+       "kind": "container",
+       "name": "API",
+       "relationships": [
+        {
+         "destination": "shop.db",
+         "label": "writes"
+        },
+        {
+         "destination": "tax",
+         "label": "asks"
+        }
+       ]
+      },
+      {
+       "id": "db",
+       "kind": "container",
+       "name": "DB",
+       "qualifiers": [
+        "PostgreSQL"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "tax",
+     "kind": "system",
+     "name": "Tax",
+     "tags": {
+      "rendering-stereotypes": "external"
+     }
+    },
+    {
+     "id": "mail",
+     "kind": "system",
+     "name": "Mail",
+     "tags": {
+      "rendering-stereotypes": "external"
+     },
+     "relationships": [
+      {
+       "destination": "shop.web",
+       "label": "links to"
+      },
+      {
+       "destination": "shop.web",
+       "label": "links to",
+       "tags": {
+        "kind": "deep"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "technology": {
+   "elements": [
+    {
+     "id": "prod",
+     "kind": "environment",
+     "name": "Production",
+     "elements": [
+      {
+       "id": "vm",
+       "kind": "node",
+       "name": "VM",
+       "applications": [
+        "shop.web",
+        "shop.api",
+        "shop.db"
+       ]
+      },
+      {
+       "id": "saas",
+       "kind": "node",
+       "name": "SaaS",
+       "applications": [
+        "tax"
+       ],
+       "uses": [
+        "prod.vm"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "dev",
+     "kind": "environment",
+     "name": "Development",
+     "applications": [
+      "shop.web"
+     ],
+     "uses": [
+      "prod.vm"
+     ],
+     "relationships": [
+      {
+       "destination": "prod.vm",
+       "label": "mirrors"
+      }
+     ]
+    }
+   ]
+  },
+  "styles": {
+   "by-tags": {
+    "external": {
+     "background-color": "lightgray"
+    }
+   }
+  }
+ },
+ "cases": [
+  {"name": "REMOVE an element: its relationships, and its place in what hosts it, go with it", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "shop.web"}], "edits": [{"remove": "/application/elements/0/elements/0"}, {"set": "/application/elements/2/relationships", "value": []}, {"set": "/technology/elements/0/elements/0/applications", "value": ["shop.api", "shop.db"]}, {"set": "/technology/elements/1/applications", "value": []}], "reports": [{"rank": 1, "operator": "REMOVE", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}], "removed": [{"layer": "application", "reference": "shop.web"}], "dropped": [{"layer": "application", "reference": "mail", "field": "relationships", "entry": {"destination": "shop.web", "label": "links to"}}, {"layer": "application", "reference": "mail", "field": "relationships", "entry": {"destination": "shop.web", "label": "links to", "tags": {"kind": "deep"}}}, {"layer": "technology", "reference": "prod.vm", "field": "applications", "entry": "shop.web"}, {"layer": "technology", "reference": "dev", "field": "applications", "entry": "shop.web"}]}]},
+  {"name": "REMOVE an element takes its subtree", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "shop"}], "edits": [{"remove": "/application/elements/0"}, {"set": "/application/elements/1/relationships", "value": []}, {"set": "/technology/elements/0/elements/0/applications", "value": []}, {"set": "/technology/elements/1/applications", "value": []}], "reports": [{"rank": 1, "operator": "REMOVE", "selector": "target shop", "matched": 1, "touched": [{"layer": "application", "reference": "shop"}], "removed": [{"layer": "application", "reference": "shop"}, {"layer": "application", "reference": "shop.api"}, {"layer": "application", "reference": "shop.db"}, {"layer": "application", "reference": "shop.web"}], "dropped": [{"layer": "application", "reference": "mail", "field": "relationships", "entry": {"destination": "shop.web", "label": "links to"}}, {"layer": "application", "reference": "mail", "field": "relationships", "entry": {"destination": "shop.web", "label": "links to", "tags": {"kind": "deep"}}}, {"layer": "technology", "reference": "prod.vm", "field": "applications", "entry": "shop.web"}, {"layer": "technology", "reference": "prod.vm", "field": "applications", "entry": "shop.api"}, {"layer": "technology", "reference": "prod.vm", "field": "applications", "entry": "shop.db"}, {"layer": "technology", "reference": "dev", "field": "applications", "entry": "shop.web"}]}]},
+  {"name": "REMOVE an element of the technology layer takes the entries of uses and the relationships towards it", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "prod.vm", "layer": "technology"}], "edits": [{"remove": "/technology/elements/0/elements/0"}, {"set": "/technology/elements/0/elements/0/uses", "value": []}, {"set": "/technology/elements/1/relationships", "value": []}, {"set": "/technology/elements/1/uses", "value": []}], "reports": [{"rank": 1, "operator": "REMOVE", "selector": "target prod.vm layer technology", "matched": 1, "touched": [{"layer": "technology", "reference": "prod.vm"}], "removed": [{"layer": "technology", "reference": "prod.vm"}], "dropped": [{"layer": "technology", "reference": "prod.saas", "field": "uses", "entry": "prod.vm"}, {"layer": "technology", "reference": "dev", "field": "relationships", "entry": {"destination": "prod.vm", "label": "mirrors"}}, {"layer": "technology", "reference": "dev", "field": "uses", "entry": "prod.vm"}]}]},
+  {"name": "REMOVE does not take the empty node that hosted the element (L5)", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "tax"}], "edits": [{"remove": "/application/elements/1"}, {"set": "/application/elements/0/elements/0/relationships", "value": [{"destination": "shop.api", "label": "calls", "qualifiers": ["REST"]}, {"destination": "shop.api", "label": "reads"}]}, {"set": "/application/elements/0/elements/1/relationships", "value": [{"destination": "shop.db", "label": "writes"}]}, {"set": "/technology/elements/0/elements/1/applications", "value": []}], "reports": [{"rank": 1, "operator": "REMOVE", "selector": "target tax", "matched": 1, "touched": [{"layer": "application", "reference": "tax"}], "removed": [{"layer": "application", "reference": "tax"}], "dropped": [{"layer": "application", "reference": "shop.web", "field": "relationships", "entry": {"destination": "tax"}}, {"layer": "application", "reference": "shop.api", "field": "relationships", "entry": {"destination": "tax", "label": "asks"}}, {"layer": "technology", "reference": "prod.saas", "field": "applications", "entry": "tax"}]}]},
+  {"name": "REMOVE with a json-path takes the relationships it selects, and nothing else", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$..relationships[?(@.destination == 'tax')]", "expect": 2}], "edits": [{"set": "/application/elements/0/elements/0/relationships", "value": [{"destination": "shop.api", "label": "calls", "qualifiers": ["REST"]}, {"destination": "shop.api", "label": "reads"}]}, {"set": "/application/elements/0/elements/1/relationships", "value": [{"destination": "shop.db", "label": "writes"}]}], "reports": [{"rank": 1, "operator": "REMOVE", "selector": "json-path $..relationships[?(@.destination == 'tax')]", "matched": 2, "touched": [{"layer": "application", "reference": "shop.api"}, {"layer": "application", "reference": "shop.web"}], "removed": [], "dropped": []}]},
+  {"name": "REMOVE with a json-path that selects elements has the cascade too", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application..elements[?(@.id == 'api' || @.id == 'db')]", "expect": 2}], "edits": [{"remove": "/application/elements/0/elements/2"}, {"remove": "/application/elements/0/elements/1"}, {"set": "/application/elements/0/elements/0/relationships", "value": [{"destination": "tax"}]}, {"set": "/technology/elements/0/elements/0/applications", "value": ["shop.web"]}], "reports": [{"rank": 1, "operator": "REMOVE", "selector": "json-path $.application..elements[?(@.id == 'api' || @.id == 'db')]", "matched": 2, "touched": [{"layer": "application", "reference": "shop.api"}, {"layer": "application", "reference": "shop.db"}], "removed": [{"layer": "application", "reference": "shop.api"}, {"layer": "application", "reference": "shop.db"}], "dropped": [{"layer": "application", "reference": "shop.web", "field": "relationships", "entry": {"destination": "shop.api", "label": "calls", "qualifiers": ["REST"]}}, {"layer": "application", "reference": "shop.web", "field": "relationships", "entry": {"destination": "shop.api", "label": "reads"}}, {"layer": "technology", "reference": "prod.vm", "field": "applications", "entry": "shop.api"}, {"layer": "technology", "reference": "prod.vm", "field": "applications", "entry": "shop.db"}]}]},
+  {"name": "REMOVE with a json-path can take a field of an element", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application.elements[1].tags"}], "edits": [{"remove": "/application/elements/1/tags"}], "reports": [{"rank": 1, "operator": "REMOVE", "selector": "json-path $.application.elements[1].tags", "matched": 1, "touched": [{"layer": "application", "reference": "tax"}], "removed": [], "dropped": []}]},
+  {"name": "REMOVE twice the same thing is a miss the second time, with the rank of the second", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "tax"}, {"operator": "REMOVE", "target": "tax"}], "error": "plateau saas: patch 2 (REMOVE target tax): selects nothing, there is no element tax in the application layer", "error_patch": {"plateau": "saas", "rank": 2, "operator": "REMOVE", "selector": "target tax"}},
+  {"name": "SET replaces a field of an element", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop", "field": "description", "value": "Sells more."}], "edits": [{"set": "/application/elements/0/description", "value": "Sells more."}], "reports": [{"rank": 1, "operator": "SET", "selector": "target shop", "matched": 1, "touched": [{"layer": "application", "reference": "shop"}]}]},
+  {"name": "SET replaces a list, it does not add to it", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.web", "field": "qualifiers", "value": ["Vue", "TypeScript"]}], "edits": [{"set": "/application/elements/0/elements/0/qualifiers", "value": ["Vue", "TypeScript"]}], "reports": [{"rank": 1, "operator": "SET", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "SET replaces an object, it does not merge into it", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.web", "field": "tags", "value": {"hot": "yes"}}], "edits": [{"set": "/application/elements/0/elements/0/tags", "value": {"hot": "yes"}}], "reports": [{"rank": 1, "operator": "SET", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "SET creates a field the element does not have", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.db", "field": "description", "value": "Stores orders."}], "edits": [{"set": "/application/elements/0/elements/2/description", "value": "Stores orders."}], "reports": [{"rank": 1, "operator": "SET", "selector": "target shop.db", "matched": 1, "touched": [{"layer": "application", "reference": "shop.db"}]}]},
+  {"name": "SET in the technology layer", "plateau": "saas", "patches": [{"operator": "SET", "target": "prod.vm", "layer": "technology", "field": "applications", "value": ["shop.api"]}], "edits": [{"set": "/technology/elements/0/elements/0/applications", "value": ["shop.api"]}], "reports": [{"rank": 1, "operator": "SET", "selector": "target prod.vm layer technology", "matched": 1, "touched": [{"layer": "technology", "reference": "prod.vm"}]}]},
+  {"name": "SET with where replaces the fields of the relationship found by (destination, label)", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.web", "field": "relationships", "where": {"destination": "shop.api", "label": "calls"}, "value": {"label": "calls over"}}], "edits": [{"set": "/application/elements/0/elements/0/relationships/0/label", "value": "calls over"}], "reports": [{"rank": 1, "operator": "SET", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "SET with where and no label finds the relationship that has none", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.web", "field": "relationships", "where": {"destination": "tax"}, "value": {"label": "computes tax with", "qualifiers": ["REST"]}}], "edits": [{"set": "/application/elements/0/elements/0/relationships/2/label", "value": "computes tax with"}, {"set": "/application/elements/0/elements/0/relationships/2/qualifiers", "value": ["REST"]}], "reports": [{"rank": 1, "operator": "SET", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "SET with a json-path and a field sets that field of every element it selects", "plateau": "saas", "patches": [{"operator": "SET", "json-path": "$.application..elements[?(@.kind == 'system')]", "expect": 3, "field": "description", "value": "A system."}], "edits": [{"set": "/application/elements/0/description", "value": "A system."}, {"set": "/application/elements/1/description", "value": "A system."}, {"set": "/application/elements/2/description", "value": "A system."}], "reports": [{"rank": 1, "operator": "SET", "selector": "json-path $.application..elements[?(@.kind == 'system')]", "matched": 3, "touched": [{"layer": "application", "reference": "mail"}, {"layer": "application", "reference": "shop"}, {"layer": "application", "reference": "tax"}]}]},
+  {"name": "SET with a json-path and no field replaces the nodes it selects", "plateau": "saas", "patches": [{"operator": "SET", "json-path": "$.application..elements[?(@.id == 'tax')].tags", "expect": 1, "value": {"rendering-stereotypes": "partner"}}], "edits": [{"set": "/application/elements/1/tags", "value": {"rendering-stereotypes": "partner"}}], "reports": [{"rank": 1, "operator": "SET", "selector": "json-path $.application..elements[?(@.id == 'tax')].tags", "matched": 1, "touched": [{"layer": "application", "reference": "tax"}]}]},
+  {"name": "SET with the key json_path of a facet's action reads the same", "plateau": "saas", "patches": [{"operator": "SET", "json_path": "$.application.elements[1].name", "value": "Taxes"}], "edits": [{"set": "/application/elements/1/name", "value": "Taxes"}], "reports": [{"rank": 1, "operator": "SET", "selector": "json-path $.application.elements[1].name", "matched": 1, "touched": [{"layer": "application", "reference": "tax"}]}]},
+  {"name": "ADD appends a relationship to an element that has none", "plateau": "saas", "patches": [{"operator": "ADD", "target": "shop.db", "field": "relationships", "value": {"destination": "tax", "label": "audits", "qualifiers": ["HTTPS"]}}], "edits": [{"set": "/application/elements/0/elements/2/relationships", "value": [{"destination": "tax", "label": "audits", "qualifiers": ["HTTPS"]}]}], "reports": [{"rank": 1, "operator": "ADD", "selector": "target shop.db", "matched": 1, "touched": [{"layer": "application", "reference": "shop.db"}]}]},
+  {"name": "ADD appends a relationship after the ones the element has", "plateau": "saas", "patches": [{"operator": "ADD", "target": "shop.web", "field": "relationships", "value": {"destination": "shop.db", "label": "caches in"}}], "edits": [{"append": "/application/elements/0/elements/0/relationships", "value": {"destination": "shop.db", "label": "caches in"}}], "reports": [{"rank": 1, "operator": "ADD", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "ADD with a list appends each item", "plateau": "saas", "patches": [{"operator": "ADD", "target": "prod.vm", "layer": "technology", "field": "applications", "value": ["tax", "mail"]}], "edits": [{"append": "/technology/elements/0/elements/0/applications", "value": "tax"}, {"append": "/technology/elements/0/elements/0/applications", "value": "mail"}], "reports": [{"rank": 1, "operator": "ADD", "selector": "target prod.vm layer technology", "matched": 1, "touched": [{"layer": "technology", "reference": "prod.vm"}]}]},
+  {"name": "ADD does not look for a duplicate", "plateau": "saas", "patches": [{"operator": "ADD", "target": "prod.vm", "layer": "technology", "field": "applications", "value": "shop.web"}], "edits": [{"append": "/technology/elements/0/elements/0/applications", "value": "shop.web"}], "reports": [{"rank": 1, "operator": "ADD", "selector": "target prod.vm layer technology", "matched": 1, "touched": [{"layer": "technology", "reference": "prod.vm"}]}]},
+  {"name": "ADD with a json-path and a field adds to that list of every element it selects", "plateau": "saas", "patches": [{"operator": "ADD", "json-path": "$.application..elements[?(@.kind == 'container')]", "expect": 3, "field": "qualifiers", "value": "Docker"}], "edits": [{"append": "/application/elements/0/elements/0/qualifiers", "value": "Docker"}, {"set": "/application/elements/0/elements/1/qualifiers", "value": ["Docker"]}, {"append": "/application/elements/0/elements/2/qualifiers", "value": "Docker"}], "reports": [{"rank": 1, "operator": "ADD", "selector": "json-path $.application..elements[?(@.kind == 'container')]", "matched": 3, "touched": [{"layer": "application", "reference": "shop.api"}, {"layer": "application", "reference": "shop.db"}, {"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "ADD with a json-path and no field appends to the lists it selects", "plateau": "saas", "patches": [{"operator": "ADD", "json-path": "$.technology..elements[?(@.id == 'vm')].applications", "expect": 1, "value": "mail"}], "edits": [{"append": "/technology/elements/0/elements/0/applications", "value": "mail"}], "reports": [{"rank": 1, "operator": "ADD", "selector": "json-path $.technology..elements[?(@.id == 'vm')].applications", "matched": 1, "touched": [{"layer": "technology", "reference": "prod.vm"}]}]},
+  {"name": "a patch sees the result of the patches before it, also on what the layer added (A9)", "plateau": "saas", "patches": [{"operator": "ADD", "target": "shop.web", "field": "relationships", "value": {"destination": "tax", "label": "bills"}}, {"operator": "SET", "target": "shop.web", "field": "relationships", "where": {"destination": "tax", "label": "bills"}, "value": {"qualifiers": ["REST"]}}, {"operator": "REMOVE", "json-path": "$..relationships[?(@.label == 'bills')]", "expect": 1}], "edits": [], "reports": [{"rank": 1, "operator": "ADD", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}, {"rank": 2, "operator": "SET", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}, {"rank": 3, "operator": "REMOVE", "selector": "json-path $..relationships[?(@.label == 'bills')]", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}], "removed": [], "dropped": []}]},
+  {"name": "MERGE adds the keys of the value and keeps the others", "plateau": "saas", "patches": [{"operator": "MERGE", "target": "shop.web", "field": "tags", "value": {"owner": "team-a"}}], "edits": [{"set": "/application/elements/0/elements/0/tags/owner", "value": "team-a"}], "reports": [{"rank": 1, "operator": "MERGE", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "MERGE replaces a key that exists", "plateau": "saas", "patches": [{"operator": "MERGE", "target": "shop.web", "field": "tags", "value": {"zone": "core"}}], "edits": [{"set": "/application/elements/0/elements/0/tags/zone", "value": "core"}], "reports": [{"rank": 1, "operator": "MERGE", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "MERGE creates the object the element does not have", "plateau": "saas", "patches": [{"operator": "MERGE", "target": "shop.db", "field": "tags", "value": {"tier": "data"}}], "edits": [{"set": "/application/elements/0/elements/2/tags", "value": {"tier": "data"}}], "reports": [{"rank": 1, "operator": "MERGE", "selector": "target shop.db", "matched": 1, "touched": [{"layer": "application", "reference": "shop.db"}]}]},
+  {"name": "MERGE goes one level deep: a key that holds an object is replaced", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.web", "field": "tags", "value": {"lvl": {"a": 1, "b": 2}}}, {"operator": "MERGE", "target": "shop.web", "field": "tags", "value": {"lvl": {"c": 3}}}], "edits": [{"set": "/application/elements/0/elements/0/tags", "value": {"lvl": {"c": 3}}}], "reports": [{"rank": 1, "operator": "SET", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}, {"rank": 2, "operator": "MERGE", "selector": "target shop.web", "matched": 1, "touched": [{"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "MERGE with a json-path and no field merges into the objects it selects", "plateau": "saas", "patches": [{"operator": "MERGE", "json-path": "$.application..elements[?(@.tags['rendering-stereotypes'] == 'external')].tags", "expect": 2, "value": {"owner": "partners"}}], "edits": [{"set": "/application/elements/1/tags/owner", "value": "partners"}, {"set": "/application/elements/2/tags/owner", "value": "partners"}], "reports": [{"rank": 1, "operator": "MERGE", "selector": "json-path $.application..elements[?(@.tags['rendering-stereotypes'] == 'external')].tags", "matched": 2, "touched": [{"layer": "application", "reference": "mail"}, {"layer": "application", "reference": "tax"}]}]},
+  {"name": "MERGE with a json-path and a field is the bulk edit that keeps the tags an element has", "plateau": "saas", "patches": [{"operator": "MERGE", "json-path": "$.application..elements[?(@.kind == 'container')]", "expect": 3, "field": "tags", "value": {"runtime": "jvm"}}], "edits": [{"set": "/application/elements/0/elements/0/tags/runtime", "value": "jvm"}, {"set": "/application/elements/0/elements/1/tags", "value": {"runtime": "jvm"}}, {"set": "/application/elements/0/elements/2/tags", "value": {"runtime": "jvm"}}], "reports": [{"rank": 1, "operator": "MERGE", "selector": "json-path $.application..elements[?(@.kind == 'container')]", "matched": 3, "touched": [{"layer": "application", "reference": "shop.api"}, {"layer": "application", "reference": "shop.db"}, {"layer": "application", "reference": "shop.web"}]}]},
+  {"name": "no patch changes nothing", "plateau": "saas", "patches": [], "edits": [], "reports": []},
+  {"name": "a target that is not an element is a miss that names the plateau, the rank and the selector", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop", "field": "name", "value": "S"}, {"operator": "REMOVE", "target": "shop.cart"}], "error": "plateau saas: patch 2 (REMOVE target shop.cart): selects nothing, there is no element shop.cart in the application layer", "error_patch": {"plateau": "saas", "rank": 2, "operator": "REMOVE", "selector": "target shop.cart"}},
+  {"name": "a miss says when the other layer has the reference", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "prod.vm"}], "error": "plateau saas: patch 1 (REMOVE target prod.vm): selects nothing, there is no element prod.vm in the application layer (the technology layer has it: write `layer: technology`)", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "target prod.vm"}},
+  {"name": "a miss says it the other way round too", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "tax", "layer": "technology"}], "error": "plateau saas: patch 1 (REMOVE target tax layer technology): selects nothing, there is no element tax in the technology layer (the application layer has it: write `layer: application`)", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "target tax layer technology"}},
+  {"name": "a json-path that selects nothing is a miss", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application..elements[?(@.id == 'cart')]"}], "error": "plateau saas: patch 1 (REMOVE json-path $.application..elements[?(@.id == 'cart')]): selects nothing, at least one node is expected", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.application..elements[?(@.id == 'cart')]"}},
+  {"name": "a json-path that selects fewer nodes than expect says how many", "plateau": "saas", "patches": [{"operator": "SET", "json-path": "$.application..elements[?(@.kind == 'container')]", "expect": 4, "field": "name", "value": "x"}], "error": "plateau saas: patch 1 (SET json-path $.application..elements[?(@.kind == 'container')]): selects 3 nodes, 4 expected", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "json-path $.application..elements[?(@.kind == 'container')]"}},
+  {"name": "a json-path that selects more nodes than expect says how many", "plateau": "saas", "patches": [{"operator": "SET", "json-path": "$.application..elements[?(@.kind == 'container')]", "expect": 1, "field": "name", "value": "x"}], "error": "plateau saas: patch 1 (SET json-path $.application..elements[?(@.kind == 'container')]): selects 3 nodes, 1 expected", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "json-path $.application..elements[?(@.kind == 'container')]"}},
+  {"name": "a json-path that selects nothing when it expects some says so", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application..elements[?(@.id == 'cart')]", "expect": 2}], "error": "plateau saas: patch 1 (REMOVE json-path $.application..elements[?(@.id == 'cart')]): selects nothing, 2 nodes expected", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.application..elements[?(@.id == 'cart')]"}},
+  {"name": "expect of one is one node", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application..elements[?(@.id == 'cart')]", "expect": 1}], "error": "plateau saas: patch 1 (REMOVE json-path $.application..elements[?(@.id == 'cart')]): selects nothing, 1 node expected", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.application..elements[?(@.id == 'cart')]"}},
+  {"name": "the rank is the position in the array, from 1, whatever the operators before", "plateau": "saas", "patches": [{"operator": "ADD", "target": "shop.db", "field": "relationships", "value": {"destination": "tax"}}, {"operator": "MERGE", "target": "shop.db", "field": "tags", "value": {"a": "b"}}, {"operator": "SET", "target": "shop.db", "field": "name", "value": "D"}, {"operator": "SET", "target": "shop.cache", "field": "name", "value": "C"}], "error": "plateau saas: patch 4 (SET target shop.cache): selects nothing, there is no element shop.cache in the application layer", "error_patch": {"plateau": "saas", "rank": 4, "operator": "SET", "selector": "target shop.cache"}},
+  {"name": "without a plateau the sentence starts at the patch", "patches": [{"operator": "REMOVE", "target": "shop.cart"}], "error": "patch 1 (REMOVE target shop.cart): selects nothing, there is no element shop.cart in the application layer", "error_patch": {"rank": 1, "operator": "REMOVE", "selector": "target shop.cart"}},
+  {"name": "a json-path that does not parse is an error that names it", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application..elements[?(@.id =="}], "error_contains": ["plateau saas: patch 1 (REMOVE json-path $.application..elements[?(@.id ==): invalid JSONPath: "], "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.application..elements[?(@.id =="}},
+  {"name": "a json-path that selects a node outside the elements is refused", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.styles"}], "error": "plateau saas: patch 1 (REMOVE json-path $.styles): selects a node outside the elements of the two layers: $.styles", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.styles"}},
+  {"name": "the list of the elements of a layer is outside the elements", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application.elements"}], "error": "plateau saas: patch 1 (REMOVE json-path $.application.elements): selects a node outside the elements of the two layers: $.application.elements", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.application.elements"}},
+  {"name": "a patch with both selectors is refused", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "tax", "json-path": "$.application.elements[1]"}], "error": "plateau saas: patch 1 (REMOVE target tax json-path $.application.elements[1]): has a `target` and a `json-path`: write one of them", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "target tax json-path $.application.elements[1]"}},
+  {"name": "a patch with no selector is refused", "plateau": "saas", "patches": [{"operator": "SET", "field": "name", "value": "x"}], "error": "plateau saas: patch 1 (SET): has no selector: write a `target` or a `json-path`", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET"}},
+  {"name": "MOVE with the key `to` of the study is refused for its key before its operator", "plateau": "saas", "patches": [{"operator": "MOVE", "target": "shop.web", "to": "shop.site"}], "error_contains": ["plateau saas: patch 1 (MOVE target shop.web): invalid patch: unknown field `to`"], "error_patch": {"plateau": "saas", "rank": 1, "operator": "MOVE", "selector": "target shop.web"}},
+  {"name": "an operator other than the four is refused", "plateau": "saas", "patches": [{"operator": "MOVE", "target": "shop.web"}], "error": "plateau saas: patch 1 (MOVE target shop.web): unsupported operator MOVE: REMOVE, SET, ADD and MERGE are the operators of a patch", "error_patch": {"plateau": "saas", "rank": 1, "operator": "MOVE", "selector": "target shop.web"}},
+  {"name": "an operator is written in capitals", "plateau": "saas", "patches": [{"operator": "remove", "target": "tax"}], "error": "plateau saas: patch 1 (remove target tax): unsupported operator remove: REMOVE, SET, ADD and MERGE are the operators of a patch", "error_patch": {"plateau": "saas", "rank": 1, "operator": "remove", "selector": "target tax"}},
+  {"name": "a key a patch does not have is refused, not ignored", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop", "field": "name", "value": "S", "path": "x"}], "error_contains": ["plateau saas: patch 1 (SET target shop): invalid patch: unknown field `path`, expected one of "], "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target shop"}},
+  {"name": "a patch that is not an object is refused", "plateau": "saas", "patches": [3], "error_contains": ["plateau saas: patch 1: invalid patch: "], "error_patch": {"plateau": "saas", "rank": 1}},
+  {"name": "the fields id, parent and elements cannot be set (id)", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.web", "field": "id", "value": "site"}], "error": "plateau saas: patch 1 (SET target shop.web): `id` cannot be changed: a patch never changes an id or a parent", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target shop.web"}},
+  {"name": "the fields id, parent and elements cannot be set (parent)", "plateau": "saas", "patches": [{"operator": "MERGE", "target": "shop.web", "field": "parent", "value": {"a": "b"}}], "error": "plateau saas: patch 1 (MERGE target shop.web): `parent` cannot be changed: a patch never changes an id or a parent", "error_patch": {"plateau": "saas", "rank": 1, "operator": "MERGE", "selector": "target shop.web"}},
+  {"name": "the fields id, parent and elements cannot be set (elements)", "plateau": "saas", "patches": [{"operator": "ADD", "target": "shop", "field": "elements", "value": {"id": "cache"}}], "error": "plateau saas: patch 1 (ADD target shop): `elements` cannot be changed: the elements are declared by manifests, and a patch never changes an id or a parent", "error_patch": {"plateau": "saas", "rank": 1, "operator": "ADD", "selector": "target shop"}},
+  {"name": "a json-path that would change an id is refused after the patch, and names the reference", "plateau": "saas", "patches": [{"operator": "SET", "json-path": "$.application.elements[0].elements[0].id", "value": "site"}], "error": "plateau saas: patch 1 (SET json-path $.application.elements[0].elements[0].id): would change the reference shop.web: a patch never changes an id or a parent", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "json-path $.application.elements[0].elements[0].id"}},
+  {"name": "a json-path that would move the children of an element is refused", "plateau": "saas", "patches": [{"operator": "SET", "json-path": "$.application.elements[0].elements", "value": []}], "error": "plateau saas: patch 1 (SET json-path $.application.elements[0].elements): would change the reference shop.api: a patch never changes an id or a parent", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "json-path $.application.elements[0].elements"}},
+  {"name": "SET needs a value", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop", "field": "name"}], "error": "plateau saas: patch 1 (SET target shop): needs a `value`", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target shop"}},
+  {"name": "a value of null is no value", "plateau": "saas", "patches": [{"operator": "ADD", "target": "shop", "field": "qualifiers", "value": null}], "error": "plateau saas: patch 1 (ADD target shop): needs a `value`", "error_patch": {"plateau": "saas", "rank": 1, "operator": "ADD", "selector": "target shop"}},
+  {"name": "a target needs a field", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop", "value": "x"}], "error": "plateau saas: patch 1 (SET target shop): needs a `field`: a `target` is an element, and `field` says which of its fields changes", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target shop"}},
+  {"name": "MERGE merges an object", "plateau": "saas", "patches": [{"operator": "MERGE", "target": "shop.web", "field": "tags", "value": "x"}], "error": "plateau saas: patch 1 (MERGE target shop.web): MERGE merges an object: `value` is a text", "error_patch": {"plateau": "saas", "rank": 1, "operator": "MERGE", "selector": "target shop.web"}},
+  {"name": "MERGE into a field that is not an object", "plateau": "saas", "patches": [{"operator": "MERGE", "target": "shop.web", "field": "qualifiers", "value": {"a": "b"}}], "error": "plateau saas: patch 1 (MERGE target shop.web): `qualifiers` of shop.web is a list, and MERGE merges an object", "error_patch": {"plateau": "saas", "rank": 1, "operator": "MERGE", "selector": "target shop.web"}},
+  {"name": "ADD to a field that is not a list", "plateau": "saas", "patches": [{"operator": "ADD", "target": "shop.web", "field": "tags", "value": "x"}], "error": "plateau saas: patch 1 (ADD target shop.web): `tags` of shop.web is an object, and ADD appends to a list", "error_patch": {"plateau": "saas", "rank": 1, "operator": "ADD", "selector": "target shop.web"}},
+  {"name": "a selected node that is not an object has no field", "plateau": "saas", "patches": [{"operator": "SET", "json-path": "$.application.elements[0].name", "field": "x", "value": "y"}], "error": "plateau saas: patch 1 (SET json-path $.application.elements[0].name): a selected node of shop is a text, it has no field `x`", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "json-path $.application.elements[0].name"}},
+  {"name": "a json-path without a field cannot add to what is not a list", "plateau": "saas", "patches": [{"operator": "ADD", "json-path": "$.application.elements[0].name", "value": "y"}], "error": "plateau saas: patch 1 (ADD json-path $.application.elements[0].name): a selected node of shop is a text, and ADD appends to a list", "error_patch": {"plateau": "saas", "rank": 1, "operator": "ADD", "selector": "json-path $.application.elements[0].name"}},
+  {"name": "REMOVE takes no field", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "shop.web", "field": "tags"}], "error": "plateau saas: patch 1 (REMOVE target shop.web): REMOVE takes no `field`: it removes what the selector selects", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "target shop.web"}},
+  {"name": "REMOVE takes no value", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "shop.web", "value": 1}], "error": "plateau saas: patch 1 (REMOVE target shop.web): REMOVE takes no `value`: it removes what the selector selects", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "target shop.web"}},
+  {"name": "expect goes with a json-path", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "tax", "expect": 1}], "error": "plateau saas: patch 1 (REMOVE target tax): `expect` goes with a `json-path`: a `target` selects exactly one element", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "target tax"}},
+  {"name": "expect is one or more", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application.elements[1]", "expect": 0}], "error": "plateau saas: patch 1 (REMOVE json-path $.application.elements[1]): `expect` is 1 or more: a patch that selects nothing is an error", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.application.elements[1]"}},
+  {"name": "expect is a whole number", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application.elements[1]", "expect": -1}], "error_contains": ["plateau saas: patch 1 (REMOVE json-path $.application.elements[1]): invalid patch: "], "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.application.elements[1]"}},
+  {"name": "layer goes with a target", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application.elements[1]", "layer": "application"}], "error": "plateau saas: patch 1 (REMOVE json-path $.application.elements[1]): `layer` goes with a `target`: a `json-path` starts at `$.application` or `$.technology`", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.application.elements[1]"}},
+  {"name": "a layer is application or technology", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "tax", "layer": "business"}], "error": "plateau saas: patch 1 (REMOVE target tax layer business): unknown layer business: application or technology", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "target tax layer business"}},
+  {"name": "where goes with SET", "plateau": "saas", "patches": [{"operator": "ADD", "target": "shop.web", "field": "relationships", "where": {"destination": "tax"}, "value": {"destination": "tax"}}], "error": "plateau saas: patch 1 (ADD target shop.web): `where` goes with SET: it finds the relationship whose fields `value` replaces", "error_patch": {"plateau": "saas", "rank": 1, "operator": "ADD", "selector": "target shop.web"}},
+  {"name": "where finds a relationship", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.web", "field": "tags", "where": {"destination": "tax"}, "value": {"a": "b"}}], "error": "plateau saas: patch 1 (SET target shop.web): `where` finds a relationship: write `field: relationships`", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target shop.web"}},
+  {"name": "where goes with a target", "plateau": "saas", "patches": [{"operator": "SET", "json-path": "$.application.elements[0].elements[0]", "field": "relationships", "where": {"destination": "tax"}, "value": {"label": "x"}}], "error": "plateau saas: patch 1 (SET json-path $.application.elements[0].elements[0]): `where` goes with a `target`", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "json-path $.application.elements[0].elements[0]"}},
+  {"name": "with where the value is an object", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.web", "field": "relationships", "where": {"destination": "tax"}, "value": "x"}], "error": "plateau saas: patch 1 (SET target shop.web): with `where`, `value` is an object (the fields of the relationship to replace), not a text", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target shop.web"}},
+  {"name": "where that finds no relationship says what it looked for (no label)", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.api", "field": "relationships", "where": {"destination": "shop.db"}, "value": {"label": "x"}}], "error": "plateau saas: patch 1 (SET target shop.api): shop.api has no relationship to shop.db with no label", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target shop.api"}},
+  {"name": "where that finds no relationship says what it looked for (a label)", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop.api", "field": "relationships", "where": {"destination": "shop.db", "label": "reads"}, "value": {"label": "x"}}], "error": "plateau saas: patch 1 (SET target shop.api): shop.api has no relationship to shop.db with the label `reads`", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target shop.api"}},
+  {"name": "where that finds several relationships is refused", "plateau": "saas", "patches": [{"operator": "SET", "target": "mail", "field": "relationships", "where": {"destination": "shop.web", "label": "links to"}, "value": {"label": "x"}}], "error": "plateau saas: patch 1 (SET target mail): 2 relationships of mail go to shop.web with the label `links to`: `where` finds one (they differ by their tags only)", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target mail"}},
+  {"name": "the first miss ends the call: the patches before it leave nothing behind", "plateau": "saas", "patches": [{"operator": "REMOVE", "target": "tax"}, {"operator": "SET", "target": "shop.web", "field": "name", "value": "W"}, {"operator": "REMOVE", "target": "nothing"}], "error": "plateau saas: patch 3 (REMOVE target nothing): selects nothing, there is no element nothing in the application layer", "error_patch": {"plateau": "saas", "rank": 3, "operator": "REMOVE", "selector": "target nothing"}},
+  {"name": "a REMOVE cannot select an id", "plateau": "saas", "patches": [{"operator": "REMOVE", "json-path": "$.application.elements[0].elements[0].id"}], "error": "plateau saas: patch 1 (REMOVE json-path $.application.elements[0].elements[0].id): would remove an `id`: a patch never changes an id or a parent ($.application.elements[0].elements[0].id)", "error_patch": {"plateau": "saas", "rank": 1, "operator": "REMOVE", "selector": "json-path $.application.elements[0].elements[0].id"}},
+  {"name": "a field is not empty", "plateau": "saas", "patches": [{"operator": "SET", "target": "shop", "field": "", "value": "x"}], "error": "plateau saas: patch 1 (SET target shop): `field` is empty", "error_patch": {"plateau": "saas", "rank": 1, "operator": "SET", "selector": "target shop"}},
+  {"name": "an empty plateau name is no plateau", "plateau": "", "patches": [{"operator": "REMOVE", "target": "shop.cart"}], "error": "patch 1 (REMOVE target shop.cart): selects nothing, there is no element shop.cart in the application layer", "error_patch": {"rank": 1, "operator": "REMOVE", "selector": "target shop.cart"}},
+  {"name": "a relationship that points nowhere is not the business of a patch: the layer's loader names it", "plateau": "saas", "patches": [{"operator": "ADD", "target": "shop.db", "field": "relationships", "value": {"destination": "nowhere"}}], "edits": [{"set": "/application/elements/0/elements/2/relationships", "value": [{"destination": "nowhere"}]}], "reports": [{"rank": 1, "operator": "ADD", "selector": "target shop.db", "matched": 1, "touched": [{"layer": "application", "reference": "shop.db"}]}]}
+ ]
+}

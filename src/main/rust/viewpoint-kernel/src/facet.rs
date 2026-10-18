@@ -50,7 +50,7 @@ pub(crate) struct Action {
 /// A step of the normalized path of a node. Ordered, so that deleting from the greatest path down keeps the indexes
 /// of the nodes still to delete valid, and a node goes before the one that contains it.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-enum Step {
+pub(crate) enum Step {
     Name(String),
     Index(usize),
 }
@@ -101,7 +101,7 @@ pub(crate) fn apply(doc: &mut Value, actions: &[Action]) -> Result<Vec<String>, 
         let (path, rewrites) = translate_legacy(&action.json_path);
         warnings.extend(rewrites);
         let parsed = JsonPath::parse(&path).map_err(|e| format!("invalid facet JSONPath {}: {e}", action.json_path))?;
-        let mut found: Vec<Vec<Step>> = parsed
+        let found: Vec<Vec<Step>> = parsed
             .query_located(doc)
             .iter()
             .map(|node| node.location().iter().map(Step::from).collect())
@@ -109,21 +109,50 @@ pub(crate) fn apply(doc: &mut Value, actions: &[Action]) -> Result<Vec<String>, 
         if found.iter().any(Vec::is_empty) {
             return Err(format!("a facet cannot remove the whole workspace: {}", action.json_path));
         }
-        found.sort_unstable_by(|a, b| b.cmp(a));
-        found.dedup();
-        // the references of the elements are only worth reading when the action may remove an element: not for the common facet, which removes relationships
-        let before = found.iter().any(|steps| may_remove_element(steps)).then(|| References::of(doc));
-        for steps in &found {
-            remove_at(doc, steps);
-        }
-        if let Some(before) = before {
-            let gone = before.without(&References::of(doc));
-            if !gone.is_empty() {
-                drop_references_to(doc, &gone);
-            }
-        }
+        remove_nodes(doc, found);
     }
     Ok(warnings)
+}
+
+/// What a removal took out of the elements that stay.
+pub(crate) struct Dropped {
+    pub layer: &'static str,
+    /// the reference of the element that held the entry
+    pub holder: String,
+    /// `relationships`, `uses` or `applications`
+    pub field: &'static str,
+    /// the entry as it was: the relationship, or the reference
+    pub entry: Value,
+}
+
+/// What `remove_nodes` did besides deleting the nodes.
+#[derive(Default)]
+pub(crate) struct Removal {
+    /// the references of the elements that left the document, with the elements inside them (both layers)
+    pub gone: References,
+    pub dropped: Vec<Dropped>,
+}
+
+/// Deletes the nodes at these paths (from the greatest path down, so that the indexes still to delete stay valid and a node goes before
+/// the one that contains it), and, when an element left, takes out in the same step what points at it. This is the one place that
+/// decides what a removal takes: a facet and a `REMOVE` patch both come here.
+pub(crate) fn remove_nodes(doc: &mut Value, mut found: Vec<Vec<Step>>) -> Removal {
+    found.sort_unstable_by(|a, b| b.cmp(a));
+    found.dedup();
+    // the references of the elements are only worth reading when the action may remove an element: not for the common facet, which removes relationships
+    let before = found.iter().any(|steps| may_remove_element(steps)).then(|| References::of(doc));
+    for steps in &found {
+        remove_at(doc, steps);
+    }
+    let mut removal = Removal::default();
+    if let Some(before) = before {
+        let gone = before.without(&References::of(doc));
+        if !gone.is_empty() {
+            removal.dropped = drop_references_to(doc, &gone);
+            removal.gone = gone;
+        }
+    }
+    removal
 }
 
 // ---- what points at an element that a facet removes ----
@@ -149,13 +178,14 @@ fn may_remove_element(steps: &[Step]) -> bool {
 }
 
 /// The references of the elements of the two layers of a document.
-struct References {
-    application: HashSet<String>,
-    technology: HashSet<String>,
+#[derive(Default, PartialEq, Eq)]
+pub(crate) struct References {
+    pub application: HashSet<String>,
+    pub technology: HashSet<String>,
 }
 
 impl References {
-    fn of(doc: &Value) -> References {
+    pub fn of(doc: &Value) -> References {
         fn walk(nodes: Option<&Value>, parent: Option<&str>, out: &mut HashSet<String>) {
             for node in nodes.and_then(Value::as_array).into_iter().flatten() {
                 let Some(id) = node.get("id").and_then(Value::as_str) else { continue };
@@ -173,14 +203,14 @@ impl References {
     }
 
     /// What `self` has and `after` does not have any more.
-    fn without(self, after: &References) -> References {
+    pub fn without(self, after: &References) -> References {
         References {
             application: self.application.difference(&after.application).cloned().collect(),
             technology: self.technology.difference(&after.technology).cloned().collect(),
         }
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.application.is_empty() && self.technology.is_empty()
     }
 }
@@ -188,26 +218,32 @@ impl References {
 /// Takes out of the elements of the document what leads to one of the references `gone`: a relationship whose
 /// destination is one (a destination is a reference of the layer of the element that declares it), an entry of `uses`
 /// (a reference of the technology layer) and an entry of `applications` (a reference of the application layer).
-fn drop_references_to(doc: &mut Value, gone: &References) {
-    fn walk(nodes: Option<&mut Value>, same_layer: &HashSet<String>, gone: &References) {
+/// Returns what it took out, in the order of the document.
+fn drop_references_to(doc: &mut Value, gone: &References) -> Vec<Dropped> {
+    fn walk(layer: &'static str, nodes: Option<&mut Value>, parent: Option<&str>, same_layer: &HashSet<String>, gone: &References, out: &mut Vec<Dropped>) {
         for node in nodes.and_then(Value::as_array_mut).into_iter().flatten() {
-            if let Some(Value::Array(list)) = node.get_mut("relationships") {
-                list.retain(|r| !r.get("destination").and_then(Value::as_str).is_some_and(|d| same_layer.contains(d)));
-            }
-            if let Some(Value::Array(list)) = node.get_mut("uses") {
-                list.retain(|u| !u.as_str().is_some_and(|u| gone.technology.contains(u)));
-            }
-            if let Some(Value::Array(list)) = node.get_mut("applications") {
-                list.retain(|a| !a.as_str().is_some_and(|a| gone.application.contains(a)));
-            }
-            walk(node.get_mut("elements"), same_layer, gone);
+            let id = node.get("id").and_then(Value::as_str).unwrap_or_default();
+            let reference = parent.map_or(id.to_string(), |p| format!("{p}.{id}"));
+            let mut take = |field: &'static str, keep: &dyn Fn(&Value) -> bool| {
+                if let Some(Value::Array(list)) = node.get_mut(field) {
+                    let (kept, taken): (Vec<Value>, Vec<Value>) = std::mem::take(list).into_iter().partition(|entry| keep(entry));
+                    *list = kept;
+                    out.extend(taken.into_iter().map(|entry| Dropped { layer, holder: reference.clone(), field, entry }));
+                }
+            };
+            take("relationships", &|r| !r.get("destination").and_then(Value::as_str).is_some_and(|d| same_layer.contains(d)));
+            take("uses", &|u| !u.as_str().is_some_and(|u| gone.technology.contains(u)));
+            take("applications", &|a| !a.as_str().is_some_and(|a| gone.application.contains(a)));
+            walk(layer, node.get_mut("elements"), Some(&reference), same_layer, gone, out);
         }
     }
+    let mut out = Vec::new();
     for (name, same_layer) in [("application", &gone.application), ("technology", &gone.technology)] {
         if let Some(elements) = doc.get_mut(name).and_then(|l| l.get_mut("elements")) {
-            walk(Some(elements), same_layer, gone);
+            walk(name, Some(elements), None, same_layer, gone, &mut out);
         }
     }
+    out
 }
 
 // ---- the earlier dialect (Jayway) ----
