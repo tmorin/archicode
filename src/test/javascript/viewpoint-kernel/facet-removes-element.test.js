@@ -50,8 +50,8 @@ test('a facet that removes an element takes the relationships that point at it o
 
 test('the facets of the comparison that remove a changed or a moved element draw what is left', async () => {
   const { sandbox, state, kernel } = await editorOnTheExample();
-  await sandbox.compareWithPlateau('as-is');
-  assert.equal(state.baseline.plateau.id, 'as-is');
+  await sandbox.compareWithPlateau('baseline');
+  assert.equal(state.baseline.plateau.id, 'baseline');
   // the customer pointed at shop.web, which is `changed`; warehouse.picking at warehouse.inventory, which is `moved`
   assert.ok(targets(draw(sandbox, kernel, 'overview', 'customer')).includes('shop'));
   const customer = draw(sandbox, kernel, 'overview', 'customer', { facet: changed });
@@ -82,8 +82,8 @@ test('the tree greys the elements a facet leaves with nothing to draw, and no lo
 
 test('an element left with nothing to draw says which facet removed its link, and offers the diagram without it', async () => {
   const { sandbox, state, kernel } = await editorOnTheExample();
-  await sandbox.compareWithPlateau('as-is');
-  assert.equal(state.baseline.plateau.id, 'as-is');
+  await sandbox.compareWithPlateau('baseline');
+  assert.equal(state.baseline.plateau.id, 'baseline');
   const html = sandbox.diagramEmptyHtml(kernel, 'overview', 'warehouse.picking', moved, '');
   assert.match(html, /facet “moved” removes the link of this element/);
   assert.ok(html.includes('data-action="clear-facet"'));

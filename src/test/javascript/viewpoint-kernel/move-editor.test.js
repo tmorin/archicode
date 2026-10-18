@@ -807,7 +807,8 @@ test('the manual describes the move, and the texts about replaces and rename poi
   const manual = fs.readFileSync(path.resolve(__dirname, '../../../doc/README.adoc'), 'utf8');
   assert.match(manual, /\[\[editor-move\]\]/);
   const section = manual.slice(manual.indexOf('[[editor-move]]'), manual.indexOf('[[editor-theme]]'));
-  for (const phrase of ['Move and write replaces', 'Move only', 'header.parent', 'another file', 'Cancel']) assert.ok(section.includes(phrase), phrase);
+  for (const phrase of ['does not write `replaces`', 'header.parent', 'another file', 'Cancel']) assert.ok(section.includes(phrase), phrase);
+  for (const phrase of ['Move and write replaces', 'Move only']) assert.ok(!section.includes(phrase), 'the manual no longer teaches a button that the page cannot offer (#97): ' + phrase);
   const replaces = manual.slice(manual.indexOf('[[editor-replaces]]'), manual.indexOf('[[editor-move]]'));
   assert.match(replaces, /<<editor-move>>/);
   assert.match(manual, /rename[^\n]*<<editor-move>>|<<editor-move>>[^\n]*rename/i);

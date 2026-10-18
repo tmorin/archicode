@@ -166,10 +166,10 @@ jobs:
           expect "query schemas" "urn:jsonschema" "$runner" -w "$workspace" query schemas
           expect "query graph" '"reference":"ArchiCode"' "$runner" -w "$workspace" query graph
 
-          # plateaus (layers: the manifests of `as-is` are the root, `to-be` overrides it): the comparison goes through the kernel as well
+          # plateaus (layers: the manifests of `plateaus/baseline` are the root, `to-be` overrides it): the comparison goes through the kernel as well
           expect "diff" "^comparing " "$runner" -w "$plateaus" diff
-          expect "views generate --against" "" "$runner" -w "$plateaus" views generate -o views --against as-is
-          expect "views generate --against writes the table" "" test -s "$work/plateaus/views-to-be-vs-as-is/gap.md"
+          expect "views generate --against" "" "$runner" -w "$plateaus" views generate -o views --against baseline
+          expect "views generate --against writes the table" "" test -s "$work/plateaus/views-to-be-vs-baseline/gap.md"
 
           # Brightcart (src/test/resources/brightcart/layered, a copy: the views are written next to workspace.yaml): four plateaus as layers, a `plateau:` header on
           # each manifest and the patches of a plateau in its `Kind: Plateau`, whose elements replace others. The tree forks, so the plateau is always named; the comparison

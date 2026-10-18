@@ -5,7 +5,7 @@ content:
   id: "to-be"
   name: "To be"
   horizon: "2027-Q1"
-  override: "as-is"
+  override: "baseline"
   patches:
     # what the new containers replace, and what is no longer done
     - operator: REMOVE
@@ -28,9 +28,12 @@ content:
     - operator: SET
       target: "shop.web"
       field: relationships
-      value:
-        - {destination: "shop.catalog", label: "browses"}
-        - {destination: "shop.payments", label: "pays with"}
+      where: {destination: "shop.catalog", label: "reads"} # the one relationship that has this destination and this label
+      value: {label: "browses"}
+    - operator: ADD
+      target: "shop.web"
+      field: relationships
+      value: {destination: "shop.payments", label: "pays with"}
     - operator: SET
       target: "shop.catalog"
       field: description

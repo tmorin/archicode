@@ -15,7 +15,7 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 
 /** The element rows of the table the manual quotes under `diff`: [change, reference], in the order of the table, and the candidates after it. */
 function quotedTable() {
-  const start = MANUAL.indexOf('[source,text]\n----\ncomparing to-be (To be) with as-is (As is)');
+  const start = MANUAL.indexOf('[source,text]\n----\ncomparing to-be (To be) with baseline (As is)');
   assert.ok(start > 0, 'the manual quotes the table of the example under `diff`');
   const block = MANUAL.slice(start, MANUAL.indexOf('\n----\n', start + 30)).split('\n');
   const rows = block.filter((line) => /^(new|changed|removed|moved|split|merged) {2,}element /.test(line)).map((line) => {
@@ -42,15 +42,15 @@ async function editorOnTheExample() {
 
 test('the example loads in the editor as layers: the root, the two plateaus, and to-be drawn when it is asked for', async () => {
   const { sandbox, state } = await editorOnTheExample();
-  assert.deepEqual(plain([...state.plateauTree.nodes.keys()].sort()), ['as-is', 'baseline', 'to-be']);
+  assert.deepEqual(plain([...state.plateauTree.nodes.keys()].sort()), ['baseline', 'to-be']);
   sandbox.drawPlateau('to-be');
   assert.equal(state.layers.current, 'to-be');
 });
 
 test('the editor reads the same moved, split and merged elements and the same candidate as the table of the manual', async () => {
   const { sandbox, state } = await editorOnTheExample();
-  await sandbox.compareWithPlateau('as-is');
-  assert.equal(state.baseline.plateau.id, 'as-is');
+  await sandbox.compareWithPlateau('baseline');
+  assert.equal(state.baseline.plateau.id, 'baseline');
   const comparison = sandbox.comparisonState();
   const quoted = quotedTable();
   const rows = comparison.changes.filter((row) => row.thing === 'element').map((row) => [row.change, row.reference]);
@@ -62,7 +62,7 @@ test('the editor reads the same moved, split and merged elements and the same ca
 
 test('what moved with its child, and what points at it, is one change and no other', async () => {
   const { sandbox } = await editorOnTheExample();
-  await sandbox.compareWithPlateau('as-is');
+  await sandbox.compareWithPlateau('baseline');
   const comparison = sandbox.comparisonState();
   const byReference = (reference) => comparison.changes.find((row) => row.thing === 'element' && row.reference === reference);
   assert.deepEqual(plain(byReference('warehouse.inventory').replaces), ['shop.inventory']);

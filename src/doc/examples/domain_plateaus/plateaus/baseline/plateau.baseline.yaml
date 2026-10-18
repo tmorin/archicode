@@ -1,0 +1,8 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  # the root of the plateaus: its manifests say no `plateau:`. This manifest only gives it a name and a horizon
+  id: "baseline"
+  name: "As is"
+  horizon: "2026-Q3"

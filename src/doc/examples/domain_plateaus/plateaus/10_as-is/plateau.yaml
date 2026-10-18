@@ -1,7 +1,0 @@
-header:
-  kind: "archicode.morin.io/plateau"
-  version: "1"
-content:
-  id: "as-is"
-  name: "As is"
-  horizon: "2026-Q3"

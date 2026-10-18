@@ -61,7 +61,7 @@ class FacetRemovesElementTest {
                 val target = into.resolve(EXAMPLE.relativize(source).toString());
                 if (Files.isDirectory(source)) {
                     Files.createDirectories(target);
-                } else if (!EXAMPLE.relativize(source).startsWith("views-to-be-vs-as-is")) {
+                } else if (!EXAMPLE.relativize(source).startsWith("views-to-be-vs-baseline")) {
                     Files.copy(source, target);
                 }
             }
@@ -122,29 +122,29 @@ class FacetRemovesElementTest {
     @Test
     void theFacetsOfTheComparisonThatRemoveWhatTheyAreAskedToWriteTheirViews() {
         val workspace = copy(dir.resolve("facets"), true);
-        val result = generate(workspace, "--against", "as-is");
+        val result = generate(workspace, "--against", "baseline");
         assertEquals(0, result.exit(), result.err());
         assertEquals("", result.err(), "a comparison computes the states: nothing to tell");
 
         // `@.change == 'moved'` removes warehouse.inventory, which warehouse.picking pointed at
-        val unfaceted = view(workspace, "views-to-be-vs-as-is", "warehouse_picking-overview");
+        val unfaceted = view(workspace, "views-to-be-vs-baseline", "warehouse_picking-overview");
         assertTrue(unfaceted.contains("warehouse.picking --> warehouse.inventory : counts with"), unfaceted);
-        val picking = view(workspace, "views-to-be-vs-as-is-moved", "warehouse_picking-overview");
+        val picking = view(workspace, "views-to-be-vs-baseline-moved", "warehouse_picking-overview");
         assertFalse(picking.contains("inventory") || picking.contains("counts with"), picking);
 
         // `@.change == 'changed'` removes shop.web, which the customer pointed at
         assertTrue(
-            view(workspace, "views-to-be-vs-as-is", "customer-overview").contains("customer --> shop : orders on")
+            view(workspace, "views-to-be-vs-baseline", "customer-overview").contains("customer --> shop : orders on")
         );
-        val customer = view(workspace, "views-to-be-vs-as-is-changed", "customer-overview");
+        val customer = view(workspace, "views-to-be-vs-baseline-changed", "customer-overview");
         assertFalse(customer.contains("shop.web") || customer.contains("orders on"), customer);
 
         // by id, in a comparison too
-        assertFalse(view(workspace, "views-to-be-vs-as-is-by-id", "shop_web-overview").contains("catalog"));
+        assertFalse(view(workspace, "views-to-be-vs-baseline-by-id", "shop_web-overview").contains("catalog"));
 
         // `@.change == 'split'` removes shop.cart and shop.checkout, which nobody points at: it worked, and still does
-        assertFalse(has(workspace, "views-to-be-vs-as-is-split", "shop_cart-overview"));
-        assertTrue(has(workspace, "views-to-be-vs-as-is-split", "shop_web-overview"));
+        assertFalse(has(workspace, "views-to-be-vs-baseline-split", "shop_cart-overview"));
+        assertTrue(has(workspace, "views-to-be-vs-baseline-split", "shop_web-overview"));
     }
 
     @Test
@@ -152,9 +152,9 @@ class FacetRemovesElementTest {
     void aWorkspaceWithTheseFacetsGeneratesTheSameUnfacetedViewsAsOneWithout() {
         val with = copy(dir.resolve("with"), true);
         val without = copy(dir.resolve("without"), false);
-        assertEquals(0, generate(with, "--against", "as-is").exit());
-        assertEquals(0, generate(without, "--against", "as-is").exit());
-        for (val folder : new String[] { "views-to-be", "views-to-be-vs-as-is" }) {
+        assertEquals(0, generate(with, "--against", "baseline").exit());
+        assertEquals(0, generate(without, "--against", "baseline").exit());
+        for (val folder : new String[] { "views-to-be", "views-to-be-vs-baseline" }) {
             try (val files = Files.walk(without.resolveSibling(folder))) {
                 for (val file : files.filter(Files::isRegularFile).toList()) {
                     val other = with
