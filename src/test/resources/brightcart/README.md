@@ -10,7 +10,7 @@ Nothing here comes from a real workspace. Every name, id and label is invented.
 node src/test/resources/brightcart/generate.mjs
 ```
 
-Everything below, except `description.mjs`, `generate.mjs`, `negative-cases.json` and this file, is written by that command, and a second run gives the same bytes (`brightcart-layered.test.js` runs it in a copy and compares). It empties `layered/`, `variants/` and `expected/` before it writes them,
+Everything below, except `description.mjs`, `generate.mjs`, `negative-cases.json` and this file, is written by that command, and a second run gives the same bytes (`brightcart-layered.test.js` runs it in a copy and compares). It empties `layered/`, `variants/` and `expected/` before it writes them (and writes the last column of the table of variants of `docs/fixtures/brightcart-spec.md`, when it runs from its place in the repository),
 so do not edit those by hand: change `description.mjs` (the data) or `generate.mjs` (the rules), and regenerate.
 
 The generator fails (exit code 1, the differences printed) when:
@@ -18,7 +18,8 @@ The generator fails (exit code 1, the differences printed) when:
 - the description stops giving the sizes (50, 42, 66 and 82 elements) or the comparisons P1 to P6 that the document records;
 - a notable case N1 to N17 stops holding in the model's comparisons;
 - the resolver finds a difference with the model: it reads `layered/` back from the files, applies the patches plateau after plateau, and compares each result, element by element, with what the model resolved;
-- a negative variant V1 to V8 stops failing in the model with the words it expects.
+- a negative variant V1 to V8 stops failing in the model with the words it expects;
+- a variant has no `runToday`, or the document does not have exactly one row for each of V1 to V14 in its table of variants.
 
 ## What is here
 
@@ -27,8 +28,8 @@ The generator fails (exit code 1, the differences printed) when:
 | `description.mjs` | The data: elements, manifests (files), patches, the numbers of the document, the variants, the notable cases. | `generate.mjs` |
 | `generate.mjs` | The port of the throwaway model of the specification: layers, the patch operators, the rules of `compare`, the YAML emitter, the resolver. | you |
 | `layered/` | The layered rendition: a folder per plateau (`baseline/`, `saas/`, `inhouse/`, `marketplace/`) with a `plateau.yaml` (`Kind: Plateau`: `id`, `name`, `horizon`, `override` when the parent is not `baseline`, and the `patches`) and its manifests, each with a `plateau: <id>` header (the `baseline`'s have none). `workspace.yaml` has `settings.manifests.paths: ["./**"]` and no other word about plateaus. | the layered tools: `archicode diff --plateau <id> [--against <id>]`, `views generate --plateau <id>`, `plateau list`; the editor opens it and draws `baseline` |
-| `variants/` | V1 to V14 (negative variants) and M1 to M3 (merge scenarios), one JSON description each, with the expected class of message and a `status` that says whether a tool runs it. V2 is run on `layered/` (case N7 of `negative-cases.json`) and V11 is the case N43; the layered engine reads V1, V3 to V8 (tried by hand; a test of V1, V3 and V6 to V10 is wave 014 W-11), V12 to V14 and M1 to M3 wait for `plateau merge`. V1 to V8 also carry what the model reports. | the tests of the variants and `plateau merge` |
-| `negative-cases.json` | The negative cases today's tools run on `layered/` (a plateau declared twice, a `current` that names nothing, a reference declared twice, a `replaces` that names nothing, a mistyped `--plateau` or `--against`, an unknown key in a header, a workspace that still has `settings.plateaus`, ...): for each, the alteration of `layered/` (applied in a temporary folder by the tests, so nothing negative is a committed workspace), the commands with their exit code and error output, and what the editor says. Written by hand; `generate.mjs` does not touch it. | `BrightcartNegativeCasesTest` (command line), `brightcart-negative.test.js` (editor) |
+| `variants/` | V1 to V14 (negative variants) and M1 to M3 (merge scenarios), one JSON description each, with the expected class of message and a `status`: what a tool does with it today, the `runToday` field of `description.mjs`, which is also the last column of the table of variants of the document. V1 to V11 are run on `layered/`, on the command line and in the editor, by the cases of `negative-cases.json` (V11 also by `plateau-model-cases.json`); V12 to V14 and M1 to M3 wait for `plateau merge`. V1 to V8 also carry what the model reports. | the tests of the variants and `plateau merge` |
+| `negative-cases.json` | The negative cases the tools run on `layered/`: V1 to V10 of the document (a typo in a `target`, a plateau that overrides the wrong one, a manifest without its `plateau:` header, a typo in a plateau id, a `SET` of an `id`, a `REMOVE` that selects nothing, a renamed element, two `SET` of one field, a horizon earlier than the parent's), a plateau declared twice, a `current` that names nothing, a reference declared twice, a `replaces` that names nothing, a mistyped `--plateau` or `--against`, an unknown key in a header, a workspace that still has `settings.plateaus`, ...: for each, the alteration of `layered/` (applied in a temporary folder by the tests, so nothing negative is a committed workspace), the commands with their exit code and error output, and what the editor says. Written by hand; `generate.mjs` does not touch it. | `BrightcartNegativeCasesTest` (command line), `brightcart-negative.test.js` (editor) |
 | `expected/` | `sizes.json`, `renditions.json` (files, lines and bytes of the rendition), `comparisons.json` (P1 to P6, with `verified`: `archicode diff` or `model only`, the `command` that asks the question of `layered/`, and what the tool prints for P4: `gives`), `changes.json` (the table of changes of each comparison), `notable-cases.json` (N1 to N17). | the tests |
 
 ## The layered rendition
@@ -53,4 +54,4 @@ archicode -w /tmp/brightcart-layered/workspace.yaml query graph --plateau inhous
 
 ## Not here
 
-`plateau migrate` and `plateau merge`, a manifest-level view or story (the specification describes them in section 9; the views generated today are the default ones), the composition of `replaces` across several plateaus (P4 stays the model's), a test per negative variant on the layered tools (wave 014 W-11: V1, V3 and V6 to V10), the large variant of the specification (section 15).
+`plateau migrate` and `plateau merge`, a manifest-level view or story (the specification describes them in section 9; the views generated today are the default ones), the composition of `replaces` across several plateaus (P4 stays the model's), the large variant of the specification (section 15).

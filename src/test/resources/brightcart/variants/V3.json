@@ -12,5 +12,5 @@
   "model": [
     "marketplace: the parent of prod.cloud.cdn does not exist when its manifest is read"
   ],
-  "status": "described; the model reports the messages above; the layered tools read layered/, a test of the variant is wave 014 W-11"
+  "status": "**Run** (case N45): one line, ``in the plateau `marketplace`, `prod.cloud.cdn` is declared under `prod.cloud`, which does not exist (3 more elements of the plateau are declared under a parent that does not exist)``, from both tools: the first element by reference is told and the others are counted. Cases N54 (two elements) and N46 (V4) are its smaller forms."
 }

@@ -24,11 +24,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import picocli.CommandLine;
 
 /**
- * The negative variants of the document that today's tools can run (wave 013, run 0070), on the command line: each case of
+ * The negative variants of the document that the tools run (V1 to V11, wave 014 run 0085; V12 to V14 wait for {@code plateau
+ * merge}), and the other cases of the plateaus and of the manifests, on the command line: each case of
  * {@code negative-cases.json} is the layered Brightcart with one alteration, built in a temporary folder from
- * {@code layered/} (nothing negative is committed as a workspace), and the command gives one {@code error:} line, or a warning,
- * and exit code 1 or 0, without a stack trace. The editor runs the same file in {@code brightcart-negative.test.js} and says
- * the same sentence.
+ * {@code layered/} (nothing negative is committed as a workspace), and the command gives the warnings and one {@code error:}
+ * line, or only warnings, and exit code 1 or 0, without a stack trace. The editor runs the same file in
+ * {@code brightcart-negative.test.js} and says the same sentence.
  */
 @QuarkusTest
 class BrightcartNegativeCasesTest {
@@ -75,11 +76,13 @@ class BrightcartNegativeCasesTest {
                     val text = Files.readString(file);
                     val from = op.get("from").asText();
                     assertTrue(text.contains(from), "the text to replace is not in " + file + ": " + from);
-                    val at = text.indexOf(from);
-                    Files.writeString(
-                        file,
-                        text.substring(0, at) + op.get("to").asText() + text.substring(at + from.length())
-                    );
+                    val to = op.get("to").asText();
+                    if (op.path("all").asBoolean(false)) {
+                        Files.writeString(file, text.replace(from, to));
+                    } else {
+                        val at = text.indexOf(from);
+                        Files.writeString(file, text.substring(0, at) + to + text.substring(at + from.length()));
+                    }
                 }
                 case "write" -> {
                     val file = root.resolve(op.get("file").asText());
@@ -146,6 +149,9 @@ class BrightcartNegativeCasesTest {
             );
             assertTrue(c.get("cli").size() > 0, c.get("id") + ": a command");
         }
-        assertTrue(variants.containsAll(List.of("V2", "V11")), "V2 and V11 are run: " + variants);
+        assertTrue(
+            variants.containsAll(List.of("V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11")),
+            "V1 to V11 are run: " + variants
+        );
     }
 }

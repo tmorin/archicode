@@ -14,5 +14,5 @@
     "inhouse: patch 25 (SET fulfilment.sync): relationship fulfilment.sync -> shop.db \"reads orders, writes stock levels\" matched 0",
     "marketplace: not resolved, its parent inhouse did not resolve"
   ],
-  "status": "described; the model reports the messages above; the layered tools read layered/, a test of the variant is wave 014 W-11"
+  "status": "**Run** (case N50): the tools stop at the first error of the plateau asked for, one line each: ``plateau saas: patch 18 (SET target fulfilment.sync): fulfilment.sync has no relationship to shop.db with the label ...`` for `saas`, the same with ``plateau inhouse: patch 25`` for `inhouse` and for `marketplace`, which is not resolved."
 }

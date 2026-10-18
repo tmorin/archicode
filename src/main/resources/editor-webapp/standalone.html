@@ -4097,7 +4097,42 @@ function buildPlateauTree(manifestFiles) {
       if (oneLetterApart(sorted[i], sorted[j])) model.warnings.push('the plateaus `' + sorted[i] + '` and `' + sorted[j] + '` have ids one letter apart: check that one of them is not a typo');
     }
   }
+  for (const id of sorted) {
+    const node = model.nodes.get(id);
+    const parent = node.parent === null ? null : model.nodes.get(node.parent);
+    // earlier means the whole period ends before the period above begins: `2026` under `2026-Q4` is not earlier, `2026-Q1` is
+    const own = parent ? horizonPeriod(node.horizon) : null;
+    const above = parent ? horizonPeriod(parent.horizon) : null;
+    if (own !== null && above !== null && own.end < above.start) {
+      model.warnings.push('the horizon `' + node.horizon + '` of the plateau `' + id + '` is earlier than the horizon `' + parent.horizon + '` of the plateau it overrides, `' + parent.id + '`');
+    }
+    model.warnings.push(...repeatedSetWarnings(node));
+  }
   return model;
+}
+
+/**
+ * The warnings for two `SET` of the same field of the same element in one plateau: the last one wins (`PlateauTree.repeatedSets`; variant V9 of the
+ * Brightcart document). Only patches that name a `target` are compared: what a `json-path` selects is not known before the patches are applied.
+ */
+function repeatedSetWarnings(node) {
+  const ranks = new Map(); // key -> { what, ranks }
+  node.patches.forEach((raw, i) => {
+    if (!raw || typeof raw !== 'object' || String(raw.operator).toUpperCase() !== 'SET' || readIsMissing(raw.target)) return;
+    const where = !readIsMissing(raw.where) && typeof raw.where === 'object' ? raw.where : null;
+    const field = !readIsMissing(raw.field) ? String(raw.field) : where ? 'relationships' : null;
+    if (field === null) return;
+    const layer = !readIsMissing(raw.layer) && String(raw.layer).toLowerCase() === 'technology' ? 'technology' : 'application';
+    const towards = where ? ' (the relationship towards `' + String(where.destination) + '`' + (!readIsMissing(where.label) ? ' labelled `' + String(where.label) + '`' : '') + ')' : '';
+    const key = layer + '|' + String(raw.target) + '|' + field + towards;
+    if (!ranks.has(key)) ranks.set(key, { what: '`' + field + '` of `' + String(raw.target) + '`' + towards, ranks: [] });
+    ranks.get(key).ranks.push(i + 1);
+  });
+  const out = [];
+  for (const { what, ranks: all } of ranks.values()) {
+    if (all.length > 1) out.push('the plateau `' + node.id + '` sets ' + what + ' in patches ' + (all.length === 2 ? all.join(' and ') : all.slice(0, -1).join(', ') + ' and ' + all[all.length - 1]) + ': the last one wins');
+  }
+  return out;
 }
 
 /** The plateaus from the root down to `id`, itself last (`PlateauTree.chain`): what a plateau is loaded from. */
@@ -4155,27 +4190,35 @@ function checkPlateauRedeclarations(model, declarations) {
 const LAYER_NAMES = ['application', 'technology'];
 
 /**
- * The date a horizon label reads as, as a number that sorts (`yyyymmdd`), or null when it reads as none: `2026`, `2026-10`, `2026-10-18`, a quarter
- * (`2026-Q4`, `2026Q4`) or a half (`2026-H2`). The first day of the period is the date.
+ * The period a horizon label reads as, `{ start, end }`, each a number that sorts (`yyyymmdd`), or null when it reads as none: `2026`, `2026-10`, `2026-10-18`, a quarter
+ * (`2026-Q4`, `2026Q4`) or a half (`2026-H2`). The first and the last day of the period. `PlateauTree.horizonPeriod` reads labels the same way: keep them alike.
  */
-function horizonDate(label) {
+function horizonPeriod(label) {
   if (label === null || label === undefined) return null;
   const text = String(label).trim();
   const valid = (year, month, day) => {
     const d = new Date(Date.UTC(year, month - 1, day));
     return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day ? year * 10000 + month * 100 + day : null;
   };
+  const lastDay = (year, month) => valid(year, month, new Date(Date.UTC(year, month, 0)).getUTCDate());
+  const period = (start, end) => (start === null || end === null ? null : { start, end });
   let m = /^(\d{4})$/.exec(text);
-  if (m) return valid(Number(m[1]), 1, 1);
+  if (m) return period(valid(Number(m[1]), 1, 1), valid(Number(m[1]), 12, 31));
   m = /^(\d{4})-(\d{2})$/.exec(text);
-  if (m) return valid(Number(m[1]), Number(m[2]), 1);
+  if (m) return period(valid(Number(m[1]), Number(m[2]), 1), lastDay(Number(m[1]), Number(m[2])));
   m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
-  if (m) return valid(Number(m[1]), Number(m[2]), Number(m[3]));
+  if (m) return period(valid(Number(m[1]), Number(m[2]), Number(m[3])), valid(Number(m[1]), Number(m[2]), Number(m[3])));
   m = /^(\d{4})-?Q([1-4])$/i.exec(text);
-  if (m) return valid(Number(m[1]), (Number(m[2]) - 1) * 3 + 1, 1);
+  if (m) return period(valid(Number(m[1]), (Number(m[2]) - 1) * 3 + 1, 1), lastDay(Number(m[1]), Number(m[2]) * 3));
   m = /^(\d{4})-?H([12])$/i.exec(text);
-  if (m) return valid(Number(m[1]), (Number(m[2]) - 1) * 6 + 1, 1);
+  if (m) return period(valid(Number(m[1]), (Number(m[2]) - 1) * 6 + 1, 1), lastDay(Number(m[1]), Number(m[2]) * 6));
   return null;
+}
+
+/** The date a horizon label reads as (the first day of its period, `yyyymmdd`), or null when it reads as none: what orders the siblings of the band. */
+function horizonDate(label) {
+  const period = horizonPeriod(label);
+  return period === null ? null : period.start;
 }
 
 /**
@@ -4337,7 +4380,17 @@ function layerProblemsOf(plateau, graph, own) {
     }
   }
   found.sort((a, b) => compareUnits(a.element, b.element) || compareUnits(a.other, b.other) || compareUnits(a.sentence, b.sentence));
-  const out = new Set(found.map((p) => p.sentence));
+  // one sentence for each thing that is missing: the elements that point at it are one cause (`LayerLoader.problems`)
+  const byMissing = new Map();
+  for (const problem of found) {
+    if (!byMissing.has(problem.other)) byMissing.set(problem.other, []);
+    byMissing.get(problem.other).push(problem);
+  }
+  const out = new Set();
+  for (const group of byMissing.values()) {
+    const others = new Set(group.map((p) => p.element)).size - 1;
+    out.add(group[0].sentence + (others === 0 ? '' : ' (' + others + (others === 1 ? ' more element of the plateau points at it)' : ' more elements of the plateau point at it)')));
+  }
   const layerOf = (value) => (String(value === undefined || value === null ? '' : value).toLowerCase() === 'technology' ? 'technology' : 'application');
   for (const mf of own.views) {
     for (const name of namedByProperties(mf.content.properties)) {
@@ -4416,7 +4469,7 @@ function resolveLayerStep(parent, node, context) {
       state.unplaced.set(item.category + '|' + item.json.id, item.reference);
       state.roots.set(item.category + '|' + item.reference, { kind: item.rootKind, level: item.level, file: item.mf.relPath, plateau: node.id });
     }
-    mine = Array.from(sentences.keys()).sort(compareUnits).map((k) => sentences.get(k));
+    mine = foldParentProblems(Array.from(sentences.keys()).sort(compareUnits).map((k) => sentences.get(k)));
   }
 
   if (node.patches.length) {
@@ -4460,6 +4513,16 @@ function resolveLayerStep(parent, node, context) {
   if (!mine.length) mine = layerProblemsOf(node.id, state.graph, own);
   if (!state.problems && mine.length) state.problems = { plateau: node.id, sentences: mine };
   return { state };
+}
+
+/**
+ * One sentence for the elements declared under a parent the graph does not have: they have one cause (a plateau that overrides the wrong one, a manifest that was
+ * left out), so the first one is told, with how many others there are (`LayerLoader.foldParentProblems`).
+ */
+function foldParentProblems(sentences) {
+  if (sentences.length < 2) return sentences;
+  const others = sentences.length - 1;
+  return [sentences[0] + ' (' + others + (others === 1 ? ' more element of the plateau is declared under a parent that does not exist' : ' more elements of the plateau are declared under a parent that does not exist') + ')'];
 }
 
 /** The cache of the states and models of the plateaus, for one tree of plateaus and one text of the manifests (see the note above). */
@@ -4544,7 +4607,11 @@ function layerModelOf(id, settings) {
   }
   cache.counters.models++;
   const told = result.fatal ? result.earlier : result.state.problems; // `{ plateau, sentences }` of the first layer of the chain that is wrong, if any
-  const problems = told ? told.sentences : result.fatal ? result.fatal : null;
+  let problems = told ? told.sentences : result.fatal ? result.fatal : null;
+  // the command line reads every manifest before it loads a layer, and stops at the first it refuses: while one is refused, that is the sentence (the elements it
+  // cannot declare leave "declared under X, which does not exist" behind, which are its consequences, not other mistakes)
+  const unreadable = problems ? AppState.manifestFiles.find((mf) => mf.error) : null;
+  if (unreadable) problems = ['`' + unreadable.relPath + '` is not valid: ' + unreadable.error];
   const failedAt = told ? told.plateau : result.fatal ? result.plateau : null;
   const model = { id, plateau: layerPlateauModel(id), index, roots, stats, removals, problems, failedAt, undrawable: !!result.fatal };
   cache.models.set(id, model);

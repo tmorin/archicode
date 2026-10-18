@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -149,14 +150,19 @@ public final class ManifestDiscovery {
     /**
      * Whether a folder found below the entry is one of the generated views. {@code views.path} is read as it is written in
      * {@code workspace.yaml}: it is the beginning of the name of every folder the tools write ({@code views}, {@code
-     * views-<plateau>}, {@code views-<plateau>-vs-<against>}, {@code views-<facet>}); a folder that is somewhere else, or
-     * that an {@code --output} option named otherwise, is not known to the tools that read the manifests.
+     * views-<plateau>}, {@code views-<plateau>-vs-<against>}, {@code views-<facet>}). A command that was given {@code --output}
+     * writes to the beginning that option names, so it hands that one too; a folder that is somewhere else, or that an earlier
+     * run of {@code --output} named otherwise, is not known to the tools that read the manifests.
      *
-     * @param folder    the folder, from the folder of the workspace
-     * @param viewsPath {@code settings.views.path}
-     * @return whether the folder is the views folder or begins like it
+     * @param folder     the folder, from the folder of the workspace
+     * @param viewsPaths {@code settings.views.path}, and the folder {@code --output} named
+     * @return whether the folder is a views folder or begins like one
      */
-    static boolean excludesViews(List<String> folder, String viewsPath) {
+    static boolean excludesViews(List<String> folder, Collection<String> viewsPaths) {
+        return viewsPaths.stream().anyMatch(viewsPath -> beginsLike(folder, viewsPath));
+    }
+
+    private static boolean beginsLike(List<String> folder, String viewsPath) {
         if (viewsPath == null || viewsPath.startsWith("/") || viewsPath.startsWith("\\")) {
             return false;
         }
@@ -206,6 +212,25 @@ public final class ManifestDiscovery {
      * @return the files, sorted by their path from {@code wksDir}
      */
     public static List<Path> discover(Path wksDir, Collection<String> entries, String viewsPath, Path workspaceFile) {
+        return discover(wksDir, entries, Collections.singletonList(viewsPath), workspaceFile);
+    }
+
+    /**
+     * The manifest files that the entries name, once each, sorted.
+     *
+     * @param wksDir        the folder of the workspace
+     * @param entries       the entries of {@code settings.manifests.paths}
+     * @param viewsPaths    {@code settings.views.path}, and the folder {@code --output} named when a command was given one:
+     *                      the folders that begin like any of them are not read below a path that ends in {@code /**}
+     * @param workspaceFile the workspace file, which is not a manifest of itself, or null
+     * @return the files, sorted by their path from {@code wksDir}
+     */
+    public static List<Path> discover(
+        Path wksDir,
+        Collection<String> entries,
+        Collection<String> viewsPaths,
+        Path workspaceFile
+    ) {
         // by the path as the messages write it, which is also the key of the sort
         val found = new LinkedHashMap<Path, Path>();
         for (val entry : entries) {
@@ -214,7 +239,7 @@ public final class ManifestDiscovery {
                 continue;
             }
             if (isRecursive(entry)) {
-                walk(folder, new ArrayList<>(segments(folderOf(entry))), viewsPath, found, wksDir);
+                walk(folder, new ArrayList<>(segments(folderOf(entry))), viewsPaths, found, wksDir);
             } else {
                 val files = Arrays.stream(
                     Optional.ofNullable(
@@ -242,7 +267,13 @@ public final class ManifestDiscovery {
         return ManifestParser.sourceOf(wksDir, file);
     }
 
-    private static void walk(Path folder, List<String> relative, String viewsPath, Map<Path, Path> found, Path wksDir) {
+    private static void walk(
+        Path folder,
+        List<String> relative,
+        Collection<String> viewsPaths,
+        Map<Path, Path> found,
+        Path wksDir
+    ) {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
             for (val entry : stream) {
                 val name = entry.getFileName().toString();
@@ -252,8 +283,8 @@ public final class ManifestDiscovery {
                 if (Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)) {
                     val below = new ArrayList<>(relative);
                     below.add(name);
-                    if (!excludesViews(below, viewsPath)) {
-                        walk(entry, below, viewsPath, found, wksDir);
+                    if (!excludesViews(below, viewsPaths)) {
+                        walk(entry, below, viewsPaths, found, wksDir);
                     }
                 } else if (Files.isSymbolicLink(entry) && Files.isDirectory(entry)) {
                     continue; // a link to a folder is not followed

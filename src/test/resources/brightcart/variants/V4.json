@@ -15,5 +15,5 @@
     "inhouse: not resolved, its parent baseline did not resolve",
     "marketplace: not resolved, its parent inhouse did not resolve"
   ],
-  "status": "described; the model reports the messages above; the layered tools read layered/, a test of the variant is wave 014 W-11"
+  "status": "**Run** (case N46): one line, ``in the plateau `baseline`, `commerce.cart` is declared under `commerce`, which does not exist``. The warning about the folder is not told by the command line."
 }

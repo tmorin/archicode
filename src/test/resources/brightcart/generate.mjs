@@ -7,9 +7,12 @@
 //   layered/    the layered rendition, the source of truth: a folder per plateau, a `Kind: Plateau` manifest in each (`name`, `horizon`, `override` when the parent is not the
 //               root, and the `patches`), a `plateau: <id>` header on every manifest of a plateau other than `baseline`, and a workspace.yaml with
 //               `settings.manifests.paths: ["./**"]`. The layered engine reads it (`archicode diff --plateau <id>`, `views generate --plateau <id>`, the editor draws `baseline`).
-//   variants/   V1 to V14 (negative variants) and M1 to M3 (merge scenarios) as descriptions with the expected class of message. V2 is run by a tool
-//               (negative-cases.json, which is written by hand and not here); the others wait for their tests or for `plateau merge`.
-//               V1 to V8 also carry what the throwaway model reported, checked here against the words the description expects.
+//   variants/   V1 to V14 (negative variants) and M1 to M3 (merge scenarios) as descriptions with the expected class of message, and `status`: what a tool does with it
+//               today (the `runToday` field of the description). V1 to V11 are run by the tools (negative-cases.json, which is written by hand and not here, and
+//               plateau-model-cases.json); V12 to V14 and M1 to M3 wait for `plateau merge`. V1 to V8 also carry what the throwaway model reported, checked here against
+//               the words the description expects.
+//   the document  docs/fixtures/brightcart-spec.md, when it is found at its place in the repository (`docs/fixtures/`, four folders above this one; a copy of the generator elsewhere does not touch it): the last cell of each row V1 to V14 of its table of negative
+//               variants is the `runToday` of the description (the only part of the table written here), so that the document and `variants/` say the same.
 //   expected/   the sizes, the two renditions in files, lines and bytes, the comparisons P1 to P6 (with the command of each and the flag that says whether
 //               a tool verifies them or only the model does), the table of changes of each comparison and the notable cases N1 to N17.
 //
@@ -694,6 +697,32 @@ function measure(files) {
   return { files: [...files.keys()].filter((n) => n !== 'workspace.yaml').length, lines, bytes };
 }
 
+// The document's table of negative variants says, in its last column, what a tool does with each variant today: that cell is the `runToday` of the description, and
+// it is the only part of the table written here. Returns the number of rows written, or null when the document is not at its place (a copy of this folder).
+function writeRunToday(variants) {
+  const spec = path.resolve(here, '../../../../docs/fixtures/brightcart-spec.md');
+  if (!fs.existsSync(spec) || failures.length) return null;
+  const lines = fs.readFileSync(spec, 'utf8').split('\n');
+  let rows = 0;
+  for (const v of variants) {
+    const at = lines.reduce((found, line, i) => (line.startsWith(`| ${v.id} | `) ? found.concat(i) : found), []);
+    if (at.length !== 1) {
+      fail(`the document has ${at.length} rows for ${v.id} in its table of negative variants, it must have one`);
+      continue;
+    }
+    const cells = lines[at[0]].slice(2, -2).split(' | ');
+    if (cells.length !== 4) {
+      fail(`the row of ${v.id} in the document has ${cells.length} cells, the table has four (id, change, expected, run today)`);
+      continue;
+    }
+    cells[3] = v.runToday;
+    lines[at[0]] = '| ' + cells.join(' | ') + ' |';
+    rows++;
+  }
+  fs.writeFileSync(spec, lines.join('\n'));
+  return rows;
+}
+
 function main() {
   if (process.argv.length > 2) {
     console.error('usage: node generate.mjs (it takes no argument: it writes layered/, variants/ and expected/ next to itself)');
@@ -822,7 +851,8 @@ function main() {
       if (!model.length) fail(`${v.id}: the model finds nothing wrong, the description expects ${v.expected}`);
       for (const word of v.mentions) if (!model.some((m) => m.includes(word))) fail(`${v.id}: the model's messages do not mention "${word}":\n  ${model.join('\n  ') || '(none)'}`);
     }
-    variants.set(`${v.id}.json`, json({ id: v.id, kind: 'negative variant', change: v.change, expected: v.expected, class: v.class, mentions: v.mentions, model, status: v.run ? 'run by a tool: ' + v.run : v.kin ? 'not run as such (the layered tools read layered/, a test of the variant is wave 014 W-11); its nearest case a tool runs: ' + v.kin : v.mutate ? 'described; the model reports the messages above; the layered tools read layered/, a test of the variant is wave 014 W-11' : 'described; a test of the variant is wave 014 W-11 (V9, V10) or `plateau merge` (V12 to V14)' }));
+    if (typeof v.runToday !== 'string' || !v.runToday.trim()) fail(`${v.id}: no runToday (what a tool does with it today)`);
+    variants.set(`${v.id}.json`, json({ id: v.id, kind: 'negative variant', change: v.change, expected: v.expected, class: v.class, mentions: v.mentions, model, status: v.runToday }));
   }
   const declaredAll = P.inhouse.manifests.length + P.marketplace.manifests.length;
   if (declaredAll !== MERGES.M2.declared) fail(`M2: inhouse would declare ${declaredAll}, the document says ${MERGES.M2.declared}`);
@@ -841,6 +871,7 @@ function main() {
   expected.set('README.md', 'Computed by `generate.mjs` from the description (the model of the specification). `comparisons.json` says, for each of P1 to P6, whether `archicode diff` verifies the counts or only the model does.\n`changes.json` is the table of changes of each comparison as the model computes it (elements and relationships whose state is not `none`).\n');
   writeTree(path.join(here, 'variants'), variants);
   writeTree(path.join(here, 'expected'), expected);
+  const specRows = writeRunToday(VARIANTS);
 
   // ---- report
   console.log('plateau      application technology elements relationships files declared patches');
@@ -855,7 +886,7 @@ function main() {
     const r = c.relationships;
     console.log(`${c.id} ${c.comparison.padEnd(46)} +${e.new} ~${e.changed} -${e.removed}  ${c.replacing.moved} moved ${c.replacing.split} split ${c.replacing.merged} merged  relationships +${r.new} ~${r.changed} -${r.removed}  [${c.verified}]`);
   }
-  console.log(`variants/    ${variants.size} descriptions; expected/ ${expected.size} files`);
+  console.log(`variants/    ${variants.size} descriptions; expected/ ${expected.size} files` + (specRows === null ? '' : `; the document: ${specRows} rows of the table of variants`));
   if (failures.length) {
     console.error('\nFAILED:\n' + failures.map((f) => '  - ' + f).join('\n'));
     process.exit(1);

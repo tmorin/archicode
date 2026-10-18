@@ -8,5 +8,5 @@
     "horizon"
   ],
   "model": null,
-  "status": "described; a test of the variant is wave 014 W-11 (V9, V10) or `plateau merge` (V12 to V14)"
+  "status": "**Run** (case N52): exit 0 and one warning, `` the horizon `2026-Q1` of the plateau `marketplace` is earlier than the horizon `2026-Q4` of the plateau it overrides, `inhouse` ``, from both tools. A horizon is a free label: two are compared only when both read as a period (`2026`, `2026-10`, `2026-10-18`, `2026-Q4`, `2026-H2`), and one is earlier when its whole period ends before the other begins (`2026` under `2026-Q4` is not; the forms are in case M61 of `plateau-model-cases.json`)."
 }

@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -37,6 +38,11 @@ import lombok.val;
 public final class PlateauTree {
 
     private static final Pattern ID = Pattern.compile("[a-z0-9_-]+");
+    private static final Pattern HORIZON_YEAR = Pattern.compile("(\\d{4})");
+    private static final Pattern HORIZON_MONTH = Pattern.compile("(\\d{4})-(\\d{2})");
+    private static final Pattern HORIZON_DAY = Pattern.compile("(\\d{4})-(\\d{2})-(\\d{2})");
+    private static final Pattern HORIZON_QUARTER = Pattern.compile("(\\d{4})-?Q([1-4])", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HORIZON_HALF = Pattern.compile("(\\d{4})-?H([12])", Pattern.CASE_INSENSITIVE);
 
     /**
      * One plateau of the tree.
@@ -281,6 +287,154 @@ public final class PlateauTree {
                 }
             }
         }
+        sorted.values().forEach(node -> {
+            horizonWarning(node, nodes.get(node.parent())).ifPresent(out::add);
+            out.addAll(repeatedSets(node));
+        });
+        return out;
+    }
+
+    /**
+     * The warning for a horizon earlier than the one of the plateau it overrides (variant V10 of the Brightcart document). A
+     * horizon is a free label that no tool interprets, except to order the siblings of the band when it reads as a date (see
+     * {@link #horizonPeriod(String)}): the warning needs both to read as one, and the whole period of the plateau to end before
+     * the period above begins ({@code 2026} under {@code 2026-Q4} is not earlier, {@code 2026-Q1} is).
+     */
+    private static Optional<String> horizonWarning(Node node, Node parent) {
+        if (parent == null) {
+            return Optional.empty();
+        }
+        val own = horizonPeriod(node.horizon());
+        val above = horizonPeriod(parent.horizon());
+        if (own == null || above == null || own[1] >= above[0]) {
+            return Optional.empty();
+        }
+        return Optional.of(
+            "the horizon `" +
+                node.horizon() +
+                "` of the plateau `" +
+                node.id() +
+                "` is earlier than the horizon `" +
+                parent.horizon() +
+                "` of the plateau it overrides, `" +
+                parent.id() +
+                "`"
+        );
+    }
+
+    /**
+     * The period a horizon label reads as, the first and the last day as numbers that sort ({@code yyyymmdd}), or null when it
+     * reads as none: {@code 2026}, {@code 2026-10}, {@code 2026-10-18}, a quarter ({@code 2026-Q4}, {@code 2026Q4}) or a half
+     * ({@code 2026-H2}). The editor reads labels the same way ({@code horizonPeriod} in {@code standalone.html}): keep them
+     * alike.
+     */
+    static long[] horizonPeriod(String label) {
+        if (label == null) {
+            return null;
+        }
+        val text = label.trim();
+        var m = HORIZON_YEAR.matcher(text);
+        if (m.matches()) {
+            return period(m.group(1), 1, 12);
+        }
+        m = HORIZON_MONTH.matcher(text);
+        if (m.matches()) {
+            return period(m.group(1), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(2)));
+        }
+        m = HORIZON_DAY.matcher(text);
+        if (m.matches()) {
+            return day(m.group(1), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)));
+        }
+        m = HORIZON_QUARTER.matcher(text);
+        if (m.matches()) {
+            val quarter = Integer.parseInt(m.group(2));
+            return period(m.group(1), (quarter - 1) * 3 + 1, quarter * 3);
+        }
+        m = HORIZON_HALF.matcher(text);
+        if (m.matches()) {
+            val half = Integer.parseInt(m.group(2));
+            return period(m.group(1), (half - 1) * 6 + 1, half * 6);
+        }
+        return null;
+    }
+
+    /** From the first day of {@code firstMonth} to the last day of {@code lastMonth}. */
+    private static long[] period(String year, int firstMonth, int lastMonth) {
+        try {
+            if (Integer.parseInt(year) < 100) {
+                return null; // the page's Date.UTC reads two-digit years as 19xx: such a label reads as none in both
+            }
+            val start = java.time.LocalDate.of(Integer.parseInt(year), firstMonth, 1);
+            val end = java.time.YearMonth.of(Integer.parseInt(year), lastMonth).atEndOfMonth();
+            return new long[] { number(start), number(end) };
+        } catch (java.time.DateTimeException e) {
+            return null;
+        }
+    }
+
+    private static long[] day(String year, int month, int day) {
+        try {
+            if (Integer.parseInt(year) < 100) {
+                return null;
+            }
+            val date = number(java.time.LocalDate.of(Integer.parseInt(year), month, day));
+            return new long[] { date, date };
+        } catch (java.time.DateTimeException e) {
+            return null;
+        }
+    }
+
+    private static long number(java.time.LocalDate date) {
+        return date.getYear() * 10000L + date.getMonthValue() * 100L + date.getDayOfMonth();
+    }
+
+    /**
+     * The warnings for two {@code SET} of the same field of the same element in one plateau (variant V9): the last one wins,
+     * which is rarely what was meant. Only patches that name a {@code target} are compared; what a {@code json-path} selects
+     * is not known before the patches are applied.
+     */
+    private static List<String> repeatedSets(Node node) {
+        val ranks = new LinkedHashMap<String, List<Integer>>();
+        val what = new LinkedHashMap<String, String>();
+        var rank = 0;
+        for (val patch : node.patches()) {
+            rank++;
+            if (patch.getOperator() != Patch.Operator.SET || !patch.hasTarget()) {
+                continue;
+            }
+            val where = patch.getWhere();
+            val field = patch.getField() != null ? patch.getField() : where != null ? "relationships" : null;
+            if (field == null) {
+                continue;
+            }
+            val layer = patch.getLayer() == Patch.Layer.TECHNOLOGY ? "technology" : "application";
+            val towards =
+                where == null
+                    ? ""
+                    : " (the relationship towards `" +
+                      where.getDestination() +
+                      "`" +
+                      (where.getLabel() == null ? "" : " labelled `" + where.getLabel() + "`") +
+                      ")";
+            val key = layer + "|" + patch.getTarget() + "|" + field + towards;
+            ranks.computeIfAbsent(key, k -> new ArrayList<>()).add(rank);
+            what.putIfAbsent(key, "`" + field + "` of `" + patch.getTarget() + "`" + towards);
+        }
+        val out = new ArrayList<String>();
+        ranks.forEach((key, all) -> {
+            if (all.size() > 1) {
+                val numbers = all.stream().map(String::valueOf).toList();
+                out.add(
+                    "the plateau `" +
+                        node.id() +
+                        "` sets " +
+                        what.get(key) +
+                        " in patches " +
+                        listOf(numbers) +
+                        ": the last one wins"
+                );
+            }
+        });
         return out;
     }
 

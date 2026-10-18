@@ -207,6 +207,34 @@ class ManifestDiscoveryTest {
 
     @Test
     @SneakyThrows
+    void shouldLeaveOutTheFoldersOfEveryViewsPathItIsGiven() {
+        // the folders of settings.views.path and the ones an `--output` option named (issue #88)
+        Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        for (val folder : List.of("manifests", "views-saas", "out-saas", "out-saas-vs-baseline", "outside")) {
+            Files.createDirectories(dir.resolve(folder));
+            Files.writeString(dir.resolve(folder + "/a.yaml"), manifestOf("a.yaml", "a"));
+        }
+        val settingsOnly = new ArrayList<String>();
+        ManifestDiscovery.discover(dir, List.of("./**"), "views", dir.resolve("workspace.yaml")).forEach(file ->
+            settingsOnly.add(ManifestParser.sourceOf(dir, file))
+        );
+        assertEquals(
+            List.of("manifests/a.yaml", "out-saas-vs-baseline/a.yaml", "out-saas/a.yaml", "outside/a.yaml"),
+            settingsOnly,
+            "the folders an --output wrote are read when the discovery is not told about them"
+        );
+        val both = new ArrayList<String>();
+        ManifestDiscovery.discover(
+            dir,
+            List.of("./**"),
+            List.of("views", "out"),
+            dir.resolve("workspace.yaml")
+        ).forEach(file -> both.add(ManifestParser.sourceOf(dir, file)));
+        assertEquals(List.of("manifests/a.yaml", "outside/a.yaml"), both);
+    }
+
+    @Test
+    @SneakyThrows
     void shouldFollowTheLinkThatIsTheFolderOfAPathAndNotTheOnesFoundBelowIt() {
         Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
         Files.createDirectories(dir.resolve("shared"));

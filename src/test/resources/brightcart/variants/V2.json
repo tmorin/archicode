@@ -11,5 +11,5 @@
   "model": [
     "marketplace: reference commerce.cart declared twice"
   ],
-  "status": "run by a tool: case N7 of negative-cases.json: a second file of `marketplace` declares `commerce.cart`; BrightcartNegativeCasesTest (command line) and brightcart-negative.test.js (editor)"
+  "status": "**Run** (case N53): one line, ``the reference `commerce.cart` is declared in the plateau `marketplace` (`marketplace/application/commerce.cart-again.yaml`) and again in its ancestor `inhouse` (`inhouse/application/commerce.cart.yaml`)``, from both tools, whichever plateau is drawn. Its twin in one plateau is case N7 (``the reference ... is declared twice``)."
 }

@@ -25,7 +25,7 @@ function altered(ops) {
       const file = path.join(dir, op.file);
       const text = fs.readFileSync(file, 'utf8');
       assert.ok(text.includes(op.from), 'the text to replace is not in ' + op.file + ': ' + op.from);
-      fs.writeFileSync(file, text.replace(op.from, () => op.to));
+      fs.writeFileSync(file, op.all ? text.split(op.from).join(op.to) : text.replace(op.from, () => op.to));
     } else if (op.op === 'write') {
       fs.mkdirSync(path.dirname(path.join(dir, op.file)), { recursive: true });
       fs.writeFileSync(path.join(dir, op.file), op.text);
@@ -56,6 +56,8 @@ function said(sandbox, state, compared) {
   const out = {};
   if (state.fatalError) out.fatalError = state.fatalError;
   if (state.plateauTree && state.plateauTree.problems && state.plateauTree.problems.length) out.treeProblems = state.plateauTree.problems;
+  if (state.plateauTree && state.plateauTree.redeclared && state.plateauTree.redeclared.length) out.redeclared = state.plateauTree.redeclared; // a reference declared in a plateau and again in its ancestor
+  if (state.plateauTree && state.plateauTree.warnings && state.plateauTree.warnings.length) out.treeWarnings = state.plateauTree.warnings; // what the command line warns of when it reads the manifests
   if (state.layerProblems) out.layerProblems = state.layerProblems;
   if (state.baseline && state.baseline.problem) out.baselineProblem = state.baseline.problem;
   const errors = state.manifestFiles.filter((f) => f.error);
@@ -94,21 +96,22 @@ for (const c of CASES) {
   });
 }
 
-test('the editor sentences are the command line sentences, up to the capital, the full stop and the heading of the plateau rules', () => {
+test('the editor sentences are the command line sentences, up to the capital, the full stop, the heading of the plateau rules and the position of a file', () => {
   // the case table spells both; this keeps them from drifting apart
   const normal = (text) => text.replace(/^Could not read the plateaus of workspace\.yaml:\n/, '').replace(/^Could not read\/parse workspace\.yaml: /, '').replace(/^[A-Z]/, (l) => l.toLowerCase()).replace(/\.$/, '');
+  const FILE = /^`[^`]+` is not valid: /;
   for (const c of CASES) {
     if (c.editor === null) continue;
-    const cliLines = new Set(c.cli.flatMap((command) => command.stderr).map((line) => normal(line.replace(/^(error|warning): /, '').replace(/ \(line \d+, column \d+\)$/, '').replace(/^`[^`]+` is not valid: /, ''))));
+    const lines = c.cli.flatMap((command) => command.stderr).map((line) => line.replace(/^(error|warning): /, '').replace(/ \(line \d+, column \d+\)$/, ''));
+    const whole = new Set(lines.map(normal)); // the line as the command line says it
+    const bare = new Set(lines.map((line) => normal(line.replace(FILE, '')))); // without the file: the editor's badge on a file says the sentence of the file alone
     for (const step of c.editor) {
-      const texts = [];
       for (const [key, value] of Object.entries(step.expect)) {
-        if (typeof value === 'number' || key === 'layerProblems') continue; // layerProblems: what the elements a wrong manifest cannot declare leave behind, which the command line does not get to (it stops at the first sentence)
-        if (typeof value === 'string') texts.push(value);
-        else if (Array.isArray(value)) texts.push(...value);
-        else texts.push(...Object.values(value));
+        if (typeof value === 'number') continue; // a count, told by a badge and not by a sentence
+        const texts = typeof value === 'string' ? [value] : Array.isArray(value) ? value : Object.values(value);
+        const known = key === 'manifestErrors' || key === 'fatalError' ? bare : whole; // the banner for workspace.yaml names the file in its heading
+        for (const text of texts) assert.ok(known.has(normal(text)), c.id + ': the editor says (' + key + ') "' + text + '" and the command line does not say it');
       }
-      for (const text of texts) assert.ok(cliLines.has(normal(text)), c.id + ': the editor says "' + text + '" and the command line does not say it');
     }
   }
 });

@@ -560,6 +560,7 @@ export const VARIANTS = [
     expected: 'Error in `marketplace`: the patch on `commerce.catalogue` has no match (it names the rank of the patch).',
     class: 'error',
     mentions: ['marketplace', 'commerce.catalogue', 'no match'],
+    runToday: '**Run** (case N44): one line from the command line and from the editor, ``plateau marketplace: patch 13 (SET target commerce.catalogue): selects nothing, there is no element commerce.catalogue in the application layer``.',
     mutate: (P) => {
       P.marketplace.patches.find((op) => op.operator === 'SET' && op.target === 'commerce.catalog').target = 'commerce.catalogue';
     }
@@ -569,8 +570,8 @@ export const VARIANTS = [
     change: '`marketplace` declares `commerce.cart` again.',
     expected: 'Error: `commerce.cart` declared twice (`inhouse` and `marketplace`).',
     class: 'error',
-    run: 'case N7 of negative-cases.json: a second file of `marketplace` declares `commerce.cart`; BrightcartNegativeCasesTest (command line) and brightcart-negative.test.js (editor)',
     mentions: ['commerce.cart', 'declared twice'],
+    runToday: '**Run** (case N53): one line, ``the reference `commerce.cart` is declared in the plateau `marketplace` (`marketplace/application/commerce.cart-again.yaml`) and again in its ancestor `inhouse` (`inhouse/application/commerce.cart.yaml`)``, from both tools, whichever plateau is drawn. Its twin in one plateau is case N7 (``the reference ... is declared twice``).',
     mutate: (P) => {
       P.marketplace.declare(E('commerce.cart', 'container', 'Cart v2'), 'marketplace/application/commerce.cart.yaml');
     }
@@ -581,6 +582,7 @@ export const VARIANTS = [
     expected: 'Error in `marketplace`: the parent of `prod.cloud.cdn` does not exist when its manifest is read.',
     class: 'error',
     mentions: ['marketplace', 'prod.cloud.cdn', 'parent'],
+    runToday: '**Run** (case N45): one line, ``in the plateau `marketplace`, `prod.cloud.cdn` is declared under `prod.cloud`, which does not exist (3 more elements of the plateau are declared under a parent that does not exist)``, from both tools: the first element by reference is told and the others are counted. Cases N54 (two elements) and N46 (V4) are its smaller forms.',
     mutate: (P) => {
       P.marketplace.parent = 'saas';
     }
@@ -591,6 +593,7 @@ export const VARIANTS = [
     expected: 'The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. (A warning that the folder `inhouse` holds a manifest of `baseline` is W-7\'s, the editor\'s Files page.)',
     class: 'error and warning',
     mentions: ['baseline', 'commerce.cart', 'parent'],
+    runToday: '**Run** (case N46): one line, ``in the plateau `baseline`, `commerce.cart` is declared under `commerce`, which does not exist``. The warning about the folder is not told by the command line.',
     mutate: (P) => {
       const e = withoutManifest(P.inhouse, 'commerce.cart');
       P.baseline.declare(e, 'inhouse/application/commerce.cart.yaml');
@@ -601,9 +604,9 @@ export const VARIANTS = [
     change: 'A plateau typo, `plateau: inhous`, in the header of `inhouse/application/commerce.cart.yaml`.',
     expected: 'Same error in the implicit plateau `inhous`; with a warning that it exists only through one header.',
     class: 'error and warning',
-    kin: 'a plateau that only headers name is a plateau, with a warning (PlateauModelTest, plateau-model.test.js); the error it leads to is wave 014 W-11\'s',
     order: ['baseline', 'inhous'],
     mentions: ['inhous', 'commerce.cart', 'parent'],
+    runToday: '**Run** (case N47): `diff --plateau inhous` gives two warnings (the plateau `inhous` exists only through one header; it is one letter from `inhouse`) and the error the document expects, ``in the plateau `inhous`, `commerce.cart` is declared under `commerce`, which does not exist``; `diff --plateau inhouse`, which lacks the cart, gives the same warnings and one line, ``in the plateau `inhouse`, `commerce.checkout` has a relationship towards `commerce.cart`, which does not exist (3 more elements of the plateau point at it)``.',
     mutate: (P) => {
       const e = withoutManifest(P.inhouse, 'commerce.cart');
       P.inhous = new Plateau('inhous', 'inhous', null, 'baseline', 'implicit');
@@ -616,6 +619,7 @@ export const VARIANTS = [
     expected: 'Error: a patch never changes an `id`.',
     class: 'error',
     mentions: ['marketplace', 'platform.broker', 'never changes'],
+    runToday: '**Run** (case N48): one line, ``plateau marketplace: patch 1 (SET target platform.broker): `id` cannot be changed: a patch never changes an id or a parent``. (The earlier V6, a `MOVE` onto an existing reference, has no operator to run.)',
     mutate: (P) => {
       P.marketplace.op('SET', { target: 'platform.broker', field: 'id', value: 'platform.notifications' });
     }
@@ -626,6 +630,7 @@ export const VARIANTS = [
     expected: 'Error: no match (`inhouse` already removed it, `commerce.cart-store` replaces it). The stale-patch case.',
     class: 'error',
     mentions: ['marketplace', 'shop.cache', 'no match'],
+    runToday: '**Run** (case N49): one line, ``plateau marketplace: patch 1 (REMOVE target shop.cache): selects nothing, there is no element shop.cache in the application layer``.',
     mutate: (P) => {
       P.marketplace.op('REMOVE', { target: 'shop.cache' });
     }
@@ -638,6 +643,7 @@ export const VARIANTS = [
       'The model stops a plateau at its first error: in `inhouse` the relationship `fulfilment.sync -> shop.db` fails before the copied list is looked at, and `marketplace` is then not resolved. An engine that collects every error would list all three.',
     class: 'error',
     mentions: ['saas', 'inhouse', 'shop.db'],
+    runToday: '**Run** (case N50): the tools stop at the first error of the plateau asked for, one line each: ``plateau saas: patch 18 (SET target fulfilment.sync): fulfilment.sync has no relationship to shop.db with the label ...`` for `saas`, the same with ``plateau inhouse: patch 25`` for `inhouse` and for `marketplace`, which is not resolved.',
     mutate: (P) => {
       const rename = (r) => (r === 'shop.db' ? 'shop.database' : r);
       for (const e of P.baseline.manifests) {
@@ -652,43 +658,48 @@ export const VARIANTS = [
     change: 'Two `SET` of the same field of the same target in one plateau.',
     expected: 'A warning; the last one wins.',
     class: 'warning',
-    mentions: ['SET', 'last']
+    mentions: ['SET', 'last'],
+    runToday: '**Run** (case N51): exit 0 and one warning, ``the plateau `marketplace` sets `description` of `commerce.catalog` in patches 1 and 14: the last one wins``, from both tools. Only the patches that name a `target` are compared.',
   },
   {
     id: 'V10',
     change: '`horizon` of a child plateau earlier than its parent\'s.',
     expected: 'A warning.',
     class: 'warning',
-    mentions: ['horizon']
+    mentions: ['horizon'],
+    runToday: '**Run** (case N52): exit 0 and one warning, `` the horizon `2026-Q1` of the plateau `marketplace` is earlier than the horizon `2026-Q4` of the plateau it overrides, `inhouse` ``, from both tools. A horizon is a free label: two are compared only when both read as a period (`2026`, `2026-10`, `2026-10-18`, `2026-Q4`, `2026-H2`), and one is earlier when its whole period ends before the other begins (`2026` under `2026-Q4` is not; the forms are in case M61 of `plateau-model-cases.json`).',
   },
   {
     id: 'V11',
     change: 'Two plateaus with the same `override` and the same `id`.',
     expected: 'Error: plateau declared twice.',
     class: 'error',
-    run: 'the cases of plateau-model-cases.json (a plateau declared by two manifests), read by a Java and a node test',
-    mentions: ['plateau', 'declared twice']
+    mentions: ['plateau', 'declared twice'],
+    runToday: '**Run** (the cases of `plateau-model-cases.json`, read by a Java and a node test: a plateau declared by two manifests, `the plateau ... is declared twice`; and case N43 of `negative-cases.json`).',
   },
   {
     id: 'V12',
     change: 'Merge `inhouse` into `baseline` while `saas` hangs under `baseline`.',
     expected: 'Refused: `saas` no longer resolves (`patch REMOVE has no match for shop.app.catalog`). Allowed with `--drop saas`. Nothing is written when it is refused.',
     class: 'refusal',
-    mentions: ['saas', 'shop.app.catalog']
+    mentions: ['saas', 'shop.app.catalog'],
+    runToday: 'Waits for `plateau merge` (#65).',
   },
   {
     id: 'V13',
     change: 'Merge `marketplace` into `saas`.',
     expected: 'Error: `saas` is not an ancestor of `marketplace`.',
     class: 'error',
-    mentions: ['saas', 'marketplace', 'ancestor']
+    mentions: ['saas', 'marketplace', 'ancestor'],
+    runToday: 'Waits for `plateau merge` (#65).',
   },
   {
     id: 'V14',
     change: 'Merge a plateau into itself, or `baseline` into anything.',
     expected: 'Error: nothing to merge.',
     class: 'error',
-    mentions: ['nothing to merge']
+    mentions: ['nothing to merge'],
+    runToday: 'Waits for `plateau merge` (#65).',
   }
 ];
 

@@ -751,6 +751,121 @@
         "noPlateau": "`--plateau y` cannot be used: the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)",
         "editorDraws": "baseline"
       }
+    },
+    {
+      "id": "M56",
+      "what": "a plateau whose horizon reads as a date earlier than the horizon of the plateau it overrides gives a warning (variant V10 of the Brightcart document)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/inhouse.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"inhouse\"\n  horizon: \"2026-Q4\"\n",
+        "manifests/marketplace.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"marketplace\"\n  horizon: \"2026-Q1\"\n  override: \"inhouse\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the horizon `2026-Q1` of the plateau `marketplace` is earlier than the horizon `2026-Q4` of the plateau it overrides, `inhouse`"
+        ]
+      }
+    },
+    {
+      "id": "M57",
+      "what": "a horizon that is equal to the one above, later than it, not a date, or absent gives no warning (a horizon is a free label; only two that read as dates are compared)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/alpha.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"alpha\"\n  horizon: \"2026-Q4\"\n",
+        "manifests/bravo.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"bravo\"\n  horizon: \"2026-Q4\"\n  override: \"alpha\"\n",
+        "manifests/charlie.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"charlie\"\n  horizon: \"2027\"\n  override: \"bravo\"\n",
+        "manifests/delta.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"delta\"\n  horizon: \"someday\"\n  override: \"charlie\"\n",
+        "manifests/echo.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"echo\"\n  horizon: \"2020-01\"\n  override: \"delta\"\n",
+        "manifests/foxtrot.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"foxtrot\"\n  override: \"echo\"\n",
+        "manifests/golf.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"golf\"\n  horizon: \"2026-13\"\n  override: \"charlie\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M58",
+      "what": "two SET of the same field of the same element in one plateau give a warning that names the patches, the last one wins (variant V9)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n  patches:\n    - operator: SET\n      target: \"shop\"\n      field: description\n      value: \"one\"\n    - operator: SET\n      target: \"shop\"\n      field: name\n      value: \"two\"\n    - operator: SET\n      target: \"shop\"\n      field: description\n      value: \"three\"\n    - operator: SET\n      target: \"shop\"\n      field: description\n      value: \"four\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `later` sets `description` of `shop` in patches 1, 3 and 4: the last one wins"
+        ]
+      }
+    },
+    {
+      "id": "M59",
+      "what": "a SET of another field, of another element, of the same field in another plateau, or through a json-path is not a repeated SET",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/alpha.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"alpha\"\n  patches:\n    - operator: SET\n      target: \"shop\"\n      field: description\n      value: \"one\"\n    - operator: SET\n      target: \"shop\"\n      field: name\n      value: \"two\"\n    - operator: SET\n      target: \"mail\"\n      field: description\n      value: \"three\"\n",
+        "manifests/bravo.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"bravo\"\n  patches:\n    - operator: SET\n      target: \"shop\"\n      field: description\n      value: \"one\"\n    - operator: SET\n      json-path: \"$.application.elements[0]\"\n      field: description\n      value: \"x\"\n    - operator: SET\n      json-path: \"$.application.elements[0]\"\n      field: description\n      value: \"y\"\n    - operator: ADD\n      target: \"shop\"\n      field: relationships\n      value: {destination: \"mail\"}\n    - operator: ADD\n      target: \"shop\"\n      field: relationships\n      value: {destination: \"mail\"}\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M60",
+      "what": "two SET of the relationship towards the same destination with the same label give a warning that names it; another label is another relationship",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n  patches:\n    - operator: SET\n      target: \"shop\"\n      where: {destination: \"mail\", label: \"calls\"}\n      value: {label: \"one\"}\n    - operator: SET\n      target: \"shop\"\n      where: {destination: \"mail\", label: \"notifies\"}\n      value: {label: \"two\"}\n    - operator: SET\n      target: \"shop\"\n      where: {destination: \"mail\", label: \"calls\"}\n      value: {label: \"three\"}\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `later` sets `relationships` of `shop` (the relationship towards `mail` labelled `calls`) in patches 1 and 3: the last one wins"
+        ]
+      }
+    },
+    {
+      "id": "M61",
+      "what": "a horizon is earlier when its whole period ends before the period above begins: a quarter, a half, a month, a day, a year and the compact form of a quarter are read, a year over a quarter or a day equal to the one above is not earlier, and a label that is not a date (an impossible day, a two-digit year) is not compared",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/mid.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"mid\"\n  horizon: \"2026Q4\"\n",
+        "manifests/early.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"early\"\n  horizon: \"2026-06-30\"\n  override: \"mid\"\n",
+        "manifests/year.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"year\"\n  horizon: \"2026\"\n",
+        "manifests/quarter.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"quarter\"\n  horizon: \"2026-Q1\"\n  override: \"year\"\n",
+        "manifests/second.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"second\"\n  horizon: \"2026-H2\"\n",
+        "manifests/first.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"first\"\n  horizon: \"2026-H1\"\n  override: \"second\"\n",
+        "manifests/october.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"october\"\n  horizon: \"2026-10\"\n",
+        "manifests/september.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"september\"\n  horizon: \"2026-09\"\n  override: \"october\"\n",
+        "manifests/today.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"today\"\n  horizon: \"2026-10-18\"\n",
+        "manifests/tomorrow.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"tomorrow\"\n  horizon: \"2026-10-18\"\n  override: \"today\"\n",
+        "manifests/spring.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"spring\"\n  horizon: \"2026-10\"\n",
+        "manifests/impossible.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"impossible\"\n  horizon: \"2026-02-30\"\n  override: \"spring\"\n",
+        "manifests/modern.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"modern\"\n  horizon: \"2026-Q4\"\n",
+        "manifests/ancient.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"ancient\"\n  horizon: \"0026\"\n  override: \"modern\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the horizon `2026-06-30` of the plateau `early` is earlier than the horizon `2026Q4` of the plateau it overrides, `mid`",
+          "the horizon `2026-H1` of the plateau `first` is earlier than the horizon `2026-H2` of the plateau it overrides, `second`",
+          "the horizon `2026-09` of the plateau `september` is earlier than the horizon `2026-10` of the plateau it overrides, `october`"
+        ]
+      }
     }
   ]
 }

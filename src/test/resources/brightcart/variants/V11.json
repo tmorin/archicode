@@ -9,5 +9,5 @@
     "declared twice"
   ],
   "model": null,
-  "status": "run by a tool: the cases of plateau-model-cases.json (a plateau declared by two manifests), read by a Java and a node test"
+  "status": "**Run** (the cases of `plateau-model-cases.json`, read by a Java and a node test: a plateau declared by two manifests, `the plateau ... is declared twice`; and case N43 of `negative-cases.json`)."
 }

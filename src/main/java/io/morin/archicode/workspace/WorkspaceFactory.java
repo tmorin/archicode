@@ -138,7 +138,7 @@ public class WorkspaceFactory {
         val source = read(path);
         val settings = source.rawWorkspace().getSettings();
         requireReadablePaths(settings, null);
-        val tree = parse(path, source, settings.getManifests().getPaths()).plateaus();
+        val tree = parse(path, source, settings.getManifests().getPaths(), null).plateaus();
         if (!tree.isLayered()) {
             requireNoPlateaus(settings, null);
         }
@@ -146,13 +146,22 @@ public class WorkspaceFactory {
     }
 
     /** Read the manifests of the folders, and tell the warnings of the tree of the plateaus they write. */
-    private ManifestParser.Parsed parse(Path path, Source source, Set<String> manifestsDirs) {
-        val parsed = manifestParser.parse(
-            source.wksDir(),
-            manifestsDirs,
-            path,
-            source.rawWorkspace().getSettings().getViews().getPath()
-        );
+    private ManifestParser.Parsed parse(Path path, Source source, Set<String> manifestsDirs, Path viewsDirPath) {
+        // the folders of the views are not manifests: the ones of the settings, and the ones `--output` names, which an earlier
+        // run of the command wrote beside the workspace file
+        val viewsPaths = new ArrayList<String>();
+        viewsPaths.add(source.rawWorkspace().getSettings().getViews().getPath());
+        if (viewsDirPath != null) {
+            val wksDir = source.wksDir().toAbsolutePath().normalize();
+            val output = viewsDirPath.isAbsolute() ? viewsDirPath.normalize() : viewsDirPath;
+            // an absolute folder is left out only when it is below the folder of the workspace file, where it is read from
+            if (!output.isAbsolute()) {
+                viewsPaths.add(output.toString().replace('\\', '/'));
+            } else if (output.startsWith(wksDir)) {
+                viewsPaths.add(wksDir.relativize(output).toString().replace('\\', '/'));
+            }
+        }
+        val parsed = manifestParser.parse(source.wksDir(), manifestsDirs, path, viewsPaths);
         warnings.warnAll(parsed.plateaus().warnings());
         return parsed;
     }
@@ -372,7 +381,7 @@ public class WorkspaceFactory {
         // parse the manifests: the elements, and the views and the stories that are manifests of their own, which join
         // the ones of workspace.yaml. A reference declared twice is an error inside a plateau and in a plateau and its
         // ancestors, and the same reference in two plateaus that do not stack is the very point of having two
-        val parsed = parse(path, source, fixedRawWorkspace.getSettings().getManifests().getPaths());
+        val parsed = parse(path, source, fixedRawWorkspace.getSettings().getManifests().getPaths(), viewsDirPath);
         if (parsed.plateaus().isLayered()) {
             return loadLayered(fixedRawWorkspace, parsed, plateauId);
         }

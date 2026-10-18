@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -329,7 +330,28 @@ public class LayerLoader {
                 }
             }
         });
-        return List.copyOf(problems.values());
+        return foldParentProblems(problems.values().stream().toList());
+    }
+
+    /**
+     * One sentence for the elements declared under a parent the graph does not have: they have one cause (a plateau that
+     * overrides the wrong one, a manifest that was left out), so the first one is told, with how many others there are. The
+     * editor says the same ({@code foldParentProblems} in {@code standalone.html}): keep them alike.
+     */
+    private static List<String> foldParentProblems(List<String> sentences) {
+        if (sentences.size() < 2) {
+            return sentences;
+        }
+        val others = sentences.size() - 1;
+        return List.of(
+            sentences.get(0) +
+                " (" +
+                others +
+                (others == 1
+                    ? " more element of the plateau is declared under a parent that does not exist"
+                    : " more elements of the plateau are declared under a parent that does not exist") +
+                ")"
+        );
     }
 
     /** A reference that leads nowhere: who has it, what it points at, and the sentence. */
@@ -385,12 +407,30 @@ public class LayerLoader {
                 }
             });
         }
-        return problems
+        // one sentence for each thing that is missing: the elements that point at it are one cause (the editor says the same:
+        // `layerProblemsOf` in `standalone.html`)
+        val byMissing = new LinkedHashMap<String, List<Problem>>();
+        problems
             .stream()
             .sorted(
                 Comparator.comparing(Problem::element).thenComparing(Problem::other).thenComparing(Problem::sentence)
             )
-            .map(Problem::sentence)
+            .forEach(problem -> byMissing.computeIfAbsent(problem.other(), k -> new ArrayList<>()).add(problem));
+        return byMissing
+            .values()
+            .stream()
+            .map(group -> {
+                val others = group.stream().map(Problem::element).distinct().count() - 1;
+                val first = group.get(0).sentence();
+                return others == 0
+                    ? first
+                    : first +
+                          " (" +
+                          others +
+                          (others == 1
+                              ? " more element of the plateau points at it)"
+                              : " more elements of the plateau point at it)");
+            })
             .toList();
     }
 

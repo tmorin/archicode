@@ -57,8 +57,19 @@ public class ManifestParser {
      * @param viewsPath     {@code settings.views.path} as written in the workspace file: the folders of the generated views
      *                      are not read below a path that ends in {@code /**}
      */
-    @SneakyThrows
     public Parsed parse(Path wksDir, Set<String> manifestsDirs, Path workspaceFile, String viewsPath) {
+        return parse(wksDir, manifestsDirs, workspaceFile, Collections.singletonList(viewsPath));
+    }
+
+    /**
+     * Read the manifests, as {@link #parse(Path, Set, Path, String)}, when more than one folder of generated views is to be
+     * left out: the one of {@code settings.views.path} and the one a command was given with {@code --output}.
+     *
+     * @param workspaceFile the workspace file, or null
+     * @param viewsPaths    the beginnings of the names of the folders of the generated views
+     */
+    @SneakyThrows
+    public Parsed parse(Path wksDir, Set<String> manifestsDirs, Path workspaceFile, Collection<String> viewsPaths) {
         val map = new HashMap<Class<?>, Set<Candidate>>();
         val views = new ArrayList<Placed<View>>();
         val stories = new ArrayList<Placed<Story>>();
@@ -72,7 +83,7 @@ public class ManifestParser {
         val plateauHeaders = new TreeMap<String, List<String>>();
         String layeredBy = null;
 
-        for (Path manifestFile : ManifestDiscovery.discover(wksDir, manifestsDirs, viewsPath, workspaceFile)) {
+        for (Path manifestFile : ManifestDiscovery.discover(wksDir, manifestsDirs, viewsPaths, workspaceFile)) {
             log.info("parse the manifest {}", manifestFile);
 
             val mapper = mapperFactory.create(manifestFile);

@@ -12,5 +12,5 @@
   "model": [
     "marketplace: patch 13 (SET commerce.catalogue) has no match for commerce.catalogue"
   ],
-  "status": "described; the model reports the messages above; the layered tools read layered/, a test of the variant is wave 014 W-11"
+  "status": "**Run** (case N44): one line from the command line and from the editor, ``plateau marketplace: patch 13 (SET target commerce.catalogue): selects nothing, there is no element commerce.catalogue in the application layer``."
 }
