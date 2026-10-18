@@ -122,6 +122,7 @@ wave_manifest:
         criteria:
           - 'V1, V3 and V6 to V10 of the Brightcart document run on the layered tools and each gives the class of message the document expects, one line, from the command line and from the editor, pinned by tests; `negative-cases.json` is rewritten for the new form'
           - '#70: `diff --plateau inhouse --against saas` on the layered Brightcart no longer lists the pairs `commerce-live`/`tax-live` and `commerce-sandbox`/`tax-sandbox`, and `saas` against its parent `baseline` still proposes them; #34: the kernel says whether a `contains-changes` state is computed, the three lists of the seven state words are one; the kernel contract is 5 and its README says what changed'
+          - 'A1 (decided on 2026-10-18): two plateaus with a `Kind: Plateau` manifest each and ids one letter apart (`p1`, `p2`) give no warning, in both tools, and a plateau that only headers name still warns with the id it is one letter from; #95: *Move and write replaces* is not offered against a plateau that is not an ancestor, and the tests say so'
           - '`git grep -n "settings.plateaus\|plateau add\|--baseline" -- src/doc` finds only the note that the key, the command and the option no longer exist; the manual describes the layers (`plateau:`, `Kind: Plateau`, patches and their operators, `--against`, `plateau list`, the timeline), the example `domain_plateaus` is layered and loaded by the manual test, the tutorial follows it, and `CLAUDE.md` describes the new mechanism where it described `settings.plateaus`'
           - 'the views of every workspace of the repository that has no plateau are byte-identical to those of a jar built from `25471b3`'
           - '`./mvnw -o verify`, `cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml`, `src/main/rust/viewpoint-kernel/embed.sh --check`, `node --test "src/test/javascript/**/*.test.js"` and `npx prettier --check "src/**/*.java"` pass'
@@ -332,10 +333,23 @@ wave_manifest:
         - 'src/test/resources/replaces-large-pair/**'
         - 'src/doc/README.adoc'
       focus: 'be offered a pair of replaces only when the two plateaus are one the past of the other'
+    - id: W-18
+      slug: author-decisions
+      phase: P4
+      depends_on: [W-12]
+      run: null
+      delegation: standard
+      likely_paths:
+        - 'src/main/java/io/morin/archicode/resource/plateau/PlateauTree.java'
+        - 'src/main/resources/editor-webapp/standalone.html'
+        - 'src/test/resources/brightcart/**'
+        - 'src/test/java/io/morin/archicode/**'
+        - 'src/test/javascript/viewpoint-kernel/**'
+      focus: 'two rules the author decided on 2026-10-18: no warning for two plateaus that both have their manifest, and a replaces written only against an ancestor'
     - id: W-13
       slug: layers-manual-and-tutorial
       phase: P4
-      depends_on: [W-9, W-10]
+      depends_on: [W-9, W-10, W-18]
       run: null
       delegation: standard
       likely_paths:
@@ -394,7 +408,8 @@ wave_manifest:
 |---|-----|------|------------|-------|-------|---------------|
 | W-11 | — | `variants-on-layers` | W-9 | a wrong layered project gives one clear line, and the document says which variants a tool runs | run V1, V3 and V6 to V10 on the layered tools, and rewrite the cases of `negative-cases.json` that spoke of `settings.plateaus`; each gives one line, the same in the editor; a case that gives a stack trace or two sentences is fixed if it is a few lines, filed otherwise; the "Run today" column of the document says which variants run; the merge scenarios stay for #65 | one test per variant on the command line and one in the harness; the list of cases fixed and filed |
 | W-12 | — | `sibling-candidates` | W-9 | be offered a pair of replaces only when the two plateaus are one the past of the other | the kernel contract becomes 5: `compare` takes whether the two plateaus are on one chain (the host knows it from the tree), so that a pair whose only reason is the shared parent is not proposed between siblings (#70); the state of `contains-changes` is explicit in the output and the three lists of the seven state words become one (#34); the README of the kernel and the manual say what changed | the Brightcart sibling pairs gone and the swap pair kept; `ReplacesLargePairTest` numbers not lower; the P4 gate commands |
-| W-13 | — | `layers-manual-and-tutorial` | W-9, W-10 | learn the layers from the manual, the example and the tutorial | the manual sections on plateaus rewritten for the layers (the header, the Plateau manifest and its patches with their operators and errors, discovery with `/**`, `--plateau`, `--against`, `plateau list`, the timeline in the editor, what the cascade of `REMOVE` takes), the tutorial and the example `domain_plateaus` in the layered form, a note that `settings.plateaus` and `plateau add` no longer exist; the document of the fixture marks what is now verified by a tool | the manual builds; the manual test loads the examples; a reader can follow the tutorial from the files |
+| W-18 | — | `author-decisions` | W-12 | have the two rules the author decided on 2026-10-18 | A1: two plateau ids one letter apart warn only when one of the two has no `Kind: Plateau` manifest (a plateau that only headers name), in `PlateauTree` and in `buildPlateauTree` of the page, the cases of `plateau-model-cases.json` updated (V5 keeps its two warnings, `p1`/`p2` with a manifest each give none); #95: *Move and write replaces* is offered only against a plateau that is an ancestor of the one drawn (the mode of a sibling or a cousin no longer offers it), its tests rewritten, and no other write of `replaces` changes | a test per rule that fails before; the cases file read by the Java and the node test; the editor and the command line agree |
+| W-13 | — | `layers-manual-and-tutorial` | W-9, W-10, W-18 | learn the layers from the manual, the example and the tutorial | the manual sections on plateaus rewritten for the layers (the header, the Plateau manifest and its patches with their operators and errors, discovery with `/**`, `--plateau`, `--against`, `plateau list`, the timeline in the editor, what the cascade of `REMOVE` takes), the tutorial and the example `domain_plateaus` in the layered form, a note that `settings.plateaus` and `plateau add` no longer exist, and the limits the author accepted on 2026-10-18 (the `replaces` of the layers are not composed, so a move that took two steps reads as new and removed against a plateau two layers up, #89; a patch cannot remove a field, #94; a manifest in TOML is found and does not load yet, #84); the document of the fixture marks what is now verified by a tool | the manual builds; the manual test loads the examples; a reader can follow the tutorial from the files |
 
 **Gate:** see the manifest, phase P4.
 
@@ -407,7 +422,7 @@ P1:  W-1 ─┐
      W-3 ─┘ (after W-15)       │
 P2:  W-6 <── (W-1, W-2, W-3, W-5) ── W-7 ── W-8
 P3:  W-9 <── (W-4, W-5, W-6) ──── W-10 <── (W-9, W-8)
-P4:  W-11 <── W-9      W-12 <── W-9      W-13 <── (W-9, W-10)
+P4:  W-11 <── W-9      W-12 <── W-9 ── W-18      W-13 <── (W-9, W-10, W-18)
 ```
 
 ## Open Questions
@@ -432,10 +447,10 @@ P4:  W-11 <── W-9      W-12 <── W-9      W-13 <── (W-9, W-10)
   until W-9, and a workspace with both is an error.
 - **All runs `serialize`.** The runs share `standalone.html` (W-1, W-2, W-6, W-7, W-8, W-10, W-11, W-12), `src/main/java/io/morin/archicode/workspace/**`
   and `manifest/**` (W-2, W-3, W-4, W-9, W-11), `src/test/javascript/viewpoint-kernel/**`, `src/doc/README.adoc` and one `target/`. They are dispatched one
-  at a time, in the order W-14, W-15, W-16, W-17, W-1, W-2, W-3, W-4, W-5, W-6, W-7, W-8, W-9, W-10, W-11, W-12, W-13. No `concurrent-safe` verdict is claimed.
+  at a time, in the order W-14, W-15, W-16, W-17, W-1, W-2, W-3, W-4, W-5, W-6, W-7, W-8, W-9, W-10, W-11, W-12, W-18, W-13. No `concurrent-safe` verdict is claimed.
 - **Edges.** W-3 needs W-15 (the editor's validation of keys must know the new header key and the new kind before the model adds them). W-4 needs the three before it (the kernel entry, the discovery, the model). W-5 needs W-4 to run the fixture. W-6 needs the kernel entry
   in the wasm, the discovery in the page, the rules of W-3 and the fixture. W-9 needs the command line (W-4), the fixture (W-5) and an editor that
-  reads layers (W-6), because it converts the node tests too. W-10 needs the editor writes (W-8) and W-9. W-11, W-12 need W-9. W-13 needs W-9 and W-10.
+  reads layers (W-6), because it converts the node tests too. W-10 needs the editor writes (W-8) and W-9. W-11, W-12 need W-9. W-18 needs W-12 (both write the candidates and the Move of the page). W-13 needs W-9, W-10 and W-18, so that the manual describes the rules as they end.
 - **Assumptions (A1 to A9) are the study's, not the author's.** If the author overrules one at the review, the plan is edited (`write-wave`)
   before the wave runs; a run that finds an assumption cannot hold records it, stops that branch and says so, it does not choose another rule.
 - **Byte-identity.** Every run that changes `src/main` compares the views of every workspace of the repository that has no plateau against a jar
