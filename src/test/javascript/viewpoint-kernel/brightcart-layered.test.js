@@ -91,7 +91,6 @@ test('the editor opens layered/: the tree of the four plateaus, every manifest r
 
 test('the editor draws baseline when it opens, and each plateau at its sizes when its node of the band is chosen', async () => {
   const { sandbox, state } = await openLayered();
-  assert.deepEqual(Array.from(state.plateaus.map((p) => p.id)), [], 'no settings.plateaus: the selector has nothing to list, the band is the way');
   const sizes = expected('sizes').plateaus;
   assert.equal(state.layers.current, 'baseline');
   assert.equal(state.index.application.size, sizes.baseline.application);

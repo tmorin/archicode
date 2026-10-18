@@ -324,7 +324,7 @@ test('a new element of baseline has no `plateau:` and every plateau that stands 
   const { sandbox, state } = opened;
   const pending = sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', id: 'loyalty', name: 'Loyalty', description: '' });
   assert.equal(pending.pending, true);
-  assert.deepEqual(Array.from(pending.plateaus), ['inhouse', 'marketplace', 'saas']);
+  assert.deepEqual(Array.from(pending.changed), ['inhouse', 'marketplace', 'saas']);
   assert.deepEqual(dirtyFiles(state), [], 'nothing is written before the answer');
   sandbox.submitAppDialog({});
   const out = await saved(opened);
@@ -373,11 +373,11 @@ test('editing baseline asks first and lists the plateaus it changes; yes writes 
   const opened = await openLayeredCopy();
   const { sandbox, state } = opened;
   const result = edit(sandbox, 'shop.web', (n) => { n.qualifiers = ['React', 'Vite']; });
-  assert.deepEqual(plain(result), { pending: true, plateaus: ['inhouse', 'marketplace', 'saas'].filter((id) => result.plateaus.includes(id)) });
-  assert.ok(result.plateaus.length >= 1);
+  assert.deepEqual(plain(result), { pending: true, changed: ['inhouse', 'marketplace', 'saas'].filter((id) => result.changed.includes(id)) });
+  assert.ok(result.changed.length >= 1);
   assert.equal(dialog(sandbox).kind, 'layer-confirm');
-  assert.deepEqual(dialog(sandbox).changed, plain(result.plateaus));
-  assert.match(sandbox.renderAppDialogHtml(), new RegExp('<code>' + result.plateaus[0] + '</code>'));
+  assert.deepEqual(dialog(sandbox).changed, plain(result.changed));
+  assert.match(sandbox.renderAppDialogHtml(), new RegExp('<code>' + result.changed[0] + '</code>'));
   assert.deepEqual(dirtyFiles(state), [], 'nothing is written, and the page shows what it showed');
   assert.deepEqual(plain(state.index.application.get('shop.web').qualifiers), ['React']);
   // no
@@ -399,8 +399,8 @@ test('the plateaus listed are those whose resolution changes: one that sets the 
   // saas sets the qualifiers of shop.web with a patch and inhouse does not, so a new list in baseline reaches inhouse and not saas
   const result = edit(sandbox, 'shop.web', (n) => { n.qualifiers = ['React', 'Vite']; });
   assert.equal(result.pending, true);
-  assert.ok(result.plateaus.includes('inhouse'), result.plateaus.join());
-  assert.ok(!result.plateaus.includes('saas'), result.plateaus.join());
+  assert.ok(result.changed.includes('inhouse'), result.changed.join());
+  assert.ok(!result.changed.includes('saas'), result.changed.join());
   // and one that every plateau sets itself is not asked about at all
   sandbox.closeAppDialog();
   const sets = edit(sandbox, 'shop.web', (n) => { n.description = 'The shop in the browser.'; });
@@ -413,7 +413,7 @@ test('a plateau with plateaus on top of it asks, a plateau at the end of the cha
   const { sandbox, state } = opened;
   const asks = edit(sandbox, 'commerce.cart', (n) => { n.description = 'The basket service.'; });
   assert.equal(asks.pending, true);
-  assert.deepEqual(plain(asks.plateaus), ['marketplace']);
+  assert.deepEqual(plain(asks.changed), ['marketplace']);
   sandbox.closeAppDialog();
   sandbox.drawPlateau('marketplace');
   assert.equal(edit(sandbox, 'commerce.cart', (n) => { n.description = 'The basket service.'; }), undefined);
@@ -558,7 +558,7 @@ test('a rename in baseline reaches what names the element in the plateaus above 
   const { sandbox, state } = opened;
   const result = edit(sandbox, 'shop.web', (n) => { n.id = 'front'; return { renamedTo: { from: 'shop.web', to: 'shop.front' } }; }, 'application');
   assert.equal(result.pending, true, 'the plateaus that stand on baseline are asked about first');
-  assert.deepEqual(Array.from(result.plateaus).sort(), ['inhouse', 'marketplace', 'saas']);
+  assert.deepEqual(Array.from(result.changed).sort(), ['inhouse', 'marketplace', 'saas']);
   sandbox.submitAppDialog({});
   const out = await saved(opened);
   assert.deepEqual(Object.keys(out.files).sort(), [
@@ -573,6 +573,30 @@ test('a rename in baseline reaches what names the element in the plateaus above 
   }
   sandbox.drawPlateau('saas');
   assert.equal(state.index.application.get('shop.front').description, 'Headless storefront on the commerce platform.', 'and the patch of saas still sets what it set');
+});
+
+test('a rename in baseline reaches the replaces of an element of a plateau above it that sits under the renamed one (only the element renamed or moved in the plateau written keeps its own old reference: move-editor.test.js)', async () => {
+  const el = (kind, parent, id, name, extra, plateau) => 'header:\n  kind: "archicode.morin.io/' + kind + '"\n' + (parent ? '  parent: "' + parent + '"\n' : '') + (plateau ? '  plateau: ' + plateau + '\n' : '') + '  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"\n' + (extra || '');
+  const mem = memFolder({
+    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - m\n',
+    'm/app.shop.yaml': el('system', null, 'shop', 'Shop'),
+    'm/app.shop.till.yaml': el('container', 'shop', 'till', 'Till'),
+    'm/app.shop.till.display.yaml': el('component', 'shop.till', 'display', 'Display'),
+    'm/plateau.p1.yaml': 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "p1"\n  name: "P1"\n',
+    'm/app.shop.till.panel.yaml': el('component', 'shop.till', 'panel', 'Panel', '  replaces:\n    - shop.till.display\n', 'p1')
+  });
+  const sandbox = createApp({});
+  const state = sandbox.__state();
+  state.folder = { handle: mem.handle, name: 'ws' };
+  state.permissionState = 'granted';
+  await sandbox.loadWorkspace(mem.handle);
+  await sandbox.loadViewpointKernel();
+  // baseline is drawn: the plateau p1 stands on it and is asked about
+  const result = edit(sandbox, 'shop.till', (n) => { n.id = 'till2'; return { renamedTo: { from: 'shop.till', to: 'shop.till2' } }; }, 'application');
+  assert.equal(result.pending, true);
+  sandbox.submitAppDialog({});
+  const panel = state.manifestFiles.find((f) => f.relPath === 'm/app.shop.till.panel.yaml');
+  assert.match(panel.rawText, /replaces:\n {4}- shop\.till2\.display\n/, 'the element of p1 that sits under the renamed one still replaces the display of the plateau below');
 });
 
 test('an edit is kept only if the resolution gives back the value that was edited', async () => {
@@ -763,12 +787,12 @@ test('baseline of a layered workspace saves its own edits as before, once the au
   });
 });
 
-test('a workspace that lists settings.plateaus (the older way) saves an edit as before: no layer, no guard, no plateau header', async () => {
+test('a workspace that writes no plateau saves an edit as before: no layer written, no guard, no plateau header', async () => {
   const system = (id, name) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"  # as written\n';
   const files = {
-    'workspace.yaml': 'settings:\n  plateaus:\n    - id: as-is\n      name: As is\n      path: plateaus/10_as-is\n    - id: to-be\n      name: To be\n      path: plateaus/20_to-be\n',
-    'plateaus/10_as-is/app.shop.yaml': system('shop', 'Shop as is'),
-    'plateaus/20_to-be/app.shop.yaml': system('shop', 'Shop to be')
+    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+    'manifests/app.shop.yaml': system('shop', 'Shop as is'),
+    'manifests/app.billing.yaml': system('billing', 'Billing')
   };
   const mem = memFolder(files);
   const sandbox = createApp({});
@@ -777,15 +801,15 @@ test('a workspace that lists settings.plateaus (the older way) saves an edit as 
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
   assert.equal(state.fatalError, null);
-  assert.equal(state.layers, null, 'the older way has no layers');
-  assert.equal(sandbox.writingPlateau(), null);
+  assert.equal(state.layers.current, 'baseline', 'the band has baseline alone');
+  assert.equal(sandbox.writingPlateau(), null, 'and nothing is written in a plateau');
   assert.equal(sandbox.layerActionRefusal('toggle-element-edit'), null);
   assert.equal(edit(sandbox, 'shop', (n) => { n.name = 'Shop, later'; }), undefined);
   const created = sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', id: 'crm', name: 'CRM', description: '' });
   assert.equal(state.manifestFiles.find((f) => f.relPath === created.relPath).header.plateau, undefined);
   await sandbox.saveAllChanges();
-  assert.equal(mem.files.get('plateaus/20_to-be/app.shop.yaml').text, system('shop', 'Shop, later'), 'the line, with its comment, and nothing else');
-  assert.equal(mem.files.get('plateaus/10_as-is/app.shop.yaml').text, files['plateaus/10_as-is/app.shop.yaml'], 'the other plateau is not touched');
+  assert.equal(mem.files.get('manifests/app.shop.yaml').text, system('shop', 'Shop, later'), 'the line, with its comment, and nothing else');
+  assert.equal(mem.files.get('manifests/app.billing.yaml').text, files['manifests/app.billing.yaml'], 'the other file is not touched');
 });
 
 test('a refused write leaves the text of every file, and its mark, as it was; the page draws what it drew', async () => {

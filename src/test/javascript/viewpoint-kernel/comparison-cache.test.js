@@ -3,7 +3,7 @@
 // version of the two models (the plateau drawn and the one it is compared with) is what it was, instead of serialising both models on every call to
 // find out. The version is bumped by `modelsChanged()`: by every load, every edit that ends in a rebuild of the model, every change of baseline.
 // What is checked here: the answer is kept through plain renders and nothing is serialised to keep it; a load, an edit of the plateau drawn, a change
-// or a reload of the baseline and a change of plateau each compute it again, and the new answer is the right one; the choke point is what decides;
+// of the comparison, a reload of the folder and a change of plateau each compute it again, and the new answer is the right one; the choke point is what decides;
 // and no place of the page replaces a model without calling it. The harness has no DOM and no layout engine; the kernel is the real embedded module.
 // Everything here is invented (a ferry company).
 // Run with: node --test "src/test/javascript/**/*.test.js"
@@ -14,6 +14,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { inPlateau, layeredFiles, openLayered, compareWith } = require('./layered-folders');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
@@ -39,21 +40,19 @@ const FLEET_NEXT = {
 const FLEET_LATER = Object.assign({}, FLEET_NEXT, { 'app.fleet.ferry.yaml': element('container', 'fleet', 'ferry', 'Ferry log, v2') });
 const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
 const FILES = Object.assign({}, folder('10_now', FLEET_NOW), folder('20_next', FLEET_NEXT), folder('30_later', FLEET_LATER));
-const SETTINGS = 'settings:\n  current: later\n  plateaus:\n' +
-  '    - id: now\n      path: plateaus/10_now\n' +
-  '    - id: next\n      path: plateaus/20_next\n' +
-  '    - id: later\n      path: plateaus/30_later\n';
+const PLATEAU_LIST = [
+  { id: 'now', path: 'plateaus/10_now' },
+  { id: 'next', path: 'plateaus/20_next' },
+  { id: 'later', path: 'plateaus/30_later' }
+];
 
-/** The page on the invented company, `later` drawn, compared with `now` (or with nothing), with a spy on the kernel's `compare` and on `JSON.stringify`. */
+/**
+ * The page on the invented company as layers (see layered-folders.js: three siblings over an empty baseline), `later` drawn, compared with `now` (or with nothing) on the band,
+ * with a spy on the kernel's `compare` and on `JSON.stringify`.
+ */
 async function open(compareTo = 'now') {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': SETTINGS }, FILES));
-  const sandbox = createApp();
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
-  await sandbox.loadViewpointKernel();
-  if (compareTo) await sandbox.setCompareTo(compareTo);
+  const { sandbox, state, mem } = await openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, FILES, '  current: later\n'), {});
+  if (compareTo) compareWith(sandbox, compareTo);
   // the spies: `compares` counts the calls of the kernel's `compare`; `serialised` keeps what `JSON.stringify` returned, from the sandbox's own `JSON`
   run(sandbox, `
     globalThis.__spy = { compares: 0, serialised: [] };
@@ -104,10 +103,10 @@ test('what the test looks for is real: serialising the input of the comparison i
 test('a load asks again, once, and a plain render after it does not', async () => {
   const { sandbox, state, mem, spy } = await open();
   const first = sandbox.comparisonState();
-  mem.put('plateaus/30_later/app.fleet.radio.yaml', element('container', 'fleet', 'radio', 'Radio desk')); // the radio desk is back in the plateau drawn
+  mem.put('plateaus/30_later/app.fleet.radio.yaml', inPlateau('later', element('container', 'fleet', 'radio', 'Radio desk'))); // the radio desk is back in the plateau drawn
   const before = spy.compares;
   await sandbox.loadWorkspace(mem.handle); // the folder is read again
-  assert.equal(state.compareTo, 'now', 'the choice of Compare to is remembered by the folder');
+  assert.equal(state.layers.compare && state.layers.compare.other, 'now', 'the comparison is remembered by the folder');
   const second = sandbox.comparisonState();
   assert.notEqual(second.layers, first.layers);
   assert.equal(second.counts.elements.removed, 0, 'the answer is the one of the new load');
@@ -143,7 +142,7 @@ test('an edit of the plateau drawn asks again: a rename, a created element, a de
   sandbox.commitDeleteElement('fleet.pier', 'application', impact.affected);
   step('deletion', (s) => assert.equal(s.counts.elements.new, 1));
 
-  sandbox.commitFileEdit('plateaus/30_later/app.fleet.beacon.yaml', element('container', 'fleet', 'beacon', 'Beacon feed, v2'));
+  sandbox.commitFileEdit('plateaus/30_later/app.fleet.beacon.yaml', inPlateau('later', element('container', 'fleet', 'beacon', 'Beacon feed, v2')));
   step('edit of a file', (s) => assert.equal(s.counts.elements.new, 1));
 
   assert.equal(spy.compares - before, 4, 'one compare per edit, and none for the reads in between');
@@ -167,31 +166,31 @@ test('Cancel (the folder is read again from disk) asks again, and what was edite
   assert.equal(spy.compares - before, 1);
 });
 
-test('a change of Compare to, and a reload of the baseline, ask again: the baseline is read-only, only a load changes it', async () => {
+test('a change of the comparison on the band asks again, and the folder read again from the disk (Cancel, Reload) is the only way the disk is seen', async () => {
   const { sandbox, state, mem, spy } = await open('now');
   const first = sandbox.comparisonState();
   assert.equal(first.base.id, 'now');
   let before = spy.compares;
 
-  await sandbox.setCompareTo('next');
+  compareWith(sandbox, 'next');
   const toNext = sandbox.comparisonState();
   assert.equal(toNext.base.id, 'next');
   assert.equal(changed(toNext), 1);
   assert.equal(spy.compares - before, 1);
 
-  await sandbox.setCompareTo('');
+  compareWith(sandbox, '');
   assert.equal(sandbox.comparisonState(), null, 'nothing is compared');
   before = spy.compares;
-  await sandbox.setCompareTo('next');
+  compareWith(sandbox, 'next');
   assert.equal(sandbox.comparisonState().base.id, 'next');
-  assert.equal(spy.compares - before, 1, 'a comparison turned off and on again is computed again, from the baseline read again');
+  assert.equal(spy.compares - before, 1, 'a comparison turned off and on again is computed again');
 
-  mem.put('plateaus/20_next/app.fleet.ferry.yaml', element('container', 'fleet', 'ferry', 'Ferry log, v2')); // the folder of the baseline changes on disk
+  mem.put('plateaus/20_next/app.fleet.ferry.yaml', inPlateau('next', element('container', 'fleet', 'ferry', 'Ferry log, v2'))); // the folder of the other plateau changes on disk
   before = spy.compares;
   assert.equal(changed(sandbox.comparisonState()), 1, 'the page does not watch the disk');
   assert.equal(spy.compares - before, 0);
-  await sandbox.reloadBaseline();
-  assert.equal(changed(sandbox.comparisonState()), 0, 'Reload reads the baseline again: the ferry log is the same in both now');
+  await sandbox.loadWorkspace(state.folder.handle);
+  assert.equal(changed(sandbox.comparisonState()), 0, 'the folder read again: the ferry log is the same in both now');
   assert.equal(spy.compares - before, 1);
   assert.equal(state.baseline.index.application.get('fleet.ferry').name, 'Ferry log, v2');
 });
@@ -200,9 +199,9 @@ test('a change of plateau asks again, for the plateau now drawn', async () => {
   const { sandbox, state, spy } = await open('now');
   assert.equal(sandbox.comparisonState().target.id, 'later');
   const before = spy.compares;
-  await sandbox.switchPlateau('next');
+  sandbox.drawPlateau('next');
   const answer = sandbox.comparisonState();
-  assert.equal(state.plateau.id, 'next');
+  assert.equal(state.layers.current, 'next');
   assert.equal(answer.target.id, 'next');
   assert.equal(changed(answer), 0, 'the ferry log of `next` is the one of `now`');
   assert.equal(spy.compares - before, 1);

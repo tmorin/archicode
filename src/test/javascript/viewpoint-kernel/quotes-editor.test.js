@@ -9,6 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { inPlateau, layeredFiles, openLayered } = require('./layered-folders');
 
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
@@ -92,25 +93,22 @@ function before(style) {
   return files;
 }
 
-const PLATEAUS = 'settings:\n  plateaus:\n    - id: base\n      name: Base\n      path: plateaus/10_base\n    - id: target\n      name: Target\n      path: plateaus/20_target\n';
+const PLATEAU_LIST = [
+  { id: 'base', name: 'Base', path: 'plateaus/10_base' },
+  { id: 'target', name: 'Target', path: 'plateaus/20_target' }
+];
 const dir = (name, files) => Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/' + name + '/' + file, body]));
 const path = (file) => 'plateaus/20_target/' + file;
+/** A manifest of the target as it is on disk: the same text, with the plateau in its header. */
+const disk = (text) => inPlateau('target', text);
 
-/** The workspace opened as the editor opens a folder, the target drawn and compared with the base. */
+/** The workspace opened as the editor opens a folder, as layers (see layered-folders.js: siblings over an empty baseline), the target drawn and compared with the base. */
 async function open(files, baseFiles) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': PLATEAUS }, dir('10_base', baseFiles || files), dir('20_target', files)));
-  const sandbox = createApp({});
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
-  await sandbox.loadViewpointKernel();
-  await sandbox.setCompareTo('base');
-  return { sandbox, state, mem };
+  return openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, Object.assign({}, dir('10_base', baseFiles || files), dir('20_target', files))), { drawn: 'target', compared: 'base' });
 }
 const saved = (mem, file) => mem.files.get(path(file)).text;
 /** The names of the target files whose text is not the original. */
-const changed = (mem, files) => Object.keys(files).filter((file) => saved(mem, file) !== files[file]);
+const changed = (mem, files) => Object.keys(files).filter((file) => saved(mem, file) !== disk(files[file]));
 function click(sandbox, attributes) {
   const target = { getAttribute: (name) => (name in attributes ? attributes[name] : null), closest: () => null };
   sandbox.handleAppClick({ target: { closest: (selector) => (selector === '[data-action]' ? target : null) }, preventDefault() {}, stopPropagation() {}, detail: 1 });
@@ -127,24 +125,25 @@ for (const style of ['double', 'single']) {
     assert.deepEqual(plain(result), { ok: true, reference: 'hall.stock', replaces: 2 });
     await sandbox.saveAllChanges();
     assert.deepEqual(changed(mem, files), ['app.depot.stock.yaml', 'app.hall.picker.yaml']);
-    assert.deepEqual(lineDiff(files['app.depot.stock.yaml'], saved(mem, 'app.depot.stock.yaml')), {
+    assert.deepEqual(lineDiff(disk(files['app.depot.stock.yaml']), saved(mem, 'app.depot.stock.yaml')), {
       removed: ['  parent: ' + q('depot')],
       added: ['  parent: ' + q('hall'), '      replaces:', '        - ' + q('depot.stock.counts'), '  replaces:', '    - ' + q('depot.stock')]
     }, 'the parent is the value that changed, the two lists are the lines more');
     // the element inside the file says it too, in its own list
     assert.ok(saved(mem, 'app.depot.stock.yaml').includes('      replaces:\n        - ' + q('depot.stock.counts') + '\n'), 'the component inside the file');
-    assert.deepEqual(lineDiff(files['app.hall.picker.yaml'], saved(mem, 'app.hall.picker.yaml')), {
+    assert.deepEqual(lineDiff(disk(files['app.hall.picker.yaml']), saved(mem, 'app.hall.picker.yaml')), {
       removed: ['    - destination: ' + q('depot.stock'), '    - destination: ' + q('depot.stock.counts')],
       added: ['    - destination: ' + q('hall.stock'), '    - destination: ' + q('hall.stock.counts')]
     }, 'both references follow, each in the quotes it had');
     // nothing else of the file is touched: the comments, the blank line and the final line break are the original's
     for (const file of ['app.depot.stock.yaml', 'app.hall.picker.yaml']) {
       assert.ok(saved(mem, file).startsWith('# the manifest of ') && saved(mem, file).endsWith('\n# end of ' + (file.includes('stock') ? 'stock' : 'picker') + '\n'), file);
-      assert.equal(saved(mem, file).split('\n').length - files[file].split('\n').length, file.includes('stock') ? 4 : 0, 'the lines added, no other');
+      assert.equal(saved(mem, file).split('\n').length - disk(files[file]).split('\n').length, file.includes('stock') ? 4 : 0, 'the lines added, no other');
     }
     // the file is read the same way by the editor
     const again = createApp({});
     await again.loadWorkspace(mem.handle);
+    again.drawPlateau('target');
     assert.ok(again.__state().index.application.has('hall.stock.counts') && again.__state().index.application.get('hall.stock').replaces.includes('depot.stock'));
     assert.equal(state.relationshipStats.dangling, 0);
   });
@@ -155,8 +154,8 @@ for (const style of ['double', 'single']) {
     sandbox.commitElementEdit('depot.stock', (node) => { node.id = 'store'; return { renamedTo: { from: 'depot.stock', to: 'depot.store' } }; });
     await sandbox.saveAllChanges();
     assert.deepEqual(changed(mem, files), ['app.depot.stock.yaml', 'app.hall.picker.yaml']);
-    assert.deepEqual(lineDiff(files['app.depot.stock.yaml'], saved(mem, 'app.depot.stock.yaml')), { removed: ['  id: ' + q('stock')], added: ['  id: ' + q('store')] });
-    assert.deepEqual(lineDiff(files['app.hall.picker.yaml'], saved(mem, 'app.hall.picker.yaml')), {
+    assert.deepEqual(lineDiff(disk(files['app.depot.stock.yaml']), saved(mem, 'app.depot.stock.yaml')), { removed: ['  id: ' + q('stock')], added: ['  id: ' + q('store')] });
+    assert.deepEqual(lineDiff(disk(files['app.hall.picker.yaml']), saved(mem, 'app.hall.picker.yaml')), {
       removed: ['    - destination: ' + q('depot.stock'), '    - destination: ' + q('depot.stock.counts')],
       added: ['    - destination: ' + q('depot.store'), '    - destination: ' + q('depot.store.counts')]
     });
@@ -168,7 +167,7 @@ for (const style of ['double', 'single']) {
     click(sandbox, { 'data-action': 'accept-candidate', 'data-layer': 'application', 'data-from': 'depot.crates', 'data-to': 'depot.shelves' });
     await sandbox.saveAllChanges();
     assert.deepEqual(changed(mem, files), ['app.depot.shelves.yaml']);
-    assert.deepEqual(lineDiff(files['app.depot.shelves.yaml'], saved(mem, 'app.depot.shelves.yaml')), { removed: [], added: ['  replaces:', '    - ' + q('depot.crates')] });
+    assert.deepEqual(lineDiff(disk(files['app.depot.shelves.yaml']), saved(mem, 'app.depot.shelves.yaml')), { removed: [], added: ['  replaces:', '    - ' + q('depot.crates')] });
     assert.ok(saved(mem, 'app.depot.shelves.yaml').endsWith('  replaces:\n    - ' + q('depot.crates') + '\n# end of shelves\n'));
   });
 }
@@ -179,8 +178,8 @@ test('a file with strings that are not quoted stays that way: the moved parent, 
   assert.equal(sandbox.commitMoveElement('depot.stock', 'application', 'hall', { writeReplaces: true }).ok, true);
   await sandbox.saveAllChanges();
   assert.deepEqual(changed(mem, files), ['app.depot.stock.yaml', 'app.hall.picker.yaml']);
-  assert.deepEqual(lineDiff(files['app.depot.stock.yaml'], saved(mem, 'app.depot.stock.yaml')), { removed: ['  parent: depot'], added: ['  parent: hall', '      replaces:', '        - depot.stock.counts', '  replaces:', '    - depot.stock'] });
-  assert.deepEqual(lineDiff(files['app.hall.picker.yaml'], saved(mem, 'app.hall.picker.yaml')), {
+  assert.deepEqual(lineDiff(disk(files['app.depot.stock.yaml']), saved(mem, 'app.depot.stock.yaml')), { removed: ['  parent: depot'], added: ['  parent: hall', '      replaces:', '        - depot.stock.counts', '  replaces:', '    - depot.stock'] });
+  assert.deepEqual(lineDiff(disk(files['app.hall.picker.yaml']), saved(mem, 'app.hall.picker.yaml')), {
     removed: ['    - destination: depot.stock', '    - destination: depot.stock.counts'],
     added: ['    - destination: hall.stock', '    - destination: hall.stock.counts']
   });
@@ -195,7 +194,7 @@ test('a file that mixes the two: a line that is rewritten keeps its own style, a
   const { sandbox, mem } = await open(files, before('double'));
   assert.equal(sandbox.commitMoveElement('depot.stock', 'application', 'hall', { writeReplaces: false }).ok, true);
   await sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(files['app.hall.picker.yaml'], saved(mem, 'app.hall.picker.yaml')), {
+  assert.deepEqual(lineDiff(disk(files['app.hall.picker.yaml']), saved(mem, 'app.hall.picker.yaml')), {
     removed: ['    - destination: "depot.stock"', '    - destination: depot.stock.counts'],
     added: ['    - destination: "hall.stock"', '    - destination: hall.stock.counts']
   });

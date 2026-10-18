@@ -1,7 +1,7 @@
 'use strict';
 // The CLI and the editor give the same counts for the same pair (gate of phase P3 of wave 008). One file is the contract both sides read:
 // src/test/resources/plateau-comparison/expected-counts.json, next to the invented bookshop it describes. This test loads the plateaus of that fixture through the
-// editor's own loader (`loadWorkspace`, `setCompareTo`) and the embedded kernel (`compare`, as `comparisonState()` calls it) and asserts the file; the Java test
+// editor's own loader (`loadWorkspace`, `compareWithPlateau`) and the embedded kernel (`compare`, as `comparisonState()` calls it) and asserts the file; the Java test
 // `PlateauComparisonTest` asserts the output of `archicode diff --format json` against the same file, so either side drifting fails a test.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');

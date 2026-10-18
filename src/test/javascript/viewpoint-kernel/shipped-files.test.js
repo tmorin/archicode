@@ -65,7 +65,6 @@ function exceptions() {
 function problemsOf(state) {
   const problems = [];
   if (state.fatalError) problems.push(state.fatalError);
-  if (state.plateauProblem) problems.push(state.plateauProblem);
   if (state.layerProblems) problems.push(...state.layerProblems); // the first layer of the chain of the plateau drawn that the command line refuses
   for (const f of state.manifestFiles) if (f.error) problems.push('`' + f.relPath + '` is not valid: ' + f.error);
   for (const d of state.duplicateReferences) problems.push(d.message);

@@ -168,11 +168,7 @@
   /* Both headers share one control size (2rem) so buttons line up from the top bar down to the center header. */
   .top-panel button, .element-header button { height: 2rem; padding: 0 0.8rem !important; font-size: 0.875rem; line-height: 1.25; white-space: nowrap; }
   .top-panel .perspective-tabs { flex-shrink: 0; }
-  /* The plateau switch is never wider than the bar (#69): its buttons wrap inside their own group, and Compare to goes under them, so the page does not scroll sideways. */
-  .plateau-switch { display: inline-flex; align-items: center; gap: 0.25rem 0.5rem; flex-wrap: wrap; min-width: 0; max-width: 100%; }
-  .plateau-tabs { flex-wrap: wrap; row-gap: 0.25rem; min-width: 0; max-width: 100%; }
   .plateau-label { font-size: 0.8rem; color: var(--muted); }
-  .plateau-horizon { margin-left: 0.4rem; font-size: 0.75rem; opacity: 0.75; }
   .plateau-problem { font-size: 0.8rem; color: var(--danger); }
   /* The band of plateaus (wave 014, run 0080): the tree of the plateaus under the top bar, then what is compared. It wraps, and the tree scrolls inside itself, so the page never scrolls sideways. */
   .plateau-band { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 1rem; padding: 0.3rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); min-width: 0; max-width: 100%; box-sizing: border-box; }
@@ -239,10 +235,6 @@
   .origin-patches { margin: 0; padding-left: 1rem; list-style: disc; font-size: 0.8rem; }
   .changes-cascade .change-cascade { margin: 0.25rem 0 0.75rem; padding-left: 1rem; list-style: disc; font-size: 0.8rem; line-height: 1.5; }
   .cascade-effect { font-weight: 600; }
-  .compare-control { display: inline-flex; align-items: center; gap: 0.25rem 0.4rem; flex-wrap: wrap; min-width: 0; max-width: 100%; }
-  .compare-control select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 14rem; }
-  .compare-control button { padding: 0.25rem 0.6rem !important; font-size: 0.8rem; }
-  .plateau-list { margin: 0.25rem 0 0 1.5rem; list-style: decimal; line-height: 1.7; }
   .top-panel > .folder-name { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .help-wrap { position: relative; flex-shrink: 0; }
   .top-actions { display: flex; align-items: center; gap: 1rem; margin-left: auto; min-width: 0; max-width: 100%; }
@@ -640,7 +632,7 @@
   .button-group button[aria-pressed="true"] { position: relative; z-index: 1; }
   /* The neighbours overlap by one border (margin -1px): the hovered or focused button rises above them, so none of its borders is hidden. */
   .button-group button:hover, .button-group button:focus-visible { position: relative; z-index: 2; }
-  .perspective-tabs button[aria-pressed="true"], .page-tabs button[aria-pressed="true"], .files-scope button[aria-pressed="true"], .plateau-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"], .band-draw[aria-pressed="true"], .band-toggles button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .perspective-tabs button[aria-pressed="true"], .page-tabs button[aria-pressed="true"], .files-scope button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"], .band-draw[aria-pressed="true"], .band-toggles button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
   /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
   .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -3449,7 +3441,7 @@ async function clearLastFolder(id, others) {
  * The cache of the diagram and the cache of the quiet references of the tree read it too (issue #37, `modelsKey`): a missing bump shows a drawing that is out of date, there as here.
  *
  * THE RULE: any new way to change one of the two models calls `modelsChanged()` once the change is made and before anything is drawn from it.
- * That is every place that assigns `AppState.index` or `AppState.baseline` (a load, a reload, a change of plateau or of Compare to, a rebuild
+ * That is every place that assigns `AppState.index` or `AppState.baseline` (a load, a reload, a change of plateau or of comparison on the band, a rebuild
  * after an edit), and every place that changes a record of either model without replacing it. A bump that was not needed costs one more `compare`;
  * a bump that is missing shows an answer that is out of date. `rebuildIndexAndRender` is the path of every edit of the plateau drawn:
  * an edit that ends there needs nothing more. The baseline is read-only: only a load changes it.
@@ -3471,15 +3463,11 @@ function createInitialAppState() {
     index: { application: new Map(), technology: new Map() },
     relationshipStats: { total: 0, dangling: 0 },
     duplicateReferences: [], // [{ layer, reference, sources, message }]: a reference declared twice is reported, never chosen (see buildIndex)
-    layers: null, // wave 014 (run 0080): what the band says, { current, compare, blocked } (see createLayers); null while a workspace has `settings.plateaus`, which has its own selector
+    layers: null, // wave 014 (run 0080): what the band says, { current, compare, blocked } (see createLayers); null until a workspace is open
     layerProblems: null, // the sentences of the first layer of the chain of the plateau drawn that the command line refuses, else null (see layerModelOf)
     layerUndrawable: false, // the plateau drawn has no graph (the kernel refused the patches of a layer): its index is empty
-    plateauTree: null, // the tree of the layered plateaus the manifests write (see buildPlateauTree): { nodes, ids, problems, redeclared, warnings, layered, layeredBy }
-    plateau: null, // { id, name, horizon, path } of the plateau read; null for a workspace without `settings.plateaus` (see selectPlateau)
-    plateaus: [], // every plateau of settings.plateaus, in the order of the file: what the selector of the header lists
-    plateauProblem: null, // a line, when the folder of the plateau read cannot be found
-    compareTo: '', // the plateau the one drawn is compared with: '' (Nothing), COMPARE_BASELINE_CHOICE (the baseline of the plateau drawn) or the id of a plateau
-    baseline: null, // the plateau compared with, read-only: { plateau, files, index, duplicates, problem }; null while nothing is compared (see loadBaseline)
+    plateauTree: null, // the tree of the layered plateaus the manifests write (see buildPlateauTree): { nodes, ids, problems, redeclared, warnings, layered }
+    baseline: null, // the plateau compared with, read-only: { plateau, index, problem, undrawable }; null while nothing is compared (see syncLayers)
     changesOnly: false, // run 0040: draw only what changed, with its context (the kernel's `only_changes`); a choice of whoever looks, remembered per folder (see rememberFlag)
     hideWording: false, // run 0040: set the changes of wording only (description alone) aside: not marked, not listed, counted apart; remembered per folder
     selection: { kind: 'none', key: null, mode: 'view' },
@@ -3558,12 +3546,15 @@ function readAliased(obj, camelKey, kebabKey, fallback) {
 }
 
 // =====================================================================
-// Plateaus (run 0035): `settings.plateaus` is an ordered list of folders of manifests, one of which is read. The rules
-// and their words are the ones of the command line (`Plateaus.java`): keep them alike.
+// Plateaus (run 0035, wave 014 run 0084): a plateau is a layer (see "The band of plateaus"); what is left of the earlier key is the sentence that
+// tells a workspace file that has it what to write instead, and the small readers the settings share.
 // =====================================================================
 
-const PLATEAU_KEYS = ['id', 'name', 'horizon', 'path', 'baseline'];
-const PLATEAU_ID_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/;
+/** The sentence for a workspace file that still has the key that listed the plateaus. It is the command line's (`WorkspaceFactory.REMOVED_KEY`), word for word. */
+const REMOVED_PLATEAUS_KEY =
+  '`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, ' +
+  'and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, ' +
+  'and `patches` for what it changes)';
 
 /** A scalar of the file as the command line reads it into a String (a number or a boolean is its text); '' for anything else. */
 function plateauText(value) {
@@ -3576,11 +3567,6 @@ function plateauPathProblem(path) {
   if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:/.test(path)) return 'is absolute';
   if (path.split(/[/\\]/).includes('..')) return 'contains `..`';
   return null;
-}
-
-/** A relative path as the editor compares it: the segments joined with `/`, the empty and `.` ones dropped (`.` is the folder itself, ''). */
-function normalizePlateauPath(path) {
-  return String(path).split(/[/\\]/).filter((seg) => seg !== '' && seg !== '.').join('/');
 }
 
 // ---- Where the manifests are (run 0076, issue #73): the entries of `settings.manifests.paths`. The rules are the ones of the command line
@@ -3642,130 +3628,14 @@ function isGeneratedViewsFolder(folder, viewsPath) {
   return found === name || found.startsWith(name + '-');
 }
 
-/** What the keys of the plateaus say before they are read as a model: a mapping of `id`, `name`, `horizon` and `path`; `from` is reserved. */
-function checkPlateauStructure(plateaus) {
+/** The entries of `settings.manifests.paths` the command line refuses before it reads any manifest (`ManifestDiscovery.pathProblems`), in its words, sorted as it sorts them. */
+function manifestsPathProblems(settings) {
   const problems = [];
-  if (plateaus === undefined || plateaus === null) return problems;
-  if (!Array.isArray(plateaus)) return ['`settings.plateaus` must be a list of plateaus, each with an `id` and a `path`'];
-  plateaus.forEach((plateau, index) => {
-    const number = index + 1;
-    if (!plateau || typeof plateau !== 'object' || Array.isArray(plateau)) {
-      problems.push('the plateau number ' + number + ' of `settings.plateaus` must be a mapping with an `id` and a `path`');
-      return;
-    }
-    const id = plateauText(plateau.id);
-    const label = id.trim() === '' ? 'the plateau number ' + number : 'the plateau `' + id + '`';
-    for (const key of Object.keys(plateau)) {
-      if (key === 'from') {
-        problems.push(label + ' has a `from`: it is reserved for a later version of ArchiCode, where a plateau will be an increment on top of another one, and is not accepted yet. ' +
-          'Remove it and give the plateau its own `path`, holding all its manifests (`archicode plateau add` copies a plateau into a new folder)');
-      } else if (!PLATEAU_KEYS.includes(key)) {
-        problems.push(label + ' has the key `' + key + '`, which ArchiCode does not know: a plateau has `id`, `name`, `horizon`, `path` and `baseline`');
-      }
-    }
-  });
+  for (const path of settings.manifests.paths.slice().sort()) {
+    const sentence = manifestsPathSentence(path);
+    if (sentence !== null) problems.push(sentence);
+  }
   return problems;
-}
-
-/**
- * Check every rule on the plateaus and choose the one to read: `requested` (an id), else `settings.current`, else the last
- * one. `{ problems }` when a rule is broken (one message each, the words of the command line); else `{ plateau, path }`,
- * both null for a workspace that has no plateaus (one set of manifests, `manifests.paths`). `deferCurrent`: leave the check of `settings.current` of a workspace with no `settings.plateaus` to the caller.
- */
-function selectPlateau(settings, requested, deferCurrent) {
-  const structure = checkPlateauStructure(settings.plateaus);
-  if (structure.length) return { problems: structure };
-  const plateaus = settings.plateaus || [];
-  const current = settings.current === '' || settings.current === undefined ? null : settings.current;
-  const problems = [];
-  if (plateaus.length === 0) {
-    for (const path of settings.manifests.paths.slice().sort()) {
-      const sentence = manifestsPathSentence(path);
-      if (sentence !== null) problems.push(sentence);
-    }
-    // `deferCurrent` (wave 014, run 0080): whether `settings.current` names a plateau is known once the manifests are read, as the command line does (`Plateaus.requireNoPlateaus`): see `layersOfSettingsCurrent`
-    if (current !== null && !deferCurrent) problems.push('`settings.current` is `' + current + '` but the workspace declares no `settings.plateaus`');
-    if (requested !== null && requested !== undefined) problems.push('`--plateau ' + requested + '` cannot be used: the workspace declares no `settings.plateaus`');
-    return problems.length ? { problems } : { plateau: null, path: null };
-  }
-  if (settings.manifestsPathsWritten) {
-    problems.push('`settings.manifests.paths` and `settings.plateaus` are both written: choose one. `manifests.paths` is the short form of a workspace with a single set of manifests; ' +
-      'with `settings.plateaus`, give each plateau its own `path` and remove `manifests.paths`');
-  }
-  const ids = new Map();
-  const paths = new Map();
-  const repeated = [];
-  plateaus.forEach((plateau, index) => {
-    const id = plateauText(plateau.id);
-    const label = id.trim() === '' ? 'the plateau number ' + (index + 1) : 'the plateau `' + id + '`';
-    if (id.trim() === '') {
-      problems.push(label + ' has no `id`');
-    } else if (!PLATEAU_ID_PATTERN.test(id)) {
-      problems.push('the plateau id `' + id + '` is not valid: use letters, digits, `.`, `_` and `-`, starting with a letter, a digit or `_`');
-    } else {
-      ids.set(id, (ids.get(id) || 0) + 1);
-      if (ids.get(id) === 2) repeated.push(id);
-    }
-    const path = plateauText(plateau.path);
-    const example = 'plateaus/' + (id.trim() === '' ? 'p1' : id);
-    if (path.trim() === '') {
-      problems.push(label + ' has no `path`: write the folder of its manifests, relative to the folder of workspace.yaml (for example `' + example + '`)');
-      return;
-    }
-    const problem = plateauPathProblem(path);
-    if (problem !== null) {
-      problems.push('the path `' + path + '` of ' + label + ' ' + problem + ': it must be a folder below the one of workspace.yaml, written relative to it, without `..` (for example `' + example + '`)');
-      return;
-    }
-    const normalised = normalizePlateauPath(path);
-    if (normalised === '' && plateaus.length > 1) {
-      problems.push(label + ' has the path `' + path + '`, which is the folder of workspace.yaml itself and holds the others: with several plateaus, give each one a folder of its own');
-    }
-    if (paths.has(normalised) && normalised !== '') {
-      problems.push('the plateaus `' + paths.get(normalised) + '` and `' + id + '` share the path `' + normalised + '`: each plateau needs a folder of its own');
-    } else if (!paths.has(normalised)) {
-      paths.set(normalised, id);
-    }
-  });
-  repeated.sort().forEach((id) => problems.push('the plateau id `' + id + '` is used more than once'));
-  // run 0039: a `baseline` names another plateau of the list (the words of `Plateaus.java`: the CLI refuses an unknown one, so must the editor)
-  const knownIds = plateaus.map((p) => '`' + plateauText(p.id) + '`').join(', ');
-  plateaus.forEach((plateau) => {
-    if (plateau.baseline === undefined || plateau.baseline === null) return;
-    const baseline = plateauText(plateau.baseline);
-    const label = 'the plateau `' + plateauText(plateau.id) + '`';
-    if (baseline === plateauText(plateau.id)) {
-      problems.push(label + ' names itself as its `baseline`: choose another plateau to compare it with');
-    } else if (!plateaus.some((p) => plateauText(p.id) === baseline)) {
-      problems.push(label + ' has the `baseline` `' + baseline + '`, which is not in `settings.plateaus` (' + knownIds + ')');
-    }
-  });
-  if (problems.length) return { problems };
-
-  const idList = plateaus.map((p) => '`' + plateauText(p.id) + '`').join(', ');
-  if (current !== null && !plateaus.some((p) => plateauText(p.id) === current)) {
-    return { problems: ['`settings.current` names the plateau `' + current + '`, which is not in `settings.plateaus` (' + idList + ')'] };
-  }
-  const wanted = requested !== null && requested !== undefined ? requested : current;
-  const chosen = wanted === null ? plateaus[plateaus.length - 1] : plateaus.find((p) => plateauText(p.id) === wanted);
-  if (!chosen) return { problems: ['unknown plateau `' + wanted + '`: the plateaus of this workspace are ' + idList] };
-  return { plateau: plateauModel(chosen), path: normalizePlateauPath(plateauText(chosen.path)) };
-}
-
-/** A plateau as the editor holds it: `{ id, name, horizon, path, baseline }`, the texts the file gave (an unknown key stays in the file, not here); `baseline` is '' when the plateau has none. */
-function plateauModel(raw) {
-  return { id: plateauText(raw.id), name: plateauText(raw.name), horizon: plateauText(raw.horizon), path: plateauText(raw.path), baseline: plateauText(raw.baseline) };
-}
-
-/**
- * The plateau a plateau is compared with by the rule of the command line (`Plateaus.baseline`): its `baseline` key, else the plateau
- * before it in the list, else none (the first plateau). `plateaus` are the models of `AppState.plateaus`; null when there is nothing.
- */
-function ownBaselineOf(plateau, plateaus) {
-  if (!plateau) return null;
-  if (plateau.baseline !== '') return plateaus.find((p) => p.id === plateau.baseline) || null;
-  const index = plateaus.findIndex((p) => p.id === plateau.id);
-  return index > 0 ? plateaus[index - 1] : null;
 }
 
 /** What the page calls a plateau: its name, else its id. */
@@ -3799,12 +3669,11 @@ function rememberPlateauId(id) {
 }
 
 // =====================================================================
-// Compare to (run 0039): the plateau drawn can be compared with another one of the same workspace. The other one, the baseline, is read
-// from the folder the editor already holds (its handle covers every plateau), kept apart from the plateau being edited, and never written.
+// The comparison (run 0039, wave 014 run 0084): the plateau drawn can be compared with another one of the same workspace, on the band. The other one is another
+// resolution of the manifests already read (`AppState.baseline`), kept apart from the plateau being edited, and never written. What the band chose is
+// remembered per folder in this browser, with the plateau drawn and the two flags of whoever looks.
 // =====================================================================
 
-/** The value of the Compare to select that follows the plateau drawn: its own baseline by the rule of the command line. */
-const COMPARE_BASELINE_CHOICE = '@baseline';
 const COMPARE_STORAGE_PREFIX = 'archicode-standalone-editor:compare:';
 
 // what was chosen in this page, for a browser that refuses its storage: the choice then lasts as long as the page
@@ -3815,21 +3684,21 @@ function compareStorageKey() {
   return folder ? COMPARE_STORAGE_PREFIX + (folder.id || 'name:' + folder.name) : null;
 }
 
-/** The Compare to remembered for this folder in this browser: '' (Nothing), `@baseline` or a plateau id; null when none was ever chosen. */
-function recalledCompareTo() {
+/** The comparison remembered for this folder in this browser (see `layerCompareChoice`): '' (nothing compared), `past`, `future`, `future:<id>` or `other:<id>`; null when none was ever chosen. */
+function recalledComparison() {
   const key = compareStorageKey();
   if (key === null) return null;
   return chosenComparisons.has(key) ? chosenComparisons.get(key) : panelSizeStorage.get(key);
 }
 
-function rememberCompareTo(choice) {
+function rememberComparison(choice) {
   const key = compareStorageKey();
   if (key === null) return;
   chosenComparisons.set(key, choice);
   panelSizeStorage.set(key, choice);
 }
 
-// Two more choices of whoever looks (run 0040), remembered per folder like the Compare to: `changes-only` and `hide-wording`, '1' or '0'.
+// Two more choices of whoever looks (run 0040), remembered per folder like the comparison: `changes-only` and `hide-wording`, '1' or '0'.
 const FLAG_STORAGE_PREFIX = 'archicode-standalone-editor:flag:';
 const chosenFlags = new Map(); // for a browser that refuses its storage: the choice then lasts as long as the page
 
@@ -3852,83 +3721,9 @@ function rememberFlag(name, value) {
   panelSizeStorage.set(key, value ? '1' : '0');
 }
 
-/** A choice of Compare to the workspace can honour: Nothing, the baseline shortcut, or a plateau of the list. Anything else is Nothing. */
-function validCompareChoice(choice, plateaus) {
-  if (typeof choice !== 'string' || choice === '') return '';
-  if (choice === COMPARE_BASELINE_CHOICE) return choice;
-  return plateaus.some((p) => p.id === choice) ? choice : '';
-}
-
-/**
- * The plateau the one drawn is compared with, or null (Nothing; fewer than two plateaus; a baseline shortcut for a plateau that has none;
- * the plateau compared with itself, which compares nothing). The choice itself stays as it was made: leaving a plateau for the one that was
- * the baseline, and coming back, finds the comparison again.
- */
+/** The plateau the one drawn is compared with (a plateau of the page), or null: nothing is compared, or the band still waits for the choice of the future. */
 function compareTargetPlateau() {
-  if (AppState.layers) return layerCompareOther();
-  if (!AppState.plateau || AppState.plateaus.length < 2 || !AppState.compareTo) return null;
-  const target = AppState.compareTo === COMPARE_BASELINE_CHOICE
-    ? ownBaselineOf(AppState.plateau, AppState.plateaus)
-    : AppState.plateaus.find((p) => p.id === AppState.compareTo) || null;
-  return target && target.id !== AppState.plateau.id ? target : null;
-}
-
-/**
- * Read the folder of the plateau compared with, as a model of its own (run 0039): the same reading as the plateau drawn (`readManifestFolder`,
- * `buildIndex`, `resolveRelationships`), and none of its machinery: the files are not in `AppState.manifestFiles`, so nothing counts them as
- * modified or writes them, and no handle to write with is kept. A reference declared twice in it is reported (`duplicates`) and a folder that
- * is not there is told (`problem`), as for the plateau drawn; neither stops the plateau from loading.
- */
-async function loadBaseline(rootHandle, settings) {
-  if (AppState.layers) return;
-  const target = compareTargetPlateau();
-  if (!target) { AppState.baseline = null; modelsChanged(); return; }
-  const relDir = normalizePlateauPath(target.path);
-  const folder = await readManifestFolder(rootHandle, relDir);
-  folder.files.sort((a, b) => compareCodePoints(a.relPath, b.relPath)); // as the plateau's own files are (and as the command line sorts them): the order of a listing is the file system's
-  const { index, duplicates, plateauTree } = buildIndex(folder.files, settings);
-  resolveRelationships(index);
-  // what in it could not be read is told too: a manifest that does not parse leaves its elements out of the comparison, and they would read as new
-  const unreadable = folder.files.filter((f) => f.error).map((f) => '`' + f.relPath + '`');
-  const problems = [];
-  if (folder.missing) problems.push('The folder `' + relDir + '` of the plateau `' + target.id + '` does not exist.');
-  if (plateauTree.layered) problems.push('The plateau `' + target.id + '` of `settings.plateaus` cannot be read: ' + layeredAndSettingsPlateausSentence(plateauTree) + '.');
-  if (unreadable.length) problems.push((unreadable.length === 1 ? 'The manifest ' : unreadable.length + ' manifests, ') + unreadable.slice(0, 3).join(', ') + (unreadable.length > 3 ? ' and more' : '') + ' of the plateau `' + target.id + '` could not be read, so what ' + (unreadable.length === 1 ? 'it declares' : 'they declare') + ' is not compared.');
-  AppState.baseline = { plateau: target, files: folder.files, index, duplicates, problem: problems.length ? problems.join(' ') : null };
-  modelsChanged();
-}
-
-/** `loadBaseline` that never throws: a folder the browser cannot read is the baseline's problem, said in the header, not an error of the page. */
-async function loadBaselineSafely(rootHandle, settings) {
-  if (AppState.layers) return; // the plateau compared with is another resolution of the manifests already read (see `syncLayers`), not a folder
-  try {
-    await loadBaseline(rootHandle, settings);
-  } catch (e) {
-    console.error('ArchiCode: the baseline could not be read', e);
-    const target = compareTargetPlateau();
-    AppState.baseline = target ? { plateau: target, files: [], index: { application: new Map(), technology: new Map() }, duplicates: [], problem: 'The plateau `' + target.id + '` could not be read: ' + (e && e.message ? e.message : String(e)) } : null;
-    modelsChanged();
-  }
-}
-
-/** Reload the baseline from the disk (the Reload button: the folder may have changed while the page stayed open) and draw again. */
-async function reloadBaseline() {
-  if (AppState.layers || !AppState.workspace || !AppState.folder || !AppState.folder.handle || !compareTargetPlateau()) return;
-  await loadBaselineSafely(AppState.folder.handle, AppState.workspace.settings);
-  diagramCache = null;
-  render();
-}
-
-/** Compare to changed: remembered for this folder, the baseline read, the page drawn again. `choice`: '' (Nothing), `@baseline` or a plateau id. */
-async function setCompareTo(choice) {
-  if (!AppState.workspace || !AppState.plateau) return;
-  const next = validCompareChoice(choice, AppState.plateaus);
-  if (next === AppState.compareTo) return;
-  AppState.compareTo = next;
-  rememberCompareTo(next);
-  await loadBaselineSafely(AppState.folder.handle, AppState.workspace.settings);
-  diagramCache = null;
-  render();
+  return layerCompareOther();
 }
 
 function parseSettings(rawSettings) {
@@ -3963,11 +3758,7 @@ function parseSettings(rawSettings) {
       // a number or a boolean is read as the text it is, as the command line reads it
       paths: Array.isArray(manifestsRaw.paths) ? manifestsRaw.paths.map((p) => (typeof p === 'number' || typeof p === 'boolean' ? String(p) : p)) : ['manifests']
     },
-    // run 0035: the plateaus as the file has them (checked by `selectPlateau`, kept as they are in the file when it is saved)
-    plateaus: raw.plateaus === undefined || raw.plateaus === null ? [] : raw.plateaus,
     current: plateauText(raw.current),
-    // whether `manifests.paths` is written: its default is not, and does not count against `plateaus`
-    manifestsPathsWritten: Object.prototype.hasOwnProperty.call(manifestsRaw, 'paths'),
     relationships: {
       defaultSyntheticLabel: readAliased(relationshipsRaw, 'defaultSyntheticLabel', 'default-synthetic-label', 'uses')
     },
@@ -4206,7 +3997,7 @@ function plateauCycles(parents) {
 }
 
 /**
- * The tree of the plateaus of the manifests, checked: `{ nodes, ids, problems, redeclared, warnings, layered, layeredBy }`. `nodes` is a Map id -> `{ id, name,
+ * The tree of the plateaus of the manifests, checked: `{ nodes, ids, problems, redeclared, warnings, layered }`. `nodes` is a Map id -> `{ id, name,
  * horizon, parent, patches, manifest, headers }` in the order of the tree (`baseline`, then what overrides it, each followed by what overrides it,
  * the siblings by id); `problems` are the mistakes of the tree, one sentence each (the command line stops on them); `warnings` are what is odd
  * without being wrong. A manifest with an error is left out: the file says why.
@@ -4214,24 +4005,24 @@ function plateauCycles(parents) {
 function buildPlateauTree(manifestFiles) {
   const declaredBy = new Map(); // id -> [{ content, source }]
   const headers = new Map(); // id -> [relPath]
-  let layeredBy = null;
+  let layered = false; // a manifest of kind plateau, or a header that says `plateau:`
   for (const mf of manifestFiles) {
     if (mf.error || !mf.header || !mf.content) continue;
     if (manifestKindName(mf.header.kind) === 'plateau') {
       const id = String(mf.content.id);
       if (!declaredBy.has(id)) declaredBy.set(id, []);
       declaredBy.get(id).push({ content: mf.content, source: mf.relPath });
-      if (layeredBy === null) layeredBy = '`' + mf.relPath + '` is a manifest of kind `archicode.morin.io/plateau`';
+      layered = true;
       continue;
     }
     const written = headerPlateau(mf.header);
     if (written === null) continue;
     if (!headers.has(written)) headers.set(written, []);
     headers.get(written).push(mf.relPath);
-    if (layeredBy === null) layeredBy = '`' + mf.relPath + '` says `plateau: ' + written + '` in its header';
+    layered = true;
   }
-  const model = { nodes: new Map(), ids: [], problems: [], redeclared: [], warnings: [], layered: layeredBy !== null, layeredBy };
-  if (layeredBy === null) {
+  const model = { nodes: new Map(), ids: [], problems: [], redeclared: [], warnings: [], layered };
+  if (!layered) {
     model.nodes.set(BASELINE_PLATEAU, { id: BASELINE_PLATEAU, name: null, horizon: null, parent: null, patches: [], manifest: null, headers: [] });
     model.ids = [BASELINE_PLATEAU];
     return model;
@@ -4348,11 +4139,6 @@ function checkPlateauRedeclarations(model, declarations) {
   }
 }
 
-/** The sentence for a workspace that has `settings.plateaus` and uses layered plateaus; the command line says the same (`WorkspaceFactory`). */
-function layeredAndSettingsPlateausSentence(model) {
-  return '`settings.plateaus` and layered plateaus are both used: ' + model.layeredBy + '. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`';
-}
-
 
 // =====================================================================
 // The layers (wave 014, run 0080). A plateau is drawn as its chain: for each plateau from `baseline` down to it, the elements whose manifests say
@@ -4427,10 +4213,10 @@ function bandOrderOf(tree) {
   return out;
 }
 
-/** A plateau of the tree as the page holds a plateau (`plateauModel`): `{ id, name, horizon, path, baseline }`; `path` is empty, a layer has no folder of its own. */
+/** A plateau of the tree as the page holds a plateau: `{ id, name, horizon }`, the texts of its manifest ('' when it has none). */
 function layerPlateauModel(id) {
   const node = AppState.plateauTree && AppState.plateauTree.nodes.get(id);
-  return { id, name: node && node.name ? node.name : '', horizon: node && node.horizon ? node.horizon : '', path: '', baseline: node && node.parent ? node.parent : '' };
+  return { id, name: node && node.name ? node.name : '', horizon: node && node.horizon ? node.horizon : '' };
 }
 
 function clonePlain(value) {
@@ -4840,14 +4626,14 @@ function cascadeOf(removals, base) {
 }
 
 // =====================================================================
-// The band of plateaus (wave 014, run 0080). Always on the page of a workspace that has no `settings.plateaus` (which has its own selector): `baseline` alone when no
+// The band of plateaus (wave 014, run 0080). Always on the page of an open workspace, the one way to choose and compare the plateaus. It shows `baseline` alone when no
 // manifest says `plateau:`, else one node per plateau placed by the tree. A click on a node draws that plateau (the whole editor draws it: `AppState.index` is its
 // resolved model); two toggles compare it with the past (the plateau it overrides) or the future (the plateau that overrides it; the band asks which when there are
-// several); a button on any other node compares the two. The comparison is the machinery of Compare to (run 0039): `AppState.baseline` is the plateau compared with.
+// several); a button on any other node compares the two. The comparison is the machinery of run 0039: `AppState.baseline` is the plateau compared with.
 // =====================================================================
 
 /**
- * The layers of the workspace on screen: `{ current, compare, blocked }`, or null when the workspace has `settings.plateaus`.
+ * The layers of the workspace on screen: `{ current, compare, blocked }`, or null while no workspace is open.
  * `current`: the id of the plateau drawn. `compare`: null, or `{ mode, other, chosen }`: `mode` is `past` (`other` is the plateau it overrides: the base), `future`
  * (`other` is a plateau that overrides it: the target; null while the band waits for the choice) or `other` (any other plateau: the base); `chosen` says that the
  * target was picked on the band. `blocked`: null, or why only `baseline` is drawn (a mistake in the tree, a reference declared twice).
@@ -4947,7 +4733,7 @@ function syncLayers() {
   const other = layerCompareOther();
   const otherModel = other ? layerModelOf(other.id, settings) : null;
   AppState.index = model.index;
-  AppState.baseline = other ? { plateau: other, files: [], index: otherModel.index, duplicates: [], problem: otherModel.problems ? otherModel.problems.join('\n') : null, undrawable: otherModel.undrawable } : null;
+  AppState.baseline = other ? { plateau: other, index: otherModel.index, problem: otherModel.problems ? otherModel.problems.join('\n') : null, undrawable: otherModel.undrawable } : null;
   modelsChanged();
   AppState.workspace.application.elements = model.roots.application;
   AppState.workspace.technology.elements = model.roots.technology;
@@ -5048,7 +4834,7 @@ function layerCompareChoice() {
 function rememberLayerChoice() {
   if (!AppState.layers) return;
   rememberPlateauId(AppState.layers.current);
-  rememberCompareTo(layerCompareChoice());
+  rememberComparison(layerCompareChoice());
 }
 
 /** A remembered or addressed comparison as `{ mode, other, chosen }`, or null when it says nothing the tree can honour. */
@@ -5061,9 +4847,12 @@ function layerCompareFromChoice(choice) {
   return null;
 }
 
-/** `settings.current` of a workspace with no `settings.plateaus`: the sentence of the command line when it names no plateau of the layers (`WorkspaceFactory.chosen`, `Plateaus.requireNoPlateaus`), else null. */
+/** What makes a plateau, said wherever a workspace has none and is asked for one (`WorkspaceFactory.NO_PLATEAU`). */
+const NO_PLATEAU = ' (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)';
+
+/** `settings.current` when it names no plateau of the layers: the sentence of the command line (`WorkspaceFactory.chosen`, `noPlateausProblems`), else null. */
 function layersOfSettingsCurrentProblem(current, tree) {
-  if (!tree.layered) return '`settings.current` is `' + current + '` but the workspace declares no `settings.plateaus`';
+  if (!tree.layered) return '`settings.current` is `' + current + '` but the workspace declares no plateau' + NO_PLATEAU;
   if (tree.problems.length || tree.nodes.has(current)) return null;
   return '`settings.current` names the plateau `' + current + '`, which is not a plateau of this workspace (the plateaus are ' + tree.ids.map((id) => '`' + id + '`').join(', ') + ')';
 }
@@ -5076,7 +4865,7 @@ function plateauFromHash() {
 }
 
 /**
- * The band of a workspace that has no `settings.plateaus`: the plateau drawn is the one the address names, else the one this browser last drew in this folder, else
+ * The band: the plateau drawn is the one the address names, else the one this browser last drew in this folder, else
  * `settings.current`, else `baseline` (the command line asks for a name when the plateaus fork; the editor starts from the root, where it can edit); the comparison is the
  * one of the address, else the one this browser last chose. The kernel is loaded first when there are layers to resolve, since the patches are applied by it.
  */
@@ -5084,7 +4873,7 @@ async function openLayers(settings, tree) {
   const known = (id) => !!id && tree.layered && !tree.problems.length && tree.nodes.has(id);
   const current = [plateauFromHash(), recalledPlateauId(), settings.current === '' ? null : settings.current].find(known) || BASELINE_PLATEAU;
   const fromAddress = compareFromHash();
-  AppState.layers = createLayers(current, layerCompareFromChoice(fromAddress !== null ? fromAddress : recalledCompareTo()));
+  AppState.layers = createLayers(current, layerCompareFromChoice(fromAddress !== null ? fromAddress : recalledComparison()));
   if (tree.layered && !layersBlockedReason()) {
     try {
       await loadViewpointKernel();
@@ -5093,6 +4882,7 @@ async function openLayers(settings, tree) {
     }
   }
   syncLayers();
+  if (fromAddress !== null && AppState.layers.compare) rememberLayerChoice(); // an address that names a comparison the plateaus can honour is a choice made (run 0040): it wins over what this browser had, and is kept like it
 }
 
 // ---- What each node says: the changes it brings over the plateau it overrides ----
@@ -5109,7 +4899,7 @@ function layerNodeCounts(id) {
   const base = layerModelOf(node.parent, settings);
   let counts = null;
   if (!target.problems && !base.problems) {
-    const answer = loadedKernel.compare(comparisonInputBetween(base.index, target.index, true));
+    const answer = loadedKernel.compare(comparisonInputBetween(base.index, target.index));
     if (!answer.error) counts = answer.counts;
   }
   cache.counts.set(id, counts);
@@ -5211,7 +5001,7 @@ function layerModelBroken(id) {
   return layerModelOf(id, AppState.workspace.settings).problems;
 }
 
-/** The band: the tree of the plateaus, the two toggles, what is compared, and the mistakes of the plateau drawn. Null (nothing) when the workspace has `settings.plateaus`. */
+/** The band: the tree of the plateaus, the two toggles, what is compared, and the mistakes of the plateau drawn. Nothing while no workspace is open. */
 function renderPlateauBandHtml() {
   const layers = AppState.layers;
   if (!layers || !AppState.workspace || !AppState.plateauTree) return '';
@@ -5464,13 +5254,13 @@ function layerDigest() {
   const settings = AppState.workspace.settings;
   const digest = {
     sentences: tree.problems.map(String).concat((tree.redeclared || []).map(String), elementDuplicates().map((d) => 'the reference `' + d.reference + '` is declared twice (' + d.sources.join(', ') + ')')),
-    plateaus: new Map()
+    byPlateau: new Map()
   };
   if (tree.problems.length || layersBlockedReason()) return digest;
   for (const id of tree.ids) {
     const result = layerStateOf(id, settings);
-    if (result.fatal) digest.plateaus.set(id, { fatal: oneLine(result.fatal[0]), graph: null, sentences: result.earlier ? result.earlier.sentences : [] });
-    else digest.plateaus.set(id, { fatal: null, graph: JSON.stringify(result.state.graph), sentences: result.state.problems ? result.state.problems.sentences : [] });
+    if (result.fatal) digest.byPlateau.set(id, { fatal: oneLine(result.fatal[0]), graph: null, sentences: result.earlier ? result.earlier.sentences : [] });
+    else digest.byPlateau.set(id, { fatal: null, graph: JSON.stringify(result.state.graph), sentences: result.state.problems ? result.state.problems.sentences : [] });
   }
   return digest;
 }
@@ -5481,8 +5271,8 @@ function judgeLayerWrite(before, after, written) {
   const mistake = fresh(after.sentences, before.sentences);
   if (mistake) return { broken: oneLine(mistake), changed: [] };
   const changed = [];
-  for (const [id, now] of after.plateaus) {
-    const then = before.plateaus.get(id);
+  for (const [id, now] of after.byPlateau) {
+    const then = before.byPlateau.get(id);
     if (now.fatal && (!then || !then.fatal)) return { broken: 'the plateau `' + id + '` could no longer be resolved (' + now.fatal + ')', changed: [] };
     const sentence = fresh(now.sentences, then ? then.sentences : []);
     if (sentence) return { broken: oneLine(sentence), changed: [] };
@@ -5497,7 +5287,7 @@ function judgeLayerWrite(before, after, written) {
  *   - no plateau that resolved before is refused now, and no new mistake appears in the tree or in a plateau;
  *   - the plateaus other than `spec.plateau` whose graph changed are told to the author, who has to say yes (`spec.confirmed`); until then nothing is kept.
  * A write that is not kept puts everything back (`snapshotWriteState`) and the page is drawn again. A refusal is an `Error` with one sentence. Pending confirmation:
- * the dialog of `spec.again` is opened and `{ pending: true, plateaus }` is returned. `spec`: { plateau, write, verify, confirmed, again, summary }.
+ * the dialog of `spec.again` is opened and `{ pending: true, changed }` (the plateaus it changes) is returned. `spec`: { plateau, write, verify, confirmed, again, summary }.
  */
 function guardedLayerWrite(spec) {
   if (!AppState.layers || !AppState.workspace || !AppState.plateauTree) return spec.write();
@@ -5522,7 +5312,7 @@ function guardedLayerWrite(spec) {
     rebuildIndexAndRender();
     if (verdict.broken) throw new Error('Not written: ' + verdict.broken.replace(/\.$/, '') + '. Nothing was changed.');
     openAppDialog({ kind: 'layer-confirm', plateau: spec.plateau, summary: spec.summary, changed: verdict.changed.slice(), onConfirm: spec.again, afterConfirm: spec.afterConfirm });
-    return { pending: true, plateaus: verdict.changed.slice() };
+    return { pending: true, changed: verdict.changed.slice() };
   }
   return result;
 }
@@ -6226,11 +6016,10 @@ function normalizeRelDir(relDir) {
 }
 
 /**
- * The folder a new manifest is written to: the folder of the plateau read, else the first manifests directory of the
- * workspace (as loadWorkspace reads it: `./manifests` is `manifests`); undefined when there is none.
+ * The folder a new manifest is written to: the first manifests directory of the workspace (as loadWorkspace reads it: `./manifests` is `manifests`);
+ * undefined when there is none.
  */
 function firstManifestsDir() {
-  if (AppState.plateau) return normalizeRelDir(AppState.plateau.path) || '';
   return AppState.workspace.settings.manifests.paths.map((p) => normalizeRelDir(manifestsFolderOf(p))).find((p) => p !== null);
 }
 
@@ -6280,7 +6069,7 @@ const READ_SCHEMA = {
     "Application": { "fields": { "elements": "[*ApplicationElement]" } },
     "Technology": { "fields": { "elements": "[*TechnologyElement]" } },
     "Workspace": { "fields": { "application": "Application", "formatters": "Formatters", "settings": "Settings", "stories": "any", "story": "any", "styles": "Styles", "technology": "Technology", "view": "any", "views": "any" } },
-    "Settings": { "fields": { "current": "text", "facets": "Facets", "manifests": "Manifests", "name": "text", "plateaus": "any", "relationships": "Relationships", "views": "Views" } },
+    "Settings": { "fields": { "current": "text", "facets": "Facets", "manifests": "Manifests", "name": "text", "relationships": "Relationships", "views": "Views" } },
     "Manifests": { "fields": { "paths": "texts" } },
     "Relationships": { "fields": { "default-synthetic-label": "text" } },
     "Views": { "fields": { "labels": "text-map", "path": "text", "properties": "object-map" } },
@@ -6546,12 +6335,12 @@ function plateauShapeProblem(content) {
 }
 
 /**
- * The first problem `workspace.yaml` has, as the command line's sentence without the file and the place, or null: the keys it takes and
- * the shape of each value. The rules of the plateaus come first and are told by `selectPlateau`, as the command line checks them first.
+ * The first problem `workspace.yaml` has, as the command line's sentence without the file and the place, or null: the key that no longer exists
+ * (the command line looks for it first, before anything else is read: `WorkspaceFactory.read`), then the keys it takes and the shape of each value.
  */
 function workspaceProblem(raw) {
   const settings = readIsObject(raw.settings) ? raw.settings : {};
-  if (checkPlateauStructure(settings.plateaus).length) return null;
+  if (Object.prototype.hasOwnProperty.call(settings, 'plateaus')) return REMOVED_PLATEAUS_KEY;
   return readObject('Workspace', raw, '', '', false);
 }
 
@@ -6575,8 +6364,7 @@ function parseManifestText(text) {
 const WORKSPACE_FILE_NAME = 'workspace.yaml'; // the only workspace file the editor opens (and writes)
 
 /**
- * The manifests of one folder below the root handle (run 0039: the reading loop of `loadWorkspace` as a function of a folder, so that a
- * second plateau, the baseline, is read by the same code): the direct children of `relDir` that are YAML, as the records
+ * The manifests of one folder below the root handle (the reading loop of `loadWorkspace` as a function of a folder): the direct children of `relDir` that are YAML, as the records
  * `buildIndex` takes, and the paths of the `.toml` and `.json` files the command line reads and the editor does not. `missing`:
  * the folder is not there (or cannot be read). The records are new objects each call; nothing here writes.
  *
@@ -6654,9 +6442,6 @@ async function loadWorkspace(dirHandle) {
   AppState.index = { application: new Map(), technology: new Map() };
   AppState.relationshipStats = { total: 0, dangling: 0 };
   AppState.duplicateReferences = [];
-  AppState.plateau = null;
-  AppState.plateaus = [];
-  AppState.plateauProblem = null;
   AppState.baseline = null;
   modelsChanged(); // the models are emptied here, and a load that stops on an error leaves them so
   AppState.plateauTree = null;
@@ -6684,7 +6469,7 @@ async function loadWorkspace(dirHandle) {
     return;
   }
 
-  // run 0072: the keys and the shapes the command line refuses, in its words (the rules of the plateaus come first, below)
+  // run 0072: the key that no longer exists, then the keys and the shapes the command line refuses, in its words
   const readProblem = workspaceProblem(workspaceRaw);
   if (readProblem) {
     AppState.fatalError = 'Could not read/parse workspace.yaml: ' + readProblem;
@@ -6695,35 +6480,24 @@ async function loadWorkspace(dirHandle) {
 
   const settings = parseSettings(workspaceRaw.settings);
 
-  // run 0035: the plateau to read. The one this browser last drew in this folder when it is still there, else
-  // `settings.current`, else the last of the list; a rule broken by the plateaus (or by a manifests path that leaves the
-  // folder) is refused like the command line refuses it, with its words.
-  const remembered = recalledPlateauId();
-  const stillThere = remembered !== null && Array.isArray(settings.plateaus) && settings.plateaus.some((p) => p && typeof p === 'object' && plateauText(p.id) === remembered);
-  const selection = selectPlateau(settings, stillThere ? remembered : null, true);
-  if (selection.problems) {
-    AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + selection.problems.join('\n');
+  // a manifests path that leaves the folder, or uses `**` where it is not read, is refused like the command line refuses it, with its words
+  const pathProblems = manifestsPathProblems(settings);
+  if (pathProblems.length) {
+    AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + pathProblems.join('\n');
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     render();
     return;
   }
-  AppState.plateau = selection.plateau;
-  AppState.plateaus = selection.plateau ? settings.plateaus.map(plateauModel) : [];
-  // run 0039: the comparison this browser last chose in this folder, when the workspace can still honour it
-  AppState.compareTo = selection.plateau ? validCompareChoice(recalledCompareTo(), AppState.plateaus) : '';
-  // run 0040: an address that names the comparison (`compare=`, written with a removed element) is a choice made: it wins, and is kept like one
-  const compareOfAddress = selection.plateau ? validCompareChoice(compareFromHash(), AppState.plateaus) : '';
-  if (compareOfAddress !== '') { AppState.compareTo = compareOfAddress; rememberCompareTo(compareOfAddress); }
   AppState.changesOnly = recalledFlag('changes-only'); // run 0040: how the comparison is read, as the last time in this folder
   AppState.hideWording = recalledFlag('hide-wording');
 
-  // FR-5: the direct children of each settings.manifests.paths dir (the folders below too when the path ends in `/**`, run 0076), or of the folder of the plateau read.
+  // FR-5: the direct children of each settings.manifests.paths dir (the folders below too when the path ends in `/**`, run 0076).
   const manifestFiles = [];
   const unreadManifestFiles = [];
   const seenManifestDirs = new Set(); // `manifests` and `./manifests/` are one directory: read it once
   const seenManifestFiles = new Set(); // a file that two paths find (`manifests` and `manifests/**`) is one file
-  for (const rawDirPath of selection.plateau ? [selection.path] : settings.manifests.paths) {
-    const recursive = !selection.plateau && isRecursiveManifestsPath(rawDirPath);
+  for (const rawDirPath of settings.manifests.paths) {
+    const recursive = isRecursiveManifestsPath(rawDirPath);
     const relDirPath = normalizeRelDir(recursive ? manifestsFolderOf(rawDirPath) : rawDirPath);
     if (relDirPath === null) {
       console.warn('ArchiCode: manifests path "' + rawDirPath + '" is not a path inside the folder; skipped.');
@@ -6733,10 +6507,7 @@ async function loadWorkspace(dirHandle) {
     if (seenManifestDirs.has(seenKey)) continue;
     seenManifestDirs.add(seenKey);
     const folder = await readManifestFolder(dirHandle, relDirPath, { recursive, viewsPath: settings.views.path });
-    if (folder.missing) {
-      if (selection.plateau) AppState.plateauProblem = 'The folder `' + relDirPath + '` of the plateau `' + selection.plateau.id + '` does not exist.';
-      continue;
-    }
+    if (folder.missing) continue;
     for (const file of folder.files) {
       if (seenManifestFiles.has(file.relPath)) continue;
       seenManifestFiles.add(file.relPath);
@@ -6750,15 +6521,8 @@ async function loadWorkspace(dirHandle) {
 
   // DEC-5 / FR-6 / FR-7: index + resolve (per-file parse errors do not abort this).
   const { index, rootsByCategory, duplicates, plateauTree } = buildIndex(manifestFiles, settings);
-  // `settings.plateaus` and layered plateaus are two ways to say the same thing: a workspace uses one (the command line refuses both)
-  if (selection.plateau && plateauTree.layered) {
-    AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + layeredAndSettingsPlateausSentence(plateauTree);
-    AppState.selection = { kind: 'none', key: null, mode: 'view' };
-    render();
-    return;
-  }
-  // wave 014 (run 0080): `settings.current` of a workspace with no `settings.plateaus` names a plateau of the layers, as the command line reads it (`WorkspaceFactory.chosen`)
-  if (!selection.plateau && settings.current !== '') {
+  // wave 014 (run 0080): `settings.current` of a workspace with no plateau names a plateau of the layers, as the command line reads it (`WorkspaceFactory.chosen`)
+  if (settings.current !== '') {
     const sentence = layersOfSettingsCurrentProblem(settings.current, plateauTree);
     if (sentence !== null) {
       AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + sentence;
@@ -6787,8 +6551,7 @@ async function loadWorkspace(dirHandle) {
     settingsLastKnownDiskModified: workspaceLastKnownDiskModified,
     rawText: workspaceText
   };
-  if (!selection.plateau) await openLayers(settings, plateauTree);
-  await loadBaselineSafely(dirHandle, settings); // the plateau compared with, if any: read-only, apart from the plateau drawn
+  await openLayers(settings, plateauTree);
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
   render();
   await noteWorkspaceName(); // the list of folders says it, and so does the next "Opening" of this folder (TDD-0020 DEC-4)
@@ -7439,7 +7202,7 @@ function restoreLinkFromHash() {
   diagramLinkStop = null; // the selected link is the tab stop of the links then, not where the focus was
 }
 
-/** The hash's `compare=` (the Compare to the address was written with: `@baseline` or a plateau id), or null. Read when a workspace is loaded. */
+/** The hash's `compare=` (the comparison the address was written with, see `layerCompareChoice`), or null. Read when a workspace is loaded. */
 function compareFromHash() {
   const queryIdx = location.hash.indexOf('?');
   if (queryIdx === -1) return null;
@@ -7595,7 +7358,7 @@ function currentRouteHash() {
   if (removed) {
     params.push('removed=' + encodeURIComponent(removed.reference));
     if (removed.layer === 'technology') params.push('removed-layer=technology');
-    params.push('compare=' + encodeURIComponent(AppState.layers ? layerCompareChoice() : AppState.compareTo));
+    params.push('compare=' + encodeURIComponent(layerCompareChoice()));
   }
   // wave 014 (run 0080): the plateau of the band, when it is not the root
   if (AppState.layers && AppState.plateauTree && AppState.plateauTree.layered && AppState.layers.current !== BASELINE_PLATEAU) params.push('plateau=' + encodeURIComponent(AppState.layers.current));
@@ -8479,9 +8242,8 @@ function serializeSettingsToRaw(settings, rawSettings) {
 
 function serializeManagedSettings(settings) {
   const name = typeof settings.name === 'string' ? settings.name.trim() : '';
-  // a workspace with plateaus has no `manifests.paths` (it is an error to have both): the editor does not write the default
-  const manifests = Array.isArray(settings.plateaus) && settings.plateaus.length > 0 && !settings.manifestsPathsWritten ? {} : { manifests: { paths: settings.manifests.paths } };
-  return Object.assign(name === '' ? {} : { name }, manifests, {
+  return Object.assign(name === '' ? {} : { name }, {
+    manifests: { paths: settings.manifests.paths },
     relationships: { 'default-synthetic-label': settings.relationships.defaultSyntheticLabel },
     views: { path: settings.views.path, labels: settings.views.labels, properties: settings.views.properties },
     facets: {
@@ -8963,7 +8725,10 @@ function rewriteInboundReferences(oldRef, newRef, layer) {
           if (destination !== rel.destination) { rel.destination = destination; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
         }
       }
-      if (layered && mfLayer === layer && Array.isArray(node.replaces)) { // `replaces` names elements of the plateau below: they follow the rename, in a layered workspace
+      // `replaces` names elements of the plateau below: they follow the rename, in a layered workspace. The element that was renamed or moved, and what it holds, in the plateau that
+      // is written, is the exception: what it replaces is the old reference it had, and a move writes it in the same edit (`commitMoveElement`)
+      const movedItself = layered && plateauOfManifest(mf) === writingPlateau() && (ownerRef === newRef || String(ownerRef).startsWith(newRef + '.'));
+      if (layered && mfLayer === layer && Array.isArray(node.replaces) && !movedItself) {
         const replaces = node.replaces.map((entry) => rewriteReferenceValue(entry, oldRef, newRef));
         if (replaces.some((entry, i) => entry !== node.replaces[i])) { node.replaces = replaces; changed = true; AppState.dirtyReferences.add(nodeKey(ownerRef, mfLayer)); }
       }
@@ -9117,8 +8882,9 @@ function scanMoveReferences(oldRef, layer) {
   }
   // the saved views and the steps of stories: rewritten on a copy to count them
   const copy = (entry) => JSON.parse(JSON.stringify(entry));
-  for (const view of allSavedViews()) if (rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
+  for (const view of allSavedViews()) if (writeScopeHasEntry(view) && rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
   for (const story of allStories()) {
+    if (!writeScopeHasEntry(story)) continue; // as `rewriteSavedViewReferences` does: the views and stories of a plateau the move does not write are not counted
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
       if (isPlainObject(step) && !step.view && rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer)) result.views++;
     }
@@ -9130,13 +8896,13 @@ function scanMoveReferences(oldRef, layer) {
 /**
  * What a move writes as `replaces`: for the element and for each element inside it, its old reference on its new one, so that the comparison reads one moved
  * element with its children instead of removed and new (a container whose children are not told reads as moved with its children removed). Only when the
- * workspace has plateaus and a comparison is on (the key names references of the baseline); an old reference the baseline does not have is not written.
+ * workspace has plateaus and a comparison is on (the key names references of the plateau compared with); an old reference that plateau does not have is not written.
  * `{ offered, reason, entries: [{ from, to }], skipped: [from] }`.
  */
 function planMoveReplaces(reference, layer, newReference) {
   const none = (reason) => ({ offered: false, reason, entries: [], skipped: [] });
-  if (AppState.plateau === null || AppState.plateaus.length < 2) return none(null);
-  if (!AppState.baseline) return none('To write replaces, choose the plateau to compare with in Compare to: it names references of that plateau.');
+  if (!AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return none(null);
+  if (!AppState.baseline) return none('To write replaces, compare the plateau with another one on the band: it names references of that plateau.');
   const direction = replacesDirectionProblem();
   if (direction) return none(direction);
   const entries = [];
@@ -9159,7 +8925,7 @@ function validateMove(reference, layer, newParentReference, options) {
   const refuse = (error) => ({ valid: false, error: error + ' Nothing was changed.' });
   layer = layer === 'technology' || layer === 'application' ? layer : (layerOfReference(reference) || 'application');
   const index = AppState.index[layer];
-  const drawn = AppState.plateau;
+  const drawn = drawnPlateau();
   const base = AppState.baseline ? AppState.baseline.plateau : null;
   const inBaseline = (ref) => !!AppState.baseline && AppState.baseline.index[layer].has(ref);
   const readOnly = (ref) => '“' + ref + '” belongs to “' + plateauTitle(base) + '”, which is only read to compare and is never written; a move happens in “' + plateauTitle(drawn) + '”, the plateau drawn.';
@@ -9631,7 +9397,6 @@ function readSettingsDraft() {
   const defaultLabelInput = byId('settings-default-label-input');
   const globalEnabledInput = byId('settings-facets-global-enabled-input');
 
-  // a workspace with plateaus has no field for the paths (its Settings page lists the plateaus, which workspace.yaml holds)
   const pathsResult = pathsInput ? validateManifestsPaths(pathsInput.value) : { valid: true, paths: null };
   const viewsPathResult = validateViewsPath(viewsPathInput ? viewsPathInput.value : '');
   const templateResult = validateDirectoryNameTemplate(templateInput ? templateInput.value : '');
@@ -9772,77 +9537,6 @@ function renderPageTabsHtml() {
 }
 
 /**
- * The plateau switch (header, between the name of the workspace and the perspectives): a button group, the plateau
- * drawn is the pressed one. Only a workspace with `settings.plateaus` has it. The choice is remembered per folder in this
- * browser; switching reads the folder again, so it asks before it drops changes that are not saved.
- */
-function renderPlateauTabsHtml() {
-  if (!AppState.plateau || AppState.plateaus.length === 0) return '';
-  const busy = saveInFlight ? ' disabled' : '';
-  let html = '<span class="plateau-switch"><span class="plateau-label" id="plateau-label">Plateau</span>' +
-    '<span class="plateau-tabs button-group" role="group" aria-labelledby="plateau-label">';
-  for (const plateau of AppState.plateaus) {
-    const title = plateau.id + (plateau.horizon ? ' · ' + plateau.horizon : '') + ' · ' + plateau.path;
-    html += '<button type="button" data-action="set-plateau" data-plateau="' + escapeHtml(plateau.id) + '" aria-pressed="' + (plateau.id === AppState.plateau.id) + '"' + busy +
-              ' title="' + escapeHtml(title) + '">' + escapeHtml(plateauTitle(plateau)) +
-              (plateau.horizon ? '<span class="plateau-horizon">' + escapeHtml(plateau.horizon) + '</span>' : '') +
-            '</button>';
-  }
-  html += '</span>';
-  html += renderCompareToHtml();
-  if (AppState.plateauProblem) html += '<span class="plateau-problem" role="alert">' + escapeHtml(AppState.plateauProblem) + '</span>';
-  if (AppState.baseline && AppState.baseline.problem) html += '<span class="plateau-problem" role="alert">' + escapeHtml(AppState.baseline.problem) + '</span>';
-  return html + '</span>';
-}
-
-/**
- * Compare to (run 0039), next to the Plateau selector: `Nothing` (the default), the baseline of the plateau drawn by the rule of the command line
- * (its `baseline` key, else the plateau before it in the list; the entry carries that plateau's name, and follows the plateau drawn), then each other
- * plateau. Only with two plateaus or more. While a comparison is on, Reload reads the folder of the other plateau again: it is read-only here, nothing in it is written.
- */
-function renderCompareToHtml() {
-  if (!AppState.plateau || AppState.plateaus.length < 2) return '';
-  const busy = saveInFlight ? ' disabled' : '';
-  const target = compareTargetPlateau();
-  const chosen = target ? AppState.compareTo : ''; // a choice that resolves to no plateau (the baseline shortcut of a first plateau) shows as Nothing
-  const own = ownBaselineOf(AppState.plateau, AppState.plateaus);
-  const option = (value, label, title) => '<option value="' + escapeHtml(value) + '"' + (value === chosen ? ' selected' : '') + (title ? ' title="' + escapeHtml(title) + '"' : '') + '>' + escapeHtml(label) + '</option>';
-  let html = '<span class="compare-control"><label class="plateau-label" for="compare-to">Compare to</label>' +
-    '<select id="compare-to" aria-label="Compare to" title="Draw the plateau together with another one: what is new, changed and removed is told on the boxes and the links. The other plateau is only read."' + busy + '>' +
-    option('', 'Nothing', 'Draw the plateau alone');
-  if (own) html += option(COMPARE_BASELINE_CHOICE, 'Baseline: ' + plateauTitle(own), 'The baseline of ' + plateauTitle(AppState.plateau) + (AppState.plateau.baseline !== '' ? ' (its `baseline` key)' : ' (the plateau before it in the list)'));
-  for (const plateau of AppState.plateaus) {
-    if (plateau.id !== AppState.plateau.id) html += option(plateau.id, plateauTitle(plateau), plateau.id + ' · ' + plateau.path);
-  }
-  html += '</select>';
-  if (target) {
-    html += '<button type="button" data-action="reload-baseline"' + busy + ' title="Read the folder of “' + escapeHtml(plateauTitle(target)) + '” again from the disk. It is only read here, never written.">Reload</button>';
-    // run 0040: what the diagrams draw of the comparison (all of it, or the changes with the boxes that place them), on the Map, in Elements and on the page of a view
-    html += '<span class="button-group changes-switch" role="group" aria-label="What the diagrams draw of the comparison">' +
-      '<button type="button" data-action="set-changes-only" data-value="0" aria-pressed="' + !AppState.changesOnly + '" title="Draw the whole plateau, with what changed marked">Everything</button>' +
-      '<button type="button" data-action="set-changes-only" data-value="1" aria-pressed="' + AppState.changesOnly + '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>';
-  }
-  return html + '</span>';
-}
-
-/** Draw another plateau: the folder is read again. Asks first when something is not saved, since the reload drops it. */
-async function switchPlateau(id) {
-  if (saveInFlight || !AppState.folder || !AppState.folder.handle || !AppState.workspace || !AppState.plateau) return;
-  if (AppState.plateau.id === id || !AppState.plateaus.some((p) => p.id === id)) return;
-  const count = countUnsavedChanges();
-  if (count > 0 || draftTyped) {
-    const what = count === 0 ? 'what you typed in this form' : count + ' modified item' + (count === 1 ? '' : 's') + (draftTyped ? ' and what you typed in this form' : '');
-    if (!confirm('Switch to the plateau “' + id + '” and discard ' + what + '?\n\nThe folder is read again from disk. This cannot be undone.')) return;
-  }
-  draftTyped = false;
-  rawYamlEditDraft = null;
-  pendingDeleteConfirmation = null;
-  saveStatus = { state: 'idle' };
-  rememberPlateauId(id);
-  await loadWorkspace(AppState.folder.handle);
-}
-
-/**
  * The one Save of the editor. Always rendered (disabled when there is nothing to write) so the bar never shifts as
  * edits come and go, and the action stays discoverable. It is also enabled by text typed in a form and not applied yet:
  * clicking it applies the form (`flushPendingDraft`), then writes.
@@ -9931,7 +9625,6 @@ function renderTopPanelHtml() {
       '</span>';
   return '<header class="top-panel col-span-3 flex items-center px-4">' +
       label +
-      renderPlateauTabsHtml() +
       renderPerspectiveTabsHtml() +
       // one group, pushed to the right: when the bar wraps it moves as a whole, and the status gives way before the buttons do;
       // the folder of `archicode editor serve` is the one the server was started on: there is no other to pick, so no Close folder
@@ -9981,7 +9674,7 @@ function sortedForNav(records) {
 
 /**
  * The comparison the rows of a tree read while it is drawn (run 0040): one lookup for the whole tree, not one per row (the answer is cached, but its
- * key is the whole model). Null with Compare to `Nothing`, and outside the drawing of a tree: a row then has no mark and is what it always was.
+ * key is the whole model). Null while nothing is compared, and outside the drawing of a tree: a row then has no mark and is what it always was.
  */
 let treeComparison = null;
 
@@ -10170,8 +9863,7 @@ function renderPlateauTreeHtml() {
   const model = AppState.plateauTree;
   if (!model || !model.layered) return '';
   let html = '';
-  // an edit can add a layered plateau to a workspace that has `settings.plateaus`: the command line refuses both
-  const problems = AppState.plateau ? [layeredAndSettingsPlateausSentence(model)] : model.problems.concat(model.redeclared);
+  const problems = model.problems.concat(model.redeclared);
   if (problems.length) {
     html += '<div class="nav-duplicate-note" role="alert"><strong>' + (problems.length === 1 ? 'One mistake in the plateaus.' : problems.length + ' mistakes in the plateaus.') + '</strong> ' +
       'The command line refuses to load the workspace until they are fixed.' +
@@ -10308,7 +10000,6 @@ function renderLeftPanelWrapperHtml(innerHtml) {
 const SETTINGS_HELP = {
   name: 'The name of the workspace. The editor shows it in place of the name of the folder, which then becomes a tooltip. Leave empty to show the folder name.',
   manifestsPaths: 'Folders scanned for manifest files, relative to the folder containing `workspace.yaml` and below it (no `..`, not absolute). One per line. Default: `manifests`. A path that ends in `/**` (`manifests/**`) is read with the folders below it, in order of path, leaving out the folders and files whose name begins with a dot, the links to folders and the folders of the generated views; `./**` is the folder of `workspace.yaml`. `**` means nothing elsewhere in a path.',
-  plateaus: 'The states of the architecture, each one a folder of manifests below the folder of `workspace.yaml`. The order of the list is the order of the states; the last one is drawn unless `settings.current` names another, and the header chooses the one this browser draws. They are written in `workspace.yaml` (`settings.plateaus`); `archicode plateau add` copies a plateau into a new folder and adds it.',
   defaultLabel: 'Label for a relationship that declares none, and for a link merged from several relationships. Default: `uses`.',
   viewsPath: 'Folder where generated views are written, relative to `workspace.yaml`. Facets write to sibling folders (see Facets). Default: `views`.',
   viewsLabels: 'Title of the generated view for each viewpoint. Leave empty to use the default shown in the field.',
@@ -10559,23 +10250,8 @@ function renderFacetsEditorHtml(customs) {
  * structural, so it keeps its own button — but applies the rest of the
  * form first (see readSettingsDraft), so nothing typed is lost.
  */
-/**
- * The Manifests section of Settings. A workspace with plateaus lists them (read-only: they are written in workspace.yaml,
- * where the order of the list and `current` are the author's); one without has the folders of its manifests to edit.
- */
+/** The Manifests section of Settings: the folders of the manifests, to edit. The plateaus are not here: they are layers, made on the band and in the Timeline. */
 function renderManifestsSettingsHtml(settings) {
-  if (AppState.plateau && AppState.plateaus.length > 0) {
-    const items = AppState.plateaus.map((plateau) =>
-      '<li class="plateau-item"><strong>' + escapeHtml(plateauTitle(plateau)) + '</strong> <code>' + escapeHtml(plateau.id) + '</code>' +
-      (plateau.horizon ? ' · ' + escapeHtml(plateau.horizon) : '') + ' · <code>' + escapeHtml(plateau.path) + '</code>' +
-      (plateau.id === AppState.plateau.id ? ' · <em>drawn</em>' : '') +
-      (settings.current === plateau.id ? ' · <em>current</em>' : '') + '</li>'
-    ).join('');
-    return '<div class="edition-section" id="settings-plateaus"><h3>Plateaus</h3>' +
-      renderHelpHtml('plateaus', 'settings-group-help') +
-      '<ol class="plateau-list">' + items + '</ol>' +
-    '</div>';
-  }
   return '<div class="edition-section"><h3>Manifests</h3>' +
     '<div class="field-row"><label class="field-label" for="settings-manifests-paths-input">Paths</label><span class="field-value">' +
       '<textarea id="settings-manifests-paths-input" class="auto-grow-textarea" placeholder="manifests"' + describedBy('manifestsPaths') + '>' + escapeHtml(settings.manifests.paths.join('\n')) + '</textarea>' +
@@ -11163,10 +10839,6 @@ function handleAppInput(e) {
     updateStoryField(storyField);
     return;
   }
-  if (e.target.id === 'compare-to') {
-    setCompareTo(e.target.value);
-    return;
-  }
   if (e.target.id === 'diagram-facet-select') {
     pushDiagramHistory();
     diagramFacet = e.target.value || null;
@@ -11504,9 +11176,9 @@ function renderElementEditionFormHtml(reference) {
 
 // ---- `replaces` by hand (wave 009) ----
 
-/** The Replaces section is offered when there is a plateau to replace elements of (the workspace has several), or the element already says something: a workspace without plateaus has a form as it always had. */
+/** The Replaces section is offered when there is a plateau to replace elements of (the workspace writes plateaus), or the element already says something: a workspace without plateaus has a form as it always had. */
 function replacesSectionShown(record) {
-  return (AppState.plateau !== null && AppState.plateaus.length > 1) || (Array.isArray(record.replaces) && record.replaces.length > 0);
+  return !!(AppState.plateauTree && AppState.plateauTree.layered) || (Array.isArray(record.replaces) && record.replaces.length > 0);
 }
 
 /**
@@ -11748,7 +11420,7 @@ function inspectionPanelHtml(sel, mode) {
 
 // =====================================================================
 // The Changes panel and "What changed" (run 0040). They read `comparisonState()` (the kernel's table `changes`, its `counts`, the union `records`)
-// and nothing else: with Compare to `Nothing` none of this is on the page.
+// and nothing else: while nothing is compared none of this is on the page.
 // =====================================================================
 
 /** The kernel's natures (run 0036) in words. `description` alone is a change of wording. */
@@ -12175,7 +11847,7 @@ function stateWordHintsFor(state, layer, reference) {
 /**
  * The words that disagree with the comparison, one per element and word, in the order of the command line (application, then technology; by reference; the order of the words):
  * [{ layer, reference, word, state, sentence }]. Nothing when nothing is compared (the command line says another thing then: that nothing is compared, which the editor, where the
- * comparison is a choice of the page, leaves to its Compare to), and none for a word that is the state of its element.
+ * comparison is a choice of the page, leaves to its band), and none for a word that is the state of its element.
  */
 function stateWordHintsOf(state) {
   if (!state || !state.full || !state.full.records) return [];
@@ -12197,42 +11869,16 @@ function renderStateWordHintsHtml(layer, reference) {
 }
 
 /**
- * "Write replaces": add `from` to the `replaces` of the element `to`, which is in the plateau drawn, and only there. The comparison is made with the
- * plateau drawn as the more recent one and the baseline is only read, so a candidate whose new element is not in the plateau drawn, or a baseline that
- * comes after it in the list of plateaus, is refused with the reason (in the panel), and nothing is changed. The edit is `commitElementEdit` like every
+ * "Write replaces": add `from` to the `replaces` of the element `to` of the more recent plateau of the comparison, and only there (`acceptLayeredCandidate`). A candidate whose
+ * new element is not in that plateau is refused with the reason (in the panel), and nothing is changed. The edit is `commitElementEdit` like every
  * other edit of an element: it keeps the comments and the lines it does not touch, marks the file as modified (saved with the rest), and ends in
  * `rebuildIndexAndRender`, which tells the cache of the comparison that the model changed. Returns `{ ok: true }` or `{ ok: false, message }`.
  */
 function acceptCandidate(candidate) {
   const refuse = (message) => { candidateMessage = message; render(); return { ok: false, message }; };
   const state = comparisonState();
-  if (!state || !state.records) return refuse(AppState.layers ? 'Nothing is compared: press Past, Future or ⇄ on the band first.' : 'Nothing is compared: choose a plateau in Compare to first.');
-  if (AppState.layers) return acceptLayeredCandidate(candidate, state, refuse);
-  const layer = candidate.layer || 'application';
-  const drawn = AppState.plateau, base = AppState.baseline.plateau;
-  const direction = replacesDirectionProblem();
-  if (direction) return refuse(direction);
-  if (!AppState.index[layer].has(candidate.to)) {
-    return refuse(AppState.baseline.index[layer].has(candidate.to)
-      ? '“' + candidate.to + '” belongs to “' + plateauTitle(base) + '”, which is only read to compare and is never written. replaces goes on an element of “' + plateauTitle(drawn) + '”, the plateau drawn.'
-      : '“' + candidate.to + '” is not an element of “' + plateauTitle(drawn) + '” any more; nothing was written.');
-  }
-  if (!AppState.baseline.index[layer].has(candidate.from)) return refuse('“' + candidate.from + '” is not an element of “' + plateauTitle(base) + '”; nothing was written.');
-  if (AppState.index[layer].has(candidate.from)) return refuse('“' + candidate.from + '” is still an element of “' + plateauTitle(drawn) + '”: a replaces that names it would be ignored.');
-  const located = locateContentNode(candidate.to, layer);
-  if (!located) return refuse('“' + candidate.to + '” cannot be found in the manifests of “' + plateauTitle(drawn) + '”; nothing was written.');
-  if (located.node.replaces !== undefined && located.node.replaces !== null && !Array.isArray(located.node.replaces)) {
-    return refuse('The replaces of “' + candidate.to + '” is not a list; fix it by hand, nothing was written.');
-  }
-  candidateMessage = null;
-  try {
-    commitElementEdit(candidate.to, (node) => { node.replaces = replacesWith(node.replaces, candidate.from); }, layer);
-  } catch (e) {
-    candidateMessage = e && e.message ? e.message : String(e);
-    render();
-    return { ok: false, message: candidateMessage };
-  }
-  return { ok: true };
+  if (!state || !state.records) return refuse('Nothing is compared: press Past, Future or ⇄ on the band first.');
+  return acceptLayeredCandidate(candidate, state, refuse);
 }
 
 /**
@@ -12274,15 +11920,11 @@ function acceptLayeredCandidate(candidate, state, refuse) {
   return { ok: true };
 }
 
-/** Why `replaces` cannot be written for the comparison on screen (the baseline comes after the plateau drawn), or null. The key goes on the more recent plateau. */
+/** Why `replaces` cannot be written for the comparison on screen (the plateau compared with is its future: the key goes on the more recent plateau, which is not the one drawn), or null. */
 function replacesDirectionProblem() {
-  const drawn = AppState.plateau, base = AppState.baseline ? AppState.baseline.plateau : null;
-  if (!drawn || !base) return null;
-  const positions = AppState.plateaus.map((plateau) => plateau.id);
-  if (positions.indexOf(base.id) > positions.indexOf(drawn.id)) {
-    return '“' + plateauTitle(drawn) + '” comes before “' + plateauTitle(base) + '” in the plateaus of this workspace. replaces is written on the element of the more recent plateau: draw “' + plateauTitle(base) + '” and compare it with “' + plateauTitle(drawn) + '”.';
-  }
-  return null;
+  if (!AppState.baseline || !layerCompareIsFuture()) return null;
+  const drawn = drawnPlateau(), base = AppState.baseline.plateau;
+  return '“' + plateauTitle(drawn) + '” comes before “' + plateauTitle(base) + '” in the plateaus of this workspace. replaces is written on the element of the more recent plateau: draw “' + plateauTitle(base) + '” and compare it with “' + plateauTitle(drawn) + '”.';
 }
 
 /** The list `replaces` becomes when `reference` is added to it: appended, and not twice. */
@@ -12741,15 +12383,8 @@ function renderTimelinePageHtml() {
   const header = renderElementHeaderHtml('<h2>Timeline</h2>', '');
   const layers = AppState.layers;
   const tree = AppState.plateauTree;
-  let body;
-  if (!layers || !tree) {
-    // a workspace that lists `settings.plateaus` (removed in wave 014, W-9): it has its selector in the top bar, and no band
-    const items = (AppState.plateaus || []).map((plateau) => '<li class="timeline-item"><div class="timeline-main"><strong>' + escapeHtml(plateauTitle(plateau)) + '</strong> <code class="timeline-id">' + escapeHtml(plateau.id) + '</code>' +
-      (plateau.horizon ? '<span class="timeline-horizon">' + escapeHtml(plateau.horizon) + '</span>' : '') + '</div><div class="timeline-facts">folder <code>' + escapeHtml(plateau.path) + '</code></div></li>').join('');
-    body = '<p class="timeline-note">This workspace lists its plateaus in <code>settings.plateaus</code>, the older way: the <em>Plateau</em> selector in the top bar draws one and <em>Compare to</em> compares two. ' +
-      'The band, and the changes between plateaus that this page lists, are for plateaus written as layers (a <code>plateau</code> key in the header of a manifest).</p>' +
-      (items ? '<ol class="timeline-list" aria-label="Plateaus">' + items + '</ol>' : '');
-  } else {
+  let body = '';
+  if (layers && tree) {
     const drawn = layerPlateauModel(layers.current);
     const other = layerCompareOther();
     const status = other ? plateauTitle(drawn) + ' is compared with ' + plateauTitle(other) + (comparisonPanelOn() ? ': the Changes panel on the right lists what differs.' : ', but the two cannot be compared: the band says what is wrong.')
@@ -13166,9 +12801,9 @@ function toKernelElements(map, withProperties) {
 
 // ---- The comparison of two plateaus (run 0039) ----
 
-/** The plateau drawn, as a plateau of the page: the one of the band, or the one of `settings.plateaus`. */
+/** The plateau drawn, as a plateau of the page: the one of the band. */
 function drawnPlateau() {
-  return AppState.layers ? layerPlateauModel(AppState.layers.current) : AppState.plateau;
+  return layerPlateauModel(AppState.layers.current);
 }
 
 /** The cascade of the REMOVE patches of the target of the comparison on screen, among what the base has (see `cascadeOf`): what the command line lists after the table of changes. */
@@ -13183,28 +12818,26 @@ function layeredCascadeNow(future) {
  */
 function comparisonInput() {
   const future = layerCompareIsFuture();
-  return comparisonInputBetween(future ? AppState.index : AppState.baseline.index, future ? AppState.baseline.index : AppState.index, !!AppState.layers);
+  return comparisonInputBetween(future ? AppState.index : AppState.baseline.index, future ? AppState.baseline.index : AppState.index);
 }
 
 /**
- * The input of `compare` for two models. `layered`: the target is a layer, which holds with its own elements the ones it inherits, and an inherited element keeps the
+ * The input of `compare` for two models. The target is a layer, which holds with its own elements the ones it inherits, and an inherited element keeps the
  * `replaces` of the layer that declared it. Compared with a plateau that has that layer the entry says nothing the comparison does not know, and the kernel would warn,
  * for every one, that it names nothing of the base: the `replaces` that the base writes the same way for the same element are left out of the target
  * (`PlateauComparer.dropInheritedReplaces`).
  */
-function comparisonInputBetween(baseIndex, targetIndex, layered) {
+function comparisonInputBetween(baseIndex, targetIndex) {
   const layers = (indexes) => ({
     application: toKernelElements(indexes.application, true).elements,
     technology: toKernelElements(indexes.technology, true).elements
   });
   const input = { base: layers(baseIndex), target: layers(targetIndex) };
-  if (layered) {
-    for (const layer of LAYER_NAMES) {
-      const known = new Map();
-      for (const element of input.base[layer]) if (element.replaces) known.set(element.reference, JSON.stringify(element.replaces));
-      for (const element of input.target[layer]) {
-        if (element.replaces && JSON.stringify(element.replaces) === known.get(element.reference)) delete element.replaces;
-      }
+  for (const layer of LAYER_NAMES) {
+    const known = new Map();
+    for (const element of input.base[layer]) if (element.replaces) known.set(element.reference, JSON.stringify(element.replaces));
+    for (const element of input.target[layer]) {
+      if (element.replaces && JSON.stringify(element.replaces) === known.get(element.reference)) delete element.replaces;
     }
   }
   return input;
@@ -13267,9 +12900,9 @@ function setWordingAside(value) {
 
 /**
  * The comparison of the plateau drawn with the baseline, as the page needs it now:
- *   null                nothing is compared (Compare to is Nothing, or the baseline is not read yet);
+ *   null                nothing is compared (the band compares nothing, or still waits for the choice of the future);
  *   { pending: true }   a comparison is asked for and the kernel is not loaded yet (the drawing loads it, then asks again);
- *   { problems }        it cannot be drawn: the baseline declares a reference twice, or the kernel refused the pair (the messages);
+ *   { problems }        it cannot be drawn: one of the two plateaus cannot be, or the kernel refused the pair (the messages);
  *   { base, target, layers, records, counts, changes, above, wordingOnly, wordingHidden }   the answer, `layers` being the union of each layer ready for `compute`.
  * `candidates` and `warnings` (wave 009) are the kernel's, as it gave them: the pairs it proposes (`{ layer, from, to, reasons }`, none applied) and the sentences about a `replaces` it ignored.
  * `counts` and `changes` are the kernel's table (run 0036); with `AppState.hideWording` the wording-only changes are out of `layers`, `records`, `counts`
@@ -13279,18 +12912,15 @@ function setWordingAside(value) {
 function comparisonState() {
   const target = compareTargetPlateau();
   if (!target || !AppState.baseline || !AppState.baseline.plateau || AppState.baseline.plateau.id !== target.id) return null;
-  if (AppState.layers && AppState.layerUndrawable) return { problems: ['The plateau “' + plateauTitle(drawnPlateau()) + '” cannot be drawn, so there is nothing to compare:'].concat(AppState.layerProblems || []) };
+  if (AppState.layerUndrawable) return { problems: ['The plateau “' + plateauTitle(drawnPlateau()) + '” cannot be drawn, so there is nothing to compare:'].concat(AppState.layerProblems || []) };
   if (AppState.baseline.undrawable) return { problems: ['The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, cannot be drawn:'].concat(AppState.baseline.problem.split('\n')) };
-  if (AppState.baseline.duplicates.length) {
-    return { problems: ['The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, has references declared more than once:'].concat(AppState.baseline.duplicates.map((d) => d.message)) };
-  }
   if (!loadedKernel) return { pending: true };
   // run 0045: the answer is kept while the version of the models is the one it was computed at (the two models themselves are compared too, a net
   // under a replacement that forgot `modelsChanged()`): a plain render serialises nothing and builds no input
   const future = layerCompareIsFuture();
   if (!comparisonCache || comparisonCache.version !== modelVersion || comparisonCache.index !== AppState.index || comparisonCache.baselineIndex !== AppState.baseline.index || comparisonCache.future !== future) {
     const answer = loadedKernel.compare(comparisonInput());
-    comparisonCache = { version: modelVersion, index: AppState.index, baselineIndex: AppState.baseline.index, future, value: answer.error ? { error: answer.error } : Object.assign({ answer, cascade: AppState.layers ? layeredCascadeNow(future) : [] }, unionLayersOf(answer)) };
+    comparisonCache = { version: modelVersion, index: AppState.index, baselineIndex: AppState.baseline.index, future, value: answer.error ? { error: answer.error } : Object.assign({ answer, cascade: layeredCascadeNow(future) }, unionLayersOf(answer)) };
   }
   const value = comparisonCache.value;
   if (value.error) return { problems: ['The comparison with “' + plateauTitle(target) + '” could not be made: ' + value.error] };
@@ -15220,7 +14850,7 @@ function diagramExportCss() {
     '.dg-badge rect{fill:var(--st-fill,' + c('--panel-bg') + ');stroke:var(--st-stroke,' + c('--border') + ');stroke-width:1}.dg-badge text{fill:var(--st-text,' + c('--fg') + ');font:600 10.5px sans-serif}' +
     '.dg-edge{fill:none;stroke:' + c('--muted') + ';stroke-width:1.4}.dg-aggregated{stroke-dasharray:7 4}' +
     '.dg-ghost-edge{stroke:' + c('--danger') + ';stroke-dasharray:3 4}' +
-    // the comparison of two plateaus: the colours of the states in the theme of the page (the boxes carry var(--chg-*) in their --st-* variables), the tint, the strike, the lines of the links
+    // the comparison of two plateaus. The colours of the states in the theme of the page (the boxes carry var(--chg-*) in their --st-* variables), the tint, the strike, the lines of the links
     'svg{--chg-new:' + c('--chg-new') + ';--chg-changed:' + c('--chg-changed') + ';--chg-removed:' + c('--chg-removed') + ';--chg-removed-text:' + c('--chg-removed-text') + ';--chg-contains:' + c('--chg-contains') + '}' +
     'svg{--chg-moved:' + c('--chg-moved') + ';--chg-split:' + c('--chg-split') + ';--chg-merged:' + c('--chg-merged') + '}' + // the three states of identity (wave 009), for the boxes that carry them
     '.dg-tint{fill:var(--st-tint,none);fill-opacity:.16;stroke:none}.dg-compound .dg-tint{fill-opacity:.08}' +
@@ -16020,7 +15650,7 @@ const entryOwners = new WeakMap();
 
 /**
  * The plateaus whose views and stories the pages show: the chain of the plateau drawn, from `baseline` down (a plateau adds its views and stories to those of the plateau it
- * overrides, as the command line loads them). Null when the pages show every one: a workspace without layers, one whose plateaus are blocked, one with `settings.plateaus`.
+ * overrides, as the command line loads them). Null when the pages show every one: a workspace without layers, or one whose plateaus are blocked.
  */
 function layerChainSet() {
   const layers = AppState.layers;
@@ -17343,7 +16973,7 @@ function renderLayerEntriesNoticeHtml() {
   const drawn = plateauTitle(layerPlateauModel(AppState.layers.current));
   const past = Array.from(chain).filter((id) => id !== AppState.layers.current);
   return '<div class="story-legacy layer-entries-note" role="status"><span>The ' + noun + ' of ' + (past.length ? escapeHtml(drawn) + ' and of the plateaus it overrides (' + past.map((id) => '<code>' + escapeHtml(id) + '</code>').join(', ') + ')' : escapeHtml(drawn)) + '.' +
-    (hidden > 0 ? ' ' + hidden + (hidden === 1 ? ' belongs' : ' belong') + ' to other plateaus: draw one to see ' + (hidden === 1 ? 'it' : 'them') + '.' : '') + '</span></div>';
+    (hidden > 0 ? ' ' + hidden + (hidden === 1 ? ' belongs' : ' belong') + ' to other plateaus. Draw one to see ' + (hidden === 1 ? 'it' : 'them') + '.' : '') + '</span></div>';
 }
 
 /** The two sides of the Library, as one group of joined buttons. */
@@ -17445,7 +17075,7 @@ function renderActivePerspectiveHtml() {
  * grid-template-columns.
  */
 function renderShellHtml() {
-  // wave 014 (run 0080): the band of plateaus sits under the top bar, for a workspace that has no `settings.plateaus` (which has its own selector in the bar)
+  // wave 014 (run 0080): the band of plateaus sits under the top bar, for every open workspace
   const band = AppState.workspace && !AppState.fatalError && AppState.layers ? renderPlateauBandHtml() : '';
   // wave 014 (run 0081): under the band, the pages of the Timeline perspective
   const pages = AppState.workspace && !AppState.fatalError ? renderPageTabsHtml() : '';
@@ -17600,9 +17230,6 @@ function handleAppClick(e) {
     case 'set-page': // the bar under the band (the pages below Timeline) and the top bar (a perspective) open a page the same way
       setPerspective(target.getAttribute('data-perspective'));
       break;
-    case 'set-plateau':
-      switchPlateau(target.getAttribute('data-plateau'));
-      break;
     case 'set-files-scope': { // wave 014 (run 0081): what the Files page lists
       const value = target.getAttribute('data-value');
       if (FILES_SCOPES.some((scope) => scope.id === value)) filesScope = value;
@@ -17626,9 +17253,6 @@ function handleAppClick(e) {
       break;
     case 'compare-future':
       toggleCompareWithFuture();
-      break;
-    case 'reload-baseline':
-      reloadBaseline();
       break;
     case 'set-changes-only': { // run 0040: the diagrams draw the changes with their context, or everything
       const only = target.getAttribute('data-value') === '1';

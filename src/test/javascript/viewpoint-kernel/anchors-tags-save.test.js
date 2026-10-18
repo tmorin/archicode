@@ -206,7 +206,7 @@ test('whatever the edit, the text written reads back as the edit and the lines i
 // ---------------------------------------------------------------------------------------------------------------------
 // The editor.
 
-const PLATEAUS = 'settings:\n  plateaus:\n    - id: base\n      name: Base\n      path: plateaus/10_base\n';
+const PLATEAUS = 'settings:\n  manifests:\n    paths:\n      - plateaus/10_base\n';
 const FILES = {
   'app.mill.yaml': '# the mill\nheader:\n  kind: "archicode.morin.io/system"\n  version: "1"\n\ncontent:\n  id: "mill"   # the id\n  name: "Mill"\n  qualifiers:\n  - flour   # one\n# end of the mill\n',
   'app.bakery.yaml':

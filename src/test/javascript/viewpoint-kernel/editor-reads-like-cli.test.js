@@ -93,7 +93,7 @@ test('what the command line accepts, the editor accepts', () => {
 test('workspace.yaml: the keys and the shapes of the settings, the styles and the formatters are the command line\'s', () => {
   const problem = (text) => app.workspaceProblem(app.parseYaml(text));
   assert.equal(problem('settings:\n  name: Shop\n'), null);
-  assert.equal(problem('settings:\n  foo: 1\n'), 'unknown key `foo` (known: current, facets, manifests, name, plateaus, relationships, views) at `settings.foo`');
+  assert.equal(problem('settings:\n  foo: 1\n'), 'unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo`');
   assert.equal(problem('foo: 1\n'), 'unknown key `foo` (known: application, formatters, settings, stories, story, styles, technology, view, views) at `foo`');
   assert.equal(problem('settings:\n  facets:\n    global-enabled: false\n    customs:\n      - name: a\n        hide-unlinked: true\n        actions:\n          - operator: REMOVE\n            json-path: "$"\n'), null, 'the other names of a key');
   assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        actions:\n          - operator: REMOVE\n'), 'Missing settings.facets.customs[0].actions[0].jsonPath');
@@ -105,7 +105,8 @@ test('workspace.yaml: the keys and the shapes of the settings, the styles and th
   assert.equal(problem('technology:\n  elements:\n    - kind: environment\n      id: e\n      elements:\n        - kind: node\n          id: n\n'), null);
   assert.equal(problem('technology:\n  elements:\n    - id: e\n'), 'missing `kind` (known: environment) at `technology.elements[0]`');
   assert.equal(problem('settings:\n  current: [a]\n'), 'the value has the wrong shape (found an array) at `settings.current`');
-  assert.equal(problem('settings:\n  plateaus:\n    - id: a\n      path: p\n      colour: red\n'), null, 'the plateaus are checked by their own rules, which come first');
+  assert.equal(problem('settings:\n  plateaus:\n    - id: a\n      path: p\n      colour: red\n'), vm.runInContext('REMOVED_PLATEAUS_KEY', app), 'the key that no longer exists is told first, and nothing else is');
+  assert.equal(problem('settings:\n  foo: 1\n  plateaus: []\n'), vm.runInContext('REMOVED_PLATEAUS_KEY', app), 'whatever else the file holds');
 });
 
 test('a workspace.yaml the editor refuses is a fatal error that says the sentence, and the folder is not opened', async () => {
@@ -115,7 +116,7 @@ test('a workspace.yaml the editor refuses is a fatal error that says the sentenc
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  assert.equal(state.fatalError, 'Could not read/parse workspace.yaml: unknown key `foo` (known: current, facets, manifests, name, plateaus, relationships, views) at `settings.foo`');
+  assert.equal(state.fatalError, 'Could not read/parse workspace.yaml: unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo`');
   assert.equal(state.workspace, null);
 });
 

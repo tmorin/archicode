@@ -12,6 +12,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { inPlateau, layeredFiles, openLayered, compareWith } = require('./layered-folders');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
@@ -68,21 +69,23 @@ const TARGET = {
   'app.archive.counter.yaml': element('container', 'archive', 'counter', 'Counter', '  replaces:\n    - library.desk\n')
 };
 const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
-const PLATEAUS = '  plateaus:\n    - id: base\n      name: Base\n      path: plateaus/10_base\n    - id: target\n      name: Target\n      path: plateaus/20_target\n';
+/** The manifests of the target as they are on disk: the same texts, with the plateau in their header. */
+const DISK = Object.fromEntries(Object.entries(TARGET).map(([name, body]) => [name, inPlateau('target', body)]));
+const PLATEAU_LIST = [
+  { id: 'base', name: 'Base', path: 'plateaus/10_base' },
+  { id: 'target', name: 'Target', path: 'plateaus/20_target' }
+];
 const target = (reference) => 'plateaus/20_target/app.' + reference + '.yaml';
 
-/** The library opened as the editor opens a folder, the target drawn (it is the last), compared with the base unless `compare` is false. */
+/**
+ * The library opened as the editor opens a folder, as layers (see layered-folders.js: `base` and `target` are siblings over an empty baseline), the target drawn and
+ * compared with the base on the band unless `compare` is false. `files` are the files as they are on disk.
+ */
 async function open(options = {}) {
-  const files = Object.assign({ 'workspace.yaml': 'settings:\n' + PLATEAUS }, folder('10_base', options.base || BASE), folder('20_target', options.target || TARGET));
-  const mem = memFolder(files);
-  const sandbox = createApp({});
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
-  await sandbox.loadViewpointKernel();
-  if (options.compare !== false) await sandbox.setCompareTo(options.compareTo || 'base');
-  return { sandbox, state, mem, files };
+  const files = layeredFiles(PLATEAU_LIST, Object.assign({}, folder('10_base', options.base || BASE), folder('20_target', options.target || TARGET)));
+  const opened = await openLayered(createApp, memFolder, files, { drawn: 'target' });
+  if (options.compare !== false) compareWith(opened.sandbox, options.compareTo || 'base');
+  return Object.assign(opened, { files });
 }
 
 /** A click as handleAppClick reads it: the nearest data-action element, with these attributes. */
@@ -432,18 +435,19 @@ test('"Write replaces" writes exactly one `replaces` on the new element, keeps e
   assert.deepEqual(plain(after.candidates.map((c) => c.to)), ['archive.vault']);
   assert.equal(state.dirtyReferences.has('application:library.lending'), true, 'marked as modified, saved with the rest');
   // the file is not written until the user saves: the disk still has the original
-  assert.equal(mem.files.get(target('library.lending')).text, TARGET['app.library.lending.yaml']);
+  assert.equal(mem.files.get(target('library.lending')).text, DISK['app.library.lending.yaml']);
   // the save: the file differs from the original by the two lines written, nothing else
   await sandbox.saveAllChanges();
   assert.equal(run(sandbox, 'saveStatus').state, 'success');
   assert.deepEqual(mem.writes, [target('library.lending')], 'one file is written');
   const saved = mem.files.get(target('library.lending')).text;
-  assert.deepEqual(lineDiff(TARGET['app.library.lending.yaml'], saved), { removed: [], added: ['  replaces:', '    - "library.loans"'] });
+  assert.deepEqual(lineDiff(DISK['app.library.lending.yaml'], saved), { removed: [], added: ['  replaces:', '    - "library.loans"'] });
   assert.ok(saved.startsWith('# the manifest of lending\n') && saved.endsWith('# end of lending\n'), 'the comments, the quotes and the blank line are the author\'s');
   assert.ok(saved.includes('  kind: "archicode.morin.io/container"') && saved.includes('\n\ncontent:\n'));
   // and the file reads back as the editor, and the command line, read it
   const again = createApp({});
   await again.loadWorkspace(mem.handle);
+  again.drawPlateau('target');
   assert.deepEqual(plain(again.__state().index.application.get('library.lending').replaces), ['library.loans']);
 });
 
@@ -453,7 +457,7 @@ test('a list written on one line gets the new reference appended, and only that 
   assert.deepEqual(plain(sandbox.__state().index.application.get('archive.vault').replaces), ['archive.ghost', 'archive.rack'], 'appended after what the author wrote, no duplicate');
   await sandbox.saveAllChanges();
   const saved = mem.files.get(target('archive.vault')).text;
-  assert.deepEqual(lineDiff(TARGET['app.archive.vault.yaml'], saved), { removed: ['  replaces: [archive.ghost]'], added: ['  replaces:', '    - archive.ghost', '    - archive.rack'] });
+  assert.deepEqual(lineDiff(DISK['app.archive.vault.yaml'], saved), { removed: ['  replaces: [archive.ghost]'], added: ['  replaces:', '    - archive.ghost', '    - archive.rack'] });
   assert.ok(saved.startsWith('# the manifest of vault\n') && saved.endsWith('# end of vault\n'));
   assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'archive.vault').change, 'moved');
   // writing the same reference again changes nothing (the kernel would not propose it, but the writer does not duplicate)
@@ -465,7 +469,7 @@ test('other flow lists of a file the edit does not touch stay on their line, and
   const { sandbox, mem } = await open({ target: Object.assign({}, TARGET, { 'app.library.lending.yaml': withQualifiers }) });
   click(sandbox, { 'data-action': 'accept-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });
   await sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(withQualifiers, mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - "library.loans"'] }, 'the list on one line, its comment and its quotes are as they were');
+  assert.deepEqual(lineDiff(inPlateau('target', withQualifiers), mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - "library.loans"'] }, 'the list on one line, its comment and its quotes are as they were');
 });
 
 test('"Not related" sets the pair aside for this page: the list loses it, nothing is written, and "Show again" brings it back', async () => {
@@ -498,31 +502,17 @@ test('a candidate is refused, with the reason in the panel, when its new element
   // the pair is made up here: the page would never list it, the writer must still refuse it
   const result = sandbox.acceptCandidate({ layer: 'application', from: 'library.fines', to: 'library.loans' });
   assert.equal(result.ok, false);
-  assert.equal(result.message, '“library.loans” belongs to “Base”, which is only read to compare and is never written. replaces goes on an element of “Target”, the plateau drawn.');
+  assert.equal(result.message, '“library.loans” belongs to “Base”, the older plateau of the comparison. replaces goes on an element of “Target”, the more recent one.');
   assert.match(sandbox.renderChangesPanelHtml(sandbox.comparisonState()), /<p class="changes-message" role="alert">“library\.loans” belongs to “Base”/);
   assert.equal(state.dirtyReferences.size, 0);
   assert.deepEqual(mem.writes, []);
-  // the baseline's files are not the editor's: there is no file of the plateau compared with among the ones it holds
-  assert.ok(state.manifestFiles.every((file) => file.relPath.startsWith('plateaus/20_target/')));
+  // the other plateau's files are not written: nothing of it is among the modified files
+  assert.ok(state.manifestFiles.filter((file) => file.dirty).every((file) => file.relPath.startsWith('plateaus/20_target/')));
   // another refusal replaces the message, a click on a row of the list clears it
   assert.equal(sandbox.acceptCandidate({ layer: 'application', from: 'library.fines', to: 'library.nowhere' }).ok, false);
   assert.match(sandbox.renderChangesPanelHtml(sandbox.comparisonState()), /“library\.nowhere” is not an element of “Target” any more; nothing was written\./);
   click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'new', 'data-layer': 'application', 'data-ref': 'library.lending' });
   assert.doesNotMatch(sandbox.renderChangesPanelHtml(sandbox.comparisonState()), /changes-message/);
-});
-
-test('a candidate is refused when the plateau drawn comes before the one it is compared with, so that replaces is never written on the older plateau', async () => {
-  const { sandbox, state, mem } = await open({ compare: false });
-  await sandbox.switchPlateau('base');
-  await sandbox.setCompareTo('target');
-  const comparison = sandbox.comparisonState();
-  assert.equal(comparison.problems, undefined);
-  assert.ok(comparison.candidates.length > 0, 'the comparison turned the other way proposes pairs too: ' + JSON.stringify(comparison.candidates));
-  const result = sandbox.acceptCandidate(comparison.candidates[0]);
-  assert.equal(result.ok, false);
-  assert.match(result.message, /^“Base” comes before “Target” in the plateaus of this workspace\. replaces is written on the element of the more recent plateau: draw “Target” and compare it with “Base”\.$/);
-  assert.equal(state.dirtyReferences.size, 0);
-  assert.deepEqual(mem.writes, []);
 });
 
 test('a candidate is refused when the replaced element is still in the plateau drawn, when it is unknown, and when the list is not a list', async () => {
@@ -536,7 +526,7 @@ test('a candidate is refused when the replaced element is still in the plateau d
   assert.equal(scalar.state.dirtyReferences.size, 0);
   // and without any comparison there is nothing to accept
   const none = await open({ compare: false });
-  assert.equal(none.sandbox.acceptCandidate({ layer: 'application', from: 'library.loans', to: 'library.lending' }).message, 'Nothing is compared: choose a plateau in Compare to first.');
+  assert.equal(none.sandbox.acceptCandidate({ layer: 'application', from: 'library.loans', to: 'library.lending' }).message, 'Nothing is compared: press Past, Future or ⇄ on the band first.');
 });
 
 // ---- 5. By hand ----
@@ -579,7 +569,7 @@ test('adding a reference by hand writes one line more, validates, flags an unkno
   assert.deepEqual(plain(state.index.application.get('library.lending').replaces), ['library.loans']);
   assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'library.lending').change, 'moved', 'the same writer, the same result as accepting the candidate');
   await sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(TARGET['app.library.lending.yaml'], mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - "library.loans"'] });
+  assert.deepEqual(lineDiff(DISK['app.library.lending.yaml'], mem.files.get(target('library.lending')).text), { removed: [], added: ['  replaces:', '    - "library.loans"'] });
   // an unknown reference is allowed, and flagged in the list and by the kernel's warning
   formFields(sandbox, 'library.fines', 'library.somewhere');
   click(sandbox, { 'data-action': 'add-replaces', 'data-ref': 'library.fines' });
@@ -604,12 +594,12 @@ test('removing a reference by hand takes its line out of the file; the last one 
   assert.deepEqual(plain(state.index.application.get('archive.cabinet').replaces), ['archive.bin'], 'the shelf went, the bin stayed');
   assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'archive.cabinet').change, 'moved', 'one replaced element left: moved, not merged');
   await sandbox.saveAllChanges();
-  assert.deepEqual(lineDiff(TARGET['app.archive.cabinet.yaml'], mem.files.get(target('archive.cabinet')).text), { removed: ['    - archive.shelf'], added: [] });
+  assert.deepEqual(lineDiff(DISK['app.archive.cabinet.yaml'], mem.files.get(target('archive.cabinet')).text), { removed: ['    - archive.shelf'], added: [] });
   formFields(sandbox, 'archive.cabinet');
   click(sandbox, { 'data-action': 'remove-replaces', 'data-ref': 'archive.cabinet', 'data-index': '0' });
   await sandbox.saveAllChanges();
   assert.equal(state.index.application.get('archive.cabinet').replaces.length, 0);
-  assert.deepEqual(lineDiff(TARGET['app.archive.cabinet.yaml'], mem.files.get(target('archive.cabinet')).text), { removed: ['  replaces:', '    - archive.shelf', '    - archive.bin'], added: [] });
+  assert.deepEqual(lineDiff(DISK['app.archive.cabinet.yaml'], mem.files.get(target('archive.cabinet')).text), { removed: ['  replaces:', '    - archive.shelf', '    - archive.bin'], added: [] });
   assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'archive.cabinet').change, 'new');
   // declining the confirmation changes nothing
   sandbox.confirm = () => false;
@@ -672,13 +662,13 @@ test('a comparison with no replaces and no candidate is the Changes panel it was
   assert.doesNotMatch(single.renderElementViewHtml('shop'), /Replaces/);
 });
 
-test('with Compare to Nothing none of it is on the page', async () => {
+test('while nothing is compared none of it is on the page', async () => {
   const { sandbox } = await open({ compare: false });
   run(sandbox, "currentPerspective = 'map';");
   assert.doesNotMatch(sandbox.renderMapPerspectiveHtml().right || '', /changes-panel|Candidates|accept-candidate/);
   assert.equal(sandbox.comparisonState(), null);
   assert.equal(sandbox.renderWhatChangedHtml('application', 'archive.counter', false), '');
-  // the form still has its section (the workspace has plateaus), the datalist does not
+  // the form still has its section (the workspace writes plateaus), the datalist does not
   assert.doesNotMatch(sandbox.renderReferenceDatalistsHtml(), /baseline-references/);
 });
 

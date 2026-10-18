@@ -8,6 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { layeredFiles, openLayered } = require('./layered-folders');
 
 const plain = (value) => JSON.parse(JSON.stringify(value === undefined ? null : value));
 const text = (html) => html.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, ' ').replace(/&rarr;/g, '→').replace(/\s+/g, ' ').trim();
@@ -34,18 +35,12 @@ const TARGET = {
   'app.shop.mail.yaml': element('container', 'shop', 'mail', 'Mailer')
 };
 const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
-const PLATEAUS = '  plateaus:\n    - id: base\n      name: Base\n      path: plateaus/10_base\n    - id: target\n      name: Target\n      path: plateaus/20_target\n';
+const PLATEAU_LIST = [{ id: 'base', name: 'Base', path: 'plateaus/10_base' }, { id: 'target', name: 'Target', path: 'plateaus/20_target' }];
 
+/** The two states as layers (see layered-folders.js: siblings over an empty baseline), the target drawn and compared with the base on the band. */
 async function open(options = {}) {
-  const files = Object.assign({ 'workspace.yaml': 'settings:\n' + PLATEAUS }, folder('10_base', options.base || BASE), folder('20_target', options.target || TARGET));
-  const mem = memFolder(files);
-  const sandbox = createApp({});
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
-  await sandbox.loadViewpointKernel();
-  await sandbox.setCompareTo('base');
+  const files = layeredFiles(PLATEAU_LIST, Object.assign({}, folder('10_base', options.base || BASE), folder('20_target', options.target || TARGET)));
+  const { sandbox } = await openLayered(createApp, memFolder, files, { drawn: 'target', compared: 'base' });
   return sandbox;
 }
 

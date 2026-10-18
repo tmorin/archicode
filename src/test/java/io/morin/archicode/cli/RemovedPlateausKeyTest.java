@@ -21,8 +21,9 @@ import picocli.CommandLine;
 /**
  * The plateaus of waves 008 to 013 are gone (wave 014, run 0083, W-9): a workspace that still has {@code settings.plateaus}
  * fails, on every command, with one {@code error:} line that says the key no longer exists and what to write instead, and
- * {@code plateau add} and {@code --baseline} are gone too. The words of the line are pinned here; the editor's own sentence
- * is the business of W-10 (the shared cases file leaves its expectation open until then).
+ * {@code plateau add} and {@code --baseline} are gone too. The words of the line are pinned here; the editor says the same
+ * sentence (wave 014, run 0084, W-10), and the shared cases M50 to M53 of {@code plateau-model-cases.json} and N41 of
+ * {@code negative-cases.json} pin it in both tools.
  */
 @QuarkusTest
 class RemovedPlateausKeyTest {

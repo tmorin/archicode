@@ -140,7 +140,9 @@ class PlateauModelTest {
         val layered = isLayered(workspace);
         val result = layered
             ? run("-w", workspace.toString(), "query", "graph", "--plateau", Plateau.BASELINE)
-            : run("-w", workspace.toString(), "query", "graph");
+            : c.has("plateau")
+              ? run("-w", workspace.toString(), "query", "graph", "--plateau", c.get("plateau").asText())
+              : run("-w", workspace.toString(), "query", "graph");
 
         if (expect.has("fileError")) {
             val error = expect.get("fileError");
@@ -162,6 +164,9 @@ class PlateauModelTest {
             assertOneMistake(result, lines, label);
         } else if (expect.has("removedKey")) {
             assertOneMistake(result, List.of("error: " + expect.get("removedKey").asText()), label);
+        } else if (expect.has("noPlateau")) {
+            // `settings.current` or `--plateau` in a workspace that has no plateau: the editor says the first in the same words
+            assertOneMistake(result, List.of("error: " + expect.get("noPlateau").asText()), label);
         } else {
             assertEquals(0, result.exit(), label + " -> " + result.err());
             val told = new ArrayList<String>();

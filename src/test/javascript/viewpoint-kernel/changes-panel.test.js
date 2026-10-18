@@ -1,7 +1,7 @@
 'use strict';
 // Reading a comparison in the editor (run 0040): the Changes panel (counts, two lists, state chips with a glyph and a word), the "What changed" block of the
 // inspection (before and after), the Changes only filter, hiding the wording-only changes, the selection in the address, the marks in the trees. All of it
-// is active only while Compare to is not Nothing; with Nothing the editor is what it was. The harness has no DOM and no layout engine: the markup is checked
+// is active only while a plateau is compared on the band (wave 014, run 0084: the plateaus are layers, see layered-folders.js); with nothing compared the editor is what it was. The harness has no DOM and no layout engine: the markup is checked
 // from the real kernel and a fake layout, and the look itself in a browser (see the run's document). Everything here is invented.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
@@ -11,6 +11,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { layeredFiles, openLayered, compareWith } = require('./layered-folders');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '');
@@ -58,7 +59,10 @@ const TO_BE = {
   'app.reports.daily.yaml': element('container', 'reports', 'daily', 'Daily report', described('Runs every night.'))
 };
 const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
-const PLATEAUS = '  plateaus:\n    - id: as-is\n      name: As is\n      path: plateaus/10_as-is\n    - id: to-be\n      name: To be\n      path: plateaus/30_to-be\n';
+const PLATEAU_LIST = [
+  { id: 'as-is', name: 'As is', path: 'plateaus/10_as-is' },
+  { id: 'to-be', name: 'To be', path: 'plateaus/30_to-be' }
+];
 const FILES = Object.assign({}, folder('10_as-is', AS_IS), folder('30_to-be', TO_BE));
 
 function storage() {
@@ -66,18 +70,14 @@ function storage() {
   return { values, getItem: (k) => (values.has(k) ? values.get(k) : null), setItem: (k, v) => values.set(k, String(v)), removeItem: (k) => values.delete(k) };
 }
 
-/** The bookshop opened as the editor opens a folder, with the kernel loaded; `compare`: the Compare to to start with ('' for Nothing). */
+/**
+ * The bookshop opened as the editor opens a folder, with the kernel loaded, as layers (see layered-folders.js): the two states are siblings over an empty baseline, `to-be`
+ * is drawn and `compare` is the plateau to compare it with on the band ('' for nothing).
+ */
 async function open(compare, options = {}) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n' + PLATEAUS }, FILES));
-  const sandbox = createApp(options);
-  if (options.hash) sandbox.location.hash = options.hash;
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
-  await sandbox.loadViewpointKernel();
-  if (compare) await sandbox.setCompareTo(compare);
-  return { sandbox, state, mem };
+  const opened = await openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, FILES), { drawn: 'to-be', app: options, hash: options.hash });
+  if (compare) compareWith(opened.sandbox, compare);
+  return opened;
 }
 
 /** A click as handleAppClick reads it: the nearest data-action element, with these attributes. */
@@ -210,15 +210,8 @@ test('a row is a button that selects, with everything it needs to find the thing
 });
 
 test('with nothing that differs, the panel says so', async () => {
-  const mem = { 'workspace.yaml': 'settings:\n' + PLATEAUS };
-  Object.assign(mem, folder('10_as-is', AS_IS), folder('30_to-be', AS_IS));
-  const sandbox = createApp();
-  const state = sandbox.__state();
-  const fm = memFolder(mem);
-  state.folder = { handle: fm.handle, name: 'ws' };
-  await sandbox.loadWorkspace(fm.handle);
-  await sandbox.loadViewpointKernel();
-  await sandbox.setCompareTo('as-is');
+  const { sandbox } = await openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, Object.assign(folder('10_as-is', AS_IS), folder('30_to-be', AS_IS))), { drawn: 'to-be' });
+  compareWith(sandbox, 'as-is');
   const panel = sandbox.renderChangesPanelHtml(sandbox.comparisonState());
   assert.match(panel, /Nothing differs between the two plateaus\./);
   assert.equal((panel.match(/<p class="muted change-none">None\.<\/p>/g) || []).length, 2);
@@ -245,15 +238,10 @@ test('with something selected the panel has two tabs, Selected first; the Change
   assert.match(sandbox.renderMapPerspectiveHtml().right, /data-tab="selected" aria-pressed="true"/);
 });
 
-test('the panel drawn before the kernel is loaded says it is reading, and the first drawing fills it', async () => {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n' + PLATEAUS }, FILES));
-  const local = storage();
-  local.setItem('archicode-standalone-editor:compare:name:ws', '@baseline');
-  const sandbox = createApp({ localStorage: local });
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  await sandbox.loadWorkspace(mem.handle);
-  run(sandbox, "currentPerspective = 'map';");
+test('the panel drawn while the kernel is not loaded says it is reading, and the first drawing fills it', async () => {
+  // the page loads the kernel before it resolves a layer: the window is a kernel that is gone (a failed load)
+  const { sandbox } = await open('as-is');
+  run(sandbox, "currentPerspective = 'map'; loadedKernel = null; viewpointKernelPromise = null;");
   assert.match(sandbox.renderMapPerspectiveHtml().right, /data-changes-panel data-pending>.*Reading the comparison/);
   assert.equal(run(sandbox, 'rightPanelPending'), true);
   await sandbox.loadViewpointKernel();
@@ -332,9 +320,10 @@ test('the wording-only toggle is remembered per folder in this browser, and the 
   click(first.sandbox, { 'data-action': 'toggle-hide-wording' });
   click(first.sandbox, { 'data-action': 'set-changes-only', 'data-value': '1' });
   assert.deepEqual(Array.from(local.values.entries()).sort(), [
-    ['archicode-standalone-editor:compare:name:ws', 'as-is'],
+    ['archicode-standalone-editor:compare:name:ws', 'other:as-is'],
     ['archicode-standalone-editor:flag:changes-only:name:ws', '1'],
-    ['archicode-standalone-editor:flag:hide-wording:name:ws', '1']
+    ['archicode-standalone-editor:flag:hide-wording:name:ws', '1'],
+    ['archicode-standalone-editor:plateau:name:ws', 'to-be']
   ]);
   await first.sandbox.loadWorkspace(first.state.folder.handle);
   assert.equal(first.state.hideWording, true);
@@ -454,15 +443,16 @@ test('the block is in the inspection, so the page of a view in the Library has i
 
 // ---- 5. Changes only ----
 
-test('Changes only sits next to Compare to, only while a comparison is on, and says which of the two is pressed', async () => {
+test('Changes only sits on the band, next to what is compared, only while a comparison is on, and says which of the two is pressed', async () => {
   const off = await open('');
-  assert.doesNotMatch(off.sandbox.renderTopPanelHtml(), /Changes only|set-changes-only/);
+  assert.doesNotMatch(off.sandbox.renderPlateauBandHtml(), /Changes only|set-changes-only/);
+  assert.doesNotMatch(off.sandbox.renderTopPanelHtml(), /Changes only|set-changes-only/, 'not in the top bar any more');
   const { sandbox } = await open('as-is');
-  const header = sandbox.renderTopPanelHtml();
-  assert.ok(header.indexOf('data-action="reload-baseline"') < header.indexOf('data-action="set-changes-only"') && header.indexOf('data-action="set-changes-only"') < header.indexOf('class="perspective-tabs'));
-  assert.match(header, /<span class="button-group changes-switch" role="group" aria-label="What the diagrams draw of the comparison"><button type="button" data-action="set-changes-only" data-value="0" aria-pressed="true"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="false"[^>]*>Changes only<\/button><\/span>/);
+  const band = sandbox.renderPlateauBandHtml();
+  assert.ok(band.indexOf('data-action="compare-future"') < band.indexOf('data-action="set-changes-only"') && band.indexOf('data-action="set-changes-only"') < band.indexOf('class="band-status"'));
+  assert.match(band, /<span class="button-group changes-switch" role="group" aria-label="What the diagrams draw of the comparison"><button type="button" data-action="set-changes-only" data-value="0" aria-pressed="true"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="false"[^>]*>Changes only<\/button><\/span>/);
   click(sandbox, { 'data-action': 'set-changes-only', 'data-value': '1' });
-  assert.match(sandbox.renderTopPanelHtml(), /data-value="0" aria-pressed="false"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="true"/);
+  assert.match(sandbox.renderPlateauBandHtml(), /data-value="0" aria-pressed="false"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="true"/);
 });
 
 test('Changes only reaches the kernel as only_changes, for the Map and for the diagram of an element; without it, nothing is added', async () => {
@@ -479,7 +469,7 @@ test('Changes only reaches the kernel as only_changes, for the Map and for the d
   assert.equal(sandbox.buildKernelInput('map', '', {}).input.only_changes, undefined);
   // with Nothing the filter has nothing to filter, even when it was left on
   click(sandbox, { 'data-action': 'set-changes-only', 'data-value': '1' });
-  await sandbox.setCompareTo('');
+  compareWith(sandbox, '');
   assert.equal(sandbox.buildKernelInput('map', '', {}).input.only_changes, undefined);
 });
 
@@ -563,25 +553,23 @@ test('the SVG export carries the faded rule', async () => {
 });
 
 // ---- 6. The address ----
+// The address names the plateau drawn (`plateau=`, none for baseline) and, with a removed element, the comparison (`compare=`, as the band chose it: `other:<id>`).
 
 test('a removed element picked on the Map is in the address with the comparison; the other selections are as they were', async () => {
-  const { sandbox, state } = await open('@baseline');
+  const { sandbox, state } = await open('as-is');
   run(sandbox, "currentPerspective = 'map';");
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?plateau=to-be');
   click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'removed', 'data-layer': 'application', 'data-ref': 'shop.session' });
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=%40baseline');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=other%3Aas-is&plateau=to-be');
   click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'changed', 'data-layer': 'application', 'data-ref': 'shop.web' });
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?ref=shop.web', 'a changed element is an ordinary selection: nothing new in the address');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?ref=shop.web&plateau=to-be', 'a changed element is an ordinary selection: nothing new in the address');
   click(sandbox, { 'data-action': 'select-change', 'data-thing': 'relationship', 'data-change': 'changed', 'data-layer': 'application', 'data-ref': 'customer', 'data-to': 'shop.web' });
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?link-from=customer&link-to=shop.web');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?link-from=customer&link-to=shop.web&plateau=to-be');
   assert.equal(state.selection.kind, 'link');
-  // a plateau named by its id
-  await sandbox.setCompareTo('as-is');
-  click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'removed', 'data-layer': 'application', 'data-ref': 'shop.session' });
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=as-is');
   // closing the panel takes it out of the address
+  click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'removed', 'data-layer': 'application', 'data-ref': 'shop.session' });
   click(sandbox, { 'data-action': 'close-removed' });
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?plateau=to-be');
 });
 
 test('in Elements the removed element is in the address next to the element that stays the subject', async () => {
@@ -589,63 +577,72 @@ test('in Elements the removed element is in the address next to the element that
   state.selection = { kind: 'element', key: 'shop.web', layer: 'application', mode: 'view' };
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview';");
   click(sandbox, { 'data-action': 'select-removed', 'data-ref': 'shop.session', 'data-layer': 'application' });
-  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web&tab=overview&removed=shop.session&compare=as-is');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web&tab=overview&removed=shop.session&compare=other%3Aas-is&plateau=to-be');
 });
 
-test('an address with a removed element reopens it with the same comparison, whatever this browser had remembered, and keeps it while the kernel loads', async () => {
-  const hash = '#/map?removed=shop.session&compare=%40baseline';
+test('an address with a removed element reopens it with the same comparison, whatever this browser had remembered', async () => {
+  const hash = '#/map?removed=shop.session&compare=other%3Aas-is&plateau=to-be';
   const local = storage();
-  local.setItem('archicode-standalone-editor:compare:name:ws', ''); // this browser had Nothing
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n' + PLATEAUS }, FILES));
-  const sandbox = createApp({ localStorage: local });
-  sandbox.location.hash = hash;
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  await sandbox.loadWorkspace(mem.handle);
+  local.setItem('archicode-standalone-editor:compare:name:ws', ''); // this browser had nothing compared
+  const { sandbox, state } = await open(undefined, { localStorage: local, hash });
   run(sandbox, "currentPerspective = 'map';");
-  assert.equal(state.compareTo, '@baseline', 'the address wins');
-  assert.equal(local.getItem('archicode-standalone-editor:compare:name:ws'), '@baseline', 'and is kept like a choice made');
+  assert.equal(state.layers.current, 'to-be', 'the plateau of the address');
+  assert.equal(sandbox.layerCompareChoice(), 'other:as-is', 'the address wins');
+  assert.equal(local.getItem('archicode-standalone-editor:compare:name:ws'), 'other:as-is', 'and is kept like a choice made');
   assert.equal(state.baseline.plateau.id, 'as-is');
   assert.deepEqual(plain(sandbox.removedFromHash()), { reference: 'shop.session', layer: 'application' });
-  // the kernel is not loaded yet: the address is kept, the panel waits
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=%40baseline');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=other%3Aas-is&plateau=to-be');
+  assert.match(sandbox.renderMapPerspectiveHtml().right, /inspection-removed" data-inspection-ref="shop\.session"/, 'and it is there');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=other%3Aas-is&plateau=to-be', 'a reload would do the same again');
+  // the kernel is gone (a failed load): the address is kept, the panel waits, and the next load fills it
+  run(sandbox, 'loadedKernel = null; viewpointKernelPromise = null;');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=other%3Aas-is&plateau=to-be');
   assert.match(sandbox.renderMapPerspectiveHtml().right, /data-pending/);
   await sandbox.loadViewpointKernel();
-  assert.match(sandbox.renderMapPerspectiveHtml().right, /inspection-removed" data-inspection-ref="shop\.session"/, 'and now it is there');
-  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=%40baseline', 'a reload would do the same again');
+  assert.match(sandbox.renderMapPerspectiveHtml().right, /inspection-removed" data-inspection-ref="shop\.session"/);
+});
+
+test('an address that names a comparison the plateaus cannot honour is no choice made: what this browser remembered stays', async () => {
+  const local = storage();
+  await open('as-is', { localStorage: local });
+  assert.equal(local.getItem('archicode-standalone-editor:compare:name:ws'), 'other:as-is');
+  const page = await open(undefined, { localStorage: local, hash: '#/map?plateau=to-be&compare=other%3Anowhere' });
+  assert.equal(page.sandbox.layerCompareChoice(), '', 'the address wins, and names nothing the workspace has');
+  assert.equal(local.getItem('archicode-standalone-editor:compare:name:ws'), 'other:as-is', 'and the browser keeps what it had');
 });
 
 test('the address of a removed element round trips: written, read back by a fresh page, written again the same', async () => {
-  const first = await open('@baseline');
+  const first = await open('as-is');
   run(first.sandbox, "currentPerspective = 'map';");
   click(first.sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'removed', 'data-layer': 'application', 'data-ref': 'shop.session' });
   const hash = '#' + first.sandbox.currentRouteHash();
   const second = await open(undefined, { hash });
   run(second.sandbox, "currentPerspective = 'map';");
-  assert.equal(second.state.compareTo, '@baseline');
+  assert.equal(second.sandbox.layerCompareChoice(), 'other:as-is');
   assert.equal('#' + second.sandbox.currentRouteHash(), hash);
   assert.match(second.sandbox.renderMapPerspectiveHtml().right, /inspection-removed" data-inspection-ref="shop\.session"/);
 });
 
 test('an address that names a removed element the comparison does not have, or no comparison at all, picks nothing and is cleaned', async () => {
-  const gone = await open(undefined, { hash: '#/map?removed=shop.nothing&compare=as-is' });
+  const gone = await open(undefined, { hash: '#/map?removed=shop.nothing&compare=other%3Aas-is&plateau=to-be' });
   run(gone.sandbox, "currentPerspective = 'map';");
-  assert.equal(gone.sandbox.currentRouteHash(), '/timeline/applications', 'the element is not in the comparison');
-  const none = await open(undefined, { hash: '#/map?removed=shop.session&compare=nowhere' });
-  assert.equal(none.state.compareTo, '', 'a plateau the workspace does not have is Nothing');
+  assert.equal(gone.sandbox.currentRouteHash(), '/timeline/applications?plateau=to-be', 'the element is not in the comparison, and the comparison is not in the address without it');
+  const none = await open(undefined, { hash: '#/map?removed=shop.session&compare=other%3Anowhere&plateau=to-be' });
+  assert.equal(none.sandbox.layerCompareChoice(), '', 'a plateau the workspace does not have is nothing compared');
   assert.equal(run(none.sandbox, 'removedPick'), null);
-  const plain1 = await open('', { hash: '#/map?removed=shop.session' });
+  const plain1 = await open('', { hash: '#/map?removed=shop.session&plateau=to-be' });
   assert.equal(run(plain1.sandbox, 'removedPick'), null, 'without a comparison there is nothing to pick');
 });
 
 test('a selected change row reloads the same: the element, the link', async () => {
-  const first = await open('as-is');
+  const local = storage(); // the comparison is the one this browser remembers, as it is for a page that is reloaded
+  const first = await open('as-is', { localStorage: local });
   run(first.sandbox, "currentPerspective = 'map';");
   click(first.sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'new', 'data-layer': 'application', 'data-ref': 'shop.cache' });
-  const second = await open('as-is', { hash: '#' + first.sandbox.currentRouteHash() });
+  const second = await open(undefined, { localStorage: local, hash: '#' + first.sandbox.currentRouteHash() });
   assert.deepEqual(plain(second.state.selection), { kind: 'element', key: 'shop.cache', mode: 'view' });
   click(first.sandbox, { 'data-action': 'select-change', 'data-thing': 'relationship', 'data-change': 'new', 'data-layer': 'application', 'data-ref': 'shop.web', 'data-to': 'shop.cache' });
-  const third = await open('as-is', { hash: '#' + first.sandbox.currentRouteHash() });
+  const third = await open(undefined, { localStorage: local, hash: '#' + first.sandbox.currentRouteHash() });
   assert.equal(third.state.selection.kind, 'link');
   assert.deepEqual([third.state.selection.from, third.state.selection.to], ['shop.web', 'shop.cache']);
 });
@@ -748,7 +745,7 @@ test('the tree of the Map marks the elements too, and keeps its pin and hide but
 
 // ---- 9. Nothing is today\'s editor ----
 
-test('with Compare to Nothing none of it is on the page: no panel, no tabs, no chips, no filter, no marks in the trees, no only_changes', async () => {
+test('while nothing is compared none of it is on the page: no panel, no tabs, no chips, no filter, no marks in the trees, no only_changes', async () => {
   const { sandbox, state } = await open('');
   run(sandbox, "currentPerspective = 'map';");
   assert.equal(sandbox.renderMapPerspectiveHtml().right, null, 'nothing selected: no panel, as it always was');
@@ -763,7 +760,7 @@ test('with Compare to Nothing none of it is on the page: no panel, no tabs, no c
   assert.doesNotMatch(sandbox.renderElementsNavHtml(false) + sandbox.renderMapScopeHtml(), /tree-change|data-change/);
   assert.equal(sandbox.buildKernelInput('map', '', {}).input.only_changes, undefined);
   assert.equal(sandbox.comparisonState(), null);
-  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web&plateau=to-be');
   // the flags are not stored until they are used, and a leftover filter does nothing without a comparison
   click(sandbox, { 'data-action': 'set-changes-only', 'data-value': '1' });
   assert.equal(sandbox.buildKernelInput('map', '', {}).input.only_changes, undefined);

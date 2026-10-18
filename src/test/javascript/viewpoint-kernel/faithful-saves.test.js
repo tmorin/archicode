@@ -259,7 +259,7 @@ test('#54: a map on several lines, an item that is a flow map, and a nested list
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // the whole editor: a rename, saved to the disk
 
-const PLATEAUS = 'settings:\n  plateaus:\n    - id: base\n      name: Base\n      path: plateaus/10_base\n';
+const PLATEAUS = 'settings:\n  manifests:\n    paths:\n      - plateaus/10_base\n';
 const MANIFESTS = {
   'app.mill.yaml': [
     '# the mill',

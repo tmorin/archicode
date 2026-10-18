@@ -16,6 +16,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { inPlateau, layeredFiles, compareWith } = require('./layered-folders');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart/layered');
@@ -41,19 +42,19 @@ const FLEET_NEXT = {
 };
 const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, body]) => ['plateaus/' + dir + '/' + name, body]));
 const FILES = Object.assign({}, folder('10_now', FLEET_NOW), folder('20_next', FLEET_NEXT));
-const SETTINGS = 'settings:\n  current: next\n  plateaus:\n' +
-  '    - id: now\n      path: plateaus/10_now\n' +
-  '    - id: next\n      path: plateaus/20_next\n' +
+const PLATEAU_LIST = [{ id: 'now', path: 'plateaus/10_now' }, { id: 'next', path: 'plateaus/20_next' }];
+const SETTINGS = '  current: next\n' +
   '  facets:\n    customs:\n' +
   '      - name: no-ferry\n        actions:\n          - operator: REMOVE\n            json-path: "$.application..elements[?(@.id == \'ferry\')]"\n' +
   '      - name: no-radio\n        actions:\n          - operator: REMOVE\n            json-path: "$.application..elements[?(@.id == \'radio\')]"\n';
 
 /**
- * The page on the ferry company (`next` drawn), with the counters: `kernelInputs` (the walks of a model that make a kernel input), `computes` (the kernel's `compute`) and `models`
+ * The page on the ferry company, as layers (see layered-folders.js: `now` and `next` are siblings over an empty baseline), `next` drawn and compared on the band with `compareTo`,
+ * with the counters: `kernelInputs` (the walks of a model that make a kernel input), `computes` (the kernel's `compute`) and `models`
  * (the serialisations of a model by `JSON.stringify`), a canvas and a recipe the test moves, and `showDiagramScene` collecting what the page shows.
  */
 async function open({ compareTo = null, files = FILES, folderHandle = null } = {}) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': SETTINGS }, files));
+  const mem = memFolder(layeredFiles(PLATEAU_LIST, files, SETTINGS));
   const sandbox = createApp();
   const state = sandbox.__state();
   const handle = folderHandle || mem.handle;
@@ -61,7 +62,8 @@ async function open({ compareTo = null, files = FILES, folderHandle = null } = {
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(handle);
   await sandbox.loadViewpointKernel();
-  if (compareTo) await sandbox.setCompareTo(compareTo);
+  if (!folderHandle) sandbox.drawPlateau('next');
+  if (compareTo) compareWith(sandbox, compareTo);
   const realGet = sandbox.document.getElementById.bind(sandbox.document);
   const canvas = { id: 'diagram-canvas' };
   sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? canvas : realGet(id));
@@ -161,7 +163,7 @@ test('#37: a change of the model gives a fresh drawing, the one a page without a
   computes = ctx.count().computes;
 
   // a relationship added: the drawing has one more link
-  ctx.sandbox.commitFileEdit('plateaus/20_next/app.fleet.ferry.yaml', element('container', 'fleet', 'ferry', 'Ferry journal', rel('fleet.dock', 'reports to')));
+  ctx.sandbox.commitFileEdit('plateaus/20_next/app.fleet.ferry.yaml', inPlateau('next', element('container', 'fleet', 'ferry', 'Ferry journal', rel('fleet.dock', 'reports to'))));
   const linked = await draw(ctx, recipeOf(null, ctx.state, { reference: 'fleet.ferry', record: ctx.state.index.application.get('fleet.ferry') }));
   assert.ok(linked.html.includes('reports to') || linked.html.includes('Dock planner'));
   assert.equal(linked.html, (await drawWithoutCache(ctx, recipeOf(null, ctx.state, { reference: 'fleet.ferry', record: ctx.state.index.application.get('fleet.ferry') }))).html);
@@ -259,14 +261,14 @@ test('#37: a change of the plateau compared with, of Changes only, of the wordin
     return scene;
   };
   const compared = await draw(ctx, recipe());
-  const nothing = await stepAfter('compare to nothing', () => ctx.sandbox.setCompareTo(''));
+  const nothing = await stepAfter('compare to nothing', () => compareWith(ctx.sandbox, ''));
   assert.notEqual(nothing.html, compared.html, 'a comparison draws the new and the removed ones');
-  const back = await stepAfter('compare to now again', () => ctx.sandbox.setCompareTo('now'));
+  const back = await stepAfter('compare to now again', () => compareWith(ctx.sandbox, 'now'));
   assert.equal(back.html, compared.html);
   await stepAfter('Changes only', () => { ctx.state.changesOnly = true; });
   await stepAfter('Changes only off', () => { ctx.state.changesOnly = false; });
   await stepAfter('the styles', () => { ctx.state.workspace.styles = { 'by-tags': { planner: { 'background-color': '#abcdef' } } }; });
-  await stepAfter('Compare to the other direction', () => ctx.sandbox.switchPlateau('now').then(() => ctx.sandbox.setCompareTo('next')));
+  await stepAfter('the other direction: now drawn, compared with next', () => { ctx.sandbox.drawPlateau('now'); compareWith(ctx.sandbox, 'next'); });
 });
 
 test('#37: a drawing computed before an edit is not served after it, even when the edit lands while the layout is being made', async () => {
@@ -319,8 +321,8 @@ test('#37: the quiet references are computed again after a change of the model, 
     return after;
   };
   quiet(noFerry);
-  step('a file edited: the beacon feed now points at the ferry log', noFerry, () => ctx.sandbox.commitFileEdit('plateaus/20_next/app.fleet.beacon.yaml', element('container', 'fleet', 'beacon', 'Beacon feed', rel('fleet.ferry', 'feeds'))));
-  const afterCut = step('a file edited: the beacon feed points at nothing', noRadio, () => ctx.sandbox.commitFileEdit('plateaus/20_next/app.fleet.beacon.yaml', element('container', 'fleet', 'beacon', 'Beacon feed')));
+  step('a file edited: the beacon feed now points at the ferry log', noFerry, () => ctx.sandbox.commitFileEdit('plateaus/20_next/app.fleet.beacon.yaml', inPlateau('next', element('container', 'fleet', 'beacon', 'Beacon feed', rel('fleet.ferry', 'feeds')))));
+  const afterCut = step('a file edited: the beacon feed points at nothing', noRadio, () => ctx.sandbox.commitFileEdit('plateaus/20_next/app.fleet.beacon.yaml', inPlateau('next', element('container', 'fleet', 'beacon', 'Beacon feed'))));
   assert.ok(afterCut.has('fleet.beacon'), 'and so the beacon feed has nothing left to draw');
   step('a rename', noFerry, () => ctx.sandbox.commitElementEdit('fleet.beacon', (node) => { node.name = 'Beacon'; }));
   const picked = quiet(noRadio);
@@ -333,7 +335,7 @@ test('#37: the quiet references are computed again after a change of the model, 
   // a comparison turned off, then on with the other plateau
   const prior = quiet(noFerry);
   const computes = ctx.count().computes;
-  await ctx.sandbox.setCompareTo('');
+  compareWith(ctx.sandbox, '');
   const alone = quiet(noFerry);
   assert.ok(ctx.count().computes > computes, 'no comparison: computed');
   assert.notEqual(alone, prior);
@@ -384,15 +386,14 @@ test('#37: on the 82 elements of the Brightcart marketplace plateau, with a comp
 
 const environment = (id, name, uses, elements) => 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"\n' +
   (uses ? '  uses:\n' + uses.map((u) => '    - "' + u + '"\n').join('') : '') + (elements || '');
-const HARBOUR_FILES = {
-  'workspace.yaml': 'settings:\n  current: next\n  plateaus:\n    - id: now\n      path: p/now\n    - id: next\n      path: p/next\n',
+const HARBOUR_FILES = layeredFiles([{ id: 'now', path: 'p/now' }, { id: 'next', path: 'p/next' }], {
   'p/now/tec.quay.yaml': environment('quay', 'Quay'),
   'p/now/tec.pier.yaml': environment('pier', 'Pier'),
   'p/now/tec.harbour.yaml': environment('harbour', 'Harbour', ['quay', 'pier'], '  elements:\n    - kind: "node"\n      id: "crane"\n      name: "Crane"\n'),
   'p/now/tec.lonely.yaml': environment('lonely', 'Lonely'),
   'p/next/tec.quay.yaml': environment('quay', 'Quay'),
   'p/next/tec.pier.yaml': environment('pier', 'Pier')
-};
+}, '  current: next\n', 'p/**');
 
 async function harbourAgainstNow() {
   const mem = memFolder(HARBOUR_FILES);
@@ -402,7 +403,7 @@ async function harbourAgainstNow() {
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
   await sandbox.loadViewpointKernel();
-  await sandbox.setCompareTo('now');
+  compareWith(sandbox, 'now');
   return { sandbox, state };
 }
 
@@ -436,10 +437,10 @@ test('a removed environment that used nothing shows no empty block, and a remove
 
 test('the changed environment keeps its Before and After under the same label', async () => {
   const { sandbox } = await harbourAgainstNow();
-  await sandbox.switchPlateau('now');
-  await sandbox.setCompareTo('next');
+  sandbox.drawPlateau('now');
+  compareWith(sandbox, 'next');
   // `harbour` is new when `next` is the plateau compared with the other way round; a changed environment is one that kept its place: quay gains a use
-  sandbox.commitFileEdit('p/now/tec.quay.yaml', environment('quay', 'Quay', ['pier']));
+  sandbox.commitFileEdit('p/now/tec.quay.yaml', inPlateau('now', environment('quay', 'Quay', ['pier'])));
   const html = sandbox.renderWhatChangedHtml('technology', 'quay');
   assert.match(html, /<div class="change-diff-label">Uses<\/div><div class="change-before">/);
   assert.match(html, /change-after/);

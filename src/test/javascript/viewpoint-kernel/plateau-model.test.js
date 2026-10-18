@@ -7,15 +7,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
 
 const DOCUMENT = JSON.parse(fs.readFileSync(path.join(__dirname, 'plateau-model-cases.json'), 'utf8'));
 
-async function open(c) {
+async function open(c, hash) {
   const files = Object.assign({ 'workspace.yaml': c.settings || 'settings: {}\n' }, c.files);
   const mem = memFolder(files);
   const sandbox = createApp({});
+  if (hash) vm.runInContext('location.hash = ' + JSON.stringify(hash), sandbox);
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
@@ -25,12 +27,19 @@ async function open(c) {
 
 for (const c of DOCUMENT.cases) {
   test(c.id + ': ' + c.what, async () => {
-    const { state } = await open(c);
+    const { state } = await open(c, c.plateau ? '#/timeline?plateau=' + c.plateau : '');
     const expect = c.expect;
-    if (expect.removedKey !== undefined) {
-      // the command line refuses the key with this sentence; the page reads the key until W-10 removes its reading (the case says so: `editor: null`)
-      assert.equal(expect.editor, null);
-      assert.ok(typeof expect.editorReason === 'string' && expect.editorReason.includes('W-10'), 'the case says why the editor waits, and for which run');
+    if (expect.removedKey !== undefined || expect.noPlateau !== undefined) {
+      // the command line refuses the workspace with this sentence, and the editor with the same one under its own heading (a capital and a full stop apart)
+      if (expect.editorSays !== undefined) {
+        assert.equal(state.fatalError, expect.editorSays);
+        if (expect.removedKey !== undefined) assert.equal(state.fatalError, 'Could not read/parse workspace.yaml: ' + expect.removedKey, 'one line: the heading and the sentence of the command line');
+        else assert.equal(state.fatalError.split('\n').slice(1).join('\n'), expect.noPlateau);
+      } else {
+        // the editor has no option to type: the address names a plateau it does not have, and the page draws baseline
+        assert.equal(state.fatalError, null);
+        assert.equal(state.layers.current, expect.editorDraws);
+      }
       return;
     }
     assert.equal(state.fatalError, null, 'the folder opens: ' + state.fatalError);
@@ -105,31 +114,4 @@ test('the mistakes of the tree and the warnings are told on the page, nothing el
   assert.match(html, /One mistake in the plateaus/);
   assert.match(html, /<code>b<\/code> \(<code>manifests\/b.yaml<\/code>\) overrides <code>nothing<\/code>/);
   assert.deepEqual(Array.from(state.index.application.keys()), ['shop'], 'the folder is open, and baseline is drawn');
-});
-
-const SETTINGS_PLATEAUS = 'settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n    - id: b\n      path: plateaus/b\n';
-const CONFLICT = (file, how) => '`settings.plateaus` and layered plateaus are both used: `' + file + '` ' + how + '. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`';
-
-test('an edit that adds a layered plateau to a workspace that has settings.plateaus is told in the banner, and the command line refuses both', async () => {
-  const { sandbox, state } = await open({
-    settings: SETTINGS_PLATEAUS,
-    files: { 'plateaus/a/shop.yaml': manifest('system'), 'plateaus/b/shop.yaml': manifest('system') },
-  });
-  assert.equal(state.fatalError, null);
-  assert.equal(sandbox.renderPlateauTreeHtml(), '', 'nothing to tell while no plateau is layered');
-  sandbox.commitFileEdit('plateaus/b/shop.yaml', manifest('system', '  plateau: later\n')); // plateau b is the one drawn (the last)
-  assert.equal(state.plateauTree.layered, true);
-  const html = sandbox.renderPlateauTreeHtml();
-  assert.match(html, /One mistake in the plateaus/);
-  assert.match(html, /<code>settings\.plateaus<\/code> and layered plateaus are both used/);
-});
-
-test('a plateau of settings.plateaus whose folder is layered cannot be compared with: the baseline says so, as the command line does when it loads that plateau', async () => {
-  const { sandbox, state } = await open({
-    settings: SETTINGS_PLATEAUS,
-    files: { 'plateaus/a/shop.yaml': manifest('system', '  plateau: later\n'), 'plateaus/b/shop.yaml': manifest('system') },
-  });
-  assert.equal(state.fatalError, null, 'plateau b is the one drawn, and it is not layered');
-  await sandbox.setCompareTo('a');
-  assert.equal(state.baseline.problem, 'The plateau `a` of `settings.plateaus` cannot be read: ' + CONFLICT('plateaus/a/shop.yaml', 'says `plateau: later` in its header') + '.');
 });

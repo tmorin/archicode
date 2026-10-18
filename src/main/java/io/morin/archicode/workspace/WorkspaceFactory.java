@@ -324,7 +324,8 @@ public class WorkspaceFactory {
 
     /**
      * The sentence for a workspace file that still has the key of the plateaus of waves 008 to 013. The editor says the same
-     * thing in its own words once it stops reading the key.
+     * sentence, word for word ({@code REMOVED_PLATEAUS_KEY} in {@code standalone.html}); {@code plateau-model-cases.json}
+     * and {@code negative-cases.json} pin it in both tools.
      */
     public static final String REMOVED_KEY =
         "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of" +

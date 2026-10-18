@@ -10,6 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { layeredFiles, openLayered } = require('./layered-folders');
 
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
@@ -318,21 +319,23 @@ const GARDEN = [
   '# end of the garden',
   ''
 ].join('\n');
-const PLATEAUS = 'settings:\n  plateaus:\n    - id: base\n      name: Base\n      path: plateaus/10_base\n    - id: target\n      name: Target\n      path: plateaus/20_target\n';
+const PLATEAU_LIST = [{ id: 'base', name: 'Base', path: 'plateaus/10_base' }, { id: 'target', name: 'Target', path: 'plateaus/20_target' }];
 
+/** One manifest, in a plain folder; with `compare`, as the two sibling layers `base` and `target` (see layered-folders.js), the target drawn and compared with the base. */
 async function open(manifest, compare) {
-  const files = compare
-    ? { 'workspace.yaml': PLATEAUS, 'plateaus/10_base/app.garden.yaml': manifest, 'plateaus/20_target/app.garden.yaml': manifest }
-    : { 'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n', 'manifests/app.garden.yaml': manifest };
-  const mem = memFolder(files);
-  const sandbox = createApp({});
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
-  await sandbox.loadViewpointKernel();
-  if (compare) await sandbox.setCompareTo('base');
-  return { sandbox, state, mem, file: () => mem.files.get(compare ? 'plateaus/20_target/app.garden.yaml' : 'manifests/app.garden.yaml').text };
+  if (!compare) {
+    const mem = memFolder({ 'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n', 'manifests/app.garden.yaml': manifest });
+    const sandbox = createApp({});
+    const state = sandbox.__state();
+    state.folder = { handle: mem.handle, name: 'ws' };
+    state.permissionState = 'granted';
+    await sandbox.loadWorkspace(mem.handle);
+    await sandbox.loadViewpointKernel();
+    return { sandbox, state, mem, file: () => mem.files.get('manifests/app.garden.yaml').text };
+  }
+  const files = layeredFiles(PLATEAU_LIST, { 'plateaus/10_base/app.garden.yaml': manifest, 'plateaus/20_target/app.garden.yaml': manifest });
+  const { sandbox, state, mem } = await openLayered(createApp, memFolder, files, { drawn: 'target', compared: 'base' });
+  return { sandbox, state, mem, file: () => mem.files.get('plateaus/20_target/app.garden.yaml').text };
 }
 
 test('moving an element in a file that holds flow collections carries its block over as written: the collections inside it too, one level deeper, and the comment of the next element stays on it', async () => {
@@ -367,6 +370,7 @@ test('"Move and write replaces" in the same file: the list the element already h
   assert.ok(saved.endsWith('# end of the garden\n') && saved.startsWith('# the garden: where things grow\n'));
   const again = createApp({});
   await again.loadWorkspace(sandbox.__state().folder.handle);
+  again.drawPlateau('target');
   assert.ok(again.__state().index.application.has('garden.tools.greenhouse.vent'));
 });
 

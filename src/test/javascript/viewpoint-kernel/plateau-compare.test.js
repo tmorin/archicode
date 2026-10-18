@@ -1,5 +1,6 @@
 'use strict';
-// Comparing two plateaus in the editor (run 0039). The editor reads the plateau drawn and, read-only and apart from it, the one it is
+// Comparing two plateaus in the editor (run 0039; wave 014 run 0084: the plateaus are layers and the comparison is made on the band, the tests of the control
+// it replaced and of the key that listed the folders are gone, the rest runs on the same data as layers, see layered-folders.js). The editor reads the plateau drawn and, read-only and apart from it, the one it is
 // compared with; the kernel's `compare` gives the union, `compute` draws it, and every box and link says what changed: a glyph, a line
 // style, a pill with the word and a tint, never colour alone, as defaults that an entry of the workspace's `styles` with the same name
 // overrides property by property. A comparison turned off draws exactly what the editor drew before. The harness has no DOM and no ELK:
@@ -14,6 +15,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, openFixture } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { inPlateau, layeredFiles, openLayered, compareWith } = require('./layered-folders');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
@@ -61,11 +63,11 @@ delete INTERIM['app.shop.legacy.yaml'];
 
 const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, text]) => ['plateaus/' + dir + '/' + name, text]));
 
-const PLATEAUS =
-  '  plateaus:\n' +
-  '    - id: as-is\n      name: As is\n      path: plateaus/10_as-is\n' +
-  '    - id: interim\n      name: Interim\n      path: plateaus/20_interim\n' +
-  '    - id: to-be\n      name: To be\n      horizon: 2027-Q1\n      path: plateaus/30_to-be\n      baseline: as-is\n';
+const PLATEAU_LIST = [
+  { id: 'as-is', name: 'As is', path: 'plateaus/10_as-is' },
+  { id: 'interim', name: 'Interim', path: 'plateaus/20_interim' },
+  { id: 'to-be', name: 'To be', horizon: '2027-Q1', path: 'plateaus/30_to-be' }
+];
 
 const FILES = Object.assign({}, folder('10_as-is', AS_IS), folder('20_interim', INTERIM), folder('30_to-be', TO_BE));
 
@@ -74,15 +76,12 @@ function storage() {
   return { values, getItem: (k) => (values.has(k) ? values.get(k) : null), setItem: (k, v) => values.set(k, String(v)), removeItem: (k) => values.delete(k) };
 }
 
-async function open(settings, files, options = {}) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n' + (settings === undefined ? PLATEAUS : settings) }, files === undefined ? FILES : files));
-  const sandbox = createApp(options);
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
-  await sandbox.loadViewpointKernel();
-  return { sandbox, state, mem };
+/**
+ * The bookshop as layers (see layered-folders.js): the three states are siblings over an empty `baseline`, `drawn` is drawn (default: `to-be`, the last one, as the page used to
+ * open) and a comparison is made on the band (`compareWith`, a press on the ⇄ of a node), as it used to be made with the control that listed the plateaus.
+ */
+async function open(drawn, files, options = {}) {
+  return openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, files === undefined ? FILES : files), { drawn: drawn || 'to-be', app: options });
 }
 
 /** The kernel's answer for a view, the graph made from it and the SVG drawn on a fake layout, as the page draws a comparison. */
@@ -120,250 +119,102 @@ function linkOf(svg, from, to) {
 
 const sha = (text) => crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
 
-// ---- 1. The baseline key is checked, in the words of the command line ----
+// ---- 1. The comparison is made on the band ----
 
-test('a baseline that names an unknown plateau, or the plateau itself, is refused with the words of Plateaus.java', async () => {
-  const unknown = await open('  plateaus:\n    - id: a\n      path: plateaus/10_as-is\n    - id: b\n      path: plateaus/30_to-be\n      baseline: nowhere\n');
-  assert.equal(unknown.state.fatalError, 'Could not read the plateaus of workspace.yaml:\nthe plateau `b` has the `baseline` `nowhere`, which is not in `settings.plateaus` (`a`, `b`)');
-  const itself = await open('  plateaus:\n    - id: a\n      path: plateaus/10_as-is\n      baseline: a\n');
-  assert.equal(itself.state.fatalError, 'Could not read the plateaus of workspace.yaml:\nthe plateau `a` names itself as its `baseline`: choose another plateau to compare it with');
-});
-
-test('the baseline is reported with the other problems, one per line, before anything is read', async () => {
-  const { state } = await open('  plateaus:\n    - id: a\n      baseline: b\n    - id: a\n      path: x\n      baseline: a\n');
-  const lines = state.fatalError.split('\n').slice(1);
-  assert.deepEqual(lines, [
-    'the plateau `a` has no `path`: write the folder of its manifests, relative to the folder of workspace.yaml (for example `plateaus/a`)',
-    'the plateau id `a` is used more than once',
-    'the plateau `a` has the `baseline` `b`, which is not in `settings.plateaus` (`a`, `a`)',
-    'the plateau `a` names itself as its `baseline`: choose another plateau to compare it with'
-  ]);
-});
-
-test('a baseline that names another plateau of the list is accepted, wherever it is in the list', async () => {
-  const { state } = await open();
-  assert.equal(state.fatalError, null);
-  assert.deepEqual(plain(state.plateaus.map((p) => p.baseline)), ['', '', 'as-is']);
-});
-
-test('the baseline of a plateau follows the rule of the command line: its baseline key, else the plateau before it, else none', async () => {
+test('comparing on the band reads the other plateau as the baseline, says so on the band, and stopping drops it', async () => {
   const { sandbox, state } = await open();
-  const p = (id) => state.plateaus.find((x) => x.id === id);
-  const own = (id) => { const found = sandbox.ownBaselineOf(p(id), state.plateaus); return found ? found.id : null; };
-  assert.equal(own('to-be'), 'as-is', 'the key, not the plateau before it');
-  assert.equal(own('interim'), 'as-is', 'the plateau before it');
-  assert.equal(own('as-is'), null, 'the first one has none');
-});
-
-// ---- 2. The control ----
-
-test('Compare to is next to the Plateau selector: Nothing, the baseline of the plateau by its name, then each other plateau', async () => {
-  const { sandbox } = await open();
-  const html = sandbox.renderTopPanelHtml();
-  const control = html.match(/<span class="compare-control">[\s\S]*?<\/span>(?=<)/);
-  assert.ok(control, html);
-  assert.ok(html.indexOf('class="plateau-tabs') < html.indexOf('class="compare-control"') && html.indexOf('class="compare-control"') < html.indexOf('class="perspective-tabs'), 'after the plateaus, before the perspectives');
-  assert.match(html, /<label class="plateau-label" for="compare-to">Compare to<\/label><select id="compare-to" aria-label="Compare to"/);
-  const options = Array.from(html.matchAll(/<option value="([^"]*)"( selected)?[^>]*>([^<]*)<\/option>/g), (m) => [m[1], !!m[2], m[3]]);
-  assert.deepEqual(options, [['', true, 'Nothing'], ['@baseline', false, 'Baseline: As is'], ['as-is', false, 'As is'], ['interim', false, 'Interim']], 'the plateau drawn (the last one) is not offered; Nothing is the default');
-  assert.doesNotMatch(html, /data-action="reload-baseline"/, 'nothing is compared: nothing to reload');
-});
-
-test('the shortcut is labelled with the plateau that is the baseline of the plateau drawn, and follows it', async () => {
-  const { sandbox, state } = await open('  current: interim\n' + PLATEAUS);
-  assert.equal(state.plateau.id, 'interim');
-  const options = Array.from(sandbox.renderTopPanelHtml().matchAll(/<option value="([^"]*)"[^>]*>([^<]*)<\/option>/g), (m) => [m[1], m[2]]);
-  assert.deepEqual(options, [['', 'Nothing'], ['@baseline', 'Baseline: As is'], ['as-is', 'As is'], ['to-be', 'To be']], 'interim has no key: the plateau before it');
-  const first = await open('  current: as-is\n' + PLATEAUS);
-  assert.doesNotMatch(first.sandbox.renderTopPanelHtml(), /value="@baseline"/, 'the first plateau has no baseline: no shortcut');
-});
-
-test('with a single plateau, or none, there is no Compare to', async () => {
-  const one = await open('  plateaus:\n    - id: only\n      path: plateaus/30_to-be\n');
-  assert.doesNotMatch(one.sandbox.renderTopPanelHtml(), /compare-to/);
-  const none = await open('  views:\n    path: out\n', { 'manifests/app.shop.yaml': element('system', null, 'shop', 'Shop') });
-  assert.doesNotMatch(none.sandbox.renderTopPanelHtml(), /compare-to/);
-});
-
-test('choosing a plateau reads it as the baseline, shows it in the control, and offers Reload', async () => {
-  const { sandbox, state } = await open();
-  await sandbox.setCompareTo('@baseline');
+  assert.equal(state.baseline, null, 'nothing is compared when a plateau is drawn');
+  assert.doesNotMatch(sandbox.renderTopPanelHtml(), /compare-to|Compare to|data-action="set-plateau"/, 'the top bar has no selector and no list to compare to: the band is the way');
+  compareWith(sandbox, 'as-is');
   assert.equal(state.baseline.plateau.id, 'as-is');
-  const html = sandbox.renderTopPanelHtml();
-  assert.match(html, /<option value="@baseline" selected[^>]*>Baseline: As is<\/option>/);
-  assert.match(html, /<button type="button" data-action="reload-baseline"[^>]*title="Read the folder of “As is” again from the disk\. It is only read here, never written\.">Reload<\/button>/);
-  await sandbox.setCompareTo('interim');
+  let band = sandbox.renderPlateauBandHtml();
+  assert.match(band, /<div class="band-node band-compared" data-plateau="as-is">/);
+  assert.match(band, /To be compared with As is\./);
+  compareWith(sandbox, 'interim');
   assert.equal(state.baseline.plateau.id, 'interim');
-  await sandbox.setCompareTo('');
+  compareWith(sandbox, '');
   assert.equal(state.baseline, null);
-  assert.doesNotMatch(sandbox.renderTopPanelHtml(), /reload-baseline/);
+  band = sandbox.renderPlateauBandHtml();
+  assert.match(band, /Nothing compared\./);
+  assert.doesNotMatch(band, /band-compared/);
 });
 
-test('the same plateau compared with itself compares nothing, and the choice is not forgotten', async () => {
+test('the same plateau compared with itself compares nothing', async () => {
   const { sandbox, state } = await open();
-  await sandbox.setCompareTo('to-be'); // the plateau drawn: not offered by the control, but a page can be asked
+  sandbox.compareWithPlateau('to-be'); // the plateau drawn: its node has no ⇄, but a page can be asked
   assert.equal(sandbox.compareTargetPlateau(), null, 'a plateau is not compared with itself');
   assert.equal(state.baseline, null);
-  await sandbox.setCompareTo('interim');
-  await sandbox.switchPlateau('interim'); // the plateau drawn is now the one compared with
-  assert.equal(state.plateau.id, 'interim');
+  compareWith(sandbox, 'interim');
+  sandbox.drawPlateau('interim'); // the plateau drawn is now the one compared with
+  assert.equal(state.layers.current, 'interim');
   assert.equal(state.baseline, null, 'nothing is compared with itself');
-  assert.match(sandbox.renderTopPanelHtml(), /<option value="" selected[^>]*>Nothing<\/option>/);
   assert.equal(sandbox.comparisonState(), null);
-  await sandbox.switchPlateau('as-is');
-  assert.equal(state.baseline.plateau.id, 'interim', 'back to a plateau it can be compared with: the choice is still there');
 });
 
-test('a choice of Compare to is remembered for this folder, and a remembered plateau the workspace no longer has is ignored', async () => {
+test('a comparison is remembered for this folder, under its own key, and comes back at the next opening', async () => {
   const local = storage();
   const first = await open(undefined, undefined, { localStorage: local });
-  await first.sandbox.setCompareTo('@baseline');
-  assert.deepEqual(Array.from(local.values.entries()), [['archicode-standalone-editor:compare:name:ws', '@baseline']]);
-  // the page opened again in this browser draws the comparison
+  compareWith(first.sandbox, 'as-is');
+  assert.deepEqual(Array.from(local.values.entries()).sort(), [['archicode-standalone-editor:compare:name:ws', 'other:as-is'], ['archicode-standalone-editor:plateau:name:ws', 'to-be']], 'the plateau drawn and the comparison do not share a key');
   await first.sandbox.loadWorkspace(first.state.folder.handle);
-  assert.equal(first.state.compareTo, '@baseline');
-  assert.equal(first.state.baseline.plateau.id, 'as-is');
-  // Nothing is a choice too
-  await first.sandbox.setCompareTo('');
-  assert.equal(local.getItem('archicode-standalone-editor:compare:name:ws'), '');
+  assert.equal(first.state.layers.current, 'to-be');
+  assert.equal(first.state.baseline.plateau.id, 'as-is', 'the page opened again in this browser draws the comparison');
+  compareWith(first.sandbox, '');
+  assert.equal(local.getItem('archicode-standalone-editor:compare:name:ws'), '', 'nothing compared is a choice too');
   await first.sandbox.loadWorkspace(first.state.folder.handle);
-  assert.equal(first.state.compareTo, '');
+  assert.equal(first.state.baseline, null);
   // a plateau that is gone
-  local.setItem('archicode-standalone-editor:compare:name:ws', 'gone');
+  local.setItem('archicode-standalone-editor:compare:name:ws', 'other:gone');
   const second = await open(undefined, undefined, { localStorage: local });
-  assert.equal(second.state.compareTo, '');
   assert.equal(second.state.baseline, null);
-  // the choice of Compare to and the choice of the plateau do not share a key
-  await second.sandbox.setCompareTo('interim');
-  await second.sandbox.switchPlateau('as-is');
-  assert.deepEqual(Array.from(local.values.keys()).sort(), ['archicode-standalone-editor:compare:name:ws', 'archicode-standalone-editor:plateau:name:ws']);
 });
 
-test('the page works when the browser refuses its storage: the choice lasts as long as the page', async () => {
+test('the page works when the browser refuses its storage: the plateau and the comparison last as long as the page', async () => {
   const refusing = { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); } };
-  const { sandbox, state } = await open(undefined, undefined, { localStorage: refusing });
-  await sandbox.setCompareTo('as-is');
+  const { sandbox, state } = await open('interim', undefined, { localStorage: refusing });
+  compareWith(sandbox, 'as-is');
   assert.equal(state.baseline.plateau.id, 'as-is');
   await sandbox.loadWorkspace(state.folder.handle);
-  assert.equal(state.compareTo, 'as-is', 'remembered in the page');
-  assert.equal(state.baseline.plateau.id, 'as-is');
+  assert.equal(state.layers.current, 'interim', 'remembered in the page');
+  assert.equal(state.baseline.plateau.id, 'as-is', 'and so is the comparison');
 });
 
-// ---- 3. The second plateau is read, never written ----
+// ---- 2. The plateau compared with is read, never written ----
 
-test('the reading loop is a function of a folder: the files of one folder, fresh each time, and what is missing is told', async () => {
-  const { sandbox, mem } = await open();
-  const handle = mem.handle;
-  const one = await sandbox.readManifestFolder(handle, 'plateaus/10_as-is');
-  const two = await sandbox.readManifestFolder(handle, 'plateaus/10_as-is');
-  assert.equal(one.missing, false);
-  assert.deepEqual(plain(one.files.map((f) => f.relPath).sort()), Object.keys(AS_IS).map((n) => 'plateaus/10_as-is/' + n).sort());
-  assert.notEqual(one.files[0], two.files[0], 'new records each time');
-  assert.equal((await sandbox.readManifestFolder(handle, 'plateaus/99_nowhere')).missing, true);
-});
-
-test('the baseline is kept apart: not among the files of the plateau, not counted as modified, never written, whatever is saved', async () => {
+test('the plateau compared with is kept apart: it has its own index, nothing of it is counted as modified, and whatever is saved writes the plateau drawn only', async () => {
   const { sandbox, state, mem } = await open();
-  await sandbox.setCompareTo('as-is');
-  const files = (list) => plain(list.map((f) => f.relPath));
-  assert.deepEqual(files(state.manifestFiles), Object.keys(TO_BE).map((n) => 'plateaus/30_to-be/' + n).sort());
-  assert.deepEqual(files(state.baseline.files), Object.keys(AS_IS).map((n) => 'plateaus/10_as-is/' + n).sort());
-  assert.ok(state.baseline.files.every((f) => !state.manifestFiles.includes(f)), 'not one of the plateau\'s own records');
+  compareWith(sandbox, 'as-is');
   assert.equal(sandbox.countUnsavedChanges(), 0);
   assert.ok(state.baseline.index.application.has('shop.session') && !state.index.application.has('shop.session'), 'the baseline has its own index');
-  // an edit of the plateau drawn, and a new element, are saved; the baseline's folder is never written
+  // an edit of the plateau drawn, and a new element, are saved; the files of the other plateau are never written
   sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', attachUnderReference: null, id: 'billing', name: 'Billing', description: null });
   const web = state.manifestFiles.find((f) => f.relPath === 'plateaus/30_to-be/app.shop.web.yaml');
   web.rawText += '# touched\n';
   web.dirty = true;
   await sandbox.saveAllChanges();
   assert.equal(run(sandbox, 'saveStatus').state, 'success');
-  assert.deepEqual(plain(mem.writes.slice().sort()), ['plateaus/30_to-be/app.billing.yaml', 'plateaus/30_to-be/app.shop.web.yaml']);
-  assert.ok(!mem.writes.some((w) => w.startsWith('plateaus/10_as-is')), 'the baseline is never written');
-  for (const [name, text] of Object.entries(AS_IS)) assert.equal(mem.files.get('plateaus/10_as-is/' + name).text, text);
+  const written = plain(mem.writes.slice().sort());
+  assert.ok(written.includes('plateaus/30_to-be/app.shop.web.yaml'), written.join());
+  assert.ok(written.every((w) => w.startsWith('plateaus/30_to-be/')), 'only the plateau drawn is written: ' + written.join());
+  for (const [name, text] of Object.entries(AS_IS)) assert.equal(mem.files.get('plateaus/10_as-is/' + name).text, inPlateau('as-is', text), 'the other plateau is as it was');
   assert.equal(mem.removals.length, 0);
-  assert.deepEqual(plain(Array.from(state.dirtyReferences)).filter((r) => state.baseline.index.application.has(r) && !state.index.application.has(r)), [], 'no reference of the baseline is modified');
+  assert.deepEqual(plain(Array.from(state.dirtyReferences)).filter((r) => state.baseline.index.application.has(r) && !state.index.application.has(r)), [], 'no reference of the other plateau is modified');
 });
 
-test('an element of the baseline is not editable: it has no record in the plateau, so no form, no delete, no source file to write', async () => {
+test('an element of the plateau compared with is not editable: it has no record in the plateau drawn, so no form, no delete, no source file to write', async () => {
   const { sandbox, state } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   assert.equal(sandbox.findElementRecord('shop.session'), null);
   assert.equal(sandbox.locateContentNode('shop.session'), null);
-  assert.ok(!state.manifestFiles.some((f) => f.relPath.startsWith('plateaus/10_as-is')));
-});
-
-test('the baseline is read again on demand, and when the plateau changes; a plateau change reads the folder as before', async () => {
-  const { sandbox, state, mem } = await open();
-  await sandbox.setCompareTo('as-is');
-  assert.equal(state.baseline.index.application.get('shop.db').name, 'Database');
-  mem.put('plateaus/10_as-is/app.shop.db.yaml', element('container', 'shop', 'db', 'Database, v1'));
-  assert.equal(state.baseline.index.application.get('shop.db').name, 'Database', 'the page does not watch the disk');
-  await sandbox.reloadBaseline();
-  assert.equal(state.baseline.index.application.get('shop.db').name, 'Database, v1');
-  assert.equal(sandbox.comparisonState().counts.elements.changed, 2, 'and the comparison follows it: the web container and the database changed now');
-});
-
-test('a reference declared twice in the baseline is reported and nothing is compared; the plateau drawn still loads', async () => {
-  const files = Object.assign({}, FILES, { 'plateaus/10_as-is/app.shop.db2.yaml': element('container', 'shop', 'db', 'Again') });
-  const { sandbox, state } = await open(undefined, files);
-  assert.equal(state.fatalError, null);
-  await sandbox.setCompareTo('as-is');
-  assert.equal(state.fatalError, null, 'no crash');
-  assert.equal(state.baseline.duplicates.length, 1);
-  assert.equal(state.duplicateReferences.length, 0, 'the plateau drawn has none');
-  const comparison = sandbox.comparisonState();
-  assert.equal(comparison.problems[0], 'The plateau “As is”, which the drawing is compared with, has references declared more than once:');
-  assert.equal(comparison.problems[1], 'the reference `shop.db` is declared twice: in `plateaus/10_as-is/app.shop.db.yaml` and `plateaus/10_as-is/app.shop.db2.yaml`', 'in the words of the command line');
-  // the input of the plateau alone is untouched
-  const { input } = sandbox.buildKernelInput('map', '', { opened: ['shop'] });
-  assert.ok(input.elements.every((e) => e.change === undefined));
-});
-
-test('a baseline folder that is not there is told in the header, and compared as empty', async () => {
-  const files = Object.assign({}, FILES);
-  for (const name of Object.keys(files)) if (name.startsWith('plateaus/10_as-is/')) delete files[name];
-  const { sandbox, state } = await open(undefined, files);
-  await sandbox.setCompareTo('as-is');
-  assert.equal(state.baseline.problem, 'The folder `plateaus/10_as-is` of the plateau `as-is` does not exist.');
-  assert.match(sandbox.renderTopPanelHtml(), /<span class="plateau-problem" role="alert">The folder `plateaus\/10_as-is` of the plateau `as-is` does not exist\.<\/span>/);
-  assert.equal(sandbox.comparisonState().counts.elements.new, 6, 'everything is new: shop, web, db, cache, index and customer');
-});
-
-test('a manifest of the baseline that does not parse is told, so that what it declares is not mistaken for new', async () => {
-  const files = Object.assign({}, FILES, { 'plateaus/10_as-is/app.shop.db.yaml': 'header: [unclosed\n' });
-  const { sandbox, state } = await open(undefined, files);
-  await sandbox.setCompareTo('as-is');
-  assert.equal(state.baseline.problem, 'The manifest `plateaus/10_as-is/app.shop.db.yaml` of the plateau `as-is` could not be read, so what it declares is not compared.');
-  assert.match(sandbox.renderTopPanelHtml(), /<span class="plateau-problem" role="alert">The manifest `plateaus\/10_as-is\/app\.shop\.db\.yaml` of the plateau `as-is` could not be read/);
-});
-
-test('a folder the browser cannot list is the baseline\'s problem, not an error of the page', async () => {
-  const { sandbox, state, mem } = await open();
-  const original = mem.handle.getDirectoryHandle;
-  mem.handle.getDirectoryHandle = async (name, options) => {
-    const dir = await original.call(mem.handle, name, options);
-    if (name !== 'plateaus') return dir;
-    const getDirectoryHandle = dir.getDirectoryHandle;
-    dir.getDirectoryHandle = async (child, o) => {
-      const handle = await getDirectoryHandle.call(dir, child, o);
-      if (child === '10_as-is') handle.entries = () => { throw new Error('permission lost'); };
-      return handle;
-    };
-    return dir;
-  };
-  await sandbox.setCompareTo('as-is');
-  assert.equal(state.fatalError, null);
-  assert.match(state.baseline.problem, /^The plateau `as-is` could not be read: permission lost/);
-  assert.equal(sandbox.comparisonState().counts.elements.removed, 0);
+  assert.ok(!state.manifestFiles.some((f) => f.relPath.startsWith('plateaus/10_as-is') && state.index.application.has('shop.session')));
 });
 
 // ---- 4. The comparison ----
 
 test('compare is called through the embedded module, once for a pair that does not change; its union is what compute draws', async () => {
   const { sandbox, state } = await open();
-  assert.equal(sandbox.comparisonState(), null, 'Compare to is Nothing');
-  await sandbox.setCompareTo('as-is');
+  assert.equal(sandbox.comparisonState(), null, 'nothing is compared');
+  compareWith(sandbox, 'as-is');
   const first = sandbox.comparisonState();
   assert.deepEqual(plain(first.counts), { elements: { new: 2, changed: 1, removed: 3, wording_only: 0 }, relationships: { new: 1, changed: 0, removed: 1 } });
   assert.equal(first.base.id, 'as-is');
@@ -376,7 +227,7 @@ test('compare is called through the embedded module, once for a pair that does n
 
 test('the kernel input of a comparison is the union: the removed boxes are in it, each relationship under the element that declares it', async () => {
   const { sandbox } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const { input } = sandbox.buildKernelInput('map', '', { opened: ['shop'] });
   const byRef = (ref) => input.elements.find((e) => e.reference === ref);
   assert.deepEqual(plain(input.elements.map((e) => e.reference).sort()), ['customer', 'shop', 'shop.cache', 'shop.cache.index', 'shop.db', 'shop.legacy', 'shop.legacy.job', 'shop.session', 'shop.web']);
@@ -388,7 +239,7 @@ test('the kernel input of a comparison is the union: the removed boxes are in it
 
 test('the comparison draws the four states on the boxes: glyph in the title, line, pill with the word, tint', async () => {
   const { sandbox } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const { svg, result } = await draw(sandbox, 'map', '');
   const state = (id) => result.items.find((i) => i.id === id);
   assert.deepEqual(['shop.cache', 'shop.web', 'shop.session', 'shop', 'shop.db'].map((id) => state(id).change), ['new', 'changed', 'removed', 'none', 'none']);
@@ -430,7 +281,7 @@ test('the comparison draws the four states on the boxes: glyph in the title, lin
 
 test('a box inside a box of the same state has its own line, glyph, pill and tint, and the nesting is the model\'s', async () => {
   const { sandbox } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const { svg, result } = await draw(sandbox, 'map', '', { input: { opened: ['shop', 'shop.cache', 'shop.legacy'] } });
   const parent = (id) => result.items.find((i) => i.id === id).parent;
   assert.equal(parent('shop.cache.index'), 'shop.cache');
@@ -457,7 +308,7 @@ test('a box inside a box of the same state has its own line, glyph, pill and tin
 
 test('the links say their state: line style, an arrowhead of their colour, and the glyph in the caption, also when the captions are off', async () => {
   const { sandbox } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const off = await draw(sandbox, 'map', '', { graph: { captions: false }, render: { show: { labels: false } } });
   const l = (from, to) => linkOf(off.svg, from, to);
   assert.match(l('shop.web', 'shop.cache'), /<path class="dg-edge dg-chg-new" marker-end="url\(#dg-arrow-new\)"/);
@@ -483,7 +334,7 @@ test('a changed link is dotted, and a grouped link is the sum of what it stands 
   // the label of a relationship that stays between the same two elements is a change of the link
   const files = Object.assign({}, FILES, { 'plateaus/30_to-be/app.customer.yaml': element('person', null, 'customer', 'Customer', rel('shop.web', 'visits')) });
   const changed = await open(undefined, files);
-  await changed.sandbox.setCompareTo('as-is');
+  compareWith(changed.sandbox, 'as-is');
   const { svg, result } = await draw(changed.sandbox, 'map', '');
   assert.equal(result.links.find((x) => x.from === 'customer' && x.to === 'shop.web').change, 'changed');
   assert.match(linkOf(svg, 'customer', 'shop.web'), /<path class="dg-edge dg-chg-changed" marker-end="url\(#dg-arrow-changed\)"/);
@@ -494,7 +345,7 @@ test('a changed link is dotted, and a grouped link is the sum of what it stands 
 
 test('the legend explains the four states with their glyph, their line and their word, and says what red dashed is kept for', async () => {
   const { sandbox } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const legend = sandbox.diagramComparisonLegendHtml(sandbox.comparisonState());
   const text = legend.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
   assert.equal(text, 'To be compared with As is: + new thick solid ~ changed dotted − removed long dashes, narrow gaps, struck title ± contains changes thin dashed: something inside changed Red dashed is kept for dangling references (unknown elements).');
@@ -510,7 +361,7 @@ test('the legend explains the four states with their glyph, their line and their
 
 test('the legend sample follows the look the workspace gave a state, as the boxes do', async () => {
   const { sandbox, state } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   state.workspace.styles = { 'by-tags': { removed: { 'line-style': 3, 'line-color': '#112233' } } };
   const legend = sandbox.diagramComparisonLegendHtml(sandbox.comparisonState());
   assert.match(legend, /dg-chg-removed" style="[^"]*--st-stroke:#112233;[^"]*--st-dash:3 3/);
@@ -518,7 +369,7 @@ test('the legend sample follows the look the workspace gave a state, as the boxe
 
 test('the key says, next to each state, how many boxes and links of it the drawing shows', async () => {
   const { sandbox } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const { result, comparison } = await draw(sandbox, 'map', '');
   const counts = plain(sandbox.comparisonCountsOf(result));
   assert.deepEqual(counts, { new: { boxes: 1, links: 1 }, changed: { boxes: 1, links: 0 }, removed: { boxes: 2, links: 1 }, 'contains-changes': { boxes: 1, links: 0 } });
@@ -530,7 +381,7 @@ test('the key says, next to each state, how many boxes and links of it the drawi
 
 test('an entry of styles with the name of a state wins over its default, property by property; the rest of the default stays', async () => {
   const { sandbox, state } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   state.workspace.styles = { 'by-tags': { new: { 'line-color': '#2A6A4B', 'line-thickness': 5 } } };
   let drawn = await draw(sandbox, 'map', '');
   let vars = varsOf(nodeOf(drawn.svg, 'shop.cache'));
@@ -558,7 +409,7 @@ test('an entry of styles with the name of a state wins over its default, propert
 test('the fill the author gave to another stereotype stays under the tint, and the state\'s line wins over theirs', async () => {
   const { sandbox, state } = await open();
   state.workspace.styles = { 'by-qualifiers': { Redis: { 'background-color': 'lightgray', 'line-color': '#333333', 'line-style': 4 } } };
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const { svg } = await draw(sandbox, 'map', '');
   const vars = varsOf(nodeOf(svg, 'shop.session'));
   assert.equal(vars['--st-fill'], '#d3d3d3', 'the author\'s fill is kept');
@@ -572,7 +423,7 @@ test('a hand-written stereotype with the name of a state does not make a box tha
   files['plateaus/30_to-be/app.shop.db.yaml'] = element('container', 'shop', 'db', 'Database', '  qualifiers: [new]\n');
   files['plateaus/10_as-is/app.shop.db.yaml'] = files['plateaus/30_to-be/app.shop.db.yaml'];
   const { sandbox } = await open(undefined, files);
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const { svg, result } = await draw(sandbox, 'map', '');
   assert.deepEqual(plain(result.items.find((i) => i.id === 'shop.db').stereotypes), ['new'], 'the author\'s word, which the kernel keeps on a box that did not change');
   assert.doesNotMatch(nodeOf(svg, 'shop.db'), /dg-styled|dg-glyph|dg-tint/, 'but it is no state: no default look');
@@ -607,10 +458,10 @@ test('with Nothing the drawing is byte for byte what it was before the compariso
 test('turning the comparison on and off gives the same markup as before it was turned on', async () => {
   const { sandbox } = await open();
   const before = await draw(sandbox, 'map', '');
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const during = await draw(sandbox, 'map', '');
   assert.notEqual(during.svg, before.svg);
-  await sandbox.setCompareTo('');
+  compareWith(sandbox, '');
   const after = await draw(sandbox, 'map', '');
   assert.equal(after.svg, before.svg);
   assert.deepEqual(plain(after.graph), plain(before.graph));
@@ -628,8 +479,8 @@ test('the kernel input with Nothing carries no trace of a comparison, and the sa
 
 test('the layout graph is the same for the pair turned either way: no box changes size, so none moves when the plateaus are swapped', async () => {
   const graphOf = async (current, other) => {
-    const { sandbox } = await open('  current: ' + current + '\n' + PLATEAUS);
-    await sandbox.setCompareTo(other);
+    const { sandbox } = await open(current);
+    compareWith(sandbox, other);
     const { graph } = await draw(sandbox, 'map', '', { input: { opened: ['shop', 'shop.legacy'] }, graph: { captions: true } });
     const strip = (g) => JSON.parse(JSON.stringify(g, (key, value) => (key === 'text' ? undefined : value)));
     return strip(graph);
@@ -644,7 +495,7 @@ test('the layout graph is the same for the pair turned either way: no box change
 test('a comparison lays out the elements of both plateaus; with Nothing the plateau is laid out alone', async () => {
   const { sandbox } = await open();
   const alone = await draw(sandbox, 'map', '', { input: { opened: ['shop', 'shop.cache'] } });
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const union = await draw(sandbox, 'map', '', { input: { opened: ['shop', 'shop.cache', 'shop.legacy'] } });
   const ids = (graph) => { const out = []; const walk = (n) => { for (const c of n.children || []) { out.push(c.id); walk(c); } }; walk(graph); return out.sort(); };
   assert.ok(!ids(alone.graph).includes('shop.session') && !ids(alone.graph).includes('shop.legacy'));
@@ -661,7 +512,7 @@ function click(sandbox, attributes) {
 
 test('a click on a removed box shows what the other plateau had, read-only, and selects nothing in this one', async () => {
   const { sandbox, state } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   run(sandbox, "currentPerspective = 'map';");
   click(sandbox, { 'data-action': 'select-removed', 'data-ref': 'shop.session', 'data-layer': 'application' });
   assert.equal(state.selection.kind, 'none');
@@ -690,7 +541,7 @@ test('a click on a removed box shows what the other plateau had, read-only, and 
 
 test('in Elements the element of the diagram stays the subject while the panel tells about the removed box', async () => {
   const { sandbox, state } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   state.selection = { kind: 'element', key: 'shop.web', mode: 'view' };
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview';");
   click(sandbox, { 'data-action': 'select-removed', 'data-ref': 'shop.session', 'data-layer': 'application' });
@@ -702,7 +553,7 @@ test('in Elements the element of the diagram stays the subject while the panel t
 
 test('the removed box that was clicked is outlined as a selected box is', async () => {
   const { sandbox } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   run(sandbox, "currentPerspective = 'map';");
   click(sandbox, { 'data-action': 'select-removed', 'data-ref': 'shop.session', 'data-layer': 'application' });
   const classes = [];
@@ -721,7 +572,7 @@ test('Center puts the removed box that was clicked in the middle, as it does the
 
 test('the page of a view in the Library draws the comparison too, and a click on a removed box there is the selection of the page', async () => {
   const { sandbox } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const view = { id: 'v1', viewpoint: 'map', properties: { opened: ['shop'] } };
   assert.equal(sandbox.libraryDiagramRecipe(view).viewpoint, 'map');
   const { input } = sandbox.buildKernelInput('map', '', { layer: 'application', opened: ['shop'], pinned: [] });
@@ -734,7 +585,7 @@ test('the page of a view in the Library draws the comparison too, and a click on
   const panel = sandbox.inspectionPanelHtml({ kind: 'baseline-element', key: 'shop.session', layer: 'application', mode: 'view' }, 'library');
   assert.match(panel, /inspection-removed" data-inspection-ref="shop\.session"/);
   // not removed any more (the comparison is off): nothing to tell
-  await sandbox.setCompareTo('');
+  compareWith(sandbox, '');
   assert.equal(sandbox.inspectionPanelHtml({ kind: 'baseline-element', key: 'shop.session', layer: 'application', mode: 'view' }, 'library'), null);
 });
 
@@ -742,7 +593,7 @@ test('a removed box can be opened on the map: the kernel is given the references
   const { sandbox } = await open();
   run(sandbox, 'mapOpened = new Set(["shop", "shop.legacy"]);');
   assert.deepEqual(plain(sandbox.currentMapState().opened), ['shop'], 'alone, the plateau does not have it');
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   assert.deepEqual(plain(sandbox.currentMapState().opened), ['shop', 'shop.legacy']);
   const { svg } = await draw(sandbox, 'map', '', { input: { opened: sandbox.currentMapState().opened } });
   assert.match(svg, /data-id="shop\.legacy\.job"/);
@@ -785,7 +636,7 @@ test('the page and the export agree on the lines of the states', () => {
 
 test('the export of a comparison carries the glyphs, the struck titles, the pills and the tint: they are in the drawing it clones; the key is not exported, as before', async () => {
   const { sandbox } = await open();
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const { svg } = await draw(sandbox, 'map', '');
   for (const needle of ['<tspan class="dg-glyph">+</tspan>', '<tspan class="dg-glyph">−</tspan>', '<tspan class="dg-struck">', 'class="dg-tint"', 'class="dg-badge"', 'dg-chg-removed', 'marker-end="url(#dg-arrow-new)"']) assert.ok(svg.includes(needle), needle);
   const source = sandbox.diagramExportDocument.toString();
@@ -820,24 +671,19 @@ test('the kernel refusing a pair is said, and the plateau alone is still what th
   const files = Object.assign({}, FILES);
   files['plateaus/30_to-be/app.env.yaml'] = element('environment', null, 'prod', 'Production', '  uses:\n    - nowhere\n');
   const { sandbox } = await open(undefined, files);
-  await sandbox.setCompareTo('as-is');
+  compareWith(sandbox, 'as-is');
   const comparison = sandbox.comparisonState();
   assert.match(comparison.problems[0], /^The comparison with “As is” could not be made: dangling reference: nowhere/);
   const { input } = sandbox.buildKernelInput('map', '', { opened: ['shop'] });
   assert.ok(input.elements.every((e) => e.change === undefined), 'no half-comparison');
 });
 
-test('the drawing waits for the kernel when a comparison is asked for before it is loaded', async () => {
-  const local = storage();
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n' + PLATEAUS }, FILES));
-  local.setItem('archicode-standalone-editor:compare:name:ws', '@baseline');
-  const sandbox = createApp({ localStorage: local });
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
+test('the drawing waits for the kernel when a comparison is asked for while it is not loaded', async () => {
+  // the page loads the kernel before it resolves a layer, so the window is a kernel that is gone (a failed load): the comparison says it is pending, and the next load fills it
+  const { sandbox, state } = await open();
+  compareWith(sandbox, 'as-is');
   assert.equal(state.baseline.plateau.id, 'as-is');
-  assert.equal(run(sandbox, 'loadedKernel'), null, 'the kernel is not loaded yet');
+  run(sandbox, 'loadedKernel = null; viewpointKernelPromise = null;');
   assert.deepEqual(plain(sandbox.comparisonState()), { pending: true });
   await sandbox.loadViewpointKernel();
   assert.ok(sandbox.comparisonState().layers);

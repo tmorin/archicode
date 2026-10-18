@@ -34,12 +34,6 @@ async function openLayered() {
   return { sandbox, state };
 }
 
-/** A workspace of the old mechanism, `settings.plateaus` (W-10 removes the editor's reading of it), in memory: two plateaus, each a folder. */
-const OLD_MECHANISM = [
-  'settings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n    - id: to-be\n      path: plateaus/20_to-be\n',
-  { 'plateaus/10_as-is/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n', 'plateaus/20_to-be/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n' }
-];
-
 async function openFiles(files, settings) {
   const mem = memFolder(Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
   const sandbox = createApp({});
@@ -146,21 +140,18 @@ test('the band of the layered Brightcart has one node per plateau, baseline draw
   assert.equal(state.layers.blocked, null);
 });
 
-test('a workspace with settings.plateaus has no band and keeps its selector and Compare to', async () => {
-  const { sandbox, state } = await openFiles(OLD_MECHANISM[1], OLD_MECHANISM[0]);
-  assert.equal(state.fatalError, null);
+test('a workspace with settings.plateaus is refused with the one sentence of the command line, and there is no band and no selector to draw', async () => {
+  const mem = memFolder({ 'workspace.yaml': 'settings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n', 'plateaus/10_as-is/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n' });
+  const sandbox = createApp({});
+  const state = sandbox.__state();
+  state.folder = { handle: mem.handle, name: 'ws' };
+  state.permissionState = 'granted';
+  await sandbox.loadWorkspace(mem.handle);
+  assert.match(state.fatalError, /^Could not read\/parse workspace\.yaml: `settings\.plateaus` no longer exists: a plateau is a layer now\. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, /);
+  assert.equal(state.workspace, null);
   assert.equal(state.layers, null);
   assert.equal(sandbox.renderPlateauBandHtml(), '');
-  assert.doesNotMatch(sandbox.renderShellHtml(), /id="plateau-band"/);
-  assert.match(sandbox.renderTopPanelHtml(), /data-action="set-plateau"/);
-  assert.match(sandbox.renderTopPanelHtml(), /id="compare-to"/);
-});
-
-test('settings.plateaus and layered plateaus together are the sentence of the command line, and the band is not there', async () => {
-  const plateau = 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "later"\n';
-  const { state } = await openFiles({ 'plateaus/a/app.x.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "x"\n', 'plateaus/a/later.yaml': plateau },
-    'settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n');
-  assert.match(state.fatalError, /^Could not read the plateaus of workspace\.yaml:\n`settings\.plateaus` and layered plateaus are both used: /);
+  assert.doesNotMatch(sandbox.renderShellHtml(), /id="plateau-band"|data-action="set-plateau"|id="compare-to"/);
 });
 
 // ---- the plateau drawn: the whole editor draws it ----
@@ -598,7 +589,7 @@ test('settings.current names the plateau drawn at the opening, and one that is n
   const bad = await openFiles(files, 'settings:\n  current: nope\n  manifests:\n    paths: ["./**"]\n');
   assert.equal(bad.state.fatalError, 'Could not read the plateaus of workspace.yaml:\n`settings.current` names the plateau `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `later`)');
   const none = await openFiles({ 'app.ferry.yaml': SYSTEM('ferry') }, 'settings:\n  current: later\n');
-  assert.equal(none.state.fatalError, 'Could not read the plateaus of workspace.yaml:\n`settings.current` is `later` but the workspace declares no `settings.plateaus`');
+  assert.equal(none.state.fatalError, 'Could not read the plateaus of workspace.yaml:\n`settings.current` is `later` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)');
 });
 
 // ---- writing ----

@@ -1,5 +1,5 @@
 {
-  "comment": "The cases of the plateau model (run 0077, wave 014, W-3): the header key `plateau`, the manifest of kind `plateau` with its patches, the tree of the plateaus, and the references declared once in a chain. PlateauModelTest.java (command line) and plateau-model.test.js (editor) read this file; add a case here and both run it. `settings`: the text of workspace.yaml (`settings: {}` when absent; `manifests/` is read). `files`: a path from the folder of workspace.yaml -> the text of the file. `expect.loaded`: the references of the application layer that are drawn (nothing but the plateau baseline is drawn until the plateaus are loaded as layers, W-4); `expect.warnings`: the warnings, without `warning: ` (checked when the workspace loads: a load that stops says its mistakes and no warning); `expect.errors`: the mistakes of the tree and of the references (the command line prints one `error:` line for each; the editor lists them in the model of the plateaus); `expect.fileError`: a manifest the reader refuses (`file`, the `sentence`, and the `where` the command line adds when it reads the file itself: ` (line L, column C)`); `expect.settingsConflict`: the load stops (the editor says `Could not read the plateaus of workspace.yaml:` before it).",
+  "comment": "The cases of the plateau model (run 0077, wave 014, W-3): the header key `plateau`, the manifest of kind `plateau` with its patches, the tree of the plateaus, and the references declared once in a chain. PlateauModelTest.java (command line) and plateau-model.test.js (editor) read this file; add a case here and both run it. `settings`: the text of workspace.yaml (`settings: {}` when absent; `manifests/` is read). `files`: a path from the folder of workspace.yaml -> the text of the file. `expect.loaded`: the references of the application layer that are drawn (nothing but the plateau baseline is drawn until the plateaus are loaded as layers, W-4); `expect.warnings`: the warnings, without `warning: ` (checked when the workspace loads: a load that stops says its mistakes and no warning); `expect.errors`: the mistakes of the tree and of the references (the command line prints one `error:` line for each; the editor lists them in the model of the plateaus); `expect.fileError`: a manifest the reader refuses (`file`, the `sentence`, and the `where` the command line adds when it reads the file itself: ` (line L, column C)`); `expect.removedKey`: the sentence of the key that no longer exists (the command line prints it as the one `error:` line; the editor's banner is `expect.editorSays`: `Could not read/parse workspace.yaml: ` and the same sentence); `expect.noPlateau`: the sentence the command line prints for `settings.current` (M54) or `--plateau` (`plateau`, M55) in a workspace that has no plateau, and `expect.editorSays` the editor's banner for the first (`Could not read the plateaus of workspace.yaml:` and the sentence); the editor has no `--plateau`, so M55 gives `expect.editorDraws`: what the page draws when the address names (`?plateau=`) a plateau the workspace does not have.",
   "cases": [
     {
       "id": "M01",
@@ -685,8 +685,7 @@
       },
       "expect": {
         "removedKey": "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)",
-        "editor": null,
-        "editorReason": "wave 014 W-10 removes the editor's reading of settings.plateaus and says this sentence; until then the page still reads the key (and says the sentence of the conflict when layers come with it)"
+        "editorSays": "Could not read/parse workspace.yaml: `settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)"
       }
     },
     {
@@ -699,8 +698,7 @@
       },
       "expect": {
         "removedKey": "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)",
-        "editor": null,
-        "editorReason": "wave 014 W-10 removes the editor's reading of settings.plateaus and says this sentence; until then the page still reads the key (and says the sentence of the conflict when layers come with it)"
+        "editorSays": "Could not read/parse workspace.yaml: `settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)"
       }
     },
     {
@@ -712,8 +710,7 @@
       },
       "expect": {
         "removedKey": "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)",
-        "editor": null,
-        "editorReason": "wave 014 W-10 removes the editor's reading of settings.plateaus and says this sentence; until then the page still reads the key (and says the sentence of the conflict when layers come with it)"
+        "editorSays": "Could not read/parse workspace.yaml: `settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)"
       }
     },
     {
@@ -727,8 +724,32 @@
       },
       "expect": {
         "removedKey": "`settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)",
-        "editor": null,
-        "editorReason": "wave 014 W-10 removes the editor's reading of settings.plateaus and says this sentence; until then the page still reads the key (and says the sentence of the conflict when layers come with it)"
+        "editorSays": "Could not read/parse workspace.yaml: `settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)"
+      }
+    },
+    {
+      "id": "M54",
+      "what": "settings.current names a plateau in a workspace that has none: the command line and the editor say so",
+      "settings": "settings:\n  current: x\n",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "noPlateau": "`settings.current` is `x` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)",
+        "editorSays": "Could not read the plateaus of workspace.yaml:\n`settings.current` is `x` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)"
+      }
+    },
+    {
+      "id": "M55",
+      "what": "--plateau names a plateau in a workspace that has none: the command line refuses it; the editor has no such option, and an address that names a plateau the workspace does not have draws baseline",
+      "settings": "settings: {}\n",
+      "plateau": "y",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "noPlateau": "`--plateau y` cannot be used: the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)",
+        "editorDraws": "baseline"
       }
     }
   ]

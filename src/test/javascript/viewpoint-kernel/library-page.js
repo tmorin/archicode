@@ -56,10 +56,7 @@ async function startPage(options) {
     appState.folder = { handle, name: path.basename(options.dir) };
     appState.permissionState = 'granted';
     await app.loadWorkspace(handle);
-    if (options.plateau) {
-      if (appState.layers) app.drawPlateau(options.plateau); // layers: a click on a node of the band
-      else await app.switchPlateau(options.plateau);
-    }
+    if (options.plateau) app.drawPlateau(options.plateau); // a click on a node of the band
     opened = { sandbox: app, state: appState, kernel: await app.loadViewpointKernel() };
   } else {
     opened = await openFixture();

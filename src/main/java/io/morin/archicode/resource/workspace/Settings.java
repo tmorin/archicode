@@ -2,7 +2,6 @@ package io.morin.archicode.resource.workspace;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 import lombok.Builder;
@@ -23,14 +22,6 @@ public class Settings {
 
     @Builder.Default
     Manifests manifests = Manifests.builder().build();
-
-    /**
-     * The key of the plateaus of waves 008 to 013, which no longer exists: a plateau is a layer now. It is read as it is
-     * written, never used and never written, so that the tools that list the keys of the settings still know it while the
-     * editor does (the command line refuses a workspace file that has it before it reads anything else).
-     */
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    JsonNode plateaus;
 
     /**
      * The id of the plateau that is drawn when none is asked for. Optional: the last plateau when the plateaus form one

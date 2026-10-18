@@ -32,12 +32,6 @@ async function openLayered() {
   return { sandbox, state };
 }
 
-/** A workspace of the old mechanism, `settings.plateaus` (W-10 removes the editor's reading of it), in memory: two plateaus, each a folder. */
-const OLD_MECHANISM = [
-  'settings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n    - id: to-be\n      path: plateaus/20_to-be\n',
-  { 'plateaus/10_as-is/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n', 'plateaus/20_to-be/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n' }
-];
-
 async function openFiles(files, settings) {
   const mem = memFolder(Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
   const sandbox = createApp({});
@@ -370,19 +364,16 @@ test('a workspace with no other plateau has the Timeline page too: baseline alon
   assert.doesNotMatch(page.center, /data-action="timeline-changes"/);
 });
 
-test('a workspace with settings.plateaus has the Timeline page, with its plateaus listed and a word on the selector, and no band', async () => {
-  const { sandbox, state } = await openFiles(OLD_MECHANISM[1], OLD_MECHANISM[0]);
-  assert.equal(state.layers, null);
-  sandbox.setPerspective('timeline');
-  const page = sandbox.renderActivePerspectiveHtml();
-  const text = stripTags(page.center);
-  assert.match(text, /lists its plateaus in settings\.plateaus/);
-  assert.ok((page.center.match(/class="timeline-item/g) || []).length >= 2, 'its plateaus are listed');
-  assert.doesNotMatch(page.center, /data-action="timeline-draw"/, 'drawn by the selector in the top bar');
-  const shell = sandbox.renderShellHtml();
-  assert.doesNotMatch(shell, /id="plateau-band"/);
-  assert.match(shell, /id="page-tabs"/, 'the pages below Timeline are there all the same');
-  assert.match(sandbox.renderTopPanelHtml(), /data-action="set-plateau"/, 'the selector stays until it is removed');
+test('a workspace with settings.plateaus opens no page: it is refused with the one sentence, so there is no Timeline to show and no selector', async () => {
+  const mem = memFolder({ 'workspace.yaml': 'settings:\n  plateaus: []\n' });
+  const sandbox = createApp({});
+  const state = sandbox.__state();
+  state.folder = { handle: mem.handle, name: 'ws' };
+  state.permissionState = 'granted';
+  await sandbox.loadWorkspace(mem.handle);
+  assert.match(state.fatalError, /^Could not read\/parse workspace\.yaml: `settings\.plateaus` no longer exists/);
+  assert.equal(state.workspace, null);
+  assert.doesNotMatch(sandbox.renderShellHtml(), /id="plateau-band"|data-action="set-plateau"|id="page-tabs"/);
 });
 
 // ---- Stories ----
@@ -417,7 +408,7 @@ test('the Stories page says whose stories it lists and how many belong to other 
   sandbox.setPerspective('library');
   sandbox.drawPlateau('fast');
   let note = stripTags(sandbox.renderLayerEntriesNoticeHtml());
-  assert.match(note, /The stories of Faster crossings and of the plateaus it overrides \( baseline \)\. 1 belongs to other plateaus: draw one to see it\./);
+  assert.match(note, /The stories of Faster crossings and of the plateaus it overrides \( baseline \)\. 1 belongs to other plateaus\. Draw one to see it\./);
   run(sandbox, "libraryTab = 'views'");
   note = stripTags(sandbox.renderLayerEntriesNoticeHtml());
   assert.match(note, /The views of Faster crossings and of the plateaus it overrides \( baseline \)\. *$/, 'green has no view: nothing is left out');
@@ -556,7 +547,7 @@ test('the warning is on the row, in the list\'s count, and on the page of the fi
 
 // ---- Settings ----
 
-test('Settings has no plateau section for a layered or a plateau-less workspace; one with settings.plateaus keeps it until the selector goes', async () => {
+test('Settings has no plateau section for a layered or a plateau-less workspace', async () => {
   const { sandbox } = await openLayered();
   sandbox.setPerspective('settings');
   for (const workspace of [sandbox, (await openFiles({ 'manifests/app.fleet.yaml': SYSTEM('fleet') })).sandbox]) {
@@ -566,9 +557,6 @@ test('Settings has no plateau section for a layered or a plateau-less workspace;
     assert.match(center, /<h3>Manifests<\/h3>/, 'the folders of the manifests, as before');
     assert.doesNotMatch(center, /settings\.plateaus|plateau add/, 'and no sentence about the old key');
   }
-  const { sandbox: old } = await openFiles(OLD_MECHANISM[1], OLD_MECHANISM[0]);
-  old.setPerspective('settings');
-  assert.match(old.renderActivePerspectiveHtml().center, /id="settings-plateaus"/, 'W-10 removes it with the selector');
 });
 
 // ---- the layout ----

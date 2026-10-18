@@ -1,5 +1,5 @@
 {
-  "comment": "The negative variants that today's tools can run, on the layered rendition (wave 014, W-9; the cases of the plateaus of waves 008 to 013, N1 to N6 and N11 to N15, went with them, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (one `error:` line, or a warning line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). A mistake in a manifest that holds elements makes the elements it declares missing, which the page also says in layerProblems (the command line stops at the first sentence). An entry `editor: null` has a `reason`: the page has nothing to type, or does not say it yet.",
+  "comment": "The negative variants that today's tools can run, on the layered rendition (wave 014, W-9; the cases of the plateaus of waves 008 to 013, N1 to N6 and N11 to N15, went with them, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (one `error:` line, or a warning line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). A mistake in a manifest that holds elements makes the elements it declares missing, which the page also says in layerProblems (the command line stops at the first sentence). An entry `editor: null` has a `reason`: the page has nothing to type.",
   "cases": [
     {
       "id": "N7",
@@ -175,7 +175,7 @@
         }
       ],
       "editor": null,
-      "reason": "the page offers the plateaus of the workspace in a selector and types no id; the id it remembers for a folder is checked against the plateaus (a stale one falls back to the default plateau), and switchPlateau of an id it does not know does nothing"
+      "reason": "the page offers the plateaus of the workspace on the band and types no id; the id it remembers for a folder is checked against the plateaus (a stale one falls back to baseline), and drawPlateau of an id it does not know does nothing"
     },
     {
       "id": "N10",
@@ -615,7 +615,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `foo` (known: current, facets, manifests, name, plateaus, relationships, views) at `settings.foo` (line 3, column 9)"
+            "error: `workspace.yaml` is not valid: unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo` (line 3, column 9)"
           ]
         }
       ],
@@ -624,7 +624,7 @@
           "plateau": null,
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `foo` (known: current, facets, manifests, name, plateaus, relationships, views) at `settings.foo`"
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo`"
           }
         }
       ]
@@ -1236,8 +1236,15 @@
           ]
         }
       ],
-      "editor": null,
-      "reason": "the key no longer exists on the command line (RemovedPlateausKeyTest pins the sentence); the editor still reads it until W-10 (wave 014, run null) removes its old controls and says the same sentence, and this case then gets its editor steps"
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: `settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)"
+          }
+        }
+      ]
     },
     {
       "id": "N42",

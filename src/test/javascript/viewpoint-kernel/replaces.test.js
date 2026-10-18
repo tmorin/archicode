@@ -12,6 +12,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { layeredFiles, openLayered, compareWith } = require('./layered-folders');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
@@ -42,18 +43,12 @@ const PLAIN_TARGET = Object.assign({}, TARGET);
 for (const name of Object.keys(PLAIN_TARGET)) PLAIN_TARGET[name] = PLAIN_TARGET[name].replace(/  replaces:(\n    - .*)*(?: \[.*\])?\n/, '');
 
 const folder = (dir, files) => Object.fromEntries(Object.entries(files).map(([name, text]) => ['plateaus/' + dir + '/' + name, text]));
-const SETTINGS = '  plateaus:\n    - id: base\n      path: plateaus/10_base\n    - id: target\n      path: plateaus/20_target\n';
+const PLATEAU_LIST = [{ id: 'base', path: 'plateaus/10_base' }, { id: 'target', path: 'plateaus/20_target' }];
 
-async function open(target) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n' + SETTINGS }, folder('10_base', BASE), folder('20_target', target)));
-  const sandbox = createApp({});
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
-  const kernel = await sandbox.loadViewpointKernel();
-  await sandbox.setCompareTo('base');
-  return { sandbox, state, kernel };
+/** The two states as layers (see layered-folders.js: siblings over an empty baseline), the target drawn and compared with the base on the band. */
+async function open(target, base) {
+  const { sandbox, state } = await openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, Object.assign({}, folder('10_base', base || BASE), folder('20_target', target))), { drawn: 'target', compared: 'base' });
+  return { sandbox, state, kernel: run(sandbox, 'loadedKernel') };
 }
 
 test('the editor and the kernel it embeds speak contract version 4', async () => {
@@ -73,7 +68,7 @@ test('the record of an element keeps what it replaces, and the kernel input carr
   assert.equal('replaces' in of('target', 'shop'), false, 'no key for an element that replaces nothing');
   assert.equal(JSON.stringify(input.base).includes('replaces'), false, 'the baseline says nothing of it');
   // the views of the plateau drawn, with no comparison, do not take it
-  await sandbox.setCompareTo('');
+  compareWith(sandbox, '');
   const viewInput = plain(sandbox.buildKernelInput('overview', 'shop', {}).input);
   assert.equal(JSON.stringify(viewInput).includes('replaces'), false);
 });
@@ -135,14 +130,7 @@ const E1_TARGET = {
 };
 
 test('E1: the removed node of a comparison deploys what replaced the application it deployed, and the deep view of the environment is drawn', async () => {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n' + SETTINGS }, folder('10_base', E1_BASE), folder('20_target', E1_TARGET)));
-  const sandbox = createApp({});
-  const state = sandbox.__state();
-  state.folder = { handle: mem.handle, name: 'ws' };
-  state.permissionState = 'granted';
-  await sandbox.loadWorkspace(mem.handle);
-  const kernel = await sandbox.loadViewpointKernel();
-  await sandbox.setCompareTo('base');
+  const { sandbox, kernel } = await open(E1_TARGET, E1_BASE);
   const answer = plain(kernel.compare(sandbox.comparisonInput()));
   assert.equal(answer.error, undefined);
   const removed = answer.elements.find((e) => e.layer === 'technology' && e.reference === 'e.n');
