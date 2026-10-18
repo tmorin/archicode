@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 014
-status: proposed
+status: completed
 date: 2026-10-18
 related:
   - docs/fixtures/brightcart-spec.md

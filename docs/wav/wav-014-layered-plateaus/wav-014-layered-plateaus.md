@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 014
-status: proposed
+status: completed
 date: 2026-10-18
 related:
   - docs/wav/wav-014-layered-plateaus/wbc-014-layered-plateaus.md
@@ -75,7 +75,7 @@ at the review that precedes `complete-wave`:
 wave_manifest:
   wave: 014
   slug: layered-plateaus
-  status: proposed
+  status: completed
   sources: []
   phases:
     - id: P0
