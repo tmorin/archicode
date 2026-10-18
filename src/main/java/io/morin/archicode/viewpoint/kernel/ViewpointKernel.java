@@ -17,7 +17,7 @@ import lombok.val;
 public final class ViewpointKernel {
 
     /** The version of the input/output contract this class and {@link KernelViewpointFactory} were written for. */
-    public static final int CONTRACT_VERSION = 4;
+    public static final int CONTRACT_VERSION = 5;
 
     private static final class Holder {
 
@@ -69,12 +69,23 @@ public final class ViewpointKernel {
     }
 
     /**
+     * The seven words of the states of a comparison, said once by the kernel (contract 5): see {@link KernelStates}, which reads them.
+     *
+     * @return {@code {"version", "relationship", "identity", "container", "states"}}
+     */
+    public synchronized String states() {
+        return call("states", "{}");
+    }
+
+    /**
      * Compare two plateaus of an architecture: what is new, changed and removed from one to the other.
      *
-     * @param json {@code {"base": {"application": [element], "technology": [element]}, "target": {...}}}, the elements
+     * @param json {@code {"base": {"application": [element], "technology": [element]}, "target": {...}, "on_one_chain": bool}}, the elements
      *             being the ones {@link #compute} takes, with {@code kind}, {@code name}, {@code description},
      *             {@code qualifiers} and {@code tags}, and for an element of the target that says what it
-     *             replaces, {@code replaces}
+     *             replaces, {@code replaces}; {@code on_one_chain} says whether one of the two plateaus is the past of the
+     *             other (an ancestor in the tree of plateaus): it is required, the kernel refuses an input without it
+     *             (contract 5, issue #70)
      * @return {@code {"version", "elements", "relationships", "changes", "counts", "candidates", "warnings"?}}, or
      *         {@code {"error": "..."}}
      */

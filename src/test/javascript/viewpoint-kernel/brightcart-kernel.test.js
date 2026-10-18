@@ -68,7 +68,7 @@ function withoutInheritedReplaces(base, target) {
 async function compare(comparison) {
   const { kernel, sides } = await brightcart();
   const [base, target] = comparison.chain;
-  const out = plain(kernel.compare({ base: sides[base], target: withoutInheritedReplaces(sides[base], sides[target]) })); // plain objects of this realm
+  const out = plain(kernel.compare({ base: sides[base], target: withoutInheritedReplaces(sides[base], sides[target]), on_one_chain: true })); // plain objects of this realm
   assert.equal(out.error, undefined, comparison.id);
   return out;
 }
@@ -246,7 +246,7 @@ test('E1: a node of the baseline that is removed deploys what replaced the appli
 test('compare answers the same bytes for the same plateaus, whatever the order of their lists (P2)', async () => {
   const { kernel, sides } = await brightcart();
   const reverse = (side) => ({ application: side.application.slice().reverse().map((e) => Object.assign({}, e, { relationships: (e.relationships || []).slice().reverse() })), technology: side.technology.slice().reverse() });
-  const first = JSON.stringify(kernel.compare({ base: sides.baseline, target: sides.inhouse }));
-  assert.equal(first, JSON.stringify(kernel.compare({ base: sides.baseline, target: sides.inhouse })), 'twice');
-  assert.equal(first, JSON.stringify(kernel.compare({ base: reverse(sides.baseline), target: reverse(sides.inhouse) })), 'reordered');
+  const first = JSON.stringify(kernel.compare({ base: sides.baseline, target: sides.inhouse, on_one_chain: true }));
+  assert.equal(first, JSON.stringify(kernel.compare({ base: sides.baseline, target: sides.inhouse, on_one_chain: true })), 'twice');
+  assert.equal(first, JSON.stringify(kernel.compare({ base: reverse(sides.baseline), target: reverse(sides.inhouse), on_one_chain: true })), 'reordered');
 });

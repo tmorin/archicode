@@ -13,6 +13,7 @@ import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
+import io.morin.archicode.viewpoint.kernel.KernelStates;
 import io.morin.archicode.workspace.Workspace;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,11 @@ class ChangeMarksTest {
             .build();
     }
 
+    /** A box the kernel computed to hold a change without having changed itself (its last stereotype is the marker, and it says so). */
+    private Item holder(String id) {
+        return item(id, Change.NONE, "contains-changes").toBuilder().containsChanges(true).build();
+    }
+
     private String atomic(Viewpoint viewpoint, Item item) {
         return ItemRenderer.AtomicItemRenderer.builder().build().render(viewpoint, PlantumlNames.of(viewpoint), item);
     }
@@ -73,7 +79,7 @@ class ChangeMarksTest {
         // the container of changes: its own state is none, the marker is what the kernel put last
         assertEquals(
             "rectangle a <<contains-changes>> <<solution>> <<atomic>> [\n<U+00B1> A\n[solution]\n]\n",
-            atomic(compared, item("a", Change.NONE, "contains-changes"))
+            atomic(compared, holder("a"))
         );
     }
 
@@ -105,7 +111,7 @@ class ChangeMarksTest {
 
     @Test
     void aCompositeBoxHasTheGlyphInItsLabel() {
-        val parent = item("p", Change.NONE, "contains-changes");
+        val parent = holder("p");
         val child = item("c", Change.NEW, "new");
         parent.getChildren().add(child);
         val puml = ItemRenderer.builder().build().render(compared, PlantumlNames.of(compared), parent);
@@ -492,5 +498,50 @@ class ChangeMarksTest {
         );
         assertFalse(legend.contains("split"), legend);
         assertEquals(List.of("merged", "moved"), List.copyOf(ChangeMarks.styles(compared).keySet()));
+    }
+
+    @Test
+    void theWordContainsChangesWrittenByHandIsNotTheStateTheKernelComputed() {
+        // issue #34: the last stereotype is the same word, the kernel says apart whether it computed it
+        val byHand = item("a", Change.NONE, "contains-changes");
+        assertEquals(Optional.empty(), ChangeMarks.stateOf(compared, byHand));
+        assertEquals(List.of("written-contains-changes"), ChangeMarks.stereotypes(compared, byHand));
+        assertEquals(Set.of("contains-changes"), ChangeMarks.writtenStates(viewpointOf(byHand)));
+        val computed = holder("a");
+        assertEquals(Optional.of("contains-changes"), ChangeMarks.stateOf(compared, computed));
+        assertEquals(List.of("contains-changes"), ChangeMarks.stereotypes(compared, computed));
+        // and the look is the default one only for the box that has the state
+        assertTrue(atomic(compared, byHand).contains("<<written-contains-changes>>"), atomic(compared, byHand));
+        assertTrue(atomic(compared, computed).contains("<<contains-changes>>"), atomic(compared, computed));
+        assertFalse(atomic(compared, byHand).contains("<U+00B1>"), "no marker glyph for a word written by hand");
+    }
+
+    @Test
+    void everyStateTheKernelSaysHasALookOfItsOwnHere() {
+        assertEquals(
+            List.of("new", "changed", "removed", "moved", "split", "merged", "contains-changes"),
+            KernelStates.all()
+        );
+        assertEquals(ChangeMarks.CONTAINS_CHANGES, KernelStates.container());
+        // an unknown word gets the look of the marker (the default of the switches), so a state that has no look of its own here reads as that of
+        // `contains-changes` and the two collide: a state added to the kernel without a glyph and a style fails here
+        val glyphs = new java.util.HashSet<String>();
+        val styles = new java.util.HashSet<String>();
+        for (val state : KernelStates.all()) {
+            val style = ChangeMarks.style(state);
+            assertTrue(glyphs.add(ChangeMarks.glyph(state)), state + " has a glyph of its own");
+            assertTrue(
+                styles.add(style.getLineStyle() + "-" + style.getLineGap() + "/" + style.getLineThickness()),
+                state + " has a style of its own"
+            );
+        }
+        assertEquals(ChangeMarks.glyph(ChangeMarks.CONTAINS_CHANGES), ChangeMarks.glyph("a-state-added-to-the-kernel"));
+    }
+
+    private Viewpoint viewpointOf(Item item) {
+        val viewpoint = Mockito.mock(Viewpoint.class);
+        Mockito.when(viewpoint.isCompared()).thenReturn(true);
+        Mockito.when(viewpoint.getItems()).thenReturn(Set.of(item));
+        return viewpoint;
     }
 }

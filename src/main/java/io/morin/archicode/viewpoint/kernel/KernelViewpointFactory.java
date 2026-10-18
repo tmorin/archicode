@@ -279,6 +279,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
                 .kind(Item.Kind.from(element))
                 .stereotypes(stereotypesOf(node))
                 .change(changeOf(node))
+                .containsChanges(node.path("contains_changes").asBoolean(false))
                 .natures(stringsOf(node.path("natures")))
                 .replaces(identity == null ? List.of() : identity.replaces())
                 .replacedBy(identity == null ? List.of() : identity.replacedBy())

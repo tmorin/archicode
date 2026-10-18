@@ -32,7 +32,14 @@ async function loadEmbeddedKernel() {
     x.dealloc(ptr, data.length);
     return text;
   };
-  return { bytes, exports: x, raw: (input) => call('compare', input), compare: (input) => JSON.parse(call('compare', input)), compute: (input) => JSON.parse(call('compute', input)) };
+  // `on_one_chain` is required since contract 5; the tests that are not about it say `true` here (one plateau is the past of the other), the ones that are use `raw`
+  return {
+    bytes,
+    exports: x,
+    raw: (input) => call('compare', input),
+    compare: (input) => JSON.parse(call('compare', Object.assign({ on_one_chain: true }, input))),
+    compute: (input) => JSON.parse(call('compute', input))
+  };
 }
 
 const el = (reference, extra = {}) => Object.assign({ reference, parent: !reference.includes('.') }, extra);
@@ -42,7 +49,7 @@ const plateau = (application = [], technology = []) => ({ application, technolog
 test('the module the editor embeds is the one the CLI loads, and it exports compare next to compute', async () => {
   const kernel = await loadEmbeddedKernel();
   assert.ok(Buffer.compare(kernel.bytes, fs.readFileSync(WASM)) === 0, 'the same bytes in standalone.html and in src/main/wasm');
-  for (const name of ['alloc', 'dealloc', 'compute', 'apply_facet', 'compare', 'result_ptr', 'memory']) assert.ok(name in kernel.exports, name + ' is exported');
+  for (const name of ['alloc', 'dealloc', 'compute', 'apply_facet', 'compare', 'states', 'result_ptr', 'memory']) assert.ok(name in kernel.exports, name + ' is exported');
 });
 
 test('compare lists the new, changed and removed things of two small plateaus, and says why', async () => {
@@ -73,12 +80,13 @@ test('compare answers the same bytes for the same input, whatever the order of i
   const kernel = await loadEmbeddedKernel();
   const input = {
     base: plateau([el('a', { relationships: [rel('b', 'x'), rel('c', 'y')] }), el('b'), el('c'), el('gone')], [el('env', { applications: ['a', 'b'], uses: ['env.n', 'env.m'] }), el('env.n'), el('env.m')]),
-    target: plateau([el('a', { name: 'A', relationships: [rel('c', 'y'), rel('b', 'z')] }), el('c'), el('b'), el('fresh')], [el('env', { applications: ['b', 'a'], uses: ['env.m'] }), el('env.m'), el('env.n')])
+    target: plateau([el('a', { name: 'A', relationships: [rel('c', 'y'), rel('b', 'z')] }), el('c'), el('b'), el('fresh')], [el('env', { applications: ['b', 'a'], uses: ['env.m'] }), el('env.m'), el('env.n')]),
+    on_one_chain: true
   };
   const reverse = (side) => ({ application: side.application.slice().reverse().map((e) => (e.relationships ? Object.assign({}, e, { relationships: e.relationships.slice().reverse() }) : e)), technology: side.technology.slice().reverse() });
   const first = kernel.raw(input);
   assert.equal(first, kernel.raw(input), 'twice');
-  assert.equal(first, kernel.raw({ target: reverse(input.target), base: reverse(input.base) }), 'reordered');
+  assert.equal(first, kernel.raw({ target: reverse(input.target), base: reverse(input.base), on_one_chain: true }), 'reordered');
   assert.ok(!JSON.parse(first).error);
 });
 
@@ -144,15 +152,15 @@ test('replaces: moved, split and merged elements through the embedded module, th
     el('t2', { replaces: ['s', 'nowhere'] }),
     el('m', { replaces: ['m2', 'm1'] })
   ]);
-  const raw = kernel.raw({ base, target });
+  const raw = kernel.raw({ base, target, on_one_chain: true });
   const out = JSON.parse(raw);
   assert.equal(out.error, undefined);
-  assert.equal(out.version, 4);
+  assert.equal(out.version, 5);
   const change = Object.fromEntries(out.elements.map((e) => [e.reference, e.change]));
   assert.deepEqual(change, { a: 'none', b: 'none', 'b.svc': 'moved', m: 'merged', t1: 'split', t2: 'split' });
   assert.deepEqual(out.counts.elements, { new: 0, changed: 0, removed: 0, wording_only: 0, moved: 1, split: 2, merged: 1 });
   assert.equal(out.warnings.length, 1);
-  assert.equal(raw, kernel.raw({ base: plateau([...base.application].reverse()), target: plateau([...target.application].reverse()) }), 'the order of the lists never shows');
+  assert.equal(raw, kernel.raw({ base: plateau([...base.application].reverse()), target: plateau([...target.application].reverse()), on_one_chain: true }), 'the order of the lists never shows');
   // the union is drawn like any other: the state ends the stereotypes
   const view = kernel.compute({ viewpoint: 'map', focal: '', elements: out.elements.map((e) => Object.assign({}, e, { relationships: [] })), opened: ['a', 'b'] });
   assert.equal(view.error, undefined);

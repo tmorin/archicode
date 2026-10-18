@@ -10,9 +10,10 @@ that reached it among its children. `pinned` keeps the relationships that touch 
 elements out. Pinned on one element with nothing open it draws that element's overview, which the tests check against
 the views the CLI generates.
 
-A second, a third and a fourth entry point sit next to `compute`: `apply_facet` (the facets, see below), `compare`, which says what
-changed between two plateaus of an architecture (see "Comparing two plateaus"), and `apply_patches`, which changes the graph of a
-plateau by the ordered patches of its layer (see "Applying the patches of a plateau"). What `compare` says can be drawn: `compute`
+A second, a third, a fourth and a fifth entry point sit next to `compute`: `apply_facet` (the facets, see below), `compare`, which says what
+changed between two plateaus of an architecture (see "Comparing two plateaus"), `apply_patches`, which changes the graph of a
+plateau by the ordered patches of its layer (see "Applying the patches of a plateau"), and `states`, which says the seven state words of a
+comparison once (see "The state words"). What `compare` says can be drawn: `compute`
 tells every box and link of a view what changed (see "Views of a comparison").
 
 It is written once and runs in both places that draw views, so they cannot disagree:
@@ -106,7 +107,8 @@ its tests there; a JS test (`src/test/javascript/viewpoint-kernel/compare.test.j
 
 ```
 input : { base:   { application: [element], technology: [element] },
-          target: { application: [element], technology: [element] } }            (a missing or null list is empty)
+          target: { application: [element], technology: [element] },             (a missing or null list is empty)
+          on_one_chain: bool }                                                   (contract 5, required: see "Candidates")
 output: { version,
           elements:      [ { layer, reference, parent, parent_reference?, kind?, name?, description?, qualifiers, tags,
                              applications, uses, change, natures?, wording_only?, replaces?, replaced_by?,
@@ -178,8 +180,18 @@ output: { version,
   case, and only when no other removed element and no other new element of that kind has it: a name that repeats would pair every
   removed one with every new one, wave 013, issue #60), `description` (at least 60 percent of the words in common, three words or more on each side) and `parent` (the only two
   of that kind under the same parent). Sorted by (layer, from, to). The author turns one into a `replaces` or leaves it.
+- **`on_one_chain`, whether the two plateaus are one the past of the other** (contract 5, wave 014, issue #70). The host knows it from the
+  tree of plateaus (one is an ancestor of the other, `baseline` of all), the kernel cannot. When it is `true`, the candidates are the above.
+  When it is `false`, the two plateaus are siblings, two alternatives built on the same past, and the only two elements of a kind under one
+  parent are not one thing said twice: the reason `parent` is not given, a pair that has no other reason is not listed, and a pair that has
+  `name` or `description` keeps it, with that reason alone. Nothing else moves: the union, the table and the counts are those of a chain.
+  **It is required.** An input without it, or with `null`, is `{ "error": "invalid input: `on_one_chain` is missing: ..." }` and no partial
+  answer; anything that is not a boolean is `invalid input: ... expected a boolean`. The kernel takes no default, because neither is right
+  for every caller: `true` would bring the pairs of two alternatives back to a host that forgot, `false` would hide the pairs of a chain. The
+  contract number is the signal for a host written for 4, which refuses a kernel that answers `version: 5`.
 - **The contract version.** `compare` itself added nothing to version 2; the views of a comparison (below) changed what `compute`
-  gives, and moved the contract to 3; `replaces` (new words of `change`, `replaces`, `candidates`, `warnings`) moved it to 4.
+  gives, and moved the contract to 3; `replaces` (new words of `change`, `replaces`, `candidates`, `warnings`) moved it to 4;
+  `on_one_chain` (a required input) moved it to 5, with `contains_changes` and `states` (below).
 
 ## Views of a comparison
 
@@ -225,7 +237,12 @@ output link  : { ..., relationships: [{ ..., change? }], change? }
   element below it in the reference tree is new, changed or removed, its stereotypes end with `contains-changes`, a name of its
   own that a style can give a line, a glyph or a badge (a relationship that changed counts through the element that declares it,
   which `compare` marks `changed`). A container that is itself new, changed or removed says that, and has no marker. The
-  marker is computed from the elements the view is given (after the facets), also for a box that is folded.
+  marker is computed from the elements the view is given (after the facets), also for a box that is folded. The item also says it
+  in `contains_changes: true` (contract 5): that key is the kernel's own word that it computed the state, while the stereotype
+  `contains-changes` is also a word that an author may have written by hand, as a qualifier or in the `rendering-stereotypes` tag, on a
+  box that holds no change. A host that has to tell the two (the CLI draws the default look of a state only for a box that has it computed, the
+  editor does the same) reads the key, not the last stereotype. The key is absent when the box does not hold a change and in a view
+  that does not compare.
 - **`only_changes`** keeps, of the view as it is drawn (after the facets, `hide_unlinked` and the folds), the items and the links
   whose `change` is new, changed or removed; the ends of those links; a folded item that hides changes; the focal item (so that a
   view without changes is not empty; the map has none); and what encloses all of them. An item kept for no change of its own has
@@ -238,6 +255,26 @@ output link  : { ..., relationships: [{ ..., change? }], change? }
   replaces others): they are states like `new`, they end the stereotypes (`moved`, `split`, `merged`), make the containers above
   say `contains-changes`, and `only_changes` keeps them. A relationship says only `none`, `new`, `changed` or `removed`: the others
   are an `error` there, as is any other word. Nothing changes for an input without those words.
+- **Contract version 5.** An item of a comparison says `contains_changes: true` when it holds a change and did not change itself (above). Nothing
+  else about a view moves; the answer says `version: 5`.
+
+## The state words
+
+The seven words that a comparison puts on a box (`new`, `changed`, `removed`, `moved`, `split`, `merged` and `contains-changes`) are written
+once, in the kernel, and `states` says them (contract 5, issue #34; before, the CLI wrote them twice and the editor once more, and a test
+compared the lists). It takes no input (what is sent is not read) and answers
+
+```
+{ "version": 5,
+  "relationship": ["new", "changed", "removed"],        (what a relationship, or an element, can be)
+  "identity":     ["moved", "split", "merged"],         (what an element that replaces others can also be)
+  "container":    "contains-changes",                   (the computed state of a box that did not change and holds a change: `contains_changes`)
+  "states":       [the three, in that order] }
+```
+
+The CLI reads it once, on first use (`KernelStates`), and the editor when it loads the module (the four arrays of the page are filled from it and have
+no word of their own). What a host keeps is the look of each word (a glyph, a line style), not the list: a test of each host fails when a state of the kernel
+has no look.
 
 ## Applying the patches of a plateau
 
@@ -274,7 +311,7 @@ output: { version,
 - **A patch never changes an `id` or a `parent`**, and no combination of keys is guessed: what has no meaning is an error that says
   which key. Nothing else is checked: a relationship added towards an element that does not exist is the loader's error after the
   layer, which names the layer.
-- **The contract number does not move.** `apply_patches` is additive: nothing `compute`, `apply_facet` or `compare` take or give
+- **The contract number did not move for it.** `apply_patches` is additive: nothing `compute`, `apply_facet` or `compare` take or give
   changes (the views of every workspace of the repository are byte for byte those of the commit before) and the answer says the
-  version, 4. A host that needs it ships with a kernel that has it, as for the other entry points. Contract 5 is reserved for the
-  next change of `compare`'s input.
+  version (4 when it was added, 5 since `compare` took `on_one_chain`). A host that needs it ships with a kernel that has it, as for the
+  other entry points.

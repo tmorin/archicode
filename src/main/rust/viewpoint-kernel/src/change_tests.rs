@@ -65,9 +65,9 @@ fn union() -> Vec<Value> {
 }
 
 #[test]
-fn the_contract_is_version_4() {
-    assert_eq!(CONTRACT_VERSION, 4);
-    assert_eq!(view("deep", "sys", union(), json!({}))["version"], 4);
+fn the_contract_is_version_5() {
+    assert_eq!(CONTRACT_VERSION, 5);
+    assert_eq!(view("deep", "sys", union(), json!({}))["version"], 5);
 }
 
 #[test]
@@ -549,7 +549,7 @@ fn an_input_without_change_gives_the_bytes_of_a_call_without_the_new_options() {
         for field in ["\"change\"", "\"natures\"", "\"context\"", "contains-changes"] {
             assert!(!plain_call.contains(field), "{viewpoint}: {field} in {plain_call}");
         }
-        assert!(plain_call.contains("\"version\":4"));
+        assert!(plain_call.contains("\"version\":5"));
     }
 }
 
@@ -626,7 +626,7 @@ fn the_union_of_compare_is_a_view_input() {
     base["application"][0]["relationships"] = json!([plain("old", "uses")]);
     let mut target = side(&["a", "b", "fresh"]);
     target["application"][0]["relationships"] = json!([plain("fresh", "uses")]);
-    let union: Value = serde_json::from_str(&compare_json(&json!({ "base": base, "target": target }).to_string())).unwrap();
+    let union: Value = serde_json::from_str(&compare_json(&json!({ "base": base, "target": target, "on_one_chain": true }).to_string())).unwrap();
     assert!(union.get("error").is_none(), "{union}");
     let elements: Vec<Value> = union["elements"]
         .as_array()
@@ -687,7 +687,7 @@ fn the_union_of_a_pair_with_replaces_is_a_view_input_in_every_viewpoint() {
         json!({ "reference": "fresh.kept", "parent": false, "replaces": ["old.kept"] }),
         leaf("other"),
     ]);
-    let union: Value = serde_json::from_str(&compare_json(&json!({ "base": base, "target": target }).to_string())).unwrap();
+    let union: Value = serde_json::from_str(&compare_json(&json!({ "base": base, "target": target, "on_one_chain": true }).to_string())).unwrap();
     assert!(union.get("error").is_none(), "{union}");
     let elements: Vec<Value> = union["elements"].as_array().unwrap().iter().map(|e| { let mut e = e.clone(); e["relationships"] = json!([]); e }).collect();
     for (viewpoint, focal, extra) in [("deep", "fresh", json!({})), ("deep", "old", json!({})), ("overview", "other", json!({})), ("detailed", "old", json!({})), ("map", "", json!({ "opened": ["fresh", "old"] }))] {
@@ -699,4 +699,70 @@ fn the_union_of_a_pair_with_replaces_is_a_view_input_in_every_viewpoint() {
     assert_eq!(item(&out, "fresh.kept")["change"], "moved");
     assert_eq!(item(&out, "old")["change"], "removed");
     assert_eq!(item(&out, "old.gone")["change"], "removed");
+}
+
+// ---- the state of a container is said, not guessed (contract 5, issue #34) ----
+
+#[test]
+fn an_item_says_it_holds_a_change_when_the_kernel_computed_it() {
+    let out = view("deep", "other", union(), json!({}));
+    for id in ["other", "other.b"] {
+        assert_eq!(item(&out, id)["contains_changes"], true, "{id}");
+    }
+    for id in ["other.b.c", "other.b.d"] {
+        assert!(item(&out, id).get("contains_changes").is_none(), "{id}: a leaf holds nothing, whether it is new or not");
+    }
+    // folded, it still says it
+    let folded = view("deep", "other", union(), json!({ "collapsed": ["other.b"] }));
+    assert_eq!(item(&folded, "other.b")["contains_changes"], true);
+    // an element that changed itself is not marked: it says `change`
+    let out = view("deep", "sys", union(), json!({}));
+    assert!(item(&out, "sys.a").get("contains_changes").is_none());
+    assert_eq!(item(&out, "sys")["contains_changes"], true);
+}
+
+#[test]
+fn the_word_written_by_hand_is_not_the_state_that_was_computed() {
+    // a qualifier and a tag named like the state, on elements that hold no change: the stereotype is the author's, `contains_changes` is the kernel's
+    let by_hand = vec![
+        json!({ "reference": "box", "parent": true, "change": "none", "qualifiers": ["contains-changes"], "relationships": [] }),
+        json!({ "reference": "box.leaf", "parent": false, "change": "none", "tags": { "rendering-stereotypes": "contains-changes" }, "relationships": [] }),
+        el("sys", true, "none", vec![]),
+        el("sys.new", false, "new", vec![rel("sys.old", "calls", "new")]),
+        json!({ "reference": "sys.old", "parent": false, "change": "none", "qualifiers": ["contains-changes"], "relationships": [] }),
+    ];
+    let out = view("map", "", by_hand, json!({ "opened": ["box", "sys"] }));
+    for id in ["box", "box.leaf", "sys.old"] {
+        assert_eq!(stereotypes(&out, id), json!(["contains-changes"]), "{id}: the word is still in the stereotypes, as the author wrote it");
+        assert!(item(&out, id).get("contains_changes").is_none(), "{id}: nothing is inside it that changed");
+    }
+    assert_eq!(item(&out, "sys")["contains_changes"], true, "this one is computed");
+}
+
+#[test]
+fn a_view_without_a_comparison_does_not_say_it() {
+    let out = view("overview", "a", vec![json!({ "reference": "a", "qualifiers": ["contains-changes"] })], json!({}));
+    assert!(item(&out, "a").get("contains_changes").is_none());
+    assert!(!compute_json(&json!({ "viewpoint": "overview", "layer": "application", "focal": "a", "elements": [{ "reference": "a" }] }).to_string()).contains("contains_changes"));
+}
+
+#[test]
+fn the_kernel_says_the_seven_state_words_once() {
+    let said: Value = serde_json::from_str(&states_json()).unwrap();
+    assert_eq!(said["version"], CONTRACT_VERSION);
+    assert_eq!(said["relationship"], json!(["new", "changed", "removed"]));
+    assert_eq!(said["identity"], json!(["moved", "split", "merged"]));
+    assert_eq!(said["container"], "contains-changes");
+    assert_eq!(said["states"], json!(["new", "changed", "removed", "moved", "split", "merged", "contains-changes"]));
+    // the list is the kernel's own: every word it computes (`Change`) is in it, each reads back as the same change, and the only extra is the container's
+    let all = [Change::New, Change::Changed, Change::Removed, Change::Moved, Change::Split, Change::Merged];
+    let computed: Vec<&str> = all.iter().map(|c| c.stereotype().unwrap()).collect();
+    assert_eq!(said["states"].as_array().unwrap().iter().map(|w| w.as_str().unwrap()).filter(|w| *w != STEREOTYPE_CONTAINS_CHANGES).collect::<Vec<_>>(), computed);
+    for word in STATES_RELATIONSHIP.iter().chain(STATES_IDENTITY.iter()).chain(computed.iter()) {
+        assert_eq!(Change::parse(word).unwrap().stereotype(), Some(*word), "{word} is read back as itself");
+    }
+    assert_eq!(Change::parse(STEREOTYPE_CONTAINS_CHANGES), None, "the container's word is not a `change`: only the kernel computes it");
+    // a relationship can say the first three, an element all six: the partition is the one `compute` enforces
+    assert!(all.iter().filter(|c| !c.is_identity()).map(|c| c.stereotype().unwrap()).eq(STATES_RELATIONSHIP));
+    assert!(all.iter().filter(|c| c.is_identity()).map(|c| c.stereotype().unwrap()).eq(STATES_IDENTITY));
 }

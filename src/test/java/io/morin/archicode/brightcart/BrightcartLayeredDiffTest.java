@@ -448,4 +448,50 @@ class BrightcartLayeredDiffTest {
         }
         assertEquals(before, Brightcart.tree(workspace.getParent()));
     }
+
+    /**
+     * Wave 014, issue #70: {@code inhouse} and {@code saas} both override {@code baseline}, two alternatives. The node that hosts the commerce
+     * platform in one and the node that hosts the tax service in the other are the only nodes of their kind under {@code partners} (and the two
+     * sandbox nodes under {@code sandbox}), which is no reason to propose the one as the new place of the other.
+     */
+    @Test
+    void twoAlternativesAreNotOfferedAPairOfNodesForTheirSharedParentAlone() {
+        for (val format : List.of("text", "markdown", "json")) {
+            val result = cli().in(
+                workspace,
+                List.of("diff", "--plateau", "inhouse", "--against", "saas"),
+                "--format",
+                format
+            );
+            assertEquals(0, result.exit(), result.err());
+            assertFalse(result.out().toLowerCase().contains("candidates"), format + ": " + result.out());
+        }
+        // the table and the counts are the ones of expected/, P5
+        val json = readTree(
+            cli()
+                .in(workspace, List.of("diff", "--plateau", "inhouse", "--against", "saas"), "--format", "json")
+                .out()
+        );
+        assertEquals(27, json.at("/counts/elements/new").asInt());
+        assertEquals(4, json.at("/counts/elements/changed").asInt());
+        assertEquals(3, json.at("/counts/elements/removed").asInt());
+        assertEquals(0, json.path("candidates").size());
+        assertTrue(json.path("changes").size() > 0);
+    }
+
+    /** The plateau that builds on another one is the legitimate case: its candidates are listed as they always were. */
+    @Test
+    void aPlateauAndTheOneItBuildsOnStillListTheirCandidates() {
+        val result = cli().in(workspace, List.of("diff", "--plateau", "inhouse", "--against", "marketplace"));
+        assertEquals(0, result.exit(), result.err());
+        val lines = result.out().lines().toList();
+        val from = lines.indexOf(
+            "candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)"
+        );
+        assertTrue(from > 0, result.out());
+        assertEquals("LAYER        FROM              TO               REASONS", lines.get(from + 1));
+        assertEquals("application  discovery.search  commerce.search  name, description", lines.get(from + 2));
+        assertEquals("application  storefront        shop             name, description", lines.get(from + 3));
+        assertEquals("application  storefront.web    shop.web         name", lines.get(from + 4));
+    }
 }

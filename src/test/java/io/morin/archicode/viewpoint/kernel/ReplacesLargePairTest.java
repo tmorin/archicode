@@ -208,6 +208,48 @@ class ReplacesLargePairTest {
         return layer + "/" + reference.split("\\.").length;
     }
 
+    /**
+     * Kernel contract 5 (wave 014, issue #70): {@code before} and {@code after} are on one chain ({@code after} overrides {@code before}),
+     * and the pair is compared as such, so the 137 candidates recorded above are what the command line and the editor give. Told as two
+     * siblings, the same plateaus lose the reason {@code parent} and nothing else: a pair whose only reason was the parent goes, the others
+     * keep their other reasons.
+     */
+    @Test
+    void theSamePairToldAsSiblingsLosesTheParentAndNothingElse() {
+        val path = WORKSPACE.toAbsolutePath();
+        val before = workspaceFactory.create(path, null, "before");
+        val after = workspaceFactory.create(path, null, "after");
+        assertTrue(PlateauComparer.onOneChain(before, after), "after overrides before: a chain");
+        val comparer = new PlateauComparer(objectMapper);
+        val chain = comparer.compare(before, after);
+        val siblings = comparer.compare(before, after, false);
+        assertEquals(chain.getCandidates().size(), compare("before", "after").getCandidates().size());
+
+        val expected = new TreeMap<String, List<String>>();
+        for (val c : chain.getCandidates()) {
+            val reasons = c
+                .reasons()
+                .stream()
+                .filter(r -> !r.equals("parent"))
+                .toList();
+            if (!reasons.isEmpty()) {
+                expected.put(key(c), reasons);
+            }
+        }
+        val actual = new TreeMap<String, List<String>>();
+        for (val c : siblings.getCandidates()) {
+            actual.put(key(c), c.reasons());
+        }
+        assertEquals(expected, actual);
+        val onlyParent = chain.getCandidates().size() - expected.size();
+        assertTrue(onlyParent > 0, "the pair has candidates whose only reason is the parent: " + onlyParent);
+        assertEquals(
+            chain.getCounts().toString(),
+            siblings.getCounts().toString(),
+            "the comparison itself does not move"
+        );
+    }
+
     @SneakyThrows
     private static void assertRecorded(String file, String actual) {
         val recorded = FIXTURE.resolve(file);

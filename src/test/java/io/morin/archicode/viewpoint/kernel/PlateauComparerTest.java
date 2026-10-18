@@ -290,10 +290,12 @@ class PlateauComparerTest {
     @SneakyThrows
     void shouldSpeakTheContractVersionOfTheKernel() {
         val answer = objectMapper.readTree(
-            ViewpointKernel.getInstance().compare("{\"base\":{\"application\":[]},\"target\":{\"application\":[]}}")
+            ViewpointKernel.getInstance().compare(
+                "{\"base\":{\"application\":[]},\"target\":{\"application\":[]},\"on_one_chain\":true}"
+            )
         );
         Assertions.assertEquals(ViewpointKernel.CONTRACT_VERSION, answer.get("version").asInt());
-        Assertions.assertEquals(4, ViewpointKernel.CONTRACT_VERSION);
+        Assertions.assertEquals(5, ViewpointKernel.CONTRACT_VERSION);
     }
 
     // ---- the views ----

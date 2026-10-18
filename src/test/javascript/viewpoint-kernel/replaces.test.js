@@ -1,7 +1,7 @@
 'use strict';
 // `replaces` in the editor's input (wave 009, run 0042): an element of the more recent plateau says which elements of the baseline it is the
 // new place of, and the editor hands that to the kernel's `compare` as it hands it the rest of the element. Nothing else reads it. The kernel
-// is the real embedded module (contract version 4); the rules of `replaces` themselves are proven by `cargo test` and the Java test. What this
+// is the real embedded module (contract version 5); the rules of `replaces` themselves are proven by `cargo test` and the Java test. What this
 // proves is the path from a manifest of the editor to the kernel and back to the union the page draws.
 // The editor page for it (the Changes panel, the inspector, "Write replaces") is a later run. Everything here is invented.
 // Run with: node --test "src/test/javascript/**/*.test.js"
@@ -51,10 +51,10 @@ async function open(target, base) {
   return { sandbox, state, kernel: run(sandbox, 'loadedKernel') };
 }
 
-test('the editor and the kernel it embeds speak contract version 4', async () => {
+test('the editor and the kernel it embeds speak contract version 5', async () => {
   const { sandbox, kernel } = await open(TARGET);
-  assert.equal(run(sandbox, 'KERNEL_CONTRACT_VERSION'), 4);
-  assert.equal(kernel.compare({ base: {}, target: {} }).version, 4);
+  assert.equal(run(sandbox, 'KERNEL_CONTRACT_VERSION'), 5);
+  assert.equal(kernel.compare({ base: {}, target: {}, on_one_chain: true }).version, 5);
 });
 
 test('the record of an element keeps what it replaces, and the kernel input carries it only with a comparison and only when there is one', async () => {
@@ -97,7 +97,7 @@ test('a union that has moved, split and merged elements is drawn without an erro
   const { input } = sandbox.buildKernelInput('map', 'shop', { opened: ['shop', 'stock'] });
   const result = kernel.compute(input);
   assert.equal(result.error, undefined, JSON.stringify(result.error));
-  assert.equal(result.version, 4);
+  assert.equal(result.version, 5);
   const stereotypes = Object.fromEntries(result.items.map((i) => [i.reference, i.stereotypes]));
   assert.ok(stereotypes['stock.till'].includes('moved'), JSON.stringify(stereotypes));
   assert.ok(stereotypes['shop.report-a'].includes('split'));
@@ -155,14 +155,16 @@ test('the embedded kernel offers a pair for a name only when no other removed an
   // `Cache` is on two removed and two new components: four pairs for two answers, so none; the one Broker is alone on each side
   let answer = kernel.compare({
     base: { application: [system('a'), component('a.cache'), system('b'), component('b.cache'), component('a.broker', { name: 'Broker' })] },
-    target: { application: [system('a2'), component('a2.cache'), system('b2'), component('b2.cache'), component('a2.broker', { name: 'Broker' })] }
+    target: { application: [system('a2'), component('a2.cache'), system('b2'), component('b2.cache'), component('a2.broker', { name: 'Broker' })] },
+    on_one_chain: true
   });
   assert.equal(answer.error, undefined);
   assert.deepEqual(pairs(answer), [['a.broker', 'a2.broker', 'name']], 'no pair for Cache, one for the Broker, whose name is the only one of its kind on each side');
   // once the author has said what one of the two Cache is, the other is alone on each side and its name tells again
   answer = kernel.compare({
     base: { application: [system('a'), component('a.cache'), system('b'), component('b.cache')] },
-    target: { application: [system('a2'), component('a2.cache', { replaces: ['a.cache'] }), system('b2'), component('b2.cache')] }
+    target: { application: [system('a2'), component('a2.cache', { replaces: ['a.cache'] }), system('b2'), component('b2.cache')] },
+    on_one_chain: true
   });
   assert.deepEqual(pairs(answer), [['b.cache', 'b2.cache', 'name']]);
 });

@@ -3,11 +3,11 @@ package io.morin.archicode.workspace;
 import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.kernel.Comparison;
+import io.morin.archicode.viewpoint.kernel.KernelStates;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import lombok.NonNull;
 import lombok.experimental.UtilityClass;
@@ -29,16 +29,6 @@ import lombok.val;
 public class StateTags {
 
     private static final String TAG = "rendering-stereotypes";
-
-    private static final Set<String> STATES = Set.of(
-        "new",
-        "changed",
-        "removed",
-        "moved",
-        "split",
-        "merged",
-        "contains-changes"
-    );
 
     /**
      * What disagrees, as sentences, in a stable order (layer, then reference, then the order of the words).
@@ -79,12 +69,12 @@ public class StateTags {
         element
             .getQualifiers()
             .stream()
-            .filter(STATES::contains)
+            .filter(KernelStates.words()::contains)
             .forEach(word -> words.putIfAbsent(word, "qualifier"));
         val tag = element.getTags().get(TAG);
         if (tag != null) {
             for (val word : tag.trim().split("\\s+")) {
-                if (STATES.contains(word)) {
+                if (KernelStates.words().contains(word)) {
                     words.putIfAbsent(word, "`" + TAG + "` tag");
                 }
             }
@@ -119,7 +109,7 @@ public class StateTags {
             .entrySet()
             .stream()
             .anyMatch(e -> e.getValue().isChange() && e.getKey().startsWith(prefix))
-            ? "contains-changes"
+            ? KernelStates.container()
             : null;
     }
 
@@ -146,7 +136,7 @@ public class StateTags {
         val said =
             state == null
                 ? "finds that it did not change and holds no change"
-                : state.equals("contains-changes")
+                : state.equals(KernelStates.container())
                   ? "finds that it did not change by itself but holds a change"
                   : "finds that it is " + state;
         return String.format(

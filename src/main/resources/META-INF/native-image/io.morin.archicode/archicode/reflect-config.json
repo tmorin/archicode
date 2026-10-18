@@ -1629,6 +1629,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.viewpoint.kernel.KernelStates",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.viewpoint.kernel.KernelViewpointFactory",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,

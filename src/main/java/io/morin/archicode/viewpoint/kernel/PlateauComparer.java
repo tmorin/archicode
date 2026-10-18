@@ -29,14 +29,47 @@ public class PlateauComparer {
     ObjectMapper objectMapper;
 
     /**
+     * Compares two plateaus; the kernel is told whether they are on one chain by the tree of plateaus they were loaded from
+     * (see {@link #onOneChain}).
+     *
      * @param base the plateau to compare with (the earlier one)
      * @param target the plateau that is compared
      * @return the union, the table of changes and the counts
      * @throws io.morin.archicode.ArchiCodeException when the kernel refuses a plateau (a dangling reference, a reference
      *                                               declared twice) or speaks another contract version
      */
-    @SneakyThrows
     public Comparison compare(@NonNull Workspace base, @NonNull Workspace target) {
+        return compare(base, target, onOneChain(base, target));
+    }
+
+    /**
+     * Whether one of two plateaus is the past of the other (an ancestor in the tree of plateaus), which only the tree knows and
+     * the kernel is told: between siblings, two alternatives, the candidates of {@code replaces} leave out the reason that the
+     * two are the only ones of their kind under the same parent (issue #70). A workspace that has no tree (no plateau is
+     * layered) has no sibling, so a pair of them is a chain.
+     *
+     * @param base the plateau to compare with
+     * @param target the plateau that is compared
+     * @return true when they are on one chain
+     */
+    public static boolean onOneChain(@NonNull Workspace base, @NonNull Workspace target) {
+        val tree = target.getPlateauTree() != null ? target.getPlateauTree() : base.getPlateauTree();
+        if (tree == null || base.getPlateau() == null || target.getPlateau() == null) {
+            return true;
+        }
+        return tree.onOneChain(base.getPlateau().getId(), target.getPlateau().getId());
+    }
+
+    /**
+     * @param base the plateau to compare with
+     * @param target the plateau that is compared
+     * @param onOneChain whether one of the two is the past of the other: sent to the kernel as it is
+     * @return the union, the table of changes and the counts
+     * @throws io.morin.archicode.ArchiCodeException when the kernel refuses a plateau (a dangling reference, a reference
+     *                                               declared twice) or speaks another contract version
+     */
+    @SneakyThrows
+    public Comparison compare(@NonNull Workspace base, @NonNull Workspace target, boolean onOneChain) {
         val input = objectMapper.createObjectNode();
         val baseSide = side(base);
         val targetSide = side(target);
@@ -45,6 +78,7 @@ public class PlateauComparer {
         }
         input.set("base", baseSide);
         input.set("target", targetSide);
+        input.put("on_one_chain", onOneChain);
         val answer = ViewpointKernel.getInstance().compare(objectMapper.writeValueAsString(input));
         return Comparison.of(objectMapper.readTree(answer)).between(base.getPlateau(), target.getPlateau());
     }

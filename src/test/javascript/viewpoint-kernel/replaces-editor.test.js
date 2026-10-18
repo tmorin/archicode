@@ -400,17 +400,18 @@ test('an unknown reference is told as such wherever the list is read', async () 
 test('the Changes panel lists the candidates of the kernel, each with "Write replaces" and "Not related", and applies none', async () => {
   const { sandbox } = await open();
   const state = sandbox.comparisonState();
+  // the two plateaus of this file are siblings (see layered-folders.js: none overrides the other), so the kernel does not give the parent as a reason (contract 5, issue #70)
   assert.deepEqual(plain(state.candidates), [
-    { layer: 'application', from: 'archive.rack', to: 'archive.vault', reasons: ['description', 'parent'] },
-    { layer: 'application', from: 'library.loans', to: 'library.lending', reasons: ['description', 'parent'] }
+    { layer: 'application', from: 'archive.rack', to: 'archive.vault', reasons: ['description'] },
+    { layer: 'application', from: 'library.loans', to: 'library.lending', reasons: ['description'] }
   ]);
   const panel = sandbox.renderChangesPanelHtml(state);
   const section = panel.slice(panel.indexOf('<section class="changes-candidates"'), panel.indexOf('</section>', panel.indexOf('<section class="changes-candidates"')));
   assert.match(text(section), /^Candidates 2 Each pair looks like one thing said twice\. Nothing is applied/);
   const items = Array.from(section.matchAll(/<li class="change-candidate"[\s\S]*?<\/li>/g), (m) => m[0]);
   assert.equal(items.length, 2);
-  assert.equal(text(items[0]), 'Removed Rack archive.rack New Vault archive.vault close description, the only two of their kind under the same parent Write replaces Not related');
-  assert.equal(text(items[1]), 'Removed Loans library.loans New Lending library.lending close description, the only two of their kind under the same parent Write replaces Not related');
+  assert.equal(text(items[0]), 'Removed Rack archive.rack New Vault archive.vault close description Write replaces Not related');
+  assert.equal(text(items[1]), 'Removed Loans library.loans New Lending library.lending close description Write replaces Not related');
   assert.deepEqual(plain(attributesOf(items[1], 'data-action="accept-candidate"')), { type: 'button', 'data-action': 'accept-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });
   assert.deepEqual(plain(attributesOf(items[1], 'data-action="dismiss-candidate"')), { type: 'button', 'data-action': 'dismiss-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });
   // listed, not applied: the loans are still removed and the lending still new

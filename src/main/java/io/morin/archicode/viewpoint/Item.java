@@ -51,6 +51,14 @@ public class Item implements Comparable<Item> {
     Change change = Change.NONE;
 
     /**
+     * True when the kernel computed that the element did not change and holds a change (a new, changed or removed element below
+     * it). The word {@code contains-changes} in {@link #getStereotypes()} does not say it: an author may have written that word by
+     * hand, as a qualifier or in the {@code rendering-stereotypes} tag, on an element that holds nothing.
+     */
+    @Builder.Default
+    boolean containsChanges = false;
+
+    /**
      * The references of the plateau before that this element replaces, for an element that {@link Change#MOVED},
      * {@link Change#SPLIT} or {@link Change#MERGED} (the valid ones, sorted, as the comparison lists them); empty for
      * any other.

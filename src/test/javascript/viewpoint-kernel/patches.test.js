@@ -100,7 +100,7 @@ for (const c of CASES.cases) {
       for (const step of c.edits) edit(expected, step);
       assert.deepEqual(answer.workspace, expected, 'workspace');
       assert.deepEqual(answer.patches, c.reports, 'reports');
-      assert.equal(answer.version, 4);
+      assert.equal(answer.version, 5);
     }
   });
 }

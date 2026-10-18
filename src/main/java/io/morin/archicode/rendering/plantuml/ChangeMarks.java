@@ -6,6 +6,7 @@ import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
+import io.morin.archicode.viewpoint.kernel.KernelStates;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -62,15 +63,12 @@ class ChangeMarks {
     static final String CHANGED = "changed";
     static final String REMOVED = "removed";
 
-    /** What the kernel adds to an element that did not change and has something that did below it. */
+    /** What the kernel adds to an element that did not change and has something that did below it, and that the kernel says it computed. */
     static final String CONTAINS_CHANGES = "contains-changes";
 
     static final String MOVED = "moved";
     static final String SPLIT = "split";
     static final String MERGED = "merged";
-
-    /** Every word that is a state of a comparison. */
-    static final Set<String> STATES = Set.of(NEW, CHANGED, REMOVED, CONTAINS_CHANGES, MOVED, SPLIT, MERGED);
 
     /** What is put before the name of a state that the author wrote and the box does not have. */
     static final String WRITTEN = "written-";
@@ -95,9 +93,8 @@ class ChangeMarks {
             case CHANGED -> Optional.of(CHANGED);
             case REMOVED -> Optional.of(REMOVED);
             case MOVED, SPLIT, MERGED -> Optional.of(item.getChange().word());
-            case NONE -> item.getStereotypes().isEmpty() || !item.getStereotypes().getLast().equals(CONTAINS_CHANGES)
-                ? Optional.empty()
-                : Optional.of(CONTAINS_CHANGES);
+            // the kernel says it computed it; the word in the stereotypes may be the author's (issue #34)
+            case NONE -> item.isContainsChanges() ? Optional.of(CONTAINS_CHANGES) : Optional.empty();
         };
     }
 
@@ -116,7 +113,11 @@ class ChangeMarks {
     }
 
     private boolean isWritten(Viewpoint viewpoint, String stereotype, Optional<String> computed) {
-        return viewpoint.isCompared() && STATES.contains(stereotype) && !computed.equals(Optional.of(stereotype));
+        return (
+            viewpoint.isCompared() &&
+            KernelStates.words().contains(stereotype) &&
+            !computed.equals(Optional.of(stereotype))
+        );
     }
 
     /** The names of the states that the author wrote on a box of the view that does not have them, sorted. */

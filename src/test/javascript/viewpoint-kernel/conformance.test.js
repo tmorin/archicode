@@ -169,7 +169,7 @@ test('the tag is split into stereotypes by the editor too, from the elements it 
 test('the output states its contract version and says what each link stands for', async () => {
   const { sandbox, kernel } = await openFixture();
   const out = kernel.compute(sandbox.buildKernelInput('overview', 'shop.web.api').input);
-  assert.equal(out.version, 4);
+  assert.equal(out.version, 5);
   for (const link of out.links) {
     assert.ok(link.relationships.length >= 1, link.from + ' -> ' + link.to + ' stands for no relationship');
   }

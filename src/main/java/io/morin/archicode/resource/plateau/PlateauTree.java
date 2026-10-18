@@ -610,6 +610,26 @@ public final class PlateauTree {
     }
 
     /**
+     * Whether two plateaus are on one chain: they are the same, or one is an ancestor of the other, so that one is the past of the
+     * other. Two plateaus that override the same one without one overriding the other are siblings, two alternatives.
+     *
+     * @param first the id of a plateau
+     * @param second the id of another
+     * @return true when one is the past of the other
+     * @throws ArchiCodeException when there is no such plateau
+     */
+    public boolean onOneChain(String first, String second) {
+        return (
+            chain(first)
+                .stream()
+                .anyMatch(n -> n.id().equals(second)) ||
+            chain(second)
+                .stream()
+                .anyMatch(n -> n.id().equals(first))
+        );
+    }
+
+    /**
      * The plateaus that override a plateau directly, sorted by id.
      *
      * @param id the id of the plateau

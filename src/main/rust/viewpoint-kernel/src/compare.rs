@@ -7,7 +7,8 @@
 //!
 //! ```text
 //! input : { base:   { application: [Element], technology: [Element] },
-//!           target: { application: [Element], technology: [Element] } }
+//!           target: { application: [Element], technology: [Element] },
+//!           on_one_chain: bool }     (contract 5: one of the two plateaus is the past of the other; required, see rule 7)
 //!         Element = the one of `compute`: { reference, parent, applications, uses, relationships: [Rel], kind, name,
 //!                   description, qualifiers, tags, replaces?, ... }. Both layers are optional lists, `null` is "not given".
 //! output: { version, elements: [..], relationships: [..], changes: [Row], counts, candidates: [..], warnings? }  |  { error }
@@ -64,7 +65,12 @@
 //!    the same parent when they are the only two of that kind under it. A name that repeats (a `Cache` under each
 //!    container, a `Message Broker` in each environment) says nothing about which one is which: n removed and m new of
 //!    that name would give n x m pairs for n answers (wave 013, issue #60, measured on `replaces-large-pair`). The pair is
-//!    listed with its reasons; the author decides, by writing `replaces`.
+//!    listed with its reasons; the author decides, by writing `replaces`. The same parent is a reason only when the two
+//!    plateaus are on one chain (`on_one_chain`, contract 5: one is the past of the other): between two siblings, two
+//!    alternatives of one plateau, the only two of a kind under a parent are not one thing said twice, so the reason is not
+//!    given and a pair that has no other is not listed (wave 014, issue #70). The name and the description are reasons
+//!    between siblings as anywhere. `on_one_chain` is required, `null` is not given: a caller that does not say is refused,
+//!    because the kernel cannot read the tree of plateaus and neither answer is right for every caller.
 use super::{null_as_default, Elem, Rel, CONTRACT_VERSION};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -110,7 +116,15 @@ impl Side {
 struct CompareInput {
     base: Side,
     target: Side,
+    /// Contract 5: whether one of the two plateaus is the past of the other (an ancestor in the tree of plateaus). The host knows it from the
+    /// tree and the kernel cannot: it is asked, and a caller that does not say is refused (`ON_ONE_CHAIN_MISSING`).
+    #[serde(default)]
+    on_one_chain: Option<bool>,
 }
+
+/// The answer to an input without `on_one_chain` (or with `null`). Contract 5 asks for it; no default is taken, since the right one depends on the
+/// plateaus and not on the kernel: `true` would offer the pairs of two alternatives (issue #70), `false` would hide the pairs of a chain.
+const ON_ONE_CHAIN_MISSING: &str = "invalid input: `on_one_chain` is missing: say whether one of the two plateaus is the past of the other (an ancestor in the tree of plateaus), `true`, or whether they are siblings, `false` (contract 5)";
 
 // ---- the properties of an element, as the comparison reads them ----
 
@@ -731,7 +745,10 @@ fn count_names(list: &[(&Elem, Props)]) -> HashMap<(String, String), usize> {
 /// The pairs (removed, new) that look like one thing said twice: same layer, same kind, and a name (when it is the only one of its kind
 /// among the removed and among the new), a description or (when they are the only two of their kind under a parent) a parent in common.
 /// Nothing that is replaced, nothing that replaces.
-fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String), Identity>, rewrite: &Rewrite) -> Vec<Candidate> {
+///
+/// `on_one_chain` says whether one plateau is the past of the other. Between two siblings the only two elements of a kind under a parent are not one
+/// thing said twice, they are two alternatives, so the parent is no reason there (issue #70): a pair that has no other reason is not listed.
+fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String), Identity>, rewrite: &Rewrite, on_one_chain: bool) -> Vec<Candidate> {
     let mut out = Vec::new();
     for layer in LAYERS {
         let target_refs: HashSet<&str> = input.target.layer(layer).iter().map(|e| e.reference.as_str()).collect();
@@ -785,7 +802,7 @@ fn candidates(input: &CompareInput, identities: &BTreeMap<(&'static str, String)
                     reasons.push("description");
                 }
                 if let (Some(a), Some(b)) = (parent_of(from), parent_of(to)) {
-                    if a == b && siblings.get(&(a, kind)) == Some(&(1, 1)) {
+                    if on_one_chain && a == b && siblings.get(&(a, kind)) == Some(&(1, 1)) {
                         reasons.push("parent");
                     }
                 }
@@ -805,6 +822,7 @@ fn relationship_natures(flags: (bool, bool, bool)) -> Vec<&'static str> {
 
 fn run(input: &str) -> Result<CompareOutput, String> {
     let input: CompareInput = serde_json::from_str(input).map_err(|e| format!("invalid input: {e}"))?;
+    let on_one_chain = input.on_one_chain.ok_or_else(|| ON_ONE_CHAIN_MISSING.to_string())?;
     check(&input.base, "base")?;
     check(&input.target, "target")?;
     let Resolved { identities, rewrite, warnings } = resolve(&input);
@@ -965,7 +983,7 @@ fn run(input: &str) -> Result<CompareOutput, String> {
             natures: u.natures,
         })
         .collect();
-    let candidates = candidates(&input, &identities, &rewrite);
+    let candidates = candidates(&input, &identities, &rewrite, on_one_chain);
     Ok(CompareOutput { version: CONTRACT_VERSION, elements, relationships, changes, counts, candidates, warnings })
 }
 
@@ -999,7 +1017,12 @@ mod tests {
     }
 
     fn compare(base: Value, target: Value) -> Value {
-        serde_json::from_str(&compare_json(&json!({ "base": base, "target": target }).to_string())).unwrap()
+        serde_json::from_str(&compare_json(&json!({ "base": base, "target": target, "on_one_chain": true }).to_string())).unwrap()
+    }
+
+    /// The same, for two plateaus that are not on one chain (siblings: neither is the past of the other).
+    fn compare_siblings(base: Value, target: Value) -> Value {
+        serde_json::from_str(&compare_json(&json!({ "base": base, "target": target, "on_one_chain": false }).to_string())).unwrap()
     }
 
     fn app(base: Vec<Value>, target: Vec<Value>) -> Value {
@@ -1176,7 +1199,7 @@ mod tests {
         assert_eq!(e["change"], "none");
         assert_eq!(e["file"], "b.yaml");
         assert!(e.get("natures").is_none(), "an extra field cannot pose as the answer");
-        assert!(compare_json(&json!({ "base": plateau(vec![el("a", json!({ "extra": { "z": 1, "a": 2 } }))], vec![]), "target": plateau(vec![], vec![]) }).to_string()).contains(r#""extra":{"a":2,"z":1}"#), "keys of a free-form object are sorted");
+        assert!(compare_json(&json!({ "base": plateau(vec![el("a", json!({ "extra": { "z": 1, "a": 2 } }))], vec![]), "target": plateau(vec![], vec![]), "on_one_chain": true }).to_string()).contains(r#""extra":{"a":2,"z":1}"#), "keys of a free-form object are sorted");
     }
 
     #[test]
@@ -1184,7 +1207,7 @@ mod tests {
         // every field `OutElement` writes is reserved, `wording_only` included: it would be a second key of the same name
         let base = plateau(vec![el("a", json!({ "description": "one", "wording_only": "base" }))], vec![]);
         let target = plateau(vec![el("a", json!({ "description": "two", "wording_only": "target" }))], vec![]);
-        let raw = compare_json(&json!({ "base": base, "target": target }).to_string());
+        let raw = compare_json(&json!({ "base": base, "target": target, "on_one_chain": true }).to_string());
         let text = raw.to_string();
         let out: Value = serde_json::from_str(&text).unwrap();
         assert_eq!(out["elements"].to_string().matches("\"wording_only\":").count(), 1, "one key of that name in the element: {}", text);
@@ -1446,6 +1469,7 @@ mod tests {
     fn busy_pair() -> Value {
         let rels = |l: &[(&str, &str)]| l.iter().map(|(d, l)| rel(d, l)).collect::<Vec<_>>();
         json!({
+            "on_one_chain": true,
             "base": plateau(
                 vec![
                     el("a", json!({ "name": "A", "description": "x", "qualifiers": ["p", "q"], "relationships": rels(&[("b", "sends"), ("c", "reads"), ("c", "feeds")]) })),
@@ -1509,9 +1533,9 @@ mod tests {
 
     #[test]
     fn a_missing_plateau_or_a_missing_layer_is_read_as_empty_or_refused() {
-        let out: Value = serde_json::from_str(&compare_json(r#"{"base":{},"target":{"application":null,"technology":[{"reference":"t"}]}}"#)).unwrap();
+        let out: Value = serde_json::from_str(&compare_json(r#"{"base":{},"target":{"application":null,"technology":[{"reference":"t"}]},"on_one_chain":true}"#)).unwrap();
         assert_eq!(out["counts"]["elements"]["new"], 1);
-        let out: Value = serde_json::from_str(&compare_json(r#"{"base":{}}"#)).unwrap();
+        let out: Value = serde_json::from_str(&compare_json(r#"{"base":{},"on_one_chain":true}"#)).unwrap();
         assert!(error(&out).starts_with("invalid input"), "{out}");
         let out: Value = serde_json::from_str(&compare_json("nope")).unwrap();
         assert!(error(&out).starts_with("invalid input"), "{out}");
@@ -1937,6 +1961,78 @@ mod tests {
         assert_eq!(out["candidates"][0]["reasons"], json!(["parent"]));
     }
 
+    /// The Brightcart pair of issue #70: the node that hosts the commerce platform in one plateau and the one that hosts the tax service in another,
+    /// the only nodes of their kind under `partners` in the one and in the other.
+    fn alternatives() -> (Value, Value) {
+        let node = |reference: &str, name: &str| el(reference, json!({ "kind": "node", "name": name, "description": name }));
+        (
+            plateau(vec![], vec![el("partners", json!({})), node("partners.commerce-live", "Commerce platform")]),
+            plateau(vec![], vec![el("partners", json!({})), node("partners.tax-live", "Tax service")]),
+        )
+    }
+
+    #[test]
+    fn two_plateaus_on_one_chain_get_the_pair_whose_only_reason_is_the_parent() {
+        let (base, target) = alternatives();
+        let out = compare(base, target);
+        assert_eq!(candidate_pairs(&out), [("partners.commerce-live".to_string(), "partners.tax-live".to_string())], "{}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["parent"]));
+    }
+
+    #[test]
+    fn two_siblings_do_not_get_a_pair_for_the_parent_alone() {
+        // two alternatives of one plateau: that they sit under the same parent does not say that one is the other said again (issue #70)
+        let (base, target) = alternatives();
+        let out = compare_siblings(base, target);
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(out["candidates"], json!([]), "{out}");
+        // nothing else moves: the same elements are new and removed, the table and the counts are those of a chain
+        assert_eq!(element(&out, "partners.commerce-live")["change"], "removed");
+        assert_eq!(element(&out, "partners.tax-live")["change"], "new");
+        let (base, target) = alternatives();
+        assert_eq!(compare(base, target)["counts"], out["counts"]);
+    }
+
+    #[test]
+    fn two_siblings_keep_the_pairs_that_have_another_reason_and_do_not_say_the_parent() {
+        let out_chain = app(
+            vec![el("p", json!({})), el("p.a", json!({ "kind": "container", "name": "Billing" })), el("q", json!({})), el("q.b", json!({ "kind": "container", "name": "Audit trail", "description": "keeps a log of every payment made by a customer" }))],
+            vec![el("p", json!({})), el("p.c", json!({ "kind": "container", "name": "Billing" })), el("q", json!({})), el("q.d", json!({ "kind": "container", "name": "Journal", "description": "keeps a log of every payment made by a customer" }))],
+        );
+        assert_eq!(out_chain["candidates"][0]["reasons"], json!(["name", "parent"]), "{out_chain}");
+        assert_eq!(out_chain["candidates"][1]["reasons"], json!(["description", "parent"]), "{out_chain}");
+        let out = compare_siblings(
+            plateau(vec![el("p", json!({})), el("p.a", json!({ "kind": "container", "name": "Billing" })), el("q", json!({})), el("q.b", json!({ "kind": "container", "name": "Audit trail", "description": "keeps a log of every payment made by a customer" }))], vec![]),
+            plateau(vec![el("p", json!({})), el("p.c", json!({ "kind": "container", "name": "Billing" })), el("q", json!({})), el("q.d", json!({ "kind": "container", "name": "Journal", "description": "keeps a log of every payment made by a customer" }))], vec![]),
+        );
+        assert_eq!(candidate_pairs(&out), [("p.a".to_string(), "p.c".to_string()), ("q.b".to_string(), "q.d".to_string())], "{}", out["candidates"]);
+        assert_eq!(out["candidates"][0]["reasons"], json!(["name"]), "the parent is not said between siblings: {}", out["candidates"]);
+        assert_eq!(out["candidates"][1]["reasons"], json!(["description"]), "{}", out["candidates"]);
+    }
+
+    #[test]
+    fn whether_the_plateaus_are_on_one_chain_is_asked_never_guessed() {
+        // contract 5: a caller that does not say is refused, with the one sentence that says what to add; it does not get a default that would
+        // bring back the pairs of issue #70 (or hide the legitimate ones) without telling
+        let (base, target) = alternatives();
+        for given in [json!({ "base": base, "target": target }), json!({ "base": base, "target": target, "on_one_chain": null })] {
+            let out: Value = serde_json::from_str(&compare_json(&given.to_string())).unwrap();
+            assert_eq!(error(&out), ON_ONE_CHAIN_MISSING, "{out}");
+            assert!(out.get("elements").is_none() && out.get("candidates").is_none(), "no partial answer: {out}");
+        }
+        for wrong in [json!("yes"), json!(1), json!([true]), json!({})] {
+            let out: Value = serde_json::from_str(&compare_json(&json!({ "base": base, "target": target, "on_one_chain": wrong }).to_string())).unwrap();
+            assert!(error(&out).starts_with("invalid input"), "{out}");
+            assert!(error(&out).contains("boolean"), "{out}");
+        }
+        // false and true are both answers, whatever the plateaus hold
+        for given in [true, false] {
+            let out: Value = serde_json::from_str(&compare_json(&json!({ "base": plateau(vec![], vec![]), "target": plateau(vec![], vec![]), "on_one_chain": given }).to_string())).unwrap();
+            assert!(out.get("error").is_none(), "{out}");
+            assert_eq!(out["version"], CONTRACT_VERSION);
+        }
+    }
+
     #[test]
     fn a_name_that_repeats_among_the_removed_or_the_new_is_no_reason() {
         // `Cache` is on two removed and two new components: four pairs for two answers, and nothing says which is which
@@ -1989,6 +2085,7 @@ mod tests {
     #[test]
     fn the_same_pair_with_replaces_gives_the_same_bytes_whatever_the_order() {
         let input = json!({
+            "on_one_chain": true,
             "base": plateau(
                 vec![el("x1", json!({})), el("x2", json!({ "relationships": [rel("db", "reads")] })), el("s", json!({})), el("db", json!({})), el("gone", json!({ "kind": "container", "name": "Mail" }))],
                 vec![]

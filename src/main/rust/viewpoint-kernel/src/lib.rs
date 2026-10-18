@@ -93,6 +93,15 @@
 //! answer says the version, 4). A patch that selects nothing is an `error` that names the plateau, the rank and the selector.
 //! A map that fails on `pinned`, `opened` or `hidden` (`dangling reference: x`, the first of them) also lists all the entries it cannot find, in
 //! `dangling` of the error: a key of the error only, added to version 4 (an input that worked gives the same output).
+//!
+//! What changed (version 5, wave 014, issues #70 and #34). It is breaking for a host of `compare`, and for it only:
+//!   - `compare` takes `on_one_chain`, whether one of the two plateaus is the past of the other (an ancestor in the tree of plateaus, which only the host
+//!     knows). It is required: an input without it, or with `null`, is an `error` that says so. Between siblings the only two elements of a kind under a
+//!     parent are two alternatives, so the reason `parent` of a candidate is not given there and a pair that has no other reason is not listed.
+//!   - an item of a comparison says `contains_changes: true` when the kernel computed that it did not change and holds a change (the stereotype
+//!     `contains-changes` that ended its list was also a word an author could write by hand). The key is absent otherwise, and in a view that does not compare.
+//!   - a fifth entry point, `states`, says the seven state words once (`relationship`, `identity`, `container`, `states`); the hosts keep no list of their own.
+//! `compute`, `apply_facet` and `apply_patches` take what they took; their answers say the version, 5, and an item of a comparison gained `contains_changes`.
 mod compare;
 mod facet;
 mod patch;
@@ -105,7 +114,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Bumped when the shape of the input or output changes in a way a caller must know about.
-pub const CONTRACT_VERSION: u32 = 4;
+pub const CONTRACT_VERSION: u32 = 5;
 
 /// Qualifiers: a set — two of them are equal whatever the order — that remembers the order they were declared in,
 /// because that is the order the CLI draws them in.
@@ -238,6 +247,20 @@ fn is_change(change: Option<Change>) -> bool {
 
 /// The stereotype of a container whose own state is `none` but that has a new, changed or removed element below it.
 const STEREOTYPE_CONTAINS_CHANGES: &str = "contains-changes";
+/// The states that an element or a relationship has in a comparison (`change`): what a relationship can say.
+const STATES_RELATIONSHIP: [&str; 3] = ["new", "changed", "removed"];
+/// The states that only an element has, when it replaces others.
+const STATES_IDENTITY: [&str; 3] = ["moved", "split", "merged"];
+
+/// The seven state words, said once (contract 5, issue #34): `relationship` (what a relationship or an element can be), `identity` (what an element that
+/// replaces others can also be), `container` (the computed state of an element that did not change and holds a change, `contains_changes` in an item) and
+/// `states`, the three lists in that order. The hosts read the words here and write none of their own. It takes no input.
+pub fn states_json() -> String {
+    let mut states: Vec<&str> = STATES_RELATIONSHIP.to_vec();
+    states.extend(STATES_IDENTITY);
+    states.push(STEREOTYPE_CONTAINS_CHANGES);
+    serde_json::json!({ "version": CONTRACT_VERSION, "relationship": STATES_RELATIONSHIP, "identity": STATES_IDENTITY, "container": STEREOTYPE_CONTAINS_CHANGES, "states": states }).to_string()
+}
 
 /// A relationship. Two of them are the same when they read the same (`change` is what happened to it, not what it says), so
 /// that a view groups, counts and captions them as it does without any comparison.
@@ -450,8 +473,9 @@ struct OutItem {
     /// `only_changes`: the item is kept to give the changes their place, it has no change of its own
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     context: bool,
-    /// comparison only: the element did not change, an element below it did (the `contains-changes` stereotype)
-    #[serde(skip)]
+    /// comparison only: the element did not change, an element below it did. It is what the kernel computed, as opposed to the word
+    /// `contains-changes` that an author may have written by hand and that the stereotypes then hold too (contract 5, issue #34)
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
     contains_changes: bool,
 }
 
@@ -1498,6 +1522,17 @@ pub unsafe extern "C" fn compare(ptr: *const u8, len: usize) -> usize {
 #[no_mangle]
 pub unsafe extern "C" fn apply_patches(ptr: *const u8, len: usize) -> usize {
     respond(ptr, len, apply_patches_json)
+}
+
+/// The seven state words (contract 5): see `states_json`. The input is not read (not even checked to be UTF-8), so it takes the same two arguments as
+/// the other entry points and any caller may send anything.
+#[no_mangle]
+pub unsafe extern "C" fn states(_ptr: *const u8, _len: usize) -> usize {
+    #[allow(static_mut_refs)]
+    {
+        RESULT = states_json().into_bytes();
+        RESULT.len()
+    }
 }
 
 #[no_mangle]
