@@ -204,7 +204,7 @@ wave_manifest:
       slug: plateau-model
       phase: P1
       depends_on: [W-15]
-      run: null
+      run: 0077
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/manifest/**'
