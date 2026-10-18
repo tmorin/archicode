@@ -3496,6 +3496,65 @@ function normalizePlateauPath(path) {
   return String(path).split(/[/\\]/).filter((seg) => seg !== '' && seg !== '.').join('/');
 }
 
+// ---- Where the manifests are (run 0076, issue #73): the entries of `settings.manifests.paths`. The rules are the ones of the command line
+// (`ManifestDiscovery.java`), and one list of cases, discovery-cases.json, is run by both: keep them alike. ----
+
+/** Whether an entry of `manifests.paths` is read recursively: it ends in `/**` (`manifests/**`, or `./**` for the folder of workspace.yaml). */
+function isRecursiveManifestsPath(path) {
+  return typeof path === 'string' && path.endsWith('/**');
+}
+
+/** The folder an entry names: the entry without its `/**`, if it has one. */
+function manifestsFolderOf(path) {
+  return isRecursiveManifestsPath(path) ? path.slice(0, -3) : path;
+}
+
+/** `**` means something at the end of an entry, after a `/`, and nowhere else: the end of the sentence that says so, or null. */
+function manifestsPatternProblem(path) {
+  if (typeof path !== 'string' || !manifestsFolderOf(path).includes('**')) return null;
+  return 'uses `**` where ArchiCode does not read it: only a path that ends in `/**` is read recursively (`manifests/**`, or `./**` for the folder of workspace.yaml), ' +
+    'and `**` means nothing anywhere else. Write one path for each folder, or end the path with `/**`';
+}
+
+/** Why an entry of `settings.manifests.paths` is refused, in the words of the command line, or null: empty, absolute, `..`, or `**` where it is not read. */
+function manifestsPathSentence(path) {
+  const problem = plateauPathProblem(path);
+  if (problem !== null) {
+    return 'the path `' + path + '` of `settings.manifests.paths` ' + problem + ': a manifests folder must be below the folder of workspace.yaml, written relative to it, without `..`. ' +
+      'Move the folder below workspace.yaml (or move workspace.yaml up, to a folder that holds both) and change the path to match';
+  }
+  const pattern = manifestsPatternProblem(path);
+  return pattern === null ? null : 'the path `' + path + '` of `settings.manifests.paths` ' + pattern;
+}
+
+/** Two paths compared by Unicode code point: the order of the manifests, which depends on neither the file system nor the locale (not `localeCompare`, not UTF-16 units). */
+function compareCodePoints(a, b) {
+  if (a === b) return 0;
+  const x = Array.from(a);
+  const y = Array.from(b);
+  const n = Math.min(x.length, y.length);
+  for (let i = 0; i < n; i++) {
+    const d = x[i].codePointAt(0) - y[i].codePointAt(0);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  return x.length === y.length ? 0 : x.length < y.length ? -1 : 1;
+}
+
+/**
+ * Whether a folder found below an entry that ends in `/**` is one of the generated views: the folder `views.path` names, or a sibling that begins with its
+ * name and a dash (`views-to-be`, `views-to-be-vs-as-is`, `views-shop`). `folder` is its segments from the folder of workspace.yaml.
+ */
+function isGeneratedViewsFolder(folder, viewsPath) {
+  if (typeof viewsPath === 'number' || typeof viewsPath === 'boolean') viewsPath = String(viewsPath); // a scalar is read as the text it is, as the command line reads it
+  if (typeof viewsPath !== 'string' || viewsPath.startsWith('/') || viewsPath.startsWith('\\')) return false;
+  const views = viewsPath.split('/').filter((seg) => seg !== '' && seg !== '.');
+  if (views.length === 0 || views.includes('..') || views.length !== folder.length) return false;
+  for (let i = 0; i < views.length - 1; i++) if (views[i] !== folder[i]) return false;
+  const name = views[views.length - 1];
+  const found = folder[folder.length - 1];
+  return found === name || found.startsWith(name + '-');
+}
+
 /** What the keys of the plateaus say before they are read as a model: a mapping of `id`, `name`, `horizon` and `path`; `from` is reserved. */
 function checkPlateauStructure(plateaus) {
   const problems = [];
@@ -3534,11 +3593,8 @@ function selectPlateau(settings, requested) {
   const problems = [];
   if (plateaus.length === 0) {
     for (const path of settings.manifests.paths.slice().sort()) {
-      const problem = plateauPathProblem(path);
-      if (problem !== null) {
-        problems.push('the path `' + path + '` of `settings.manifests.paths` ' + problem + ': a manifests folder must be below the folder of workspace.yaml, written relative to it, without `..`. ' +
-          'Move the folder below workspace.yaml (or move workspace.yaml up, to a folder that holds both) and change the path to match');
-      }
+      const sentence = manifestsPathSentence(path);
+      if (sentence !== null) problems.push(sentence);
     }
     if (current !== null) problems.push('`settings.current` is `' + current + '` but the workspace declares no `settings.plateaus`');
     if (requested !== null && requested !== undefined) problems.push('`--plateau ' + requested + '` cannot be used: the workspace declares no `settings.plateaus`');
@@ -3739,7 +3795,7 @@ async function loadBaseline(rootHandle, settings) {
   if (!target) { AppState.baseline = null; modelsChanged(); return; }
   const relDir = normalizePlateauPath(target.path);
   const folder = await readManifestFolder(rootHandle, relDir);
-  folder.files.sort((a, b) => a.relPath.localeCompare(b.relPath)); // as the plateau's own files are: the order of a listing is the file system's
+  folder.files.sort((a, b) => compareCodePoints(a.relPath, b.relPath)); // as the plateau's own files are (and as the command line sorts them): the order of a listing is the file system's
   const { index, duplicates } = buildIndex(folder.files, settings);
   resolveRelationships(index);
   // what in it could not be read is told too: a manifest that does not parse leaves its elements out of the comparison, and they would read as new
@@ -4132,7 +4188,7 @@ function normalizeRelDir(relDir) {
  */
 function firstManifestsDir() {
   if (AppState.plateau) return normalizeRelDir(AppState.plateau.path) || '';
-  return AppState.workspace.settings.manifests.paths.map(normalizeRelDir).find((p) => p !== null);
+  return AppState.workspace.settings.manifests.paths.map((p) => normalizeRelDir(manifestsFolderOf(p))).find((p) => p !== null);
 }
 
 /** Resolve a (possibly multi-segment) relative directory path from a root handle; `options.create` makes the missing directories. */
@@ -4462,8 +4518,14 @@ const WORKSPACE_FILE_NAME = 'workspace.yaml'; // the only workspace file the edi
  * second plateau, the baseline, is read by the same code): the direct children of `relDir` that are YAML, as the records
  * `buildIndex` takes, and the paths of the `.toml` and `.json` files the command line reads and the editor does not. `missing`:
  * the folder is not there (or cannot be read). The records are new objects each call; nothing here writes.
+ *
+ * With `options.recursive` (an entry of `manifests.paths` that ends in `/**`, run 0076, issue #73) the folders below are read too, the way the command line
+ * reads them (`ManifestDiscovery.java`): not a file or a folder whose name begins with a dot, not the folders of the generated views
+ * (`options.viewsPath`, see `isGeneratedViewsFolder`), not a folder that is a symbolic link (the served folder says which are: `symbolicLink`) and not a folder
+ * that is one of those it is inside of (a browser may follow a link: that loop is cut with `isSameEntry`). The records are not sorted here.
  */
-async function readManifestFolder(rootHandle, relDir) {
+async function readManifestFolder(rootHandle, relDir, options) {
+  const recursive = !!(options && options.recursive);
   const result = { files: [], unread: [], missing: false };
   let folderHandle;
   try {
@@ -4473,33 +4535,48 @@ async function readManifestFolder(rootHandle, relDir) {
     result.missing = true;
     return result;
   }
-  for await (const [name, entryHandle] of folderHandle.entries()) {
-    if (entryHandle.kind !== 'file') continue;
-    const relPath = (relDir ? relDir + '/' : '') + name;
-    // the workspace is not a manifest of itself (a folder written `.`): the file the editor opened, like the CLI, which leaves out the workspace file it read and nothing else
-    if (relDir === '' && name === WORKSPACE_FILE_NAME) continue;
-    // like the CLI (String.endsWith): `.YAML` is not a manifest. The CLI reads .toml and .json too; the editor writes YAML only
-    if (/\.(toml|json)$/.test(name)) result.unread.push(relPath);
-    if (!/\.(ya?ml)$/.test(name)) continue;
-    let rawText = '';
-    let header = null;
-    let content = null;
-    let error = null;
-    let lastKnownDiskModified = null; // TDD-0010 DEC-8
-    try {
-      const file = await entryHandle.getFile();
-      lastKnownDiskModified = file.lastModified;
-      rawText = await file.text();
-      ({ header, content, error } = parseManifestText(rawText));
-    } catch (e) {
-      error = e && e.message ? e.message : String(e);
+  const visit = async (handle, dir, ancestors) => {
+    for await (const [name, entryHandle] of handle.entries()) {
+      if (recursive && name.startsWith('.')) continue; // a hidden file or folder below the entry is not read
+      if (entryHandle.kind === 'directory') {
+        if (!recursive || entryHandle.symbolicLink) continue;
+        const below = dir === '' ? [name] : dir.split('/').concat(name);
+        if (isGeneratedViewsFolder(below, options.viewsPath)) continue;
+        let loop = false;
+        for (const ancestor of ancestors) {
+          if (typeof entryHandle.isSameEntry === 'function' && await entryHandle.isSameEntry(ancestor)) { loop = true; break; }
+        }
+        if (!loop) await visit(entryHandle, below.join('/'), ancestors.concat([entryHandle]));
+        continue;
+      }
+      if (entryHandle.kind !== 'file') continue;
+      const relPath = (dir ? dir + '/' : '') + name;
+      // the workspace is not a manifest of itself (a folder written `.`): the file the editor opened, like the CLI, which leaves out the workspace file it read and nothing else
+      if (relPath === WORKSPACE_FILE_NAME) continue;
+      // like the CLI (String.endsWith): `.YAML` is not a manifest. The CLI reads .toml and .json too; the editor writes YAML only
+      if (/\.(toml|json)$/.test(name)) result.unread.push(relPath);
+      if (!/\.(ya?ml)$/.test(name)) continue;
+      let rawText = '';
+      let header = null;
+      let content = null;
+      let error = null;
+      let lastKnownDiskModified = null; // TDD-0010 DEC-8
+      try {
+        const file = await entryHandle.getFile();
+        lastKnownDiskModified = file.lastModified;
+        rawText = await file.text();
+        ({ header, content, error } = parseManifestText(rawText));
+      } catch (e) {
+        error = e && e.message ? e.message : String(e);
+      }
+      result.files.push({
+        relPath, rawText, header, content, error,
+        dirty: false, existedOnDisk: true, lastKnownDiskModified,
+        savedRawText: rawText // what the file holds on disk, as far as this editor knows: an edit that restores it is no change
+      });
     }
-    result.files.push({
-      relPath, rawText, header, content, error,
-      dirty: false, existedOnDisk: true, lastKnownDiskModified,
-      savedRawText: rawText // what the file holds on disk, as far as this editor knows: an edit that restores it is no change
-    });
-  }
+  };
+  await visit(folderHandle, relDir, [folderHandle]);
   return result;
 }
 
@@ -4574,29 +4651,36 @@ async function loadWorkspace(dirHandle) {
   AppState.changesOnly = recalledFlag('changes-only'); // run 0040: how the comparison is read, as the last time in this folder
   AppState.hideWording = recalledFlag('hide-wording');
 
-  // FR-5: direct (non-recursive) children of each settings.manifests.paths dir, or of the folder of the plateau read.
+  // FR-5: the direct children of each settings.manifests.paths dir (the folders below too when the path ends in `/**`, run 0076), or of the folder of the plateau read.
   const manifestFiles = [];
   const unreadManifestFiles = [];
   const seenManifestDirs = new Set(); // `manifests` and `./manifests/` are one directory: read it once
+  const seenManifestFiles = new Set(); // a file that two paths find (`manifests` and `manifests/**`) is one file
   for (const rawDirPath of selection.plateau ? [selection.path] : settings.manifests.paths) {
-    const relDirPath = normalizeRelDir(rawDirPath);
+    const recursive = !selection.plateau && isRecursiveManifestsPath(rawDirPath);
+    const relDirPath = normalizeRelDir(recursive ? manifestsFolderOf(rawDirPath) : rawDirPath);
     if (relDirPath === null) {
       console.warn('ArchiCode: manifests path "' + rawDirPath + '" is not a path inside the folder; skipped.');
       continue;
     }
-    if (seenManifestDirs.has(relDirPath)) continue;
-    seenManifestDirs.add(relDirPath);
-    const folder = await readManifestFolder(dirHandle, relDirPath);
+    const seenKey = relDirPath + (recursive ? '/**' : '');
+    if (seenManifestDirs.has(seenKey)) continue;
+    seenManifestDirs.add(seenKey);
+    const folder = await readManifestFolder(dirHandle, relDirPath, { recursive, viewsPath: settings.views.path });
     if (folder.missing) {
       if (selection.plateau) AppState.plateauProblem = 'The folder `' + relDirPath + '` of the plateau `' + selection.plateau.id + '` does not exist.';
       continue;
     }
-    manifestFiles.push(...folder.files);
-    unreadManifestFiles.push(...folder.unread);
+    for (const file of folder.files) {
+      if (seenManifestFiles.has(file.relPath)) continue;
+      seenManifestFiles.add(file.relPath);
+      manifestFiles.push(file);
+    }
+    for (const unread of folder.unread) if (!unreadManifestFiles.includes(unread)) unreadManifestFiles.push(unread);
   }
-  manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath));
+  manifestFiles.sort((a, b) => compareCodePoints(a.relPath, b.relPath));
   AppState.manifestFiles = manifestFiles;
-  AppState.unreadManifestFiles = unreadManifestFiles.sort((a, b) => a.localeCompare(b));
+  AppState.unreadManifestFiles = unreadManifestFiles.sort(compareCodePoints);
 
   // DEC-5 / FR-6 / FR-7: index + resolve (per-file parse errors do not abort this).
   const { index, rootsByCategory, duplicates } = buildIndex(manifestFiles, settings);
@@ -4705,7 +4789,9 @@ function serverDirectoryHandle(path, name) {
     async requestPermission() { return 'granted'; },
     async *entries() {
       for (const e of await list()) {
-        yield [e.name, e.kind === 'directory' ? serverDirectoryHandle(child(e.name), e.name) : serverFileHandle(child(e.name), e.name)];
+        const handle = e.kind === 'directory' ? serverDirectoryHandle(child(e.name), e.name) : serverFileHandle(child(e.name), e.name);
+        if (e.link) handle.symbolicLink = true; // the server says which folders are links: a recursive read of the manifests does not follow them (run 0076)
+        yield [e.name, handle];
       }
     },
     async getDirectoryHandle(entry, options) {
@@ -5767,7 +5853,7 @@ function commitCreateTopLevelElement({ category, headerKind, attachUnderReferenc
   };
   adoptRemovedFile(mf);
   AppState.manifestFiles.push(mf);
-  AppState.manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath)); // matches loadWorkspace's own ordering
+  AppState.manifestFiles.sort((a, b) => compareCodePoints(a.relPath, b.relPath)); // matches loadWorkspace's own ordering
   AppState.dirtyReferences.add(nodeKey(reference, category)); // UX review follow-up — element-level "modified" tracking
   saveStatus = { state: 'idle' }; // TDD-0010 DEC-11 — a new edit discards any prior save attempt's status
   rebuildIndexAndRender();
@@ -7136,6 +7222,11 @@ function validateManifestsPaths(rawPathsText) {
   if (paths.length === 0) {
     return { valid: false, error: 'At least one manifests path is required.' };
   }
+  // the sentences of the command line and of the load (run 0076): a path may end in `/**`, and `**` is read nowhere else
+  const refused = paths.map(manifestsPathSentence).filter((sentence) => sentence !== null);
+  if (refused.length > 0) {
+    return { valid: false, error: refused.join(' ') };
+  }
   return { valid: true, paths };
 }
 
@@ -7829,7 +7920,7 @@ function renderLeftPanelWrapperHtml(innerHtml) {
  */
 const SETTINGS_HELP = {
   name: 'The name of the workspace. The editor shows it in place of the name of the folder, which then becomes a tooltip. Leave empty to show the folder name.',
-  manifestsPaths: 'Folders scanned for manifest files, relative to the folder containing `workspace.yaml` and below it (no `..`, not absolute). One per line. Default: `manifests`.',
+  manifestsPaths: 'Folders scanned for manifest files, relative to the folder containing `workspace.yaml` and below it (no `..`, not absolute). One per line. Default: `manifests`. A path that ends in `/**` (`manifests/**`) is read with the folders below it, in order of path, leaving out the folders and files whose name begins with a dot, the links to folders and the folders of the generated views; `./**` is the folder of `workspace.yaml`. `**` means nothing elsewhere in a path.',
   plateaus: 'The states of the architecture, each one a folder of manifests below the folder of `workspace.yaml`. The order of the list is the order of the states; the last one is drawn unless `settings.current` names another, and the header chooses the one this browser draws. They are written in `workspace.yaml` (`settings.plateaus`); `archicode plateau add` copies a plateau into a new folder and adds it.',
   defaultLabel: 'Label for a relationship that declares none, and for a link merged from several relationships. Default: `uses`.',
   viewsPath: 'Folder where generated views are written, relative to `workspace.yaml`. Facets write to sibling folders (see Facets). Default: `views`.',
@@ -13470,7 +13561,7 @@ function createManifestEntry(kind, content) {
   const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
   adoptRemovedFile(mf);
   AppState.manifestFiles.push(mf);
-  AppState.manifestFiles.sort((a, b) => a.relPath.localeCompare(b.relPath));
+  AppState.manifestFiles.sort((a, b) => compareCodePoints(a.relPath, b.relPath));
   entryOwners.set(content, mf);
   saveStatus = { state: 'idle' };
   return content;

@@ -134,6 +134,39 @@ the reference `shop` is declared twice: in `manifests/a.yaml` and `manifests/b.y
 
 The editor reports the same thing, in the same words (see <<editor-folders>>).
 
+[[manifests-folders]]
+==== Manifests in folders
+
+`settings.manifests.paths` lists the folders the manifests are read from, `manifests` by default, and a path read as it is written names one folder: the files directly in it are the manifests, and the files of its sub-folders are not. To keep the manifests in folders of your own (by domain, by team), end a path with `/**`: the folder and every folder below it are read.
+
+.The content of `workspace.yaml` of a workspace whose manifests are in folders
+[source,yaml]
+----
+include::examples/domain_manifest_folders/workspace.yaml[]
+----
+
+.The files of the example `domain_manifest_folders`
+----
+workspace.yaml
+manifests/
+  application/
+    shop.yaml
+    shop/warehouse.yaml
+  people/customer.yaml
+  technology/
+    reference.yaml
+    reference/server.yaml
+----
+
+The command line and the editor read the same files, in the same order, by these rules:
+
+. A path that does not end in `/**` is read exactly as it always was: the files directly in the folder. `./**` is the folder of `workspace.yaml` and everything below it, the file `workspace.yaml` excepted. A folder that does not exist reads nothing, with `/**` as without.
+. The files are read in the order of their path from the folder of `workspace.yaml`, written with `/` and compared by Unicode code point, whatever the file system or the language of the system: `B.yaml` comes before `a.yaml`, and `a.yaml` before `a/b.yaml`. A file that two paths find (`manifests` and `manifests/**`) is read once. The order tells which file an error names first and the order of the files in the editor; the views do not depend on it.
+. Below a path that ends in `/**`, these are not read: a file or a folder whose name begins with a dot (`.git`, `.cache`); a symbolic link to a folder (a link is never followed, so a link that points to its own folder is no loop; a link to a file is read like the file); and the folders of the generated views, which can hold files that are no manifests (the comparison of two plateaus writes a `gap.json`). These are the folder that `settings.views.path` names, as it is written in `workspace.yaml`, and the folders beside it whose name begins with that name and a dash: with `views`, the folders `views`, `views-to-be`, `views-to-be-vs-as-is` and `views-shop`. The folder of an `--output` option, and the folders of a `directory-name-template` of the facets that does not begin with `views.path`, are not known to a reader of the manifests: write the views where `settings.views.path` says. A folder that is deeper than `views.path`, or whose name only looks like it (`viewsx`, `views_extra`), is read. A path that names such a folder itself (`.manifests/**`, `views-notes/**`) reads it: the rule applies to what is found below a path, not to the path. A path that is a link to a folder is read, as it is without `/**`.
+. Every `.yaml`, `.yml`, `.json` and `.toml` file that is found is a manifest, as in a folder read without `/**`: a YAML file that is not a manifest (a CI file, a `values.yaml`) is refused with its name, so keep such files out of the folders you name, or in a hidden folder. The editor reads the YAML ones and says which files it does not read (see <<editor-folders>>).
+. A reference declared in two of the files that are found is the error of <<duplicate-references>>, in the same line, with the two files in the order above.
+. `**` means something only at the end of a path, after a `/`. `manifests/**/shop`, `manifests/**x`, `a**/b` and `**` are refused with one line that names the path and says what is read, in the command line and in the editor (where the Settings screen refuses them too). A path that contains `..` or is absolute is refused as before, with `/**` or without. A folder whose name contains `**` can no longer be named by a path. The `path` of a plateau (`settings.plateaus`) is not a path of this kind: it is one folder, read without its sub-folders, and `/**` there names no folder.
+
 Incorporating workspaces and manifests into your architectural workflow within ArchiCode empowers you with an efficient and organized foundation for your projects. Let's explore further as we navigate through the various dimensions of the ArchiCode domain.
 
 [[plateaus]]
@@ -1069,6 +1102,8 @@ There are two ways to open it:
 The published page remembers, in the browser, every folder it opened, with the name its workspace gives itself (see <<editor-workspace-name>>). When the page opens again, it opens the last folder directly if the browser still lets it read it; otherwise it asks for a click (*Reopen*), because a browser only gives that permission back on a click. *Close folder*, at the top right, closes the folder and shows the list of the remembered folders: the closed one stays in it, and the next visit does not open it by itself. When no folder is open, the list shows each folder by the name of its workspace, with the name of the folder below it when they differ, most recent first: a click on one opens it, *Remove from the list* makes the browser forget it, and nothing is deleted on disk. Under each folder, the list says what a click will meet, as the browser answers without asking anything: _Opens without asking_, _Will ask for permission_ (the browser shows its prompt), _Blocked by the browser_, or _Could not be reached_ / _Could not be checked_ (the folder may have been moved or deleted). A folder picked again is not added twice, even by two tabs at the same moment: the browser then holds two records for it for an instant, and the editor merges them into one, keeping the name of its workspace and its place in the list. A folder that cannot be opened (the permission refused, the folder moved or deleted) stays in the list, which says why, until it is removed. Served by `archicode editor serve`, the editor has one folder, the one of the server: there is no list and no *Close folder*.
 
 The editor loads `elkjs` (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.
+
+In *Settings*, the paths of the manifests are one per line, and a path that ends in `/**` is read with the folders below it (see <<manifests-folders>>); a new element, view or story is written in the folder of the first path. The editor served by `archicode editor serve` does not list the hidden entries of a folder at all, so a path that names a hidden folder reads nothing there, and does not list a link to a file that points out of the folder, which the command line reads. A browser that lets the page read a folder gives no way to tell a link from a folder: the page stops at a folder that is one it is inside of, but reads a link to another folder, which the command line does not.
 
 The editor reads and writes YAML manifests (`.yaml` and `.yml`) only. The command line also reads TOML and JSON manifests: the editor does not, so what such a file declares is missing from its trees and diagrams, and relationships that point at it show as dangling. It says so, in *Files* (which names the files) and above the trees of *Elements* (which counts them).
 

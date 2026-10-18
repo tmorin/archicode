@@ -11,7 +11,14 @@ function notFound(p) {
   return e;
 }
 
-function memFolder(initial) {
+/**
+ * `options.links`: a link -> the folder it points at (both from the root); the link is listed as a folder that holds what the target holds, and carries
+ * `symbolicLink: true` as the entries of the served folder do (`options.markLinks: false`: as a browser lists it, with nothing to tell it from a folder).
+ * `isSameEntry` compares the folders they stand for.
+ */
+function memFolder(initial, options) {
+  const links = Object.entries((options && options.links) || {}).map(([link, target]) => [link, target === '.' ? '' : target]);
+  const markLinks = !(options && options.markLinks === false);
   const files = new Map(); // path -> { text, mtime }
   const dirs = new Set(['']);
   let clock = 1000;
@@ -20,6 +27,7 @@ function memFolder(initial) {
     const parts = p.split('/').slice(0, -1);
     for (let i = 1; i <= parts.length; i++) dirs.add(parts.slice(0, i).join('/'));
   };
+  mem.mkdir = (p) => { addDirs(p + '/x'); };
   mem.put = (p, text) => { addDirs(p); files.set(p, { text, mtime: ++clock }); };
   for (const [p, text] of Object.entries(initial)) mem.put(p, text);
 
@@ -49,6 +57,8 @@ function memFolder(initial) {
     return {
       kind: 'directory',
       name: dirPath.split('/').pop() || 'ws',
+      __path: dirPath,
+      async isSameEntry(other) { return !!other && other.__path === dirPath; },
       async queryPermission() { return 'granted'; },
       async requestPermission() { return 'granted'; },
       async *entries() {
@@ -57,6 +67,12 @@ function memFolder(initial) {
         }
         for (const d of Array.from(dirs)) {
           if (d !== '' && d.slice(0, d.lastIndexOf('/') === -1 ? 0 : d.lastIndexOf('/')) === dirPath) yield [d.split('/').pop(), dirHandle(d)];
+        }
+        for (const [link, target] of links) {
+          if (link.slice(0, link.lastIndexOf('/') === -1 ? 0 : link.lastIndexOf('/')) !== dirPath) continue;
+          const handle = dirHandle(target);
+          if (markLinks) handle.symbolicLink = true;
+          yield [link.split('/').pop(), handle];
         }
       },
       async getFileHandle(name, options) {

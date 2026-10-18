@@ -338,7 +338,12 @@ public class WorkspaceFactory {
         // parse the manifests: the elements, and the views and the stories that are manifests of their own, which join
         // the ones of workspace.yaml. One call per plateau: a reference declared twice is an error inside a plateau,
         // and the same reference in two plateaus is the very point of having two
-        val manifests = manifestParser.parse(wksDir, manifestsDirs, path);
+        val manifests = manifestParser.parse(
+            wksDir,
+            manifestsDirs,
+            path,
+            rawWorkspace.getSettings().getViews().getPath()
+        );
 
         return new Loaded(
             fixedRawWorkspace.toBuilder().views(manifests.views()).stories(manifests.stories()).build(),

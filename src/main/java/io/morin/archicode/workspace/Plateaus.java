@@ -2,6 +2,7 @@ package io.morin.archicode.workspace;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.morin.archicode.ArchiCodeException;
+import io.morin.archicode.manifest.ManifestDiscovery;
 import io.morin.archicode.resource.workspace.Settings;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,6 +113,13 @@ public class Plateaus {
                 val problem = pathProblem(path);
                 if (problem != null) {
                     problems.add(manifestsPathMessage(path, problem));
+                } else if (ManifestDiscovery.patternProblem(path) != null) {
+                    problems.add(
+                        "the path `" +
+                            path +
+                            "` of `settings.manifests.paths` " +
+                            ManifestDiscovery.patternProblem(path)
+                    );
                 }
             }
             if (settings.getCurrent() != null) {

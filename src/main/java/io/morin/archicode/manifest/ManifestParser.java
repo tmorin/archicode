@@ -13,11 +13,9 @@ import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.story.Story;
 import io.morin.archicode.resource.view.View;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.jackson.Jacksonized;
@@ -38,14 +36,29 @@ public class ManifestParser {
         return parse(wksDir, manifestsDirs, null);
     }
 
+    /** The folder of the generated views when the workspace does not say ({@code settings.views.path}). */
+    private static final String DEFAULT_VIEWS_PATH = "views";
+
     /**
      * Read the manifests, leaving the workspace file out when a folder is the one it is in (a plateau, or a manifests
      * folder, written as {@code .}).
      *
      * @param workspaceFile the workspace file, or null
      */
-    @SneakyThrows
     public Parsed parse(Path wksDir, Set<String> manifestsDirs, Path workspaceFile) {
+        return parse(wksDir, manifestsDirs, workspaceFile, DEFAULT_VIEWS_PATH);
+    }
+
+    /**
+     * Read the manifests that the entries name: a folder (the files directly in it), or a folder and {@code /**} (the
+     * files below it, see {@link ManifestDiscovery}).
+     *
+     * @param workspaceFile the workspace file, or null
+     * @param viewsPath     {@code settings.views.path} as written in the workspace file: the folders of the generated views
+     *                      are not read below a path that ends in {@code /**}
+     */
+    @SneakyThrows
+    public Parsed parse(Path wksDir, Set<String> manifestsDirs, Path workspaceFile, String viewsPath) {
         val map = new HashMap<Class<?>, Set<Candidate>>();
         val views = new LinkedHashSet<View>();
         val stories = new LinkedHashSet<Story>();
@@ -54,85 +67,63 @@ public class ManifestParser {
         // in another, a manifest placed under a parent)
         val declarations = new HashMap<String, Map<String, List<String>>>();
 
-        val paths = manifestsDirs
-            .stream()
-            .map(wksDir::resolve)
-            .filter(path -> path.toFile().exists())
-            .collect(Collectors.toSet());
+        for (Path manifestFile : ManifestDiscovery.discover(wksDir, manifestsDirs, viewsPath, workspaceFile)) {
+            log.info("parse the manifest {}", manifestFile);
 
-        for (Path path : paths) {
-            val directory = path.toFile();
+            val mapper = mapperFactory.create(manifestFile);
+            val source = sourceOf(wksDir, manifestFile);
+            final Manifest resource;
+            try {
+                resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
+            } catch (JsonProcessingException e) {
+                throw layeredPlateau(e)
+                    .or(() -> emptyManifest(e))
+                    .or(() -> missingKey(e, ""))
+                    .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
+                    .orElseGet(() -> ArchiCodeException.unreadable(source, e, true));
+            }
+            final Object item;
+            try {
+                item = ManifestConverter.builder().manifest(resource).mapper(mapper).build().convert();
+            } catch (JsonProcessingException e) {
+                // the content is read again from a string: the line and the column are not those of the file
+                throw missingKey(e, "content")
+                    .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
+                    .orElseGet(() -> ArchiCodeException.unreadable(source, e, false));
+            }
 
-            val manifestFilesAsArray = Optional.ofNullable(
-                directory.listFiles((dir, name) -> MapperFormat.resolve(name).isPresent())
-            ).orElseThrow(() -> new ArchiCodeException("unable to read the path %s", path));
-
-            for (Path manifestFile : Arrays.stream(manifestFilesAsArray)
-                .map(File::toPath)
-                .collect(Collectors.toSet())) {
-                if (
-                    workspaceFile != null &&
-                    manifestFile.toAbsolutePath().normalize().equals(workspaceFile.toAbsolutePath().normalize())
-                ) {
-                    continue; // the workspace is not a manifest of itself
-                }
-                log.info("parse the manifest {}", manifestFile);
-
-                val mapper = mapperFactory.create(manifestFile);
-                val source = sourceOf(wksDir, manifestFile);
-                final Manifest resource;
-                try {
-                    resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
-                } catch (JsonProcessingException e) {
-                    throw layeredPlateau(e)
-                        .or(() -> emptyManifest(e))
-                        .or(() -> missingKey(e, ""))
-                        .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
-                        .orElseGet(() -> ArchiCodeException.unreadable(source, e, true));
-                }
-                final Object item;
-                try {
-                    item = ManifestConverter.builder().manifest(resource).mapper(mapper).build().convert();
-                } catch (JsonProcessingException e) {
-                    // the content is read again from a string: the line and the column are not those of the file
-                    throw missingKey(e, "content")
-                        .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
-                        .orElseGet(() -> ArchiCodeException.unreadable(source, e, false));
-                }
-
-                if (item instanceof Element element) {
-                    declare(
-                        declarations.computeIfAbsent(
-                            resource.getKind().getCategory() == Application.class ? "application" : "technology",
-                            c -> new HashMap<>()
-                        ),
-                        resource.getHeader().getParent(),
-                        resource.getContent(),
-                        sourceOf(wksDir, manifestFile)
-                    );
-                    val reference = Optional.ofNullable(resource.getHeader().getParent())
-                        .map(parentReference -> String.format("%s.%s", parentReference, element.getId()))
-                        .orElse(element.getId());
-                    val candidate = Candidate.builder()
-                        .parent(resource.getHeader().getParent())
-                        .reference(reference)
-                        .element(element)
-                        .build();
-                    map.putIfAbsent(resource.getKind().getCategory(), new HashSet<>());
-                    map.get(resource.getKind().getCategory()).add(candidate);
-                } else if (item instanceof View view) {
-                    views.add(view);
-                    declarations
-                        .computeIfAbsent("view", c -> new HashMap<>())
-                        .computeIfAbsent(view.getId(), r -> new ArrayList<>())
-                        .add(sourceOf(wksDir, manifestFile));
-                } else if (item instanceof Story story) {
-                    stories.add(story);
-                    declarations
-                        .computeIfAbsent("story", c -> new HashMap<>())
-                        .computeIfAbsent(story.getId(), r -> new ArrayList<>())
-                        .add(sourceOf(wksDir, manifestFile));
-                }
+            if (item instanceof Element element) {
+                declare(
+                    declarations.computeIfAbsent(
+                        resource.getKind().getCategory() == Application.class ? "application" : "technology",
+                        c -> new HashMap<>()
+                    ),
+                    resource.getHeader().getParent(),
+                    resource.getContent(),
+                    sourceOf(wksDir, manifestFile)
+                );
+                val reference = Optional.ofNullable(resource.getHeader().getParent())
+                    .map(parentReference -> String.format("%s.%s", parentReference, element.getId()))
+                    .orElse(element.getId());
+                val candidate = Candidate.builder()
+                    .parent(resource.getHeader().getParent())
+                    .reference(reference)
+                    .element(element)
+                    .build();
+                map.putIfAbsent(resource.getKind().getCategory(), new HashSet<>());
+                map.get(resource.getKind().getCategory()).add(candidate);
+            } else if (item instanceof View view) {
+                views.add(view);
+                declarations
+                    .computeIfAbsent("view", c -> new HashMap<>())
+                    .computeIfAbsent(view.getId(), r -> new ArrayList<>())
+                    .add(sourceOf(wksDir, manifestFile));
+            } else if (item instanceof Story story) {
+                stories.add(story);
+                declarations
+                    .computeIfAbsent("story", c -> new HashMap<>())
+                    .computeIfAbsent(story.getId(), r -> new ArrayList<>())
+                    .add(sourceOf(wksDir, manifestFile));
             }
         }
         failOnDuplicates(declarations);

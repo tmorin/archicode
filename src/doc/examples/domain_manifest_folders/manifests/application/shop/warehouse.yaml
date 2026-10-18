@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  parent: "shop"
+content:
+  id: "warehouse"
+  name: "Warehouse"
+  relationships:
+    - destination: "shop.web"
+      label: "publishes the stock to"

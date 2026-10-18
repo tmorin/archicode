@@ -239,6 +239,21 @@ class EditorHttpServerTest {
     }
 
     @Test
+    void saysWhichEntriesAreLinksSoThatTheEditorDoesNotFollowThemWhenItReadsManifestsRecursively() throws Exception {
+        try {
+            Files.createSymbolicLink(folder.resolve("manifests/loop"), folder.resolve("manifests"));
+        } catch (UnsupportedOperationException | java.io.IOException e) {
+            return; // no symbolic links here
+        }
+        val body = api("GET", "list", "manifests", null).body();
+        assertTrue(body.contains("\"name\":\"loop\",\"kind\":\"directory\",\"link\":true"), body);
+        assertFalse(
+            body.contains("\"name\":\"app.yaml\",\"kind\":\"file\",\"link\""),
+            "a file that is not a link says nothing of links"
+        );
+    }
+
+    @Test
     void doesNotFollowALinkOutOfTheFolder() throws Exception {
         try {
             Files.createSymbolicLink(folder.resolve("manifests/link"), outside);

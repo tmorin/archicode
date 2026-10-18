@@ -1,0 +1,6 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "reference"
+  name: "Reference"

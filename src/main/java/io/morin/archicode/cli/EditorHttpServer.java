@@ -52,7 +52,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  *       is also given in a {@code archicode-session} cookie, which lets a reload in (the page removes the token from
  *       the address bar); the cookie opens {@code GET /} only, never the API.</li>
  *   <li>{@code GET /api/fs/info} — the name of the folder served.</li>
- *   <li>{@code GET /api/fs/list?path=} — the entries of a directory of the folder ({@code name}, {@code kind}).</li>
+ *   <li>{@code GET /api/fs/list?path=} — the entries of a directory of the folder ({@code name}, {@code kind}, and {@code link} when the entry is a symbolic link).</li>
  *   <li>{@code GET|PUT|DELETE /api/fs/file?path=} — read (with its last modification time in
  *       {@code X-ArchiCode-Modified}), write (parents are created) or delete a {@code .yaml}, {@code .yml} or
  *       {@code .json} file of the folder. A file is UTF-8, as GET declares it; PUT refuses (400) a body that is not
@@ -290,6 +290,9 @@ public class EditorHttpServer {
                 val node = entries.addObject();
                 node.put("name", entry.getFileName().toString());
                 node.put("kind", Files.isDirectory(entry) ? "directory" : "file");
+                if (Files.isSymbolicLink(entry)) {
+                    node.put("link", true); // the editor does not follow a link to a folder when it reads manifests recursively
+                }
             }
         }
         return entries;

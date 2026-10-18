@@ -1,0 +1,626 @@
+{
+  "comment": "The cases of where the manifests are (run 0076, issue #73): the entries of settings.manifests.paths, the files they find, in what order, and what is refused. ManifestDiscoveryTest.java (command line) and discovery.test.js (editor) read this file; add a case here and both run it. `paths` and `views` are written in workspace.yaml (settings.manifests.paths, settings.views.path). `files`: a path from the folder of workspace.yaml -> the id of a system manifest (YAML or JSON by the extension; its name is its id), or {\"raw\": text}. `empty_dirs`: folders to create. `links`: a link -> the folder it points at. `expect.read`: the files the command line reads, in order (the editor reads the YAML ones, and counts the .json as unread); the references loaded are the ids of those. `expect.error`: the message, in which ${pattern} and ${below} stand for the end of the sentence given in `tails`. `expect.refused_file`: the load fails and names that file.",
+  "tails": {
+    "pattern": "uses `**` where ArchiCode does not read it: only a path that ends in `/**` is read recursively (`manifests/**`, or `./**` for the folder of workspace.yaml), and `**` means nothing anywhere else. Write one path for each folder, or end the path with `/**`",
+    "below": "a manifests folder must be below the folder of workspace.yaml, written relative to it, without `..`. Move the folder below workspace.yaml (or move workspace.yaml up, to a folder that holds both) and change the path to match"
+  },
+  "cases": [
+    {
+      "id": "D01",
+      "what": "a path that ends in /** reads the sub-folders, and the files are sorted by their path from the folder of workspace.yaml, by code point, whatever order they were listed in: 'B' before 'a', '-' before '.', '.' before '/'",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/b.yaml": "b",
+        "manifests/a/z.yaml": "az",
+        "manifests/a/b/c.yaml": "abc",
+        "manifests/a.yaml": "a",
+        "manifests/B.yaml": "bb",
+        "manifests/a-b.yaml": "a-b"
+      },
+      "expect": {
+        "read": [
+          "manifests/B.yaml",
+          "manifests/a-b.yaml",
+          "manifests/a.yaml",
+          "manifests/a/b/c.yaml",
+          "manifests/a/z.yaml",
+          "manifests/b.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D02",
+      "what": "a path without /** reads exactly what it read before: the files directly in the folder, not those of its sub-folders",
+      "paths": [
+        "manifests"
+      ],
+      "files": {
+        "manifests/b.yaml": "b",
+        "manifests/a/z.yaml": "az",
+        "manifests/a.yaml": "a"
+      },
+      "expect": {
+        "read": [
+          "manifests/a.yaml",
+          "manifests/b.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D03",
+      "what": "a file that two paths find is read once, and the order is that of the paths, not that of the entries",
+      "paths": [
+        "z/**",
+        "manifests",
+        "manifests/**",
+        "a/**"
+      ],
+      "files": {
+        "manifests/m.yaml": "m",
+        "manifests/sub/n.yaml": "n",
+        "z/z.yaml": "z",
+        "a/a.yaml": "a"
+      },
+      "expect": {
+        "read": [
+          "a/a.yaml",
+          "manifests/m.yaml",
+          "manifests/sub/n.yaml",
+          "z/z.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D04",
+      "what": "./** is the folder of workspace.yaml and everything below it: the workspace file, the folders of the generated views and the hidden folders are not manifests",
+      "paths": [
+        "./**"
+      ],
+      "files": {
+        "top.yaml": "top",
+        "manifests/x.yaml": "x",
+        "views/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "views-to-be/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "views-to-be-vs-as-is/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "views-shop/a.puml": {
+          "raw": "@startuml\n"
+        },
+        ".git/config.yaml": {
+          "raw": "gap: true\n"
+        },
+        "docs/readme.md": {
+          "raw": "# hi\n"
+        }
+      },
+      "expect": {
+        "read": [
+          "manifests/x.yaml",
+          "top.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D05",
+      "what": "the folders of the views are those of settings.views.path, at the depth it is written: out/gen and the folders that begin with out/gen- are left out, views is read",
+      "paths": [
+        "./**"
+      ],
+      "views": "out/gen",
+      "files": {
+        "gen/g.yaml": "g",
+        "out/other/o.yaml": "o",
+        "views/v.yaml": "v",
+        "out/gen/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "out/gen-to-be/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "out/gen-to-be-vs-as-is/gap.json": {
+          "raw": "gap: true\n"
+        }
+      },
+      "expect": {
+        "read": [
+          "gen/g.yaml",
+          "out/other/o.yaml",
+          "views/v.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D06",
+      "what": "a folder is a folder of views when its name is the views path or begins with it and a dash: not 'viewsx', 'views_extra' or 'view', and not one that is deeper than the views path",
+      "paths": [
+        "./**"
+      ],
+      "files": {
+        "viewsx/a.yaml": "a",
+        "views_extra/b.yaml": "b",
+        "view/c.yaml": "c",
+        "sub/views/d.yaml": "d",
+        "sub/views-x/e.yaml": "e",
+        "views/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "views-x/gap.json": {
+          "raw": "gap: true\n"
+        }
+      },
+      "expect": {
+        "read": [
+          "sub/views-x/e.yaml",
+          "sub/views/d.yaml",
+          "view/c.yaml",
+          "views_extra/b.yaml",
+          "viewsx/a.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D07",
+      "what": "a path that names a folder of views reads it: the folders of the views are left out of what is found below a path, not out of a path",
+      "paths": [
+        "views-to-be/**"
+      ],
+      "files": {
+        "views-to-be/a.yaml": "a",
+        "views-to-be/sub/b.yaml": "b"
+      },
+      "expect": {
+        "read": [
+          "views-to-be/a.yaml",
+          "views-to-be/sub/b.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D08",
+      "what": "a hidden folder or file below a path is not read; a path that names a hidden folder reads it, and not the hidden folders below it",
+      "paths": [
+        ".manifests/**",
+        "manifests/**"
+      ],
+      "files": {
+        ".manifests/a.yaml": "a",
+        ".manifests/.x/b.yaml": {
+          "raw": "gap: true\n"
+        },
+        "manifests/.cache/c.yaml": {
+          "raw": "gap: true\n"
+        },
+        "manifests/.d.yaml": {
+          "raw": "gap: true\n"
+        },
+        "manifests/e.yaml": "e"
+      },
+      "expect": {
+        "read": [
+          ".manifests/a.yaml",
+          "manifests/e.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D09",
+      "what": "an empty folder, a folder with no manifest and files that are not manifests are read as nothing",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/a.yaml": "a",
+        "manifests/docs/readme.md": {
+          "raw": "# hi\n"
+        },
+        "manifests/notes.txt": {
+          "raw": "notes\n"
+        }
+      },
+      "empty_dirs": [
+        "manifests/empty",
+        "manifests/a/b/c"
+      ],
+      "expect": {
+        "read": [
+          "manifests/a.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D10",
+      "what": "a folder that does not exist reads nothing, with /** as without",
+      "paths": [
+        "nowhere/**",
+        "manifests/**",
+        "nowhere-else"
+      ],
+      "files": {
+        "manifests/a.yaml": "a"
+      },
+      "expect": {
+        "read": [
+          "manifests/a.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D11",
+      "what": "the extensions are those of a path without /**: .yaml, .yml, .json (and .toml, in ManifestDiscoveryTest) in lower case; the editor reads the YAML ones and counts the .json as unread",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/a.yml": "a",
+        "manifests/b.json": "b",
+        "manifests/d.YAML": {
+          "raw": "gap: true\n"
+        },
+        "manifests/e.yaml.bak": {
+          "raw": "gap: true\n"
+        },
+        "manifests/sub/f.yaml": "f"
+      },
+      "expect": {
+        "read": [
+          "manifests/a.yml",
+          "manifests/b.json",
+          "manifests/sub/f.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D12",
+      "what": "a reference declared twice in two files found by a recursive read is the error of a reference declared twice, in the same line, with the files sorted",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/b/y.yaml": "shop",
+        "manifests/a/x.yaml": "shop"
+      },
+      "expect": {
+        "error": "the reference `shop` is declared twice: in `manifests/a/x.yaml` and `manifests/b/y.yaml`"
+      }
+    },
+    {
+      "id": "D13",
+      "what": "a file that is not YAML is refused, and named, as it is without /**",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/a.yaml": "a",
+        "manifests/sub/notes.yaml": {
+          "raw": "key: [unclosed\n"
+        }
+      },
+      "expect": {
+        "refused_file": "manifests/sub/notes.yaml"
+      }
+    },
+    {
+      "id": "D14",
+      "what": "a YAML file that is no manifest, found below a path that ends in /**, is refused like one found directly in a folder",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/a.yaml": "a",
+        "manifests/other/values.yaml": {
+          "raw": "a: 1\n"
+        }
+      },
+      "expect": {
+        "refused_file": "manifests/other/values.yaml"
+      }
+    },
+    {
+      "id": "D15",
+      "what": "a link to a folder is not followed, so that a loop cannot happen",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/a.yaml": "a",
+        "manifests/sub/b.yaml": "b"
+      },
+      "links": {
+        "manifests/loop": "manifests",
+        "manifests/sub/up": "."
+      },
+      "expect": {
+        "read": [
+          "manifests/a.yaml",
+          "manifests/sub/b.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D16",
+      "what": "a link to a folder elsewhere in the workspace is not followed either: its files are read where they are, through a path that names that folder",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/a.yaml": "a",
+        "shared/s.yaml": "s"
+      },
+      "links": {
+        "manifests/shared": "shared"
+      },
+      "expect": {
+        "read": [
+          "manifests/a.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D17",
+      "what": "the order is by code point of the whole path, not by UTF-16 unit and not by locale: a letter with an accent after 'z', U+FF5E before U+1F600",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/😀.yaml": "smile",
+        "manifests/～.yaml": "tilde",
+        "manifests/é.yaml": "eacute",
+        "manifests/z.yaml": "z"
+      },
+      "expect": {
+        "read": [
+          "manifests/z.yaml",
+          "manifests/é.yaml",
+          "manifests/～.yaml",
+          "manifests/😀.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D18",
+      "what": "** in the middle of a path is a one-line error, not a path that matches nothing",
+      "paths": [
+        "manifests/**/sub"
+      ],
+      "files": {
+        "manifests/a.yaml": "a"
+      },
+      "expect": {
+        "error": "the path `manifests/**/sub` of `settings.manifests.paths` ${pattern}"
+      }
+    },
+    {
+      "id": "D19",
+      "what": "** alone is a one-line error, not a path that matches nothing",
+      "paths": [
+        "**"
+      ],
+      "files": {
+        "manifests/a.yaml": "a"
+      },
+      "expect": {
+        "error": "the path `**` of `settings.manifests.paths` ${pattern}"
+      }
+    },
+    {
+      "id": "D20",
+      "what": "** glued to a name is a one-line error, not a path that matches nothing",
+      "paths": [
+        "manifests/**x"
+      ],
+      "files": {
+        "manifests/a.yaml": "a"
+      },
+      "expect": {
+        "error": "the path `manifests/**x` of `settings.manifests.paths` ${pattern}"
+      }
+    },
+    {
+      "id": "D21",
+      "what": "** in a name, with a /** at the end is a one-line error, not a path that matches nothing",
+      "paths": [
+        "a**/b/**"
+      ],
+      "files": {
+        "manifests/a.yaml": "a"
+      },
+      "expect": {
+        "error": "the path `a**/b/**` of `settings.manifests.paths` ${pattern}"
+      }
+    },
+    {
+      "id": "D22",
+      "what": "** three stars is a one-line error, not a path that matches nothing",
+      "paths": [
+        "manifests/***"
+      ],
+      "files": {
+        "manifests/a.yaml": "a"
+      },
+      "expect": {
+        "error": "the path `manifests/***` of `settings.manifests.paths` ${pattern}"
+      }
+    },
+    {
+      "id": "D23",
+      "what": "** followed by a slash is a one-line error, not a path that matches nothing",
+      "paths": [
+        "manifests/**/"
+      ],
+      "files": {
+        "manifests/a.yaml": "a"
+      },
+      "expect": {
+        "error": "the path `manifests/**/` of `settings.manifests.paths` ${pattern}"
+      }
+    },
+    {
+      "id": "D24",
+      "what": "two malformed paths give two lines, sorted by path",
+      "paths": [
+        "z/**/q",
+        "manifests/**/sub"
+      ],
+      "files": {},
+      "expect": {
+        "error": "the path `manifests/**/sub` of `settings.manifests.paths` ${pattern}\nthe path `z/**/q` of `settings.manifests.paths` ${pattern}"
+      }
+    },
+    {
+      "id": "D25",
+      "what": "the refusal of '..' applies to a path that ends in /**",
+      "paths": [
+        "../shared/**"
+      ],
+      "files": {},
+      "expect": {
+        "error": "the path `../shared/**` of `settings.manifests.paths` contains `..`: ${below}"
+      }
+    },
+    {
+      "id": "D26",
+      "what": "the refusal of an absolute path applies to a path that ends in /**",
+      "paths": [
+        "/srv/manifests/**"
+      ],
+      "files": {},
+      "expect": {
+        "error": "the path `/srv/manifests/**` of `settings.manifests.paths` is absolute: ${below}"
+      }
+    },
+    {
+      "id": "D27",
+      "what": "the folder of workspace.yaml, '.', and an entry with a leading ./ are the same folders as without",
+      "paths": [
+        "./manifests/**",
+        "manifests/",
+        "./manifests"
+      ],
+      "files": {
+        "manifests/a.yaml": "a",
+        "manifests/s/b.yaml": "b"
+      },
+      "expect": {
+        "read": [
+          "manifests/a.yaml",
+          "manifests/s/b.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D28",
+      "what": "a path without /** reads what it always read: a hidden file in the folder is read, and a folder named like the views is a folder like another",
+      "paths": [
+        "manifests",
+        "views"
+      ],
+      "files": {
+        "manifests/.d.yaml": "d",
+        "manifests/e.yaml": "e",
+        "views/v.yaml": "v",
+        "manifests/sub/f.yaml": "f"
+      },
+      "expect": {
+        "read": [
+          "manifests/.d.yaml",
+          "manifests/e.yaml",
+          "views/v.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D29",
+      "what": "a folder whose name ends in .yaml is a folder to a path that ends in /**",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/x.yaml/y.yaml": "y"
+      },
+      "expect": {
+        "read": [
+          "manifests/x.yaml/y.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D30",
+      "what": "settings.views.path is read as a path: ./out/gen/ is out/gen",
+      "paths": [
+        "./**"
+      ],
+      "views": "./out/gen/",
+      "files": {
+        "out/gen/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "out/gen-x/gap.json": {
+          "raw": "gap: true\n"
+        },
+        "out/o.yaml": "o"
+      },
+      "expect": {
+        "read": [
+          "out/o.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D31",
+      "what": "a views path that is '.' leaves nothing out: views is read",
+      "paths": [
+        "./**"
+      ],
+      "views": ".",
+      "files": {
+        "views/v.yaml": "v",
+        "a.yaml": "a"
+      },
+      "expect": {
+        "read": [
+          "a.yaml",
+          "views/v.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D32",
+      "what": "a views path that leaves the folder leaves nothing out",
+      "paths": [
+        "./**"
+      ],
+      "views": "../views",
+      "files": {
+        "views/v.yaml": "v"
+      },
+      "expect": {
+        "read": [
+          "views/v.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D33",
+      "what": "a views path that is absolute leaves nothing out",
+      "paths": [
+        "./**"
+      ],
+      "views": "/srv/views",
+      "files": {
+        "views/v.yaml": "v"
+      },
+      "expect": {
+        "read": [
+          "views/v.yaml"
+        ]
+      }
+    }
+  ]
+}

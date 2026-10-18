@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  parent: "reference"
+content:
+  id: "server"
+  name: "Server"
+  applications:
+    - "shop.web"
+    - "shop.warehouse"
