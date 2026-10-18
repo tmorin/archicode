@@ -68,6 +68,7 @@ function problemsOf(state) {
   if (state.plateauProblem) problems.push(state.plateauProblem);
   for (const f of state.manifestFiles) if (f.error) problems.push('`' + f.relPath + '` is not valid: ' + f.error);
   for (const d of state.duplicateReferences) problems.push(d.message);
+  if (state.plateauTree) problems.push(...state.plateauTree.problems, ...state.plateauTree.redeclared); // the tree of the layered plateaus (run 0077)
   for (const f of state.unreadManifestFiles) problems.push('`' + f + '` is read by the command line and not by the editor');
   if (state.baseline && state.baseline.problem) problems.push(state.baseline.problem);
   return problems;
@@ -164,19 +165,22 @@ test('a shipped fixture whose manifest has a kind nobody knows does not open', a
   const { dir, manifest } = altered('src/test/resources/hyphen-ids', (text) => text.replace(/kind: "archicode\.morin\.io\/\w+"/, 'kind: "archicode.morin.io/nothing"'));
   try {
     const [[, problems]] = await openEveryPlateau(dir);
-    assert.deepEqual(problems, ['`' + manifest + '` is not valid: unrecognized `header.kind` "archicode.morin.io/nothing" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view)']);
+    assert.deepEqual(problems, ['`' + manifest + '` is not valid: unrecognized `header.kind` "archicode.morin.io/nothing" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view)']);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('a shipped fixture whose manifest is a layered plateau does not open, and says why', async () => {
-  const { dir, manifest } = altered('src/test/resources/hyphen-ids', (text) => text.replace('version:', 'plateau: later\n  version:'));
+test('a shipped fixture whose manifest names a plateau opens, and a plateau id that is not valid is told (run 0077)', async () => {
+  const named = altered('src/test/resources/hyphen-ids', (text) => text.replace('version:', 'plateau: later\n  version:'));
+  const wrong = altered('src/test/resources/hyphen-ids', (text) => text.replace('version:', 'plateau: v1.2\n  version:'));
   try {
-    const [[, problems]] = await openEveryPlateau(dir);
-    assert.equal(problems.length, 1, problems.join('\n'));
-    assert.ok(problems[0].startsWith('`' + manifest + '` is not valid: `header.plateau` is not supported yet'), problems[0]);
+    const [[, problems]] = await openEveryPlateau(named.dir);
+    assert.deepEqual(problems, [], 'a plateau that headers name opens');
+    const [[, mistakes]] = await openEveryPlateau(wrong.dir);
+    assert.deepEqual(mistakes, ['the plateau id `v1.2` in `' + wrong.manifest + '` is not valid: use lowercase letters, digits, `_` and `-`']);
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(named.dir, { recursive: true, force: true });
+    fs.rmSync(wrong.dir, { recursive: true, force: true });
   }
 });

@@ -3388,6 +3388,7 @@ function createInitialAppState() {
     index: { application: new Map(), technology: new Map() },
     relationshipStats: { total: 0, dangling: 0 },
     duplicateReferences: [], // [{ layer, reference, sources, message }]: a reference declared twice is reported, never chosen (see buildIndex)
+    plateauTree: null, // the tree of the layered plateaus the manifests write (see buildPlateauTree): { nodes, ids, problems, redeclared, warnings, layered, layeredBy }
     plateau: null, // { id, name, horizon, path } of the plateau read; null for a workspace without `settings.plateaus` (see selectPlateau)
     plateaus: [], // every plateau of settings.plateaus, in the order of the file: what the selector of the header lists
     plateauProblem: null, // a line, when the folder of the plateau read cannot be found
@@ -3796,12 +3797,13 @@ async function loadBaseline(rootHandle, settings) {
   const relDir = normalizePlateauPath(target.path);
   const folder = await readManifestFolder(rootHandle, relDir);
   folder.files.sort((a, b) => compareCodePoints(a.relPath, b.relPath)); // as the plateau's own files are (and as the command line sorts them): the order of a listing is the file system's
-  const { index, duplicates } = buildIndex(folder.files, settings);
+  const { index, duplicates, plateauTree } = buildIndex(folder.files, settings);
   resolveRelationships(index);
   // what in it could not be read is told too: a manifest that does not parse leaves its elements out of the comparison, and they would read as new
   const unreadable = folder.files.filter((f) => f.error).map((f) => '`' + f.relPath + '`');
   const problems = [];
   if (folder.missing) problems.push('The folder `' + relDir + '` of the plateau `' + target.id + '` does not exist.');
+  if (plateauTree.layered) problems.push('The plateau `' + target.id + '` of `settings.plateaus` cannot be read: ' + layeredAndSettingsPlateausSentence(plateauTree) + '.');
   if (unreadable.length) problems.push((unreadable.length === 1 ? 'The manifest ' : unreadable.length + ' manifests, ') + unreadable.slice(0, 3).join(', ') + (unreadable.length > 3 ? ' and more' : '') + ' of the plateau `' + target.id + '` could not be read, so what ' + (unreadable.length === 1 ? 'it declares' : 'they declare') + ' is not compared.');
   AppState.baseline = { plateau: target, files: folder.files, index, duplicates, problem: problems.length ? problems.join(' ') : null };
   modelsChanged();
@@ -4037,6 +4039,227 @@ function reducedLevelForKind(kind) {
   return m ? m[1] : kind;
 }
 
+// =====================================================================
+// The plateaus of a workspace (wave 014, run 0077): a plateau is a layer over the plateau it overrides. A manifest says which plateau it belongs to
+// with `plateau: <id>` in its header (a manifest without one belongs to `baseline`, the implicit root), and an optional manifest of kind `plateau`
+// gives the plateau a name, a horizon, the plateau it overrides (`override`) and its patches. The tree of plateaus is checked here with the sentences
+// of the command line (`PlateauTree.java`): keep them alike. Nothing is loaded as a layer yet: the editor draws `baseline` alone.
+// =====================================================================
+
+const BASELINE_PLATEAU = 'baseline';
+const LAYER_PLATEAU_ID_PATTERN = /^[a-z0-9_-]+$/;
+
+/** Strings in the order Java's `String.compareTo` gives (UTF-16 code units), which orders the sentences of the command line. */
+function compareUnits(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** Some names for a sentence, as `PlateauTree.list`: `a`, `a` and `b`, `a`, `b` and `c`, and past three the first three and how many more (`all`: every one of them). */
+function plateauNames(names, all) {
+  const quoted = names.map((n) => '`' + n + '`');
+  if (quoted.length === 1) return quoted[0];
+  if (quoted.length <= 3 || all) return quoted.slice(0, -1).join(', ') + ' and ' + quoted[quoted.length - 1];
+  return quoted.slice(0, 3).join(', ') + ' and ' + (quoted.length - 3) + ' more';
+}
+
+/** Whether two ids differ by one letter added, removed or changed. */
+function oneLetterApart(a, b) {
+  if (a === b || Math.abs(a.length - b.length) > 1) return false;
+  const shorter = a.length <= b.length ? a : b;
+  const longer = a.length <= b.length ? b : a;
+  let i = 0;
+  while (i < shorter.length && shorter[i] === longer[i]) i++;
+  if (shorter.length === longer.length) return shorter.slice(i + 1) === longer.slice(i + 1);
+  return shorter.slice(i) === longer.slice(i + 1);
+}
+
+/** The plateau a header names: its text, or null when the key is absent or empty-valued (the command line reads a null `plateau` as none). */
+function headerPlateau(header) {
+  if (!header || readIsMissing(header.plateau)) return null;
+  return String(header.plateau);
+}
+
+/** The plateau a manifest belongs to: the one its header names, else `baseline`. */
+function plateauOfManifest(mf) {
+  const written = headerPlateau(mf.header);
+  return written === null ? BASELINE_PLATEAU : written;
+}
+
+/**
+ * The cycles of `parents` (a Map id -> parent id), each told once and starting from its smallest id, as `PlateauTree.cycles` tells them.
+ */
+function plateauCycles(parents) {
+  const out = new Map(); // smallest id -> sentence (a cycle met from each of its plateaus is told once)
+  for (const start of parents.keys()) {
+    const path = [];
+    let at = start;
+    while (at !== undefined && at !== null && !path.includes(at)) {
+      path.push(at);
+      at = parents.get(at);
+    }
+    if (at === undefined || at === null) continue;
+    const cycle = path.slice(path.indexOf(at));
+    const smallest = cycle.reduce((a, b) => (compareUnits(a, b) <= 0 ? a : b));
+    const from = cycle.indexOf(smallest);
+    const rotated = cycle.slice(from).concat(cycle.slice(0, from));
+    if (rotated.length === 1) {
+      out.set(smallest, 'the plateau `' + smallest + '` overrides itself');
+    } else {
+      const steps = rotated.map((id, i) => '`' + id + '` overrides `' + rotated[(i + 1) % rotated.length] + '`');
+      out.set(smallest, 'the plateaus ' + plateauNames(rotated, true) + ' form a cycle: ' + steps.join(', '));
+    }
+  }
+  return Array.from(out.keys()).sort(compareUnits).map((k) => out.get(k));
+}
+
+/**
+ * The tree of the plateaus of the manifests, checked: `{ nodes, ids, problems, redeclared, warnings, layered, layeredBy }`. `nodes` is a Map id -> `{ id, name,
+ * horizon, parent, patches, manifest, headers }` in the order of the tree (`baseline`, then what overrides it, each followed by what overrides it,
+ * the siblings by id); `problems` are the mistakes of the tree, one sentence each (the command line stops on them); `warnings` are what is odd
+ * without being wrong. A manifest with an error is left out: the file says why.
+ */
+function buildPlateauTree(manifestFiles) {
+  const declaredBy = new Map(); // id -> [{ content, source }]
+  const headers = new Map(); // id -> [relPath]
+  let layeredBy = null;
+  for (const mf of manifestFiles) {
+    if (mf.error || !mf.header || !mf.content) continue;
+    if (manifestKindName(mf.header.kind) === 'plateau') {
+      const id = String(mf.content.id);
+      if (!declaredBy.has(id)) declaredBy.set(id, []);
+      declaredBy.get(id).push({ content: mf.content, source: mf.relPath });
+      if (layeredBy === null) layeredBy = '`' + mf.relPath + '` is a manifest of kind `archicode.morin.io/plateau`';
+      continue;
+    }
+    const written = headerPlateau(mf.header);
+    if (written === null) continue;
+    if (!headers.has(written)) headers.set(written, []);
+    headers.get(written).push(mf.relPath);
+    if (layeredBy === null) layeredBy = '`' + mf.relPath + '` says `plateau: ' + written + '` in its header';
+  }
+  const model = { nodes: new Map(), ids: [], problems: [], redeclared: [], warnings: [], layered: layeredBy !== null, layeredBy };
+  if (layeredBy === null) {
+    model.nodes.set(BASELINE_PLATEAU, { id: BASELINE_PLATEAU, name: null, horizon: null, parent: null, patches: [], manifest: null, headers: [] });
+    model.ids = [BASELINE_PLATEAU];
+    return model;
+  }
+
+  const ids = Array.from(new Set([...declaredBy.keys(), ...headers.keys(), BASELINE_PLATEAU])).sort(compareUnits);
+  const problems = model.problems;
+  for (const id of ids) {
+    if (!LAYER_PLATEAU_ID_PATTERN.test(id)) {
+      const files = new Set(headers.get(id) || []);
+      for (const d of declaredBy.get(id) || []) files.add(d.source);
+      problems.push('the plateau id `' + id + '` in ' + plateauNames(Array.from(files).sort(compareUnits)) + ' is not valid: use lowercase letters, digits, `_` and `-`');
+    }
+  }
+  for (const id of Array.from(declaredBy.keys()).sort(compareUnits)) {
+    const all = declaredBy.get(id);
+    if (all.length > 1) problems.push(duplicateReferenceMessage(id, all.map((d) => d.source), 'plateau'));
+  }
+  const parents = new Map();
+  for (const id of ids) {
+    const first = (declaredBy.get(id) || [])[0];
+    const override = first && !readIsMissing(first.content.override) ? String(first.content.override) : null;
+    if (id === BASELINE_PLATEAU) {
+      if (override !== null) problems.push('the plateau `baseline` (`' + first.source + '`) is the root of the plateaus and cannot override `' + override + '`');
+      continue;
+    }
+    const parent = override === null ? BASELINE_PLATEAU : override;
+    if (!ids.includes(parent)) {
+      problems.push('the plateau `' + id + '` (`' + first.source + '`) overrides `' + parent + '`, which is not a plateau of this workspace (the plateaus are ' + plateauNames(ids, true) + ')');
+      continue;
+    }
+    parents.set(id, parent);
+  }
+  problems.push(...plateauCycles(parents));
+  if (problems.length) return model;
+
+  const children = new Map();
+  for (const [id, parent] of parents) {
+    if (!children.has(parent)) children.set(parent, []);
+    children.get(parent).push(id);
+  }
+  const order = [];
+  const preorder = (id) => {
+    order.push(id);
+    for (const child of (children.get(id) || []).sort(compareUnits)) preorder(child);
+  };
+  preorder(BASELINE_PLATEAU);
+  for (const id of order) {
+    const own = (declaredBy.get(id) || [])[0];
+    const content = own ? own.content : null;
+    model.nodes.set(id, {
+      id,
+      name: content && !readIsMissing(content.name) ? String(content.name) : null,
+      horizon: content && !readIsMissing(content.horizon) ? String(content.horizon) : null,
+      parent: id === BASELINE_PLATEAU ? null : parents.get(id),
+      patches: content && Array.isArray(content.patches) ? content.patches.filter((patch) => !readIsMissing(patch)) : [],
+      manifest: own ? own.source : null,
+      headers: Array.from(new Set(headers.get(id) || [])).sort(compareUnits)
+    });
+  }
+  model.ids = order;
+
+  const sorted = Array.from(model.nodes.keys()).sort(compareUnits);
+  for (const id of sorted) {
+    const node = model.nodes.get(id);
+    if (node.manifest === null && id !== BASELINE_PLATEAU && node.headers.length) {
+      model.warnings.push('the plateau `' + id + '` exists only through the `plateau` key of the header of ' + plateauNames(node.headers) + ': it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name');
+    }
+  }
+  for (let i = 0; i < sorted.length; i++) {
+    for (let j = i + 1; j < sorted.length; j++) {
+      if (oneLetterApart(sorted[i], sorted[j])) model.warnings.push('the plateaus `' + sorted[i] + '` and `' + sorted[j] + '` have ids one letter apart: check that one of them is not a typo');
+    }
+  }
+  return model;
+}
+
+/** The plateaus from the root down to `id`, itself last (`PlateauTree.chain`): what a plateau is loaded from. */
+function plateauChain(model, id) {
+  const chain = [];
+  for (let at = model.nodes.get(id); at; at = at.parent === null ? null : model.nodes.get(at.parent)) chain.unshift(at);
+  return chain;
+}
+
+/**
+ * A reference, a view or a story declared in a plateau and again in one of its ancestors is a mistake (`PlateauTree.redeclared`): two plateaus
+ * that do not stack may each declare it. `declarations`: Map plateau id -> { application, technology, view, story } (Map reference -> files).
+ * Adds the sentences to `model.redeclared` (the command line tells them after the references declared twice in a plateau).
+ */
+function checkPlateauRedeclarations(model, declarations) {
+  if (model.problems.length) return;
+  const messages = new Map(); // reference -> [message]
+  for (const id of model.ids) {
+    const own = declarations.get(id);
+    if (!own) continue;
+    const chain = plateauChain(model, id);
+    for (const ancestor of chain.slice(0, -1)) {
+      const above = declarations.get(ancestor.id);
+      if (!above) continue;
+      for (const namespace of ['application', 'technology', 'view', 'story']) {
+        for (const [reference, sources] of own[namespace]) {
+          const ancestorSources = above[namespace].get(reference);
+          if (!ancestorSources) continue;
+          const noun = namespace === 'view' || namespace === 'story' ? namespace : 'reference';
+          const names = (files) => plateauNames(Array.from(new Set(files)).sort(compareUnits));
+          if (!messages.has(reference)) messages.set(reference, new Set());
+          messages.get(reference).add('the ' + noun + ' `' + reference + '` is declared in the plateau `' + id + '` (' + names(sources) + ') and again in its ancestor `' + ancestor.id + '` (' + names(ancestorSources) + ')');
+        }
+      }
+    }
+  }
+  for (const reference of Array.from(messages.keys()).sort(compareUnits)) {
+    for (const message of Array.from(messages.get(reference)).sort(compareUnits)) model.redeclared.push(message);
+  }
+}
+
+/** The sentence for a workspace that has `settings.plateaus` and uses layered plateaus; the command line says the same (`WorkspaceFactory`). */
+function layeredAndSettingsPlateausSentence(model) {
+  return '`settings.plateaus` and layered plateaus are both used: ' + model.layeredBy + '. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`';
+}
+
 /**
  * Build the application/technology element indexes from every
  * successfully-parsed manifest file (DEC-5/FR-6). Mutates manifestFiles'
@@ -4056,7 +4279,13 @@ function reducedLevelForKind(kind) {
 function buildIndex(manifestFiles, settings) {
   const index = { application: new Map(), technology: new Map() };
   const candidateRoots = { application: [], technology: [] }; // { record, parentReference }
-  const declarations = { application: new Map(), technology: new Map(), view: new Map(), story: new Map() }; // reference (id, for a view and a story) -> the files that declare it, by layer
+  // what each plateau declares, by plateau: reference (id, for a view and a story) -> the files that declare it, by layer. Until the plateaus are
+  // loaded as layers (run 0077), the index holds the manifests of `baseline` alone; the others are read, checked, and not drawn
+  const declarationsByPlateau = new Map();
+  const declarationsOf = (plateau) => {
+    if (!declarationsByPlateau.has(plateau)) declarationsByPlateau.set(plateau, { application: new Map(), technology: new Map(), view: new Map(), story: new Map() });
+    return declarationsByPlateau.get(plateau);
+  };
 
   for (const mf of manifestFiles) {
     if (mf.error) continue;
@@ -4065,6 +4294,9 @@ function buildIndex(manifestFiles, settings) {
       continue;
     }
     const bareKind = stripArchicodeKindPrefix(mf.header.kind);
+    if (bareKind === 'plateau') continue; // a manifest, not an element: the tree of plateaus is built below
+    const plateau = plateauOfManifest(mf);
+    const declarations = declarationsOf(plateau);
     if (bareKind === 'view' || bareKind === 'story') { // manifests, but not elements: see "Stories"
       const id = String(mf.content.id);
       if (!declarations[bareKind].has(id)) declarations[bareKind].set(id, []);
@@ -4089,8 +4321,10 @@ function buildIndex(manifestFiles, settings) {
     const rootReference = mf.header.parent
       ? (mf.header.parent + '.' + mf.content.id)
       : String(mf.content.id);
-    const rootRecord = indexElementRecursive(mf.content, rootKind, rootReference, mf.relPath, category, index, settings, rootLevel, declarations);
-    candidateRoots[category].push({ record: rootRecord, parentReference: mf.header.parent || null });
+    // the elements of another plateau are walked to tell what they declare, into an index of their own that nothing reads
+    const into = plateau === BASELINE_PLATEAU ? index : { application: new Map(), technology: new Map() };
+    const rootRecord = indexElementRecursive(mf.content, rootKind, rootReference, mf.relPath, category, into, settings, rootLevel, declarations);
+    if (plateau === BASELINE_PLATEAU) candidateRoots[category].push({ record: rootRecord, parentReference: mf.header.parent || null });
   }
 
   // DEC-5b: attach each candidate root under its resolved parent (if any);
@@ -4107,7 +4341,9 @@ function buildIndex(manifestFiles, settings) {
     }
   }
 
-  return { index, rootsByCategory, duplicates: findDuplicateReferences(declarations) };
+  const plateauTree = buildPlateauTree(manifestFiles);
+  checkPlateauRedeclarations(plateauTree, declarationsByPlateau);
+  return { index, rootsByCategory, duplicates: findDuplicateReferences(Array.from(declarationsByPlateau.values())), plateauTree };
 }
 
 /**
@@ -4128,20 +4364,21 @@ function duplicateReferenceMessage(reference, sources, noun) {
 }
 
 /**
- * The references declared more than once in a layer (by two files, by a file and an element nested in another, or twice in
- * one file), and the views and stories (`layer` is then `view` or `story`) that share an id, as `[{ layer, reference, sources, message }]`, by reference. A reference may exist in both
+ * The references declared more than once in a layer of a plateau (by two files, by a file and an element nested in another, or twice in
+ * one file; `declarationsOfPlateaus` is one set of declarations for each plateau, since two plateaus that do not stack may declare the same reference), and the views and stories (`layer` is then `view` or `story`) that share an id, as `[{ layer, reference, sources, message }]`, by reference. A reference may exist in both
  * layers: that is no duplicate. The command line fails on the same set.
  */
-function findDuplicateReferences(declarations) {
+function findDuplicateReferences(declarationsOfPlateaus) {
   const found = [];
-  for (const layer of ['application', 'technology', 'view', 'story']) {
-    const noun = layer === 'view' || layer === 'story' ? layer : 'reference'; // a view and a story have an id of their own
-    for (const [reference, sources] of declarations[layer]) {
-      if (sources.length > 1) found.push({ layer, reference, sources: sources.slice(), message: duplicateReferenceMessage(reference, sources, noun) });
+  for (const declarations of declarationsOfPlateaus) {
+    for (const layer of ['application', 'technology', 'view', 'story']) {
+      const noun = layer === 'view' || layer === 'story' ? layer : 'reference'; // a view and a story have an id of their own
+      for (const [reference, sources] of declarations[layer]) {
+        if (sources.length > 1) found.push({ layer, reference, sources: sources.slice(), message: duplicateReferenceMessage(reference, sources, noun) });
+      }
     }
   }
-  const before = (a, b) => (a < b ? -1 : a > b ? 1 : 0); // code units, as Java orders a String
-  found.sort((a, b) => before(a.reference, b.reference) || before(a.message, b.message));
+  found.sort((a, b) => compareUnits(a.reference, b.reference) || compareUnits(a.message, b.message)); // code units, as Java orders a String
   // the same reference told twice, with the same files, in both layers: said once, as the command line does
   return found.filter((d, i) => i === 0 || d.message !== found[i - 1].message);
 }
@@ -4230,6 +4467,9 @@ const READ_SCHEMA = {
     "Node": { "extends": "Element", "fields": { "applications": "texts", "elements": "[*NodeElement]" } },
     "View": { "lenient": true, "fields": { "description": "text", "id": "text", "layer": "enum:APPLICATION,TECHNOLOGY", "name": "text", "properties": "any", "viewpoint": "text" }, "required": ["id", "viewpoint"] },
     "Story": { "lenient": true, "fields": { "description": "text", "id": "text", "name": "text", "steps": "[Step]" }, "required": ["id"] },
+    "Plateau": { "fields": { "horizon": "text", "id": "text", "name": "text", "override": "text", "patches": "[Patch]" }, "required": ["id"] },
+    "Patch": { "fields": { "expect": "int", "field": "text", "json-path": "text", "layer": "enum:APPLICATION,TECHNOLOGY", "operator": "enum:ADD,MERGE,REMOVE,SET", "target": "text", "value": "any", "where": "Where" }, "aliases": { "json_path": "json-path" }, "required": ["operator"] },
+    "Where": { "fields": { "destination": "text", "label": "text" }, "required": ["destination"] },
     "Step": { "lenient": true, "fields": { "layer": "enum:APPLICATION,TECHNOLOGY", "name": "text", "properties": "any", "text": "text", "view": "text", "viewpoint": "text" } },
     "Application": { "fields": { "elements": "[*ApplicationElement]" } },
     "Technology": { "fields": { "elements": "[*TechnologyElement]" } },
@@ -4259,7 +4499,7 @@ const READ_SCHEMA = {
   },
   "manifestKinds": {
     "component": "Component", "container": "Container", "container-group": null, "environment": "Environment", "node": "Node", "person": "Person",
-    "solution": "Solution", "solution-group": null, "story": "Story", "system": "System", "system-group": null, "view": "View"
+    "plateau": "Plateau", "solution": "Solution", "solution-group": null, "story": "Story", "system": "System", "system-group": null, "view": "View"
   }
 };
 // READ_SCHEMA end
@@ -4419,11 +4659,8 @@ function readTyped(iface, node, path, prefix) {
   return readObject(kinds[String(written)], node, path, prefix, true);
 }
 
-/** The end of the sentence that refuses a layered plateau; the command line says the same words (`ManifestParser.LAYERED_PLATEAU`): keep them alike. */
-const LAYERED_PLATEAU = ' is not supported yet: layered plateaus (a plateau written as an increment on top of another one) are reserved for a later version of ArchiCode (see #30). Give each plateau its own folder of manifests in `settings.plateaus` instead';
-
-/** The keys the header of a manifest has, in the order the command line lists them (`Manifest.Header`: `kind`, `parent`, `version`). */
-const MANIFEST_HEADER_KEYS = ['kind', 'parent', 'version'];
+/** The keys the header of a manifest has, in the order the command line lists them (`Manifest.Header`: `kind`, `parent`, `plateau`, `version`). */
+const MANIFEST_HEADER_KEYS = ['kind', 'parent', 'plateau', 'version'];
 
 /** The kind of a manifest as the command line reads it: the prefix is required, the case and the spaces around are not. Null when it is not one. */
 function manifestKindName(value) {
@@ -4439,7 +4676,6 @@ function headerProblem(header) {
   if (readIsMissing(header)) return null;
   if (!readIsObject(header)) return readWrongShape(header, 'header');
   for (const key of Object.keys(header)) {
-    if (key === 'plateau') return '`header.plateau`' + LAYERED_PLATEAU;
     if (!MANIFEST_HEADER_KEYS.includes(key)) {
       return 'unknown key `' + key + '` (known: ' + MANIFEST_HEADER_KEYS.join(', ') + ') at `header.' + key + '`';
     }
@@ -4451,8 +4687,7 @@ function headerProblem(header) {
     } else if (Array.isArray(value) || readIsObject(value) || typeof value === 'boolean' || (typeof value === 'number' && !Number.isInteger(value))) {
       return readWrongShape(value, 'header.kind');
     } else if (manifestKindName(value) === null) {
-      const bare = String(value).trim().toLowerCase().replace(ARCHICODE_KIND_PREFIX, '');
-      return bare === 'plateau' ? '`kind: plateau`' + LAYERED_PLATEAU : unrecognizedKindProblem(value);
+      return unrecognizedKindProblem(value);
     }
   }
   if (readIsMissing(header.kind)) return 'Missing header.kind';
@@ -4481,7 +4716,27 @@ function manifestProblem(root) {
   const type = READ_SCHEMA.manifestKinds[manifestKindName(root.header.kind)];
   // a group as the root of a manifest is not read by the command line yet (tmorin/archicode#79): nothing to compare it with
   if (type === null || type === undefined) return readIsMissing(root.content.id) ? 'Missing content.id' : null;
-  return readObject(type, root.content, '', 'content', true);
+  const problem = readObject(type, root.content, '', 'content', true);
+  if (problem) return problem;
+  return manifestKindName(root.header.kind) === 'plateau' ? plateauShapeProblem(root.content) : null;
+}
+
+/**
+ * What is wrong with the shape of the patches of a plateau beyond the keys and the values `readObject` checks: a patch says what it selects
+ * with a `target` or a `json-path`, one of them. The command line says the same (`Plateau.shapeProblems`): keep them alike. The rest of what a
+ * combination of keys means is the kernel's to say, with the plateau and the rank, when the layer is built.
+ */
+function plateauShapeProblem(content) {
+  if (!Array.isArray(content.patches)) return null;
+  for (let i = 0; i < content.patches.length; i++) {
+    const patch = content.patches[i];
+    if (readIsMissing(patch)) continue;
+    const hasTarget = !readIsMissing(patch.target);
+    const hasPath = !readIsMissing(patch['json-path']) || !readIsMissing(patch['json_path']);
+    if (hasTarget && hasPath) return '`patches[' + i + ']` has a `target` and a `json-path`: write one of them';
+    if (!hasTarget && !hasPath) return '`patches[' + i + ']` has no selector: write a `target` or a `json-path`';
+  }
+  return null;
 }
 
 /**
@@ -4594,6 +4849,7 @@ async function loadWorkspace(dirHandle) {
   AppState.plateauProblem = null;
   AppState.baseline = null;
   modelsChanged(); // the models are emptied here, and a load that stops on an error leaves them so
+  AppState.plateauTree = null;
   AppState.dirtyReferences = new Set();
   AppState.pendingFileRemovals = []; // a reload starts from the disk: a removal queued before it must not delete a file later
   AppState.removedFileBaselines = new Map();
@@ -4683,11 +4939,19 @@ async function loadWorkspace(dirHandle) {
   AppState.unreadManifestFiles = unreadManifestFiles.sort(compareCodePoints);
 
   // DEC-5 / FR-6 / FR-7: index + resolve (per-file parse errors do not abort this).
-  const { index, rootsByCategory, duplicates } = buildIndex(manifestFiles, settings);
+  const { index, rootsByCategory, duplicates, plateauTree } = buildIndex(manifestFiles, settings);
+  // `settings.plateaus` and layered plateaus are two ways to say the same thing: a workspace uses one (the command line refuses both)
+  if (selection.plateau && plateauTree.layered) {
+    AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + layeredAndSettingsPlateausSentence(plateauTree);
+    AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    render();
+    return;
+  }
   const relationshipStats = resolveRelationships(index);
   AppState.index = index;
   modelsChanged();
   AppState.duplicateReferences = duplicates;
+  AppState.plateauTree = plateauTree;
   AppState.relationshipStats = relationshipStats;
 
   AppState.workspace = {
@@ -5700,9 +5964,10 @@ function locateContentNode(reference, layer) {
  * of every commit path below.
  */
 function rebuildIndexAndRender() {
-  const { index, rootsByCategory, duplicates } = buildIndex(AppState.manifestFiles, AppState.workspace.settings);
+  const { index, rootsByCategory, duplicates, plateauTree } = buildIndex(AppState.manifestFiles, AppState.workspace.settings);
   AppState.index = index;
   AppState.duplicateReferences = duplicates;
+  AppState.plateauTree = plateauTree;
   AppState.workspace.application.elements = rootsByCategory.application;
   AppState.workspace.technology.elements = rootsByCategory.technology;
   AppState.relationshipStats = resolveRelationships(index);
@@ -7811,7 +8076,7 @@ function renderElementsNavHtml(showAddButton) {
     : '';
   treeComparison = comparisonForTrees();
   try {
-    return note + renderDuplicateReferencesHtml() + renderUnreadManifestsHtml(false) +
+    return note + renderPlateauTreeHtml() + renderDuplicateReferencesHtml() + renderUnreadManifestsHtml(false) +
            renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
            renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments, showAddButton);
   } finally {
@@ -7864,6 +8129,28 @@ function duplicatesCountText(duplicates) {
   return duplicates.length === 1 ? 'One reference, view or story is' : duplicates.length + ' references, views or stories are';
 }
 
+/**
+ * The mistakes of the tree of plateaus (the command line refuses the workspace until each is fixed) and what is odd about it (the command line
+ * warns). Nothing is blocked: the editor opens, edits and saves, so that the mistake can be fixed in it. Nothing at all for a workspace that
+ * writes no layered plateau.
+ */
+function renderPlateauTreeHtml() {
+  const model = AppState.plateauTree;
+  if (!model || !model.layered) return '';
+  let html = '';
+  // an edit can add a layered plateau to a workspace that has `settings.plateaus`: the command line refuses both
+  const problems = AppState.plateau ? [layeredAndSettingsPlateausSentence(model)] : model.problems.concat(model.redeclared);
+  if (problems.length) {
+    html += '<div class="nav-duplicate-note" role="alert"><strong>' + (problems.length === 1 ? 'One mistake in the plateaus.' : problems.length + ' mistakes in the plateaus.') + '</strong> ' +
+      'The command line refuses to load the workspace until they are fixed.' +
+      '<ul>' + problems.map((p) => '<li>' + duplicateMessageHtml(p) + '</li>').join('') + '</ul></div>';
+  }
+  if (model.warnings.length) {
+    html += '<div class="nav-facet-note nav-plateau-warnings" role="status"><ul>' + model.warnings.map((w) => '<li>' + duplicateMessageHtml(w) + '</li>').join('') + '</ul></div>';
+  }
+  return html;
+}
+
 /** The duplicates that are references of elements: the model has no single answer, so nothing is drawn from it. */
 function elementDuplicates() {
   return (AppState.duplicateReferences || []).filter((d) => d.layer === 'application' || d.layer === 'technology');
@@ -7903,7 +8190,7 @@ function renderFilesNavHtml() {
             '</div>';
   }
   html += '</div>';
-  return renderDuplicateReferencesHtml() + html + renderUnreadManifestsHtml(true);
+  return renderPlateauTreeHtml() + renderDuplicateReferencesHtml() + html + renderUnreadManifestsHtml(true);
 }
 
 /** The left panel's `<nav>` shell — one resizable panel id shared by every perspective that uses it. */

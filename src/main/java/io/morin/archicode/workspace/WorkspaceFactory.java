@@ -14,6 +14,7 @@ import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.technology.Technology;
+import io.morin.archicode.resource.plateau.Plateau;
 import io.morin.archicode.resource.workspace.Settings.Facets.Facet;
 import io.morin.archicode.resource.workspace.Workspace;
 import io.morin.archicode.viewpoint.Change;
@@ -337,13 +338,19 @@ public class WorkspaceFactory {
 
         // parse the manifests: the elements, and the views and the stories that are manifests of their own, which join
         // the ones of workspace.yaml. One call per plateau: a reference declared twice is an error inside a plateau,
-        // and the same reference in two plateaus is the very point of having two
-        val manifests = manifestParser.parse(
+        // and the same reference in two plateaus is the very point of having two. Layered plateaus (a `plateau` in a header, a
+        // manifest of kind plateau) and `settings.plateaus` are two ways to say the same thing: a workspace uses one
+        val parsed = manifestParser.parse(
             wksDir,
             manifestsDirs,
             path,
-            rawWorkspace.getSettings().getViews().getPath()
+            rawWorkspace.getSettings().getViews().getPath(),
+            selection == null
         );
+        warnings.warnAll(parsed.plateaus().warnings());
+        // until the plateaus are loaded as layers, what a layered workspace draws is the plateau `baseline` alone: the
+        // manifests of the other plateaus and the patches are read, checked and kept, and not drawn
+        val manifests = parsed.plateaus().isLayered() ? parsed.ofPlateau(Plateau.BASELINE) : parsed;
 
         return new Loaded(
             fixedRawWorkspace.toBuilder().views(manifests.views()).stories(manifests.stories()).build(),

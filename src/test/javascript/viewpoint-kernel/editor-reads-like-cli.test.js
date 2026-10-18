@@ -15,7 +15,7 @@ const HEADER = 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n';
 const manifest = (content, header = HEADER) => header + 'content:\n' + content;
 const errorOf = (text) => app.parseManifestText(text).error;
 const KNOWN_KINDS =
-  'archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, ' +
+  'archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, ' +
   'archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view';
 
 test('an unknown header.kind gives one sentence, with the value and the kinds there are (#76)', () => {
@@ -39,16 +39,16 @@ test('a kind is read in any case and with spaces around it, as the command line 
 
 test('the checks come in the order the command line meets them: the file from the top, an object finished before the key it lacks is told (#77)', () => {
   const kind = (value) => '  kind: "archicode.morin.io/' + value + '"\n';
-  // the kind of a layered plateau, met before the end of the header where the missing version would be told
-  assert.match(errorOf('header:\n' + kind('plateau') + 'content:\n  id: s\n'), /^`kind: plateau` is not supported yet/);
-  assert.match(errorOf('header:\n' + kind('system') + '  plateau: x\ncontent:\n  id: s\n'), /^`header.plateau` is not supported yet/);
+  // the kind and the plateau key are read like any other: the version that is missing is told at the end of the header
+  assert.equal(errorOf('header:\n' + kind('plateau') + 'content:\n  id: s\n'), 'Missing header.version');
+  assert.equal(errorOf('header:\n' + kind('system') + '  plateau: x\ncontent:\n  id: s\n'), 'Missing header.version');
   // an unknown key of the header comes before the version it lacks, a missing key after the keys that are there
-  assert.equal(errorOf('header:\n' + kind('system') + '  foo: 1\ncontent:\n  id: s\n'), 'unknown key `foo` (known: kind, parent, version) at `header.foo`');
+  assert.equal(errorOf('header:\n' + kind('system') + '  foo: 1\ncontent:\n  id: s\n'), 'unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`');
   assert.equal(errorOf('header:\n' + kind('system') + 'content:\n  id: s\n'), 'Missing header.version');
   // the content is read after the header, whichever comes first in the file, but a content of the wrong shape is met where it stands
   assert.equal(errorOf('content:\n  id: s\n  foo: 1\nheader:\n  kind: "archicode.morin.io/persn"\n  version: "1"\n'), 'unrecognized `header.kind` "archicode.morin.io/persn" (known: ' + KNOWN_KINDS + ')');
   assert.equal(errorOf('content: x\nheader:\n  foo: 1\n'), 'the value has the wrong shape (found a string) at `content`');
-  assert.equal(errorOf('header:\n  foo: 1\ncontent: x\n'), 'unknown key `foo` (known: kind, parent, version) at `header.foo`');
+  assert.equal(errorOf('header:\n  foo: 1\ncontent: x\n'), 'unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`');
   assert.equal(errorOf('content:\n  id: s\n  foo: 1\n'), 'Missing header.kind');
   // inside the content: the keys in the order of the file, then what an object lacks, an element finished before the next one starts
   assert.equal(errorOf(manifest('  foo: 1\n')), 'unknown key `foo` (known: description, elements, id, name, qualifiers, relationships, replaces, tags) at `foo`', 'an unknown key comes before the id that is missing');

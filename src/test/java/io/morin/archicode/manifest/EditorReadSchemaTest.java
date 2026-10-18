@@ -32,6 +32,8 @@ import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.element.technology.NodeElement;
 import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.resource.element.technology.TechnologyElement;
+import io.morin.archicode.resource.plateau.Patch;
+import io.morin.archicode.resource.plateau.Plateau;
 import io.morin.archicode.resource.workspace.Formatters;
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.resource.workspace.Styles;
@@ -79,6 +81,9 @@ class EditorReadSchemaTest {
             ApplicationGroup.class,
             Environment.class,
             Node.class,
+            Plateau.class,
+            Patch.class,
+            Patch.Where.class,
             Relationship.class,
             Application.class,
             Technology.class,

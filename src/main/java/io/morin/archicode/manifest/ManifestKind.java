@@ -6,6 +6,7 @@ import io.morin.archicode.resource.element.application.System;
 import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.element.technology.Technology;
+import io.morin.archicode.resource.plateau.Plateau;
 import io.morin.archicode.resource.story.Story;
 import io.morin.archicode.resource.view.View;
 import java.util.Arrays;
@@ -30,9 +31,10 @@ public enum ManifestKind {
     // TECHNOLOGY
     ENVIRONMENT(Environment.class, Technology.class),
     NODE(Node.class, Technology.class),
-    // NOT ELEMENTS: a view to put in stories, and a story
+    // NOT ELEMENTS: a view to put in stories, a story, and a plateau (a layer of the architecture)
     VIEW(View.class, View.class),
-    STORY(Story.class, Story.class);
+    STORY(Story.class, Story.class),
+    PLATEAU(Plateau.class, Plateau.class);
 
     private static final Map<String, List<ManifestKind>> INDEX = Arrays.stream(ManifestKind.values()).collect(
         Collectors.groupingBy(ManifestKind::getId)

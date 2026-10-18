@@ -3,13 +3,13 @@ package io.morin.archicode.manifest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Application;
+import io.morin.archicode.resource.plateau.Plateau;
+import io.morin.archicode.resource.plateau.PlateauTree;
 import io.morin.archicode.resource.story.Story;
 import io.morin.archicode.resource.view.View;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -57,15 +57,39 @@ public class ManifestParser {
      * @param viewsPath     {@code settings.views.path} as written in the workspace file: the folders of the generated views
      *                      are not read below a path that ends in {@code /**}
      */
-    @SneakyThrows
     public Parsed parse(Path wksDir, Set<String> manifestsDirs, Path workspaceFile, String viewsPath) {
+        return parse(wksDir, manifestsDirs, workspaceFile, viewsPath, true);
+    }
+
+    /**
+     * Read the manifests, and say what is wrong with the plateaus they write (see {@link PlateauTree}): every mistake of the
+     * tree, then the references declared twice in a plateau, then those declared again in an ancestor, one sentence each.
+     *
+     * @param workspaceFile the workspace file, or null
+     * @param viewsPath     {@code settings.views.path} as written in the workspace file
+     * @param layersAllowed false for a workspace that has {@code settings.plateaus}: it is then an error that a manifest uses
+     *                      layered plateaus, and it is the only thing told about them
+     */
+    @SneakyThrows
+    public Parsed parse(
+        Path wksDir,
+        Set<String> manifestsDirs,
+        Path workspaceFile,
+        String viewsPath,
+        boolean layersAllowed
+    ) {
         val map = new HashMap<Class<?>, Set<Candidate>>();
-        val views = new LinkedHashSet<View>();
-        val stories = new LinkedHashSet<Story>();
-        // where each reference is declared, by layer ("application", "technology"), and each view and story ("view",
-        // "story"): one declared twice is an error, whichever way it is declared (a manifest of its own, an element nested
-        // in another, a manifest placed under a parent)
-        val declarations = new HashMap<String, Map<String, List<String>>>();
+        val views = new ArrayList<Placed<View>>();
+        val stories = new ArrayList<Placed<Story>>();
+        // where each reference is declared, by plateau and by layer ("application", "technology"), and each view and story
+        // ("view", "story"): one declared twice in a plateau is an error, whichever way it is declared (a manifest of its
+        // own, an element nested in another, a manifest placed under a parent); one declared again in an ancestor of its
+        // plateau is an error too (see PlateauTree.redeclared)
+        val declarations = new HashMap<String, Map<String, Map<String, List<String>>>>();
+        // the plateaus: the manifests of kind plateau, the ids that headers name, and the first manifest that uses layers
+        val plateauManifests = new ArrayList<PlateauTree.Declared>();
+        val plateauHeaders = new TreeMap<String, List<String>>();
+        String layeredBy = null;
 
         for (Path manifestFile : ManifestDiscovery.discover(wksDir, manifestsDirs, viewsPath, workspaceFile)) {
             log.info("parse the manifest {}", manifestFile);
@@ -76,8 +100,7 @@ public class ManifestParser {
             try {
                 resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
             } catch (JsonProcessingException e) {
-                throw layeredPlateau(e)
-                    .or(() -> emptyManifest(e))
+                throw emptyManifest(e)
                     .or(() -> missingKey(e, ""))
                     .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
                     .orElseGet(() -> ArchiCodeException.unreadable(source, e, true));
@@ -92,15 +115,27 @@ public class ManifestParser {
                     .orElseGet(() -> ArchiCodeException.unreadable(source, e, false));
             }
 
+            // the plateau of the manifest: the one its header names, else baseline (a manifest of kind plateau names its own)
+            val written = resource.getHeader().getPlateau();
+            val plateau = written == null ? Plateau.BASELINE : written;
+            if (written != null && !(item instanceof Plateau)) {
+                plateauHeaders.computeIfAbsent(written, id -> new ArrayList<>()).add(source);
+                if (layeredBy == null) {
+                    layeredBy = "`" + source + "` says `plateau: " + written + "` in its header";
+                }
+            }
+
             if (item instanceof Element element) {
                 declare(
-                    declarations.computeIfAbsent(
-                        resource.getKind().getCategory() == Application.class ? "application" : "technology",
-                        c -> new HashMap<>()
-                    ),
+                    declarations
+                        .computeIfAbsent(plateau, p -> new HashMap<>())
+                        .computeIfAbsent(
+                            resource.getKind().getCategory() == Application.class ? "application" : "technology",
+                            c -> new HashMap<>()
+                        ),
                     resource.getHeader().getParent(),
                     resource.getContent(),
-                    sourceOf(wksDir, manifestFile)
+                    source
                 );
                 val reference = Optional.ofNullable(resource.getHeader().getParent())
                     .map(parentReference -> String.format("%s.%s", parentReference, element.getId()))
@@ -109,62 +144,52 @@ public class ManifestParser {
                     .parent(resource.getHeader().getParent())
                     .reference(reference)
                     .element(element)
+                    .plateau(plateau)
                     .build();
                 map.putIfAbsent(resource.getKind().getCategory(), new HashSet<>());
                 map.get(resource.getKind().getCategory()).add(candidate);
             } else if (item instanceof View view) {
-                views.add(view);
+                views.add(new Placed<>(plateau, source, view));
                 declarations
+                    .computeIfAbsent(plateau, p -> new HashMap<>())
                     .computeIfAbsent("view", c -> new HashMap<>())
                     .computeIfAbsent(view.getId(), r -> new ArrayList<>())
-                    .add(sourceOf(wksDir, manifestFile));
+                    .add(source);
             } else if (item instanceof Story story) {
-                stories.add(story);
+                stories.add(new Placed<>(plateau, source, story));
                 declarations
+                    .computeIfAbsent(plateau, p -> new HashMap<>())
                     .computeIfAbsent("story", c -> new HashMap<>())
                     .computeIfAbsent(story.getId(), r -> new ArrayList<>())
-                    .add(sourceOf(wksDir, manifestFile));
+                    .add(source);
+            } else if (item instanceof Plateau declared) {
+                if (!declared.shapeProblems().isEmpty()) {
+                    throw new ArchiCodeException("`%s` is not valid: %s", source, declared.shapeProblems().get(0));
+                }
+                plateauManifests.add(new PlateauTree.Declared(declared, source));
+                if (layeredBy == null) {
+                    layeredBy = "`" + source + "` is a manifest of kind `archicode.morin.io/plateau`";
+                }
             }
         }
-        failOnDuplicates(declarations);
-        return new Parsed(map, views, stories);
-    }
-
-    /**
-     * What is said of a manifest that is a layered plateau. The editor says the same words ({@code LAYERED_PLATEAU} in
-     * {@code standalone.html}): keep them alike. It is the end of the sentence that begins with the key.
-     */
-    static final String LAYERED_PLATEAU =
-        " is not supported yet: layered plateaus (a plateau written as an increment on top of another one) are reserved" +
-        " for a later version of ArchiCode (see #30). Give each plateau its own folder of manifests in" +
-        " `settings.plateaus` instead";
-
-    /**
-     * Whether the reader refused a manifest because it is a layered plateau, which ArchiCode does not know yet: its
-     * {@code kind} is {@code plateau} or its header has a {@code plateau}. Neither is recognised or accepted; both are
-     * told once, in one sentence, as the {@code from} of a plateau of the workspace is. Every other kind and every other
-     * key keeps the message of the reader.
-     *
-     * @param e what the reader said
-     * @return the reason, which names the key, or empty
-     */
-    static Optional<String> layeredPlateau(JsonProcessingException e) {
-        if (!(e instanceof JsonMappingException mapping)) {
-            return Optional.empty();
+        // `settings.plateaus` and layered plateaus are two ways to say the same thing: a workspace uses one, and nothing else is
+        // told about the layers of one that uses both
+        if (!layersAllowed && layeredBy != null) {
+            throw new ArchiCodeException("%s", settingsPlateausAndLayers(layeredBy));
         }
-        val path = mapping.getPath().stream().map(JsonMappingException.Reference::getFieldName).toList();
-        if (e instanceof UnrecognizedPropertyException && path.equals(List.of("header", "plateau"))) {
-            return Optional.of("`header.plateau`" + LAYERED_PLATEAU);
+        // the mistakes of the tree of the plateaus (an id, a parent, a cycle), then what each plateau declares: a reference
+        // declared twice in a plateau, or again in one of its ancestors (which needs a tree that is right)
+        val problems = new ArrayList<String>(PlateauTree.problems(plateauManifests, plateauHeaders));
+        val treeIsRight = problems.isEmpty();
+        problems.addAll(duplicates(declarations));
+        val tree = treeIsRight ? PlateauTree.of(plateauManifests, plateauHeaders, layeredBy) : null;
+        if (tree != null) {
+            problems.addAll(tree.redeclared(declarations));
         }
-        if (
-            e instanceof InvalidFormatException invalid &&
-            path.equals(List.of("header", "kind")) &&
-            invalid.getValue() instanceof String kind &&
-            kind.strip().toLowerCase(Locale.ROOT).replaceFirst("^archicode\\.morin\\.io/", "").equals("plateau")
-        ) {
-            return Optional.of("`kind: plateau`" + LAYERED_PLATEAU);
+        if (!problems.isEmpty()) {
+            throw new ArchiCodeException("%s", String.join("\n", problems));
         }
-        return Optional.empty();
+        return new Parsed(map, views, stories, tree);
     }
 
     /** What is said of a manifest that is empty: it lacks its header, which is told by the first key it needs. */
@@ -251,27 +276,39 @@ public class ManifestParser {
     }
 
     /**
-     * Fail when a reference is declared more than once in the layer: there is no way to tell which declaration is
+     * The sentences for the references declared more than once in a plateau: there is no way to tell which declaration is
      * meant, and keeping one of them silently would draw a model nobody wrote. The message names the reference and the
      * files, in an order that does not depend on the order the file system lists them in.
      */
-    private static void failOnDuplicates(Map<String, Map<String, List<String>>> declarations) {
+    private static List<String> duplicates(Map<String, Map<String, Map<String, List<String>>>> declarations) {
         val messages = new TreeMap<String, TreeSet<String>>(); // by reference, then by message
-        declarations.forEach((namespace, ids) ->
-            ids.forEach((id, sources) -> {
-                if (sources.size() > 1) {
-                    // an element has a reference, in a layer; a view and a story have an id of their own
-                    val noun = namespace.equals("view") || namespace.equals("story") ? namespace : "reference";
-                    messages.computeIfAbsent(id, r -> new TreeSet<>()).add(duplicateMessage(noun, id, sources));
-                }
-            })
+        declarations.values().forEach(plateau ->
+            plateau.forEach((namespace, ids) ->
+                ids.forEach((id, sources) -> {
+                    if (sources.size() > 1) {
+                        // an element has a reference, in a layer; a view and a story have an id of their own
+                        val noun = namespace.equals("view") || namespace.equals("story") ? namespace : "reference";
+                        messages.computeIfAbsent(id, r -> new TreeSet<>()).add(duplicateMessage(noun, id, sources));
+                    }
+                })
+            )
         );
-        if (!messages.isEmpty()) {
-            throw new ArchiCodeException(
-                "%s",
-                String.join("\n", messages.values().stream().flatMap(Set::stream).toList())
-            );
-        }
+        return messages.values().stream().flatMap(Set::stream).toList();
+    }
+
+    /**
+     * The sentence for a workspace that has {@code settings.plateaus} and uses layered plateaus. The editor says the same
+     * ({@code layeredAndSettingsPlateausSentence} in {@code standalone.html}): keep them alike.
+     *
+     * @param layeredBy how the first manifest that uses layers does so (see {@link PlateauTree#layeredBy()})
+     */
+    static String settingsPlateausAndLayers(String layeredBy) {
+        return (
+            "`settings.plateaus` and layered plateaus are both used: " +
+            layeredBy +
+            ". Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind" +
+            " `archicode.morin.io/plateau`"
+        );
     }
 
     /**
@@ -303,11 +340,77 @@ public class ManifestParser {
     /**
      * What the manifests hold.
      *
-     * @param elements the elements, by category (application, technology)
-     * @param views    the views that are manifests of their own
-     * @param stories  the stories
+     * @param elements the elements, by category (application, technology), each with the plateau it belongs to
+     * @param placedViews   the views that are manifests of their own, each with its plateau
+     * @param placedStories the stories, each with its plateau
+     * @param plateaus the plateaus of the workspace and how they stack (see {@link PlateauTree}); {@code baseline} alone for a
+     *                 workspace that uses none
      */
-    public record Parsed(Map<Class<?>, Set<Candidate>> elements, Set<View> views, Set<Story> stories) {}
+    public record Parsed(
+        Map<Class<?>, Set<Candidate>> elements,
+        List<Placed<View>> placedViews,
+        List<Placed<Story>> placedStories,
+        PlateauTree plateaus
+    ) {
+        /** The views of every plateau. */
+        public Set<View> views() {
+            return placedViews
+                .stream()
+                .map(Placed::item)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        }
+
+        /** The stories of every plateau. */
+        public Set<Story> stories() {
+            return placedStories
+                .stream()
+                .map(Placed::item)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        }
+
+        /**
+         * What one plateau declares on its own: not what it inherits from its ancestors, not what overrides it. The loader
+         * adds it to the graph of the parent, then applies the patches of the plateau ({@link PlateauTree#chain}).
+         *
+         * @param id the id of the plateau
+         * @return the elements, views and stories whose manifests say {@code plateau: <id>} (the same tree of plateaus)
+         */
+        public Parsed ofPlateau(String id) {
+            val own = new HashMap<Class<?>, Set<Candidate>>();
+            elements.forEach((category, candidates) -> {
+                val some = new HashSet<Candidate>();
+                candidates
+                    .stream()
+                    .filter(c -> c.getPlateau().equals(id))
+                    .forEach(some::add);
+                if (!some.isEmpty()) {
+                    own.put(category, some);
+                }
+            });
+            return new Parsed(
+                own,
+                placedViews
+                    .stream()
+                    .filter(v -> v.plateau().equals(id))
+                    .toList(),
+                placedStories
+                    .stream()
+                    .filter(v -> v.plateau().equals(id))
+                    .toList(),
+                plateaus
+            );
+        }
+    }
+
+    /**
+     * A view or a story, with the plateau it belongs to and the file it is in.
+     *
+     * @param plateau the plateau its header names, else {@code baseline}
+     * @param source  the file, from the folder of the workspace
+     * @param item    the view or the story
+     * @param <T>     the type of {@code item}
+     */
+    public record Placed<T>(String plateau, String source, T item) {}
 
     @Value
     @Builder
@@ -324,5 +427,10 @@ public class ManifestParser {
         @NonNull
         @ToString.Include
         Element element;
+
+        /** The plateau the manifest belongs to: the one its header names, else {@code baseline}. */
+        @NonNull
+        @Builder.Default
+        String plateau = Plateau.BASELINE;
     }
 }

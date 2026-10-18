@@ -228,7 +228,7 @@ the plateaus `as-is` and `to-be` share the path `plateaus/10_as-is`: each platea
 
 Every rule is checked before anything is read or written, and every problem is reported, one per line.
 
-The same later version reserves two more names, in the manifests: `kind: archicode.morin.io/plateau` and a `plateau` key in the header of a manifest are not recognised and are refused for now, by the command line (an `error:` line, exit code 1) and by the editor, with one sentence that names the key, says that layered plateaus are not supported yet and points at issue #30 (`tmorin/archicode`).
+Layered plateaus (a `plateau` key in the header of a manifest, and manifests of `kind: archicode.morin.io/plateau`) are being built: both tools read and check them, and a workspace that uses them together with `settings.plateaus` is refused with one `error:` line. They are described here when they are finished.
 
 IMPORTANT: *Breaking change* (see <<plateaus-upgrade>>). A path of `settings.manifests.paths` may no longer leave the folder of the workspace (`../shared`) nor be absolute (`/srv/manifests`, `C:\data`): the same rule as for the folder of a plateau, so that one folder holds a whole workspace, and so that the editor, which only reaches the folder it opened, reads what the command line reads. A workspace that used such a path stops with an error that says which path and what to change: move the folder below `workspace.yaml`, or move `workspace.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected, and neither is a workspace without `plateaus`: it is read, and generates its views, exactly as before.
 

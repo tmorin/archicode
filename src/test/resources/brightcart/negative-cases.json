@@ -284,7 +284,7 @@
         {
           "args": ["diff", "--plateau", "saas"],
           "exit": 1,
-          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unknown key `foo` (known: kind, parent, version) at `header.foo` (line 4, column 13)"]
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unknown key `foo` (known: kind, parent, plateau, version) at `header.foo` (line 4, column 13)"]
         },
         {
           "args": ["diff", "--plateau", "marketplace"],
@@ -297,7 +297,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unknown key `foo` (known: kind, parent, version) at `header.foo`" }
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`" }
           }
         },
         {
@@ -691,7 +691,7 @@
         {
           "args": ["diff", "--plateau", "saas"],
           "exit": 1,
-          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view) (line 2, column 9)"]
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view) (line 2, column 9)"]
         }
       ],
       "editor": [
@@ -699,7 +699,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view)" }
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view)" }
           }
         }
       ]

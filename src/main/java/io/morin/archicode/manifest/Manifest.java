@@ -43,5 +43,12 @@ public class Manifest {
         String version;
 
         String parent;
+
+        /**
+         * The plateau the manifest belongs to (a layer of the architecture, see {@code PlateauTree}); the manifest belongs to
+         * {@code baseline} when it names none. A manifest of kind {@code plateau} names its plateau by {@code content.id}, and
+         * this key means nothing there.
+         */
+        String plateau;
     }
 }

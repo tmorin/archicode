@@ -16,18 +16,21 @@ import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
 /**
- * A manifest of {@code kind: plateau} and a manifest with a {@code plateau} in its header are layered plateaus, which
- * ArchiCode does not know yet (#30): they are never recognised, and the command line refuses them with one line that
- * names the key, as it refuses the {@code from} of a plateau. The editor says the same sentence
- * ({@code shipped-files-layered-plateau.test.js} runs the same cases). Every other kind and key keeps its message.
+ * A manifest of {@code kind: plateau} and a manifest with a {@code plateau} in its header are the layered plateaus of wave 014
+ * (run 0077): the place-holder refusal that wave 013 put in their place (#30) is gone, and the command line reads them. The
+ * cases of the tree itself are in {@code PlateauModelTest}; this class holds what is the command line's alone: the kinds read
+ * in any case, the sentences of the other unknown keys and kinds, which now know the plateau, and the order of the checks. The
+ * editor says the same sentences ({@code shipped-files-layered-plateau.test.js} runs the same cases).
  */
 @QuarkusTest
-class LayeredPlateauRefusalTest {
+class LayeredPlateauTest {
 
-    private static final String LATER =
-        " is not supported yet: layered plateaus (a plateau written as an increment on top of another one) are reserved" +
-        " for a later version of ArchiCode (see #30). Give each plateau its own folder of manifests in" +
-        " `settings.plateaus` instead";
+    private static final String KINDS =
+        "archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, " +
+        "archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, " +
+        "archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/solution-group, " +
+        "archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, " +
+        "archicode.morin.io/view";
 
     @Inject
     CommandLine.IFactory factory;
@@ -75,29 +78,24 @@ class LayeredPlateauRefusalTest {
     }
 
     @Test
-    void shouldRefuseTheKindPlateauWithOneLine() {
+    void shouldReadTheKindPlateau() {
         for (val command : List.of(List.of("query", "graph"), List.of("views", "generate"))) {
-            assertOneLine(
-                run("archicode.morin.io/plateau", "", command.toArray(String[]::new)),
-                "error: `manifests/shop.yaml` is not valid: `kind: plateau`" + LATER
-            );
+            val result = run("archicode.morin.io/plateau", "", command.toArray(String[]::new));
+            assertEquals(0, result.exit(), result.err());
+            assertEquals("", result.err());
         }
     }
 
     @Test
-    void shouldRefuseTheBareKindPlateauToo() {
-        assertOneLine(
-            run("plateau", "", "query", "graph"),
-            "error: `manifests/shop.yaml` is not valid: `kind: plateau`" + LATER
-        );
-    }
-
-    @Test
-    void shouldRefuseThePlateauKeyOfTheHeaderWithOneLine() {
+    void shouldReadThePlateauKeyOfTheHeaderAndWarnThatOnlyTheHeaderNamesIt() {
         for (val command : List.of(List.of("query", "graph"), List.of("views", "generate"))) {
-            assertOneLine(
-                run("archicode.morin.io/system", "  plateau: \"later\"\n", command.toArray(String[]::new)),
-                "error: `manifests/shop.yaml` is not valid: `header.plateau`" + LATER
+            val result = run("archicode.morin.io/system", "  plateau: \"later\"\n", command.toArray(String[]::new));
+            assertEquals(0, result.exit(), result.err());
+            assertEquals(
+                List.of(
+                    "warning: the plateau `later` exists only through the `plateau` key of the header of `manifests/shop.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name"
+                ),
+                result.err().lines().toList()
             );
         }
     }
@@ -107,7 +105,7 @@ class LayeredPlateauRefusalTest {
         val result = run("archicode.morin.io/system", "  nothing: \"x\"\n", "query", "graph");
         assertOneLine(
             result,
-            "error: `manifests/shop.yaml` is not valid: unknown key `nothing` (known: kind, parent, version) at `header.nothing` (line 3, column 15)"
+            "error: `manifests/shop.yaml` is not valid: unknown key `nothing` (known: kind, parent, plateau, version) at `header.nothing` (line 3, column 15)"
         );
     }
 
@@ -117,28 +115,25 @@ class LayeredPlateauRefusalTest {
         assertEquals(1, result.exit(), result.err());
         assertEquals(
             "error: `manifests/shop.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/nothing\" (known: " +
-                "archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, " +
-                "archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, " +
-                "archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, " +
-                "archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view) (line 2, column 9)\n",
+                KINDS +
+                ") (line 2, column 9)\n",
             result.err()
         );
-        assertFalse(result.err().contains("plateau"), result.err());
-        assertFalse(result.err().contains("io.morin"), "no Java class name: " + result.err());
+        assertFalse(result.err().contains("io.morin.archicode."), "no Java class name: " + result.err());
     }
 
     @Test
-    void shouldTellThePlateauKindBeforeTheVersionThatIsMissing() {
-        // the reader meets the kind before it finds the end of the header: the editor checks in the same order (#77)
+    void shouldTellTheVersionThatIsMissingOfAPlateauAsOfAnyKind() {
+        // the kind is read like any other: the reader finds the end of the header, where the version would be
         assertOneLine(
             runManifest("header:\n  kind: \"archicode.morin.io/plateau\"\ncontent:\n  id: \"shop\"\n"),
-            "error: `manifests/shop.yaml` is not valid: `kind: plateau`" + LATER
+            "error: `manifests/shop.yaml` is not valid: Missing header.version"
         );
         assertOneLine(
             runManifest(
                 "header:\n  kind: \"archicode.morin.io/system\"\n  plateau: \"later\"\ncontent:\n  id: \"shop\"\n"
             ),
-            "error: `manifests/shop.yaml` is not valid: `header.plateau`" + LATER
+            "error: `manifests/shop.yaml` is not valid: Missing header.version"
         );
     }
 

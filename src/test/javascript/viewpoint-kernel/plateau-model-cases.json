@@ -1,0 +1,730 @@
+{
+  "comment": "The cases of the plateau model (run 0077, wave 014, W-3): the header key `plateau`, the manifest of kind `plateau` with its patches, the tree of the plateaus, and the references declared once in a chain. PlateauModelTest.java (command line) and plateau-model.test.js (editor) read this file; add a case here and both run it. `settings`: the text of workspace.yaml (`settings: {}` when absent; `manifests/` is read). `files`: a path from the folder of workspace.yaml -> the text of the file. `expect.loaded`: the references of the application layer that are drawn (nothing but the plateau baseline is drawn until the plateaus are loaded as layers, W-4); `expect.warnings`: the warnings, without `warning: ` (checked when the workspace loads: a load that stops says its mistakes and no warning); `expect.errors`: the mistakes of the tree and of the references (the command line prints one `error:` line for each; the editor lists them in the model of the plateaus); `expect.fileError`: a manifest the reader refuses (`file`, the `sentence`, and the `where` the command line adds when it reads the file itself: ` (line L, column C)`); `expect.settingsConflict`: the load stops (the editor says `Could not read the plateaus of workspace.yaml:` before it).",
+  "cases": [
+    {
+      "id": "M01",
+      "what": "a manifest of any kind accepts plateau: in its header (an element of each layer, a view, a story); the plateau exists through the header, and only the manifests of baseline are drawn until the layers are loaded",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later-system.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"mail\"\n  name: \"Mail\"\n",
+        "manifests/later-person.yaml": "header:\n  kind: \"archicode.morin.io/person\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"ann\"\n  name: \"Ann\"\n",
+        "manifests/later-env.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"prod\"\n  name: \"Prod\"\n",
+        "manifests/later-view.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"overview\"\n  viewpoint: \"overview\"\n",
+        "manifests/later-story.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"tour\"\n  name: \"Tour\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n  name: \"Later\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M02",
+      "what": "a manifest of kind plateau takes id, name, horizon, override and patches, and a patch takes the keys the kernel takes (operator, one of target and json-path, layer, expect, field, where, value)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/saas.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n  name: \"Buy\"\n  horizon: \"2026-Q4\"\n",
+        "manifests/saas2.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas2\"\n  name: \"Buy, again\"\n  horizon: \"2027-Q1\"\n  override: \"saas\"\n  patches:\n    - operator: REMOVE\n      target: \"shop\"\n    - operator: SET\n      target: \"shop\"\n      field: description\n      value: \"x\"\n    - operator: ADD\n      target: \"prod.vm\"\n      layer: technology\n      field: relationships\n      value: {destination: \"shop\", label: \"runs\"}\n    - operator: MERGE\n      json-path: \"$.application.elements[*]\"\n      expect: 1\n      field: tags\n      value: {a: \"b\"}\n    - operator: SET\n      json_path: \"$.application.elements[0]\"\n      field: relationships\n      where: {destination: \"shop\", label: \"uses\"}\n      value: {label: \"calls\"}\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateaus `saas` and `saas2` have ids one letter apart: check that one of them is not a typo"
+        ]
+      }
+    },
+    {
+      "id": "M03",
+      "what": "a plateau that is a manifest and the baseline written by a manifest or named in a header raise no warning, the tree has one root",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: baseline\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/baseline.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"baseline\"\n  name: \"Monolith\"\n  horizon: \"2026-Q1\"\n",
+        "manifests/saas.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n  override: \"baseline\"\n",
+        "manifests/inhouse.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"inhouse\"\n",
+        "manifests/marketplace.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"marketplace\"\n  override: \"inhouse\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M04",
+      "what": "a plateau that only headers name gives a warning that tells the manifests that name it, and what it is without a manifest of kind plateau",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"b\"\n  name: \"B\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `later` exists only through the `plateau` key of the header of `manifests/a.yaml` and `manifests/b.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name"
+        ]
+      }
+    },
+    {
+      "id": "M05",
+      "what": "the manifests that name a plateau are told up to three, then how many more",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"b\"\n  name: \"B\"\n",
+        "manifests/c.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"c\"\n  name: \"C\"\n",
+        "manifests/d.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"d\"\n  name: \"D\"\n",
+        "manifests/e.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"e\"\n  name: \"E\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `later` exists only through the `plateau` key of the header of `manifests/a.yaml`, `manifests/b.yaml`, `manifests/c.yaml` and 2 more: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name"
+        ]
+      }
+    },
+    {
+      "id": "M06",
+      "what": "a plateau whose id is one letter from another gives a warning, once for the pair, the ids in order; and a typo in a header gives both warnings (V5 of the fixture)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/inhouse.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"inhouse\"\n",
+        "manifests/shop-inhous.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: inhous\ncontent:\n  id: \"t\"\n  name: \"T\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `inhous` exists only through the `plateau` key of the header of `manifests/shop-inhous.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name",
+          "the plateaus `inhous` and `inhouse` have ids one letter apart: check that one of them is not a typo"
+        ]
+      }
+    },
+    {
+      "id": "M07",
+      "what": "ids that are two letters apart, or that differ by a transposition, are not told",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"sass2\"\n",
+        "manifests/c.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"sasa\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M08",
+      "what": "a plateau may override a plateau that headers alone name (it is a plateau all the same)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/soon.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: soon\ncontent:\n  id: \"s\"\n  name: \"S\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n  override: \"soon\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `soon` exists only through the `plateau` key of the header of `manifests/soon.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name"
+        ]
+      }
+    },
+    {
+      "id": "M09",
+      "what": "two plateaus that do not stack (alternatives) may each declare the same reference, and a plateau that stacks on none of them may declare another",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/saas.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n",
+        "manifests/inhouse.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"inhouse\"\n",
+        "manifests/saas-cart.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: saas\ncontent:\n  id: \"cart\"\n  name: \"Cart\"\n",
+        "manifests/inhouse-cart.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: inhouse\ncontent:\n  id: \"cart\"\n  name: \"Cart\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M10",
+      "what": "an override that names no plateau of the workspace",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/marketplace.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"marketplace\"\n  override: \"inhous\"\n",
+        "manifests/inhouse.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"inhouse\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau `marketplace` (`manifests/marketplace.yaml`) overrides `inhous`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse` and `marketplace`)"
+        ]
+      }
+    },
+    {
+      "id": "M11",
+      "what": "a cycle of two plateaus, told once and from its smallest id",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  override: \"a\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  override: \"b\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateaus `a` and `b` form a cycle: `a` overrides `b`, `b` overrides `a`"
+        ]
+      }
+    },
+    {
+      "id": "M12",
+      "what": "a cycle of three plateaus, and a plateau that overrides itself",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/x.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"x\"\n  override: \"z\"\n",
+        "manifests/y.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"y\"\n  override: \"x\"\n",
+        "manifests/z.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"z\"\n  override: \"y\"\n",
+        "manifests/solo.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"solo\"\n  override: \"solo\"\n",
+        "manifests/tail.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"tail\"\n  override: \"x\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau `solo` overrides itself",
+          "the plateaus `x`, `z` and `y` form a cycle: `x` overrides `z`, `z` overrides `y`, `y` overrides `x`"
+        ]
+      }
+    },
+    {
+      "id": "M13",
+      "what": "an id with a dot, in a manifest of kind plateau",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"v1.2\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau id `v1.2` in `manifests/v.yaml` is not valid: use lowercase letters, digits, `_` and `-`"
+        ]
+      }
+    },
+    {
+      "id": "M14",
+      "what": "an id with a dot or a capital, in a header: the plateau exists through it all the same, and the id is refused, with the manifests that name it",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"v1.2\"\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"v1.2\"\ncontent:\n  id: \"b\"\n  name: \"B\"\n",
+        "manifests/c.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: Later\ncontent:\n  id: \"c\"\n  name: \"C\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau id `Later` in `manifests/c.yaml` is not valid: use lowercase letters, digits, `_` and `-`",
+          "the plateau id `v1.2` in `manifests/a.yaml` and `manifests/b.yaml` is not valid: use lowercase letters, digits, `_` and `-`"
+        ]
+      }
+    },
+    {
+      "id": "M15",
+      "what": "an id of lowercase letters, digits, underscores and dashes is valid",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"to_be-2\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M16",
+      "what": "a plateau declared by two manifests",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/saas.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n  name: \"One\"\n",
+        "manifests/saas-again.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n  name: \"Two\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau `saas` is declared twice: in `manifests/saas-again.yaml` and `manifests/saas.yaml`"
+        ]
+      }
+    },
+    {
+      "id": "M17",
+      "what": "a plateau declared three times",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n",
+        "manifests/c.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau `saas` is declared 3 times: in `manifests/a.yaml`, `manifests/b.yaml` and `manifests/c.yaml`"
+        ]
+      }
+    },
+    {
+      "id": "M18",
+      "what": "baseline is the root: a manifest that declares it cannot override a plateau",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/baseline.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"baseline\"\n  override: \"later\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau `baseline` (`manifests/baseline.yaml`) is the root of the plateaus and cannot override `later`"
+        ]
+      }
+    },
+    {
+      "id": "M19",
+      "what": "several mistakes of the tree are told together, one for each line: the ids first, then the plateaus declared twice, the overrides, the cycles",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a.b\"\n",
+        "manifests/c.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"c\"\n  override: \"nothing\"\n",
+        "manifests/d1.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"d\"\n",
+        "manifests/d2.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"d\"\n",
+        "manifests/e.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"e\"\n  override: \"f\"\n",
+        "manifests/f.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"f\"\n  override: \"e\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau id `a.b` in `manifests/a.yaml` is not valid: use lowercase letters, digits, `_` and `-`",
+          "the plateau `d` is declared twice: in `manifests/d1.yaml` and `manifests/d2.yaml`",
+          "the plateau `c` (`manifests/c.yaml`) overrides `nothing`, which is not a plateau of this workspace (the plateaus are `a.b`, `baseline`, `c`, `d`, `e` and `f`)",
+          "the plateaus `e` and `f` form a cycle: `e` overrides `f`, `f` overrides `e`"
+        ]
+      }
+    },
+    {
+      "id": "M36",
+      "what": "a cycle with a plateau that leads into it: only the cycle is told, from its smallest id",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  override: \"b\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  override: \"c\"\n",
+        "manifests/c.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"c\"\n  override: \"b\"\n",
+        "manifests/d.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"d\"\n  override: \"a\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateaus `b` and `c` form a cycle: `b` overrides `c`, `c` overrides `b`"
+        ]
+      }
+    },
+    {
+      "id": "M37",
+      "what": "an unknown override and a cycle are told together, the override first",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/x.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"x\"\n  override: \"y\"\n",
+        "manifests/y.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"y\"\n  override: \"x\"\n",
+        "manifests/z.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"z\"\n  override: \"nope\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau `z` (`manifests/z.yaml`) overrides `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `x`, `y` and `z`)",
+          "the plateaus `x` and `y` form a cycle: `x` overrides `y`, `y` overrides `x`"
+        ]
+      }
+    },
+    {
+      "id": "M20",
+      "what": "a list given to override: one value is a plateau, not several",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/saas.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"saas\"\n  override: [\"baseline\", \"other\"]\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/saas.yaml",
+          "sentence": "the value has the wrong shape (found an array) at `override`",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M21",
+      "what": "a plateau key of the header that is a list",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: [a]\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/shop.yaml",
+          "sentence": "the value has the wrong shape (found an array) at `header.plateau`",
+          "where": " (line 4, column 12)"
+        }
+      }
+    },
+    {
+      "id": "M22",
+      "what": "a manifest of kind plateau without an id",
+      "files": {
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  name: \"x\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/a.yaml",
+          "sentence": "Missing content.id",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M23",
+      "what": "a key a plateau does not know",
+      "files": {
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  parent: \"a\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/b.yaml",
+          "sentence": "unknown key `parent` (known: horizon, id, name, override, patches) at `parent`",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M24",
+      "what": "a patch with an operator that is none of REMOVE, SET, ADD and MERGE",
+      "files": {
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: MOVE\n      target: \"a\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/b.yaml",
+          "sentence": "unrecognized `patches[0].operator` \"MOVE\" (known: ADD, MERGE, REMOVE, SET)",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M25",
+      "what": "a patch without an operator",
+      "files": {
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n    - target: \"a\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/b.yaml",
+          "sentence": "Missing content.patches[1].operator",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M26",
+      "what": "a patch with a target and a json-path",
+      "files": {
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n    - operator: REMOVE\n      target: \"a\"\n      json-path: \"$.application\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/b.yaml",
+          "sentence": "`patches[1]` has a `target` and a `json-path`: write one of them",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M27",
+      "what": "a patch with neither a target nor a json-path",
+      "files": {
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: REMOVE\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/b.yaml",
+          "sentence": "`patches[0]` has no selector: write a `target` or a `json-path`",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M28",
+      "what": "a patch with a key the kernel does not take, and a where without a destination",
+      "files": {
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: REMOVE\n      targt: \"a\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/b.yaml",
+          "sentence": "unknown key `targt` (known: expect, field, json-path, layer, operator, target, value, where) at `patches[0].targt`",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M29",
+      "what": "a where without a destination",
+      "files": {
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: SET\n      target: \"a\"\n      field: relationships\n      where: {label: \"x\"}\n      value: {label: \"y\"}\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/b.yaml",
+          "sentence": "Missing content.patches[0].where.destination",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M30",
+      "what": "a patch whose layer is none of application and technology",
+      "files": {
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n      layer: cloud\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/b.yaml",
+          "sentence": "unrecognized `patches[0].layer` \"cloud\" (known: APPLICATION, TECHNOLOGY)",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M31",
+      "what": "patches that is not a list",
+      "files": {
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches: \"REMOVE a\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/b.yaml",
+          "sentence": "the value has the wrong shape (found a string) at `patches`",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M32",
+      "what": "an empty id is not an id",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau id `` in `manifests/a.yaml` is not valid: use lowercase letters, digits, `_` and `-`"
+        ]
+      }
+    },
+    {
+      "id": "M33",
+      "what": "an empty override names no plateau (it is not the same as no override)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  override: \"\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau `a` (`manifests/a.yaml`) overrides ``, which is not a plateau of this workspace (the plateaus are `a` and `baseline`)"
+        ]
+      }
+    },
+    {
+      "id": "M34",
+      "what": "an empty plateau in a header is an id that is not valid; a plateau that is null is no plateau",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: ~\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: \"\"\ncontent:\n  id: \"a\"\n  name: \"A\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau id `` in `manifests/a.yaml` is not valid: use lowercase letters, digits, `_` and `-`"
+        ]
+      }
+    },
+    {
+      "id": "M35",
+      "what": "a null plateau, a null patches and a null item of patches are absent: nothing is told",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: ~\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  override:\n  patches: [~]\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  patches:\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateaus `a` and `b` have ids one letter apart: check that one of them is not a typo"
+        ]
+      }
+    },
+    {
+      "id": "M40",
+      "what": "a reference declared in a plateau and again in its parent",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n",
+        "manifests/later-shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the reference `shop` is declared in the plateau `later` (`manifests/later-shop.yaml`) and again in its ancestor `baseline` (`manifests/shop.yaml`)"
+        ]
+      }
+    },
+    {
+      "id": "M41",
+      "what": "a reference declared again in a grandparent, and a reference nested in another element",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    - kind: container\n      id: \"web\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n  override: \"a\"\n",
+        "manifests/b-web.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: \"shop\"\n  plateau: b\ncontent:\n  id: \"web\"\n  name: \"Web\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the reference `shop.web` is declared in the plateau `b` (`manifests/b-web.yaml`) and again in its ancestor `baseline` (`manifests/shop.yaml`)"
+        ]
+      }
+    },
+    {
+      "id": "M42",
+      "what": "a view declared again in an ancestor",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/v1.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"overview\"\n  viewpoint: \"overview\"\n",
+        "manifests/v2.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"overview\"\n  viewpoint: \"overview\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the view `overview` is declared in the plateau `later` (`manifests/v2.yaml`) and again in its ancestor `baseline` (`manifests/v1.yaml`)"
+        ]
+      }
+    },
+    {
+      "id": "M43",
+      "what": "a reference declared twice in one plateau keeps the sentence it always had",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"x\"\n  name: \"X\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"x\"\n  name: \"X\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the reference `x` is declared twice: in `manifests/a.yaml` and `manifests/b.yaml`"
+        ]
+      }
+    },
+    {
+      "id": "M44",
+      "what": "the same reference in the application layer and in the technology layer of two plateaus that stack is no redeclaration",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later-env.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `later` exists only through the `plateau` key of the header of `manifests/later-env.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name"
+        ]
+      }
+    },
+    {
+      "id": "M45",
+      "what": "a mistake of the tree and a reference declared twice are told together, the tree first",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  override: \"nothing\"\n",
+        "manifests/x1.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"x\"\n  name: \"X\"\n",
+        "manifests/x2.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"x\"\n  name: \"X\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau `a` (`manifests/a.yaml`) overrides `nothing`, which is not a plateau of this workspace (the plateaus are `a` and `baseline`)",
+          "the reference `x` is declared twice: in `manifests/x1.yaml` and `manifests/x2.yaml`"
+        ]
+      }
+    },
+    {
+      "id": "M46",
+      "what": "a reference declared twice in a plateau and a reference declared again in an ancestor are told together, the first first",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n",
+        "manifests/later-shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/x1.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"x\"\n  name: \"X\"\n",
+        "manifests/x2.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"x\"\n  name: \"X\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the reference `x` is declared twice: in `manifests/x1.yaml` and `manifests/x2.yaml`",
+          "the reference `shop` is declared in the plateau `later` (`manifests/later-shop.yaml`) and again in its ancestor `baseline` (`manifests/shop.yaml`)"
+        ]
+      }
+    },
+    {
+      "id": "M50",
+      "what": "settings.plateaus and a header that names a plateau are two ways to say the same thing",
+      "settings": "settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n",
+      "files": {
+        "plateaus/a/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "plateaus/a/mail.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"mail\"\n  name: \"Mail\"\n"
+      },
+      "expect": {
+        "settingsConflict": "`settings.plateaus` and layered plateaus are both used: `plateaus/a/mail.yaml` says `plateau: later` in its header. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`"
+      }
+    },
+    {
+      "id": "M51",
+      "what": "settings.plateaus and a manifest of kind plateau",
+      "settings": "settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n",
+      "files": {
+        "plateaus/a/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "plateaus/a/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n"
+      },
+      "expect": {
+        "settingsConflict": "`settings.plateaus` and layered plateaus are both used: `plateaus/a/later.yaml` is a manifest of kind `archicode.morin.io/plateau`. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`"
+      }
+    },
+    {
+      "id": "M52",
+      "what": "settings.plateaus alone is what it always was",
+      "settings": "settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n",
+      "files": {
+        "plateaus/a/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M53",
+      "what": "settings.plateaus and layered plateaus: the conflict is all that is told, not the mistakes of the layers",
+      "settings": "settings:\n  plateaus:\n    - id: a\n      path: plateaus/a\n",
+      "files": {
+        "plateaus/a/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "plateaus/a/mail.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: V1.2\ncontent:\n  id: \"mail\"\n  name: \"Mail\"\n",
+        "plateaus/a/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n  override: \"nothing\"\n"
+      },
+      "expect": {
+        "settingsConflict": "`settings.plateaus` and layered plateaus are both used: `plateaus/a/later.yaml` is a manifest of kind `archicode.morin.io/plateau`. Choose one: remove `settings.plateaus`, or remove the `plateau` keys of the headers and the manifests of kind `archicode.morin.io/plateau`"
+      }
+    }
+  ]
+}
