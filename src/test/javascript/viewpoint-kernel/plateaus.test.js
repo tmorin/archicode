@@ -278,8 +278,8 @@ test('saving the settings keeps the plateaus, their comments and layout, and wri
   assert.match(after, /  current: as-is\n/);
 });
 
-test('the other keys of workspace.yaml and of the settings survive a save', async () => {
-  const text = 'application:\n  elements: []\nsettings:\n  plateaus:\n    - id: a\n      path: plateaus/10_as-is\n  unknown-section: {a: 1}\n';
+test('the other keys of workspace.yaml survive a save', async () => {
+  const text = 'application:\n  elements: []\nsettings:\n  plateaus:\n    - id: a\n      path: plateaus/10_as-is\n';
   const { sandbox, state, mem } = await open('', FOLDERS);
   mem.put('workspace.yaml', text);
   await sandbox.loadWorkspace(mem.handle);
@@ -288,7 +288,6 @@ test('the other keys of workspace.yaml and of the settings survive a save', asyn
   await sandbox.writeWorkspaceYaml();
   const reread = plain(sandbox.parseYaml(mem.files.get('workspace.yaml').text));
   assert.deepEqual(reread.settings.plateaus, [{ id: 'a', path: 'plateaus/10_as-is' }]);
-  assert.deepEqual(reread.settings['unknown-section'], { a: 1 });
   assert.equal(reread.settings.name, 'N');
   assert.ok(!('manifests' in reread.settings));
   assert.deepEqual(plain(reread.application), { elements: [] });

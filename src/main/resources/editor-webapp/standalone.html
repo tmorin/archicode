@@ -3796,7 +3796,8 @@ function parseSettings(rawSettings) {
   return {
     name: name.trim() === '' ? '' : name,
     manifests: {
-      paths: Array.isArray(manifestsRaw.paths) ? manifestsRaw.paths : ['manifests']
+      // a number or a boolean is read as the text it is, as the command line reads it
+      paths: Array.isArray(manifestsRaw.paths) ? manifestsRaw.paths.map((p) => (typeof p === 'number' || typeof p === 'boolean' ? String(p) : p)) : ['manifests']
     },
     // run 0035: the plateaus as the file has them (checked by `selectPlateau`, kept as they are in the file when it is saved)
     plateaus: raw.plateaus === undefined || raw.plateaus === null ? [] : raw.plateaus,
@@ -3847,8 +3848,9 @@ const ARCHICODE_KIND_MAP = {
 };
 
 function stripArchicodeKindPrefix(fullKind) {
-  if (typeof fullKind === 'string' && fullKind.indexOf(ARCHICODE_KIND_PREFIX) === 0) {
-    return fullKind.slice(ARCHICODE_KIND_PREFIX.length);
+  if (typeof fullKind === 'string') {
+    const written = fullKind.trim().toLowerCase(); // the command line reads a kind in any case, and with spaces around it
+    if (written.indexOf(ARCHICODE_KIND_PREFIX) === 0) return written.slice(ARCHICODE_KIND_PREFIX.length);
   }
   return fullKind;
 }
@@ -3999,7 +4001,7 @@ function buildIndex(manifestFiles, settings) {
     }
     const mapping = ARCHICODE_KIND_MAP[bareKind];
     if (!mapping) {
-      mf.error = 'Unrecognized header.kind "' + mf.header.kind + '"';
+      mf.error = unrecognizedKindProblem(mf.header.kind);
       continue;
     }
     const { category, rootKind } = mapping;
@@ -4128,49 +4130,310 @@ async function getDirectoryHandleByRelativePath(rootHandle, relPath, options) {
   return current;
 }
 
-/** The end of the sentence that refuses a layered plateau; the command line says the same words (`ManifestParser.LAYERED_PLATEAU`): keep them alike. */
-const LAYERED_PLATEAU = ' is not supported yet: layered plateaus (a plateau written as an increment on top of another one) are reserved for a later version of ArchiCode (see #30). Give each plateau its own folder of manifests in `settings.plateaus` instead';
+/**
+ * What the command line reads, as the editor knows it (run 0072, issues #75 and #76): the keys each part of a manifest and of
+ * `workspace.yaml` takes, the shape of each value, the kinds a nested element may have, and the kinds of manifest. The command
+ * line takes them from its classes; this table is checked against them (`EditorReadSchemaTest.java` reads it from this page), so the
+ * two cannot drift. Specs: `text` (a text; a number or a boolean is read as one), `int`, `bool`, `any` (not checked), `texts` (a list of
+ * texts), `text-map` (a map of texts), `object-map` (a map of objects), `enum:A,B`, `T` (an object of type T), `[T]` (a list of them),
+ * `{T}` (a map of them), `[*I]` (a list of elements whose `kind` says the type, among those of the interface I). `extends` takes the
+ * fields and the required keys of another type; `aliases` are other names of a field (only the first is told in a sentence);
+ * `lenient` is a type whose unknown keys are ignored (a view, a story).
+ */
+// READ_SCHEMA begin
+const READ_SCHEMA = {
+  "types": {
+    "Element": { "fields": { "description": "text", "id": "text", "name": "text", "qualifiers": "texts", "relationships": "[Relationship]", "replaces": "any", "tags": "text-map" }, "required": ["id"] },
+    "Relationship": { "fields": { "destination": "text", "label": "text", "qualifier": "text", "qualifiers": "texts", "tags": "text-map" }, "required": ["destination"] },
+    "Person": { "extends": "Element" },
+    "Component": { "extends": "Element" },
+    "Container": { "extends": "Element", "fields": { "elements": "[*ContainerElement]" } },
+    "ContainerGroup": { "extends": "Element", "fields": { "elements": "[*ContainerElement]" } },
+    "System": { "extends": "Element", "fields": { "elements": "[*SystemElement]" } },
+    "SystemGroup": { "extends": "Element", "fields": { "elements": "[*SystemElement]" } },
+    "Solution": { "extends": "Element", "fields": { "elements": "[*SolutionElement]" } },
+    "SolutionGroup": { "extends": "Element", "fields": { "element": "any", "elements": "[*SolutionElement]" } },
+    "ApplicationGroup": { "extends": "Element", "fields": { "elements": "[*ApplicationElement]" } },
+    "Environment": { "extends": "Element", "fields": { "elements": "[*EnvironmentElement]", "uses": "texts" } },
+    "Node": { "extends": "Element", "fields": { "applications": "texts", "elements": "[*NodeElement]" } },
+    "View": { "lenient": true, "fields": { "description": "text", "id": "text", "layer": "enum:APPLICATION,TECHNOLOGY", "name": "text", "properties": "any", "viewpoint": "text" }, "required": ["id", "viewpoint"] },
+    "Story": { "lenient": true, "fields": { "description": "text", "id": "text", "name": "text", "steps": "[Step]" }, "required": ["id"] },
+    "Step": { "lenient": true, "fields": { "layer": "enum:APPLICATION,TECHNOLOGY", "name": "text", "properties": "any", "text": "text", "view": "text", "viewpoint": "text" } },
+    "Application": { "fields": { "elements": "[*ApplicationElement]" } },
+    "Technology": { "fields": { "elements": "[*TechnologyElement]" } },
+    "Workspace": { "fields": { "application": "Application", "formatters": "Formatters", "settings": "Settings", "stories": "any", "story": "any", "styles": "Styles", "technology": "Technology", "view": "any", "views": "any" } },
+    "Settings": { "fields": { "current": "text", "facets": "Facets", "manifests": "Manifests", "name": "text", "plateaus": "any", "relationships": "Relationships", "views": "Views" } },
+    "Manifests": { "fields": { "paths": "texts" } },
+    "Relationships": { "fields": { "default-synthetic-label": "text" } },
+    "Views": { "fields": { "labels": "text-map", "path": "text", "properties": "object-map" } },
+    "Facets": { "fields": { "customs": "[Facet]", "directoryNameTemplate": "text", "globalEnabled": "bool" }, "aliases": { "directory-name-template": "directoryNameTemplate", "global-enabled": "globalEnabled" } },
+    "Facet": { "fields": { "actions": "[Action]", "hideUnlinked": "bool", "name": "text" }, "aliases": { "hide-unlinked": "hideUnlinked" }, "required": ["name"] },
+    "Action": { "fields": { "jsonPath": "text", "operator": "enum:REMOVE" }, "aliases": { "json-path": "jsonPath" }, "required": ["operator", "jsonPath"] },
+    "Styles": { "fields": { "atomic": "Style", "by-qualifiers": "{Style}", "by-tags": "{Style}", "composite": "Style" } },
+    "Style": { "fields": { "background-color": "text", "font-color": "text", "font-style": "text", "line-color": "text", "line-gap": "int", "line-style": "int", "line-thickness": "int", "round-corner": "int", "shadowing": "bool" } },
+    "Formatters": { "fields": { "atomic": "AtomicFormatter", "composite": "CompositeFormatter", "link": "LinkFormatter" } },
+    "AtomicFormatter": { "fields": { "description": "text", "name": "text", "qualifiers": "text" } },
+    "CompositeFormatter": { "fields": { "name": "text", "qualifiers": "text" } },
+    "LinkFormatter": { "fields": { "label": "text", "qualifiers": "text" } }
+  },
+  "kinds": {
+    "ApplicationElement": { "group": "ApplicationGroup", "person": "Person", "solution": "Solution", "system": "System" },
+    "SystemElement": { "container": "Container", "group": "SystemGroup" },
+    "ContainerElement": { "component": "Component", "group": "ContainerGroup" },
+    "SolutionElement": { "group": "SolutionGroup", "system": "System" },
+    "TechnologyElement": { "environment": "Environment" },
+    "EnvironmentElement": { "node": "Node" },
+    "NodeElement": { "node": "Node" }
+  },
+  "manifestKinds": {
+    "component": "Component", "container": "Container", "container-group": null, "environment": "Environment", "node": "Node", "person": "Person",
+    "solution": "Solution", "solution-group": null, "story": "Story", "system": "System", "system-group": null, "view": "View"
+  }
+};
+// READ_SCHEMA end
 
-/** The sentence for a manifest of `kind: plateau` or with a `plateau` in its header (neither is recognised, as `from` of a plateau is not), else null. */
-function layeredPlateauProblem(header) {
-  if (Object.prototype.hasOwnProperty.call(header, 'plateau')) return '`header.plateau`' + LAYERED_PLATEAU;
-  if (typeof header.kind === 'string' && stripArchicodeKindPrefix(header.kind.trim().toLowerCase()) === 'plateau') return '`kind: plateau`' + LAYERED_PLATEAU;
+const readTypes = new Map(); // the types of READ_SCHEMA with what they extend resolved: { fields, required, aliases, lenient, known }
+
+function readType(name) {
+  if (readTypes.has(name)) return readTypes.get(name);
+  const def = READ_SCHEMA.types[name];
+  const base = def.extends ? readType(def.extends) : { fields: {}, required: [], aliases: {} };
+  const type = {
+    fields: Object.assign({}, base.fields, def.fields || {}),
+    required: def.required || base.required,
+    aliases: Object.assign({}, base.aliases, def.aliases || {}),
+    lenient: def.lenient === true
+  };
+  type.known = Object.keys(type.fields).sort(); // the order of the command line's sentence
+  readTypes.set(name, type);
+  return type;
+}
+
+function readIsObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readIsMissing(value) {
+  return value === undefined || value === null;
+}
+
+/** What kind of value this is, in the words of the command line's sentence. */
+function readFound(value) {
+  if (Array.isArray(value)) return 'an array';
+  if (readIsObject(value)) return 'an object';
+  if (typeof value === 'string') return 'a string';
+  if (typeof value === 'number') return 'a number';
+  return 'a boolean';
+}
+
+/** The sentence for a value that is not of the shape its key takes; the command line says the same (`ArchiCodeException.reason`). */
+function readWrongShape(value, path) {
+  return 'the value has the wrong shape (found ' + readFound(value) + ')' + (path ? ' at `' + path + '`' : '');
+}
+
+function readAt(path, key) {
+  return path ? path + '.' + key : key;
+}
+
+/** `Missing content.elements[0].id`: the words of the command line for a key that is required and absent (or empty). */
+function readMissing(prefix, path, key) {
+  return 'Missing ' + [prefix, path, key].filter(Boolean).join('.');
+}
+
+/** The sentence for a `header.kind` that is none of the kinds, with the kinds there are (the command line's, whole); #76. */
+function unrecognizedKindProblem(value) {
+  const known = Object.keys(READ_SCHEMA.manifestKinds).map((kind) => ARCHICODE_KIND_PREFIX + kind).sort();
+  return 'unrecognized `header.kind` "' + value + '" (known: ' + known.join(', ') + ')';
+}
+
+/** The first problem of one value against its spec, in document order, or null. `prefix`: where the `Missing` sentences start. */
+function readValue(spec, value, path, prefix) {
+  if (readIsMissing(value) || spec === 'any') return null;
+  const wrong = () => readWrongShape(value, path);
+  const nested = Array.isArray(value) || readIsObject(value);
+  if (spec === 'text') return nested ? wrong() : null;
+  if (spec === 'int') {
+    if (nested || typeof value === 'boolean') return wrong();
+    return typeof value === 'string' && value !== '' && !/^\s*[-+]?\d+\s*$/.test(value) ? wrong() : null; // an empty text is no value
+  }
+  if (spec === 'bool') {
+    if (nested) return wrong();
+    if (typeof value === 'string') return value === '' || ['true', 'True', 'TRUE', 'false', 'False', 'FALSE'].includes(value) ? null : wrong();
+    return typeof value === 'number' && !Number.isInteger(value) ? wrong() : null;
+  }
+  if (spec === 'texts') {
+    if (!Array.isArray(value)) return wrong();
+    for (let i = 0; i < value.length; i++) {
+      if (Array.isArray(value[i]) || readIsObject(value[i])) return readWrongShape(value[i], path + '[' + i + ']');
+    }
+    return null;
+  }
+  if (spec === 'text-map' || spec === 'object-map') {
+    if (!readIsObject(value)) return wrong();
+    for (const key of Object.keys(value)) {
+      const item = value[key];
+      if (readIsMissing(item)) continue;
+      const bad = spec === 'text-map' ? Array.isArray(item) || readIsObject(item) : !readIsObject(item);
+      if (bad) return readWrongShape(item, readAt(path, key));
+    }
+    return null;
+  }
+  if (spec.startsWith('enum:')) {
+    if (nested || typeof value === 'boolean' || (typeof value === 'number' && !Number.isInteger(value))) return wrong();
+    const values = spec.slice('enum:'.length).split(',');
+    if (values.some((v) => v.toLowerCase() === String(value).trim().toLowerCase())) return null;
+    return 'unrecognized `' + path + '` "' + value + '" (known: ' + values.join(', ') + ')';
+  }
+  if (spec.startsWith('[')) {
+    if (!Array.isArray(value)) return wrong();
+    const polymorphic = spec.startsWith('[*');
+    const name = spec.slice(polymorphic ? 2 : 1, -1);
+    for (let i = 0; i < value.length; i++) {
+      if (readIsMissing(value[i])) continue;
+      const at = path + '[' + i + ']';
+      const problem = polymorphic ? readTyped(name, value[i], at, prefix) : readObject(name, value[i], at, prefix, false);
+      if (problem) return problem;
+    }
+    return null;
+  }
+  if (spec.startsWith('{')) {
+    if (!readIsObject(value)) return wrong();
+    for (const key of Object.keys(value)) {
+      if (readIsMissing(value[key])) continue;
+      const problem = readObject(spec.slice(1, -1), value[key], readAt(path, key), prefix, false);
+      if (problem) return problem;
+    }
+    return null;
+  }
+  return readObject(spec, value, path, prefix, false);
+}
+
+/**
+ * The first problem of an object against its type, or null: the keys in the order of the file (an unknown key, a value of the wrong
+ * shape), then, once the object is done, the key it needs and lacks. This is the order in which the command line's reader finds them.
+ * `consumesKind`: the `kind` key says the type and is no key of the object.
+ */
+function readObject(typeName, node, path, prefix, consumesKind) {
+  if (!readIsObject(node)) return readWrongShape(node, path);
+  const type = readType(typeName);
+  for (const key of Object.keys(node)) {
+    if (consumesKind && key === 'kind') continue;
+    const field = Object.prototype.hasOwnProperty.call(type.fields, key) ? key : type.aliases[key];
+    if (field === undefined) {
+      if (type.lenient) continue;
+      return 'unknown key `' + key + '` (known: ' + type.known.join(', ') + ') at `' + readAt(path, key) + '`';
+    }
+    const problem = readValue(type.fields[field], node[key], readAt(path, key), prefix);
+    if (problem) return problem;
+  }
+  for (const key of type.required) {
+    const names = [key, ...Object.keys(type.aliases).filter((alias) => type.aliases[alias] === key)];
+    if (names.every((name) => readIsMissing(node[name]))) return readMissing(prefix, path, key);
+  }
   return null;
 }
+
+/** An element of a list whose `kind` says its type: the kind is read first, whatever its place in the object. */
+function readTyped(iface, node, path, prefix) {
+  const kinds = READ_SCHEMA.kinds[iface];
+  const written = readIsObject(node) ? node.kind : undefined;
+  const known = Object.keys(kinds).sort().join(', ');
+  if (typeof written !== 'string' && typeof written !== 'number' && typeof written !== 'boolean') {
+    return 'missing `kind` (known: ' + known + ') at `' + path + '`';
+  }
+  if (!Object.prototype.hasOwnProperty.call(kinds, String(written))) {
+    return 'unknown kind `' + written + '` (known: ' + known + ') at `' + path + '`';
+  }
+  return readObject(kinds[String(written)], node, path, prefix, true);
+}
+
+/** The end of the sentence that refuses a layered plateau; the command line says the same words (`ManifestParser.LAYERED_PLATEAU`): keep them alike. */
+const LAYERED_PLATEAU = ' is not supported yet: layered plateaus (a plateau written as an increment on top of another one) are reserved for a later version of ArchiCode (see #30). Give each plateau its own folder of manifests in `settings.plateaus` instead';
 
 /** The keys the header of a manifest has, in the order the command line lists them (`Manifest.Header`: `kind`, `parent`, `version`). */
 const MANIFEST_HEADER_KEYS = ['kind', 'parent', 'version'];
 
-/**
- * The sentence for the first key of a manifest header that ArchiCode does not know, else null. The words of the command line
- * (`ArchiCodeException.reason`: `unknown key ... (known: ...) at header.foo`), without the line and the column, which this reader does not have.
- */
-function unknownHeaderKeyProblem(header) {
+/** The kind of a manifest as the command line reads it: the prefix is required, the case and the spaces around are not. Null when it is not one. */
+function manifestKindName(value) {
+  if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') return null;
+  const written = String(value).trim().toLowerCase();
+  if (!written.startsWith(ARCHICODE_KIND_PREFIX)) return null;
+  const name = written.slice(ARCHICODE_KIND_PREFIX.length);
+  return Object.prototype.hasOwnProperty.call(READ_SCHEMA.manifestKinds, name) ? name : null;
+}
+
+/** The first problem of the header of a manifest, or null (a missing header is told by the caller). */
+function headerProblem(header) {
+  if (readIsMissing(header)) return null;
+  if (!readIsObject(header)) return readWrongShape(header, 'header');
   for (const key of Object.keys(header)) {
-    if (!MANIFEST_HEADER_KEYS.includes(key)) return 'unknown key `' + key + '` (known: ' + MANIFEST_HEADER_KEYS.join(', ') + ') at `header.' + key + '`';
+    if (key === 'plateau') return '`header.plateau`' + LAYERED_PLATEAU;
+    if (!MANIFEST_HEADER_KEYS.includes(key)) {
+      return 'unknown key `' + key + '` (known: ' + MANIFEST_HEADER_KEYS.join(', ') + ') at `header.' + key + '`';
+    }
+    const value = header[key];
+    if (readIsMissing(value)) continue;
+    if (key !== 'kind') {
+      const problem = readValue('text', value, 'header.' + key, '');
+      if (problem) return problem;
+    } else if (Array.isArray(value) || readIsObject(value) || typeof value === 'boolean' || (typeof value === 'number' && !Number.isInteger(value))) {
+      return readWrongShape(value, 'header.kind');
+    } else if (manifestKindName(value) === null) {
+      const bare = String(value).trim().toLowerCase().replace(ARCHICODE_KIND_PREFIX, '');
+      return bare === 'plateau' ? '`kind: plateau`' + LAYERED_PLATEAU : unrecognizedKindProblem(value);
+    }
   }
+  if (readIsMissing(header.kind)) return 'Missing header.kind';
+  if (readIsMissing(header.version)) return 'Missing header.version';
   return null;
+}
+
+/**
+ * The first problem a manifest has, as the command line's sentence without the file and the place, or null. The command line reads the
+ * file as a manifest (a header and a content, the keys in the order of the file), then the content as the kind of the header says; so does this.
+ */
+function manifestProblem(root) {
+  if (!readIsObject(root)) return readWrongShape(root, '');
+  for (const key of Object.keys(root)) {
+    if (key === 'header') {
+      const problem = headerProblem(root.header);
+      if (problem) return problem;
+    } else if (key === 'content') {
+      if (!readIsMissing(root.content) && !readIsObject(root.content)) return readWrongShape(root.content, 'content');
+    } else {
+      return 'unknown key `' + key + '` (known: content, header) at `' + key + '`';
+    }
+  }
+  if (readIsMissing(root.header)) return 'Missing header.kind';
+  if (readIsMissing(root.content)) return 'Missing content.id';
+  const type = READ_SCHEMA.manifestKinds[manifestKindName(root.header.kind)];
+  // a group as the root of a manifest is not read by the command line yet (tmorin/archicode#79): nothing to compare it with
+  if (type === null || type === undefined) return readIsMissing(root.content.id) ? 'Missing content.id' : null;
+  return readObject(type, root.content, '', 'content', true);
+}
+
+/**
+ * The first problem `workspace.yaml` has, as the command line's sentence without the file and the place, or null: the keys it takes and
+ * the shape of each value. The rules of the plateaus come first and are told by `selectPlateau`, as the command line checks them first.
+ */
+function workspaceProblem(raw) {
+  const settings = readIsObject(raw.settings) ? raw.settings : {};
+  if (checkPlateauStructure(settings.plateaus).length) return null;
+  return readObject('Workspace', raw, '', '', false);
 }
 
 /**
  * Parse one manifest file's text the way every load/edit path needs
  * (loadWorkspace, commitFileEdit, reloadManifestFile): `{ header, content,
  * error }`, `error` set (and header/content null) when the text is not
- * valid YAML or lacks `header.kind` / `content.id`.
+ * valid YAML or is a manifest the command line refuses (`manifestProblem`).
  */
 function parseManifestText(text) {
   try {
     const parsed = parseYaml(text) || {};
     const header = (parsed.header && typeof parsed.header === 'object') ? parsed.header : null;
     const content = (parsed.content && typeof parsed.content === 'object') ? parsed.content : null;
-    if (!header || !header.kind) return { header, content, error: 'Missing header.kind' };
-    if (header.version === undefined || header.version === null) return { header, content, error: 'Missing header.version' };
-    const layered = layeredPlateauProblem(header);
-    if (layered) return { header, content, error: layered };
-    const unknownKey = unknownHeaderKeyProblem(header);
-    if (unknownKey) return { header, content, error: unknownKey };
-    if (!content || content.id === undefined) return { header, content, error: 'Missing content.id' };
-    return { header, content, error: null };
+    return { header, content, error: manifestProblem(parsed) };
   } catch (e) {
     return { header: null, content: null, error: e && e.message ? e.message : String(e) };
   }
@@ -4254,9 +4517,18 @@ async function loadWorkspace(dirHandle) {
     workspaceText = text;
     workspaceRaw = parseYaml(text) || {};
     // a workspace.yaml that is not a mapping is not one the editor can write back without losing it
-    if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw)) throw new Error('the file is not a mapping of keys');
+    if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw)) throw new Error(readWrongShape(workspaceRaw, '')); // the sentence of the command line
   } catch (e) {
     AppState.fatalError = 'Could not read/parse workspace.yaml: ' + (e && e.message ? e.message : String(e));
+    AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    render();
+    return;
+  }
+
+  // run 0072: the keys and the shapes the command line refuses, in its words (the rules of the plateaus come first, below)
+  const readProblem = workspaceProblem(workspaceRaw);
+  if (readProblem) {
+    AppState.fatalError = 'Could not read/parse workspace.yaml: ' + readProblem;
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     render();
     return;

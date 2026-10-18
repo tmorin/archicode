@@ -3,7 +3,7 @@
 // src/test/resources/brightcart/negative-cases.json is the folders of Brightcart with one alteration, built in a temporary folder from folders/
 // (nothing negative is committed as a workspace), opened as the editor opens a folder, and the page says the sentence of the command line
 // (`BrightcartNegativeCasesTest.java` runs the same file) or its stated equivalent: the editor's banners start with a capital and end with a
-// full stop, and the plateau rules come under "Could not read the plateaus of workspace.yaml:".
+// full stop, the plateau rules come under "Could not read the plateaus of workspace.yaml:", and the keys and shapes of workspace.yaml under "Could not read/parse workspace.yaml: " (run 0072).
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -102,7 +102,7 @@ for (const c of CASES) {
 
 test('the editor sentences are the command line sentences, up to the capital, the full stop and the heading of the plateau rules', () => {
   // the case table spells both; this keeps them from drifting apart
-  const normal = (text) => text.replace(/^Could not read the plateaus of workspace\.yaml:\n/, '').replace(/^[A-Z]/, (l) => l.toLowerCase()).replace(/\.$/, '');
+  const normal = (text) => text.replace(/^Could not read the plateaus of workspace\.yaml:\n/, '').replace(/^Could not read\/parse workspace\.yaml: /, '').replace(/^[A-Z]/, (l) => l.toLowerCase()).replace(/\.$/, '');
   for (const c of CASES) {
     if (c.editor === null) continue;
     const cliLines = new Set(c.cli.flatMap((command) => command.stderr).map((line) => normal(line.replace(/^(error|warning): /, '').replace(/ \(line \d+, column \d+\)$/, '').replace(/^`[^`]+` is not valid: /, ''))));

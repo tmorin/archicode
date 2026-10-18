@@ -85,6 +85,7 @@ public class ManifestParser {
                     resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
                 } catch (JsonProcessingException e) {
                     throw layeredPlateau(e)
+                        .or(() -> emptyManifest(e))
                         .or(() -> missingKey(e, ""))
                         .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
                         .orElseGet(() -> ArchiCodeException.unreadable(source, e, true));
@@ -175,7 +176,16 @@ public class ManifestParser {
         return Optional.empty();
     }
 
-    private static final Pattern NON_NULL = Pattern.compile("problem: (\\w+) is marked non-null but is null");
+    /** What is said of a manifest that is empty: it lacks its header, which is told by the first key it needs. */
+    static Optional<String> emptyManifest(JsonProcessingException e) {
+        return e instanceof JsonMappingException mapping &&
+            mapping.getOriginalMessage() != null &&
+            mapping.getOriginalMessage().startsWith("No content to map due to end-of-input")
+            ? Optional.of("Missing header.kind")
+            : Optional.empty();
+    }
+
+    private static final Pattern NON_NULL = Pattern.compile("(\\w+) is marked non-null but is null");
 
     /**
      * What is said of a manifest that lacks a required key, or is empty: the words of the editor ({@code Missing
@@ -187,27 +197,30 @@ public class ManifestParser {
      * @param under the path of the part of the file that was read again on its own ({@code content}), or empty
      * @return the reason, or empty when the reader did not fail for a missing key
      */
-    static Optional<String> missingKey(JsonProcessingException e, String under) {
+    public static Optional<String> missingKey(JsonProcessingException e, String under) {
         if (!(e instanceof JsonMappingException mapping) || mapping.getOriginalMessage() == null) {
             return Optional.empty();
         }
         val message = mapping.getOriginalMessage().lines().findFirst().orElse("");
-        if (under.isEmpty() && message.startsWith("No content to map due to end-of-input")) {
-            return Optional.of("Missing header.kind");
-        }
         val found = NON_NULL.matcher(message);
         if (!found.find()) {
             return Optional.empty();
         }
+        val key = found.group(1);
         val where = new StringBuilder(under);
-        for (val reference : mapping.getPath()) {
+        val path = mapping.getPath();
+        for (int i = 0; i < path.size(); i++) {
+            val reference = path.get(i);
             if (reference.getFieldName() != null) {
+                // a key that is there and null is reported at the key itself: it is not the path to the key, once more
+                if (i == path.size() - 1 && reference.getFieldName().equals(key)) {
+                    break;
+                }
                 where.append(where.isEmpty() ? "" : ".").append(reference.getFieldName());
             } else {
                 where.append('[').append(reference.getIndex()).append(']');
             }
         }
-        val key = found.group(1);
         if (where.isEmpty()) {
             return Optional.of(
                 key.equals("content")

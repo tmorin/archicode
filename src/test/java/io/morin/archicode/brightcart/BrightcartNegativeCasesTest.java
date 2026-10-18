@@ -120,6 +120,7 @@ class BrightcartNegativeCasesTest {
             assertEquals(words(command.get("stderr")), result.err().lines().toList(), label);
             assertFalse(result.err().contains("\tat "), label + ": no stack trace: " + result.err());
             assertFalse(result.err().contains("Exception"), label + ": no class name: " + result.err());
+            assertFalse(result.err().contains("io.morin"), label + ": no Java class: " + result.err());
             if (result.exit() != 0) {
                 assertEquals("", result.out(), label + ": nothing on the standard output");
             }

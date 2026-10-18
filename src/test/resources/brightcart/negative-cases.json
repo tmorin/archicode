@@ -544,8 +544,16 @@
           "stderr": ["error: `plateaus/inhouse/app.commerce.yaml` is not valid: unknown kind `containr` (known: container, group) at `elements[0]`"]
         }
       ],
-      "editor": null,
-      "reason": "the page does not check the kinds of the elements nested in a manifest, nor their keys (tmorin/archicode#75)"
+      "editor": [
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/inhouse/app.commerce.yaml": "unknown kind `containr` (known: container, group) at `elements[0]`" },
+            "danglingRelationships": 3
+          }
+        }
+      ]
     },
     {
       "id": "N22",
@@ -561,8 +569,16 @@
           "stderr": ["error: `plateaus/inhouse/app.commerce.yaml` is not valid: Missing content.elements[0].id"]
         }
       ],
-      "editor": null,
-      "reason": "the page does not check the keys of the elements nested in a manifest (tmorin/archicode#75)"
+      "editor": [
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/inhouse/app.commerce.yaml": "Missing content.elements[0].id" },
+            "danglingRelationships": 3
+          }
+        }
+      ]
     },
     {
       "id": "N23",
@@ -588,6 +604,416 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": { "danglingRelationships": 1 }
+        }
+      ]
+    },
+    {
+      "id": "N24",
+      "variant": "-",
+      "title": "a key of the content that the element does not have (a mistyped name)",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "  name: \"Support agent\"", "to": "  nme: \"Support agent\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unknown key `nme` (known: description, id, name, qualifiers, relationships, replaces, tags) at `nme`"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unknown key `nme` (known: description, id, name, qualifiers, relationships, replaces, tags) at `nme`" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N25",
+      "variant": "-",
+      "title": "a key under settings that ArchiCode does not know",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "  name: \"Brightcart\"\n", "to": "  name: \"Brightcart\"\n  foo: 1\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `workspace.yaml` is not valid: unknown key `foo` (known: current, facets, manifests, name, plateaus, relationships, views) at `settings.foo` (line 3, column 9)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `foo` (known: current, facets, manifests, name, plateaus, relationships, views) at `settings.foo`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N26",
+      "variant": "-",
+      "title": "a nested element whose relationships is a text",
+      "ops": [
+        { "op": "replace", "file": "plateaus/inhouse/app.commerce.yaml", "from": "      qualifiers: [\"Redis\"]\n", "to": "      qualifiers: [\"Redis\"]\n      relationships: \"x\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "inhouse"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/inhouse/app.commerce.yaml` is not valid: the value has the wrong shape (found a string) at `elements[0].relationships`"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/inhouse/app.commerce.yaml": "the value has the wrong shape (found a string) at `elements[0].relationships`" },
+            "danglingRelationships": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "N27",
+      "variant": "-",
+      "title": "a manifest whose header.kind is none of the kinds",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "kind: \"archicode.morin.io/person\"", "to": "kind: \"archicode.morin.io/persn\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view) (line 2, column 9)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view)" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N28",
+      "variant": "-",
+      "title": "an element nested in a manifest has no kind",
+      "ops": [
+        { "op": "replace", "file": "plateaus/inhouse/app.commerce.yaml", "from": "    - kind: \"container\"\n      id: \"cart-store\"\n", "to": "    - id: \"cart-store\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "inhouse"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/inhouse/app.commerce.yaml` is not valid: missing `kind` (known: container, group) at `elements[0]`"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/inhouse/app.commerce.yaml": "missing `kind` (known: container, group) at `elements[0]`" },
+            "danglingRelationships": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "N29",
+      "variant": "-",
+      "title": "a key of a relationship that it does not have",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "      label: \"handles orders with\"", "to": "      label: \"handles orders with\"\n      lable: \"x\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unknown key `lable` (known: destination, label, qualifier, qualifiers, tags) at `relationships[0].lable`"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unknown key `lable` (known: destination, label, qualifier, qualifiers, tags) at `relationships[0].lable`" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N30",
+      "variant": "-",
+      "title": "qualifiers written as a text where a list is expected",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "  relationships:\n", "to": "  qualifiers: \"x\"\n  relationships:\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: the value has the wrong shape (found a string) at `qualifiers`"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "the value has the wrong shape (found a string) at `qualifiers`" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N31",
+      "variant": "-",
+      "title": "settings.views.labels written as a text where a map is expected",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "  views:\n    path: \"views\"\n", "to": "  views:\n    path: \"views\"\n    labels: \"x\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `workspace.yaml` is not valid: the value has the wrong shape (found a string) at `settings.views.labels` (line 5, column 13)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: the value has the wrong shape (found a string) at `settings.views.labels`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N32",
+      "variant": "-",
+      "title": "a facet without a name",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "name: \"journey\"            # the purchase journey: no staff tools, no fulfilment", "to": "hide-unlinked: true" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `workspace.yaml` is not valid: Missing settings.facets.customs[0].name"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: Missing settings.facets.customs[0].name"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N33",
+      "variant": "-",
+      "title": "a key of workspace.yaml that ArchiCode does not know",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "styles:\n  by-tags:", "to": "foo: 1\nstyles:\n  by-tags:" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `workspace.yaml` is not valid: unknown key `foo` (known: application, formatters, settings, stories, story, styles, technology, view, views) at `foo` (line 39, column 7)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `foo` (known: application, formatters, settings, stories, story, styles, technology, view, views) at `foo`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N34",
+      "variant": "-",
+      "title": "a key beside header and content in a manifest",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "header:\n", "to": "extra: 1\nheader:\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unknown key `extra` (known: content, header) at `extra` (line 1, column 9)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unknown key `extra` (known: content, header) at `extra`" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N35",
+      "variant": "-",
+      "title": "a header that is a text",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "header:\n  kind: \"archicode.morin.io/person\"\n  version: \"1\"\n", "to": "header: \"x\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: the value has the wrong shape (found a string) at `header` (line 1, column 9)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "the value has the wrong shape (found a string) at `header`" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N36",
+      "variant": "-",
+      "title": "an operator of a facet that is none of the operators",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "operator: REMOVE", "to": "operator: ZAP" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `workspace.yaml` is not valid: unrecognized `settings.facets.customs[0].actions[0].operator` \"ZAP\" (known: REMOVE) (line 9, column 23)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unrecognized `settings.facets.customs[0].actions[0].operator` \"ZAP\" (known: REMOVE)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N37",
+      "variant": "-",
+      "title": "a key of a style that it does not have",
+      "ops": [
+        { "op": "replace", "file": "workspace.yaml", "from": "background-color: \"lightgray\"", "to": "background-colour: \"lightgray\"" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `workspace.yaml` is not valid: unknown key `background-colour` (known: background-color, font-color, font-style, line-color, line-gap, line-style, line-thickness, round-corner, shadowing) at `styles.by-tags.external.background-colour` (line 42, column 37)"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": null,
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `background-colour` (known: background-color, font-color, font-style, line-color, line-gap, line-style, line-thickness, round-corner, shadowing) at `styles.by-tags.external.background-colour`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N38",
+      "variant": "-",
+      "title": "a view without a viewpoint",
+      "ops": [
+        { "op": "write", "file": "plateaus/saas/view.overview.yaml", "text": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"overview\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/view.overview.yaml` is not valid: Missing content.viewpoint"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/view.overview.yaml": "Missing content.viewpoint" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N39",
+      "variant": "-",
+      "title": "a key the element does not have, where the id is missing too: the key is told first, as it comes first",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "  id: \"agent\"\n", "to": "  nme: \"agent\"\n" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: unknown key `nme` (known: description, id, name, qualifiers, relationships, replaces, tags) at `nme`"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "unknown key `nme` (known: description, id, name, qualifiers, relationships, replaces, tags) at `nme`" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N40",
+      "variant": "-",
+      "title": "a name written as a list",
+      "ops": [
+        { "op": "replace", "file": "plateaus/saas/app.agent.yaml", "from": "  name: \"Support agent\"", "to": "  name: [\"Support agent\"]" }
+      ],
+      "cli": [
+        {
+          "args": ["diff", "--plateau", "saas"],
+          "exit": 1,
+          "stderr": ["error: `plateaus/saas/app.agent.yaml` is not valid: the value has the wrong shape (found an array) at `name`"]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": { "plateaus/saas/app.agent.yaml": "the value has the wrong shape (found an array) at `name`" }
+          }
         }
       ]
     }

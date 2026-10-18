@@ -57,16 +57,15 @@ test('the name is read from the settings, and is empty when the key is absent, b
   assert.equal(plain(sandbox.parseSettings({ name: 42 })).name, '42', 'as the CLI reads a number into its text field');
 });
 
-test('a name round-trips through a save, in its place, with the other settings and the unknown keys', async () => {
-  const { sandbox, state, dir } = await open('  unknown-section: {a: 1}\n  name: Shop\n  views:\n    path: out\n    extra: kept\n');
+test('a name round-trips through a save, in its place, with the other settings', async () => {
+  const { sandbox, state, dir } = await open('  relationships:\n    default-synthetic-label: calls\n  name: Shop\n  views:\n    path: out\n');
   assert.equal(state.workspace.settings.name, 'Shop');
   state.workspace.settings.name = '  Shop 2  ';
   await sandbox.writeWorkspaceYaml();
   const reread = plain(sandbox.parseYaml(saved(dir)));
-  assert.deepEqual(Object.keys(reread.settings).slice(0, 2), ['unknown-section', 'name'], 'it keeps its place');
+  assert.deepEqual(Object.keys(reread.settings).slice(0, 2), ['relationships', 'name'], 'it keeps its place');
   assert.equal(reread.settings.name, 'Shop 2', 'trimmed');
-  assert.deepEqual(reread.settings['unknown-section'], { a: 1 });
-  assert.equal(reread.settings.views.extra, 'kept');
+  assert.equal(reread.settings.relationships['default-synthetic-label'], 'calls');
   assert.equal(reread.settings.views.path, 'out');
 });
 
@@ -90,7 +89,7 @@ test('a workspace without a name does not get one in the file, and an emptied na
   named.state.workspace.settings.name = '   ';
   await named.sandbox.writeWorkspaceYaml();
   const reread = plain(named.sandbox.parseYaml(saved(named.dir)));
-  assert.ok(!('name' in reread.settings), 'blank is omitted, not written empty, and the old value is not kept as an unknown key');
+  assert.ok(!('name' in reread.settings), 'blank is omitted, not written empty, and the old value is not kept');
   assert.equal(reread.settings.views.path, 'out');
 });
 

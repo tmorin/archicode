@@ -475,7 +475,7 @@ test('#57: when the aligner keeps the line of a key for another value (the first
 test('#57: the editor renames an element whose file writes its lists at the column of their keys: the id, the references and the comments are the only lines that differ', async () => {
   const files = {
     'app.mill.yaml': [
-      '# the mill', 'header:', '  kind: "archicode.morin.io/system"', '  version: "1"', '', 'content:', '  id: "mill"   # the id', '  name: "Mill"', '  tags:', '  # two tags', '  - flour', '  - grain   # last', '# end of the mill', ''
+      '# the mill', 'header:', '  kind: "archicode.morin.io/system"', '  version: "1"', '', 'content:', '  id: "mill"   # the id', '  name: "Mill"', '  qualifiers:', '  # two qualifiers', '  - flour', '  - grain   # last', '# end of the mill', ''
     ].join('\n'),
     'app.bakery.yaml': [
       '# the bakery', 'header:', '  kind: "archicode.morin.io/system"', '  version: "1"', '', 'content:', '  id: "bakery"', '  name: "Bakery"', '  relationships:',
@@ -488,7 +488,7 @@ test('#57: the editor renames an element whose file writes its lists at the colu
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  sandbox.commitElementEdit('mill', (node) => { node.id = 'granary'; node.tags.push('bran'); return { renamedTo: { from: 'mill', to: 'granary' } }; });
+  sandbox.commitElementEdit('mill', (node) => { node.id = 'granary'; node.qualifiers.push('bran'); return { renamedTo: { from: 'mill', to: 'granary' } }; });
   await sandbox.saveAllChanges();
   const saved = (file) => mem.files.get('plateaus/10_base/' + file).text;
   assert.deepEqual(lineDiff(files['app.mill.yaml'], saved('app.mill.yaml')), { removed: ['  id: "mill"   # the id'], added: ['  id: "granary"   # the id', '  - bran'] });

@@ -195,15 +195,15 @@ async function openTemp(files) {
 
 const MANIFEST = 'header:\n  kind: archicode.morin.io/system\n  version: "1"\ncontent:\n  id: s1\n  name: S1\n';
 
-test('saving the settings keeps the other top-level keys of workspace.yaml, in their order, and the unknown settings', async () => {
+test('saving the settings keeps the other top-level keys of workspace.yaml, in their order', async () => {
   const { sandbox, state, dir } = await openTemp({
     'workspace.yaml': [
-      'application:', '  elements: []', 'technology:', '  elements:', '    - id: t1',
-      'styles:', '  c: {color: "#ff0000"}',
+      'application:', '  elements: []', 'technology:', '  elements:', '    - kind: environment', '      id: t1',
+      'styles:', '  by-tags: {red: {line-color: "#ff0000"}}',
       'views:', '  - name: v1',
-      'settings:', '  unknown-section: {a: 1}', '  manifests:', '    paths: [manifests]', '    extra: kept',
+      'settings:', '  manifests:', '    paths: [manifests]',
       '  views:', '    labels: {a: b}', '  facets:', '    customs: []',
-      'zeta: last', ''
+      'stories:', '  - id: tour', ''
     ].join('\n'),
     'manifests/app.s1.yaml': MANIFEST
   });
@@ -211,14 +211,12 @@ test('saving the settings keeps the other top-level keys of workspace.yaml, in t
   await sandbox.writeWorkspaceYaml();
   const written = fs.readFileSync(path.join(dir, 'workspace.yaml'), 'utf8');
   const reread = plain(sandbox.parseYaml(written));
-  assert.deepEqual(Object.keys(reread), ['application', 'technology', 'styles', 'views', 'settings', 'zeta']);
+  assert.deepEqual(Object.keys(reread), ['application', 'technology', 'styles', 'views', 'settings', 'stories']);
   assert.deepEqual(reread.application, { elements: [] });
-  assert.deepEqual(reread.technology, { elements: [{ id: 't1' }] });
+  assert.deepEqual(reread.technology, { elements: [{ kind: 'environment', id: 't1' }] });
   assert.deepEqual(reread.views, [{ name: 'v1' }]);
-  assert.equal(reread.zeta, 'last');
-  assert.deepEqual(reread.styles, { c: { color: '#ff0000' } });
-  assert.deepEqual(reread.settings['unknown-section'], { a: 1 });
-  assert.equal(reread.settings.manifests.extra, 'kept');
+  assert.deepEqual(reread.stories, [{ id: 'tour' }]);
+  assert.deepEqual(reread.styles, { 'by-tags': { red: { 'line-color': '#ff0000' } } });
   assert.deepEqual(reread.settings.manifests.paths, ['manifests']);
   assert.equal(reread.settings.relationships['default-synthetic-label'], 'calls');
   assert.deepEqual(reread.settings.views.labels, { a: 'b' });

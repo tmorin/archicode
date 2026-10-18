@@ -1343,6 +1343,17 @@ error: `manifests/shop.yaml` is not valid: the value has the wrong shape (found 
 error: the workspace file `/work/workspace.yaml` does not exist (`-w` names another one)
 ----
 
+*The same sentence in the editor.* A manifest or a `workspace.yaml` that the command line refuses, the editor refuses with the same sentence, without the file and the line (the editor shows it beside the file): a key that the element, the setting or the header does not have, a nested element whose `kind` is missing or none of those its parent takes, a value of the wrong shape, a `header.kind` that is none of the kinds, a key that is required and absent. The place is told by its path in the file, as the command line does:
+
+----
+unknown key `nme` (known: description, id, name, qualifiers, relationships, replaces, tags) at `nme`
+unknown kind `containr` (known: container, group) at `elements[0]`
+missing `kind` (known: container, group) at `elements[0]`
+unrecognized `header.kind` "archicode.morin.io/persn" (known: archicode.morin.io/component, ...)
+the value has the wrong shape (found a string) at `settings.views.labels`
+Missing content.elements[0].id
+----
+
 An option that does not exist or a missing argument is a usage error: the command prints the problem and how to use the command, as it always did, and exits with the code 2. A failure that nobody expected, a bug, prints `error: unexpected ...` and keeps its stack trace, because a report needs it; the exit code is 1.
 
 *Warnings.* A warning says that the command went on but that something is probably not what you meant. It is one line starting with `warning: ` on the error output, printed when the command has done its work (and before the error, if it fails), once for a sentence the command would say many times. The log is not where to look: the log level of the application is `ERROR`, which hides the warnings of the log. A warning does not change the exit code. The command line warns of:

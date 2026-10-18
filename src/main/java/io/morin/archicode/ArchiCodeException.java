@@ -1,10 +1,16 @@
 package io.morin.archicode;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.val;
@@ -17,9 +23,17 @@ public class ArchiCodeException extends RuntimeException {
 
     private static final Pattern KNOWN_KINDS = Pattern.compile("known type ids = \\[([^\\]]*)\\]");
 
+    /**
+     * A value that is not of the shape the key takes (a list where there should be a text, a text where there should be a
+     * list or an object, a text where there should be a number or a boolean). The reader says it in several ways, all of
+     * them with the kind of value it found: {@code from Array value}, {@code from String value ('x')}, {@code from Number
+     * value (5)}, {@code from String "x": not a valid ...}.
+     */
     private static final Pattern WRONG_SHAPE = Pattern.compile(
-        "^Cannot deserialize value of type `[^`]*` from ([\\w-]+) value"
+        "^Cannot (?:deserialize value of type|construct instance of) .*? from ([A-Za-z-]+)(?: value| \")"
     );
+
+    private static final Pattern ACCEPTED_VALUES = Pattern.compile("accepted for Enum class: \\[([^\\]]*)\\]");
 
     /**
      * Create a new {@link ArchiCodeException} with the given message.
@@ -40,8 +54,10 @@ public class ArchiCodeException extends RuntimeException {
      * @return the failure, whose message is one line: the file, what is wrong and where
      */
     public static ArchiCodeException unreadable(String file, JsonProcessingException e, boolean withLocation) {
+        // a value that is none of the values of an enum names its key in the sentence, which then needs no place
+        val unrecognized = unrecognizedValue(e);
         var where = "";
-        if (e instanceof JsonMappingException mapping && !mapping.getPath().isEmpty()) {
+        if (unrecognized.isEmpty() && e instanceof JsonMappingException mapping && !mapping.getPath().isEmpty()) {
             where = " at `" + path(mapping) + "`";
         }
         val location = e.getLocation();
@@ -51,7 +67,7 @@ public class ArchiCodeException extends RuntimeException {
         return new ArchiCodeException(
             "%s is not valid: %s%s",
             file == null ? "a file" : "`" + file + "`",
-            reason(e),
+            unrecognized.orElseGet(() -> reason(e)),
             where
         );
     }
@@ -59,6 +75,7 @@ public class ArchiCodeException extends RuntimeException {
     /** What is wrong, in a sentence an author reads, not the vocabulary of the reader of the file. */
     private static String reason(JsonProcessingException e) {
         if (e instanceof UnrecognizedPropertyException unknown) {
+            // the keys an author can write: not the ones the generated builders add for themselves (`$fillValuesFrom`)
             val known =
                 unknown.getKnownPropertyIds() == null
                     ? ""
@@ -66,6 +83,7 @@ public class ArchiCodeException extends RuntimeException {
                           .getKnownPropertyIds()
                           .stream()
                           .map(String::valueOf)
+                          .filter(key -> !key.startsWith("$"))
                           .sorted()
                           .collect(Collectors.joining(", "));
             return (
@@ -77,19 +95,24 @@ public class ArchiCodeException extends RuntimeException {
             return e.getClass().getSimpleName();
         }
         if (e instanceof InvalidTypeIdException unknownKind) {
-            // not the class the reader failed to build: the kind written, and the kinds that are there
+            // not the class the reader failed to build: the kind written (or its absence), and the kinds that are there
             val known = KNOWN_KINDS.matcher(original);
+            val kinds = known.find() ? known.group(1) : subTypeNames(unknownKind);
             return (
-                "unknown kind `" +
-                unknownKind.getTypeId() +
-                "`" +
-                (known.find() ? " (known: " + known.group(1) + ")" : "")
+                (unknownKind.getTypeId() == null
+                    ? "missing `kind`"
+                    : "unknown kind `" + unknownKind.getTypeId() + "`") +
+                (kinds.isEmpty() ? "" : " (known: " + kinds + ")")
             );
         }
         val firstLine = original.lines().findFirst().orElse(original);
+        if (firstLine.startsWith("Cannot coerce empty String")) {
+            // an empty text where a list, a map or an object is expected
+            return "the value has the wrong shape (found a string)";
+        }
         val shape = WRONG_SHAPE.matcher(firstLine);
         if (shape.find()) {
-            val found = shape.group(1).toLowerCase(Locale.ROOT);
+            val found = foundKind(shape.group(1));
             return (
                 "the value has the wrong shape (found " +
                 ("aeiou".indexOf(found.charAt(0)) >= 0 ? "an " : "a ") +
@@ -98,6 +121,74 @@ public class ArchiCodeException extends RuntimeException {
             );
         }
         return firstLine;
+    }
+
+    /**
+     * The sentence for a value that is none of the values of an enum ({@code header.kind}, {@code layer}, {@code
+     * operator}), or empty: the value written, the values there are (sorted), and the key, since the sentence names it.
+     */
+    private static Optional<String> unrecognizedValue(JsonProcessingException e) {
+        if (!(e instanceof MismatchedInputException mismatched) || mismatched.getOriginalMessage() == null) {
+            return Optional.empty();
+        }
+        val original = mismatched.getOriginalMessage();
+        val target = mismatched.getTargetType();
+        if (
+            target == null ||
+            !target.isEnum() ||
+            !(e instanceof InvalidFormatException || original.startsWith("Cannot coerce empty String"))
+        ) {
+            return Optional.empty();
+        }
+        val accepted = ACCEPTED_VALUES.matcher(original);
+        val values = accepted.find()
+            ? Arrays.stream(accepted.group(1).split(", ")).sorted().collect(Collectors.joining(", "))
+            : Arrays.stream(target.getEnumConstants())
+                  .map(constant -> writtenAs(target, constant))
+                  .sorted()
+                  .collect(Collectors.joining(", "));
+        val written = e instanceof InvalidFormatException invalid ? invalid.getValue() : "";
+        return Optional.of(
+            "unrecognized `" +
+                path(mismatched) +
+                "` \"" +
+                written +
+                "\"" +
+                (values.isEmpty() ? "" : " (known: " + values + ")")
+        );
+    }
+
+    /** How an author writes a value of an enum: what its {@code @JsonValue} gives, else its name. */
+    private static String writtenAs(Class<?> type, Object constant) {
+        for (val method : type.getMethods()) {
+            if (method.isAnnotationPresent(JsonValue.class) && method.getParameterCount() == 0) {
+                try {
+                    return String.valueOf(method.invoke(constant));
+                } catch (ReflectiveOperationException ignored) {
+                    break;
+                }
+            }
+        }
+        return String.valueOf(constant);
+    }
+
+    /** What the reader calls a kind of value, in the words of the author: a number is a number, whether it has a point or not. */
+    private static String foundKind(String reader) {
+        val kind = reader.toLowerCase(Locale.ROOT);
+        return switch (kind) {
+            case "integer", "floating-point", "float", "double", "long", "biginteger", "bigdecimal" -> "number";
+            default -> kind;
+        };
+    }
+
+    /** The names of the kinds a polymorphic type takes, sorted and comma separated, or empty. */
+    private static String subTypeNames(InvalidTypeIdException e) {
+        val base = e.getBaseType() == null ? null : e.getBaseType().getRawClass();
+        val subTypes = base == null ? null : base.getAnnotation(JsonSubTypes.class);
+        if (subTypes == null) {
+            return "";
+        }
+        return Arrays.stream(subTypes.value()).map(JsonSubTypes.Type::name).sorted().collect(Collectors.joining(", "));
     }
 
     private static String path(JsonMappingException e) {

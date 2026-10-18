@@ -692,7 +692,7 @@ test('the comments on lines of their own inside the block go with it; the ones a
 });
 
 test('a block with a text over several lines, an end-of-line comment and a blank line moves whole', async () => {
-  const rich = BAKERY.replace('      description: "Bakes \\"the\\" bread: 220 degrees, no more."\n', '      description: |   # why\n        Bakes the bread.\n\n        No more than 220 degrees.\n      name2: x  # note\n');
+  const rich = BAKERY.replace('      description: "Bakes \\"the\\" bread: 220 degrees, no more."\n', '      description: |   # why\n        Bakes the bread.\n\n        No more than 220 degrees.\n      qualifiers: [x]  # note\n');
   const page = await open({ manifests: Object.assign({}, MANIFESTS, { 'app.bakery.yaml': rich }) });
   assert.equal(move(page.sandbox, 'bakery.oven', 'bakery.tools', false).ok, true);
   await page.sandbox.saveAllChanges();
@@ -700,7 +700,7 @@ test('a block with a text over several lines, an end-of-line comment and a blank
   const again = createApp({});
   await again.loadWorkspace(page.mem.handle);
   assert.equal(again.__state().index.application.get('bakery.tools.oven').description, 'Bakes the bread.\n\nNo more than 220 degrees.\n');
-  assert.ok(saved.includes('          description: |   # why\n            Bakes the bread.\n\n            No more than 220 degrees.\n          name2: x  # note\n          elements:\n'), 'the text over several lines, its blank line and the comments at the end of the lines, one level deeper');
+  assert.ok(saved.includes('          description: |   # why\n            Bakes the bread.\n\n            No more than 220 degrees.\n          qualifiers: [x]  # note\n          elements:\n'), 'the text over several lines, its blank line and the comments at the end of the lines, one level deeper');
 });
 
 test('the Move offered by the page ends in the choke point of the cache: a render without an edit does not serialise, a move does invalidate', async () => {

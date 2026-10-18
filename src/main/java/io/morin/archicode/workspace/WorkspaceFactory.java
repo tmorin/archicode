@@ -294,7 +294,9 @@ public class WorkspaceFactory {
             }
             rawWorkspace = workspaceMapper.readValue(path.toFile(), Workspace.class);
         } catch (JsonProcessingException e) {
-            throw ArchiCodeException.unreadable(path.getFileName().toString(), e, true);
+            throw ManifestParser.missingKey(e, "")
+                .map(reason -> new ArchiCodeException("`%s` is not valid: %s", path.getFileName().toString(), reason))
+                .orElseGet(() -> ArchiCodeException.unreadable(path.getFileName().toString(), e, true));
         }
         val manifestsPathsWritten = tree.path("settings").path("manifests").has("paths");
 

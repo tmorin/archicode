@@ -58,6 +58,14 @@ class LayeredPlateauRefusalTest {
         return CliHarness.run(factory, errorOutput, args.toArray(String[]::new));
     }
 
+    @SneakyThrows
+    private CliHarness.Result runManifest(String manifest) {
+        Files.createDirectories(dir.resolve("manifests"));
+        Files.writeString(dir.resolve("manifests/shop.yaml"), manifest);
+        Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        return CliHarness.run(factory, errorOutput, "-w", dir.resolve("workspace.yaml").toString(), "query", "graph");
+    }
+
     private static void assertOneLine(CliHarness.Result result, String expected) {
         assertEquals(1, result.exit(), result.err());
         assertEquals(List.of(expected), result.err().lines().toList(), result.err());
@@ -104,19 +112,51 @@ class LayeredPlateauRefusalTest {
     }
 
     @Test
-    void shouldKeepTheMessageOfAnotherUnknownKind() {
+    void shouldSayAnotherUnknownKindInOneSentenceThatTheEditorSaysToo() {
         val result = run("archicode.morin.io/nothing", "", "query", "graph");
         assertEquals(1, result.exit(), result.err());
-        assertEquals(1, result.err().lines().count(), result.err());
-        assertTrue(
-            result
-                .err()
-                .startsWith(
-                    "error: `manifests/shop.yaml` is not valid: Cannot deserialize value of type `io.morin.archicode.manifest.ManifestKind` from String \"archicode.morin.io/nothing\": not one of the values accepted for Enum class: ["
-                ),
+        assertEquals(
+            "error: `manifests/shop.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/nothing\" (known: " +
+                "archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, " +
+                "archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, " +
+                "archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, " +
+                "archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view) (line 2, column 9)\n",
             result.err()
         );
-        assertTrue(result.err().endsWith("] at `header.kind` (line 2, column 9)\n"), result.err());
         assertFalse(result.err().contains("plateau"), result.err());
+        assertFalse(result.err().contains("io.morin"), "no Java class name: " + result.err());
+    }
+
+    @Test
+    void shouldTellThePlateauKindBeforeTheVersionThatIsMissing() {
+        // the reader meets the kind before it finds the end of the header: the editor checks in the same order (#77)
+        assertOneLine(
+            runManifest("header:\n  kind: \"archicode.morin.io/plateau\"\ncontent:\n  id: \"shop\"\n"),
+            "error: `manifests/shop.yaml` is not valid: `kind: plateau`" + LATER
+        );
+        assertOneLine(
+            runManifest(
+                "header:\n  kind: \"archicode.morin.io/system\"\n  plateau: \"later\"\ncontent:\n  id: \"shop\"\n"
+            ),
+            "error: `manifests/shop.yaml` is not valid: `header.plateau`" + LATER
+        );
+    }
+
+    @Test
+    void shouldTreatAPlateauKeyOfTheContentAsAnyUnknownKey() {
+        assertOneLine(
+            runManifest(
+                "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  plateau: \"later\"\n"
+            ),
+            "error: `manifests/shop.yaml` is not valid: unknown key `plateau` (known: description, elements, id, name, qualifiers, relationships, replaces, tags) at `plateau`"
+        );
+    }
+
+    @Test
+    void shouldAcceptAKindInAnyCaseAndWithSpacesAroundItAsTheEditorDoes() {
+        val result = runManifest(
+            "header:\n  kind: \"  ARCHICODE.Morin.IO/System \"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n"
+        );
+        assertEquals(0, result.exit(), result.err());
     }
 }

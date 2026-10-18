@@ -337,19 +337,19 @@ class CleanFailuresTest {
     }
 
     @Test
-    void aNumberWithADecimalPointWhereAListIsExpectedIsSaidAsTheWrongShape() {
+    void aNumberWhereAListIsExpectedIsSaidAsTheWrongShapeWhateverItsKind() {
         val failure = assertThrows(JsonProcessingException.class, () ->
             new ObjectMapper().readValue("{\"items\": 1.5}", Shape.class)
         );
         assertEquals(
-            "`shop.yaml` is not valid: the value has the wrong shape (found a floating-point) at `items`",
+            "`shop.yaml` is not valid: the value has the wrong shape (found a number) at `items`",
             ArchiCodeException.unreadable("shop.yaml", failure, false).getMessage()
         );
         val integer = assertThrows(JsonProcessingException.class, () ->
             new ObjectMapper().readValue("{\"items\": 3}", Shape.class)
         );
         assertEquals(
-            "`shop.yaml` is not valid: the value has the wrong shape (found an integer) at `items`",
+            "`shop.yaml` is not valid: the value has the wrong shape (found a number) at `items`",
             ArchiCodeException.unreadable("shop.yaml", integer, false).getMessage()
         );
     }

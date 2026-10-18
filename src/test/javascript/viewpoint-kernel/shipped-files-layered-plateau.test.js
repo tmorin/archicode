@@ -1,7 +1,7 @@
 'use strict';
 // A manifest of `kind: plateau` and a manifest with a `plateau` in its header are refused, as `from` of a plateau of the workspace is: they are
 // reserved for the layered plateaus of a later version (#30), never recognised. The editor says the sentence the command line says
-// (`LayeredPlateauRefusalTest.java` runs the same cases), where it says `Unrecognized header.kind` for another kind; every other message stays.
+// (`LayeredPlateauRefusalTest.java` runs the same cases), where it says the one sentence of both tools for another kind (#76, run 0072); every other message stays.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,14 +38,15 @@ test('a plateau key in the header is refused with the sentence of #30', async ()
   assert.equal(state.index.application.size, 0);
 });
 
-test('another unknown kind keeps its message, and a plateau elsewhere than in the header is no refusal', async () => {
+test('another unknown kind gets the one sentence of both tools (#76), and a plateau key in the content is an unknown key like any other, not the refusal of a layered plateau', async () => {
   const { state } = await open({
     'manifests/a.yaml': manifest('archicode.morin.io/nothing'),
     'manifests/b.yaml': manifest('archicode.morin.io/system').replace('name: "Shop"', 'name: "Shop"\n  plateau: "this is content, not the header"').replace('id: "shop"', 'id: "other"')
   });
   const byFile = Object.fromEntries(state.manifestFiles.map((f) => [f.relPath, f.error]));
-  assert.equal(byFile['manifests/a.yaml'], 'Unrecognized header.kind "archicode.morin.io/nothing"');
-  assert.equal(byFile['manifests/b.yaml'], null);
+  assert.equal(byFile['manifests/a.yaml'], 'unrecognized `header.kind` "archicode.morin.io/nothing" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view)');
+  // the command line says the same of a key of the content that the element does not have (the editor accepted it before run 0072)
+  assert.equal(byFile['manifests/b.yaml'], 'unknown key `plateau` (known: description, elements, id, name, qualifiers, relationships, replaces, tags) at `plateau`');
 });
 
 test('a manifest edited into a layered plateau is refused with the same sentence', async () => {

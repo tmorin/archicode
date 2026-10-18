@@ -208,9 +208,9 @@ test('whatever the edit, the text written reads back as the edit and the lines i
 
 const PLATEAUS = 'settings:\n  plateaus:\n    - id: base\n      name: Base\n      path: plateaus/10_base\n';
 const FILES = {
-  'app.mill.yaml': '# the mill\nheader:\n  kind: "archicode.morin.io/system"\n  version: "1"\n\ncontent:\n  id: "mill"   # the id\n  name: "Mill"\n  tags:\n  - flour   # one\n# end of the mill\n',
+  'app.mill.yaml': '# the mill\nheader:\n  kind: "archicode.morin.io/system"\n  version: "1"\n\ncontent:\n  id: "mill"   # the id\n  name: "Mill"\n  qualifiers:\n  - flour   # one\n# end of the mill\n',
   'app.bakery.yaml':
-    '# the bakery\n' + HEAD + '  name: &n "Bakery"\n  description: *n   # an alias\n  size: !!str 12\n  relationships:\n    - destination: &d "mill"   # to the mill\n      label: "buys"\n# end of the bakery\n'
+    '# the bakery\n' + HEAD + '  name: &n "Bakery"\n  description: *n   # an alias\n  tags:\n    size: !!str 12\n  relationships:\n    - destination: &d "mill"   # to the mill\n      label: "buys"\n# end of the bakery\n'
 };
 
 async function openMem(extra) {
@@ -230,13 +230,13 @@ test('in the editor, a manifest with an anchor, an alias and a tag is read: its 
   assert.deepEqual(Array.from(state.index.application.keys()).sort(), ['bakery', 'mill']);
   const bakery = state.manifestFiles.find((f) => f.relPath.endsWith('app.bakery.yaml'));
   assert.equal(bakery.content.description, 'Bakery');
-  assert.equal(bakery.content.size, '12');
+  assert.equal(bakery.content.tags.size, '12');
   assert.equal(state.index.application.get('bakery').relationships[0].resolved, true);
 });
 
 test('in the editor, an edit saves only the intended lines: the anchor, the alias and the tag of a file stay as written, and so do the files it does not concern', async () => {
   const { mem, sandbox } = await openMem();
-  sandbox.commitElementEdit('bakery', (node) => { node.description = 'Fresh bread'; node.size = '14'; return {}; });
+  sandbox.commitElementEdit('bakery', (node) => { node.description = 'Fresh bread'; node.tags.size = '14'; return {}; });
   await sandbox.saveAllChanges();
   assert.deepEqual(mem.writes, ['plateaus/10_base/app.bakery.yaml']);
   assert.equal(
