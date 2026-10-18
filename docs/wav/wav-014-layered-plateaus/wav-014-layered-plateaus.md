@@ -337,7 +337,7 @@ wave_manifest:
       slug: author-decisions
       phase: P4
       depends_on: [W-12]
-      run: null
+      run: 0087
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/resource/plateau/PlateauTree.java'
