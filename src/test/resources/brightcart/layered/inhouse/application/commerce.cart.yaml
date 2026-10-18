@@ -1,0 +1,15 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "inhouse"
+  parent: "commerce"
+content:
+  id: "cart"
+  name: "Cart service"
+  description: "Keeps the basket of a shopper."
+  qualifiers: ["Java", "Quarkus"]
+  replaces:
+    - "shop.app.cart"
+  relationships:
+    - destination: "commerce.cart-store"
+      label: "keeps baskets in"

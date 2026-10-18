@@ -97,7 +97,10 @@ class ShippedFilesTest {
         return result;
     }
 
-    /** The plateaus of a workspace, in the order of the file; none for a workspace that declares none. */
+    /**
+     * The plateaus of a workspace, in the order of the file, or of the tree for layered plateaus (a plateau is then named with
+     * {@code --plateau}, since a tree that forks has no default); none for a workspace that declares none.
+     */
     @SneakyThrows
     private List<String> plateausOf(Path workspace) {
         val ids = new ArrayList<String>();
@@ -108,6 +111,16 @@ class ShippedFilesTest {
             .path("plateaus")) {
             ids.add(plateau.path("id").asText());
         }
+        if (ids.isEmpty()) {
+            try {
+                val tree = workspaceFactory.plateauTree(workspace);
+                if (tree.isLayered()) {
+                    ids.addAll(tree.ids());
+                }
+            } catch (RuntimeException e) {
+                // a workspace the tree cannot be read of is loaded once, and tells why
+            }
+        }
         return ids;
     }
 
@@ -117,6 +130,17 @@ class ShippedFilesTest {
         assertTrue(found.size() >= 17, "the manual and the fixtures ship at least 17 workspaces: " + found);
         assertTrue(found.contains("src/test/resources/brightcart/folders/workspace.yaml"), found.toString());
         assertTrue(found.contains("src/doc/examples/domain_plateaus/workspace.yaml"), found.toString());
+        assertTrue(found.contains("src/test/resources/brightcart/layered/workspace.yaml"), found.toString());
+    }
+
+    @Test
+    void shouldLoadEveryPlateauOfTheLayeredBrightcart() {
+        // a layered workspace is read once per plateau of its tree, and the tree of Brightcart forks: the plateau is named
+        val layered = Path.of("src/test/resources/brightcart/layered/workspace.yaml").toAbsolutePath();
+        assertEquals(
+            List.of("baseline", "inhouse", "marketplace", "saas"),
+            plateausOf(layered).stream().sorted().toList()
+        );
     }
 
     @Test

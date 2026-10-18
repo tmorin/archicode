@@ -29,7 +29,7 @@ export function E(ref, kind, name, desc = '', o = {}) {
 
 export class Plateau {
   constructor(id, name, horizon, parent, summary) {
-    Object.assign(this, { id, name, horizon, parent, summary, manifests: [], patches: [], explicitPlateau: new Set() });
+    Object.assign(this, { id, name, horizon, parent, summary, manifests: [], patches: [] });
   }
   declare(e, file) {
     e.file = file;
@@ -171,6 +171,7 @@ export function build() {
   D = 'inhouse/technology/';
   const QK = ['Java', 'Quarkus'];
   h.declare(E('commerce', 'system', 'Commerce services', 'Services of the shopping journey.'), A + 'commerce.yaml');
+  h.declare(E('commerce.cart-store', 'container', 'Cart store', 'Baskets, one key per shopper.', { q: ['Redis'], replaces: ['shop.cache'] }), A + 'commerce.yaml');
   h.declare(
     E('commerce.gateway', 'container', 'API gateway', 'Single entry for the storefront.', {
       q: ['Kong'],
@@ -222,11 +223,8 @@ export function build() {
     }),
     D + 'staging.k8s.yaml'
   );
-  h.explicitPlateau.add(D + 'staging.k8s.yaml'); // the one manifest that names its plateau although its folder already does
-  // the cache is moved with its subtree: the operator records replaces
-  h.op('MOVE', { target: 'shop.cache', to: 'commerce.cart-store', comment: 'pattern M: the operator changes parent and id, rewrites the references and records replaces' });
-  h.op('SET', { target: 'commerce.cart-store', field: 'name', value: 'Cart store' });
-  h.op('SET', { target: 'commerce.cart-store', field: 'description', value: 'Baskets, one key per shopper.' });
+  // the cache moves to another parent and id: no operator does that, so the new manifest says replaces and the old element is removed (its entries in the nodes go with it)
+  h.op('REMOVE', { target: 'shop.cache', comment: 'pattern R: commerce.cart-store says replaces; the cascade takes the entries of the nodes that hosted the cache' });
   for (const c of ['catalog', 'search', 'cart', 'checkout', 'payments', 'promotions', 'orders', 'customers', 'loyalty']) {
     h.op('REMOVE', { target: 'shop.app.' + c, comment: c === 'catalog' ? 'pattern R: the new containers say replaces, the old components go' : undefined });
   }
@@ -271,11 +269,14 @@ export function build() {
   m.declare(E('discovery', 'system', 'Discovery', 'Search and recommendations.'), A + 'discovery.yaml');
   m.declare(E('discovery.recommender', 'container', 'Recommender', 'Suggests products to a shopper.', { q: ['Python'], rels: [['platform.broker', 'consumes events from'], ['discovery.features', 'reads features from']] }), A + 'discovery.yaml');
   m.declare(E('discovery.features', 'container', 'Feature store', 'Shopper and product features.', { q: ['Redis'] }), A + 'discovery.yaml');
+  m.declare(E('discovery.search', 'container', 'Search service', 'Full-text search over products.', { q: ['OpenSearch'], rels: [['commerce.catalog', 'indexes products from']], replaces: ['commerce.search'] }), A + 'discovery.yaml');
   m.declare(E('fulfilment.inventory', 'container', 'Inventory service', 'Stock levels and reservations.', { q: QK, rels: [['fulfilment.db', 'reads and reserves stock in'], ['platform.broker', 'publishes stock events to']], replaces: ['shop.app.inventory'] }), A + 'fulfilment.inventory.yaml');
   m.declare(E('fulfilment.db', 'container', 'Fulfilment database', 'Stock levels.', { q: ['PostgreSQL'] }), A + 'fulfilment.db.yaml');
-  m.declare(E('shop.mobile', 'container', 'Mobile app', 'The shop in the pocket.', { q: ['Kotlin Multiplatform'], rels: [['commerce.gateway', 'browses and buys through', ['REST']]] }), A + 'shop.mobile.yaml');
+  m.declare(E('storefront', 'system', 'Shop', 'The web shop of the retailer.', { replaces: ['shop'] }), A + 'storefront.yaml');
+  m.declare(E('storefront.web', 'container', 'Web storefront', 'Pages of the shop, served from the CDN.', { q: ['React'], rels: [['commerce.gateway', 'browses and buys through', ['REST']]], replaces: ['shop.web'] }), A + 'storefront.yaml');
+  m.declare(E('storefront.mobile', 'container', 'Mobile app', 'The shop in the pocket.', { q: ['Kotlin Multiplatform'], rels: [['commerce.gateway', 'browses and buys through', ['REST']]] }), A + 'storefront.mobile.yaml');
   // technology
-  m.declare(E('prod.cloud.cdn', 'node', 'CDN', '', { layer: T, apps: ['shop.web'] }), D + 'prod.cloud.cdn.yaml');
+  m.declare(E('prod.cloud.cdn', 'node', 'CDN', '', { layer: T, apps: ['storefront.web'] }), D + 'prod.cloud.cdn.yaml');
   m.declare(E('prod.cloud.k8s.marketplace', 'node', 'Marketplace namespace', '', { layer: T, apps: ['marketplace.seller-portal', 'marketplace.listing', 'marketplace.settlement'] }), D + 'prod.cloud.k8s.marketplace.yaml');
   m.declare(E('prod.cloud.k8s.platform', 'node', 'Platform namespace', '', { layer: T, apps: ['platform.notifications', 'discovery.recommender', 'fulfilment.inventory'] }), D + 'prod.cloud.k8s.platform.yaml');
   m.declare(E('prod.cloud.kafka', 'node', 'Managed Kafka', '', { layer: T, apps: ['platform.broker'] }), D + 'prod.cloud.kafka.yaml');
@@ -294,9 +295,13 @@ export function build() {
   m.op('ADD_REL', { target: 'commerce.checkout', rel: ['fulfilment.inventory', 'reserves stock in', ['REST']], comment: 'rewire what pointed at the monolith (the REMOVE took those links)' });
   m.op('ADD_REL', { target: 'orders.placement', rel: ['platform.notifications', 'asks to notify'] });
   m.op('ADD_REL', { target: 'fulfilment.sync', rel: ['fulfilment.inventory', 'writes stock levels to', ['REST']] });
-  m.op('MOVE', { target: 'commerce.search', to: 'discovery.search', comment: 'a second move for this element' });
-  m.op('MOVE', { target: 'shop', to: 'storefront', comment: 'rename the system; its subtree follows, shop.mobile included' });
-  m.op('SET', { target: 'storefront.web', field: 'description', value: 'Pages of the shop, served from the CDN.' });
+  m.op('REMOVE', { target: 'commerce.search', comment: 'a second move for this element: discovery.search says replaces' });
+  m.op('ADD_REL', { target: 'commerce.gateway', rel: ['discovery.search', 'routes to'], comment: 'what pointed at the old search (the REMOVE took the link)' });
+  m.op('ADD_APP', { target: 'prod.cloud.k8s.commerce', layer: T, values: ['discovery.search'], comment: 'and the nodes that hosted it' });
+  m.op('ADD_APP', { target: 'staging.k8s', layer: T, values: ['discovery.search'] });
+  m.op('REMOVE', { target: 'shop', comment: 'rename the system: storefront says replaces for shop and shop.web; the subtree goes' });
+  m.op('ADD_REL', { target: 'customer', rel: ['storefront.web', 'browses and buys with', ['HTTPS']], comment: 'what pointed at the old storefront' });
+  m.op('ADD_APP', { target: 'staging.vm', layer: T, values: ['storefront.web'] });
   m.op('SET', { target: 'commerce.catalog', field: 'description', value: 'Products, prices and availability, including offers of marketplace sellers.', comment: 'sellers, events, recommendations' });
   m.op('ADD_REL', { target: 'commerce.catalog', rel: ['platform.broker', 'publishes product events to'] });
   m.op('ADD_REL', { target: 'commerce.catalog', rel: ['discovery.recommender', 'asks for suggestions'] });
@@ -307,7 +312,7 @@ export function build() {
   m.op('REMOVE', { target: 'prod.dc.db-vm', layer: T });
   m.op('ADD_APP', { target: 'prod.cloud.pg', layer: T, values: ['marketplace.db', 'fulfilment.db'], comment: 'deployment' });
   m.op('ADD_APP', { target: 'prod.cloud.redis', layer: T, values: ['discovery.features'] });
-  m.op('SET_WHERE', { qualifier: 'Quarkus', field: 'tags', value: { runtime: 'quarkus' }, comment: 'a bulk edit written by hand, guarded by expect' });
+  m.op('MERGE_WHERE', { qualifier: 'Quarkus', field: 'tags', value: { runtime: 'quarkus' }, comment: 'a bulk edit written by hand, guarded by expect' });
   P.marketplace = m;
   return P;
 }
@@ -355,14 +360,22 @@ export const WORKSPACE_STYLES = `styles:
       round-corner: 20
 `;
 
-// The comparisons of section 10. `chain` is the list of plateaus handed to the model (the first is the baseline); `tool` says how the current command line is asked the same question.
+// The comparisons of section 10. `chain` is the list of plateaus handed to the model (the first is the baseline); `tool` says how the command line is asked the same question of
+// `folders/` (`--baseline`), `layered` of `layered/` (`--against`; the plateau a plateau overrides is the default).
 export const COMPARISONS = [
-  { id: 'P1', title: '`saas` vs `baseline`', chain: ['baseline', 'saas'], tool: 'archicode diff --plateau saas', source: 'tool' },
-  { id: 'P2', title: '`inhouse` vs `baseline`', chain: ['baseline', 'inhouse'], tool: 'archicode diff --plateau inhouse', source: 'tool' },
-  { id: 'P3', title: '`marketplace` vs `inhouse`', chain: ['inhouse', 'marketplace'], tool: 'archicode diff --plateau marketplace', source: 'tool' },
-  { id: 'P4', title: '`marketplace` vs `baseline`, composed', chain: ['baseline', 'inhouse', 'marketplace'], tool: null, source: 'model', note: 'Needs the composition of `replaces` (L9). The current tool cannot say this.' },
-  { id: 'P5', title: '`inhouse` vs `saas` (siblings)', chain: ['saas', 'inhouse'], tool: 'archicode diff --plateau inhouse --baseline saas', source: 'tool' },
-  { id: 'P6', title: '`marketplace` vs `baseline`, last step only', chain: ['baseline', 'marketplace'], tool: 'archicode diff --plateau marketplace --baseline baseline', source: 'tool', note: 'What the current tool prints: only the last step\'s `replaces` count.' }
+  { id: 'P1', title: '`saas` vs `baseline`', chain: ['baseline', 'saas'], tool: 'archicode diff --plateau saas', layered: 'archicode diff --plateau saas', source: 'tool' },
+  { id: 'P2', title: '`inhouse` vs `baseline`', chain: ['baseline', 'inhouse'], tool: 'archicode diff --plateau inhouse', layered: 'archicode diff --plateau inhouse', source: 'tool' },
+  { id: 'P3', title: '`marketplace` vs `inhouse`', chain: ['inhouse', 'marketplace'], tool: 'archicode diff --plateau marketplace', layered: 'archicode diff --plateau marketplace', source: 'tool' },
+  { id: 'P4', title: '`marketplace` vs `baseline`, composed', chain: ['baseline', 'inhouse', 'marketplace'], tool: null,
+    layered: 'archicode diff --plateau marketplace --against baseline',
+    // What the layered tool prints for the same question: it reads the `replaces` of every layer of the chain, relative to the plateau compared with, and does not compose them (L9),
+    // so `discovery.search` (which replaces `commerce.search`, itself a replacement of `shop.app.search`) is new and `shop.app.search` removed: one move less.
+    layeredGives: [39, 3, 7, 10, 2, 1, 35, 1, 9],
+    layeredIgnored: 1,
+    source: 'model',
+    note: 'Needs the composition of `replaces` (L9). The old tool cannot say this, and the layered tool does not compose them either: it gives one move less (see `layeredGives`).' },
+  { id: 'P5', title: '`inhouse` vs `saas` (siblings)', chain: ['saas', 'inhouse'], tool: 'archicode diff --plateau inhouse --baseline saas', layered: 'archicode diff --plateau inhouse --against saas', source: 'tool' },
+  { id: 'P6', title: '`marketplace` vs `baseline`, last step only', chain: ['baseline', 'marketplace'], tool: 'archicode diff --plateau marketplace --baseline baseline', layered: null, source: 'tool', note: 'What the current tool prints: only the last step\'s `replaces` count.' }
 ];
 
 // The notable cases of section 10. `checks` are asserted against the model by the generator: { in: comparison, layer, ref, state } or { in, relationship: [source, destination, label], state }.
@@ -390,13 +403,13 @@ export const NOTABLE = [
       { in: 'P2', relationship: ['fulfilment.sync', 'shop.db', 'reads orders, writes stock levels'], state: 'label-changed' }
     ]
   },
-  { id: 'N4', case: 'Move with a change of kind', where: '`shop.app.cart` to `commerce.cart`', state: 'P2: moved', why: 'Component to container. Pattern R. `MOVE` cannot do this as designed (section 12).', checks: [{ in: 'P2', layer: 'application', ref: 'commerce.cart', state: 'moved' }] },
+  { id: 'N4', case: 'Move with a change of kind', where: '`shop.app.cart` to `commerce.cart`', state: 'P2: moved', why: 'Component to container: a manifest that says `replaces`, and a `REMOVE` of the old element.', checks: [{ in: 'P2', layer: 'application', ref: 'commerce.cart', state: 'moved' }] },
   {
     id: 'N5',
-    case: 'Move with the operator',
+    case: 'Move to another parent',
     where: '`shop.cache` to `commerce.cart-store`',
     state: 'P2: moved',
-    why: 'Pattern M: new parent, new id, new name; `staging.vm` follows.',
+    why: 'New parent, new id, new name: a manifest that says `replaces`, and a `REMOVE` whose cascade takes the entry of the nodes that hosted the cache; `staging.vm` follows.',
     checks: [
       { in: 'P2', layer: 'application', ref: 'commerce.cart-store', state: 'moved' },
       { in: 'P2', layer: 'technology', ref: 'staging.vm', state: 'changed' }
@@ -437,9 +450,9 @@ export const NOTABLE = [
   {
     id: 'N9',
     case: 'Subtree renamed',
-    where: '`shop`, `shop.web`, `shop.mobile` to `storefront`...',
+    where: '`shop`, `shop.web` to `storefront`, `storefront.web`; `storefront.mobile`',
     state: 'P3: moved (2), `storefront.mobile` new',
-    why: 'The new child was declared under the old name (L2).',
+    why: 'The new system is a manifest that says `replaces`, with its children, the new one among them; a `REMOVE` of `shop` takes the old subtree, and the links to it are written again.',
     checks: [
       { in: 'P3', layer: 'application', ref: 'storefront', state: 'moved' },
       { in: 'P3', layer: 'application', ref: 'storefront.web', state: 'moved' },
@@ -483,7 +496,7 @@ export const NOTABLE = [
     case: 'Deployment follows',
     where: '`staging.vm`',
     state: 'P1, P2, P3: changed',
-    why: 'Entry removed by a cascade (P1), replaced by `SET` (P2), cascade and rename (P3).',
+    why: 'Entry removed by a cascade (P1), replaced by `SET` (P2), cascade and `ADD` of the new name (P3).',
     checks: [
       { in: 'P1', layer: 'technology', ref: 'staging.vm', state: 'changed' },
       { in: 'P2', layer: 'technology', ref: 'staging.vm', state: 'changed' },
@@ -526,8 +539,8 @@ export const DOCUMENT = {
   sizes: {
     baseline: { application: 28, technology: 22, elements: 50, relationships: 28, files: 17, declared: 50, patches: 0, views: 109 },
     saas: { application: 21, technology: 21, elements: 42, relationships: 21, files: 4, declared: 3, patches: 19, views: 93 },
-    inhouse: { application: 36, technology: 30, elements: 66, relationships: 35, files: 12, declared: 26, patches: 28, views: 147 },
-    marketplace: { application: 48, technology: 34, elements: 82, relationships: 50, files: 16, declared: 23, patches: 19, views: 181 }
+    inhouse: { application: 36, technology: 30, elements: 66, relationships: 35, files: 12, declared: 27, patches: 26, views: 147 },
+    marketplace: { application: 48, technology: 34, elements: 82, relationships: 50, files: 17, declared: 26, patches: 23, views: 181 }
   },
   comparisons: {
     P1: [3, 5, 11, 0, 0, 0, 5, 1, 12],
@@ -577,10 +590,10 @@ export const VARIANTS = [
   },
   {
     id: 'V4',
-    change: '`inhouse/application/commerce.cart.yaml` loses its folder default (moved outside `inhouse/`).',
-    expected: 'The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. A warning on the folder name is also expected.',
+    change: '`inhouse/application/commerce.cart.yaml` loses its `plateau: inhouse` header (the folder does not say the plateau: a manifest without the header is the `baseline`\'s).',
+    expected: 'The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. (A warning that the folder `inhouse` holds a manifest of `baseline` is W-7\'s, the editor\'s Files page.)',
     class: 'error and warning',
-    kin: 'cases N4 and N5 of negative-cases.json (a plateau folder that is missing): the complete folders have no folder default to lose',
+    kin: 'cases N4 and N5 of negative-cases.json (a plateau folder that is missing): the complete folders have no header to lose',
     mentions: ['baseline', 'commerce.cart', 'parent'],
     mutate: (P) => {
       const e = withoutManifest(P.inhouse, 'commerce.cart');
@@ -592,7 +605,7 @@ export const VARIANTS = [
     change: 'A plateau typo, `plateau: inhous`, in the header of `inhouse/application/commerce.cart.yaml`.',
     expected: 'Same error in the implicit plateau `inhous`; with a warning that it exists only through one header.',
     class: 'error and warning',
-    kin: 'a `plateau` key in a header is refused (#30): LayeredPlateauRefusalTest and shipped-files-layered-plateau.test.js; an implicit plateau from a header waits for the layered engine',
+    kin: 'a plateau that only headers name is a plateau, with a warning (PlateauModelTest, plateau-model.test.js); the error it leads to is wave 014 W-11\'s',
     order: ['baseline', 'inhous'],
     mentions: ['inhous', 'commerce.cart', 'parent'],
     mutate: (P) => {
@@ -603,18 +616,18 @@ export const VARIANTS = [
   },
   {
     id: 'V6',
-    change: '`MOVE platform.broker` to `platform.notifications`, an element the plateau declares.',
-    expected: 'Error: target reference already exists.',
+    change: 'A `SET` of the `id` of `platform.broker` to `platform.notifications`, an element the plateau declares (no operator renames or moves: a patch never changes an `id` or a `parent`).',
+    expected: 'Error: a patch never changes an `id`.',
     class: 'error',
-    mentions: ['marketplace', 'platform.notifications', 'existing reference'],
+    mentions: ['marketplace', 'platform.broker', 'never changes'],
     mutate: (P) => {
-      P.marketplace.op('MOVE', { target: 'platform.broker', to: 'platform.notifications' });
+      P.marketplace.op('SET', { target: 'platform.broker', field: 'id', value: 'platform.notifications' });
     }
   },
   {
     id: 'V7',
     change: '`REMOVE shop.cache` in `marketplace`.',
-    expected: 'Error: no match (`inhouse` already moved it). The stale-patch case.',
+    expected: 'Error: no match (`inhouse` already removed it, `commerce.cart-store` replaces it). The stale-patch case.',
     class: 'error',
     mentions: ['marketplace', 'shop.cache', 'no match'],
     mutate: (P) => {
@@ -689,7 +702,7 @@ export const MERGES = {
     merge: '`inhouse` into `baseline`',
     newPresent: '`baseline` resolves to 66 elements, with manifests only (the root has no patch).',
     survivors:
-      '`marketplace` now hangs under `baseline`: its 23 manifests and 19 patches are unchanged, its state is unchanged (82 elements) and its comparison with the new `baseline` is exactly P3 (+21 ~12 -5, 5 moved). ' +
+      '`marketplace` now hangs under `baseline`: its 26 manifests and 23 patches are unchanged, its state is unchanged (82 elements) and its comparison with the new `baseline` is exactly P3 (+21 ~12 -5, 5 moved). ' +
       '`saas` is refused: it targets `shop.app.catalog`, which the new baseline no longer has.',
     expected: '`--drop saas` is needed, or the merge stops before writing anything.',
     numbers: { presentElements: 66, survivorElements: 82, survivorComparison: 'P3' }
@@ -697,13 +710,13 @@ export const MERGES = {
   M2: {
     merge: '`marketplace` into `inhouse`',
     newPresent:
-      '`inhouse` resolves to 82 elements and declares 49. Of the 19 patches of `marketplace`, 11 fold into manifests (they target elements this layer declares, or are the bulk edit); ' +
-      '8 stay patches because they target elements of the baseline: `REMOVE shop.app`, `REMOVE shop.db`, `ADD` on `fulfilment.sync`, `MOVE shop`, `SET` on `storefront.web` and the three `REMOVE` of virtual machines.',
-    survivors: '`saas` is untouched and still resolves. The new `inhouse` against `baseline` is exactly P4 (+38 ~3 -6, 11 moved, 2 split, 1 merged). `discovery.search` is declared once and replaces `shop.app.search`.',
+      '`inhouse` resolves to 82 elements and declares 53. Of the 23 patches of `marketplace`, 14 fold into manifests (they target elements `inhouse` or `marketplace` declares, or are the bulk edit); ' +
+      '9 stay patches because they target elements of the baseline: `REMOVE shop.app`, `REMOVE shop.db`, `ADD` on `fulfilment.sync`, `REMOVE shop`, `ADD` on `customer`, `ADD` on the applications of `staging.vm` and the three `REMOVE` of virtual machines.',
+    survivors: '`saas` is untouched and still resolves. The new `inhouse` against `baseline` is exactly P4 (+38 ~3 -6, 11 moved, 2 split, 1 merged). `discovery.search` is declared once and replaces `shop.app.search`, and `storefront` replaces `shop`.',
     expected: 'The only case where the composition of `replaces` is visible in the files.',
-    declared: 49,
-    foldedPatches: 11,
-    keptPatches: 8,
+    declared: 53,
+    foldedPatches: 14,
+    keptPatches: 9,
     numbers: { presentElements: 82, comparison: 'P4' }
   },
   M3: {

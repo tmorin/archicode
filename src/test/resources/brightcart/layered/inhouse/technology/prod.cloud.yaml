@@ -1,0 +1,49 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "inhouse"
+  parent: "prod"
+content:
+  id: "cloud"
+  name: "Cloud region eu-west"
+  elements:
+    - kind: "node"
+      id: "k8s"
+      name: "Kubernetes cluster"
+      elements:
+        - kind: "node"
+          id: "commerce"
+          name: "Commerce namespace"
+          applications:
+            - "commerce.gateway"
+            - "commerce.catalog"
+            - "commerce.search"
+            - "commerce.cart"
+            - "commerce.checkout"
+            - "commerce.pricing"
+        - kind: "node"
+          id: "payments"
+          name: "Payments namespace"
+          applications:
+            - "payments.orchestrator"
+        - kind: "node"
+          id: "orders"
+          name: "Orders namespace"
+          applications:
+            - "orders.placement"
+            - "orders.history"
+        - kind: "node"
+          id: "accounts"
+          name: "Accounts namespace"
+          applications:
+            - "accounts.profiles"
+    - kind: "node"
+      id: "pg"
+      name: "Managed PostgreSQL"
+      applications:
+        - "commerce.catalog-db"
+        - "orders.db"
+        - "accounts.db"
+    - kind: "node"
+      id: "redis"
+      name: "Managed Redis"

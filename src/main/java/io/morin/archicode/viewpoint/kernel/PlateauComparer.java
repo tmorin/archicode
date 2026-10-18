@@ -1,7 +1,11 @@
 package io.morin.archicode.viewpoint.kernel;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.workspace.Workspace;
+import java.util.HashMap;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -34,13 +38,43 @@ public class PlateauComparer {
     @SneakyThrows
     public Comparison compare(@NonNull Workspace base, @NonNull Workspace target) {
         val input = objectMapper.createObjectNode();
-        input.set("base", side(base));
-        input.set("target", side(target));
+        val baseSide = side(base);
+        val targetSide = side(target);
+        if (target.getPlateauTree() != null) {
+            dropInheritedReplaces(baseSide, targetSide);
+        }
+        input.set("base", baseSide);
+        input.set("target", targetSide);
         val answer = ViewpointKernel.getInstance().compare(objectMapper.writeValueAsString(input));
         return Comparison.of(objectMapper.readTree(answer)).between(base.getPlateau(), target.getPlateau());
     }
 
-    private com.fasterxml.jackson.databind.node.ObjectNode side(Workspace workspace) {
+    /**
+     * A layered plateau holds, with its own elements, the ones it inherits from the plateaus above it, and an inherited element
+     * keeps the {@code replaces} of the layer that declared it. Compared with a plateau that has that layer, the entry says
+     * nothing the comparison does not already know (the element it replaced went in the layer above), and the kernel would
+     * warn, for every one, that it names nothing of the base. So the {@code replaces} that the target and the base write
+     * the same for the same element are left out of the target: what is left is what the target alone says. (The complete
+     * folders of {@code settings.plateaus} write only the {@code replaces} of their own plateau, which is why they never
+     * warn: their elements are not touched.)
+     */
+    private static void dropInheritedReplaces(ObjectNode base, ObjectNode target) {
+        for (val layer : List.of("application", "technology")) {
+            val known = new HashMap<String, JsonNode>();
+            base.path(layer).forEach(e -> {
+                if (e.has("replaces")) {
+                    known.put(e.path("reference").asText(), e.get("replaces"));
+                }
+            });
+            target.path(layer).forEach(e -> {
+                if (e.has("replaces") && e.get("replaces").equals(known.get(e.path("reference").asText()))) {
+                    ((ObjectNode) e).remove("replaces");
+                }
+            });
+        }
+    }
+
+    private ObjectNode side(Workspace workspace) {
         val side = objectMapper.createObjectNode();
         side.set("application", KernelGraph.of(workspace.appIndex, objectMapper, true));
         side.set("technology", KernelGraph.of(workspace.techIndex, objectMapper, true));

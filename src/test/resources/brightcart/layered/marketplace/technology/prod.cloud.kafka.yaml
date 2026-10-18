@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "prod.cloud"
+content:
+  id: "kafka"
+  name: "Managed Kafka"
+  applications:
+    - "platform.broker"

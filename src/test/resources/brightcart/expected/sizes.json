@@ -27,8 +27,8 @@
       "elements": 66,
       "relationships": 35,
       "files": 12,
-      "declared": 26,
-      "patches": 28,
+      "declared": 27,
+      "patches": 26,
       "views": 147
     },
     "marketplace": {
@@ -36,9 +36,9 @@
       "technology": 34,
       "elements": 82,
       "relationships": 50,
-      "files": 16,
-      "declared": 23,
-      "patches": 19,
+      "files": 17,
+      "declared": 26,
+      "patches": 23,
       "views": 181
     }
   },

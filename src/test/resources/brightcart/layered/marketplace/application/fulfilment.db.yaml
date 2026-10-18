@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "marketplace"
+  parent: "fulfilment"
+content:
+  id: "db"
+  name: "Fulfilment database"
+  description: "Stock levels."
+  qualifiers: ["PostgreSQL"]

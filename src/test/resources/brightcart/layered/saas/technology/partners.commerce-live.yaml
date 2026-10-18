@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "saas"
+  parent: "partners"
+content:
+  id: "commerce-live"
+  name: "Commerce platform (live)"
+  applications:
+    - "commerce-saas"

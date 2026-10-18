@@ -1,0 +1,20 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "inhouse"
+content:
+  id: "payments"
+  name: "Payments"
+  description: "Everything about moving money."
+  elements:
+    - kind: "container"
+      id: "orchestrator"
+      name: "Payment orchestrator"
+      description: "Talks to the payment provider."
+      qualifiers: ["Java", "Quarkus"]
+      replaces:
+        - "shop.app.payments"
+      relationships:
+        - destination: "psp"
+          label: "authorises payments with"
+          qualifiers: ["HTTPS"]

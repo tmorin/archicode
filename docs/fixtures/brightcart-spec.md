@@ -5,7 +5,7 @@ date: 2026-10-17
 files: src/test/resources/brightcart
 generator: src/test/resources/brightcart/generate.mjs
 tests: src/test/java/io/morin/archicode/brightcart, src/test/javascript/viewpoint-kernel/brightcart-*.test.js
-verified: P1, P2, P3, P5, P6 (by `archicode diff`), the comparison views of the four plateaus, the saves of the 122 manifests; not verified: P4, the layered semantics, the merge, the variants, the native image
+verified: P1, P2, P3, P5, P6 (by `archicode diff`, P1, P2, P3 and P5 on both renditions), the comparison views of the four plateaus (the same drawings from both renditions), the saves of the 123 files, the layered semantics (patches, `replaces`, the cascade of `REMOVE`); not verified: P4 (the model only), the merge, the negative variants V1, V3 and V6 to V10 (one test each is wave 014 W-11), the native image
 ---
 
 # Brightcart: a shopping fixture across four plateaus
@@ -20,11 +20,11 @@ Nothing here comes from a real workspace. Every name, id and label is invented.
 
 1. *Prospective.* The layered model under study (a plateau is a layer, its manifests add to the graph, its patches change the graph, plateaus form a tree, an editor built around a timeline) needs a case that is big enough to hurt. The fixture is that case, with the hard parts on purpose (section 10).
 2. *Example.* A realistic project for the manual and the tutorial, next to the small examples that exist (`domain_plateaus`, the bookshop).
-3. *Fixture.* One source of truth that generates every test input: the kernel (`compare`), the command line (`diff`, `views generate`, facets), the editor (open, compare, faithful saves on every manifest), the native smoke step, and, once it exists, the layered engine. Only the rendition the current tools read (`folders/`) is committed; the layered rendition is generated on demand with `--layered <folder>`, and no tool reads it (section 3).
+3. *Fixture.* One source of truth that generates every test input: the kernel (`compare`), the command line (`diff`, `views generate`, facets, `plateau list`), the editor (open, compare, faithful saves on every manifest), the native smoke step, and the layered engine. Both renditions are committed: `layered/`, which the layered tools read, and `folders/`, which the old mechanism (`settings.plateaus`) reads until it goes (section 3).
 
 **What "convincing" means here:** 42 to 82 elements per plateau across both layers (a real workspace is bigger, section 13), the six states of `compare` all present, a fork between two exclusive alternatives, a plateau that only makes sense on one of them, and the awkward cases a real migration produces (a split, a merge, a subtree renamed, an element moved twice, a stale reference).
 
-**How it was checked.** The content of this document was produced by a throwaway model, not written by hand: it applies the layers and replays the rules of `compare.rs`. The model was then cross-checked against the real thing. The four plateaus were written out as complete folders and read by the current `archicode diff`; the five comparisons it can run (section 10) gave exactly the counts below. The layered semantics themselves (patches) are only the model's: nothing of the layered engine exists yet. Since then the tools have been wired to the files: section 12 says which result each one now verifies and which stay the model's, and section 13 what is still not checked.
+**How it was checked.** The content of this document was produced by a throwaway model, not written by hand: it applies the layers and replays the rules of `compare.rs`. The model was then cross-checked against the real thing. The four plateaus were written out as complete folders and read by the current `archicode diff`; the five comparisons it can run (section 10) gave exactly the counts below. The layered semantics themselves (patches) were only the model's at the time. Since then the tools have been wired to the files, and the layered engine (wave 014) reads `layered/` and gives, plateau by plateau, the counts and the drawings of `folders/`: section 12 says which result each tool now verifies and which stay the model's, and section 13 what is still not checked.
 
 **Out of scope for this document:** deciding the open design points (each assumption below is labelled as open), writing the files, golden outputs of the renderer.
 
@@ -64,24 +64,24 @@ The two alternatives exclude each other: they are two answers to the same questi
 
 **Manifests.** One root element per file, with its subtree nested, like the existing examples. A container or a node whose parent lives in another file uses `parent:` in the header. A file is named after its root reference. A relationship is owned by its source.
 
-**Where a manifest belongs.** Each plateau is a folder (`baseline/`, `saas/`, `inhouse/`, `marketplace/`) with a `plateau.yaml` (`Kind: Plateau`). A manifest has no `plateau:` header and belongs to the plateau of the nearest folder that holds a `Plateau`. One file carries the property explicitly, `inhouse/technology/staging.k8s.yaml`, to show that the header agrees with the folder. A file never sits outside a plateau folder, except `workspace.yaml`.
+**Where a manifest belongs.** The plateau of a manifest is its `plateau:` header, whatever folder it is in; a manifest without one belongs to `baseline` (L0). Each plateau has a folder (`baseline/`, `saas/`, `inhouse/`, `marketplace/`) with a `plateau.yaml` (`Kind: Plateau`: its `id`, `name`, `horizon`, `override` when its parent is not `baseline`, and its `patches`) and the manifests that say `plateau: <id>`; the folder only keeps the files of a plateau together, and the tools do not look at it. The manifests of `baseline` carry no header, the others carry one each. A file never sits outside a plateau folder, except `workspace.yaml`.
 
 **Two renditions of the same fixture.**
 
 | Rendition | Folder | Read by | Notes |
 | --- | --- | --- | --- |
-| Layered | not committed; `node generate.mjs --layered <folder>` writes it into `<folder>` | no tool; the generator's resolver only (the layered engine does not exist yet) | The source of truth. Four folders, patches in each `plateau.yaml`. |
-| Complete folders | `folders/` | the current tools (`settings.plateaus`) | Generated by resolving the layers. Each plateau is a whole folder, `replaces` written relative to the `baseline` key of the plateau. |
+| Layered | `layered/`, committed | the layered tools: `archicode diff --plateau <id>`, `views generate --plateau <id>`, `plateau list`; the editor opens it and draws `baseline` (its chain is wave 014 W-6) | The source of truth. Four folders, the patches in the `plateau.yaml` of each plateau but `baseline`, `settings.manifests.paths: ["./**"]`, no `settings.plateaus`. The tree forks (`inhouse` and `saas` both override `baseline`), so every command names the plateau. |
+| Complete folders | `folders/`, committed | the old mechanism (`settings.plateaus`): `archicode diff --plateau <id> [--baseline <id>]`, the editor's plateau selector | Generated by resolving the layers. Each plateau is a whole folder, `replaces` written relative to the `baseline` key of the plateau. It goes with the old mechanism (wave 014 W-9). |
 
-Both are generated from one description. The tests assert that they describe the same plateaus (section 11). Only `folders/` is committed: every file the repository ships is opened by a tool in a test, and no tool reads the layered rendition, so the generator builds it on demand (in a temporary folder for its resolver, which compares it with `folders/`; in a folder of your choice, outside the repository, with `--layered <folder>`). The tables below that give the layered manifests as text (sections 5 to 8) are the same files.
+Both are generated from one description by `generate.mjs`, which resolves the layered files back and fails if a plateau differs from `folders/`, and the tests assert that the tools read the same plateaus in both (section 11). The tables below that give the layered manifests as text (sections 5 to 8) are the same files.
 
 **How a plateau is resolved.** Each layer starts from the graph of its parent, adds the elements its manifests declare, then applies its patches in order. The numbers are those of this fixture.
 
 ```mermaid
 flowchart TB
   baseline["<b>baseline</b><br/>starts from nothing<br/>50 elements declared by its manifests<br/>0 patches, applied in order<br/><b>= 50 elements</b>"]
-  inhouse["<b>inhouse</b><br/>starts from the graph of baseline<br/>26 elements declared by its manifests<br/>28 patches, applied in order<br/><b>= 66 elements</b>"]
-  marketplace["<b>marketplace</b><br/>starts from the graph of inhouse<br/>23 elements declared by its manifests<br/>19 patches, applied in order<br/><b>= 82 elements</b>"]
+  inhouse["<b>inhouse</b><br/>starts from the graph of baseline<br/>27 elements declared by its manifests<br/>26 patches, applied in order<br/><b>= 66 elements</b>"]
+  marketplace["<b>marketplace</b><br/>starts from the graph of inhouse<br/>26 elements declared by its manifests<br/>23 patches, applied in order<br/><b>= 82 elements</b>"]
   saas["<b>saas</b><br/>starts from the graph of baseline<br/>3 elements declared by its manifests<br/>19 patches, applied in order<br/><b>= 42 elements</b>"]
   baseline --> inhouse --> marketplace
   baseline --> saas
@@ -91,22 +91,24 @@ flowchart TB
 
 | # | Rule | Open question |
 | --- | --- | --- |
-| L0 | A manifest belongs to the plateau named by its header, else to the nearest folder that holds a `Plateau`, else to `baseline`. | Who says the plateau of a manifest |
+| L0 | A manifest belongs to the plateau named by its header, else to `baseline`; its folder does not matter. | Who says the plateau of a manifest |
 | L1 | A plateau is loaded as its parent's graph, plus its manifests, then its patches in the order of the array. | Order and scope of the patches |
-| L2 | The references in a plateau's manifests are those of its parent plateau. A `MOVE` runs after the manifests and carries them along. | When references are resolved |
+| L2 | The manifests of a layer are added to the graph before its patches run, and a patch may target an element the layer has just added (A9). Only a manifest creates an element: a patch never changes an `id` or a `parent`. | When references are resolved |
 | L3 | A patch with no match is an error. A free `json-path` states how many nodes it expects (`expect`). | A patch with no match: error or ignored |
 | L4 | `target` is a full reference. `json-path` is for bulk operations written by hand. | The shape of a selector, which is a public contract |
 | L5 | `REMOVE` takes the subtree, the relationships towards it and its entries in `applications` and `uses`. It does not take the empty node that hosted it. | What a removal takes with it |
-| L6 | `MOVE` rewrites the references towards the moved subtree and records `replaces` for the nodes that exist in the parent plateau. | Whether move and rename operators exist at all |
+| L6 | No operator moves or renames (`MOVE` and `RENAME` do not exist in wave 014): an element that moves is declared again by a manifest of the layer that says `replaces`, and the old one is removed. | Whether move and rename operators exist at all |
 | L7 | A relationship has no id. A patch finds it by `where: {destination, label}`. | Identity of a relationship |
 | L8 | A reference declared twice, in any layer of the chain, is an error. | Redeclaring an element of an ancestor plateau |
 | L9 | `replaces` is a fact of one plateau. Comparing two plateaus several steps apart composes the facts of the steps in between. | `replaces` across several steps |
-| L10 | Views and stories are patchable and follow a `MOVE`. | Views and stories under patches |
+| L10 | Views and stories are patchable. (Not built: they carry a `plateau:` header and are checked after each layer, but no patch reaches them: #86.) | Views and stories under patches |
 | L11 | A plateau can be merged into an ancestor, and the result resolves to what the future plateau resolved to (section 14). | Whether the fold exists, and how its result is produced |
+
+**What the layered tools do with these rules** (wave 014, run 0079; the answers of the open questions are the ones of the wave plan, A1 to A9). L0, L1, L3, L4, L5, L7 and L8 are run on `layered/`: a patch with no match is an error that names the plateau, the rank and the selector; `target` is a full reference and selects one element; `REMOVE` takes the subtree and what points at it and not the node that hosted it, and says so in the table of changes (the cascade); a relationship is found by `where: {destination, label}`; a reference declared twice in a chain is an error. L2 is restated above: the three `MOVE` of the earlier drafts of this document are manifests that say `replaces` (L6). L9 is **not** built: the layered tool reads the `replaces` of every layer of the chain relative to the plateau it compares with and does not compose them, so P4 stays the model's (section 10). L10 is not built (#86) and L11 is the merge (#65).
 
 ## 4. The workspace
 
-`workspace.yaml` holds what is shared by every plateau: the name, the styles and the facets. In the layered rendition there is no `settings.plateaus`; `settings.manifests.paths` lists the four plateau folders, which sit next to `workspace.yaml` (the default `manifests` folder does not exist there), and is the search root where an engine would look for `Kind: Plateau`.
+`workspace.yaml` holds what is shared by every plateau: the name, the styles and the facets. In the layered rendition there is no `settings.plateaus`; `settings.manifests.paths` is `["./**"]`: every manifest below the folder of `workspace.yaml` is read, recursively and sorted, except the folders of generated views (`views-*`), and the plateau of each is its header (the default `manifests` folder does not exist there).
 
 ```yaml
 settings:
@@ -477,7 +479,7 @@ content:
   horizon: "2026-Q1"
 ```
 
-A `baseline` has no `override` and no patch.
+A `baseline` has no `override` and no patch, and its manifests carry no `plateau:` header: without one a manifest is the `baseline`'s.
 
 ## 6. Plateau `saas`: buy the commerce platform
 
@@ -772,7 +774,7 @@ flowchart LR
     class n_psp,n_tax,n_carrier,n_erp,n_mailer ext
 ```
 
-**Manifests added** (26 elements in 11 files).
+**Manifests added** (27 elements in 11 files).
 
 
 Application layer:
@@ -783,6 +785,7 @@ Application layer:
 | `commerce.gateway` | container | API gateway | Kong | - | `commerce.yaml` |
 | `commerce.catalog` | container | Catalog service | Java, Quarkus | `shop.app.catalog` | `commerce.catalog.yaml` |
 | `commerce.catalog-db` | container | Catalog database | PostgreSQL | - | `commerce.yaml` |
+| `commerce.cart-store` | container | Cart store | Redis | `shop.cache` | `commerce.yaml` |
 | `commerce.search` | container | Search service | OpenSearch | `shop.app.search` | `commerce.search.yaml` |
 | `commerce.cart` | container | Cart service | Java, Quarkus | `shop.app.cart` | `commerce.cart.yaml` |
 | `commerce.checkout` | container | Checkout service | Java, Quarkus | `shop.app.checkout` | `commerce.checkout.yaml` |
@@ -815,7 +818,7 @@ Technology layer:
 inhouse/
   plateau.yaml
   application/
-    commerce.yaml                      # 3 elements
+    commerce.yaml                      # 4 elements
     commerce.catalog.yaml              # 1 element
     commerce.search.yaml               # 1 element
     commerce.cart.yaml                 # 1 element
@@ -829,7 +832,7 @@ inhouse/
     staging.k8s.yaml                   # 1 element
 ```
 
-**`inhouse/plateau.yaml`.** 9 ADD, 1 MOVE, 10 REMOVE, 8 SET.
+**`inhouse/plateau.yaml`.** 9 ADD, 11 REMOVE, 6 SET.
 
 ```yaml
 header:
@@ -840,18 +843,9 @@ content:
   name: "Build commerce services"
   horizon: "2026-Q4"
   patches:
-    # pattern M: the operator changes parent and id, rewrites the references and records replaces
-    - operator: MOVE
+    # pattern R: commerce.cart-store says replaces; the cascade takes the entries of the nodes that hosted the cache
+    - operator: REMOVE
       target: "shop.cache"
-      to: "commerce.cart-store"
-    - operator: SET
-      target: "commerce.cart-store"
-      field: name
-      value: "Cart store"
-    - operator: SET
-      target: "commerce.cart-store"
-      field: description
-      value: "Baskets, one key per shopper."
     # pattern R: the new containers say replaces, the old components go
     - operator: REMOVE
       target: "shop.app.catalog"
@@ -945,15 +939,15 @@ content:
       value: {destination: "orders.db", label: "reads orders from", qualifiers: ["SQL"]}
 ```
 
-One file of this plateau names its plateau, although its folder already does:
+Every manifest of this plateau says so in its header, `plateau: "inhouse"`, and a manifest whose parent is in another file says that too:
 
 ```yaml
 # inhouse/technology/staging.k8s.yaml
 header:
   kind: "archicode.morin.io/node"
   version: "1"
-  parent: "staging"
   plateau: "inhouse"
+  parent: "staging"
 content:
   id: "k8s"
   name: "Staging cluster"
@@ -973,10 +967,9 @@ content:
     - "accounts.db"
 ```
 
-How each replaced element is expressed. Two patterns are used on purpose, because both exist in real migrations:
+How each replaced element is expressed. There is one pattern, because no operator moves or renames an element (a patch never changes an `id` or a `parent`):
 
-- *Pattern R* (a manifest that says `replaces`, plus a `REMOVE` of the old element). Used when the kind, the name or the description change with the move: `catalog`, `search`, `cart`, `checkout` and `payments` become containers (component to container), `promotions` becomes `commerce.pricing`. `orders` is **split** (two manifests replace `shop.app.orders`) and `customers` and `loyalty` are **merged** (`accounts.profiles` replaces both). The old element has to be removed explicitly: if it stays, it stays in the plateau.
-- *Pattern M* (the operator). `MOVE shop.cache` to `commerce.cart-store` changes the parent and the id at once, rewrites `staging.vm`'s entry and records `replaces` by itself.
+- *Pattern R* (a manifest that says `replaces`, plus a `REMOVE` of the old element). Used for every element that moves: `catalog`, `search`, `cart`, `checkout` and `payments` become containers (component to container), `promotions` becomes `commerce.pricing`, and `shop.cache` becomes `commerce.cart-store` (a new parent, a new id and a new name). `orders` is **split** (two manifests replace `shop.app.orders`) and `customers` and `loyalty` are **merged** (`accounts.profiles` replaces both). The old element has to be removed explicitly: if it stays, it stays in the plateau. The `REMOVE` takes, with the element, the entries of the nodes that hosted it (`staging.vm`'s entry for the cache), and the new element is hosted by an `ADD`.
 
 The monolith survives as `shop.app`, reduced to `inventory` and `notifications`, renamed *Legacy core* and tagged `rendering-stereotypes: legacy`.
 
@@ -1116,7 +1109,7 @@ flowchart LR
     class n_shop_app,n_shop_db removed
 ```
 
-**Manifests added** (23 elements in 15 files).
+**Manifests added** (26 elements in 16 files).
 
 
 Application layer:
@@ -1136,15 +1129,18 @@ Application layer:
 | `discovery` | system | Discovery | - | - | `discovery.yaml` |
 | `discovery.recommender` | container | Recommender | Python | - | `discovery.yaml` |
 | `discovery.features` | container | Feature store | Redis | - | `discovery.yaml` |
+| `discovery.search` | container | Search service | OpenSearch | `commerce.search` | `discovery.yaml` |
 | `fulfilment.inventory` | container | Inventory service | Java, Quarkus | `shop.app.inventory` | `fulfilment.inventory.yaml` |
 | `fulfilment.db` | container | Fulfilment database | PostgreSQL | - | `fulfilment.db.yaml` |
-| `shop.mobile` | container | Mobile app | Kotlin Multiplatform | - | `shop.mobile.yaml` |
+| `storefront` | system | Shop | - | `shop` | `storefront.yaml` |
+| `storefront.web` | container | Web storefront | React | `shop.web` | `storefront.yaml` |
+| `storefront.mobile` | container | Mobile app | Kotlin Multiplatform | - | `storefront.mobile.yaml` |
 
 Technology layer:
 
 | Reference | Kind | Name | Hosts (`applications`) | `uses` |
 | --- | --- | --- | --- | --- |
-| `prod.cloud.cdn` | node | CDN | `shop.web` | - |
+| `prod.cloud.cdn` | node | CDN | `storefront.web` | - |
 | `prod.cloud.k8s.marketplace` | node | Marketplace namespace | `marketplace.seller-portal`, `marketplace.listing`, `marketplace.settlement` | - |
 | `prod.cloud.k8s.platform` | node | Platform namespace | `platform.notifications`, `discovery.recommender`, `fulfilment.inventory` | - |
 | `prod.cloud.kafka` | node | Managed Kafka | `platform.broker` | - |
@@ -1160,10 +1156,11 @@ marketplace/
     kyc.yaml                           # 1 element
     marketplace.yaml                   # 5 elements
     platform.yaml                      # 3 elements
-    discovery.yaml                     # 3 elements
+    discovery.yaml                     # 4 elements
     fulfilment.inventory.yaml          # 1 element
     fulfilment.db.yaml                 # 1 element
-    shop.mobile.yaml                   # 1 element
+    storefront.yaml                    # 2 elements
+    storefront.mobile.yaml             # 1 element
   technology/
     prod.cloud.cdn.yaml                # 1 element
     prod.cloud.k8s.marketplace.yaml    # 1 element
@@ -1174,17 +1171,17 @@ marketplace/
     staging.platform.yaml              # 1 element
 ```
 
-**`marketplace/plateau.yaml`.** 8 ADD, 2 MOVE, 5 REMOVE, 4 SET.
+**`marketplace/plateau.yaml`.** 13 ADD, 1 MERGE, 7 REMOVE, 2 SET. (`override` is a key of the `content` of a Plateau manifest, not of its header; a plateau whose parent is `baseline` leaves it out.)
 
 ```yaml
 header:
   kind: "archicode.morin.io/plateau"
   version: "1"
-  override: "inhouse"
 content:
   id: "marketplace"
   name: "Marketplace and personalisation"
   horizon: "2027-Q4"
+  override: "inhouse"
   patches:
     # retire the monolith; inventory and notifications are replaced by the manifests of this plateau
     - operator: REMOVE
@@ -1204,18 +1201,38 @@ content:
       target: "fulfilment.sync"
       field: relationships
       value: {destination: "fulfilment.inventory", label: "writes stock levels to", qualifiers: ["REST"]}
-    # a second move for this element
-    - operator: MOVE
+    # a second move for this element: discovery.search says replaces
+    - operator: REMOVE
       target: "commerce.search"
-      to: "discovery.search"
-    # rename the system; its subtree follows, shop.mobile included
-    - operator: MOVE
+    # what pointed at the old search (the REMOVE took the link)
+    - operator: ADD
+      target: "commerce.gateway"
+      field: relationships
+      value: {destination: "discovery.search", label: "routes to"}
+    # and the nodes that hosted it
+    - operator: ADD
+      target: "prod.cloud.k8s.commerce"
+      layer: technology
+      field: applications
+      value: ["discovery.search"]
+    - operator: ADD
+      target: "staging.k8s"
+      layer: technology
+      field: applications
+      value: ["discovery.search"]
+    # rename the system: storefront says replaces for shop and shop.web; the subtree goes
+    - operator: REMOVE
       target: "shop"
-      to: "storefront"
-    - operator: SET
-      target: "storefront.web"
-      field: description
-      value: "Pages of the shop, served from the CDN."
+    # what pointed at the old storefront
+    - operator: ADD
+      target: "customer"
+      field: relationships
+      value: {destination: "storefront.web", label: "browses and buys with", qualifiers: ["HTTPS"]}
+    - operator: ADD
+      target: "staging.vm"
+      layer: technology
+      field: applications
+      value: ["storefront.web"]
     # sellers, events, recommendations
     - operator: SET
       target: "commerce.catalog"
@@ -1260,19 +1277,20 @@ content:
       field: applications
       value: ["discovery.features"]
     # a bulk edit written by hand, guarded by expect
-    - operator: SET
-      json-path: "$.application..elements[?(@.qualifiers[?(@ == 'Quarkus')])].tags"
+    - operator: MERGE
+      json-path: "$.application..elements[?(@.qualifiers[?(@ == 'Quarkus')])]"
+      field: tags
       value: {"runtime": "quarkus"}
       expect: 12
 ```
 
 What to notice:
 
-- `shop.mobile` and the CDN node (which hosts `shop.web`) are declared with the **old** name (L2). The manifests are read before the patches, so `shop` still exists when they load. `MOVE shop` to `storefront` then carries the subtree along, the new child included, and rewrites the CDN's entry. `shop.mobile` is new in this plateau, so it has no `replaces`; `shop` and `shop.web` do.
-- `commerce.search` is moved a second time (to `discovery.search`). Seen from `baseline`, `discovery.search` replaces `shop.app.search`: the chain has to be composed (L9).
+- The rename of `shop` to `storefront` is pattern R too, for a whole subtree: `storefront` and `storefront.web` are manifests that say `replaces` (`shop`, `shop.web`), `storefront.mobile` is new in this plateau (it has no `replaces`) and is declared under its final name, the CDN node hosts `storefront.web`, and `REMOVE shop` takes the old subtree and every link and entry that pointed at it. What pointed at the old storefront is written again: `customer`'s link, and `staging.vm`'s entry, by an `ADD`.
+- `commerce.search` is replaced a second time (by `discovery.search`). Seen from `baseline`, `discovery.search` replaces `shop.app.search`: the chain has to be composed (L9). The layered tool does not compose it (section 10, P4).
 - `REMOVE shop.app` and `REMOVE shop.db` cascade silently into `shop.web`, `commerce.checkout`, `orders.placement`, `fulfilment.sync` and the nodes. Three `ADD` of relationships re-point the ones that matter. `shop.web`'s old link to `shop.app` just disappears.
 - The tag `rendering-stereotypes: hot-path` on `commerce.gateway` changes how the box is drawn and nothing else: `compare` ignores `rendering-*` tags, so the gateway stays unchanged.
-- The last operation is a bulk edit written by hand: every container qualified `Quarkus` gets the tag `runtime: quarkus`. It selects 12 containers and says so with `expect`.
+- The last operation is a bulk edit written by hand: every container qualified `Quarkus` gets the tag `runtime: quarkus`. It is a `MERGE` (a `SET` would replace the tags the containers have), it selects 12 containers and says so with `expect`.
 
 
 **Production after this plateau.** The virtual machines of the data centre are retired, except the batch and the admin machines, and the cloud region grows.
@@ -1404,8 +1422,8 @@ Generated views. With the current command line on the complete-folder rendition,
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | baseline | 28 | 22 | 50 | 28 | 17 | 50 | 0 | 109 |
 | saas | 21 | 21 | 42 | 21 | 4 | 3 | 19 | 93 |
-| inhouse | 36 | 30 | 66 | 35 | 12 | 26 | 28 | 147 |
-| marketplace | 48 | 34 | 82 | 50 | 16 | 23 | 19 | 181 |
+| inhouse | 36 | 30 | 66 | 35 | 12 | 27 | 26 | 147 |
+| marketplace | 48 | 34 | 82 | 50 | 17 | 26 | 23 | 181 |
 
 `Files` counts the `plateau.yaml`. `Declared` counts the elements the plateau's own manifests declare. `Views` is the number of PlantUML files the current command line writes for the plateau.
 
@@ -1413,25 +1431,25 @@ Generated views. With the current command line on the complete-folder rendition,
 
 | Rendition | Files | Lines | Bytes |
 | --- | --- | --- | --- |
-| Layered (49 files: 45 manifests and 4 `plateau.yaml`, 66 patches) | 49 | 1172 | 32237 |
+| Layered (50 files: 46 manifests and 4 `plateau.yaml`, 68 patches) | 50 | 1251 | 34446 |
 | Complete folders | 73 | 1913 | 52089 |
 
-Counted on the files `generate.mjs` writes (the layered ones with `--layered`, the generator prints their count on every run), `workspace.yaml` left out (it is shared). The layered rendition is about 40% smaller, and 9 of its 32 KB are patches. The saving is real and not dramatic; it grows with the number of plateaus and shrinks when plateaus restructure. The `inhouse` increment is 10 KB against 14 KB for its complete folder, because it adds 26 elements.
+Counted on the files `generate.mjs` writes (the generator prints their count on every run, and `renditions.json` and a node test keep them), `workspace.yaml` left out (it is shared). The layered rendition is about a third smaller, and about 9 of its 34 KB are patches. The saving is real and not dramatic; it grows with the number of plateaus and shrinks when plateaus restructure. The `inhouse` increment is 10.5 KB against 14.4 KB for its complete folder, because it adds 27 elements.
 
 ### Comparisons
 
-Counts as `archicode diff` prints them: elements `+new ~changed -removed`, then `moved / split / merged`, then relationships `+new ~changed -removed` (a label change counts as changed). The two layers are added together.
+Counts as `archicode diff` prints them: elements `+new ~changed -removed`, then `moved / split / merged`, then relationships `+new ~changed -removed` (a label change counts as changed). The two layers are added together. The layered tool gives the same counts for P1, P2, P3 and P5 (`diff --plateau <id>`, `--against <id>` for the sibling), row by row of the table of changes.
 
 | Comparison | Elements | Replacing (moved / split / merged) | Relationships | Source |
 | --- | --- | --- | --- | --- |
-| P1 `saas` vs `baseline` | +3 ~5 -11 | 0 / 0 / 0 | +5 ~1 -12 | Verified with `archicode diff`. |
-| P2 `inhouse` vs `baseline` | +17 ~5 -1 | 7 / 2 / 1 | +17 ~1 -6 | Verified with `archicode diff`. |
-| P3 `marketplace` vs `inhouse` | +21 ~12 -5 | 5 / 0 / 0 | +18 ~1 -3 | Verified with `archicode diff`. |
-| P4 `marketplace` vs `baseline`, composed | +38 ~3 -6 | 11 / 2 / 1 | +35 ~1 -9 | The model only: needs L9. The current tool cannot say this. |
-| P5 `inhouse` vs `saas` (siblings) | +27 ~4 -3 | 0 / 2 / 1 | +25 ~0 -7 | Verified with `archicode diff --baseline saas`. |
-| P6 `marketplace` vs `baseline`, last step only | +48 ~3 -16 | 4 / 0 / 0 | +44 ~0 -22 | Verified. What the current tool prints: only the last step's `replaces` count. |
+| P1 `saas` vs `baseline` | +3 ~5 -11 | 0 / 0 / 0 | +5 ~1 -12 | Verified with `archicode diff`, on `folders/` and on `layered/`. |
+| P2 `inhouse` vs `baseline` | +17 ~5 -1 | 7 / 2 / 1 | +17 ~1 -6 | Verified with `archicode diff`, on both. |
+| P3 `marketplace` vs `inhouse` | +21 ~12 -5 | 5 / 0 / 0 | +18 ~1 -3 | Verified with `archicode diff`, on both. |
+| P4 `marketplace` vs `baseline`, composed | +38 ~3 -6 | 11 / 2 / 1 | +35 ~1 -9 | The model only: needs L9. The old tool cannot say this, and the layered tool gives +39 ~3 -7, 10 / 2 / 1, +35 ~1 -9: it does not compose `replaces`, so `discovery.search` is new and `shop.app.search` removed (see below). |
+| P5 `inhouse` vs `saas` (siblings) | +27 ~4 -3 | 0 / 2 / 1 | +25 ~0 -7 | Verified with `archicode diff --baseline saas` on `folders/` and `--against saas` on `layered/`. |
+| P6 `marketplace` vs `baseline`, last step only | +48 ~3 -16 | 4 / 0 / 0 | +44 ~0 -22 | Verified on `folders/`. What the old tool prints: only the last step's `replaces` count. The layered tool has no such reading: the question is P4's. |
 
-P4 and P6 compare the same two plateaus. P6 reports 16 removed and 48 new elements where the real change is 6 and 38, and sees 4 moves where there are 11 moves, 2 splits and 1 merge. That is the cost of `replaces` being relative to one baseline (L9, section 12).
+P4 and P6 compare the same two plateaus. P6 reports 16 removed and 48 new elements where the real change is 6 and 38, and sees 4 moves where there are 11 moves, 2 splits and 1 merge. That is the cost of `replaces` being relative to one baseline (L9, section 12). The layered tool reads the `replaces` of every layer of the chain, so it finds 10 of the 11 moves; the eleventh is the one that took two steps (`shop.app.search` to `commerce.search` to `discovery.search`): the second entry names `commerce.search`, which `baseline` does not have, and is ignored with a warning, so `discovery.search` reads as new and `shop.app.search` as removed. A composition of the chain would give P4.
 
 ### Notable cases
 
@@ -1441,19 +1459,19 @@ Each case is a place where the fixture asks something specific. "State" is what 
 | Id | Case | Where | State | Why it is there |
 | --- | --- | --- | --- | --- |
 | N1 | Plain addition | `commerce.gateway` | P2: new | An element with outgoing relationships to five others. |
-| N2 | Removal that reaches another element | `shop.app.catalog` removed, `backoffice.console` | P1: removed; console changed | The cascade of `REMOVE` takes two of the console's relationships, on top of the one it gains by an explicit `ADD`. |
+| N2 | Removal that reaches another element | `shop.app.catalog` removed, `backoffice.console` | P1: removed; console changed | The cascade of `REMOVE` takes two of the console's relationships, on top of the one it gains by an explicit `ADD`; the layered tool lists them under the table (*Cascade of the removals*). |
 | N3 | Label change | `fulfilment.sync` to `shop.db` | P1, P2: changed (label) | One removed and one new relationship between the same pair are one label change. |
-| N4 | Move with a change of kind | `shop.app.cart` to `commerce.cart` | P2: moved | Component to container. Pattern R. `MOVE` cannot do this as designed (section 12). |
-| N5 | Move with the operator | `shop.cache` to `commerce.cart-store` | P2: moved | Pattern M: new parent, new id, new name; `staging.vm` follows. |
+| N4 | Move with a change of kind | `shop.app.cart` to `commerce.cart` | P2: moved | Component to container: a manifest that says `replaces`, and a `REMOVE` of the old element. |
+| N5 | Move to another parent | `shop.cache` to `commerce.cart-store` | P2: moved | New parent, new id, new name: a manifest that says `replaces`, and a `REMOVE` whose cascade takes the entry of the nodes that hosted the cache; `staging.vm` follows. |
 | N6 | Split | `shop.app.orders` to `orders.placement`, `orders.history` | P2: split (2) | The relationships of a split element are not compared: they all read as new. |
 | N7 | Merge | `shop.app.customers`, `shop.app.loyalty` to `accounts.profiles` | P2: merged | The link between the two merged elements becomes a self-link of the result and reads as removed. |
 | N8 | Moved twice | `shop.app.search`, `commerce.search`, `discovery.search` | P2: moved; P3: moved; P4: moved from `shop.app.search` | Needs the composition of `replaces` (L9). P6 gets it wrong. |
-| N9 | Subtree renamed | `shop`, `shop.web`, `shop.mobile` to `storefront`... | P3: moved (2), `storefront.mobile` new | The new child was declared under the old name (L2). |
+| N9 | Subtree renamed | `shop`, `shop.web` to `storefront`, `storefront.web`; `storefront.mobile` | P3: moved (2), `storefront.mobile` new | The new system is a manifest that says `replaces`, with its children, the new one among them; a `REMOVE` of `shop` takes the old subtree, and the links to it are written again. |
 | N10 | Destination replaced, qualifier added | `commerce.checkout` to `fulfilment.inventory` | P3: changed (relationship) | The link follows the replaced destination; only its qualifier (`REST`) differs. |
 | N11 | Render-only change | `commerce.gateway` tag `hot-path` | P3: unchanged | `rendering-*` tags are ignored by `compare`. |
-| N12 | Bulk edit | 12 `Quarkus` containers, tag `runtime` | P3: changed for the ones that were not already | Five elements are changed by this and nothing else. The guard `expect: 12` is the contract. |
+| N12 | Bulk edit | 12 `Quarkus` containers, tag `runtime` | P3: changed for the ones that were not already | Five elements are changed by this and nothing else. A `MERGE` (a `SET` would replace the tags they have); the guard `expect: 12` is the contract. |
 | N13 | Box that only contains changes | `shop` in P1 and P2, `prod.dc` in P1 to P4 | contains-changes | No change of its own. |
-| N14 | Deployment follows | `staging.vm` | P1, P2, P3: changed | Entry removed by a cascade (P1), replaced by `SET` (P2), cascade and rename (P3). |
+| N14 | Deployment follows | `staging.vm` | P1, P2, P3: changed | Entry removed by a cascade (P1), replaced by `SET` (P2), cascade and `ADD` of the new name (P3). |
 | N15 | Swap of a partner | `tax` removed, `commerce-saas` new | P1 | With their nodes in `partners` and `sandbox`. |
 | N16 | Siblings | `commerce.*` and `commerce-saas` | P5: `commerce-saas` removed, every `commerce.*` service new | Neither plateau is the other's past or future. |
 | N17 | Old reference in a list | `inhouse` `SET staging.vm applications` | variant V8 | A list copied into a patch goes stale when the parent plateau changes. |
@@ -1464,37 +1482,37 @@ Each case is a place where the fixture asks something specific. "State" is what 
 
 | Id | Change | Expected | Run today |
 | --- | --- | --- | --- |
-| V1 | A typo in a `target`: `commerce.catalogue` | Error in `marketplace`: the patch on `commerce.catalogue` has no match (it names the rank of the patch). | Waits for the layered engine (patches). |
+| V1 | A typo in a `target`: `commerce.catalogue` | Error in `marketplace`: the patch on `commerce.catalogue` has no match (it names the rank of the patch). | The layered tools read it and say `plateau marketplace: patch 13 (SET target commerce.catalogue): selects nothing, there is no element commerce.catalogue in the application layer` (tried by hand; a test is wave 014 W-11). |
 | V2 | `marketplace` declares `commerce.cart` again | Error: `commerce.cart` declared twice (`inhouse` and `marketplace`). | **Run** (case N7, on the complete folders: a second file of `marketplace` declares `commerce.cart`; the sentence names both files). |
-| V3 | `marketplace` gets `override: saas` | Error in `marketplace`: the parent of `prod.cloud.cdn` does not exist when its manifest is read. | Waits for the layered engine (`override`). |
-| V4 | `inhouse/application/commerce.cart.yaml` loses its folder default (moved outside `inhouse/`) | The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. A warning on the folder name is also expected. | Waits for the layered engine (the folder default). Its nearest cases are run: N4 and N5, a plateau folder that is missing. |
-| V5 | A plateau typo, `plateau: inhous` | Same error in the implicit plateau `inhous`; with a warning that it exists only through one header. | Waits for the layered engine (an implicit plateau). Its nearest case is run: a `plateau` key in a header is refused (`LayeredPlateauRefusalTest`, `shipped-files-layered-plateau.test.js`, #30). |
-| V6 | `MOVE platform.broker` to `platform.notifications` | Error: target reference already exists. | Waits for the layered engine (patches). |
-| V7 | `REMOVE shop.cache` in `marketplace` | Error: no match (`inhouse` already moved it). The stale-patch case. | Waits for the layered engine (patches). |
-| V8 | The `baseline` renames `shop.db` to `shop.database` | `saas`: relationship `fulfilment.sync -> shop.db` matches nothing. `inhouse`: `staging.vm` lists a missing application (the copied list). `marketplace`: `REMOVE shop.db` matches nothing. The model stops a plateau at its first error: it reports the relationship in `saas` and in `inhouse` (the patch that fails first, after the copied list) and does not resolve `marketplace`; an engine that collects every error would list the three. | Waits for the layered engine (patches). Within one complete folder a relationship to an element that is not there is a `dangling reference`, on the command line. |
-| V9 | Two `SET` of the same field in one plateau | A warning; the last one wins. | Waits for the layered engine (patches). |
-| V10 | `horizon` of a child earlier than its parent's | A warning. | Waits for the layered engine (`horizon` of a plateau that has a parent). |
+| V3 | `marketplace` gets `override: saas` | Error in `marketplace`: the parent of `prod.cloud.cdn` does not exist when its manifest is read. | The layered tools say ``in the plateau `marketplace`, `prod.cloud.cdn` is declared under `prod.cloud`, which does not exist``, once for each such element (four lines; W-11 decides whether it is one). Tried by hand. |
+| V4 | `inhouse/application/commerce.cart.yaml` loses its `plateau: inhouse` header (the folder does not say the plateau) | The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. (A warning that the folder `inhouse` holds a manifest of `baseline` is the editor's Files page, W-7.) | The layered tools say ``in the plateau `baseline`, `commerce.cart` is declared under `commerce`, which does not exist``. Tried by hand. Its nearest tested cases: N4 and N5. |
+| V5 | A plateau typo, `plateau: inhous` | Same error in the implicit plateau `inhous`; with a warning that it exists only through one header. | The layered tools warn that `inhous` exists only through one header and is one letter from `inhouse`, and the plateau `inhouse`, drawn without the cart that moved to `inhous`, fails with ``in the plateau `inhouse`, `commerce.checkout` has a relationship towards `commerce.cart`, which does not exist``. Pinned: a plateau that only headers name is a plateau, with a warning (`PlateauModelTest`, `plateau-model.test.js`). |
+| V6 | A `SET` of the `id` of `platform.broker` to `platform.notifications` (no operator renames or moves) | Error: a patch never changes an `id`. | The layered tools say ``plateau marketplace: patch 1 (SET target platform.broker): `id` cannot be changed: a patch never changes an id or a parent``. Tried by hand; a test is W-11. (The earlier V6, a `MOVE` onto an existing reference, has no operator to run.) |
+| V7 | `REMOVE shop.cache` in `marketplace` | Error: no match (`inhouse` already removed it, `commerce.cart-store` replaces it). The stale-patch case. | The layered tools say ``plateau marketplace: patch 1 (REMOVE target shop.cache): selects nothing, there is no element shop.cache in the application layer``. Tried by hand; a test is W-11. |
+| V8 | The `baseline` renames `shop.db` to `shop.database` | `saas`: relationship `fulfilment.sync -> shop.db` matches nothing. `inhouse`: `staging.vm` lists a missing application (the copied list). `marketplace`: `REMOVE shop.db` matches nothing. The model stops a plateau at its first error: it reports the relationship in `saas` and in `inhouse` (the patch that fails first, after the copied list) and does not resolve `marketplace`; an engine that collects every error would list the three. | The layered tools stop at the first error of the plateau asked for: `plateau saas: patch 18 (SET target fulfilment.sync): fulfilment.sync has no relationship to shop.db with the label ...` and the same for `inhouse` (patch 25). Tried by hand; a test is W-11. Within one complete folder a relationship to an element that is not there is a `dangling reference`, on the command line. |
+| V9 | Two `SET` of the same field in one plateau | A warning; the last one wins. | Waits for its test and, if the tool says nothing, its rule (W-11). |
+| V10 | `horizon` of a child earlier than its parent's | A warning. | Waits for its test and, if the tool says nothing, its rule (W-11). |
 | V11 | Two plateaus with the same `override` and the same `id` | Error: plateau declared twice. | **Run** (case N1: a fifth plateau with the id of another; the sentence is `the plateau id ... is used more than once`). |
 | V12 | Merge `inhouse` into `baseline` while `saas` hangs under `baseline` | Refused: `saas` no longer resolves (`patch REMOVE has no match for shop.app.catalog`). Allowed with `--drop saas`. Nothing is written when it is refused. | Waits for `plateau merge` (#65). |
 | V13 | Merge `marketplace` into `saas` | Error: `saas` is not an ancestor of `marketplace`. | Waits for `plateau merge` (#65). |
 | V14 | Merge a plateau into itself, or `baseline` into anything | Error: nothing to merge. | Waits for `plateau merge` (#65). |
 
-**What is run today.** The complete-folder rendition has no patches, so the variants that need them wait for the layered engine; the others are run in `src/test/resources/brightcart/negative-cases.json`, which holds, for each case, the alteration of `folders/` (built in a temporary folder by the test, so no negative workspace is committed), the command lines with the exit code and the error output, and what the editor says. `BrightcartNegativeCasesTest` runs the command line and `brightcart-negative.test.js` the editor, and a command gives exit 1 and one `error:` line without a stack trace (a warning and exit 0 for N8). The cases are N1 (V11), N2 a baseline that names no plateau, N3 a baseline that is a cycle (accepted: the key names the one plateau a plateau is compared with by default, nothing follows a chain, so each plateau is compared with the other), N4 and N5 a plateau folder and a baseline folder that are missing, N6 a `settings.current` that names nothing, N7 (V2), N8 a `replaces` that names nothing of the baseline (a warning), N9 a mistyped `--plateau` or `--baseline`, N10 an unknown key in a manifest header, N11 to N14 the paths and keys of a plateau, N15 `plateau add` with an id that exists, N16 to N22 a manifest that lacks `header.kind`, `header.version` or `content.id`, is empty or has a nested element with no `id` or an unknown `kind` (the last two are not told by the editor yet, #75), and N23 a relationship to an element that is not there (V8 within one complete folder: a `dangling reference` on the command line, a badge in the editor).
+**What is run today.** The complete-folder rendition has no patches, so the variants that need them could not run on it. The layered engine now reads `layered/`: V1, V3 to V8 were tried by hand on a copy of it (the sentences are in the column above, each names the plateau and the patch or the element), and a test per variant, on the command line and in the editor, is wave 014 W-11. The others are run on `folders/` in `src/test/resources/brightcart/negative-cases.json`, which holds, for each case, the alteration of `folders/` (built in a temporary folder by the test, so no negative workspace is committed), the command lines with the exit code and the error output, and what the editor says. `BrightcartNegativeCasesTest` runs the command line and `brightcart-negative.test.js` the editor, and a command gives exit 1 and one `error:` line without a stack trace (a warning and exit 0 for N8). The cases are N1 (V11), N2 a baseline that names no plateau, N3 a baseline that is a cycle (accepted: the key names the one plateau a plateau is compared with by default, nothing follows a chain, so each plateau is compared with the other), N4 and N5 a plateau folder and a baseline folder that are missing, N6 a `settings.current` that names nothing, N7 (V2), N8 a `replaces` that names nothing of the baseline (a warning), N9 a mistyped `--plateau` or `--baseline`, N10 an unknown key in a manifest header, N11 to N14 the paths and keys of a plateau, N15 `plateau add` with an id that exists, N16 to N22 a manifest that lacks `header.kind`, `header.version` or `content.id`, is empty or has a nested element with no `id` or an unknown `kind` (the last two are not told by the editor yet, #75), and N23 a relationship to an element that is not there (V8 within one complete folder: a `dangling reference` on the command line, a badge in the editor).
 
 **What the fixture drives.**
 
 | Level | Test |
 | --- | --- |
 | Kernel | `compare` returns the counts of P1, P2, P3 and P5 on the complete-folder rendition, and the table of changes for the notable cases. |
-| Kernel | The composition of `replaces` gives P4 (layered engine only). |
+| Kernel | The composition of `replaces` gives P4 (not built in the kernel or the layered tool: #89; only the model computes it). |
 | Command line | `diff` for the verified pairs; `views generate` for the four plateaus and for both facets; two runs give identical bytes. |
 | Command line | `views generate` on the comparison views of `inhouse` and `marketplace`. They failed until E1 was fixed (section 12): they are its regression test. |
 | Editor | Open each plateau, switch *Compare to*, read the Changes panel, *Write replaces* on the candidates, *Move* an element. Save each of the 73 manifests of the complete folders through the line-preserving save and compare the bytes. |
-| Native | The smoke step runs `diff` and `views generate` on `folders/`. |
-| Layered engine | For each plateau, resolving the layered rendition (`generate.mjs --layered <folder>`) gives the same plateau as `folders/` (byte for byte once written out). The generator's resolver does it today, from the files, on every run. |
+| Native | The smoke step runs `diff` and `views generate` on `folders/` and on `layered/` (and `plateau list`). |
+| Layered engine | For each plateau, resolving the layered rendition gives the same plateau as `folders/`. The generator's resolver does it from the committed files on every run (and a node test runs the generator in a copy and compares what it writes, byte for byte, with the committed files). The layered tools do it in their own words: `diff --plateau <id>` gives the counts and the table of changes of `folders/` for P1, P2, P3 and P5 (`BrightcartLayeredDiffTest`), `query graph --plateau <id>` the elements and relationships of the four plateaus, and `views generate --plateau <id>` the same PlantUML files, byte for byte, plateau by plateau, comparison by comparison and facet by facet (`BrightcartLayeredViewsTest`). The only difference is the cascade of a `REMOVE`, which only the layers know and the table lists. |
 | Migration | `plateau migrate` on `folders/` gives patches that resolve back to the same plateaus. |
 | Merge | M1 to M3 (section 14): the state of each surviving plateau is unchanged, byte for byte in the complete-folder rendition; its comparison with the new present equals the old comparison (P3 for M1, P4 for M2); a second run changes nothing; `--dry-run` writes nothing. |
-| Variants | V2 and V11 each fail with the expected class of message, on the command line and in the editor (above); V1, V3 to V10 wait for the layered engine and V12 to V14 for `plateau merge`. |
+| Variants | V2 and V11 each fail with the expected class of message, on the command line and in the editor (above); V1, V3 to V8 are read by the layered engine and V1, V3 and V6 to V10 wait for their test (wave 014 W-11) and V12 to V14 for `plateau merge`. |
 
 ## 12. What building it showed
 
@@ -1502,17 +1520,19 @@ These are findings, not decisions.
 
 **On the design.**
 
-1. **Manifests are read before patches, so a manifest cannot name what a patch creates (L2).** `shop.mobile` and the CDN node had to be written with the old name. This is a rule to state, and a trap for an author.
+1. **Manifests are read before patches, so a manifest cannot name what a patch creates (L2).** With a `MOVE` that created the new name, `shop.mobile` and the CDN node had to be written with the old name: a trap for an author. There is no `MOVE` now, and the trap went with it: the new subtree is declared by manifests under its final names (`storefront.mobile`, a CDN that hosts `storefront.web`), and only a manifest creates an element.
 2. **`replaces` has to compose (L9).** With the facts of the last step only, P6 reports 16 removed elements where the real answer is 6. Today `replaces` is relative to the `baseline` of one plateau; in a chain it becomes a history.
-3. **`MOVE` has to say what it does with the kind.** Seven elements move in `inhouse`; six of them change kind (component to container), so only one could use the operator. If `MOVE` cannot change the kind or the name, pattern R is the norm and `MOVE` is the exception.
-4. **The cascade of `REMOVE` leaves empty nodes (L5).** The hosting node needs its own `REMOVE`. `staging.vm` is changed by cascades nobody wrote, in `saas` and in `marketplace`.
+3. **`MOVE` has to say what it does with the kind.** Seven elements move in `inhouse`; six of them change kind (component to container), so only one could use the operator. Wave 014 does not build `MOVE` or `RENAME`: pattern R, a manifest that says `replaces` and a `REMOVE`, is the only way, and the three moves that were `MOVE` in the first drafts (`shop.cache`, `commerce.search`, `shop`) are written that way, with the links and the entries of the nodes that pointed at the old element written again by `ADD`. It costs two patches more (8 in place of 6 with the `SET` that completed them) and four declared elements more (`commerce.cart-store`, `discovery.search`, `storefront`, `storefront.web`).
+4. **The cascade of `REMOVE` leaves empty nodes (L5).** The hosting node needs its own `REMOVE`. `staging.vm` is changed by cascades nobody wrote, in `saas` and in `marketplace`. The layered tool lists what a `REMOVE` took besides the elements it selected, in a section under the table of changes (*Cascade of the removals*, key `cascade` of `gap.json`), only for the removals between the two plateaus compared.
 5. **A copied list goes stale (V8).** `SET applications` on `staging.vm` froze a reference that the baseline later renames. `ADD`, and a way to remove one entry, would not have.
 6. **A relationship has no identity (L7).** `where: {destination, label}` works until two relationships share both. `compare` has the same rule for its own keys.
 7. **A merge makes a self-link.** The relationship between the two merged elements is rewritten into a link from the result to itself and reads as removed, in the model and in the real `diff` alike. It may be right; it is surprising.
 8. **Render-only tags are invisible to `compare`** by design, so the fixture needs one to prove it (N11).
 9. **A bulk edit with a guard is the right contract.** `expect: 12` turns a silent drift (a thirteenth container) into an error.
 10. **A merge composes `replaces` too (section 14).** Folding `marketplace` into `inhouse` leaves `discovery.search` declared once, replacing `shop.app.search`: the two moves become one.
-11. **Merging into the root materialises.** The root has no patches, so every `REMOVE`, `SET` and `MOVE` of the absorbed layers has to end as a manifest.
+11. **Merging into the root materialises.** The root has no patches, so every `REMOVE`, `SET` and `ADD` of the absorbed layers has to end as a manifest.
+12. **`SET` replaces, `MERGE` adds (A4).** The bulk edit that tags the twelve `Quarkus` containers is a `MERGE` with a `json-path` and `field: tags`; a `SET` would have replaced the tags they have (and a path ending in `.tags` selects nothing on an element that has none). The `SET` of `tags` on `shop.app` and on `commerce.gateway` replace nothing, the elements had none.
+13. **A patch on a node or an environment says `layer: technology`.** The layer of a `target` is the application layer unless told otherwise, and the error says so. Every `REMOVE`, `SET` and `ADD` on a node of this fixture carries it.
 
 **On the engine (today).**
 
@@ -1533,18 +1553,28 @@ These are findings, not decisions.
   *What reads it.* `BrightcartViewsTest` (the four plateaus exit 0 with an empty error output, the comparison folders of `inhouse` and `marketplace`, N13 in P1, P2 and P3), `BrightcartStableOutputTest` (two runs identical, the two comparison folders among them), `ReplacedElementsViewsTest` (the four-file workspace, three tests), the Rust tests of `compare.rs` and `replaces.test.js` and `brightcart-kernel.test.js` (the views of every environment of the union). One consequence a reader will meet: the *Before* of `staging.vm` in P2 lists `commerce.cart-store`, which the baseline never had (it had `shop.cache`), and `archicode diff` says `applications: -commerce.cart-store` for it. It is the same reading in both tools (issue #71 notes it).
 - **E2. `--baseline` has to be written** when the `baseline` key of a plateau is missing and the previous plateau in the list is not the right one (`inhouse` would otherwise compare with `saas`). The fixture sets the key everywhere.
 
+**What building the layered form showed (wave 014, run 0079).**
+
+- **L1. The two mechanisms agree.** `archicode diff --plateau <id>` on `layered/` gives, for P1, P2, P3 and P5, the counts and the table of changes of `folders/`, row by row; `views generate --plateau <id>` writes the same PlantUML files, byte for byte, for the four plateaus, their comparisons and their facets (the tables differ by the cascade only); `query graph` lists the same elements and relationships. Nothing had to be bent in the fixture for it.
+- **L2. A defect of the engine, fixed.** Comparing a plateau with its parent warned, for every element the plateau inherits from a layer above that says `replaces` (`warning: replaces of commerce.cart ... shop.app.cart is not an element of the base plateau, ignored`: 10 warnings on P3), although the counts were right. `PlateauComparer` now leaves out of the target the `replaces` that the base writes the same way for the same element; the complete folders never warned, because they write only the `replaces` of their own plateau (`BrightcartLayeredDiffTest.theToolWarnsAboutEveryReplacesItIgnoresAndAboutNothingElse` fails without the fix on P3). A comparison with a cousin (`marketplace --against saas`) still warns once per inherited entry, since the other plateau does not have what they name.
+- **L3. The composition of `replaces` is not built (L9, P4).** `diff --plateau marketplace --against baseline` gives +39 ~3 -7, 10 / 2 / 1, +35 ~1 -9, where the model's P4 is +38 ~3 -6, 11 / 2 / 1, +35 ~1 -9: `discovery.search` replaces `commerce.search`, which the baseline does not have, so it reads as new and `shop.app.search` as removed. Pinned by `BrightcartLayeredDiffTest.marketplaceAgainstBaselineIsP4ButForTheMoveThatTookTwoSteps` (the test to change the day the tool composes). Filed as #89.
+- **L4. The tree forks, so the plateau is named.** Without `--plateau` (and with no `settings.current`) the tools say that the plateaus are not one line and ask for a choice; the smoke step and the tests name the plateau.
+- **L5. The editor draws `baseline` alone** (the chain is wave 014 W-6): it reads the tree of the four plateaus, every manifest and the patches without a mistake, and draws the manifests that name no plateau, which are `baseline`'s (`brightcart-layered.test.js`).
+
 **What a tool now verifies.** Wave 012 wired the tests; the numbers are read from `expected/`, never typed in a test, and each test fails when the fixture file it reads is changed.
 
 | Result of the document | Verified by | What is checked |
 | --- | --- | --- |
-| Sizes (50, 42, 66, 82 elements; 28, 21, 36, 48 application elements) | Java (`BrightcartSizesTest`, `query graph`), node (the editor opens each plateau), the look (Map) | The loader finds the sizes of section 10. The Map, unfolded, draws 28, 21, 36 and 48 items and 28, 21, 35 and 50 links: the application half of the table. |
-| P1, P2, P3, P5: counts, text, table of changes, warnings | Java (`BrightcartDiffTest`), node (kernel and the Changes panel of the editor), the look | `diff` gives the counts of section 10, the table of `changes.json` and, for P5 and P6, the warnings of `ignoredReplaces`. The Changes panel gives the same counts for P1, P2, P3, P5 and P6, and the mirror of P1. |
+| Sizes (50, 42, 66, 82 elements; 28, 21, 36, 48 application elements) | Java (`BrightcartSizesTest`, `BrightcartLayeredDiffTest`: `query graph` on both renditions), node (the editor opens each plateau of `folders/`, and `baseline` of `layered/`), the look (Map) | The loader finds the sizes of section 10, from the complete folders and from the layers, and the same elements and relationships. The Map, unfolded, draws 28, 21, 36 and 48 items and 28, 21, 35 and 50 links: the application half of the table. |
+| P1, P2, P3, P5: counts, text, table of changes, warnings | Java (`BrightcartDiffTest` on `folders/`, `BrightcartLayeredDiffTest` on `layered/`), node (kernel and the Changes panel of the editor, on `folders/`), the look | `diff` gives the counts of section 10, the table of `changes.json` and, for P5 and P6, the warnings of `ignoredReplaces`; on `layered/` the same, with `--against`, and the table equal to the one of `folders/`. The Changes panel gives the same counts for P1, P2, P3, P5 and P6, and the mirror of P1. |
 | P6 | the same, as what the tool prints | 4 moves and 16 removed, which is not the real change (P4). |
-| Comparison views of the four plateaus | Java (`BrightcartViewsTest`, `BrightcartStableOutputTest`, `ReplacedElementsViewsTest`) | `views generate --plateau <id>` exits 0 for the four, with the file counts of section 10 and an empty error output; `views-inhouse-vs-baseline` and `views-marketplace-vs-inhouse` are written with a table equal to `diff -f json`; two runs give the same bytes, those two folders included. |
-| The three facets | Java (`BrightcartViewsTest`) | They generate on the four plateaus, `journey` leaves no `Back office`, `no-externals` no `Payment provider` system, `without-cart` takes the cart away where there is one. |
-| Notable cases N1 to N16 | Java (`theNotableCasesTheTableCanShowHoldInTheTool`), node (`brightcart-kernel.test.js`) | Each has a check that the table answers in P1, P2, P3 or P5. N13, a state of the drawing, is read in the PlantUML of the comparison views (P1, P2, P3) and in the kernel. N3 is read under the new label (note 1). |
-| Saves | node (`brightcart-editor.test.js`) | The 73 manifests of `folders/` go through the line-preserving save: no edit gives the file byte for byte, a rename changes its line and no other, and putting it back gives the file back. The editor itself, on the whole of `folders/`, plateau by plateau, does the same with one rename per manifest. The layered rendition is not committed, so its files are not saved by a test. |
-| Smoke step | `ci-build.yaml`, step of the `Native` job | `diff` of `inhouse`, `views generate` of `saas` and the view of a facet, on a copy of `folders/`; its text was run with `bash -e` against the JVM build. |
+| Comparison views of the four plateaus | Java (`BrightcartViewsTest`, `BrightcartStableOutputTest`, `ReplacedElementsViewsTest`; on `layered/`: `BrightcartLayeredViewsTest`) | `views generate --plateau <id>` exits 0 for the four, with the file counts of section 10 and an empty error output; `views-inhouse-vs-baseline` and `views-marketplace-vs-inhouse` are written with a table equal to `diff -f json`; two runs give the same bytes, those two folders included; the layered run writes the very files of the complete-folder run. |
+| The three facets | Java (`BrightcartViewsTest`, and the same files in `BrightcartLayeredViewsTest`) | They generate on the four plateaus, `journey` leaves no `Back office`, `no-externals` no `Payment provider` system, `without-cart` takes the cart away where there is one. |
+| Notable cases N1 to N16 | Java (`theNotableCasesTheTableCanShowHoldInTheTool`, and the same test on `layered/`), node (`brightcart-kernel.test.js`) | Each has a check that the table answers in P1, P2, P3 or P5. N13, a state of the drawing, is read in the PlantUML of the comparison views (P1, P2, P3) and in the kernel. N3 is read under the new label (note 1). N2, the cascade of a `REMOVE`, is also read in the section under the table (`layered/`). |
+| Saves | node (`brightcart-editor.test.js`) | The 73 manifests of `folders/` and the 50 files of `layered/` (the Plateau manifests with their patches among them) go through the line-preserving save: no edit gives the file byte for byte, a rename changes its line and no other, and putting it back gives the file back. The editor itself, on the whole of `folders/`, plateau by plateau, does the same with one rename per manifest. |
+| The generator | node (`brightcart-layered.test.js`) | Run in a copy of its folder, it writes `folders/`, `layered/`, `variants/` and `expected/` byte for byte as they are committed, and its resolver agrees with the complete folders. |
+| The editor on `layered/` | node (`brightcart-layered.test.js`) | It opens the folder: the tree of the four plateaus, every manifest read, no mistake; it draws `baseline` alone, with the sizes of `baseline`, until it resolves the chain (W-6). |
+| Smoke step | `ci-build.yaml`, step of the `Native` job | `diff` of `inhouse`, `views generate` of `saas` and the view of a facet, on a copy of `folders/`, then `plateau list`, `diff` of `inhouse` (and against `saas`) and `views generate` of `saas` (with its comparison, its cascade and a facet), on a copy of `layered/`; the text of the step was run with `bash -e` against the JVM build (`java -jar target/quarkus-app/quarkus-run.jar` in place of the runner), and every `expect` line passed. The native image itself was not built. |
 
 *Notes on this table.* (1) The label change of N3: `expected/changes.json` keeps the old label of the relationship in its `label-changed` rows; the tools say `changed` with the new label and the old one under `before`; the tests map the two. (2) The facet `without-cart` selects nothing in `saas` and still generates, and the application views are byte for byte those of `saas`; but 20 technology views differ from the plain ones, because a faceted workspace asks the kernel for the links between applications in the technology views (`prod-deep.puml` gains `web_vm_shop_web --> app_vm_shop_app`). It is by design, and it makes the sentence "selects nothing" true of the elements, not of the bytes.
 
@@ -1569,13 +1599,13 @@ Read these before using it as evidence.
 - **One author invented it, to show one design.** The hard cases are the ones its author thought of, and the layered rules (L0 to L10) are the author's own. It shows that the design can express a plausible migration, not that it is the right design.
 - **It leans on structure.** Its changes are mostly additions, splits, merges and moves. A real migration may be mostly small changes of fields and relationships, which is where patches would earn their keep and where this fixture has least. The numbers of a real pair must set its proportions.
 - **It is small.** 42 to 82 elements per plateau. Problems of scale (candidates precision, editor speed, view clutter) will not show.
-- **`MOVE` is thinly used.** Of the twelve elements that move across the two later plateaus, the operator is the right tool for four (`shop.cache`, `commerce.search`, and the rename of `shop` that carries `shop.web`); the others change kind or name and are better written as a manifest that says `replaces`.
-- **P4 is not checked against the real tool.** It needs a composition of `replaces` that the current tool does not have; only the model computes it.
-- **P6 is the tool's reading, not the change.** It is verified, as what the current tool prints for `marketplace` against `baseline` (last step only, 4 moves, 16 removed); the real change of the two plateaus is P4.
-- **The layered semantics are the model's.** No tool reads the layered rendition, which is why it is not committed (`generate.mjs --layered <folder>` writes it); that it resolves to `folders/` is shown by the generator's own resolver and nothing else, and the rules L0 to L11, the patches, `plateau migrate` and the merge (M1 to M3, section 14) are not run by anything. The `workspace.yaml` of the generated layered rendition names the four plateau folders in `settings.manifests.paths`; today's command line, run on it, stops on `Kind: Plateau`, which it does not know.
-- **The complete-folder rendition is flat, so it does not exercise sub-folders.** The loader reads one level: `settings.manifests.paths` and the `path` of a plateau are not recursive (issue #73 proposes `/**`). Each plateau of `folders/` is therefore one folder holding all its manifests, with no sub-folder (the layered rendition nests them by layer, but no tool reads it); whatever the loader does with a nested tree is not tested here.
-- **Most variants are described, not run.** V1 to V14 and M1 to M3 are in `variants/` with the class of message they expect; V1 to V8 also fail in the model with the words they expect. Only V2 and V11 are run by a tool (section 11), on the complete folders, with the cases that have no variant of their own; the others wait for the layered engine or `plateau merge`. N17 is V8.
-- **The native image was not built.** The smoke step was run against the JVM build; the first run of the `Native` job is the pull request's.
+- **There is no `MOVE`, and the fixture shows why it was asked for.** Of the twelve elements that move across the two later plateaus, four (`shop.cache`, `commerce.search`, and the rename of `shop` that carries `shop.web`) could have used an operator; the others change kind or name. Wave 014 builds none, and the four are written as manifests that say `replaces`, with the links and the entries of the nodes written again by `ADD`: the fixture is a case against the cost of that (two patches and four declared elements more), not a proof that it is the right trade.
+- **P4 is not checked against the real tool.** It needs a composition of `replaces` that neither tool has; only the model computes it. The layered tool gives +39 ~3 -7 where the model says +38 ~3 -6 (section 10), and a test pins what it prints.
+- **P6 is the old tool's reading, not the change.** It is verified, as what the old mechanism prints for `marketplace` against `baseline` (last step only, 4 moves, 16 removed); the real change of the two plateaus is P4.
+- **The layered semantics are run for L0, L1, L3, L4, L5, L7 and L8 only, on one fixture.** The layered tools agree with the complete folders on the counts, the tables and the drawings (section 12), which says the two mechanisms read these four plateaus the same way; it does not say the rules are the right ones. L9 (the composition of `replaces`), L10 (views and stories under patches), L11 (the merge) and `plateau migrate` are not run by anything, and neither is a layered project in a TOML or a JSON manifest.
+- **The complete-folder rendition is flat; the layered one nests.** Each plateau of `folders/` is one folder holding all its manifests, read one level at a time; `layered/` has sub-folders by layer (`application/`, `technology/`) and is read recursively (`./**`). That the loader finds a manifest in a folder of another plateau, or at another depth, is tested by the discovery cases, not by this fixture.
+- **Most variants are described, not run by a test.** V1 to V14 and M1 to M3 are in `variants/` with the class of message they expect; V1 to V8 also fail in the model with the words they expect, and V1, V3 to V8 were tried by hand on the layered tools (section 11). Only V2 and V11 are run by a test (section 11), on the complete folders, with the cases that have no variant of their own; the others wait for wave 014 W-11 or `plateau merge`. N17 is V8.
+- **The native image was not built.** The smoke step, `folders/` lines and `layered/` lines alike, was run with `bash -e` against the JVM build (`java -jar target/quarkus-app/quarkus-run.jar` in place of the runner) and every `expect` line passed; the first run of the `Native` job is the pull request's.
 - **The editor was read, not seen.** It was driven in one browser (the built-in one) with its pane hidden: the counts, the texts, the structure and the colours of the page were read, there is no screenshot and no measure of layout or paint. Other browsers, the folder picker (the editor was served by the command line) and the published page were not tried. The speed is for 82 elements; a real workspace has twice as many.
 - **The facets are generated, not compared byte by byte.** The three facets generate on the four plateaus and the tests assert what they leave out; the bytes of the technology views of a faceted workspace differ from the plain ones even for a facet that selects nothing (note 2 above).
 - **Nothing here says what the editor should do with a view or a story that points at a removed or a renamed element** (L10): the fixture has no manifest view or story.
@@ -1621,8 +1651,8 @@ flowchart LR
 
 | Id | Merge | New present | Survivors | Expected |
 | --- | --- | --- | --- | --- |
-| M1 | `inhouse` into `baseline` | `baseline` resolves to 66 elements, with manifests only (the root has no patch) | `marketplace` now hangs under `baseline`: its 23 manifests and 19 patches are unchanged, its state is unchanged (82 elements) and its comparison with the new `baseline` is exactly P3 (+21 ~12 -5, 5 moved). `saas` is refused: it targets `shop.app.catalog`, which the new baseline no longer has. | `--drop saas` is needed, or the merge stops before writing anything. |
-| M2 | `marketplace` into `inhouse` | `inhouse` resolves to 82 elements and declares 49. Of the 19 patches of `marketplace`, 11 fold into manifests (they target elements this layer declares, or are the bulk edit); 8 stay patches because they target elements of the baseline: `REMOVE shop.app`, `REMOVE shop.db`, `ADD` on `fulfilment.sync`, `MOVE shop`, `SET` on `storefront.web` and the three `REMOVE` of virtual machines. | `saas` is untouched and still resolves. The new `inhouse` against `baseline` is exactly P4 (+38 ~3 -6, 11 moved, 2 split, 1 merged). `discovery.search` is declared once and replaces `shop.app.search`. | The only case where the composition of `replaces` is visible in the files. |
+| M1 | `inhouse` into `baseline` | `baseline` resolves to 66 elements, with manifests only (the root has no patch) | `marketplace` now hangs under `baseline`: its 26 manifests and 23 patches are unchanged, its state is unchanged (82 elements) and its comparison with the new `baseline` is exactly P3 (+21 ~12 -5, 5 moved). `saas` is refused: it targets `shop.app.catalog`, which the new baseline no longer has. | `--drop saas` is needed, or the merge stops before writing anything. |
+| M2 | `marketplace` into `inhouse` | `inhouse` resolves to 82 elements and declares 53. Of the 23 patches of `marketplace`, 14 fold into manifests (they target elements `inhouse` or `marketplace` declares, or are the bulk edit); 9 stay patches because they target elements of the baseline: `REMOVE shop.app`, `REMOVE shop.db`, `ADD` on `fulfilment.sync`, `REMOVE shop`, `ADD` on `customer`, `ADD` on the applications of `staging.vm` and the three `REMOVE` of virtual machines. | `saas` is untouched and still resolves. The new `inhouse` against `baseline` is exactly P4 (+38 ~3 -6, 11 moved, 2 split, 1 merged). `discovery.search` is declared once and replaces `shop.app.search`, and `storefront` replaces `shop`. | The only case where the composition of `replaces` is visible in the files. |
 | M3 | `marketplace` into `baseline` (two steps) | `baseline` resolves to 82 elements, manifests only | `saas` is refused or dropped. Nothing survives below. | The chain has become one node. |
 
 The counts are computed by the model, like the rest of this document.
@@ -1647,10 +1677,11 @@ archicode plateau merge marketplace --into baseline --dry-run
 ## 15. Next steps
 
 1. Read the story and the hard cases; say what is missing or unrealistic (a payment flow, a returns flow, an observability stack?).
-2. The home is taken: the specification stays at `docs/fixtures/brightcart-spec.md`; the files live in `src/test/resources/brightcart/` (`folders/`, `variants/`, `expected/`, with `description.mjs`, `generate.mjs` and a README next to them, like the harbour pair). The layered rendition is not among them: `generate.mjs --layered <folder>` writes it. A subset is copied to `src/doc/examples/` once the layered engine exists.
-3. Done: `generate.mjs` is the port of the throwaway Python model (which stays outside the repository). `node src/test/resources/brightcart/generate.mjs` regenerates the files byte for byte, builds the layered rendition (in a temporary folder), resolves it from the files and fails if a plateau differs from `folders/`; `folders/` is identical, file for file, to what the model wrote.
-4. Done: the tests of section 11 that need only the current tools (`diff` on P1, P2, P3, P5, `views generate`, the facets, the kernel, the editor's Changes panel and saves, the smoke step); section 12 lists what each verifies.
+2. The home is taken: the specification stays at `docs/fixtures/brightcart-spec.md`; the files live in `src/test/resources/brightcart/` (`layered/`, `folders/`, `variants/`, `expected/`, with `description.mjs`, `generate.mjs` and a README next to them, like the harbour pair). A subset is copied to `src/doc/examples/` once the manual describes the layers (wave 014 W-13).
+3. Done: `generate.mjs` is the port of the throwaway Python model (which stays outside the repository). `node src/test/resources/brightcart/generate.mjs` regenerates the files byte for byte (and a node test checks it in a copy), writes `layered/` and `folders/`, resolves the layered files back from the disk and fails if a plateau differs from `folders/`.
+4. Done: the tests of section 11 that need only the tools of today (`diff` on P1, P2, P3, P5 on both renditions, `views generate`, the facets, the kernel, the editor's Changes panel and saves, the smoke step); section 12 lists what each verifies.
 5. Done: E1 is filed (#67) and fixed (commit `ce452a2`); the editor was looked at (section 12), and its four findings are issues #68 to #71.
-6. The rest (L1 to L11, P4, the merge, the variants, `migrate`) waits for decisions that are not taken.
+6. Done (wave 014, run 0079): the layered rendition is committed and run by the layered tools; the editor draws its `baseline`.
+7. The rest (L9 to L11, P4, the merge, the variants' tests, `migrate`, the chain in the editor) waits for the runs of wave 014 (W-6, W-11) and for decisions that are not taken.
 
 **Scale.** About 80 elements per plateau is a small workspace next to a real one (170 and more). A generator parameter that repeats the bounded contexts (`orders`, `accounts`, `marketplace`) under new ids would give a large variant for performance tests without a second story. It is not needed for the first version.

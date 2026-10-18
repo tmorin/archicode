@@ -1,0 +1,15 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "inhouse"
+  parent: "commerce"
+content:
+  id: "catalog"
+  name: "Catalog service"
+  description: "Products, prices and availability."
+  qualifiers: ["Java", "Quarkus"]
+  replaces:
+    - "shop.app.catalog"
+  relationships:
+    - destination: "commerce.catalog-db"
+      label: "reads and writes"

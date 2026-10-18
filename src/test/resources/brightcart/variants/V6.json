@@ -1,16 +1,16 @@
 {
   "id": "V6",
   "kind": "negative variant",
-  "change": "`MOVE platform.broker` to `platform.notifications`, an element the plateau declares.",
-  "expected": "Error: target reference already exists.",
+  "change": "A `SET` of the `id` of `platform.broker` to `platform.notifications`, an element the plateau declares (no operator renames or moves: a patch never changes an `id` or a `parent`).",
+  "expected": "Error: a patch never changes an `id`.",
   "class": "error",
   "mentions": [
     "marketplace",
-    "platform.notifications",
-    "existing reference"
+    "platform.broker",
+    "never changes"
   ],
   "model": [
-    "marketplace: patch 20 (MOVE platform.broker): MOVE platform.broker onto the existing reference platform.notifications"
+    "marketplace: patch 24 (SET platform.broker): a patch never changes the id of an element"
   ],
-  "status": "described; the model reports the messages above; waits for the layered engine"
+  "status": "described; the model reports the messages above; the layered tools read layered/, a test of the variant is wave 014 W-11"
 }

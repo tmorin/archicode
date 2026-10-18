@@ -1,0 +1,19 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "staging"
+content:
+  id: "platform"
+  name: "Staging cluster (platform)"
+  applications:
+    - "marketplace.seller-portal"
+    - "marketplace.listing"
+    - "marketplace.settlement"
+    - "marketplace.db"
+    - "platform.broker"
+    - "platform.notifications"
+    - "discovery.recommender"
+    - "discovery.features"
+    - "fulfilment.inventory"
+    - "fulfilment.db"

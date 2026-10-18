@@ -106,7 +106,7 @@ class BrightcartDiffTest {
             lines.get(0).startsWith("comparing " + comparison.get("chain").get(1).asText() + " ("),
             lines.get(0)
         );
-        assertEquals("elements      " + triple(comparison.get("elements")), lines.get(1));
+        assertEquals("elements      " + Brightcart.triple(comparison.get("elements")), lines.get(1));
         val replacing = comparison.get("replacing");
         val moves = replacing.get("moved").asInt() + replacing.get("split").asInt() + replacing.get("merged").asInt();
         var next = 2;
@@ -120,15 +120,7 @@ class BrightcartDiffTest {
                 lines.get(next++)
             );
         }
-        assertEquals("relationships " + triple(comparison.get("relationships")), lines.get(next));
-    }
-
-    private static String triple(JsonNode counts) {
-        return "+%d ~%d -%d".formatted(
-            counts.get("new").asInt(),
-            counts.get("changed").asInt(),
-            counts.get("removed").asInt()
-        );
+        assertEquals("relationships " + Brightcart.triple(comparison.get("relationships")), lines.get(next));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -155,106 +147,12 @@ class BrightcartDiffTest {
         assertEquals(warnings.size(), result.err().lines().count(), "nothing but those warnings: " + result.err());
     }
 
-    /** The key of an element row of the table of changes, in the words of {@code expected/changes.json}. */
-    private static List<String> elementRows(JsonNode changes) {
-        val out = new ArrayList<String>();
-        for (val row : changes) {
-            if (row.get("thing").asText().equals("element")) {
-                out.add(
-                    row.get("layer").asText() + "|" + row.get("reference").asText() + "|" + row.get("change").asText()
-                );
-            }
-        }
-        return out.stream().sorted().toList();
-    }
-
-    /**
-     * The relationships of the table. A label change is one row {@code changed}, under the new label; the file keeps the label the
-     * relationship had and calls it {@code label-changed} (the model's word).
-     */
-    private static List<String> relationshipRows(JsonNode changes) {
-        val out = new ArrayList<String>();
-        for (val row : changes) {
-            if (!row.get("thing").asText().equals("relationship")) {
-                continue;
-            }
-            val labelChanged =
-                row.get("change").asText().equals("changed") && row.get("natures").toString().contains("\"label\"");
-            out.add(
-                String.join(
-                    "|",
-                    row.get("layer").asText(),
-                    row.get("reference").asText(),
-                    row.get("destination").asText(),
-                    labelChanged ? row.at("/before/label").asText() : row.get("label").asText(),
-                    labelChanged ? "label-changed" : row.get("change").asText()
-                )
-            );
-        }
-        return out.stream().sorted().toList();
-    }
-
     @ParameterizedTest(name = "{0}")
     @MethodSource("io.morin.archicode.brightcart.Brightcart#verifiedIds")
     void theTableOfChangesIsTheOneInExpectedChanges(String id) {
-        val want = Brightcart.expected("changes").get(id);
         val got = json(Brightcart.comparison(id)).get("changes");
-
-        val wantElements = new ArrayList<String>();
-        for (val e : want.get("elements")) {
-            // the state of a box that holds changes without having one is the drawing's, not a row of the table
-            if (!e.get("state").asText().equals("contains-changes")) {
-                wantElements.add(e.get("layer").asText() + "|" + e.get("ref").asText() + "|" + e.get("state").asText());
-            }
-        }
-        assertEquals(wantElements.stream().sorted().toList(), elementRows(got), id + " elements");
-
-        val wantRelationships = new ArrayList<String>();
-        for (val r : want.get("relationships")) {
-            wantRelationships.add(
-                String.join(
-                    "|",
-                    r.get("layer").asText(),
-                    r.get("source").asText(),
-                    r.get("destination").asText(),
-                    r.get("label").asText(),
-                    r.get("state").asText()
-                )
-            );
-        }
-        assertEquals(wantRelationships.stream().sorted().toList(), relationshipRows(got), id + " relationships");
-    }
-
-    /** The state of a thing in a table of changes, in the words of the file; {@code none} when it has no row. */
-    private static String stateOf(JsonNode changes, JsonNode check) {
-        if (check.has("relationship")) {
-            val parts = check.get("relationship");
-            for (val row : changes) {
-                if (
-                    row.get("thing").asText().equals("relationship") &&
-                    row.get("reference").asText().equals(parts.get(0).asText()) &&
-                    row.get("destination").asText().equals(parts.get(1).asText()) &&
-                    (row.at("/before/label").asText("").equals(parts.get(2).asText()) ||
-                        row.get("label").asText().equals(parts.get(2).asText()))
-                ) {
-                    val labelChanged =
-                        row.get("change").asText().equals("changed") &&
-                        row.get("natures").toString().contains("\"label\"");
-                    return labelChanged ? "label-changed" : row.get("change").asText();
-                }
-            }
-            return "none";
-        }
-        for (val row : changes) {
-            if (
-                row.get("thing").asText().equals("element") &&
-                row.get("layer").asText().equals(check.get("layer").asText()) &&
-                row.get("reference").asText().equals(check.get("ref").asText())
-            ) {
-                return row.get("change").asText();
-            }
-        }
-        return "none";
+        assertEquals(Brightcart.expectedElementRows(id), Brightcart.elementRows(got), id + " elements");
+        assertEquals(Brightcart.expectedRelationshipRows(id), Brightcart.relationshipRows(got), id + " relationships");
     }
 
     @Test
@@ -275,7 +173,7 @@ class BrightcartDiffTest {
                 );
                 assertEquals(
                     check.get("state").asText(),
-                    stateOf(changes, check),
+                    Brightcart.stateOf(changes, check),
                     notable.get("id").asText() + " in " + check.get("in").asText() + ": " + check
                 );
                 checked.add(notable.get("id").asText());

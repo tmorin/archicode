@@ -1,0 +1,108 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "marketplace"
+  name: "Marketplace and personalisation"
+  horizon: "2027-Q4"
+  override: "inhouse"
+  patches:
+    # retire the monolith; inventory and notifications are replaced by the manifests of this plateau
+    - operator: REMOVE
+      target: "shop.app"
+    - operator: REMOVE
+      target: "shop.db"
+    # rewire what pointed at the monolith (the REMOVE took those links)
+    - operator: ADD
+      target: "commerce.checkout"
+      field: relationships
+      value: {destination: "fulfilment.inventory", label: "reserves stock in", qualifiers: ["REST"]}
+    - operator: ADD
+      target: "orders.placement"
+      field: relationships
+      value: {destination: "platform.notifications", label: "asks to notify"}
+    - operator: ADD
+      target: "fulfilment.sync"
+      field: relationships
+      value: {destination: "fulfilment.inventory", label: "writes stock levels to", qualifiers: ["REST"]}
+    # a second move for this element: discovery.search says replaces
+    - operator: REMOVE
+      target: "commerce.search"
+    # what pointed at the old search (the REMOVE took the link)
+    - operator: ADD
+      target: "commerce.gateway"
+      field: relationships
+      value: {destination: "discovery.search", label: "routes to"}
+    # and the nodes that hosted it
+    - operator: ADD
+      target: "prod.cloud.k8s.commerce"
+      layer: technology
+      field: applications
+      value: ["discovery.search"]
+    - operator: ADD
+      target: "staging.k8s"
+      layer: technology
+      field: applications
+      value: ["discovery.search"]
+    # rename the system: storefront says replaces for shop and shop.web; the subtree goes
+    - operator: REMOVE
+      target: "shop"
+    # what pointed at the old storefront
+    - operator: ADD
+      target: "customer"
+      field: relationships
+      value: {destination: "storefront.web", label: "browses and buys with", qualifiers: ["HTTPS"]}
+    - operator: ADD
+      target: "staging.vm"
+      layer: technology
+      field: applications
+      value: ["storefront.web"]
+    # sellers, events, recommendations
+    - operator: SET
+      target: "commerce.catalog"
+      field: description
+      value: "Products, prices and availability, including offers of marketplace sellers."
+    - operator: ADD
+      target: "commerce.catalog"
+      field: relationships
+      value: {destination: "platform.broker", label: "publishes product events to"}
+    - operator: ADD
+      target: "commerce.catalog"
+      field: relationships
+      value: {destination: "discovery.recommender", label: "asks for suggestions"}
+    - operator: ADD
+      target: "orders.placement"
+      field: relationships
+      value: {destination: "platform.broker", label: "publishes order events to"}
+    # drawing only: compare ignores it
+    - operator: SET
+      target: "commerce.gateway"
+      field: tags
+      value: {"rendering-stereotypes": "hot-path"}
+    # retire the virtual machines
+    - operator: REMOVE
+      target: "prod.dc.web-vm"
+      layer: technology
+    - operator: REMOVE
+      target: "prod.dc.app-vm"
+      layer: technology
+    - operator: REMOVE
+      target: "prod.dc.db-vm"
+      layer: technology
+    # deployment
+    - operator: ADD
+      target: "prod.cloud.pg"
+      layer: technology
+      field: applications
+      value: ["marketplace.db", "fulfilment.db"]
+    - operator: ADD
+      target: "prod.cloud.redis"
+      layer: technology
+      field: applications
+      value: ["discovery.features"]
+    # a bulk edit written by hand, guarded by expect
+    - operator: MERGE
+      json-path: "$.application..elements[?(@.qualifiers[?(@ == 'Quarkus')])]"
+      field: tags
+      value: {"runtime": "quarkus"}
+      expect: 12

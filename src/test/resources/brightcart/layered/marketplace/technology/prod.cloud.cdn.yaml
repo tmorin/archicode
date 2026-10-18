@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "prod.cloud"
+content:
+  id: "cdn"
+  name: "CDN"
+  applications:
+    - "storefront.web"

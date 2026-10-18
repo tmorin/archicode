@@ -2,32 +2,28 @@
 // Generates Brightcart, the invented shopping fixture of docs/fixtures/brightcart-spec.md, from one description (description.mjs).
 //
 //   node src/test/resources/brightcart/generate.mjs
-//   node src/test/resources/brightcart/generate.mjs --layered <empty folder outside the repository>
 //
-// It writes, next to this file (and nothing else; the three folders are emptied first, so a second run gives the same bytes):
+// It writes, next to this file (and nothing else; the four folders are emptied first, so a second run gives the same bytes):
+//   layered/    the layered rendition, the source of truth: a folder per plateau, a `Kind: Plateau` manifest in each (`name`, `horizon`, `override` when the parent is not the
+//               root, and the `patches`), a `plateau: <id>` header on every manifest of a plateau other than `baseline`, and a workspace.yaml with no `settings.plateaus` and
+//               `settings.manifests.paths: ["./**"]`. The layered engine reads it (`archicode diff --plateau <id>`, `views generate --plateau <id>`, the editor draws `baseline`).
 //   folders/    the complete-folder rendition: each plateau a whole folder of manifests, the `baseline` key written for every plateau but the first (E2),
-//               `replaces` relative to that key; the one the current tools read (`archicode diff`, `views generate`, the editor).
+//               `replaces` relative to that key; the one the old mechanism (`settings.plateaus`) reads. It stays until that mechanism goes.
 //   variants/   V1 to V14 (negative variants) and M1 to M3 (merge scenarios) as descriptions with the expected class of message. V2 and V11 are run by a tool
-//               on the complete folders (negative-cases.json, which is written by hand and not here); the others wait for the layered engine or `plateau merge`.
+//               on the complete folders (negative-cases.json, which is written by hand and not here); the others wait for their tests or for `plateau merge`.
 //               V1 to V8 also carry what the throwaway model reported, checked here against the words the description expects.
-//   expected/   the sizes, the two renditions in files, lines and bytes, the comparisons P1 to P6 (with the flag that says whether a tool verifies
-//               them or only the model does), the table of changes of each comparison and the notable cases N1 to N17.
-//
-// The layered rendition is not written here. It is the rendition of the layered engine, which does not exist: no tool reads it, so it is not a committed folder
-// (every shipped file is opened by a tool in a test). The resolver below needs it, so it is built in a temporary folder, read back from the files and removed.
-// `--layered <folder>` writes it into <folder> instead and keeps it: four plateau folders, `patches` in each plateau.yaml, a workspace.yaml with no `settings.plateaus` and a
-// `settings.manifests.paths` that lists the four plateau folders. The folder must be empty or absent, and must not be inside this one.
+//   expected/   the sizes, the two renditions in files, lines and bytes, the comparisons P1 to P6 (with the command of each rendition and the flag that says whether
+//               a tool verifies them or only the model does), the table of changes of each comparison and the notable cases N1 to N17.
 //
 // What the generator checks before it finishes (it exits 1 on the first difference, after printing it):
 //   1. the description resolves to the sizes and the counts of the document (50, 42, 66, 82 elements; P1 to P6);
 //   2. the notable cases N1 to N17 hold in the model's comparisons;
-//   3. the resolver reads the layered rendition from the files, resolves each plateau and finds exactly what is in folders/ (the "same plateaus" test);
+//   3. the resolver reads the layered rendition back from the files it has just written, resolves each plateau and finds exactly what is in folders/ (the "same plateaus" test);
 //   4. the negative variants V1 to V8 fail in the model with the words expected.
-// The command line checks the other side (README.md): `archicode diff` on folders/ gives the counts of P1, P2, P3 and P5.
+// The command line checks the other side (README.md): `archicode diff` on folders/ and on layered/ gives the counts of P1, P2, P3 and P5.
 //
 // Everything is invented; nothing comes from a real workspace.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, ORDER, BASELINE_KEY, VIEWS, E, Plateau, WORKSPACE_SETTINGS, WORKSPACE_STYLES, COMPARISONS, NOTABLE, VARIANTS, MERGES, DOCUMENT } from './description.mjs';
@@ -66,7 +62,7 @@ class State {
   }
 }
 
-const YAML_OPERATOR = { ADD_REL: 'ADD', ADD_APP: 'ADD', SET_REL: 'SET', SET_WHERE: 'SET' };
+const YAML_OPERATOR = { ADD_REL: 'ADD', ADD_APP: 'ADD', SET_REL: 'SET', MERGE_WHERE: 'MERGE' };
 function describeOp(op, rank) {
   return `patch ${rank} (${YAML_OPERATOR[op.operator] || op.operator}${op.target ? ' ' + op.target : ''})`;
 }
@@ -74,7 +70,6 @@ function describeOp(op, rank) {
 /** Applies one layer: its manifests are added to the graph of its parent, then its patches change the graph, in order. */
 function resolve(parentState, plateau) {
   const st = parentState ? parentState.clone() : new State();
-  const start = new Set(st.el.keys());
   const rec = new Map();
   for (const e of plateau.manifests) {
     const k = key(e.layer, e.ref);
@@ -108,19 +103,20 @@ function resolve(parentState, plateau) {
     if (tgt !== undefined && !st.has(layer, tgt)) throw new FixtureError(`${where} has no match for ${tgt}`);
     if (o === 'REMOVE') {
       removeRefs(layer, st.subtree(layer, tgt).map(keyRef));
-    } else if (o === 'SET_WHERE') {
+    } else if (o === 'MERGE_WHERE') {
       const hits = [...st.el].filter(([k, e]) => keyLayer(k) === 'application' && e.q.includes(op.qualifier)).map(([, e]) => e);
       if (op.expect !== undefined && op.expect !== hits.length) throw new FixtureError(`${where} expects ${op.expect} matches and found ${hits.length}`);
-      op.expect = hits.length;
+      op.expect = hits.length; // the guard written in layered/ is the count found here: N12 below holds the number the document says (12)
       if (!hits.length) throw new FixtureError(`${where} matched nothing`);
-      for (const e of hits) Object.assign(e.tags, op.value);
+      for (const e of hits) Object.assign(e.tags, op.value); // MERGE: the keys of the value are set, the other tags stay
     } else if (o === 'SET') {
       const e = st.get(layer, tgt);
       const { field: f, value: v } = op;
+      if (f === 'id' || f === 'parent' || f === 'elements') throw new FixtureError(`${where}: a patch never changes the ${f} of an element`);
       if (f === 'name') e.name = v;
       else if (f === 'description') e.desc = v;
       else if (f === 'qualifiers') e.q = [...v];
-      else if (f === 'tags') Object.assign(e.tags, v);
+      else if (f === 'tags') e.tags = { ...v }; // SET replaces the field (A4); MERGE is the operator that keeps the other tags
       else if (f === 'applications') e.apps = [...v];
       else throw new FixtureError('field ' + f);
     } else if (o === 'ADD_REL') {
@@ -135,29 +131,6 @@ function resolve(parentState, plateau) {
       for (const a of op.values) {
         if (!st.has('application', a)) throw new FixtureError(`${where}: node ${tgt} lists missing application ${a}`);
         st.get('technology', tgt).apps.push(a);
-      }
-    } else if (o === 'MOVE') {
-      const to = op.to;
-      const mapping = new Map();
-      for (const k of st.subtree(layer, tgt)) mapping.set(keyRef(k), to + keyRef(k).slice(tgt.length));
-      if ([...mapping.values()].some((v) => st.has(layer, v))) throw new FixtureError(`${where}: MOVE ${tgt} onto the existing reference ${[...mapping.values()].find((v) => st.has(layer, v))}`);
-      if (parentOf(to) && !st.has(layer, parentOf(to))) throw new FixtureError(`${where}: MOVE ${tgt} to a missing parent`);
-      const moved = new Map();
-      for (const [k, e] of st.el) {
-        if (keyLayer(k) === layer && mapping.has(keyRef(k))) {
-          e.ref = mapping.get(keyRef(k));
-          moved.set(key(layer, e.ref), e);
-        } else moved.set(k, e);
-      }
-      st.el = moved;
-      const rewrite = (r) => mapping.get(r) ?? r;
-      for (const [k, e] of st.el) {
-        if (keyLayer(k) === layer) for (const r of e.rels) r.dest = rewrite(r.dest);
-        if (keyLayer(k) === 'technology' && layer === 'application') e.apps = e.apps.map(rewrite);
-        if (keyLayer(k) === 'technology' && layer === 'technology') e.uses = e.uses.map(rewrite);
-      }
-      for (const [oldRef, newRef] of mapping) {
-        if (start.has(key(layer, oldRef))) rec.set(key(layer, newRef), [...(rec.get(key(layer, newRef)) || []), oldRef]);
       }
     } else throw new FixtureError('operator ' + o);
   });
@@ -422,7 +395,6 @@ function opYaml(op) {
   const o = op.operator;
   let items;
   if (o === 'REMOVE') items = [['operator', 'REMOVE'], ['target', q(op.target)], ...(op.layer === 'technology' ? [['layer', 'technology']] : [])];
-  else if (o === 'MOVE') items = [['operator', 'MOVE'], ['target', q(op.target)], ['to', q(op.to)]];
   else if (o === 'SET') {
     items = [['operator', 'SET'], ['target', q(op.target)]];
     if (op.layer === 'technology') items.push(['layer', 'technology']);
@@ -435,8 +407,9 @@ function opYaml(op) {
     items = [['operator', 'ADD'], ['target', q(op.target)], ['field', 'relationships'], ['value', v]];
   } else if (o === 'ADD_APP') {
     items = [['operator', 'ADD'], ['target', q(op.target)], ['layer', 'technology'], ['field', 'applications'], ['value', flow(op.values)]];
-  } else if (o === 'SET_WHERE') {
-    items = [['operator', 'SET'], ['json-path', q(`$.application..elements[?(@.qualifiers[?(@ == '${op.qualifier}')])].tags`)], ['value', pyJson(op.value)], ['expect', String(op.expect)]];
+  } else if (o === 'MERGE_WHERE') {
+    // the bulk edit: the elements that carry a qualifier get a tag. SET would replace their tags; MERGE keeps the ones they have (A4)
+    items = [['operator', 'MERGE'], ['json-path', q(`$.application..elements[?(@.qualifiers[?(@ == '${op.qualifier}')])]`)], ['field', op.field], ['value', pyJson(op.value)], ['expect', String(op.expect)]];
   } else throw new Error('operator ' + o);
   const out = [];
   if (op.comment) out.push('  # ' + op.comment);
@@ -444,10 +417,11 @@ function opYaml(op) {
   return out.join('\n');
 }
 
+/** `Kind: Plateau`: the id, the name and the horizon, `override` for a plateau whose parent is not the root (absent means `baseline`), then the patches. */
 function plateauText(pl) {
   const head = ['header:', '  kind: "archicode.morin.io/plateau"', '  version: "1"'];
-  if (pl.parent && pl.parent !== 'baseline') head.push('  override: ' + q(pl.parent));
   const body = ['content:', '  id: ' + q(pl.id), '  name: ' + q(pl.name), '  horizon: ' + q(pl.horizon)];
+  if (pl.parent && pl.parent !== 'baseline') body.push('  override: ' + q(pl.parent));
   if (pl.patches.length) {
     body.push('  patches:');
     for (const op of pl.patches) body.push(...opYaml(op).split('\n').map((l) => '  ' + l));
@@ -455,7 +429,8 @@ function plateauText(pl) {
   return [...head, ...body].join('\n') + '\n';
 }
 
-// ----- layered rendition: the manifests of each plateau grouped by file, nested by parent, a `parent` header when the parent is in another file
+// ----- layered rendition: the manifests of each plateau grouped by file, nested by parent, a `parent` header when the parent is in another file, and a `plateau`
+// header on every manifest of a plateau other than `baseline` (the plateau of a manifest is its header, whatever its folder; without one it is `baseline`)
 function layeredTree(pl, file) {
   const els = pl.manifests.filter((e) => e.file === file);
   const refs = new Set(els.map((e) => key(e.layer, e.ref)));
@@ -467,8 +442,9 @@ function layeredTree(pl, file) {
 
 function writeLayered(P) {
   const files = new Map();
-  // The plateau folders sit next to workspace.yaml and the default `manifests` folder does not exist here: say where the manifests are.
-  const manifests = '  manifests:\n    paths: [' + ORDER.join(', ') + ']\n';
+  // The manifests are in the folders next to workspace.yaml, and the default `manifests` folder does not exist here: say where they are, recursively.
+  // The plateau of a manifest is its header; the folders only keep the files of a plateau together.
+  const manifests = '  manifests:\n    paths: ["./**"]\n';
   files.set('workspace.yaml', 'settings:\n' + WORKSPACE_SETTINGS + manifests + WORKSPACE_STYLES);
   for (const pid of ORDER) {
     const pl = P[pid];
@@ -476,7 +452,7 @@ function writeLayered(P) {
     for (const file of new Set(pl.manifests.map((e) => e.file))) {
       const t = layeredTree(pl, file);
       const parent = parentOf(t.e.ref);
-      const extra = [...(parent ? [`  parent: ${q(parent)}`] : []), ...(pl.explicitPlateau.has(file) ? [`  plateau: ${q(pl.id)}`] : [])];
+      const extra = [...(pid === 'baseline' ? [] : [`  plateau: ${q(pl.id)}`]), ...(parent ? [`  parent: ${q(parent)}`] : [])];
       files.set(file, manifestText(t, extra));
     }
   }
@@ -653,10 +629,9 @@ function flatten(doc, file) {
 function opFromYaml(p) {
   const layer = p.layer === 'technology' ? { layer: 'technology' } : {};
   if (p.operator === 'REMOVE') return { operator: 'REMOVE', target: p.target, ...layer };
-  if (p.operator === 'MOVE') return { operator: 'MOVE', target: p.target, to: p.to };
-  if (p.operator === 'SET' && p['json-path'] !== undefined) {
+  if (p.operator === 'MERGE' && p['json-path'] !== undefined) {
     const m = /@ == '([^']+)'/.exec(p['json-path']);
-    return { operator: 'SET_WHERE', qualifier: m[1], field: 'tags', value: p.value, expect: p.expect };
+    return { operator: 'MERGE_WHERE', qualifier: m[1], field: p.field, value: p.value, expect: p.expect };
   }
   if (p.operator === 'SET' && p.where) return { operator: 'SET_REL', target: p.target, dest: p.where.destination, label: p.where.label, new_label: p.value.label };
   if (p.operator === 'SET') return { operator: 'SET', target: p.target, field: p.field, value: p.value, ...layer };
@@ -675,14 +650,18 @@ function listFiles(dir) {
   return out;
 }
 
-/** The layered rendition read from the disk: the plateaus with their manifests and their patches, each manifest in the plateau of its folder (L0). */
+/**
+ * The layered rendition read from the disk: the plateaus with their manifests and their patches, each manifest in the plateau its header names (L0), `baseline`
+ * when it names none. Like the tools, the generator does not look at the folder to decide; it only checks that the folder of a plateau holds the manifests that
+ * name it, which is how the generator wrote them.
+ */
 function readLayered(dir) {
   const plateaus = {};
   for (const f of listFiles(dir)) {
     if (!f.endsWith('/plateau.yaml')) continue;
     const doc = parseYaml(fs.readFileSync(path.join(dir, f), 'utf8'));
     const c = doc.content;
-    const pl = new Plateau(c.id, c.name, c.horizon, c.id === 'baseline' ? null : doc.header.override || 'baseline', '');
+    const pl = new Plateau(c.id, c.name, c.horizon, c.id === 'baseline' ? null : c.override || 'baseline', '');
     pl.patches = (c.patches || []).map(opFromYaml);
     pl.folder = f.split('/')[0];
     plateaus[c.id] = pl;
@@ -691,9 +670,9 @@ function readLayered(dir) {
     if (f === 'workspace.yaml' || f.endsWith('/plateau.yaml')) continue;
     const doc = parseYaml(fs.readFileSync(path.join(dir, f), 'utf8'));
     const folder = f.split('/')[0];
-    const owner = Object.values(plateaus).find((p) => p.folder === folder);
-    if (!owner) throw new Error(`${f}: no plateau.yaml in its folder`);
-    if (doc.header.plateau && doc.header.plateau !== owner.id) throw new Error(`${f}: names the plateau ${doc.header.plateau}, its folder is ${owner.id}`);
+    const owner = plateaus[doc.header.plateau || 'baseline'];
+    if (!owner) throw new Error(`${f}: names the plateau ${doc.header.plateau}, which has no plateau.yaml`);
+    if (owner.folder !== folder) throw new Error(`${f}: names the plateau ${owner.id}, which is the folder ${owner.folder}`);
     for (const e of flatten(doc, dir.split('/').at(-1) + '/' + f)) owner.manifests.push(e);
   }
   return plateaus;
@@ -759,29 +738,11 @@ function measure(files) {
   return { files: [...files.keys()].filter((n) => n !== 'workspace.yaml').length, lines, bytes };
 }
 
-/** `--layered <folder>`: the folder to keep the layered rendition in, or null (then it is built in a temporary folder and removed). */
-function layeredTarget() {
-  const args = process.argv.slice(2);
-  if (args.length === 0) return null;
-  if (args.length !== 2 || args[0] !== '--layered') {
-    console.error('usage: node generate.mjs [--layered <empty folder outside the repository>]');
-    process.exit(2);
-  }
-  const dir = path.resolve(args[1]);
-  const inside = path.relative(here, dir);
-  if (inside === '' || (!inside.startsWith('..') && !path.isAbsolute(inside))) {
-    console.error(`--layered ${args[1]}: the layered rendition is not kept in the fixture folder (nothing reads it); give a folder outside ${here}`);
-    process.exit(2);
-  }
-  if (fs.existsSync(dir) && (!fs.statSync(dir).isDirectory() || fs.readdirSync(dir).length)) {
-    console.error(`--layered ${args[1]}: the folder must be empty or absent (the generator does not empty a folder it did not make)`);
-    process.exit(2);
-  }
-  return dir;
-}
-
 function main() {
-  const kept = layeredTarget();
+  if (process.argv.length > 2) {
+    console.error('usage: node generate.mjs (it takes no argument: it writes folders/, layered/, variants/ and expected/ next to itself)');
+    process.exit(2);
+  }
   const P = build();
   const { S, messages } = runAll(P);
   if (messages.length) fail('the description does not resolve cleanly:\n  ' + messages.join('\n  '));
@@ -822,6 +783,10 @@ function main() {
       relationships: n.relationships,
       verified: c.source === 'tool' ? 'archicode diff' : 'model only',
       command: c.tool,
+      layeredCommand: c.layered, // null for P6, which is what the old mechanism prints for the question P4 asks: the layered tool has one answer, listed under P4
+      // what the layered tool is expected to print: the counts of the comparison, except for P4 (the composition of `replaces` is not implemented: `layeredGives`)
+      layeredGives: c.layeredGives || null,
+      layeredIgnoredReplaces: c.layeredIgnored ?? (c.source === 'tool' && c.layered ? ignoredReplaces(S[c.chain[0]], S[c.chain.at(-1)], c.chain.at(-1)) : null),
       // the warnings the tool prints for a `replaces` that names something the compared plateau does not have (only the last step's replaces are read)
       ignoredReplaces: c.source === 'tool' ? ignoredReplaces(S[c.chain[0]], S[c.chain.at(-1)], c.chain.at(-1)) : null,
       note: c.note || null
@@ -852,7 +817,7 @@ function main() {
     const r = results.P3;
     const tagged = [...S.marketplace.el].filter(([, e]) => e.tags.runtime === 'quarkus').map(([k]) => k);
     const changedByEdit = tagged.filter((k) => r.states.get(k) === 'changed' && !S.inhouse.el.get(k)?.tags.runtime);
-    const edit = P.marketplace.patches.find((op) => op.operator === 'SET_WHERE');
+    const edit = P.marketplace.patches.find((op) => op.operator === 'MERGE_WHERE');
     if (edit.expect !== 12) fail(`N12: the bulk edit matched ${edit.expect}, the guard says 12`);
     if (tagged.length !== 12) fail(`N12: ${tagged.length} elements carry the tag, expected 12`);
     const alone = changedByEdit.filter((k) => !P.marketplace.patches.some((op) => op.target === keyRef(k)) && !P.marketplace.patches.some((op) => op.rel && op.target === keyRef(k)));
@@ -866,19 +831,13 @@ function main() {
   layeredSize.manifests = layeredSize.files - ORDER.length; // plateau.yaml files are not manifests
   layeredSize.plateauFiles = ORDER.length;
   layeredSize.patches = ORDER.reduce((n, id) => n + P[id].patches.length, 0);
-  const renditions = { folders: measure(folders) }; // only what is committed: the layered rendition is not
+  const renditions = { layered: layeredSize, folders: measure(folders) };
 
   writeTree(path.join(here, 'folders'), folders);
+  writeTree(path.join(here, 'layered'), layered);
 
-  // ---- the resolver: the layered rendition read from the files (kept in `kept`, or in a temporary folder), resolved, against folders/ read from the files
-  const layeredDir = kept || fs.mkdtempSync(path.join(os.tmpdir(), 'brightcart-layered-'));
-  writeTree(layeredDir, layered);
-  let fromDisk;
-  try {
-    fromDisk = readLayered(layeredDir);
-  } finally {
-    if (!kept) fs.rmSync(layeredDir, { recursive: true, force: true });
-  }
+  // ---- the resolver: the layered rendition read back from the committed files, resolved, against folders/ read from the files
+  const fromDisk = readLayered(path.join(here, 'layered'));
   const folderPlateaus = readFolders(path.join(here, 'folders'));
   const resolvedSizes = {};
   const stateOf = {};
@@ -888,6 +847,7 @@ function main() {
       fail(`resolver: the layered rendition has no plateau ${pid}`);
       continue;
     }
+    if (pl.parent && !stateOf[pl.parent]) continue; // its parent did not resolve: that is already told
     try {
       stateOf[pid] = resolve(pl.parent ? stateOf[pl.parent] : null, pl);
     } catch (ex) {
@@ -912,7 +872,7 @@ function main() {
       if (!model.length) fail(`${v.id}: the model finds nothing wrong, the description expects ${v.expected}`);
       for (const word of v.mentions) if (!model.some((m) => m.includes(word))) fail(`${v.id}: the model's messages do not mention "${word}":\n  ${model.join('\n  ') || '(none)'}`);
     }
-    variants.set(`${v.id}.json`, json({ id: v.id, kind: 'negative variant', change: v.change, expected: v.expected, class: v.class, mentions: v.mentions, model, status: v.run ? 'run by a tool: ' + v.run : v.kin ? 'not run as such (waits for the layered engine); its nearest case a tool runs: ' + v.kin : v.mutate ? 'described; the model reports the messages above; waits for the layered engine' : 'described; waits for the layered engine' }));
+    variants.set(`${v.id}.json`, json({ id: v.id, kind: 'negative variant', change: v.change, expected: v.expected, class: v.class, mentions: v.mentions, model, status: v.run ? 'run by a tool: ' + v.run : v.kin ? 'not run as such (the layered tools read layered/, a test of the variant is wave 014 W-11); its nearest case a tool runs: ' + v.kin : v.mutate ? 'described; the model reports the messages above; the layered tools read layered/, a test of the variant is wave 014 W-11' : 'described; a test of the variant is wave 014 W-11 (V9, V10) or `plateau merge` (V12 to V14)' }));
   }
   const declaredAll = P.inhouse.manifests.length + P.marketplace.manifests.length;
   if (declaredAll !== MERGES.M2.declared) fail(`M2: inhouse would declare ${declaredAll}, the document says ${MERGES.M2.declared}`);
@@ -939,7 +899,7 @@ function main() {
     console.log(`${pid.padEnd(12)} ${String(s.application).padStart(11)} ${String(s.technology).padStart(10)} ${String(s.elements).padStart(8)} ${String(s.relationships).padStart(13)} ${String(s.files).padStart(5)} ${String(s.declared).padStart(8)} ${String(s.patches).padStart(7)}`);
   }
   console.log('resolver     ' + ORDER.map((pid) => `${pid} ${resolvedSizes[pid]}`).join(', ') + ' elements (the layered rendition resolved from the files, compared with folders/)');
-  console.log(`layered      ${layeredSize.files} files (${layeredSize.manifests} manifests, ${layeredSize.plateauFiles} plateau.yaml, ${layeredSize.patches} patches), ${layeredSize.lines} lines, ${layeredSize.bytes} bytes, ${kept ? 'written to ' + kept : 'built in a temporary folder and removed (--layered <folder> keeps it)'}`);
+  console.log(`layered      ${layeredSize.files} files (${layeredSize.manifests} manifests, ${layeredSize.plateauFiles} plateau.yaml, ${layeredSize.patches} patches), ${layeredSize.lines} lines, ${layeredSize.bytes} bytes`);
   console.log(`folders/     ${renditions.folders.files} files, ${renditions.folders.lines} lines, ${renditions.folders.bytes} bytes`);
   for (const c of comparisons) {
     const e = c.elements;

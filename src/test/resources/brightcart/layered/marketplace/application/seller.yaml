@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/person"
+  version: "1"
+  plateau: "marketplace"
+content:
+  id: "seller"
+  name: "Marketplace seller"
+  description: "A third party that lists offers."
+  relationships:
+    - destination: "marketplace.seller-portal"
+      label: "lists offers with"

@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "prod.cloud.k8s"
+content:
+  id: "marketplace"
+  name: "Marketplace namespace"
+  applications:
+    - "marketplace.seller-portal"
+    - "marketplace.listing"
+    - "marketplace.settlement"

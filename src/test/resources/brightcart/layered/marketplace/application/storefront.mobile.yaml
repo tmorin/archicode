@@ -1,0 +1,14 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "marketplace"
+  parent: "storefront"
+content:
+  id: "mobile"
+  name: "Mobile app"
+  description: "The shop in the pocket."
+  qualifiers: ["Kotlin Multiplatform"]
+  relationships:
+    - destination: "commerce.gateway"
+      label: "browses and buys through"
+      qualifiers: ["REST"]

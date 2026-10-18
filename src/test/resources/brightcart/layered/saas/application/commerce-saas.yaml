@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/system"
+  version: "1"
+  plateau: "saas"
+content:
+  id: "commerce-saas"
+  name: "Commerce platform (SaaS)"
+  description: "Hosted catalog, cart, checkout and promotions."
+  tags:
+    rendering-stereotypes: "external"
+  relationships:
+    - destination: "shop.app.orders"
+      label: "sends order webhooks to"
+      qualifiers: ["HTTPS"]
+    - destination: "psp"
+      label: "authorises payments with"
+      qualifiers: ["HTTPS"]

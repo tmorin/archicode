@@ -1,0 +1,33 @@
+settings:
+  name: "Brightcart"
+  views:
+    path: "views"
+  facets:
+    customs:
+      - name: "journey"            # the purchase journey: no staff tools, no fulfilment
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.id == 'agent' || @.id == 'merchandiser' || @.id == 'backoffice' || @.id == 'fulfilment')]"
+      - name: "no-externals"       # what Brightcart builds, without its partners
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.tags['rendering-stereotypes'] == 'external')]"
+      - name: "without-cart"       # selects nothing in `saas`, where the cart is gone
+        actions:
+          - operator: REMOVE
+            json-path: "$.application..elements[?(@.id == 'cart')]"
+  manifests:
+    paths: ["./**"]
+styles:
+  by-tags:
+    external:
+      background-color: "lightgray"
+    legacy:
+      line-style: 8
+      line-gap: 4
+    hot-path:
+      line-color: "orangered"
+      line-thickness: 3
+  by-qualifiers:
+    PostgreSQL:
+      round-corner: 20

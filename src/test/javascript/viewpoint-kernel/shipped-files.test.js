@@ -102,6 +102,7 @@ test('the repository ships the workspaces this test looks for', () => {
   const found = workspaces();
   assert.ok(found.length >= 17, 'the manual and the fixtures ship at least 17 workspaces: ' + found.join(', '));
   assert.ok(found.includes('src/test/resources/brightcart/folders/workspace.yaml'));
+  assert.ok(found.includes('src/test/resources/brightcart/layered/workspace.yaml'));
   assert.ok(found.includes('src/doc/examples/domain_plateaus/workspace.yaml'));
 });
 

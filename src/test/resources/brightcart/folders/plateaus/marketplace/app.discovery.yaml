@@ -7,16 +7,6 @@ content:
   description: "Search and recommendations."
   elements:
     - kind: "container"
-      id: "search"
-      name: "Search service"
-      description: "Full-text search over products."
-      qualifiers: ["OpenSearch"]
-      replaces:
-        - "commerce.search"
-      relationships:
-        - destination: "commerce.catalog"
-          label: "indexes products from"
-    - kind: "container"
       id: "recommender"
       name: "Recommender"
       description: "Suggests products to a shopper."
@@ -31,3 +21,13 @@ content:
       name: "Feature store"
       description: "Shopper and product features."
       qualifiers: ["Redis"]
+    - kind: "container"
+      id: "search"
+      name: "Search service"
+      description: "Full-text search over products."
+      qualifiers: ["OpenSearch"]
+      replaces:
+        - "commerce.search"
+      relationships:
+        - destination: "commerce.catalog"
+          label: "indexes products from"

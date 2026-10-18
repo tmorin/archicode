@@ -23,6 +23,9 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau saas",
+    "layeredCommand": "archicode diff --plateau saas",
+    "layeredGives": null,
+    "layeredIgnoredReplaces": 0,
     "ignoredReplaces": 0,
     "note": null
   },
@@ -50,6 +53,9 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau inhouse",
+    "layeredCommand": "archicode diff --plateau inhouse",
+    "layeredGives": null,
+    "layeredIgnoredReplaces": 0,
     "ignoredReplaces": 0,
     "note": null
   },
@@ -77,6 +83,9 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau marketplace",
+    "layeredCommand": "archicode diff --plateau marketplace",
+    "layeredGives": null,
+    "layeredIgnoredReplaces": 0,
     "ignoredReplaces": 0,
     "note": null
   },
@@ -105,8 +114,21 @@
     },
     "verified": "model only",
     "command": null,
+    "layeredCommand": "archicode diff --plateau marketplace --against baseline",
+    "layeredGives": [
+      39,
+      3,
+      7,
+      10,
+      2,
+      1,
+      35,
+      1,
+      9
+    ],
+    "layeredIgnoredReplaces": 1,
     "ignoredReplaces": null,
-    "note": "Needs the composition of `replaces` (L9). The current tool cannot say this."
+    "note": "Needs the composition of `replaces` (L9). The old tool cannot say this, and the layered tool does not compose them either: it gives one move less (see `layeredGives`)."
   },
   {
     "id": "P5",
@@ -132,6 +154,9 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau inhouse --baseline saas",
+    "layeredCommand": "archicode diff --plateau inhouse --against saas",
+    "layeredGives": null,
+    "layeredIgnoredReplaces": 7,
     "ignoredReplaces": 7,
     "note": null
   },
@@ -159,6 +184,9 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau marketplace --baseline baseline",
+    "layeredCommand": null,
+    "layeredGives": null,
+    "layeredIgnoredReplaces": null,
     "ignoredReplaces": 1,
     "note": "What the current tool prints: only the last step's `replaces` count."
   }

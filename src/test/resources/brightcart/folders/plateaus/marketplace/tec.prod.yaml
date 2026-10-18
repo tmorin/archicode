@@ -35,10 +35,10 @@ content:
               applications:
                 - "commerce.gateway"
                 - "commerce.catalog"
-                - "discovery.search"
                 - "commerce.cart"
                 - "commerce.checkout"
                 - "commerce.pricing"
+                - "discovery.search"
             - kind: "node"
               id: "payments"
               name: "Payments namespace"

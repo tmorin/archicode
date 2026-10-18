@@ -1,0 +1,74 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "saas"
+  name: "Buy the commerce platform"
+  horizon: "2026-Q4"
+  patches:
+    # what the platform replaces
+    - operator: REMOVE
+      target: "shop.app.catalog"
+    - operator: REMOVE
+      target: "shop.app.search"
+    - operator: REMOVE
+      target: "shop.app.cart"
+    - operator: REMOVE
+      target: "shop.app.checkout"
+    - operator: REMOVE
+      target: "shop.app.payments"
+    - operator: REMOVE
+      target: "shop.app.promotions"
+    # no longer needed
+    - operator: REMOVE
+      target: "shop.cache"
+    # the platform computes taxes
+    - operator: REMOVE
+      target: "tax"
+    # REMOVE does not take the nodes that hosted what is gone
+    - operator: REMOVE
+      target: "prod.dc.cache-vm"
+      layer: technology
+    - operator: REMOVE
+      target: "partners.tax-live"
+      layer: technology
+    - operator: REMOVE
+      target: "sandbox.tax-sandbox"
+      layer: technology
+    # the storefront talks to the platform
+    - operator: SET
+      target: "shop.web"
+      field: description
+      value: "Headless storefront on the commerce platform."
+    - operator: SET
+      target: "shop.web"
+      field: qualifiers
+      value: ["React", "Next.js"]
+    - operator: ADD
+      target: "shop.web"
+      field: relationships
+      value: {destination: "commerce-saas", label: "browses and checks out with", qualifiers: ["GraphQL"]}
+    # what is left of the application
+    - operator: SET
+      target: "shop.app"
+      field: name
+      value: "Account and order history"
+    - operator: SET
+      target: "shop.app"
+      field: description
+      value: "Accounts, loyalty, order history and stock; the rest moved to the platform."
+    # the staff tools
+    - operator: ADD
+      target: "backoffice.console"
+      field: relationships
+      value: {destination: "commerce-saas", label: "maintains products in", qualifiers: ["HTTPS"]}
+    # the nightly batch
+    - operator: SET
+      target: "fulfilment.sync"
+      field: relationships
+      where: {destination: "shop.db", label: "reads orders, writes stock levels"}
+      value: {label: "writes stock levels"}
+    - operator: ADD
+      target: "fulfilment.sync"
+      field: relationships
+      value: {destination: "commerce-saas", label: "pulls orders from", qualifiers: ["REST"]}

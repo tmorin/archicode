@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/node"
+  version: "1"
+  plateau: "marketplace"
+  parent: "partners"
+content:
+  id: "kyc-live"
+  name: "KYC (live)"
+  applications:
+    - "kyc"

@@ -26,7 +26,9 @@ import picocli.CommandLine;
  * {@code src/test/resources/brightcart/} that {@code generate.mjs} wrote, never the generator (no test runs node). The
  * complete-folder rendition {@code folders/} is the workspace; {@code expected/} holds the answers the document records
  * (sizes, the comparisons P1 to P6 with the command that gives each, the table of changes, the notable cases N1 to
- * N17). A test asserts the tool against those files and types no number of its own.
+ * N17). A test asserts the tool against those files and types no number of its own. The layered rendition
+ * {@code layered/} (wave 014, run 0079) is the other workspace: the same plateaus as layers, asked the same questions
+ * with {@code --against} in place of {@code --baseline}.
  *
  * <p>The command line is run in the process, through the real picocli command line, on a <strong>copy</strong> of
  * {@code folders/} in a temporary folder: {@code views generate} writes {@code views-*} folders next to
@@ -36,6 +38,7 @@ final class Brightcart {
 
     static final Path ROOT = Path.of("src/test/resources/brightcart");
     static final Path FOLDERS = ROOT.resolve("folders");
+    static final Path LAYERED = ROOT.resolve("layered");
     static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** The four plateaus, in the order of {@code settings.plateaus}. */
@@ -98,12 +101,38 @@ final class Brightcart {
         return words.subList(1, words.size());
     }
 
+    /** The comparisons the layered tool answers like the old one ({@code layeredCommand}, a verified comparison). */
+    static Stream<String> layeredIds() {
+        return verifiedComparisons()
+            .stream()
+            .filter(c -> !c.get("layeredCommand").isNull())
+            .map(c -> c.get("id").asText());
+    }
+
+    /** The arguments after {@code archicode} of the command that asks a comparison of {@code layered/}. */
+    static List<String> layeredArguments(JsonNode comparison) {
+        val words = Arrays.asList(comparison.get("layeredCommand").asText().split(" "));
+        if (!words.get(0).equals("archicode")) {
+            throw new IllegalArgumentException(comparison.get("layeredCommand").asText());
+        }
+        return words.subList(1, words.size());
+    }
+
     /** A copy of {@code folders/} into {@code into}; returns its {@code workspace.yaml}. */
-    @SneakyThrows
     static Path copyFolders(Path into) {
-        try (val files = Files.walk(FOLDERS)) {
+        return copy(FOLDERS, into);
+    }
+
+    /** A copy of {@code layered/} into {@code into}; returns its {@code workspace.yaml}. */
+    static Path copyLayered(Path into) {
+        return copy(LAYERED, into);
+    }
+
+    @SneakyThrows
+    private static Path copy(Path from, Path into) {
+        try (val files = Files.walk(from)) {
             for (val source : files.toList()) {
-                val target = into.resolve(FOLDERS.relativize(source).toString());
+                val target = into.resolve(from.relativize(source).toString());
                 if (Files.isDirectory(source)) {
                     Files.createDirectories(target);
                 } else {
@@ -112,6 +141,115 @@ final class Brightcart {
             }
         }
         return into.resolve("workspace.yaml");
+    }
+
+    /** The key of an element row of the table of changes, in the words of {@code expected/changes.json}. */
+    static List<String> elementRows(JsonNode changes) {
+        val out = new ArrayList<String>();
+        for (val row : changes) {
+            if (row.get("thing").asText().equals("element")) {
+                out.add(
+                    row.get("layer").asText() + "|" + row.get("reference").asText() + "|" + row.get("change").asText()
+                );
+            }
+        }
+        return out.stream().sorted().toList();
+    }
+
+    /**
+     * The relationships of the table. A label change is one row {@code changed}, under the new label; the file keeps the label the
+     * relationship had and calls it {@code label-changed} (the model's word).
+     */
+    static List<String> relationshipRows(JsonNode changes) {
+        val out = new ArrayList<String>();
+        for (val row : changes) {
+            if (!row.get("thing").asText().equals("relationship")) {
+                continue;
+            }
+            val labelChanged =
+                row.get("change").asText().equals("changed") && row.get("natures").toString().contains("\"label\"");
+            out.add(
+                String.join(
+                    "|",
+                    row.get("layer").asText(),
+                    row.get("reference").asText(),
+                    row.get("destination").asText(),
+                    labelChanged ? row.at("/before/label").asText() : row.get("label").asText(),
+                    labelChanged ? "label-changed" : row.get("change").asText()
+                )
+            );
+        }
+        return out.stream().sorted().toList();
+    }
+
+    /** The element rows {@code expected/changes.json} lists for a comparison (a box that only contains changes is the drawing's, not a row). */
+    static List<String> expectedElementRows(String id) {
+        val out = new ArrayList<String>();
+        for (val e : expected("changes").get(id).get("elements")) {
+            if (!e.get("state").asText().equals("contains-changes")) {
+                out.add(e.get("layer").asText() + "|" + e.get("ref").asText() + "|" + e.get("state").asText());
+            }
+        }
+        return out.stream().sorted().toList();
+    }
+
+    /** The relationship rows {@code expected/changes.json} lists for a comparison, in the form of {@link #relationshipRows}. */
+    static List<String> expectedRelationshipRows(String id) {
+        val out = new ArrayList<String>();
+        for (val r : expected("changes").get(id).get("relationships")) {
+            out.add(
+                String.join(
+                    "|",
+                    r.get("layer").asText(),
+                    r.get("source").asText(),
+                    r.get("destination").asText(),
+                    r.get("label").asText(),
+                    r.get("state").asText()
+                )
+            );
+        }
+        return out.stream().sorted().toList();
+    }
+
+    /** The state of a thing in a table of changes, in the words of the file; {@code none} when it has no row. */
+    static String stateOf(JsonNode changes, JsonNode check) {
+        if (check.has("relationship")) {
+            val parts = check.get("relationship");
+            for (val row : changes) {
+                if (
+                    row.get("thing").asText().equals("relationship") &&
+                    row.get("reference").asText().equals(parts.get(0).asText()) &&
+                    row.get("destination").asText().equals(parts.get(1).asText()) &&
+                    (row.at("/before/label").asText("").equals(parts.get(2).asText()) ||
+                        row.get("label").asText().equals(parts.get(2).asText()))
+                ) {
+                    val labelChanged =
+                        row.get("change").asText().equals("changed") &&
+                        row.get("natures").toString().contains("\"label\"");
+                    return labelChanged ? "label-changed" : row.get("change").asText();
+                }
+            }
+            return "none";
+        }
+        for (val row : changes) {
+            if (
+                row.get("thing").asText().equals("element") &&
+                row.get("layer").asText().equals(check.get("layer").asText()) &&
+                row.get("reference").asText().equals(check.get("ref").asText())
+            ) {
+                return row.get("change").asText();
+            }
+        }
+        return "none";
+    }
+
+    /** {@code +new ~changed -removed}, as {@code diff} prints a count. */
+    static String triple(JsonNode counts) {
+        return "+%d ~%d -%d".formatted(
+            counts.get("new").asInt(),
+            counts.get("changed").asInt(),
+            counts.get("removed").asInt()
+        );
     }
 
     /** The files below a folder, relative and sorted, with their bytes: a tree to compare. */
@@ -185,6 +323,11 @@ final class Brightcart {
             return in(workspace, arguments(comparison), "--format", format);
         }
 
+        /** The same question asked of {@code layered/}: {@code --against} in place of {@code --baseline}. */
+        Result layeredDiff(Path workspace, JsonNode comparison, String format) {
+            return in(workspace, layeredArguments(comparison), "--format", format);
+        }
+
         Result generate(Path workspace, String plateau) {
             return in(workspace, List.of("views", "generate", "--plateau", plateau));
         }
@@ -215,7 +358,18 @@ final class Brightcart {
         return new Generated(workspace, results);
     }
 
+    /** The same on a copy of {@code layered/}: {@code views generate --plateau <id>} names the plateau, the tree forks. */
+    static Generated generateLayered(Cli cli, Path into, List<String> plateaus) {
+        val workspace = copyLayered(into);
+        val results = new TreeMap<String, Result>();
+        for (val plateau : plateaus) {
+            results.put(plateau, cli.generate(workspace, plateau));
+        }
+        return new Generated(workspace, results);
+    }
+
     private static Generated shared;
+    private static Generated sharedLayered;
 
     /**
      * The first run of {@link #generateAll}, made once for the whole test run (it is the longest thing the package does)
@@ -229,6 +383,17 @@ final class Brightcart {
             shared = generateAll(cli, dir);
         }
         return shared;
+    }
+
+    /** The first run of {@link #generateLayered} for the four plateaus, made once for the whole test run, like {@link #firstRun}. */
+    @SneakyThrows
+    static synchronized Generated firstLayeredRun(Cli cli) {
+        if (sharedLayered == null) {
+            val dir = Files.createTempDirectory("brightcart-layered-views");
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> deleteQuietly(dir)));
+            sharedLayered = generateLayered(cli, dir, PLATEAUS);
+        }
+        return sharedLayered;
     }
 
     private static void deleteQuietly(Path dir) {

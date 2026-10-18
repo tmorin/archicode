@@ -137,9 +137,11 @@ jobs:
           cp -r src/doc/examples/domain_workspace "$work/workspace"
           cp -r src/doc/examples/domain_plateaus "$work/plateaus"
           cp -r src/test/resources/brightcart/folders "$work/brightcart"
+          cp -r src/test/resources/brightcart/layered "$work/brightcart-layered"
           workspace="$work/workspace/workspace.yaml"
           plateaus="$work/plateaus/workspace.yaml"
           brightcart="$work/brightcart/workspace.yaml"
+          layered="$work/brightcart-layered/workspace.yaml"
           failed=()
 
           # expect <label> <pattern> <command...>: the command succeeds and what it prints has the pattern
@@ -180,6 +182,18 @@ jobs:
           expect "views generate on Brightcart writes the plateau" "" test -s "$work/brightcart/views-saas/plantuml/application/shop-overview.puml"
           expect "views generate on Brightcart writes the comparison" "" test -s "$work/brightcart/views-saas-vs-baseline/gap.json"
           expect "views generate on Brightcart writes a facet" "" test -s "$work/brightcart/views-saas-journey/plantuml/application/shop-overview.puml"
+
+          # Brightcart, layered (src/test/resources/brightcart/layered, a copy): the same four plateaus as layers, a `plateau:` header on
+          # each manifest and the patches of a plateau in its `Kind: Plateau`. The tree forks, so the plateau is always named; the comparison
+          # is made with the plateau it overrides unless `--against` names another. The `folders` lines above stay until the old mechanism goes.
+          expect "plateau list on layered Brightcart" "^marketplace  *inhouse" "$runner" -w "$layered" plateau list
+          expect "diff on layered Brightcart" "^replacing " "$runner" -w "$layered" diff --plateau inhouse
+          expect "diff on layered Brightcart, against a sibling" "^comparing inhouse .* with saas" "$runner" -w "$layered" diff --plateau inhouse --against saas
+          expect "views generate on layered Brightcart" "" "$runner" -w "$layered" views generate --plateau saas
+          expect "views generate on layered Brightcart writes the plateau" "" test -s "$work/brightcart-layered/views-saas/plantuml/application/shop-overview.puml"
+          expect "views generate on layered Brightcart writes the comparison" "" test -s "$work/brightcart-layered/views-saas-vs-baseline/gap.json"
+          expect "views generate on layered Brightcart lists the cascade of a REMOVE" '"cascade"' cat "$work/brightcart-layered/views-saas-vs-baseline/gap.json"
+          expect "views generate on layered Brightcart writes a facet" "" test -s "$work/brightcart-layered/views-saas-journey/plantuml/application/shop-overview.puml"
 
           # the editor page is a resource of the image
           "$runner" -w "$workspace" editor serve --port 0 > "$work/editor.log" 2>&1 &

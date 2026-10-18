@@ -67,7 +67,7 @@
     "case": "Move with a change of kind",
     "where": "`shop.app.cart` to `commerce.cart`",
     "state": "P2: moved",
-    "why": "Component to container. Pattern R. `MOVE` cannot do this as designed (section 12).",
+    "why": "Component to container: a manifest that says `replaces`, and a `REMOVE` of the old element.",
     "checks": [
       {
         "in": "P2",
@@ -79,10 +79,10 @@
   },
   {
     "id": "N5",
-    "case": "Move with the operator",
+    "case": "Move to another parent",
     "where": "`shop.cache` to `commerce.cart-store`",
     "state": "P2: moved",
-    "why": "Pattern M: new parent, new id, new name; `staging.vm` follows.",
+    "why": "New parent, new id, new name: a manifest that says `replaces`, and a `REMOVE` whose cascade takes the entry of the nodes that hosted the cache; `staging.vm` follows.",
     "checks": [
       {
         "in": "P2",
@@ -170,9 +170,9 @@
   {
     "id": "N9",
     "case": "Subtree renamed",
-    "where": "`shop`, `shop.web`, `shop.mobile` to `storefront`...",
+    "where": "`shop`, `shop.web` to `storefront`, `storefront.web`; `storefront.mobile`",
     "state": "P3: moved (2), `storefront.mobile` new",
-    "why": "The new child was declared under the old name (L2).",
+    "why": "The new system is a manifest that says `replaces`, with its children, the new one among them; a `REMOVE` of `shop` takes the old subtree, and the links to it are written again.",
     "checks": [
       {
         "in": "P3",
@@ -289,7 +289,7 @@
     "case": "Deployment follows",
     "where": "`staging.vm`",
     "state": "P1, P2, P3: changed",
-    "why": "Entry removed by a cascade (P1), replaced by `SET` (P2), cascade and rename (P3).",
+    "why": "Entry removed by a cascade (P1), replaced by `SET` (P2), cascade and `ADD` of the new name (P3).",
     "checks": [
       {
         "in": "P1",

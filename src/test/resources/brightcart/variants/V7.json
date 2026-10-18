@@ -2,7 +2,7 @@
   "id": "V7",
   "kind": "negative variant",
   "change": "`REMOVE shop.cache` in `marketplace`.",
-  "expected": "Error: no match (`inhouse` already moved it). The stale-patch case.",
+  "expected": "Error: no match (`inhouse` already removed it, `commerce.cart-store` replaces it). The stale-patch case.",
   "class": "error",
   "mentions": [
     "marketplace",
@@ -10,7 +10,7 @@
     "no match"
   ],
   "model": [
-    "marketplace: patch 20 (REMOVE shop.cache) has no match for shop.cache"
+    "marketplace: patch 24 (REMOVE shop.cache) has no match for shop.cache"
   ],
-  "status": "described; the model reports the messages above; waits for the layered engine"
+  "status": "described; the model reports the messages above; the layered tools read layered/, a test of the variant is wave 014 W-11"
 }
