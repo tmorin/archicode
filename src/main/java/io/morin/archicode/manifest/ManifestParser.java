@@ -16,6 +16,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -84,6 +85,7 @@ public class ManifestParser {
                     resource = mapper.readValue(manifestFile.toFile(), Manifest.class);
                 } catch (JsonProcessingException e) {
                     throw layeredPlateau(e)
+                        .or(() -> missingKey(e, ""))
                         .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
                         .orElseGet(() -> ArchiCodeException.unreadable(source, e, true));
                 }
@@ -92,7 +94,9 @@ public class ManifestParser {
                     item = ManifestConverter.builder().manifest(resource).mapper(mapper).build().convert();
                 } catch (JsonProcessingException e) {
                     // the content is read again from a string: the line and the column are not those of the file
-                    throw ArchiCodeException.unreadable(source, e, false);
+                    throw missingKey(e, "content")
+                        .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
+                        .orElseGet(() -> ArchiCodeException.unreadable(source, e, false));
                 }
 
                 if (item instanceof Element element) {
@@ -169,6 +173,51 @@ public class ManifestParser {
             return Optional.of("`kind: plateau`" + LAYERED_PLATEAU);
         }
         return Optional.empty();
+    }
+
+    private static final Pattern NON_NULL = Pattern.compile("problem: (\\w+) is marked non-null but is null");
+
+    /**
+     * What is said of a manifest that lacks a required key, or is empty: the words of the editor ({@code Missing
+     * header.kind}, {@code Missing header.version}, {@code Missing content.id}, in {@code parseManifestText} of
+     * {@code standalone.html}: keep them alike), and not the class the reader failed to build. A manifest without a
+     * {@code header} or without a {@code content} is told by the first key it needs.
+     *
+     * @param e     what the reader said
+     * @param under the path of the part of the file that was read again on its own ({@code content}), or empty
+     * @return the reason, or empty when the reader did not fail for a missing key
+     */
+    static Optional<String> missingKey(JsonProcessingException e, String under) {
+        if (!(e instanceof JsonMappingException mapping) || mapping.getOriginalMessage() == null) {
+            return Optional.empty();
+        }
+        val message = mapping.getOriginalMessage().lines().findFirst().orElse("");
+        if (under.isEmpty() && message.startsWith("No content to map due to end-of-input")) {
+            return Optional.of("Missing header.kind");
+        }
+        val found = NON_NULL.matcher(message);
+        if (!found.find()) {
+            return Optional.empty();
+        }
+        val where = new StringBuilder(under);
+        for (val reference : mapping.getPath()) {
+            if (reference.getFieldName() != null) {
+                where.append(where.isEmpty() ? "" : ".").append(reference.getFieldName());
+            } else {
+                where.append('[').append(reference.getIndex()).append(']');
+            }
+        }
+        val key = found.group(1);
+        if (where.isEmpty()) {
+            return Optional.of(
+                key.equals("content")
+                    ? "Missing content.id"
+                    : key.equals("header")
+                      ? "Missing header.kind"
+                      : "Missing " + key
+            );
+        }
+        return Optional.of("Missing " + where + "." + key);
     }
 
     /**

@@ -12,5 +12,5 @@
   "model": [
     "marketplace: patch 20 (MOVE platform.broker): MOVE platform.broker onto the existing reference platform.notifications"
   ],
-  "status": "described; the model reports the messages above; no tool runs it"
+  "status": "described; the model reports the messages above; waits for the layered engine"
 }

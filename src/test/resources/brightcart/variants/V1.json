@@ -12,5 +12,5 @@
   "model": [
     "marketplace: patch 9 (SET commerce.catalogue) has no match for commerce.catalogue"
   ],
-  "status": "described; the model reports the messages above; no tool runs it"
+  "status": "described; the model reports the messages above; waits for the layered engine"
 }

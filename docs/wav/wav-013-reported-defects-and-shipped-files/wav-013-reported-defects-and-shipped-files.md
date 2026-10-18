@@ -168,7 +168,7 @@ wave_manifest:
       slug: negative-variants-run
       phase: P4
       depends_on: [W-1, W-2]
-      run: null
+      run: '0070'
       delegation: standard
       likely_paths:
         - 'src/test/resources/brightcart/**'

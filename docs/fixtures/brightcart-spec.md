@@ -1462,22 +1462,24 @@ Each case is a place where the fixture asks something specific. "State" is what 
 
 **Negative variants.** Each is the fixture with one change. The messages below are what the model reports; the final wording belongs to the implementation, but each must name the plateau, the file or the patch rank, and the reference.
 
-| Id | Change | Expected |
-| --- | --- | --- |
-| V1 | A typo in a `target`: `commerce.catalogue` | Error in `marketplace`: the patch on `commerce.catalogue` has no match (it names the rank of the patch). |
-| V2 | `marketplace` declares `commerce.cart` again | Error: `commerce.cart` declared twice (`inhouse` and `marketplace`). |
-| V3 | `marketplace` gets `override: saas` | Error in `marketplace`: the parent of `prod.cloud.cdn` does not exist when its manifest is read. |
-| V4 | `inhouse/application/commerce.cart.yaml` loses its folder default (moved outside `inhouse/`) | The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. A warning on the folder name is also expected. |
-| V5 | A plateau typo, `plateau: inhous` | Same error in the implicit plateau `inhous`; with a warning that it exists only through one header. |
-| V6 | `MOVE platform.broker` to `platform.notifications` | Error: target reference already exists. |
-| V7 | `REMOVE shop.cache` in `marketplace` | Error: no match (`inhouse` already moved it). The stale-patch case. |
-| V8 | The `baseline` renames `shop.db` to `shop.database` | `saas`: relationship `fulfilment.sync -> shop.db` matches nothing. `inhouse`: `staging.vm` lists a missing application (the copied list). `marketplace`: `REMOVE shop.db` matches nothing. The model stops a plateau at its first error: it reports the relationship in `saas` and in `inhouse` (the patch that fails first, after the copied list) and does not resolve `marketplace`; an engine that collects every error would list the three. |
-| V9 | Two `SET` of the same field in one plateau | A warning; the last one wins. |
-| V10 | `horizon` of a child earlier than its parent's | A warning. |
-| V11 | Two plateaus with the same `override` and the same `id` | Error: plateau declared twice. |
-| V12 | Merge `inhouse` into `baseline` while `saas` hangs under `baseline` | Refused: `saas` no longer resolves (`patch REMOVE has no match for shop.app.catalog`). Allowed with `--drop saas`. Nothing is written when it is refused. |
-| V13 | Merge `marketplace` into `saas` | Error: `saas` is not an ancestor of `marketplace`. |
-| V14 | Merge a plateau into itself, or `baseline` into anything | Error: nothing to merge. |
+| Id | Change | Expected | Run today |
+| --- | --- | --- | --- |
+| V1 | A typo in a `target`: `commerce.catalogue` | Error in `marketplace`: the patch on `commerce.catalogue` has no match (it names the rank of the patch). | Waits for the layered engine (patches). |
+| V2 | `marketplace` declares `commerce.cart` again | Error: `commerce.cart` declared twice (`inhouse` and `marketplace`). | **Run** (case N7, on the complete folders: a second file of `marketplace` declares `commerce.cart`; the sentence names both files). |
+| V3 | `marketplace` gets `override: saas` | Error in `marketplace`: the parent of `prod.cloud.cdn` does not exist when its manifest is read. | Waits for the layered engine (`override`). |
+| V4 | `inhouse/application/commerce.cart.yaml` loses its folder default (moved outside `inhouse/`) | The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. A warning on the folder name is also expected. | Waits for the layered engine (the folder default). Its nearest cases are run: N4 and N5, a plateau folder that is missing. |
+| V5 | A plateau typo, `plateau: inhous` | Same error in the implicit plateau `inhous`; with a warning that it exists only through one header. | Waits for the layered engine (an implicit plateau). Its nearest case is run: a `plateau` key in a header is refused (`LayeredPlateauRefusalTest`, `shipped-files-layered-plateau.test.js`, #30). |
+| V6 | `MOVE platform.broker` to `platform.notifications` | Error: target reference already exists. | Waits for the layered engine (patches). |
+| V7 | `REMOVE shop.cache` in `marketplace` | Error: no match (`inhouse` already moved it). The stale-patch case. | Waits for the layered engine (patches). |
+| V8 | The `baseline` renames `shop.db` to `shop.database` | `saas`: relationship `fulfilment.sync -> shop.db` matches nothing. `inhouse`: `staging.vm` lists a missing application (the copied list). `marketplace`: `REMOVE shop.db` matches nothing. The model stops a plateau at its first error: it reports the relationship in `saas` and in `inhouse` (the patch that fails first, after the copied list) and does not resolve `marketplace`; an engine that collects every error would list the three. | Waits for the layered engine (patches). Within one complete folder a relationship to an element that is not there is a `dangling reference`, on the command line. |
+| V9 | Two `SET` of the same field in one plateau | A warning; the last one wins. | Waits for the layered engine (patches). |
+| V10 | `horizon` of a child earlier than its parent's | A warning. | Waits for the layered engine (`horizon` of a plateau that has a parent). |
+| V11 | Two plateaus with the same `override` and the same `id` | Error: plateau declared twice. | **Run** (case N1: a fifth plateau with the id of another; the sentence is `the plateau id ... is used more than once`). |
+| V12 | Merge `inhouse` into `baseline` while `saas` hangs under `baseline` | Refused: `saas` no longer resolves (`patch REMOVE has no match for shop.app.catalog`). Allowed with `--drop saas`. Nothing is written when it is refused. | Waits for `plateau merge` (#65). |
+| V13 | Merge `marketplace` into `saas` | Error: `saas` is not an ancestor of `marketplace`. | Waits for `plateau merge` (#65). |
+| V14 | Merge a plateau into itself, or `baseline` into anything | Error: nothing to merge. | Waits for `plateau merge` (#65). |
+
+**What is run today.** The complete-folder rendition has no patches, so the variants that need them wait for the layered engine; the others are run in `src/test/resources/brightcart/negative-cases.json`, which holds, for each case, the alteration of `folders/` (built in a temporary folder by the test, so no negative workspace is committed), the command lines with the exit code and the error output, and what the editor says. `BrightcartNegativeCasesTest` runs the command line and `brightcart-negative.test.js` the editor, and a command gives exit 1 and one `error:` line without a stack trace (a warning and exit 0 for N8). The cases are N1 (V11), N2 a baseline that names no plateau, N3 a baseline that is a cycle (accepted: the key names the one plateau a plateau is compared with by default, nothing follows a chain, so each plateau is compared with the other), N4 and N5 a plateau folder and a baseline folder that are missing, N6 a `settings.current` that names nothing, N7 (V2), N8 a `replaces` that names nothing of the baseline (a warning), N9 a mistyped `--plateau` or `--baseline`, N10 an unknown key in a manifest header, N11 to N14 the paths and keys of a plateau, N15 `plateau add` with an id that exists, N16 to N22 a manifest that lacks `header.kind`, `header.version` or `content.id`, is empty or has a nested element with no `id` or an unknown `kind` (the last two are not told by the editor yet, #75), and N23 a relationship to an element that is not there (V8 within one complete folder: a `dangling reference` on the command line, a badge in the editor).
 
 **What the fixture drives.**
 
@@ -1492,7 +1494,7 @@ Each case is a place where the fixture asks something specific. "State" is what 
 | Layered engine | For each plateau, resolving the layered rendition (`generate.mjs --layered <folder>`) gives the same plateau as `folders/` (byte for byte once written out). The generator's resolver does it today, from the files, on every run. |
 | Migration | `plateau migrate` on `folders/` gives patches that resolve back to the same plateaus. |
 | Merge | M1 to M3 (section 14): the state of each surviving plateau is unchanged, byte for byte in the complete-folder rendition; its comparison with the new present equals the old comparison (P3 for M1, P4 for M2); a second run changes nothing; `--dry-run` writes nothing. |
-| Variants | V1 to V14 each fail, or warn, with the expected class of message. |
+| Variants | V2 and V11 each fail with the expected class of message, on the command line and in the editor (above); V1, V3 to V10 wait for the layered engine and V12 to V14 for `plateau merge`. |
 
 ## 12. What building it showed
 
@@ -1572,7 +1574,7 @@ Read these before using it as evidence.
 - **P6 is the tool's reading, not the change.** It is verified, as what the current tool prints for `marketplace` against `baseline` (last step only, 4 moves, 16 removed); the real change of the two plateaus is P4.
 - **The layered semantics are the model's.** No tool reads the layered rendition, which is why it is not committed (`generate.mjs --layered <folder>` writes it); that it resolves to `folders/` is shown by the generator's own resolver and nothing else, and the rules L0 to L11, the patches, `plateau migrate` and the merge (M1 to M3, section 14) are not run by anything. The `workspace.yaml` of the generated layered rendition names the four plateau folders in `settings.manifests.paths`; today's command line, run on it, stops on `Kind: Plateau`, which it does not know.
 - **The complete-folder rendition is flat, so it does not exercise sub-folders.** The loader reads one level: `settings.manifests.paths` and the `path` of a plateau are not recursive (issue #73 proposes `/**`). Each plateau of `folders/` is therefore one folder holding all its manifests, with no sub-folder (the layered rendition nests them by layer, but no tool reads it); whatever the loader does with a nested tree is not tested here.
-- **The variants are described, not run.** V1 to V14 and M1 to M3 are in `variants/` with the class of message they expect; V1 to V8 also fail in the model with the words they expect; no tool runs any of them. N17 is V8.
+- **Most variants are described, not run.** V1 to V14 and M1 to M3 are in `variants/` with the class of message they expect; V1 to V8 also fail in the model with the words they expect. Only V2 and V11 are run by a tool (section 11), on the complete folders, with the cases that have no variant of their own; the others wait for the layered engine or `plateau merge`. N17 is V8.
 - **The native image was not built.** The smoke step was run against the JVM build; the first run of the `Native` job is the pull request's.
 - **The editor was read, not seen.** It was driven in one browser (the built-in one) with its pane hidden: the counts, the texts, the structure and the colours of the page were read, there is no screenshot and no measure of layout or paint. Other browsers, the folder picker (the editor was served by the command line) and the published page were not tried. The speed is for 82 elements; a real workspace has twice as many.
 - **The facets are generated, not compared byte by byte.** The three facets generate on the four plateaus and the tests assert what they leave out; the bytes of the technology views of a faceted workspace differ from the plain ones even for a facet that selects nothing (note 2 above).

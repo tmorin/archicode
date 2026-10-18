@@ -3814,6 +3814,20 @@ function layeredPlateauProblem(header) {
   return null;
 }
 
+/** The keys the header of a manifest has, in the order the command line lists them (`Manifest.Header`: `kind`, `parent`, `version`). */
+const MANIFEST_HEADER_KEYS = ['kind', 'parent', 'version'];
+
+/**
+ * The sentence for the first key of a manifest header that ArchiCode does not know, else null. The words of the command line
+ * (`ArchiCodeException.reason`: `unknown key ... (known: ...) at header.foo`), without the line and the column, which this reader does not have.
+ */
+function unknownHeaderKeyProblem(header) {
+  for (const key of Object.keys(header)) {
+    if (!MANIFEST_HEADER_KEYS.includes(key)) return 'unknown key `' + key + '` (known: ' + MANIFEST_HEADER_KEYS.join(', ') + ') at `header.' + key + '`';
+  }
+  return null;
+}
+
 /**
  * Parse one manifest file's text the way every load/edit path needs
  * (loadWorkspace, commitFileEdit, reloadManifestFile): `{ header, content,
@@ -3826,8 +3840,11 @@ function parseManifestText(text) {
     const header = (parsed.header && typeof parsed.header === 'object') ? parsed.header : null;
     const content = (parsed.content && typeof parsed.content === 'object') ? parsed.content : null;
     if (!header || !header.kind) return { header, content, error: 'Missing header.kind' };
+    if (header.version === undefined || header.version === null) return { header, content, error: 'Missing header.version' };
     const layered = layeredPlateauProblem(header);
     if (layered) return { header, content, error: layered };
+    const unknownKey = unknownHeaderKeyProblem(header);
+    if (unknownKey) return { header, content, error: unknownKey };
     if (!content || content.id === undefined) return { header, content, error: 'Missing content.id' };
     return { header, content, error: null };
   } catch (e) {

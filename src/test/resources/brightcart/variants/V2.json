@@ -11,5 +11,5 @@
   "model": [
     "marketplace: reference commerce.cart declared twice"
   ],
-  "status": "described; the model reports the messages above; no tool runs it"
+  "status": "run by a tool: case N7 of negative-cases.json: a second file of `marketplace` declares `commerce.cart`; BrightcartNegativeCasesTest (command line) and brightcart-negative.test.js (editor)"
 }

@@ -559,6 +559,7 @@ export const VARIANTS = [
     change: '`marketplace` declares `commerce.cart` again.',
     expected: 'Error: `commerce.cart` declared twice (`inhouse` and `marketplace`).',
     class: 'error',
+    run: 'case N7 of negative-cases.json: a second file of `marketplace` declares `commerce.cart`; BrightcartNegativeCasesTest (command line) and brightcart-negative.test.js (editor)',
     mentions: ['commerce.cart', 'declared twice'],
     mutate: (P) => {
       P.marketplace.declare(E('commerce.cart', 'container', 'Cart v2'), 'marketplace/application/commerce.cart.yaml');
@@ -579,6 +580,7 @@ export const VARIANTS = [
     change: '`inhouse/application/commerce.cart.yaml` loses its folder default (moved outside `inhouse/`).',
     expected: 'The file lands in `baseline`; error: the parent of `commerce.cart` does not exist. A warning on the folder name is also expected.',
     class: 'error and warning',
+    kin: 'cases N4 and N5 of negative-cases.json (a plateau folder that is missing): the complete folders have no folder default to lose',
     mentions: ['baseline', 'commerce.cart', 'parent'],
     mutate: (P) => {
       const e = withoutManifest(P.inhouse, 'commerce.cart');
@@ -590,6 +592,7 @@ export const VARIANTS = [
     change: 'A plateau typo, `plateau: inhous`, in the header of `inhouse/application/commerce.cart.yaml`.',
     expected: 'Same error in the implicit plateau `inhous`; with a warning that it exists only through one header.',
     class: 'error and warning',
+    kin: 'a `plateau` key in a header is refused (#30): LayeredPlateauRefusalTest and shipped-files-layered-plateau.test.js; an implicit plateau from a header waits for the layered engine',
     order: ['baseline', 'inhous'],
     mentions: ['inhous', 'commerce.cart', 'parent'],
     mutate: (P) => {
@@ -654,6 +657,7 @@ export const VARIANTS = [
     change: 'Two plateaus with the same `override` and the same `id`.',
     expected: 'Error: plateau declared twice.',
     class: 'error',
+    run: 'case N1 of negative-cases.json: a fifth plateau with the id `saas`, which the complete folders say as "the plateau id `saas` is used more than once"; same two tests',
     mentions: ['plateau', 'declared twice']
   },
   {

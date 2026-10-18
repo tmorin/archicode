@@ -7,7 +7,8 @@
 // It writes, next to this file (and nothing else; the three folders are emptied first, so a second run gives the same bytes):
 //   folders/    the complete-folder rendition: each plateau a whole folder of manifests, the `baseline` key written for every plateau but the first (E2),
 //               `replaces` relative to that key; the one the current tools read (`archicode diff`, `views generate`, the editor).
-//   variants/   V1 to V14 (negative variants) and M1 to M3 (merge scenarios) as descriptions with the expected class of message. They are not run;
+//   variants/   V1 to V14 (negative variants) and M1 to M3 (merge scenarios) as descriptions with the expected class of message. V2 and V11 are run by a tool
+//               on the complete folders (negative-cases.json, which is written by hand and not here); the others wait for the layered engine or `plateau merge`.
 //               V1 to V8 also carry what the throwaway model reported, checked here against the words the description expects.
 //   expected/   the sizes, the two renditions in files, lines and bytes, the comparisons P1 to P6 (with the flag that says whether a tool verifies
 //               them or only the model does), the table of changes of each comparison and the notable cases N1 to N17.
@@ -911,7 +912,7 @@ function main() {
       if (!model.length) fail(`${v.id}: the model finds nothing wrong, the description expects ${v.expected}`);
       for (const word of v.mentions) if (!model.some((m) => m.includes(word))) fail(`${v.id}: the model's messages do not mention "${word}":\n  ${model.join('\n  ') || '(none)'}`);
     }
-    variants.set(`${v.id}.json`, json({ id: v.id, kind: 'negative variant', change: v.change, expected: v.expected, class: v.class, mentions: v.mentions, model, status: v.mutate ? 'described; the model reports the messages above; no tool runs it' : 'described; not run' }));
+    variants.set(`${v.id}.json`, json({ id: v.id, kind: 'negative variant', change: v.change, expected: v.expected, class: v.class, mentions: v.mentions, model, status: v.run ? 'run by a tool: ' + v.run : v.kin ? 'not run as such (waits for the layered engine); its nearest case a tool runs: ' + v.kin : v.mutate ? 'described; the model reports the messages above; waits for the layered engine' : 'described; waits for the layered engine' }));
   }
   const declaredAll = P.inhouse.manifests.length + P.marketplace.manifests.length;
   if (declaredAll !== MERGES.M2.declared) fail(`M2: inhouse would declare ${declaredAll}, the document says ${MERGES.M2.declared}`);

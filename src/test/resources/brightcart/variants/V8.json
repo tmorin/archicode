@@ -14,5 +14,5 @@
     "inhouse: patch 27 (SET fulfilment.sync): relationship fulfilment.sync -> shop.db \"reads orders, writes stock levels\" matched 0",
     "marketplace: not resolved, its parent inhouse did not resolve"
   ],
-  "status": "described; the model reports the messages above; no tool runs it"
+  "status": "described; the model reports the messages above; waits for the layered engine"
 }

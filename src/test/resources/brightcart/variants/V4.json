@@ -15,5 +15,5 @@
     "inhouse: not resolved, its parent baseline did not resolve",
     "marketplace: not resolved, its parent inhouse did not resolve"
   ],
-  "status": "described; the model reports the messages above; no tool runs it"
+  "status": "not run as such (waits for the layered engine); its nearest case a tool runs: cases N4 and N5 of negative-cases.json (a plateau folder that is missing): the complete folders have no folder default to lose"
 }
