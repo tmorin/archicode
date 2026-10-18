@@ -122,17 +122,10 @@ public class Plateaus {
                     );
                 }
             }
-            if (settings.getCurrent() != null) {
-                problems.add(
-                    "`settings.current` is `" +
-                        settings.getCurrent() +
-                        "` but the workspace declares no `settings.plateaus`"
-                );
-            }
-            if (requested != null) {
-                problems.add(
-                    "`--plateau " + requested + "` cannot be used: the workspace declares no `settings.plateaus`"
-                );
+            // `settings.current` and `--plateau` name a plateau of layered plateaus too: whether the workspace has some is
+            // known when its manifests are read (see requireNoPlateaus); a path that cannot be read is told with them
+            if (!problems.isEmpty()) {
+                problems.addAll(noPlateausProblems(settings, requested));
             }
             fail(problems);
             return null;
@@ -266,6 +259,33 @@ public class Plateaus {
                 new ArchiCodeException("unknown plateau `%s`: the plateaus of this workspace are %s", wanted, idList)
             );
         return new Selection(chosen, normalize(chosen.getPath()));
+    }
+
+    /**
+     * Refuse {@code settings.current} and {@code --plateau} for a workspace that has no plateau at all (neither
+     * {@code settings.plateaus} nor layered plateaus): there is nothing for them to name.
+     *
+     * @param settings  the settings of the workspace
+     * @param requested the plateau asked for ({@code --plateau}), or null
+     * @throws ArchiCodeException with every problem found, one per line
+     */
+    public static void requireNoPlateaus(Settings settings, String requested) {
+        fail(noPlateausProblems(settings, requested));
+    }
+
+    private static List<String> noPlateausProblems(Settings settings, String requested) {
+        val problems = new ArrayList<String>();
+        if (settings.getCurrent() != null) {
+            problems.add(
+                "`settings.current` is `" +
+                    settings.getCurrent() +
+                    "` but the workspace declares no `settings.plateaus`"
+            );
+        }
+        if (requested != null) {
+            problems.add("`--plateau " + requested + "` cannot be used: the workspace declares no `settings.plateaus`");
+        }
+        return problems;
     }
 
     /**

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.kernel.Comparison;
+import io.morin.archicode.workspace.Removal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -56,13 +57,21 @@ public class GapReport {
      * @param comparison what changed
      * @param format the format
      * @param hideWording leave the wording-only changes out of the listing (and say how many)
+     * @param cascade what the {@code REMOVE} patches of the target took besides the elements they name (see {@link
+     *                Removal#cascade}); written after the table, and not at all when there is none, so that a comparison of
+     *                plateaus that are not layers, or of layers that remove nothing, is written as it always was
      * @return the report, ending with a line end
      */
-    public String render(@NonNull Comparison comparison, @NonNull GapFormat format, boolean hideWording) {
+    public String render(
+        @NonNull Comparison comparison,
+        @NonNull GapFormat format,
+        boolean hideWording,
+        @NonNull List<Removal.Effect> cascade
+    ) {
         return switch (format) {
-            case TEXT -> text(comparison, hideWording);
-            case MARKDOWN -> markdown(comparison, hideWording);
-            case JSON -> json(comparison, hideWording);
+            case TEXT -> text(comparison, hideWording, cascade);
+            case MARKDOWN -> markdown(comparison, hideWording, cascade);
+            case JSON -> json(comparison, hideWording, cascade);
         };
     }
 
@@ -153,7 +162,7 @@ public class GapReport {
 
     // ---- text ----
 
-    private static String text(Comparison comparison, boolean hideWording) {
+    private static String text(Comparison comparison, boolean hideWording, List<Removal.Effect> cascade) {
         val out = new StringBuilder();
         val c = comparison.getCounts();
         out.append("comparing ")
@@ -203,6 +212,7 @@ public class GapReport {
             out.append('\n')
                 .append(comparison.getChanges().isEmpty() ? "no difference" : "nothing to list")
                 .append('\n');
+            textCascade(out, cascade);
             return out.toString();
         }
         val splits = splitElements(comparison);
@@ -236,7 +246,45 @@ public class GapReport {
             out.append(line.toString().stripTrailing()).append('\n');
         }
         textCandidates(out, comparison);
+        textCascade(out, cascade);
         return out.toString();
+    }
+
+    private static void textCascade(StringBuilder out, List<Removal.Effect> cascade) {
+        if (cascade.isEmpty()) {
+            return;
+        }
+        out.append(
+            "\ncascade of the removals (what a REMOVE took besides the elements it selects, in the plateaus the target adds to the one it is compared with)\n"
+        );
+        val table = new ArrayList<List<String>>();
+        table.add(List.of("PLATEAU", "PATCH", "EFFECT", "LAYER", "ELEMENT", "DETAIL"));
+        cascade.forEach(effect ->
+            table.add(
+                List.of(
+                    effect.plateau(),
+                    effect.rank() + " " + effect.patch(),
+                    effect.effect(),
+                    effect.layer(),
+                    effect.element(),
+                    effect.detail()
+                )
+            )
+        );
+        val widths = new int[5];
+        table.forEach(cells -> {
+            for (int i = 0; i < widths.length; i++) {
+                widths[i] = Math.max(widths[i], cells.get(i).length());
+            }
+        });
+        for (val cells : table) {
+            val line = new StringBuilder();
+            for (int i = 0; i < widths.length; i++) {
+                line.append(String.format(Locale.ROOT, "%-" + widths[i] + "s  ", cells.get(i)));
+            }
+            line.append(cells.get(5));
+            out.append(line.toString().stripTrailing()).append('\n');
+        }
     }
 
     private static void textCandidates(StringBuilder out, Comparison comparison) {
@@ -273,7 +321,7 @@ public class GapReport {
 
     // ---- markdown ----
 
-    private static String markdown(Comparison comparison, boolean hideWording) {
+    private static String markdown(Comparison comparison, boolean hideWording, List<Removal.Effect> cascade) {
         val out = new StringBuilder();
         val c = comparison.getCounts();
         out.append("# Changes of ")
@@ -332,6 +380,7 @@ public class GapReport {
         val rows = listed(comparison, hideWording);
         if (rows.isEmpty()) {
             out.append(comparison.getChanges().isEmpty() ? "No difference.\n" : "Nothing to list.\n");
+            markdownCascade(out, cascade);
             return out.toString();
         }
         out.append("| Change | Thing | Layer | Reference | Natures | Details |\n|---|---|---|---|---|---|\n");
@@ -352,7 +401,33 @@ public class GapReport {
                 .append(" |\n");
         }
         markdownCandidates(out, comparison);
+        markdownCascade(out, cascade);
         return out.toString();
+    }
+
+    private static void markdownCascade(StringBuilder out, List<Removal.Effect> cascade) {
+        if (cascade.isEmpty()) {
+            return;
+        }
+        out.append(
+            "\n## Cascade of the removals\n\nWhat a `REMOVE` took besides the elements it selects, in the plateaus the target adds to the one it is compared with.\n\n"
+        );
+        out.append("| Plateau | Patch | Effect | Layer | Element | Detail |\n|---|---|---|---|---|---|\n");
+        for (val effect : cascade) {
+            out.append("| ")
+                .append(cell(effect.plateau()))
+                .append(" | ")
+                .append(cell(effect.rank() + " " + effect.patch()))
+                .append(" | ")
+                .append(effect.effect())
+                .append(" | ")
+                .append(cell(effect.layer()))
+                .append(" | ")
+                .append(cell(effect.element()))
+                .append(" | ")
+                .append(cell(effect.detail()))
+                .append(" |\n");
+        }
     }
 
     private static void markdownCandidates(StringBuilder out, Comparison comparison) {
@@ -384,7 +459,7 @@ public class GapReport {
     // ---- json ----
 
     @SneakyThrows
-    private static String json(Comparison comparison, boolean hideWording) {
+    private static String json(Comparison comparison, boolean hideWording, List<Removal.Effect> cascade) {
         val mapper = new ObjectMapper();
         val root = mapper.createObjectNode();
         plateau(root.putObject("plateau"), comparison.getTarget());
@@ -462,6 +537,22 @@ public class GapReport {
                 val reasons = node.putArray("reasons");
                 candidate.reasons().forEach(reasons::add);
                 node.put("applied", false);
+            }
+        }
+        if (!cascade.isEmpty()) {
+            // what a REMOVE took besides what it selects, only when a layered target has some
+            val effects = root.putArray("cascade");
+            for (val effect : cascade) {
+                val node = effects.addObject();
+                node.put("plateau", effect.plateau());
+                node.put("rank", effect.rank());
+                node.put("patch", effect.patch());
+                node.put("effect", effect.effect());
+                node.put("layer", effect.layer());
+                node.put("element", effect.element());
+                if (!effect.detail().isEmpty()) {
+                    node.put("detail", effect.detail());
+                }
             }
         }
         // two spaces and a line feed on every machine

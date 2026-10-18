@@ -1,0 +1,465 @@
+package io.morin.archicode.workspace;
+
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import io.morin.archicode.ArchiCodeException;
+import io.morin.archicode.MapperFactory;
+import io.morin.archicode.MapperFormat;
+import io.morin.archicode.manifest.ManifestParser;
+import io.morin.archicode.resource.element.Replaces;
+import io.morin.archicode.resource.element.application.Application;
+import io.morin.archicode.resource.element.technology.Environment;
+import io.morin.archicode.resource.element.technology.Node;
+import io.morin.archicode.resource.element.technology.Technology;
+import io.morin.archicode.resource.plateau.Patch;
+import io.morin.archicode.resource.plateau.PlateauTree;
+import io.morin.archicode.resource.story.Story;
+import io.morin.archicode.resource.view.View;
+import io.morin.archicode.resource.workspace.Workspace;
+import io.morin.archicode.viewpoint.kernel.ViewpointKernel;
+import jakarta.enterprise.context.ApplicationScoped;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+
+/**
+ * Loads a layered plateau as its chain: for each plateau from {@code baseline} down to the one that is drawn, the elements,
+ * views and stories whose manifests say {@code plateau: <layer>} are added to the graph of the plateau above, then the
+ * ordered patches of the layer change that graph (the kernel's {@code apply_patches}), then the layer is checked: what the
+ * graph points at must be there, and so must what the views and stories placed in the layer name. A mistake names the layer.
+ *
+ * <p>The patches of a layer see the elements the layer has just added, since they are in the graph before the patches run.
+ * The first mistake ends the load: the layers below it are not looked at, so that nothing is told twice. A layer without
+ * patches does not leave the objects of the model: nothing is written as JSON and read back for it.
+ *
+ * <p>The checks are the ones of the kernel for a plateau ({@code dangling reference}), in the author's words: a relationship,
+ * an entry of {@code uses} and an application deployed on a node must name an element of the graph, and an element declared
+ * under a parent must have that parent.
+ */
+@Slf4j
+@ApplicationScoped
+@RequiredArgsConstructor
+@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+public class LayerLoader {
+
+    MapperFactory mapperFactory;
+
+    /**
+     * What the chain gives.
+     *
+     * @param resources the workspace, with every element of the chain in its two layers, and the views and stories of every
+     *                  plateau of the chain
+     * @param removals  the {@code REMOVE} patches of the chain, in the order they were applied
+     */
+    public record Loaded(Workspace resources, List<Removal> removals) {}
+
+    /**
+     * Load a plateau.
+     *
+     * @param start     the workspace of {@code workspace.yaml}: its settings, styles and formatters, and the elements it
+     *                  declares itself, which belong to {@code baseline}
+     * @param parsed    what the manifests declare, by plateau (see {@link ManifestParser.Parsed#ofPlateau})
+     * @param plateauId the plateau to load, of the tree {@code parsed} holds
+     * @return the plateau
+     * @throws ArchiCodeException with the sentence of the layer that is wrong
+     */
+    public Loaded load(Workspace start, ManifestParser.Parsed parsed, String plateauId) {
+        val chain = parsed.plateaus().chain(plateauId);
+        var resources = start;
+        val removals = new ArrayList<Removal>();
+        for (val node : chain) {
+            log.info("load the plateau {}", node.id());
+            val own = parsed.ofPlateau(node.id());
+            var indexes = index(resources, own.elements());
+            // before the patches: a patch may remove a parent, and the elements declared under it go with it
+            tell(parentProblems(node.id(), indexes, own.elements()));
+            if (!node.patches().isEmpty()) {
+                resources = applyPatches(node, resources, removals);
+                indexes = index(resources, Map.of());
+            }
+            val problems = new LinkedHashSet<String>(problems(node.id(), indexes));
+            for (val view : own.placedViews()) {
+                problems.addAll(viewProblems(node.id(), view, indexes));
+            }
+            for (val story : own.placedStories()) {
+                problems.addAll(storyProblems(node.id(), story, indexes));
+            }
+            tell(problems);
+            resources = resources.toBuilder().views(own.views()).stories(own.stories()).build();
+        }
+        return new Loaded(resources, removals);
+    }
+
+    /** The mistakes of a layer, one sentence per line; nothing when there is none. */
+    private static void tell(Collection<String> problems) {
+        if (!problems.isEmpty()) {
+            throw new ArchiCodeException("%s", String.join("\n", problems));
+        }
+    }
+
+    /** The two indexes of a graph: the elements of the application layer and of the technology layer. */
+    private record Indexes(ElementIndex application, ElementIndex technology) {
+        ElementIndex of(View.Layer layer) {
+            return layer == View.Layer.TECHNOLOGY ? technology : application;
+        }
+    }
+
+    /** Index the graph, adding the elements the manifests of a layer declare to it (the model is changed by this). */
+    private static Indexes index(Workspace resources, Map<Class<?>, Set<ManifestParser.Candidate>> candidates) {
+        return new Indexes(
+            ElementIndexFactory.builder()
+                .root(resources.getApplication())
+                .candidates(candidates.getOrDefault(Application.class, Set.of()))
+                .build()
+                .create(),
+            ElementIndexFactory.builder()
+                .root(resources.getTechnology())
+                .candidates(candidates.getOrDefault(Technology.class, Set.of()))
+                .build()
+                .create()
+        );
+    }
+
+    // ---- the patches ----
+
+    /**
+     * Hand the graph and the patches of a layer to the kernel, and read the graph back. The kernel is given the elements
+     * of the two layers as JSON, the document it takes for a facet, and nothing else of the workspace.
+     */
+    @SneakyThrows
+    private Workspace applyPatches(PlateauTree.Node node, Workspace resources, List<Removal> removals) {
+        val json = patchMapper();
+        val workspace = json.createObjectNode();
+        workspace.set("application", layerOf(json, resources.getApplication()));
+        workspace.set("technology", layerOf(json, resources.getTechnology()));
+        val request = json.createObjectNode();
+        request.set("workspace", workspace);
+        request.put("plateau", node.id());
+        val patches = request.putArray("patches");
+        node.patches().forEach(patch -> patches.add(kernelPatch(json, patch)));
+
+        val answer = json.readTree(ViewpointKernel.getInstance().applyPatches(json.writeValueAsString(request)));
+        if (answer.has("error")) {
+            throw new ArchiCodeException("%s", answer.get("error").asText());
+        }
+        if (answer.path("version").asInt() != ViewpointKernel.CONTRACT_VERSION) {
+            throw new ArchiCodeException(
+                "the viewpoint kernel speaks version %s, expected %s",
+                answer.path("version").asText(),
+                ViewpointKernel.CONTRACT_VERSION
+            );
+        }
+        for (val report : answer.path("patches")) {
+            if (report.path("operator").asText().equals("REMOVE")) {
+                removals.add(removal(node.id(), report));
+            }
+        }
+        val after = answer.path("workspace");
+        try {
+            return resources
+                .toBuilder()
+                .application(
+                    after.has("application")
+                        ? json.treeToValue(after.get("application"), Application.class)
+                        : Application.builder().build()
+                )
+                .technology(
+                    after.has("technology")
+                        ? json.treeToValue(after.get("technology"), Technology.class)
+                        : Technology.builder().build()
+                )
+                .build();
+        } catch (JsonProcessingException e) {
+            // the layer is a graph the model cannot hold once it is written as JSON (an element under a parent that cannot
+            // hold its kind: without patches the graph is never written, and nobody notices)
+            throw new ArchiCodeException(
+                "in the plateau `%s`, the elements cannot be read once the patches are applied: %s",
+                node.id(),
+                ArchiCodeException.unreadable(null, e, false).getMessage().replaceFirst("^a file is not valid: ", "")
+            );
+        }
+    }
+
+    /**
+     * The mapper that writes the graph for the kernel and reads it back. It is the mapper of the facets with two
+     * differences, so that an element a patch does not touch comes back as it went: it keeps the empty texts that the
+     * manifests hold (a tag, a label), which the mapper of the files leaves out, and it writes {@code replaces} as the
+     * author wrote it (the kernel's warnings about a duplicate or an entry that is not a reference are told from that).
+     */
+    private ObjectMapper patchMapper() {
+        val module = new SimpleModule();
+        module.addSerializer(Replaces.class, new ReplacesAsWritten());
+        return mapperFactory
+            .create(MapperFormat.JSON)
+            .copy()
+            .setSerializationInclusion(Include.NON_NULL)
+            .registerModule(module);
+    }
+
+    /** Writes {@code replaces} as the author wrote it, not as the set of the references it holds. */
+    private static final class ReplacesAsWritten extends StdSerializer<Replaces> {
+
+        ReplacesAsWritten() {
+            super(Replaces.class);
+        }
+
+        @Override
+        public void serialize(Replaces value, JsonGenerator generator, SerializerProvider provider) throws IOException {
+            generator.writeTree(value.getWritten());
+        }
+    }
+
+    /** A layer as the kernel takes it: {@code {"elements": [...]}}, whether or not it has any. */
+    private static ObjectNode layerOf(ObjectMapper json, Object layer) {
+        ObjectNode node = json.valueToTree(layer);
+        if (!node.has("elements")) {
+            node.putArray("elements");
+        }
+        return node;
+    }
+
+    /** A patch as the kernel reads it: the operator and the layer in the case it takes, the keys as the manifest writes them. */
+    private static ObjectNode kernelPatch(ObjectMapper json, Patch patch) {
+        val node = json.createObjectNode();
+        node.put("operator", patch.getOperator().name());
+        if (patch.getTarget() != null) {
+            node.put("target", patch.getTarget());
+        }
+        if (patch.getLayer() != null) {
+            node.put("layer", patch.getLayer().name().toLowerCase(Locale.ROOT));
+        }
+        if (patch.getJsonPath() != null) {
+            node.put("json-path", patch.getJsonPath());
+        }
+        if (patch.getExpect() != null) {
+            node.put("expect", patch.getExpect());
+        }
+        if (patch.getField() != null) {
+            node.put("field", patch.getField());
+        }
+        if (patch.getWhere() != null) {
+            val where = node.putObject("where");
+            where.put("destination", patch.getWhere().getDestination());
+            if (patch.getWhere().getLabel() != null) {
+                where.put("label", patch.getWhere().getLabel());
+            }
+        }
+        if (patch.getValue() != null) {
+            node.set("value", patch.getValue());
+        }
+        return node;
+    }
+
+    private static Removal removal(String plateau, JsonNode report) {
+        val dropped = new ArrayList<Removal.Dropped>();
+        report.path("dropped").forEach(d -> {
+            // a relationship is taken out as the object it was; the other entries are references
+            val entry = d.path("entry");
+            dropped.add(
+                new Removal.Dropped(
+                    d.path("layer").asText(),
+                    d.path("reference").asText(),
+                    d.path("field").asText(),
+                    entry.isObject() ? entry.path("destination").asText() : entry.asText(),
+                    entry.isObject() && entry.hasNonNull("label") ? entry.get("label").asText() : null
+                )
+            );
+        });
+        return new Removal(
+            plateau,
+            report.path("rank").asInt(),
+            report.path("operator").asText(),
+            report.path("selector").asText(),
+            refs(report.path("touched")),
+            refs(report.path("removed")),
+            dropped
+        );
+    }
+
+    private static List<Removal.Ref> refs(JsonNode list) {
+        val out = new ArrayList<Removal.Ref>();
+        list.forEach(r -> out.add(new Removal.Ref(r.path("layer").asText(), r.path("reference").asText())));
+        return out;
+    }
+
+    // ---- the checks of a layer ----
+
+    /** The elements declared under a parent the graph does not have. */
+    private static List<String> parentProblems(
+        String plateau,
+        Indexes indexes,
+        Map<Class<?>, Set<ManifestParser.Candidate>> added
+    ) {
+        val problems = new TreeMap<String, String>(); // by reference
+        added.forEach((category, candidates) -> {
+            val index = category == Application.class ? indexes.application() : indexes.technology();
+            for (val candidate : candidates) {
+                if (candidate.getParent() != null && index.searchElement(candidate.getParent()).isEmpty()) {
+                    problems.put(
+                        candidate.getReference(),
+                        "in the plateau `" +
+                            plateau +
+                            "`, `" +
+                            candidate.getReference() +
+                            "` is declared under `" +
+                            candidate.getParent() +
+                            "`, which does not exist"
+                    );
+                }
+            }
+        });
+        return List.copyOf(problems.values());
+    }
+
+    /** A reference that leads nowhere: who has it, what it points at, and the sentence. */
+    private record Problem(String element, String other, String sentence) {}
+
+    /** What the graph points at that is not there, by element and then by what it points at. */
+    private static List<String> problems(String plateau, Indexes indexes) {
+        val problems = new ArrayList<Problem>();
+        val in = "in the plateau `" + plateau + "`, ";
+        for (val index : List.of(indexes.application(), indexes.technology())) {
+            new TreeMap<>(index.elementByReferenceIndex).forEach((reference, element) -> {
+                for (val relationship : sorted(element.getRelationships(), r -> r.getDestination())) {
+                    if (index.searchElement(relationship.getDestination()).isEmpty()) {
+                        problems.add(
+                            new Problem(
+                                reference,
+                                relationship.getDestination(),
+                                in +
+                                    "`" +
+                                    reference +
+                                    "` has a relationship towards `" +
+                                    relationship.getDestination() +
+                                    "`, which does not exist"
+                            )
+                        );
+                    }
+                }
+                if (element instanceof Environment environment && environment.getUses() != null) {
+                    for (val used : new TreeSet<>(environment.getUses())) {
+                        if (index.searchElement(used).isEmpty()) {
+                            problems.add(
+                                new Problem(
+                                    reference,
+                                    used,
+                                    in + "`" + reference + "` uses `" + used + "`, which does not exist"
+                                )
+                            );
+                        }
+                    }
+                }
+                if (element instanceof Node node && node.getApplications() != null) {
+                    for (val application : new TreeSet<>(node.getApplications())) {
+                        if (indexes.application().searchElement(application).isEmpty()) {
+                            problems.add(
+                                new Problem(
+                                    reference,
+                                    application,
+                                    in + "`" + reference + "` hosts `" + application + "`, which does not exist"
+                                )
+                            );
+                        }
+                    }
+                }
+            });
+        }
+        return problems
+            .stream()
+            .sorted(
+                Comparator.comparing(Problem::element).thenComparing(Problem::other).thenComparing(Problem::sentence)
+            )
+            .map(Problem::sentence)
+            .toList();
+    }
+
+    private static <T> List<T> sorted(Set<T> set, java.util.function.Function<T, String> key) {
+        return set == null ? List.of() : set.stream().sorted(Comparator.comparing(key)).toList();
+    }
+
+    /** The elements a view names must be in the layer of the view, once the layer that places it is built. */
+    private static List<String> viewProblems(String plateau, ManifestParser.Placed<View> placed, Indexes indexes) {
+        val view = placed.item();
+        val out = new ArrayList<String>();
+        for (val reference : named(view.getProperties())) {
+            if (indexes.of(view.getLayer()).searchElement(reference).isEmpty()) {
+                out.add(
+                    "in the plateau `" +
+                        plateau +
+                        "`, the view `" +
+                        view.getId() +
+                        "` (`" +
+                        placed.source() +
+                        "`) names `" +
+                        reference +
+                        "`, which does not exist"
+                );
+            }
+        }
+        return out;
+    }
+
+    /** The elements a step of a story that carries its own view names must be in the layer of that view. */
+    private static List<String> storyProblems(String plateau, ManifestParser.Placed<Story> placed, Indexes indexes) {
+        val out = new ArrayList<String>();
+        val story = placed.item();
+        for (val step : story.getSteps()) {
+            for (val reference : named(step.getProperties())) {
+                if (indexes.of(step.getLayer()).searchElement(reference).isEmpty()) {
+                    out.add(
+                        "in the plateau `" +
+                            plateau +
+                            "`, the story `" +
+                            story.getId() +
+                            "` (`" +
+                            placed.source() +
+                            "`) names `" +
+                            reference +
+                            "`, which does not exist"
+                    );
+                }
+            }
+        }
+        return out;
+    }
+
+    /** The references the properties of a view name: {@code element}, and the entries of {@code pinned}, {@code opened} and {@code hidden}. */
+    private static Set<String> named(JsonNode properties) {
+        val out = new TreeSet<String>();
+        if (properties == null || !properties.isObject()) {
+            return out;
+        }
+        if (properties.path("element").isTextual()) {
+            out.add(properties.get("element").asText());
+        }
+        for (val key : List.of("pinned", "opened", "hidden")) {
+            properties.path(key).forEach(entry -> {
+                if (entry.isTextual()) {
+                    out.add(entry.asText());
+                }
+            });
+        }
+        return out;
+    }
+}

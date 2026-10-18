@@ -46,6 +46,23 @@ public class Workspace {
     io.morin.archicode.resource.workspace.Settings.Plateau plateau;
 
     /**
+     * The plateaus of a workspace that has layered plateaus (see {@link io.morin.archicode.resource.plateau.PlateauTree}),
+     * which {@link #plateau} is one of; null for a workspace without plateaus and for one that has {@code settings.plateaus}.
+     */
+    @JsonIgnore
+    @Getter
+    io.morin.archicode.resource.plateau.PlateauTree plateauTree;
+
+    /**
+     * The {@code REMOVE} patches that were applied to build the plateau of a layered workspace, in the order they were
+     * applied, with what each took out of the graph; none for any other workspace.
+     */
+    @JsonIgnore
+    @Getter
+    @Builder.Default
+    java.util.List<Removal> removals = java.util.List.of();
+
+    /**
      * The plateau this workspace is compared with, for the workspace of a comparison (it holds the plateau and what only
      * the baseline has: see {@code WorkspaceFactory.createUnion}); null otherwise.
      */

@@ -114,6 +114,8 @@ public class PlateauAdder {
         Plateaus.select(settings, tree.path("settings").path("manifests").has("paths"), null);
         val plateaus = settings.getPlateaus();
         if (plateaus == null || plateaus.isEmpty()) {
+            // `settings.current` names nothing here: told first, as it always was
+            Plateaus.requireNoPlateaus(settings, null);
             throw new ArchiCodeException(
                 "the workspace declares no `settings.plateaus`: `plateau add` copies a plateau that is there already." +
                     " List the folder of the manifests as the first plateau in `settings.plateaus` (and remove" +

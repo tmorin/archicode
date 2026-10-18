@@ -6,9 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.Warnings;
 import io.morin.archicode.cli.ArchiCode;
 import io.morin.archicode.cli.ErrorOutput;
+import io.morin.archicode.resource.plateau.Plateau;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -133,7 +135,12 @@ class PlateauModelTest {
         val workspace = build(c);
         val expect = c.get("expect");
         val label = id + ": " + c.get("what").asText();
-        val result = run("-w", workspace.toString(), "query", "graph");
+        // a layered workspace is drawn plateau by plateau (run 0078): the cases say what `baseline` draws, as the editor does
+        // until it reads the layers, so it is named; a workspace that is not layered has no plateau to name
+        val layered = isLayered(workspace);
+        val result = layered
+            ? run("-w", workspace.toString(), "query", "graph", "--plateau", Plateau.BASELINE)
+            : run("-w", workspace.toString(), "query", "graph");
 
         if (expect.has("fileError")) {
             val error = expect.get("fileError");
@@ -160,9 +167,25 @@ class PlateauModelTest {
             val told = new ArrayList<String>();
             words(expect.get("warnings")).forEach(w -> told.add("warning: " + w));
             assertEquals(told, result.err().lines().toList(), label);
-            val loaded = new TreeSet<>(workspaceFactory.create(workspace).appIndex.elementByReferenceIndex.keySet());
+            val loaded = new TreeSet<>(
+                (layered
+                    ? workspaceFactory.create(workspace, null, Plateau.BASELINE)
+                    : workspaceFactory.create(workspace)
+                ).appIndex.elementByReferenceIndex.keySet()
+            );
             warnings.drain();
             assertEquals(new TreeSet<>(words(expect.get("loaded"))), loaded, label + ": what is drawn");
+        }
+    }
+
+    /** Whether the workspace uses layered plateaus; false when it cannot be read (its mistake is the case). */
+    private boolean isLayered(Path workspace) {
+        try {
+            return workspaceFactory.plateauTree(workspace).isLayered();
+        } catch (ArchiCodeException e) {
+            return false;
+        } finally {
+            warnings.drain();
         }
     }
 
