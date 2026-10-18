@@ -124,7 +124,7 @@ wave_manifest:
       slug: cli-fail-on-and-only-changes
       phase: P0
       depends_on: []
-      run: null
+      run: 0090
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/**'
