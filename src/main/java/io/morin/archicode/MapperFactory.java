@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.cfg.EnumFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import io.morin.archicode.manifest.AliasExpandingYamlFactory;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.file.Path;
 import lombok.AccessLevel;
@@ -20,12 +21,12 @@ import lombok.val;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class MapperFactory {
 
-    YAMLMapper yamlMapper = YAMLMapper.builder()
+    YAMLMapper yamlMapper = YAMLMapper.builder(new AliasExpandingYamlFactory())
         .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
         .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
         .serializationInclusion(JsonInclude.Include.NON_EMPTY)
         .build();
-    YAMLMapper yamlMapperLazy = YAMLMapper.builder()
+    YAMLMapper yamlMapperLazy = YAMLMapper.builder(new AliasExpandingYamlFactory())
         .configure(EnumFeature.WRITE_ENUMS_TO_LOWERCASE, true)
         .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)

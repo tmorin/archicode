@@ -258,8 +258,8 @@ test('a layout the aligner cannot follow gives the emitter\'s text, with or with
   // a collection that does not close: the file is not read at all, the text is the emitter's
   const broken = 'content:\n  id: m\n  tags: [a, b\n  name: N\n';
   assert.equal(app.patchYamlText(broken, { content: { id: 'm', tags: ['a', 'b'], name: 'M' } }), 'content:\n  id: m\n  tags:\n    - a\n    - b\n  name: M');
-  // an anchor is not supported: the same
-  const anchored = 'content:\n  id: &x m\n  tags: {a: b}\n';
+  // an anchor inside the brackets is not followed (anchors-tags-save.test.js follows the other ones): the same
+  const anchored = 'content:\n  id: m\n  tags: {a: &x b}\n';
   assert.equal(app.patchYamlText(anchored, { content: { id: 'm', tags: { a: 'c' } } }), 'content:\n  id: m\n  tags:\n    a: c');
 });
 

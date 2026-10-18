@@ -920,8 +920,12 @@
 // and folded block scalars (`|`, `>` with `-`/`+` and an indentation
 // indicator), flow sequences and mappings (`[a, "b"]`, `{a: b}`, nested, on
 // several lines), `#` comments and the YAML 1.1 booleans (true/false/yes/no/
-// on/off), like the Java side's reader does. Anchors, aliases, tags, complex
-// keys, directives and several documents in one file are NOT supported:
+// on/off), like the Java side's reader does. Anchors, aliases and tags are read
+// the way the Java side reads them: an alias is a copy of the node it points at,
+// a tag qualifies a scalar (`!!str 12` is the text `12`) and says nothing about
+// a collection (see `readYamlProperties`); the save writes them back as they
+// were written (see `openYamlDecorations`). Complex keys, an anchor or a tag on
+// a key, directives and several documents in one file are NOT supported:
 // like anything else the parser cannot read, they throw a `YamlParseError`
 // (carrying `.line`) instead of being skipped, so a file is never read as a
 // truncated model and written back from it.
@@ -1270,6 +1274,7 @@ function readYamlPlainBlock(p, parentIndent) {
   }
   p.i = last;
   p.col = lines[last].length;
+  p.plain = out;
   return resolveYamlPlain(out);
 }
 
@@ -1471,7 +1476,17 @@ function parseYamlFlowNode(p, startLine) {
     note(c);
     return { value: text, text, scalar: true };
   }
-  if (c === '&' || c === '*' || c === '!') throw yamlError('anchors, aliases and tags are not supported', p.i);
+  if (c === '*') {
+    if (p.notes) p.notes.unsupported = true; // the save does not follow an anchor, an alias or a tag inside brackets
+    return { value: readYamlAlias(p), scalar: false };
+  }
+  if (c === '&' || c === '!') {
+    if (p.notes) p.notes.unsupported = true;
+    const props = readYamlProperties(p);
+    skipYamlFlowSpace(p, startLine);
+    const node = parseYamlFlowNode(p, startLine);
+    return { value: adoptYamlProperties(p, props, node.value, node.scalar ? node.text : '', p.i), text: node.text, scalar: node.scalar };
+  }
   if (',]}|>'.indexOf(c) !== -1) throw yamlError('unexpected "' + c + '" in a flow collection', p.i);
   const plain = readYamlFlowPlain(p, startLine);
   if (plain.text === '') throw yamlError('unexpected "' + (p.lines[p.i][p.col] || '') + '" in a flow collection', p.i);
@@ -1487,18 +1502,27 @@ function parseYamlFlowPairValue(p, startLine) {
   return parseYamlFlowNode(p, startLine).value;
 }
 
-/** A scalar or a flow collection starting at the cursor, on a line of its own or after `key:` / `- `. */
-function parseYamlInline(p, parentIndent) {
+/**
+ * A scalar or a flow collection starting at the cursor, on a line of its own or after `key:` / `- `. `keyed` says that the line is a `key:` of a mapping, whose value may be a
+ * list at the column of the key.
+ */
+function parseYamlInline(p, parentIndent, keyed) {
   const line = p.lines[p.i];
   const c = line[p.col];
   if (c === '|' || c === '>') return parseYamlBlockScalar(p, parentIndent);
+  if (c === '*') {
+    const at = p.col;
+    const value = readYamlAlias(p);
+    if (p.notes) p.notes.list.push({ kind: 'alias', line: p.i, from: at, to: p.col, value: cloneYamlValue(value) });
+    expectYamlEol(p);
+    return value;
+  }
+  if (c === '&' || c === '!') return parseYamlProperties(p, parentIndent, keyed);
   let value;
   if (c === '"' || c === "'") {
     value = readYamlQuoted(p, c);
   } else if (c === '[' || c === '{') {
     value = parseYamlFlowNode(p, p.i).value;
-  } else if (c === '&' || c === '*' || c === '!') {
-    throw yamlError('anchors, aliases and tags are not supported', p.i);
   } else if (c === '?' && (p.col + 1 >= line.length || isYamlWs(line[p.col + 1]))) {
     throw yamlError('complex mapping keys are not supported', p.i);
   } else {
@@ -1506,6 +1530,139 @@ function parseYamlInline(p, parentIndent) {
   }
   expectYamlEol(p);
   return value;
+}
+
+/** A copy of a value read by `parseYaml`, the order of the keys included: what an alias is. */
+function cloneYamlValue(value) {
+  if (Array.isArray(value)) return value.map(cloneYamlValue);
+  if (value !== null && typeof value === 'object') {
+    const copy = {};
+    for (const key of yamlKeysOf(value)) setYamlKey(copy, key, cloneYamlValue(value[key]));
+    return copy;
+  }
+  return value;
+}
+
+/**
+ * The anchor and the tag at the cursor (`&a`, `!!str`, `!local`, `!<tag:yaml.org,2002:str>`, in either order): `{ anchor, tag, from, end, to }`, `from` and `end` the columns
+ * the tokens span and `to` the column of what follows them, or `null` when there is none. The cursor moves to `to`.
+ */
+function readYamlProperties(p) {
+  const line = p.lines[p.i];
+  const from = p.col;
+  let anchor = null;
+  let tag = null;
+  let end = from;
+  while (line[p.col] === '&' || line[p.col] === '!') {
+    const start = p.col;
+    let stop = start + 1;
+    if (line[start] === '!' && line[stop] === '<') {
+      stop = line.indexOf('>', stop);
+      if (stop === -1) throw yamlError('a tag that is never closed', p.i);
+      stop++;
+    } else {
+      while (stop < line.length && !isYamlWs(line[stop]) && ',[]{}'.indexOf(line[stop]) === -1) stop++;
+    }
+    const token = line.slice(start, stop);
+    if (line[start] === '&') {
+      if (token.length === 1) throw yamlError('an anchor needs a name', p.i);
+      if (anchor !== null) throw yamlError('a node has only one anchor', p.i);
+      anchor = token.slice(1);
+    } else {
+      if (tag !== null) throw yamlError('a node has only one tag', p.i);
+      tag = token;
+    }
+    end = stop;
+    p.col = stop;
+    while (p.col < line.length && isYamlWs(line[p.col])) p.col++;
+  }
+  return anchor === null && tag === null ? null : { anchor, tag, from, end, to: p.col };
+}
+
+/** An alias at the cursor (`*name`): a copy of the node the anchor `name` was given to. The cursor moves past it. */
+function readYamlAlias(p) {
+  const line = p.lines[p.i];
+  const from = p.col;
+  let stop = from + 1;
+  while (stop < line.length && !isYamlWs(line[stop]) && ',[]{}'.indexOf(line[stop]) === -1) stop++;
+  const name = line.slice(from + 1, stop);
+  if (name === '') throw yamlError('an alias needs a name', p.i);
+  if (!p.anchors.has(name)) throw yamlError('found undefined alias `' + name + '`', p.i);
+  p.col = stop;
+  return cloneYamlValue(p.anchors.get(name));
+}
+
+/**
+ * What a tag makes of a scalar, the way the Java side's reader takes it: `!!str` is the text, `!!int` and `!!float` the number (a text that is not one is an error), `!!bool`
+ * the boolean (or the text, when it is not a boolean word), `!!null` a null, any other tag (`!!timestamp`, `!local`) the text. A tag on a collection is left out. `text` is the
+ * scalar as written.
+ */
+function applyYamlTag(tag, value, text, lineIndex) {
+  if (value !== null && typeof value === 'object') return value;
+  if (tag === '!') return value;
+  const named = /^!!(.+)$/.exec(tag) || /^!<tag:yaml\.org,2002:(.+)>$/.exec(tag);
+  const name = named ? named[1] : null;
+  const body = String(text);
+  if (name === 'binary') throw yamlError('a binary value (!!binary) is not supported', lineIndex);
+  if (name === 'null') return resolveYamlPlain(body) === null ? null : body;
+  if (name === 'bool') {
+    const word = resolveYamlPlain(body);
+    return typeof word === 'boolean' ? word : body;
+  }
+  if (body === '') return body;
+  if (name === 'int') {
+    if (!/^[-+]?\d+$/.test(body)) throw yamlError('"' + body.slice(0, 30) + '" is not an integer (tag ' + tag + ')', lineIndex);
+    return Number(body);
+  }
+  if (name === 'float') {
+    if (!/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(body)) throw yamlError('"' + body.slice(0, 30) + '" is not a number (tag ' + tag + ')', lineIndex);
+    return Number(body);
+  }
+  return body;
+}
+
+/** The value of a node that has an anchor and a tag: the tag applied, the anchor given to the result. */
+function adoptYamlProperties(p, props, value, text, lineIndex) {
+  const result = props.tag === null ? value : applyYamlTag(props.tag, value, text, lineIndex);
+  if (props.anchor !== null) p.anchors.set(props.anchor, result);
+  return result;
+}
+
+/**
+ * A node that begins with an anchor or a tag, at the cursor: its value follows on the line, or below it (deeper than `parentIndent`; a list at the column of the key when
+ * `keyed`). When the cursor has `notes`, it is told where the tokens are and what they changed (see `openYamlDecorations`).
+ */
+function parseYamlProperties(p, parentIndent, keyed) {
+  const lineIndex = p.i;
+  const props = readYamlProperties(p);
+  const line = p.lines[p.i];
+  let value;
+  let text = '';
+  let inline;
+  if (p.col >= line.length || isYamlCommentAt(line, p.col)) {
+    inline = 'below';
+    p.col = line.length;
+    if (!skipYamlToContent(p)) value = null;
+    else if (p.col > parentIndent) value = parseYamlBlockNode(p, parentIndent);
+    else if (keyed && p.col === parentIndent && isYamlSeqItem(p.lines[p.i], p.col)) value = parseYamlSequence(p, parentIndent);
+    else value = null;
+  } else {
+    if (line[p.col] === '*') throw yamlError('an alias cannot have an anchor or a tag', p.i);
+    if (scanYamlKey(line, p.col, p.i) !== null) throw yamlError('an anchor or a tag on a key is not supported', p.i);
+    const c = line[p.col];
+    inline = c === '"' || c === "'" ? 'quoted' : c === '[' || c === '{' ? 'flow' : c === '|' || c === '>' ? 'block' : 'plain';
+    p.plain = undefined;
+    value = parseYamlInline(p, parentIndent, keyed);
+    if (value === null || typeof value !== 'object') text = p.plain !== undefined ? p.plain : value === null ? '' : String(value);
+  }
+  const tagged = adoptYamlProperties(p, props, value, text, lineIndex);
+  if (p.notes) {
+    p.notes.list.push({
+      kind: 'props', line: lineIndex, from: props.from, end: props.end, to: props.to, anchor: props.anchor, tag: props.tag, inline,
+      changed: tagged !== value && (tagged === null || typeof tagged !== 'object'), value: tagged, multiline: p.i !== lineIndex && (inline === 'plain' || inline === 'quoted')
+    });
+  }
+  return tagged;
 }
 
 /** The value after the colon of a `key:` entry of the mapping at `mapIndent`. */
@@ -1522,7 +1679,7 @@ function parseYamlValueAfterKey(p, mapIndent) {
     return null;
   }
   p.col = c;
-  return parseYamlInline(p, mapIndent);
+  return parseYamlInline(p, mapIndent, true);
 }
 
 /** The node starting at the cursor, which is at the start of a content line (its column is the indent). */
@@ -1583,9 +1740,10 @@ function parseYamlSeqItem(p, indent) {
 
 /**
  * Parse a YAML document into a plain JS value (object, array, scalar, or null for an empty document). Throws a
- * `YamlParseError` (with the `line`) for anything it cannot read.
+ * `YamlParseError` (with the `line`) for anything it cannot read. `notes`, when given as `{ list: [], unsupported: false }`, is filled with where the anchors, the aliases and
+ * the tags are (see `openYamlDecorations`).
  */
-function parseYaml(text) {
+function parseYaml(text, notes) {
   let src = String(text);
   if (src.charCodeAt(0) === 0xfeff) src = src.slice(1);
   let lines = src.split(/\r\n|\r|\n/);
@@ -1613,7 +1771,7 @@ function parseYaml(text) {
       seenContent = true;
     }
   }
-  const p = { lines, i: 0, col: 0 };
+  const p = { lines, i: 0, col: 0, anchors: new Map(), notes: notes || null };
   if (!skipYamlToContent(p)) return null;
   const root = parseYamlBlockNode(p, -1);
   if (skipYamlToContent(p)) throw yamlError('unexpected content (check the indentation)', p.i);
@@ -1791,8 +1949,173 @@ function serializeManifestFile(header, content) {
  *
  * A list written at the column of its key (`tags:` then `- a` at the same column) is followed too (see `markKeyColumnLists`): the file is read as the emitter would write it, with
  * those lists two columns deeper, and the lists go back to their column in the result, the items the edit adds with them.
+ *
+ * An anchor, an alias or a tag (`name: &n "Bakery"`, `description: *n`, `size: !!str 12`) is followed too (see `openYamlDecorations`): the lines the edit does not touch stay as
+ * they were written, a line it changes keeps its anchor and its tag, and an alias stays as long as the line still says what it points at.
  */
 function patchYamlText(oldText, newValue) {
+  const opened = openYamlDecorations(oldText);
+  if (opened === null) return patchYamlTextPlain(oldText, newValue);
+  const emitted = serializeYamlValue(newValue, 0);
+  if (opened.unsupported) return emitted;
+  return closeYamlDecorations(patchYamlTextPlain(opened.text, newValue), opened, emitted);
+}
+
+/**
+ * The anchors, the aliases and the tags of a file, taken out of its text so that the aligner (which compares the lines the emitter writes with the lines of the file) finds
+ * the lines it expects: `{ text, entries }`, or `{ unsupported: true }` when the save cannot follow them, or `null` when the file has none.
+ *
+ * In `text`, an anchor and a tag are gone from their line (`name: &n "Bakery"` is `name: "Bakery"`; a tag that changed what the value reads as, `!!str 12`, leaves the
+ * emitter's token, `"12"`) and an alias is the node it points at, as the emitter writes it (`description: Bakery`; a map or a list is a block under its key). Each line that
+ * was changed carries a mark at the end (`\u0002` and a number, in the comment of the line, which every edit of a line keeps) that says which entry it came from; `entries`
+ * has, for each, the line as it was written and as it was opened. `closeYamlDecorations` puts them back. Unsupported are the ones inside a flow collection
+ * (`[&a one, *a]`), a tag that changes a text that goes over several lines, and a mark character in the file.
+ */
+function openYamlDecorations(text) {
+  const notes = { list: [], unsupported: false };
+  try {
+    parseYaml(text, notes);
+  } catch (e) {
+    return null;
+  }
+  if (notes.list.length === 0 && !notes.unsupported) return null;
+  if (notes.unsupported || /[\u0002\u0003]/.test(text) || notes.list.some((note) => note.kind === 'props' && note.multiline && note.changed)) return { unsupported: true };
+  const bom = text.charAt(0) === '﻿' ? '﻿' : '';
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n';
+  const lines = text.slice(bom.length).split(/\r\n|\r|\n/);
+  const list = notes.list.slice().sort((a, b) => a.line - b.line);
+  for (let k = 1; k < list.length; k++) if (list[k].line === list[k - 1].line) return { unsupported: true };
+  const entries = [];
+  const edits = [];
+  for (const note of list) {
+    const line = lines[note.line];
+    const entry = { id: entries.length, kind: note.kind, original: line, opened: null, bare: false, expansion: null, tokens: null, anchor: null, context: null };
+    let replacement;
+    if (note.kind === 'props') {
+      const before = line.slice(0, note.from);
+      const rest = line.slice(note.to);
+      const gap = line.slice(note.end, note.to);
+      entry.tokens = line.slice(note.from, note.end);
+      entry.anchor = note.anchor;
+      let opened;
+      if (rest === '' || isYamlCommentAt(rest, 0)) {
+        const head = before.replace(/[ \t]+$/, '');
+        if (head.trim() === '') return { unsupported: true };
+        opened = note.changed ? head + ' ' + serializeYamlInline(note.value) + gap + rest : head + gap + rest;
+      } else if (note.changed) {
+        const token = stripYamlComment(rest).replace(/\s+$/, '');
+        opened = before + serializeYamlInline(note.value) + rest.slice(token.length);
+      } else {
+        opened = before + rest;
+      }
+      replacement = [opened];
+    } else {
+      const before = line.slice(0, note.from);
+      const rest = line.slice(note.to);
+      if (!isYamlComplexValue(note.value)) {
+        replacement = [before + serializeYamlInline(note.value) + rest];
+        entry.context = 'scalar';
+      } else if (/:[ \t]*$/.test(before)) {
+        entry.context = 'key';
+        const column = line.match(/^ *(?:- +)*/)[0].length;
+        replacement = [before.replace(/[ \t]+$/, '') + rest].concat(serializeYamlValue(note.value, column + 2).split('\n'));
+      } else if (/^ *- +$/.test(before)) {
+        entry.context = 'item';
+        replacement = serializeYamlValue([note.value], yamlIndentOf(before)).split('\n');
+        replacement[0] += rest;
+      } else {
+        return { unsupported: true };
+      }
+      entry.expansion = replacement.slice();
+    }
+    entry.opened = replacement[0];
+    entry.bare = stripYamlComment(replacement[0]).length === replacement[0].length;
+    replacement[0] += (entry.bare ? ' #' : '') + '\u0002' + entry.id + '\u0003';
+    entries.push(entry);
+    edits.push({ line: note.line, replacement });
+  }
+  edits.sort((a, b) => b.line - a.line);
+  for (const edit of edits) lines.splice(edit.line, 1, ...edit.replacement);
+  return { text: bom + lines.join(eol), entries };
+}
+
+/** The column and the key of a line, to tell that a line is still the one an entry came from. */
+function yamlLineSignature(line) {
+  const prefix = line.match(/^ *(?:- +)*/)[0];
+  const found = scanYamlKey(line, prefix.length, 0);
+  return prefix.length + ':' + (found ? found.key : '');
+}
+
+/** `line` with the anchor and the tag `tokens` written before its value (after its key, or after its dash), or `null` when it has no place for them. */
+function insertYamlTokens(line, tokens) {
+  const prefix = line.match(/^ *(?:- +)*/)[0];
+  const found = scanYamlKey(line, prefix.length, 0);
+  const content = stripYamlComment(line).replace(/\s+$/, '');
+  if (!found && /(^|\s)-$/.test(content)) return null; // a dash with nothing after it
+  let at = found ? found.end : prefix.length;
+  if (content.length <= at) return found ? line.slice(0, at) + ' ' + tokens + line.slice(at) : null; // a key with nothing after it
+  while (at < line.length && isYamlWs(line[at])) at++;
+  return line.slice(0, at) + tokens + ' ' + line.slice(at);
+}
+
+/**
+ * `patched` (written by the aligner on the text `openYamlDecorations` gave) with the anchors, the aliases and the tags back where the file had them. A line the edit did not
+ * change is the line of the file; a line it changed gets its anchor and its tag back. Each is put back only if the text then still says what the edit says (`emitted`, the
+ * emitter's text of the new value): an alias whose anchor was changed, or whose own value was, stays the value it now has, and a tag that no longer fits the value is dropped.
+ */
+function closeYamlDecorations(patched, opened, emitted) {
+  if (patched.indexOf('\u0002') === -1) return patched;
+  const bom = patched.charAt(0) === '﻿' ? '﻿' : '';
+  const eol = /\r\n/.test(patched) ? '\r\n' : '\n';
+  let current = patched.slice(bom.length).split(/\r\n|\r|\n/).map((raw) => {
+    const found = /\u0002(\d+)\u0003/.exec(raw);
+    if (found === null || opened.entries[Number(found[1])] === undefined) return { text: raw.replace(/[\u0002\u0003]/g, ''), id: null };
+    let text = raw.replace(found[0], '');
+    if (opened.entries[Number(found[1])].bare && text.endsWith(' #')) text = text.slice(0, -2);
+    return { text, id: Number(found[1]) };
+  });
+  const build = (items) => bom + items.map((item) => item.text).join(eol);
+  const says = (items) => {
+    try {
+      return serializeYamlValue(parseYaml(build(items)), 0) === emitted;
+    } catch (e) {
+      return false;
+    }
+  };
+  if (!says(current)) return emitted;
+  for (const kind of ['props', 'alias']) {
+    for (const entry of opened.entries) {
+      if (entry.kind !== kind) continue;
+      const at = current.findIndex((item) => item.id === entry.id);
+      if (at === -1) continue;
+      const candidate = current.slice();
+      if (kind === 'props') {
+        let text;
+        if (current[at].text === entry.opened) {
+          text = entry.original;
+        } else if (yamlLineSignature(current[at].text) === yamlLineSignature(entry.opened)) {
+          text = insertYamlTokens(current[at].text, entry.tokens);
+          if (text === null) continue;
+        } else {
+          continue;
+        }
+        candidate[at] = { text, id: null };
+      } else {
+        // the lines the alias stood for: the ones the file had, or, when an edit changed them, the line and what is under it (the check below tells whether it still says the same)
+        const same = entry.expansion.every((text, k) => current[at + k] !== undefined && current[at + k].text === text && (k === 0 || current[at + k].id === null));
+        const texts = current.map((item) => item.text);
+        const last = same ? at + entry.expansion.length - 1 : entry.context === 'scalar' ? at : yamlLastLineUnderKey(texts, at, entry.context === 'item' ? yamlIndentOf(texts[at]) : texts[at].match(/^ *(?:- +)*/)[0].length, false);
+        if (!same && yamlLineSignature(texts[at]) !== yamlLineSignature(entry.opened)) continue;
+        candidate.splice(at, last - at + 1, { text: entry.original, id: null });
+      }
+      if (says(candidate)) current = candidate;
+    }
+  }
+  return build(current);
+}
+
+/** `patchYamlText` for a file that has no anchor, no alias and no tag that the save follows (they are taken out first, see `openYamlDecorations`). */
+function patchYamlTextPlain(oldText, newValue) {
   const marked = markKeyColumnLists(oldText);
   if (marked === null) return patchYamlTextAt(oldText, newValue);
   const emitted = serializeYamlValue(newValue, 0);
@@ -2523,6 +2846,7 @@ function emittedBlockOf(value, path) {
  */
 function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
   try {
+    if (openYamlDecorations(oldText) !== null) return null; // an anchor, an alias or a tag: the ordinary patch follows them
     if (!oldPath || !newPath || !oldPath.length || !newPath.length) return null;
     const eol = /\r\n/.test(oldText) ? '\r\n' : '\n';
     const endsWithBreak = /\n$/.test(oldText);

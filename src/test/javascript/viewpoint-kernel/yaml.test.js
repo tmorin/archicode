@@ -136,9 +136,11 @@ test('documents: a leading --- and a trailing ... are accepted, CRLF and a BOM t
 
 test('whatever the parser cannot read is an error that names the line, never a silent drop', () => {
   const failing = [
-    ['a: 1\nb: &anchor 2\n', 2],
     ['a: 1\nb: *alias\n', 2],
-    ['a: !!str 1\n', 1],
+    ['a: 1\n&key b: 2\n', 2],
+    ['a: 1\nb: &anchor *a\n', 2],
+    ['a: !!int x\n', 1],
+    ['a: !!binary YQ==\n', 1],
     ['a: 1\n---\nb: 2\n', 2],
     ['a: 1\n   b: 2\n', 2],
     ['a:\n  b: 1\n c: 2\n', 3],
@@ -226,14 +228,14 @@ test('saving the settings keeps the other top-level keys of workspace.yaml, in t
 });
 
 test('a workspace.yaml that cannot be read is a fatal error that names the line, and is never written', async () => {
-  const { state } = await openTemp({ 'workspace.yaml': 'settings:\n  manifests: &paths\n    paths: [a]\n' });
+  const { state } = await openTemp({ 'workspace.yaml': 'settings:\n  manifests: *paths\n    paths: [a]\n' });
   assert.match(state.fatalError, /workspace\.yaml/);
   assert.match(state.fatalError, /line 2/);
   assert.equal(state.workspace, null);
 });
 
 test('a manifest the parser cannot read is shown as unparseable: no element from it, and its text is kept as it is', async () => {
-  const broken = 'header:\n  kind: archicode.morin.io/system\ncontent:\n  id: s2\n  name: &n S2\n  elements:\n    - id: lost\n';
+  const broken = 'header:\n  kind: archicode.morin.io/system\ncontent:\n  id: s2\n  name: *n\n  elements:\n    - id: lost\n';
   const { state } = await openTemp({
     'workspace.yaml': 'settings:\n  manifests:\n    paths: [manifests]\n',
     'manifests/app.s1.yaml': MANIFEST,
