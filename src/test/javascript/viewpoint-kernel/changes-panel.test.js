@@ -567,21 +567,21 @@ test('the SVG export carries the faded rule', async () => {
 test('a removed element picked on the Map is in the address with the comparison; the other selections are as they were', async () => {
   const { sandbox, state } = await open('@baseline');
   run(sandbox, "currentPerspective = 'map';");
-  assert.equal(sandbox.currentRouteHash(), '/map');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications');
   click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'removed', 'data-layer': 'application', 'data-ref': 'shop.session' });
-  assert.equal(sandbox.currentRouteHash(), '/map?removed=shop.session&compare=%40baseline');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=%40baseline');
   click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'changed', 'data-layer': 'application', 'data-ref': 'shop.web' });
-  assert.equal(sandbox.currentRouteHash(), '/map?ref=shop.web', 'a changed element is an ordinary selection: nothing new in the address');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?ref=shop.web', 'a changed element is an ordinary selection: nothing new in the address');
   click(sandbox, { 'data-action': 'select-change', 'data-thing': 'relationship', 'data-change': 'changed', 'data-layer': 'application', 'data-ref': 'customer', 'data-to': 'shop.web' });
-  assert.equal(sandbox.currentRouteHash(), '/map?link-from=customer&link-to=shop.web');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?link-from=customer&link-to=shop.web');
   assert.equal(state.selection.kind, 'link');
   // a plateau named by its id
   await sandbox.setCompareTo('as-is');
   click(sandbox, { 'data-action': 'select-change', 'data-thing': 'element', 'data-change': 'removed', 'data-layer': 'application', 'data-ref': 'shop.session' });
-  assert.equal(sandbox.currentRouteHash(), '/map?removed=shop.session&compare=as-is');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=as-is');
   // closing the panel takes it out of the address
   click(sandbox, { 'data-action': 'close-removed' });
-  assert.equal(sandbox.currentRouteHash(), '/map');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications');
 });
 
 test('in Elements the removed element is in the address next to the element that stays the subject', async () => {
@@ -589,7 +589,7 @@ test('in Elements the removed element is in the address next to the element that
   state.selection = { kind: 'element', key: 'shop.web', layer: 'application', mode: 'view' };
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview';");
   click(sandbox, { 'data-action': 'select-removed', 'data-ref': 'shop.session', 'data-layer': 'application' });
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web&tab=overview&removed=shop.session&compare=as-is');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web&tab=overview&removed=shop.session&compare=as-is');
 });
 
 test('an address with a removed element reopens it with the same comparison, whatever this browser had remembered, and keeps it while the kernel loads', async () => {
@@ -608,11 +608,11 @@ test('an address with a removed element reopens it with the same comparison, wha
   assert.equal(state.baseline.plateau.id, 'as-is');
   assert.deepEqual(plain(sandbox.removedFromHash()), { reference: 'shop.session', layer: 'application' });
   // the kernel is not loaded yet: the address is kept, the panel waits
-  assert.equal(sandbox.currentRouteHash(), '/map?removed=shop.session&compare=%40baseline');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=%40baseline');
   assert.match(sandbox.renderMapPerspectiveHtml().right, /data-pending/);
   await sandbox.loadViewpointKernel();
   assert.match(sandbox.renderMapPerspectiveHtml().right, /inspection-removed" data-inspection-ref="shop\.session"/, 'and now it is there');
-  assert.equal(sandbox.currentRouteHash(), '/map?removed=shop.session&compare=%40baseline', 'a reload would do the same again');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?removed=shop.session&compare=%40baseline', 'a reload would do the same again');
 });
 
 test('the address of a removed element round trips: written, read back by a fresh page, written again the same', async () => {
@@ -630,7 +630,7 @@ test('the address of a removed element round trips: written, read back by a fres
 test('an address that names a removed element the comparison does not have, or no comparison at all, picks nothing and is cleaned', async () => {
   const gone = await open(undefined, { hash: '#/map?removed=shop.nothing&compare=as-is' });
   run(gone.sandbox, "currentPerspective = 'map';");
-  assert.equal(gone.sandbox.currentRouteHash(), '/map', 'the element is not in the comparison');
+  assert.equal(gone.sandbox.currentRouteHash(), '/timeline/applications', 'the element is not in the comparison');
   const none = await open(undefined, { hash: '#/map?removed=shop.session&compare=nowhere' });
   assert.equal(none.state.compareTo, '', 'a plateau the workspace does not have is Nothing');
   assert.equal(run(none.sandbox, 'removedPick'), null);
@@ -763,7 +763,7 @@ test('with Compare to Nothing none of it is on the page: no panel, no tabs, no c
   assert.doesNotMatch(sandbox.renderElementsNavHtml(false) + sandbox.renderMapScopeHtml(), /tree-change|data-change/);
   assert.equal(sandbox.buildKernelInput('map', '', {}).input.only_changes, undefined);
   assert.equal(sandbox.comparisonState(), null);
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web');
   // the flags are not stored until they are used, and a leftover filter does nothing without a comparison
   click(sandbox, { 'data-action': 'set-changes-only', 'data-value': '1' });
   assert.equal(sandbox.buildKernelInput('map', '', {}).input.only_changes, undefined);

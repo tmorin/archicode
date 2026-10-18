@@ -193,7 +193,7 @@ test('in Elements the element stays the subject: centre, tree row, URL and tabs 
   const { sandbox, state } = await page('elements', 'overview', 'shop.web.api');
   state.selection = linkSelection('shop.web.frontend', 'shop.web.api', { focal: 'shop.web.api' });
   assert.deepEqual(plain(sandbox.elementSelection()), { kind: 'element', key: 'shop.web.api', layer: 'application', mode: 'view' });
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview&link-from=shop.web.frontend&link-to=shop.web.api', 'the element, its tab, and now the link (run 0024)');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api&tab=overview&link-from=shop.web.frontend&link-to=shop.web.api', 'the element, its tab, and now the link (run 0024)');
   assert.equal(sandbox.diagramTabShown(), true);
   assert.match(sandbox.renderCenterPanelHtml(), /diagram-canvas/);
   sandbox.expandAncestorsOf('shop.web.api');
@@ -206,7 +206,7 @@ test('on the Map a link selection is no element: no subject, no Open in Elements
   const { sandbox, state, regions } = await page('map', 'map', null);
   state.selection = linkSelection('customer', 'shop');
   assert.equal(sandbox.elementSelection().kind, 'link');
-  assert.equal(sandbox.currentRouteHash(), '/map?link-from=customer&link-to=shop');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?link-from=customer&link-to=shop');
   const center = regions().center;
   assert.ok(!center.includes('element-header-subject') && !center.includes('open-as-diagram'));
 });

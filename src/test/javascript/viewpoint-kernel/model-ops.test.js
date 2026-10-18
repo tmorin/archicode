@@ -1104,7 +1104,7 @@ test('a technology view is kept with its layer, and the Stories page offers the 
   assert.match(page.left, /class="tree-branch-header static"/, 'the heading of the list is the one of the Elements tree');
   assert.doesNotMatch(page.center, /Saved views/, 'the views are a side of their own, not a list under the story');
   assert.match(page.center, /data-action="library-tab" data-tab="views" aria-pressed="false"/);
-  assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="library"[^]*Library/);
+  assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="library"[^]*Stories/);
   assert.doesNotMatch(sandbox.renderPerspectiveTabsHtml(), /data-perspective="stories"/);
 });
 
@@ -1123,7 +1123,7 @@ test('the Library has a Stories side and a Views side that lead to one another, 
   ev(sandbox, "currentPerspective = 'library'; libraryTab = 'stories'; selectedStoryId = " + JSON.stringify(story.id));
   let page = sandbox.renderLibraryPerspectiveHtml();
   assert.match(page.center, new RegExp('data-action="library-go-view" data-view="' + viewId + '"'));
-  assert.equal(sandbox.currentRouteHash().split('?')[0], '/library/stories');
+  assert.equal(sandbox.currentRouteHash().split('?')[0], '/stories');
   assert.match(sandbox.currentRouteHash(), /story=/);
 
   // the link opens the Views side on that view, which says which steps show it
@@ -1134,10 +1134,10 @@ test('the Library has a Stories side and a Views side that lead to one another, 
   assert.match(page.right, /Shown in/); // the facts and the steps that show the view are in the panel on the right (run 0028)
   assert.match(page.right, /data-action="library-go-story" data-story="tour" data-step="1"/);
   assert.match(page.center, /Open on diagram/);
-  assert.equal(sandbox.currentRouteHash().split('?')[0], '/library/views');
+  assert.equal(sandbox.currentRouteHash().split('?')[0], '/stories/views');
   assert.match(sandbox.currentRouteHash(), new RegExp('view=' + viewId));
 
-  // the routes: the old "#/stories" opens the Library's Stories side, "#/library/views" the Views side
+  // the routes: "#/stories" opens the Stories side and "#/stories/views" the Views side; the former "#/library" and "#/library/views" still do (run 0081 pins them all)
   ev(sandbox, "location.hash = '#/stories?story=tour'");
   assert.equal(sandbox.perspectiveIdFromHash(), 'library');
   assert.equal(sandbox.libraryTabFromHash(), 'stories');

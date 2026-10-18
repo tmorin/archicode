@@ -118,7 +118,7 @@ test('a workspace with no plateau has the band, with baseline alone, drawn, and 
   assert.match(html, /data-action="compare-past" aria-pressed="false" disabled/);
   assert.match(html, /data-action="compare-future" aria-pressed="false" disabled/);
   assert.match(html, /Nothing compared\./);
-  assert.match(sandbox.renderShellHtml(), /grid-rows-\[auto_auto_minmax\(0,1fr\)\]/, 'the shell has a row for it');
+  assert.match(sandbox.renderShellHtml(), /grid-rows-\[auto_auto_auto_minmax\(0,1fr\)\]/, 'the shell has a row for it, and one for the pages below Timeline');
   // a click on it changes nothing
   const before = state.index;
   sandbox.drawPlateau('baseline');

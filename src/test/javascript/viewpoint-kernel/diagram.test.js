@@ -28,10 +28,10 @@ test('the URL carries the tab and the facet of a diagram, and restores them; an 
   const { sandbox, state } = await openFixture();
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'deep'; diagramFacet = 'no-smtp';");
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=deep&facet=no-smtp');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api&tab=deep&facet=no-smtp');
 
   run(sandbox, "elementTab = 'details';");
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api', 'Details stays out of the URL, and so does the facet it ignores');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api', 'Details stays out of the URL, and so does the facet it ignores');
 
   sandbox.location.hash = '#/elements?ref=shop.web.api&tab=detailed&facet=rest-only';
   sandbox.syncPerspectiveFromHash();
@@ -414,7 +414,7 @@ test('the Map perspective draws the workspace without any element selected, with
   run(sandbox, "currentPerspective = 'map'; mapPinned = ['shop.web']; mapHidden = ['mailer'];");
   state.selection = { kind: 'none', key: null, mode: 'view' };
   const html = sandbox.renderMapPerspectiveHtml();
-  assert.ok(html.center.includes('data-map="true"') && html.center.includes('<h2>Map</h2>'));
+  assert.ok(html.center.includes('data-map="true"') && html.center.includes('<h2>Applications</h2>'));
   assert.ok(html.center.includes('Pinned: Web') && html.center.includes('Hidden: Mail'), 'the pinned and the hidden elements are chips');
   assert.ok(html.center.includes('data-action="map-unpin"') && html.center.includes('data-action="map-unhide"'));
   assert.ok(!html.center.includes('viewpoint-switch'), 'the viewpoints are the Diagram perspective\'s');
@@ -660,7 +660,7 @@ test('Elements and Map lead to each other, and the URL of the map carries the fa
   click('show-on-map', { 'data-ref': 'shop.web' });
   assert.equal(run(sandbox, 'currentPerspective'), 'map');
   assert.equal(run(sandbox, 'JSON.stringify(mapPinned)'), JSON.stringify(['shop.web']), 'the element replaces what was pinned');
-  assert.equal(sandbox.currentRouteHash(), '/map?ref=shop.web&facet=no-smtp&pin=shop.web');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?ref=shop.web&facet=no-smtp&pin=shop.web');
 
   click('open-as-diagram', { 'data-ref': 'shop.web' });
   assert.equal(run(sandbox, 'currentPerspective'), 'elements');
@@ -669,7 +669,7 @@ test('Elements and Map lead to each other, and the URL of the map carries the fa
   click('show-on-map', { 'data-ref': 'shop.web' });
   click('open-as-diagram', { 'data-ref': 'shop.web' });
   assert.equal(run(sandbox, 'elementTab'), 'overview', 'from Details, the diagram is the overview');
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web&tab=overview&facet=no-smtp');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web&tab=overview&facet=no-smtp');
 
   run(sandbox, 'mapPinned = []; diagramFacet = null;');
   sandbox.location.hash = '#/map?pin=shop.web,nope&facet=rest-only';
@@ -963,7 +963,7 @@ test('the texts of a diagram start as the default says, and only a choice that d
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview';");
   assert.deepEqual(JSON.parse(JSON.stringify(sandbox.diagramShows(false))), { labels: true, qualifiers: true, descriptions: false, wrap: false });
   assert.deepEqual(JSON.parse(JSON.stringify(sandbox.diagramShows(true))), { labels: false, qualifiers: false, descriptions: false, wrap: false }, 'the map is dense: nothing by default');
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api&tab=overview');
 
   // a click on a tool: lit while shown, and back to the default is no choice at all
   const toggle = (name) => sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (a) => ({ 'data-action': 'toggle-show', 'data-show': name })[a] || null }) } });
@@ -971,14 +971,14 @@ test('the texts of a diagram start as the default says, and only a choice that d
   toggle('labels');
   toggle('descriptions');
   toggle('wrap');
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview&labels=0&descriptions=1&wrap=1');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api&tab=overview&labels=0&descriptions=1&wrap=1');
   assert.match(sandbox.renderDiagramShowGroupHtml(false), /data-show="labels" aria-pressed="false"[^>]*>Labels.*data-show="qualifiers" aria-pressed="true".*data-show="descriptions" aria-pressed="true".*data-show="wrap" aria-pressed="true"/);
   toggle('labels');
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview&descriptions=1&wrap=1');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api&tab=overview&descriptions=1&wrap=1');
 
   // the details page of an element has no diagram: nothing to say about it in the URL
   run(sandbox, "elementTab = 'details';");
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api');
 
   // read back from a link, and a map has its own defaults
   sandbox.location.hash = '#/elements?ref=shop.web.api&tab=overview&qualifiers=0&labels=1&wrap=1';
@@ -986,7 +986,7 @@ test('the texts of a diagram start as the default says, and only a choice that d
   assert.deepEqual(JSON.parse(JSON.stringify(sandbox.diagramShows(false))), { labels: true, qualifiers: false, descriptions: false, wrap: true });
   sandbox.location.hash = '#/map?labels=1&qualifiers=1';
   sandbox.syncPerspectiveFromHash();
-  assert.equal(sandbox.currentRouteHash(), '/map?labels=1&qualifiers=1');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?labels=1&qualifiers=1');
 });
 
 test('a saved view remembers the texts it was drawn with, and a story step brings them back', async () => {
@@ -1122,16 +1122,16 @@ test('Fit is in the URL, Center is how a diagram opens, and a link restores eith
   const { sandbox, state } = await openFixture();
   state.selection = { kind: 'element', key: 'shop.web.api', mode: 'view' };
   run(sandbox, "currentPerspective = 'elements'; elementTab = 'overview'; diagramScale = 'auto';");
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview', 'Center: nothing to say');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api&tab=overview', 'Center: nothing to say');
   run(sandbox, "diagramScale = 'fit';");
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview&frame=fit');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api&tab=overview&frame=fit');
   run(sandbox, "diagramScale = 1.5;");
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview', 'a zoom of the user\'s own is not a framing worth a link');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api&tab=overview', 'a zoom of the user\'s own is not a framing worth a link');
   run(sandbox, "diagramScale = 'fit'; elementTab = 'details';");
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api', 'the page of an element has no diagram');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api', 'the page of an element has no diagram');
   run(sandbox, "currentPerspective = 'map'; mapPinned = ['shop'];");
   state.selection = { kind: 'none', key: null, mode: 'view' };
-  assert.equal(sandbox.currentRouteHash(), '/map?pin=shop&frame=fit');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?pin=shop&frame=fit');
 
   // read back
   run(sandbox, "diagramScale = 'auto';");

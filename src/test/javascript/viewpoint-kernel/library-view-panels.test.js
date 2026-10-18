@@ -342,7 +342,7 @@ test('Show in Elements leaves the page for the element: it becomes the selection
   click(page.sandbox, { 'data-action': 'library-open-element', 'data-ref': 'shop.web.api', 'data-layer': 'application' });
   assert.equal(run(page.sandbox, 'currentPerspective'), 'elements');
   assert.deepEqual(plain(page.state.selection), { kind: 'element', key: 'shop.web.api', layer: 'application', mode: 'view' });
-  assert.match(page.sandbox.location.hash, /^#\/elements\?ref=shop\.web\.api/);
+  assert.match(page.sandbox.location.hash, /^#\/timeline\/elements\?ref=shop\.web\.api/);
   assert.ok(run(page.sandbox, "AppState.expanded.has(nodeKey('shop.web', 'application'))") || run(page.sandbox, "AppState.expanded.has(nodeKey('shop', 'application'))"), 'its ancestors are open in the tree');
 });
 

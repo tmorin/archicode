@@ -198,6 +198,27 @@
   .band-horizon { font-size: 0.75rem; opacity: 0.75; }
   .band-counts { font-size: 0.75rem; font-variant-numeric: tabular-nums; opacity: 0.85; }
   .band-flag { color: var(--danger); font-weight: 700; }
+  /* The pages below Timeline (wave 014, run 0081): a bar of their own under the band, as quiet as the band; it wraps and never makes the page scroll sideways. */
+  .page-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; padding: 0.2rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .page-tabs button { height: 2rem; padding: 0 0.8rem !important; font-size: 0.85rem; line-height: 1.25; white-space: nowrap; }
+  .page-tabs .button-group { flex-wrap: wrap; max-width: 100%; row-gap: 0.25rem; }
+  /* The Timeline page: the plateaus as a list, each indented by its depth in the tree; it wraps and never holds a width of its own. */
+  .timeline-view { padding-bottom: 1.25rem; min-width: 0; }
+  .timeline-body { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+  .timeline-note, .timeline-status { margin: 0; font-size: 0.875rem; color: var(--muted); overflow-wrap: anywhere; }
+  .timeline-list { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; min-width: 0; }
+  .timeline-item { display: grid; gap: 0.3rem; min-width: 0; margin-left: calc(var(--depth, 0) * 1rem); padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-bg); }
+  .timeline-item.timeline-drawn { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .timeline-main { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.6rem; min-width: 0; }
+  .timeline-name { font-weight: 600; padding: 0.15rem 0.6rem !important; text-align: left; max-width: 100%; overflow-wrap: anywhere; }
+  .timeline-id, .timeline-horizon { overflow-wrap: anywhere; min-width: 0; }
+  .timeline-horizon, .timeline-state { font-size: 0.75rem; opacity: 0.8; }
+  .timeline-state { border: 1px solid var(--border); border-radius: 999px; padding: 0 0.45rem; }
+  .timeline-facts { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+  .timeline-changes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; min-width: 0; }
+  .timeline-count-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.3rem; }
+  .timeline-actions { display: flex; }
+  .timeline-actions button { height: 1.75rem; padding: 0 0.7rem !important; font-size: 0.8rem; }
   .band-node.band-broken .band-draw { border-color: var(--danger) !important; }
   .band-compare-control { display: inline-flex; align-items: center; gap: 0.25rem 0.5rem; flex-wrap: wrap; min-width: 0; max-width: 100%; }
   .band-status { font-size: 0.8rem; color: var(--muted); min-width: 0; }
@@ -332,6 +353,14 @@
   .file-row { justify-content: space-between; }
   .file-relpath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-row.has-error .file-relpath { color: var(--danger); }
+  /* The plateau of a file (wave 014, run 0081): a quiet badge after the name, and an amber one when the folder is the name of another plateau. */
+  .plateau-badge { font-size: 0.65rem; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0.02rem 0.3rem; flex-shrink: 1; min-width: 0; max-width: 6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .warning-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-modified); background: var(--modified); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
+  .file-plateau-warning { padding: 0.5rem 0; color: var(--fg); }
+  .files-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; padding: 0.2rem 1rem 0.4rem; }
+  .files-scope .button-group button { height: 1.75rem; padding: 0 0.5rem !important; font-size: 0.75rem; }
+  .files-scope-note, .files-scope-plateau { flex-basis: 100%; font-size: 0.75rem; color: var(--muted); }
+  .files-scope-note:empty { display: none; }
   .error-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-accent); background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
   .modified-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-modified); background: var(--modified); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
 
@@ -604,7 +633,7 @@
   .button-group button[aria-pressed="true"] { position: relative; z-index: 1; }
   /* The neighbours overlap by one border (margin -1px): the hovered or focused button rises above them, so none of its borders is hidden. */
   .button-group button:hover, .button-group button:focus-visible { position: relative; z-index: 2; }
-  .perspective-tabs button[aria-pressed="true"], .plateau-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"], .band-draw[aria-pressed="true"], .band-toggles button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .perspective-tabs button[aria-pressed="true"], .page-tabs button[aria-pressed="true"], .files-scope button[aria-pressed="true"], .plateau-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"], .band-draw[aria-pressed="true"], .band-toggles button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
   /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
   .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -871,6 +900,7 @@
   .grid-cols-\[minmax\(0\,1fr\)_auto_auto\] { grid-template-columns: minmax(0, 1fr) auto auto; }
   .grid-rows-\[auto_minmax\(0\,1fr\)\] { grid-template-rows: auto minmax(0, 1fr); }
   .grid-rows-\[auto_auto_minmax\(0\,1fr\)\] { grid-template-rows: auto auto minmax(0, 1fr); }
+  .grid-rows-\[auto_auto_auto_minmax\(0\,1fr\)\] { grid-template-rows: auto auto auto minmax(0, 1fr); }
   .grid-rows-\[minmax\(0\,1fr\)_auto_auto\] { grid-template-rows: minmax(0, 1fr) auto auto; }
   .cursor-col-resize { cursor: col-resize; }
   .cursor-row-resize { cursor: row-resize; }
@@ -888,6 +918,14 @@
     .app-shell .center-panel { height: 80vh; min-height: 24rem; flex: none; min-width: 0; }
     .app-shell .right-panel { width: auto !important; min-width: 0; max-width: none; max-height: 50vh; border-left: 0; border-top: 1px solid var(--border); flex: none; }
     .app-shell .bottom-panel { flex: none; }
+    /* The pages below Timeline (wave 014, run 0081): four buttons in 328 px, so that the bar is one row and the document no wider than the window. */
+    .page-tabs button { padding: 0 0.45rem !important; font-size: 0.8rem; min-width: 0; }
+    /* Settings (wave 014, run 0081, #82): a label beside its field leaves the field 150 px, and a text field is 196 px wide whatever the room: the fields went past the window,
+       inside the scroll of the centre. The label goes over its field, and a field is never wider than what holds it. */
+    .settings-view .field-row { flex-wrap: wrap; gap: 0.15rem 0.75rem; }
+    .settings-view .field-label { width: 100%; }
+    .settings-view .field-value { flex-basis: 100%; }
+    .settings-view input[type="text"], .settings-view select, .settings-view textarea { max-width: 100%; min-width: 0; box-sizing: border-box; }
   }
 </style>
 </head>
@@ -4935,6 +4973,10 @@ function settleAfterLayerChange() {
   removedPick = null;
   changesTabPick = null;
   candidateMessage = null;
+  // the stories and views of the pages are those of the plateau drawn: one that the new plateau does not have is no longer open
+  if (selectedStoryId && !findStory(selectedStoryId)) selectedStoryId = null;
+  if (selectedViewId && !findSavedView(selectedViewId)) selectedViewId = null;
+  if (activeStory && !findStory(activeStory.id)) activeStory = null;
   mapSelectionCheck = true;
   diagramCache = null;
   render();
@@ -5067,6 +5109,12 @@ function layerNodeCounts(id) {
   return counts;
 }
 
+/** The counts of a plateau if they were computed (null: they cannot be, undefined: not yet), without computing them. */
+function cachedNodeCounts(id) {
+  const cache = AppState.workspace ? ensureLayerCache(AppState.workspace.settings) : null;
+  return cache && cache.counts && cache.counts.has(id) ? cache.counts.get(id) : undefined;
+}
+
 /** Compute the counts of the nodes that have none yet, one per turn of the event loop, and draw the band again as they come (a big tree does not hold the first drawing). */
 let bandCountsTimer = null;
 function scheduleBandCounts() {
@@ -5091,6 +5139,12 @@ function scheduleBandCounts() {
         if (!counts || button.querySelector('.band-counts')) continue;
         button.insertAdjacentHTML('beforeend', '<span class="band-counts" data-counts="' + escapeHtml(id) + '">' + escapeHtml(bandCountsText(counts)) + '</span>');
         button.setAttribute('title', bandNodeTitle(id));
+      }
+      // the Timeline page, when it is on screen, has the same counts in its entries
+      for (const holder of Array.from(document.querySelectorAll('.timeline-item .timeline-changes'))) {
+        const item = holder.closest('.timeline-item');
+        const id = item ? item.getAttribute('data-plateau') : null;
+        if (id && AppState.plateauTree.nodes.has(id) && AppState.plateauTree.nodes.get(id).parent !== null && cachedNodeCounts(id) !== undefined && /Counting/.test(holder.textContent)) holder.innerHTML = timelineChangesHtml(id);
       }
     }
     if (missing().length) bandCountsTimer = setTimeout(step, 0);
@@ -6444,26 +6498,64 @@ let treeExpandedEnvironments = true;
 // hash; the 'hashchange' listener below reads it back, which also covers
 // back/forward and a hand-edited URL).
 // =====================================================================
+/**
+ * The pages of the editor, by id, and where each lives: the group of the top bar it belongs to (`group`) and the route that names it in the address (`route`).
+ * Wave 014 (run 0081, W-7): the perspectives are Timeline (the page of the band, and below it Applications, Environments and Elements), Stories, Files and
+ * Settings. The ids `map`, `elements` and `library` are the former perspectives and stay the names the code uses: `map` is the page called Applications,
+ * `library` the one called Stories. `environments` is not a perspective of its own in the code: it is Elements with `elementsScope` set to the technology layer
+ * (see `currentPageId`), because the pages of an element are the same and only the tree on the left differs.
+ */
 const PERSPECTIVES = {
-  map: { label: 'Map' },
-  elements: { label: 'Elements' },
-  library: { label: 'Library' },
-  files: { label: 'Files' },
-  settings: { label: 'Settings' }
+  timeline: { label: 'Timeline', group: 'timeline', route: 'timeline' },
+  map: { label: 'Applications', group: 'timeline', route: 'timeline/applications' },
+  environments: { label: 'Environments', group: 'timeline', route: 'timeline/environments' },
+  elements: { label: 'Elements', group: 'timeline', route: 'timeline/elements' },
+  library: { label: 'Stories', group: 'library', route: 'stories' },
+  files: { label: 'Files', group: 'files', route: 'files' },
+  settings: { label: 'Settings', group: 'settings', route: 'settings' }
 };
+/** The buttons of the top bar: each is a group of pages, and opens the first page of its group. */
+const PERSPECTIVE_GROUPS = [
+  { id: 'timeline', page: 'timeline', label: 'Timeline' },
+  { id: 'library', page: 'library', label: 'Stories' },
+  { id: 'files', page: 'files', label: 'Files' },
+  { id: 'settings', page: 'settings', label: 'Settings' }
+];
+/** The pages below Timeline, in the order of the second bar. */
+const TIMELINE_PAGES = ['map', 'environments', 'elements'];
 const DEFAULT_PERSPECTIVE = 'map';
 let currentPerspective = DEFAULT_PERSPECTIVE;
+/** What the Elements page lists on the left: 'all' (Applications and Environments) or 'technology' (the page called Environments). Only read while `currentPerspective` is 'elements'. */
+let elementsScope = 'all';
 
-/** Parse `location.hash` ("#/diagram?ref=...") into a known perspective id, defaulting for an empty/unrecognized hash. */
-function perspectiveIdFromHash() {
-  const id = location.hash.split('?')[0].replace(/^#\/?/, '').split('/')[0];
+/** The page on screen, as the second bar and the address name it: `environments` is Elements with the technology tree. */
+function currentPageId() {
+  return currentPerspective === 'elements' && elementsScope === 'technology' ? 'environments' : currentPerspective;
+}
+
+/**
+ * The page an address names, by the id of `PERSPECTIVES`: "#/timeline/applications", and the former routes, which still open (an old link keeps working):
+ * "#/map" (Applications), "#/elements" (Elements), "#/library" and "#/stories" (Stories), "#/diagram" (Elements, see `applyDiagramParamsFromHash`).
+ * An empty or unrecognised address is the default page.
+ */
+function pageIdFromHash() {
+  const parts = location.hash.split('?')[0].replace(/^#\/?/, '').split('/');
+  const id = parts[0];
+  if (id === 'timeline') return parts[1] === 'applications' ? 'map' : parts[1] === 'environments' ? 'environments' : parts[1] === 'elements' ? 'elements' : 'timeline';
   // the Diagram perspective is gone: its links open the Elements perspective on the matching tab (see applyDiagramParamsFromHash)
   if (id === 'diagram') return 'elements';
-  if (id === 'stories') return 'library'; // the Stories perspective became the Library: its old links still open
+  if (id === 'stories') return 'library'; // the page was the Library, then the Stories perspective: both names open it
+  if (id === 'applications') return 'map';
   return Object.prototype.hasOwnProperty.call(PERSPECTIVES, id) ? id : DEFAULT_PERSPECTIVE;
 }
 
-/** The Library has two sides, Stories and Views: "#/library/views" says the second; "#/stories" (the old link) and anything else, the first. */
+/** The perspective an address names, as `currentPerspective` holds it: `environments` is Elements (`elementsScope` tells which tree). */
+function perspectiveIdFromHash() {
+  const id = pageIdFromHash();
+  return id === 'environments' ? 'elements' : id;
+}
+
+/** The Stories page has two sides, Stories and Views: "#/stories/views" (or the former "#/library/views") says the second; "#/stories" and anything else, the first. */
 function libraryTabFromHash() {
   return location.hash.split('?')[0].replace(/^#\/?/, '').split('/')[1] === 'views' ? 'views' : 'stories';
 }
@@ -6596,6 +6688,7 @@ function applySelectionFromHashRef() {
   selectFromHashRef();
   restoreLinkFromHash();
   restoreRemovedFromHash();
+  widenElementsScopeToSelection(); // an address that names an application element on the page Environments is a link to Elements
 }
 
 /** The element or manifest file the hash's `ref=` names, else nothing selected. */
@@ -6622,9 +6715,21 @@ function selectFromHashRef() {
 
 /** Re-sync `currentPerspective` (and, once a workspace is loaded, the selection) from the URL — bootstrap and every 'hashchange' (back/forward, a hand-edited URL). */
 function syncPerspectiveFromHash() {
+  const page = pageIdFromHash();
   currentPerspective = perspectiveIdFromHash();
+  elementsScope = page === 'environments' ? 'technology' : 'all';
   useDiagramHost(diagramHostOf(currentPerspective)); // the framing an address carries (`frame=fit`) is that of the diagram it will draw
   if (AppState.workspace) applySelectionFromHashRef();
+}
+
+/**
+ * The Environments page lists the technology tree: an application element selected there (an address, a link to one of its applications, a row of the Changes panel)
+ * is the Elements page's, which lists both trees. Called by every drawing and by the reading of an address.
+ */
+function widenElementsScopeToSelection() {
+  if (currentPerspective !== 'elements' || elementsScope !== 'technology' || !AppState.index) return;
+  const sel = elementSelection();
+  if (sel.kind === 'element' && layerOfReference(sel.key, sel.layer) !== 'technology') elementsScope = 'all';
 }
 
 /**
@@ -6706,7 +6811,7 @@ function currentRouteHash() {
   }
   // wave 014 (run 0080): the plateau of the band, when it is not the root
   if (AppState.layers && AppState.plateauTree && AppState.plateauTree.layered && AppState.layers.current !== BASELINE_PLATEAU) params.push('plateau=' + encodeURIComponent(AppState.layers.current));
-  return '/' + currentPerspective + (currentPerspective === 'library' ? '/' + libraryTab : '') + (params.length ? '?' + params.join('&') : '');
+  return '/' + PERSPECTIVES[currentPageId()].route + (currentPerspective === 'library' && libraryTab === 'views' ? '/views' : '') + (params.length ? '?' + params.join('&') : '');
 }
 
 /**
@@ -6733,7 +6838,12 @@ function syncHashFromState() {
  */
 function setPerspective(id) {
   if (!Object.prototype.hasOwnProperty.call(PERSPECTIVES, id)) return;
-  currentPerspective = id;
+  if (id === 'environments') { // the page lists the technology tree: an application element is not one of its own, so the selection is let go
+    const sel = elementSelection();
+    if (sel.kind === 'element' && layerOfReference(sel.key, sel.layer) !== 'technology') AppState.selection = { kind: 'none', key: null, mode: 'view' };
+  }
+  currentPerspective = id === 'environments' ? 'elements' : id;
+  elementsScope = id === 'environments' ? 'technology' : 'all';
   useDiagramHost(diagramHostOf(id)); // the address below is written from the framing of the diagram it leads to
   if (rawYamlEditDraft) rawYamlEditDraft = null;
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
@@ -8102,8 +8212,8 @@ function scanMoveReferences(oldRef, layer) {
   }
   // the saved views and the steps of stories: rewritten on a copy to count them
   const copy = (entry) => JSON.parse(JSON.stringify(entry));
-  for (const view of savedViews()) if (rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
-  for (const story of storiesList()) {
+  for (const view of allSavedViews()) if (rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
+  for (const story of allStories()) {
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
       if (isPlainObject(step) && !step.view && rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer)) result.views++;
     }
@@ -8713,16 +8823,35 @@ function renderSaveStatusHtml() {
   return '<span class="save-status ' + (isError ? 'save-status-error' : 'save-status-success') + '" role="status" title="' + escapeHtml(text) + '">' + escapeHtml(text) + '</span>';
 }
 
-/** The perspective switch (header, left of the folder actions): a button group, the current perspective is the pressed one. */
+/**
+ * The perspective switch (header, left of the folder actions): a button group, the perspective of the page on screen is the pressed one. Timeline, Stories, Files and
+ * Settings; a click opens the first page of the perspective (the Timeline page, the Stories page...). The pages below Timeline are in the bar under the band
+ * (`renderPageTabsHtml`).
+ */
 function renderPerspectiveTabsHtml() {
+  const group = PERSPECTIVES[currentPageId()].group;
   let html = '<span class="perspective-tabs button-group" role="group" aria-label="Perspectives">';
-  for (const id of Object.keys(PERSPECTIVES)) {
-    html += '<button type="button" data-action="set-perspective" data-perspective="' + id + '" aria-pressed="' + (id === currentPerspective) + '">' +
-              escapeHtml(PERSPECTIVES[id].label) +
+  for (const entry of PERSPECTIVE_GROUPS) {
+    html += '<button type="button" data-action="set-perspective" data-perspective="' + entry.page + '" aria-pressed="' + (entry.id === group) + '">' +
+              escapeHtml(entry.label) +
             '</button>';
   }
   html += '</span>';
   return html;
+}
+
+/**
+ * The pages below Timeline (Applications, Environments, Elements), in a bar of their own under the band, with the Timeline page itself as the first button so that the
+ * way back to it is there too. Only while a page of the Timeline perspective is on screen.
+ */
+function renderPageTabsHtml() {
+  const page = currentPageId();
+  if (PERSPECTIVES[page].group !== 'timeline') return '';
+  let html = '<nav class="page-tabs col-span-3" id="page-tabs" aria-label="Pages of the Timeline"><span class="button-group" role="group" aria-label="Pages">';
+  for (const id of ['timeline'].concat(TIMELINE_PAGES)) {
+    html += '<button type="button" data-action="set-page" data-perspective="' + id + '" aria-pressed="' + (id === page) + '"' + (id === page ? ' aria-current="page"' : '') + '>' + escapeHtml(PERSPECTIVES[id].label) + '</button>';
+  }
+  return html + '</span></nav>';
 }
 
 /**
@@ -9048,9 +9177,10 @@ function renderElementsNavHtml(showAddButton) {
   const appElements = (AppState.workspace && AppState.workspace.application && AppState.workspace.application.elements) || [];
   const techElements = (AppState.workspace && AppState.workspace.technology && AppState.workspace.technology.elements) || [];
   // one tab stop for both trees: the row the user was on, else the selected one, else the first
+  const technologyOnly = currentPerspective === 'elements' && elementsScope === 'technology'; // the page called Environments lists the technology tree alone
   const visible = [];
   const collect = (record) => { visible.push(recordKey(record)); if (AppState.expanded.has(recordKey(record))) sortedForNav(record.children).forEach(collect); };
-  if (treeExpandedApplications) sortedForNav(appElements).forEach(collect);
+  if (treeExpandedApplications && !technologyOnly) sortedForNav(appElements).forEach(collect);
   if (treeExpandedEnvironments) sortedForNav(techElements).forEach(collect);
   const selected = elementSelection();
   resolveNavActive(visible, selected.kind === 'element' ? nodeKey(selected.key, selected.layer) : null);
@@ -9062,7 +9192,7 @@ function renderElementsNavHtml(showAddButton) {
   treeComparison = comparisonForTrees();
   try {
     return note + renderPlateauTreeHtml() + renderDuplicateReferencesHtml() + renderUnreadManifestsHtml(false) +
-           renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
+           (technologyOnly ? '' : renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton)) +
            renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments, showAddButton);
   } finally {
     treeComparison = null;
@@ -9159,16 +9289,84 @@ function renderUnreadManifestsHtml(list) {
     (list ? '<ul>' + files.map((relPath) => '<li class="file-relpath">' + escapeHtml(relPath) + '</li>').join('') + '</ul>' : ' See Files.') + '</div>';
 }
 
-/** The manifest files list, no wrapper — the Files perspective's left panel. */
+/**
+ * Which files the Files page lists when the workspace has layers (wave 014, run 0081): 'plateau' (the manifests of the plateau drawn), 'chain' (those of the plateau drawn and
+ * of the plateaus it overrides: what its state is made of) or 'all'. The page remembers the choice for as long as it is open.
+ */
+let filesScope = 'plateau';
+const FILES_SCOPES = [
+  { id: 'plateau', label: 'This plateau', title: 'The manifests that belong to the plateau drawn' },
+  { id: 'chain', label: 'With its past', title: 'The manifests of the plateau drawn and of the plateaus it overrides: what its state is made of' },
+  { id: 'all', label: 'All files', title: 'Every manifest of the workspace' }
+];
+
+/** The layers the Files page filters by, or null: a workspace with no layer (or whose plateaus are blocked) lists every file, as it always did. */
+function filesLayersOrNull() {
+  const layers = AppState.layers;
+  const tree = AppState.plateauTree;
+  return layers && tree && tree.layered && !layers.blocked && tree.nodes.has(layers.current) ? { current: layers.current, chain: layerChainSet(), tree } : null;
+}
+
+/** Whether the Files page lists a file now. A file that could not be read has no plateau and is always listed; so is the file that is open, so that the list never loses it. */
+function fileIsListed(mf) {
+  const layered = filesLayersOrNull();
+  if (!layered || filesScope === 'all') return true;
+  if (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) return true;
+  const plateau = filePlateauOf(mf);
+  if (plateau === null) return true;
+  return filesScope === 'chain' ? layered.chain.has(plateau) : plateau === layered.current;
+}
+
+/**
+ * What is odd about where a manifest sits: its plateau disagrees with the name of a folder it is in, when that name is the id of another plateau (the folders of the layered
+ * Brightcart are named after their plateau; a file moved from one to the other with its header left alone is read as the plateau its header says, not the folder's). The
+ * deepest such folder counts. Null when the file agrees, when no folder is named like a plateau, or without layers. Only a warning: the folder does not matter to the tools.
+ */
+function filePlateauFolderWarning(mf) {
+  const tree = AppState.plateauTree;
+  const plateau = filePlateauOf(mf);
+  if (!tree || !tree.layered || plateau === null) return null;
+  const folders = mf.relPath.split('/').slice(0, -1);
+  for (let i = folders.length - 1; i >= 0; i--) {
+    if (!tree.nodes.has(folders[i])) continue;
+    if (folders[i] === plateau) return null;
+    const how = manifestKindName(mf.header.kind) === 'plateau' ? 'declares the plateau `' + plateau + '`'
+      : headerPlateau(mf.header) === null ? 'has no `plateau` key in its header, so it belongs to `' + plateau + '`'
+      : 'says `plateau: ' + plateau + '` in its header';
+    return '`' + mf.relPath + '` ' + how + ', but it sits in the folder `' + folders[i] + '`, which is the name of another plateau';
+  }
+  return null;
+}
+
+/** The choice of what the Files page lists, with how many files it leaves out. Only with layers. */
+function renderFilesScopeHtml(hidden, misplaced) {
+  const buttons = FILES_SCOPES.map((scope) => '<button type="button" data-action="set-files-scope" data-value="' + scope.id + '" aria-pressed="' + (scope.id === filesScope) + '" title="' + escapeHtml(scope.title) + '">' + escapeHtml(scope.label) + '</button>').join('');
+  const layered = filesLayersOrNull();
+  return '<div class="files-scope"><span class="plateau-label" id="files-scope-label">Files of</span><span class="button-group" role="group" aria-labelledby="files-scope-label">' + buttons + '</span>' +
+    '<span class="files-scope-note" role="status">' + (hidden > 0 ? hidden + (hidden === 1 ? ' file of another plateau is not listed.' : ' files of other plateaus are not listed.') : '') +
+    (misplaced > 0 ? ' ' + misplaced + (misplaced === 1 ? ' file sits' : ' files sit') + ' in the folder of another plateau.' : '') + '</span>' +
+    '<span class="files-scope-plateau">Plateau drawn: <code>' + escapeHtml(layered.current) + '</code></span></div>';
+}
+
+/** The manifest files list, no wrapper — the Files perspective's left panel. With layers each row says the plateau of the file, and the list is the plateau of the band's (see `filesScope`). */
 function renderFilesNavHtml() {
+  const layered = filesLayersOrNull();
+  const showPlateau = !!(AppState.plateauTree && AppState.plateauTree.layered && AppState.layers);
+  const shown = AppState.manifestFiles.filter(fileIsListed);
+  const misplaced = showPlateau ? AppState.manifestFiles.filter((mf) => filePlateauFolderWarning(mf) !== null).length : 0;
   let html = '<div class="nav-section">';
   html += renderNavHeaderHtml('Files');
-  for (const mf of AppState.manifestFiles) {
+  if (layered) html += renderFilesScopeHtml(AppState.manifestFiles.length - shown.length, misplaced);
+  for (const mf of shown) {
     const active = (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) ? ' active' : '';
     const duplicates = duplicatesOfFile(mf.relPath);
     const errorClass = mf.error || duplicates.length ? ' has-error' : '';
+    const plateau = showPlateau ? filePlateauOf(mf) : null;
+    const warning = showPlateau ? filePlateauFolderWarning(mf) : null;
     html += '<div class="nav-row file-row' + active + errorClass + '" role="button" tabindex="0"' + (active ? ' aria-current="true"' : '') + ' data-action="select-file" data-relpath="' + escapeHtml(mf.relPath) + '">' +
               '<span class="file-relpath">' + escapeHtml(mf.relPath) + '</span>' +
+              (plateau !== null ? '<span class="plateau-badge" data-plateau-of="' + escapeHtml(plateau) + '" title="Plateau: ' + escapeHtml(plateau) + '">' + escapeHtml(plateau) + '</span>' : '') +
+              (warning ? '<span class="warning-badge" title="' + escapeHtml(warning) + '">folder</span>' : '') +
               (mf.dirty ? '<span class="modified-badge" title="Unsaved changes">modified</span>' : '') +
               (mf.error ? '<span class="error-badge" title="' + escapeHtml(mf.error) + '">error</span>' : '') +
               (duplicates.length ? '<span class="error-badge" title="' + escapeHtml(duplicates.map((d) => d.message).join('\n')) + '">duplicate</span>' : '') +
@@ -9264,7 +9462,7 @@ function renderHelpMenuHtml() {
     ? 'The editor reads and writes the folder served by <code>archicode editor serve</code> on this machine.'
     : 'Files are read and written in your browser, in the folder you picked.';
   return '<div class="help-menu" role="dialog" aria-label="Help">' +
-    '<ul>' + link('manual', 'Manual') + link('editor', 'Using the editor') + link('map', 'The Map') + link('facets', 'Facets') + link('keyboard', 'Keyboard shortcuts') + '</ul>' +
+    '<ul>' + link('manual', 'Manual') + link('editor', 'Using the editor') + link('map', 'Applications') + link('facets', 'Facets') + link('keyboard', 'Keyboard shortcuts') + '</ul>' +
     '<p class="help-note">' + where + ' Nothing is uploaded. The diagram layout and the file editor are loaded from a CDN when the page opens.</p>' +
     '<p class="help-note help-version">ArchiCode ' + escapeHtml(editorVersion()) + ' · kernel contract ' + KERNEL_CONTRACT_VERSION + '</p>' +
     '</div>';
@@ -9578,6 +9776,8 @@ function renderFileViewHtml(relPath) {
   for (const d of duplicatesOfFile(relPath)) {
     html += '<div class="error-panel" role="alert"><strong>Duplicate reference:</strong> ' + duplicateMessageHtml(d.message) + '</div>';
   }
+  const folderWarning = filePlateauFolderWarning(mf);
+  if (folderWarning) html += '<div class="nav-facet-note file-plateau-warning" role="status"><strong>Warning:</strong> ' + duplicateMessageHtml(folderWarning) + '. Nothing is wrong for the tools, which read the plateau of the header; check that the file is where you mean it to be.</div>';
   if (window.CM) {
     html += '<div id="file-edit-codemirror-host" class="raw-yaml" data-relpath="' + escapeHtml(relPath) + '" aria-label="Raw YAML content of ' + escapeHtml(relPath) + '"></div>';
   } else {
@@ -10507,6 +10707,7 @@ function renderCenterPanelHtml() {
     if (sel.mode === 'edit') { elementTab = 'details'; return renderElementEditionFormHtml(sel.key); }
     return diagramTabShown() ? renderElementDiagramHtml(findElementRecord(sel.key)) : renderElementViewHtml(sel.key);
   }
+  if (currentPerspective === 'elements' && elementsScope === 'technology') return '<div class="center-placeholder">Select an environment, a node or one of their parts on the left, or use "+ Add" above the Environments tree to create your first one.</div>';
   return '<div class="center-placeholder">Select an item on the left, or use "+ Add" above the Applications/Environments tree to create your first element.</div>';
 }
 
@@ -11208,7 +11409,7 @@ function rightPanelStamp() {
 /** A comparison is on and can be listed (or is being read): the Map and Elements keep a right-hand panel for it. */
 function comparisonPanelOn() {
   const state = comparisonState();
-  return !!state && !state.problems && (currentPerspective === 'map' || currentPerspective === 'elements');
+  return !!state && !state.problems && (currentPerspective === 'map' || currentPerspective === 'elements' || currentPerspective === 'timeline');
 }
 
 /**
@@ -11233,7 +11434,7 @@ function refreshRightPanel() {
   if (currentPerspective === 'library') return;
   const panel = document.getElementById('panel-right');
   if (!panel) return;
-  const html = renderInspectionHtml(mapIsShown());
+  const html = currentPerspective === 'timeline' ? withChangesPanel(null) : renderInspectionHtml(mapIsShown());
   if (html !== null) panel.innerHTML = html;
 }
 
@@ -11260,6 +11461,12 @@ function openOnMap(reference) {
  * `row`: `{ thing, change, layer, ref, to }` (the attributes of the button).
  */
 function selectChange(row) {
+  if (currentPerspective === 'timeline') { // the Timeline page lists the changes and shows no element: the row opens it in Elements
+    history.pushState(null, '', location.href); // the page that was left is an entry of the history: the next address rewrites this one
+    currentPerspective = 'elements';
+    elementsScope = 'all';
+    useDiagramHost('main');
+  }
   if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4: a selection is never the draft's file
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
   changesTabPick = null; // the new selection is what the panel shows; the Changes tab is one click away
@@ -11517,6 +11724,129 @@ function renderElementsPerspectiveHtml() {
   };
 }
 
+// ---- Timeline: the page of the band (wave 014, run 0081, W-7) ----
+// The band under the top bar is always there; this page is where the plateaus are read as a list: what each is called, what it overrides, where it is written, how
+// many patches and files it has, and what it changes over the plateau it overrides (the counts of `archicode diff`). W-8 writes plateaus from here.
+
+/**
+ * The plateau a manifest belongs to, as the pages tell it: a manifest of kind Plateau is the plateau it declares (its `id`), any other the plateau its header names, else
+ * `baseline`. Null for a file the editor could not read, which belongs to none.
+ */
+function filePlateauOf(mf) {
+  if (!mf || mf.error || !mf.header) return null;
+  if (manifestKindName(mf.header.kind) === 'plateau') return mf.content && !readIsMissing(mf.content.id) ? String(mf.content.id) : null;
+  return plateauOfManifest(mf);
+}
+
+/** The Timeline page mounts no diagram, so nothing else asks for the kernel that its Changes panel waits for (`rightPanelPending`): it is loaded, and the panel is written again. */
+function settleTimelinePanel() {
+  if (currentPerspective !== 'timeline' || !rightPanelPending) return;
+  loadViewpointKernel().then(() => {
+    if (currentPerspective === 'timeline') refreshRightPanel();
+  }).catch((e) => console.error('ArchiCode: the viewpoint kernel could not be loaded, the changes are not listed', e));
+}
+
+/** The Timeline perspective's regions: the list of the plateaus in the center, and — with a comparison on — the Changes panel on the right. */
+function renderTimelinePerspectiveHtml() {
+  return {
+    left: null,
+    center: renderTimelinePageHtml(),
+    right: comparisonPanelOn() ? withChangesPanel(null) : null,
+    rightLabel: 'Changes',
+    bottom: null
+  };
+}
+
+/** The changes a plateau brings over the one it overrides, as the chips of the Changes panel: elements, then relationships. A word when they are not counted (yet). */
+function timelineChangesHtml(id) {
+  const node = AppState.plateauTree.nodes.get(id);
+  if (node.parent === null) return '<span class="muted">The root: it overrides nothing.</span>';
+  const counts = cachedNodeCounts(id);
+  if (counts === undefined) return '<span class="muted">Counting…</span>'; // `scheduleBandCounts` computes them one plateau per turn and writes them here (see its step)
+  if (!counts) return '<span class="muted">Not counted: the plateau or the one it overrides has mistakes.</span>';
+  const group = (title, c) => '<span class="timeline-count-group" data-counts-of="' + title.toLowerCase() + '"><span class="changes-count-label">' + title + '</span>' +
+    CHANGE_STATES.filter((name) => c[name] !== undefined).map((name) => changeChipHtml(name, c[name])).join('') + '</span>';
+  return group('Elements', counts.elements) + group('Relationships', counts.relationships);
+}
+
+/** The files and patches a plateau has, and where it is written, in a few words. */
+function timelineFactsHtml(item) {
+  const node = item.node;
+  const files = AppState.manifestFiles.filter((mf) => filePlateauOf(mf) === item.id && !(node.manifest && mf.relPath === node.manifest)).length;
+  const source = item.id === BASELINE_PLATEAU && !node.manifest ? 'the root, implied'
+    : node.manifest ? 'described in <code>' + escapeHtml(node.manifest) + '</code>'
+    : 'exists only through the <code>plateau</code> key of ' + (node.headers.length === 1 ? 'a header' : node.headers.length + ' headers');
+  return (node.parent !== null ? 'overrides <code>' + escapeHtml(node.parent) + '</code> · ' : '') + source + ' · ' +
+    node.patches.length + (node.patches.length === 1 ? ' patch' : ' patches') + ' · ' + files + (files === 1 ? ' file' : ' files');
+}
+
+function timelineItemHtml(item, depth) {
+  const layers = AppState.layers;
+  const model = layerPlateauModel(item.id);
+  const drawn = item.id === layers.current;
+  const disabled = layers.blocked && item.id !== BASELINE_PLATEAU;
+  const broken = layerModelBroken(item.id);
+  const compared = layers.compare && layers.compare.other === item.id && !!layerCompareOther();
+  const parent = item.node.parent !== null;
+  return '<li class="timeline-item' + (drawn ? ' timeline-drawn' : '') + (compared ? ' timeline-compared' : '') + '" data-plateau="' + escapeHtml(item.id) + '" style="--depth:' + Math.min(depth, 6) + '">' +
+    '<div class="timeline-main"><button type="button" class="timeline-name" data-action="timeline-draw" data-plateau="' + escapeHtml(item.id) + '" aria-pressed="' + drawn + '"' + (drawn ? ' aria-current="true"' : '') + (disabled ? ' disabled' : '') +
+      ' title="Draw this plateau in the whole editor">' + escapeHtml(plateauTitle(model)) + '</button>' +
+      (plateauTitle(model) !== item.id ? '<code class="timeline-id">' + escapeHtml(item.id) + '</code>' : '') + // a plateau with no name is called by its id: once is enough
+      (item.node.horizon ? '<span class="timeline-horizon">' + escapeHtml(item.node.horizon) + '</span>' : '') +
+      (drawn ? '<span class="timeline-state">drawn</span>' : '') + (compared ? '<span class="timeline-state">compared</span>' : '') +
+      (broken ? '<span class="band-flag" role="img" aria-label="has mistakes" title="' + escapeHtml(broken[0]) + '">!</span>' : '') + '</div>' +
+    '<div class="timeline-facts">' + timelineFactsHtml(item) + '</div>' +
+    '<div class="timeline-changes">' + timelineChangesHtml(item.id) + '</div>' +
+    (parent && !disabled ? '<div class="timeline-actions"><button type="button" data-action="timeline-changes" data-plateau="' + escapeHtml(item.id) + '" title="Draw this plateau and list what it changes over ' + escapeHtml(item.node.parent) + ' in the Changes panel">Changes</button></div>' : '') +
+    '</li>';
+}
+
+/** The list of the plateaus, the tree of the band flattened in its order, each indented by its depth. */
+function timelineListHtml() {
+  const root = bandTreeOf(AppState.plateauTree);
+  if (!root) return '';
+  const rows = [];
+  const walk = (item, depth) => { rows.push(timelineItemHtml(item, depth)); item.children.forEach((child) => walk(child, depth + 1)); };
+  walk(root, 0);
+  return '<ol class="timeline-list" aria-label="Plateaus">' + rows.join('') + '</ol>';
+}
+
+function renderTimelinePageHtml() {
+  const header = renderElementHeaderHtml('<h2>Timeline</h2>', '');
+  const layers = AppState.layers;
+  const tree = AppState.plateauTree;
+  let body;
+  if (!layers || !tree) {
+    // a workspace that lists `settings.plateaus` (removed in wave 014, W-9): it has its selector in the top bar, and no band
+    const items = (AppState.plateaus || []).map((plateau) => '<li class="timeline-item"><div class="timeline-main"><strong>' + escapeHtml(plateauTitle(plateau)) + '</strong> <code class="timeline-id">' + escapeHtml(plateau.id) + '</code>' +
+      (plateau.horizon ? '<span class="timeline-horizon">' + escapeHtml(plateau.horizon) + '</span>' : '') + '</div><div class="timeline-facts">folder <code>' + escapeHtml(plateau.path) + '</code></div></li>').join('');
+    body = '<p class="timeline-note">This workspace lists its plateaus in <code>settings.plateaus</code>, the older way: the <em>Plateau</em> selector in the top bar draws one and <em>Compare to</em> compares two. ' +
+      'The band, and the changes between plateaus that this page lists, are for plateaus written as layers (a <code>plateau</code> key in the header of a manifest).</p>' +
+      (items ? '<ol class="timeline-list" aria-label="Plateaus">' + items + '</ol>' : '');
+  } else {
+    const drawn = layerPlateauModel(layers.current);
+    const other = layerCompareOther();
+    const status = other ? plateauTitle(drawn) + ' is compared with ' + plateauTitle(other) + (comparisonPanelOn() ? ': the Changes panel on the right lists what differs.' : ', but the two cannot be compared: the band says what is wrong.')
+      : tree.layered ? plateauTitle(drawn) + ' is drawn. “Changes” draws a plateau and lists what it changes over the plateau it overrides.' : '';
+    body = (tree.layered ? '' : '<p class="timeline-note">This workspace has one plateau, <code>baseline</code>. A plateau is a layer over another one: the manifests that say <code>plateau: &lt;id&gt;</code> in their header belong to it, ' +
+        'and a manifest of kind <code>archicode.morin.io/plateau</code> gives it a name, a horizon, the plateau it overrides and its patches (see the manual).</p>') +
+      (layers.blocked || status ? '<p class="timeline-status" role="status">' + escapeHtml(layers.blocked ? layers.blocked : status) + '</p>' : '') + timelineListHtml();
+  }
+  return '<div class="timeline-view">' + header + '<div class="timeline-body">' + body + '</div></div>';
+}
+
+/** The Changes button of the Timeline page: draw the plateau and compare it with the plateau it overrides, in one step. */
+function showPlateauChanges(id) {
+  const layers = AppState.layers;
+  if (!layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.nodes.has(id) || layers.blocked) return;
+  const node = AppState.plateauTree.nodes.get(id);
+  if (node.parent === null) return;
+  layers.current = id;
+  layers.compare = { mode: 'past', other: node.parent, chosen: false };
+  rememberLayerChoice();
+  settleAfterLayerChange();
+}
+
 /**
  * Files perspective — navigate manifest files on the left, raw-YAML edit
  * (its own header: file name, Save, Reload) in the center. Right/bottom
@@ -11689,7 +12019,7 @@ let navActiveKey = null;
  * the twins apart (the tab, the zoom direction, the perspective). Null for anything else, which keeps no focus.
  */
 function headerControlSelector(el) {
-  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band button') : null;
+  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band button, .page-tabs button, .timeline-view button, .files-scope button') : null;
   if (!control) return null;
   if (control.id) return '#' + control.id;
   const action = control.getAttribute('data-action');
@@ -14478,7 +14808,7 @@ function renderMapPerspectiveHtml() {
   return {
     left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml()),
     center: '<div class="diagram-view">' + renderStoryBarHtml() +
-      renderElementHeaderHtml('<h2>Map</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
+      renderElementHeaderHtml('<h2>Applications</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
         renderDiagramHeaderActionsHtml(renderOpenAsDiagramButtonHtml(record))) +
       renderDiagramCanvasHtml(null, renderMapChipsHtml()) + '</div>',
     right: renderInspectionHtml(true),
@@ -14762,16 +15092,34 @@ function workspaceTopLevel() {
 /** Where an entry lives: the manifest file it was read from, or null (workspace.yaml: where older workspaces keep them). */
 const entryOwners = new WeakMap();
 
-/** The views or stories that are manifests: the `content` of each file of that kind. */
-function manifestEntries(kind) {
+/**
+ * The plateaus whose views and stories the pages show: the chain of the plateau drawn, from `baseline` down (a plateau adds its views and stories to those of the plateau it
+ * overrides, as the command line loads them). Null when the pages show every one: a workspace without layers, one whose plateaus are blocked, one with `settings.plateaus`.
+ */
+function layerChainSet() {
+  const layers = AppState.layers;
+  const tree = AppState.plateauTree;
+  if (!layers || !tree || !tree.layered || layers.blocked || !tree.nodes.has(layers.current)) return null;
+  return new Set(plateauChain(tree, layers.current).map((node) => node.id));
+}
+
+/** The views or stories that are manifests: the `content` of each file of that kind, of the plateaus of the chain of the plateau drawn (`all`: of every plateau). */
+function manifestEntries(kind, all) {
   const out = [];
+  const chain = all ? null : layerChainSet();
   for (const mf of AppState.manifestFiles || []) {
     if (mf.error || !mf.header || !mf.content || stripArchicodeKindPrefix(String(mf.header.kind)) !== kind) continue;
     if (!isPlainObject(mf.content) || typeof mf.content.id !== 'string' || !mf.content.id) continue;
+    if (chain && !chain.has(filePlateauOf(mf))) continue;
     entryOwners.set(mf.content, mf);
     out.push(mf.content);
   }
   return out;
+}
+
+/** The ids a new view or story must not take: those of every plateau, since a reference declared in a plateau and again in one it overrides is a mistake. */
+function takenEntryIds(kind, key) {
+  return new Set(manifestEntries(kind, true).concat(legacyEntries(key)).map((entry) => entry.id));
 }
 
 /** The entries of `views:` / `stories:` of workspace.yaml (an older place for them). Nothing is created by reading. */
@@ -14782,10 +15130,13 @@ function legacyEntries(key) {
   return out;
 }
 
-/** Manifests first; an entry of workspace.yaml with the same id is shadowed by the manifest, as the file of an element would. */
-function entriesOf(kind, key) {
-  const own = manifestEntries(kind);
-  const ids = new Set(own.map((entry) => entry.id));
+/**
+ * Manifests first; an entry of workspace.yaml with the same id is shadowed by the manifest, as the file of an element would. `all`: the entries of every plateau, not
+ * only those of the chain of the plateau drawn (what a rename or a delete must reach, and what an id must not be taken from).
+ */
+function entriesOf(kind, key, all) {
+  const own = manifestEntries(kind, all);
+  const ids = new Set((all ? own : manifestEntries(kind, true)).map((entry) => entry.id)); // a manifest of a plateau that is not drawn shadows the entry of workspace.yaml too
   return own.concat(legacyEntries(key).filter((entry) => !ids.has(entry.id)));
 }
 
@@ -14809,6 +15160,9 @@ function markEntryChanged(entry) {
 
 function savedViews() { return entriesOf('view', 'views'); }
 function storiesList() { return entriesOf('story', 'stories'); }
+/** Every view and every story of the workspace, of whatever plateau: what a rename of an element rewrites and what a delete counts, since a plateau that is not drawn keeps its own. */
+function allSavedViews() { return entriesOf('view', 'views', true); }
+function allStories() { return entriesOf('story', 'stories', true); }
 function findSavedView(id) { return savedViews().find((view) => view.id === id) || null; }
 function findStory(id) { return storiesList().find((story) => story.id === id) || null; }
 
@@ -14950,6 +15304,7 @@ function applySavedView(view) {
     expandAncestorsOf(properties.element, layer);
     scrollNavToSelection = true;
     currentPerspective = 'elements';
+    elementsScope = 'all';
     useDiagramHost('main');
   }
   if (rawYamlEditDraft) rawYamlEditDraft = null;
@@ -15004,7 +15359,7 @@ function viewForDefinition(definition, name) {
   if (existing) return existing;
   const label = name || describeViewDefinition(definition);
   return createManifestEntry('view', {
-    id: uniqueIdFor(label, new Set(savedViews().map((entry) => entry.id)), 'view'),
+    id: uniqueIdFor(label, takenEntryIds('view', 'views'), 'view'),
     name: label,
     viewpoint: definition.viewpoint,
     layer: definition.layer,
@@ -15013,7 +15368,7 @@ function viewForDefinition(definition, name) {
 }
 
 function createStory(name) {
-  return createManifestEntry('story', { id: uniqueIdFor(name, new Set(storiesList().map((entry) => entry.id)), 'story'), name, steps: [] });
+  return createManifestEntry('story', { id: uniqueIdFor(name, takenEntryIds('story', 'stories'), 'story'), name, steps: [] });
 }
 
 function writableSteps(story) {
@@ -15021,9 +15376,9 @@ function writableSteps(story) {
   return story.steps;
 }
 
-/** How many steps of the stories show that view. */
+/** How many steps of the stories show that view, in every plateau: a story of a plateau that overrides can show a view of the plateau below. */
 function storiesUsingView(viewId) {
-  return storiesList().reduce((count, story) => count + storySteps(story).filter((step) => step.view === viewId).length, 0);
+  return allStories().reduce((count, story) => count + storySteps(story).filter((step) => step.view === viewId).length, 0);
 }
 
 /** A recipe (a view, or a step that carries one) follows a renamed element. True when it changed. */
@@ -15052,10 +15407,10 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
  */
 function rewriteSavedViewReferences(oldRef, newRef, layer) {
   let changed = false;
-  for (const view of savedViews()) {
+  for (const view of allSavedViews()) {
     if (rewriteRecipeReferences(view, oldRef, newRef, layer)) { markEntryChanged(view); changed = true; }
   }
-  for (const story of storiesList()) {
+  for (const story of allStories()) {
     let storyChanged = false;
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
       if (isPlainObject(step) && !step.view && rewriteRecipeReferences(step, oldRef, newRef, layer)) storyChanged = true;
@@ -15727,7 +16082,7 @@ function deleteSavedView(viewId) {
 /** The views and the stories that are still in workspace.yaml (and not shadowed by a manifest): what "Move to manifests" takes out. */
 function legacyEntriesToMove() {
   const movable = (key, kind) => {
-    const taken = new Set(manifestEntries(kind).map((entry) => entry.id));
+    const taken = new Set(manifestEntries(kind, true).map((entry) => entry.id));
     return legacyEntries(key).filter((entry) => !taken.has(entry.id));
   };
   return { views: movable('views', 'view'), stories: movable('stories', 'story') };
@@ -15829,7 +16184,7 @@ function renderStoryStepHtml(story, step, index, count) {
   const others = missingNamed ? savedViews() : [];
   return '<li class="story-step' + (problem ? ' broken' : '') + (current ? ' current' : '') + '"' + (current ? ' aria-current="step"' : '') + '>' +
     '<div class="story-step-head">' +
-      (view && step.view && !problem ? '<button type="button" class="link-button story-step-view" data-action="library-go-view" data-view="' + escapeHtml(step.view) + '" title="See this view in the Library, and the other steps that use it">' + escapeHtml(viewLabel(view)) + '</button>'
+      (view && step.view && !problem ? '<button type="button" class="link-button story-step-view" data-action="library-go-view" data-view="' + escapeHtml(step.view) + '" title="See this view in Stories, and the other steps that use it">' + escapeHtml(viewLabel(view)) + '</button>'
         : '<span class="story-step-view">' + (view ? escapeHtml(viewLabel(view)) : '<em>Missing view</em>') + '</span>') +
       (current ? '<span class="story-current-badge">Showing now</span>' : '') +
       (view && !step.view ? '<span class="story-count">Own view — only in this step</span>' : '') +
@@ -15865,7 +16220,7 @@ function renderStoryEditorHtml(story) {
   }
   html += steps.length
     ? '<ol class="story-steps">' + steps.map((step, i) => renderStoryStepHtml(story, step, i, steps.length)).join('') + '</ol>'
-    : '<div class="story-empty"><p>No step yet.</p><ol><li>Open a diagram on the Map or in Elements.</li><li>Press “Add to story…” in its header: it goes after the step being told.</li></ol>' +
+    : '<div class="story-empty"><p>No step yet.</p><ol><li>Open a diagram in Applications or in Elements.</li><li>Press “Add to story…” in its header: it goes after the step being told.</li></ol>' +
       (views.length ? '<p>Or add a saved view with the list above.</p>' : '') + '</div>';
   html += '<div class="story-danger"><button type="button" class="btn-danger" data-action="story-delete" data-story="' + id + '">Delete this story</button></div>';
   return html + '</section>';
@@ -15988,10 +16343,26 @@ function renderLegacyEntriesNoticeHtml() {
     '<button type="button" data-action="legacy-move" title="Write a manifest file for each, and take them out of workspace.yaml">Move to manifests</button></div>';
 }
 
+/**
+ * With layers, the stories and views of the pages are those of the plateau drawn and of the plateaus it overrides (the command line loads them the same way): the page says
+ * so, and how many belong to other plateaus. Nothing without layers, which has one plateau.
+ */
+function renderLayerEntriesNoticeHtml() {
+  const chain = layerChainSet();
+  if (!chain) return '';
+  const kind = libraryTab === 'views' ? 'view' : 'story';
+  const noun = kind === 'view' ? 'views' : 'stories';
+  const hidden = manifestEntries(kind, true).length - manifestEntries(kind).length;
+  const drawn = plateauTitle(layerPlateauModel(AppState.layers.current));
+  const past = Array.from(chain).filter((id) => id !== AppState.layers.current);
+  return '<div class="story-legacy layer-entries-note" role="status"><span>The ' + noun + ' of ' + (past.length ? escapeHtml(drawn) + ' and of the plateaus it overrides (' + past.map((id) => '<code>' + escapeHtml(id) + '</code>').join(', ') + ')' : escapeHtml(drawn)) + '.' +
+    (hidden > 0 ? ' ' + hidden + (hidden === 1 ? ' belongs' : ' belong') + ' to other plateaus: draw one to see ' + (hidden === 1 ? 'it' : 'them') + '.' : '') + '</span></div>';
+}
+
 /** The two sides of the Library, as one group of joined buttons. */
 function renderLibraryTabsHtml() {
   const tab = (id, label, title) => '<button type="button" data-action="library-tab" data-tab="' + id + '" aria-pressed="' + (id === libraryTab) + '" title="' + title + '">' + label + '</button>';
-  return '<span class="viewpoint-switch"><span class="button-group" role="group" aria-label="Library">' +
+  return '<span class="viewpoint-switch"><span class="button-group" role="group" aria-label="Stories and views">' +
     tab('stories', 'Stories', 'Diagrams in order, with a sentence for each') +
     tab('views', 'Views', 'The named diagrams that stories are made of') + '</span></span>';
 }
@@ -16022,11 +16393,11 @@ function renderLibraryPerspectiveHtml() {
               '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="3" cy="8" r="1.6" fill="currentColor"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><circle cx="13" cy="8" r="1.6" fill="currentColor"/></svg></button>' +
             '<div class="header-overflow" id="header-overflow" role="group" aria-label="More actions" data-open="' + headerMenuOpen + '">' +
               renderDiagramDownloadHtml() +
-              '<button type="button" data-action="saved-view-open" data-view="' + id + '" title="Draw this view on the Map or in Elements">Open on diagram</button>' + manage +
+              '<button type="button" data-action="saved-view-open" data-view="' + id + '" title="Draw this view in Applications or in Elements">Open on diagram</button>' + manage +
             '</div></span>' + renderMaximizeButtonHtml('the list of views and the panel');
     }
     body = view ? renderViewDetailHtml(view)
-      : '<p class="muted story-intro">A view is a diagram kept under a name, to be a step in as many stories as you like. To keep one, open a diagram on the Map or in Elements and press “Name view…” in its header.</p>';
+      : '<p class="muted story-intro">A view is a diagram kept under a name, to be a step in as many stories as you like. To keep one, open a diagram in Applications or in Elements and press “Name view…” in its header.</p>';
   } else {
     if (!findStory(selectedStoryId)) selectedStoryId = (storiesSorted()[0] || {}).id || null; // a story is always open when there is one
     const story = selectedStoryId ? findStory(selectedStoryId) : null;
@@ -16035,10 +16406,10 @@ function renderLibraryPerspectiveHtml() {
       actions = '<button type="button" data-action="story-play" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Walk through the story on the diagrams, from its first step">Play</button>';
     }
     body = story ? renderStoryEditorHtml(story)
-      : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. To start, open a diagram on the Map or in Elements and press “Add to story…”, or create an empty story with “New story…”.</p>';
+      : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. To start, open a diagram in Applications or in Elements and press “Add to story…”, or create an empty story with “New story…”.</p>';
   }
-  const header = renderElementHeaderHtml('<h2>Library</h2>' + renderLibraryTabsHtml() + subject, actions);
-  const notices = (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') + renderLegacyEntriesNoticeHtml();
+  const header = renderElementHeaderHtml('<h2>Stories</h2>' + renderLibraryTabsHtml() + subject, actions);
+  const notices = (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') + renderLayerEntriesNoticeHtml() + renderLegacyEntriesNoticeHtml();
   // a view that can be drawn is drawn: the diagram of the Map under the header, and the panel on the right says what the view is and
   // what is selected in it; Maximize gives the diagram the room of both, as on the Map. One that cannot be drawn keeps its message and its facts.
   const recipe = onViews && selectedViewId ? libraryDiagramRecipe(findSavedView(selectedViewId)) : null;
@@ -16067,6 +16438,7 @@ function renderLibraryPanelHtml(view) {
 
 /** Dispatch to the active perspective's region content. */
 function renderActivePerspectiveHtml() {
+  if (currentPerspective === 'timeline') return renderTimelinePerspectiveHtml();
   if (currentPerspective === 'map') return renderMapPerspectiveHtml();
   if (currentPerspective === 'library') return renderLibraryPerspectiveHtml();
   if (currentPerspective === 'files') return renderFilesPerspectiveHtml();
@@ -16088,9 +16460,13 @@ function renderActivePerspectiveHtml() {
 function renderShellHtml() {
   // wave 014 (run 0080): the band of plateaus sits under the top bar, for a workspace that has no `settings.plateaus` (which has its own selector in the bar)
   const band = AppState.workspace && !AppState.fatalError && AppState.layers ? renderPlateauBandHtml() : '';
-  let html = '<div class="app-shell grid grid-cols-[auto_auto_minmax(0,1fr)] ' + (band ? 'grid-rows-[auto_auto_minmax(0,1fr)]' : 'grid-rows-[auto_minmax(0,1fr)]') + '">';
+  // wave 014 (run 0081): under the band, the pages of the Timeline perspective
+  const pages = AppState.workspace && !AppState.fatalError ? renderPageTabsHtml() : '';
+  const rows = 1 + (band ? 1 : 0) + (pages ? 1 : 0);
+  let html = '<div class="app-shell grid grid-cols-[auto_auto_minmax(0,1fr)] ' + (rows === 3 ? 'grid-rows-[auto_auto_auto_minmax(0,1fr)]' : rows === 2 ? 'grid-rows-[auto_auto_minmax(0,1fr)]' : 'grid-rows-[auto_minmax(0,1fr)]') + '">';
   html += renderTopPanelHtml();
   html += band;
+  html += pages;
   if (AppState.fatalError) {
     html += '<div class="col-span-3 min-h-0"><div class="error-panel shell-error-panel"><strong>Error:</strong> ' + escapeHtml(AppState.fatalError) + '</div></div>';
   } else if (!AppState.workspace) {
@@ -16145,8 +16521,8 @@ async function cancelChanges() {
 
 /** The clicks that replace the form on screen. Without a "Save all changes" first, what was typed in it is lost. */
 const ACTIONS_LEAVING_THE_FORM = new Set([
-  'draw-plateau', 'compare-plateau', 'compare-past', 'compare-future',
-  'set-perspective', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
+  'draw-plateau', 'compare-plateau', 'compare-past', 'compare-future', 'timeline-draw', 'timeline-changes',
+  'set-perspective', 'set-page', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
   'select-link', 'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
   'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
   'library-tab', 'select-view', 'library-go-story', 'library-go-view', 'library-open-element', 'select-change'
@@ -16231,10 +16607,23 @@ function handleAppClick(e) {
       closeFolder();
       break;
     case 'set-perspective':
+    case 'set-page': // the bar under the band (the pages below Timeline) and the top bar (a perspective) open a page the same way
       setPerspective(target.getAttribute('data-perspective'));
       break;
     case 'set-plateau':
       switchPlateau(target.getAttribute('data-plateau'));
+      break;
+    case 'set-files-scope': { // wave 014 (run 0081): what the Files page lists
+      const value = target.getAttribute('data-value');
+      if (FILES_SCOPES.some((scope) => scope.id === value)) filesScope = value;
+      render();
+      break;
+    }
+    case 'timeline-draw': // wave 014 (run 0081): the Timeline page
+      drawPlateau(target.getAttribute('data-plateau'));
+      break;
+    case 'timeline-changes':
+      showPlateauChanges(target.getAttribute('data-plateau'));
       break;
     case 'draw-plateau': // wave 014 (run 0080): the band
       drawPlateau(target.getAttribute('data-plateau'));
@@ -17335,6 +17724,7 @@ function render() {
   activeJsonEditorViews = {};
 
   useDiagramHost(diagramHostOf(currentPerspective)); // before anything is drawn: the tree of the Map reads the scene of the Map
+  widenElementsScopeToSelection(); // the page Environments does not list an application element: the selection of one is the page Elements
   settleLinkSelection(); // a link is selected only while the diagram it was made on is on screen
   if (currentPerspective !== 'library' || (viewEditNotice && viewEditNotice.view !== selectedViewId)) viewEditNotice = null;
   const landing = landingScreenConfig();
@@ -17369,7 +17759,7 @@ function render() {
     const el = document.getElementById(id);
     if (el) scrollBefore[id] = { top: el.scrollTop, left: el.scrollLeft };
   }
-  const viewKey = currentPerspective + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '') + '|' + (AppState.selection.focal || '') +
+  const viewKey = currentPageId() + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '') + '|' + (AppState.selection.focal || '') +
     (currentPerspective === 'library' && libraryTab === 'views' ? '|' + selectedViewId : ''); // another view opens at the top of its panel
   const sameView = viewKey === lastRenderedViewKey;
   lastRenderedViewKey = viewKey;
@@ -17430,6 +17820,7 @@ function render() {
   mountFileEditorIfNeeded();
   mountJsonEditorsIfNeeded();
   mountDiagramIfNeeded();
+  settleTimelinePanel();
   markTreeThroughFacet();
   markElementTabs();
   for (const id of Object.keys(scrollBefore)) {

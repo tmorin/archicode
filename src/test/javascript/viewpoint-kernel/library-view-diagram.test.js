@@ -365,7 +365,7 @@ for (const perspective of ['map', 'elements']) {
     const sceneBefore = page.scene();
     const cacheBefore = run(page.sandbox, 'diagramCache');
     assert.ok(sceneBefore && cacheBefore, 'the ' + perspective + ' is drawn before the visit');
-    assert.match(hashBefore, new RegExp('^#/' + perspective));
+    assert.match(hashBefore, new RegExp('^#/timeline/' + (perspective === 'map' ? 'applications' : perspective)));
     const unsavedBefore = page.sandbox.countUnsavedChanges();
 
     for (const view of [elementsView, mapView, broken, elementsView]) {

@@ -157,9 +157,9 @@ test('an element the drawing\'s layer does not have stays readable text, quoted'
 test('the address says the pair of boxes, quoted, after the other parameters of the perspective', async () => {
   const { sandbox, state } = await page('map', 'map', null);
   state.selection = linkSelection('customer', 'shop');
-  assert.equal(sandbox.currentRouteHash(), '/map?link-from=customer&link-to=shop');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?link-from=customer&link-to=shop');
   run(sandbox, "mapPinned = ['shop.web']; diagramFacet = null;");
-  assert.equal(sandbox.currentRouteHash(), '/map?pin=shop.web&link-from=customer&link-to=shop');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/applications?pin=shop.web&link-from=customer&link-to=shop');
   // an id of the drawing can hold any character: two parameters, each quoted, no separator to get wrong
   state.selection = linkSelection('ghost:a b&c=d', 'x>y,z');
   const hash = sandbox.currentRouteHash();
@@ -172,18 +172,18 @@ test('the address says the pair of boxes, quoted, after the other parameters of 
 test('in Elements the address keeps the element and its tab and adds the link', async () => {
   const { sandbox, state } = await page('elements', 'overview', 'shop.web.api');
   state.selection = linkSelection('shop.web.frontend', 'shop.web.api', { focal: 'shop.web.api' });
-  assert.equal(sandbox.currentRouteHash(), '/elements?ref=shop.web.api&tab=overview&link-from=shop.web.frontend&link-to=shop.web.api');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api&tab=overview&link-from=shop.web.frontend&link-to=shop.web.api');
 });
 
 test('the address is written before a change of perspective is drawn: a link that cannot live in the new place is left out', async () => {
   const map = await page('map', 'map', null);
   map.state.selection = linkSelection('customer', 'shop');
   run(map.sandbox, "currentPerspective = 'elements';"); // setPerspective() writes the address, then render() ends the link
-  assert.equal(map.sandbox.currentRouteHash(), '/elements', 'a Map link says nothing about Elements');
+  assert.equal(map.sandbox.currentRouteHash(), '/timeline/elements', 'a Map link says nothing about Elements');
   const elements = await page('elements', 'overview', 'shop.web.api');
   elements.state.selection = linkSelection('shop.web.frontend', 'shop.web.api', { focal: 'shop.web.api' });
   run(elements.sandbox, "elementTab = 'details';");
-  assert.equal(elements.sandbox.currentRouteHash(), '/elements?ref=shop.web.api', 'Details has no diagram, so no link');
+  assert.equal(elements.sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api', 'Details has no diagram, so no link');
   run(elements.sandbox, "elementTab = 'overview'; currentPerspective = 'map';");
   assert.ok(!elements.sandbox.currentRouteHash().includes('link-'), 'nor does the Map take the link of an element\'s diagram');
 });
@@ -263,7 +263,7 @@ test('a link of the address that the drawing does not have is dropped when the d
   show(scene);
   sandbox.reconcileLinkSelection();
   assert.deepEqual(plain(state.selection), NONE);
-  assert.equal(sandbox.location.hash, '#/map', 'the address no longer names it');
+  assert.equal(sandbox.location.hash, '#/timeline/applications', 'the address no longer names it');
   assert.deepEqual(removed, ['panel', 'handle']);
 });
 
@@ -289,7 +289,7 @@ test('in Elements a link the diagram lacks gives the element back and cleans the
   show(scene);
   sandbox.reconcileLinkSelection();
   assert.deepEqual(plain(state.selection), { kind: 'element', key: 'shop.web.api', layer: 'application', mode: 'view' });
-  assert.equal(sandbox.location.hash, '#/elements?ref=shop.web.api&tab=overview');
+  assert.equal(sandbox.location.hash, '#/timeline/elements?ref=shop.web.api&tab=overview');
 });
 
 test('what is written is what is read, on the Map and in Elements', async () => {
@@ -316,7 +316,7 @@ test('selecting a link rewrites the current entry of the history and adds none; 
   state.selection = NONE;
   click(sandbox, { 'data-action': 'select-link', 'data-from': 'customer', 'data-to': 'shop', 'data-layer': 'application' });
   assert.deepEqual(pushes, []);
-  assert.equal(sandbox.location.hash, '#/map?link-from=customer&link-to=shop');
+  assert.equal(sandbox.location.hash, '#/timeline/applications?link-from=customer&link-to=shop');
 });
 
 test('Back from an element opened through the declaring button returns to the link', async () => {
@@ -329,8 +329,8 @@ test('Back from an element opened through the declaring button returns to the li
   sandbox.syncHashFromState();
   click(sandbox, attributesOf(regions().right, 'class="relationship-link"'));
   assert.equal(entries.length, 1, 'one entry, the place that is left');
-  assert.ok(entries[0].endsWith('#/map?link-from=customer&link-to=shop'), 'with the link in it');
-  assert.equal(sandbox.location.hash, '#/map?ref=customer', 'and the new place is the element');
+  assert.ok(entries[0].endsWith('#/timeline/applications?link-from=customer&link-to=shop'), 'with the link in it');
+  assert.equal(sandbox.location.hash, '#/timeline/applications?ref=customer', 'and the new place is the element');
   // Back: the browser puts the old address back and fires hashchange
   sandbox.location.hash = entries[0].slice(entries[0].indexOf('#'));
   sandbox.__windowListeners.hashchange[0]();
