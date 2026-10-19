@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 015
-status: proposed
+status: completed
 date: 2026-10-18
 related:
   - docs/wav/wav-015-editor-reshape-and-loose-ends/wbc-015-editor-reshape-and-loose-ends.md
@@ -69,7 +69,7 @@ These are not the author's yet: the plan chooses so that an unattended wave can 
 wave_manifest:
   wave: 015
   slug: editor-reshape-and-loose-ends
-  status: proposed
+  status: completed
   sources: []
   phases:
     - id: P0

@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 015
-status: proposed
+status: completed
 date: 2026-10-18
 related:
   - docs/wav/wav-014-layered-plateaus/wav-014-layered-plateaus.md
