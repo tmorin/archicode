@@ -169,30 +169,14 @@
   .top-panel button, .element-header button { height: 2rem; padding: 0 0.8rem !important; font-size: 0.875rem; line-height: 1.25; white-space: nowrap; }
   .top-panel .perspective-tabs { flex-shrink: 0; }
   .plateau-label { font-size: 0.8rem; color: var(--muted); }
-  .plateau-problem { font-size: 0.8rem; color: var(--danger); }
-  /* The band of plateaus (wave 014, run 0080): the tree of the plateaus under the top bar, then what is compared. It wraps, and the tree scrolls inside itself, so the page never scrolls sideways. */
+  /* The band of plateaus (wave 014, run 0080; wave 015, run 0097): the plateau drawn and what it is compared with, two lists and a button, in one row that wraps under the width of
+     the window and never makes the page scroll sideways. A list takes what is left of the row, down to a size that still reads. */
   .plateau-band { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 1rem; padding: 0.3rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); min-width: 0; max-width: 100%; box-sizing: border-box; }
   .plateau-band button { height: 2rem; padding: 0 0.7rem !important; font-size: 0.85rem; line-height: 1.25; white-space: nowrap; }
-  .band-tree, .band-children { list-style: none; margin: 0; padding: 0; }
-  .band-tree { display: flex; align-items: center; min-width: 0; max-width: 100%; overflow-x: auto; }
-  .band-item { display: flex; align-items: center; }
-  .band-children { position: relative; margin-left: 1rem; padding-left: 0.9rem; }
-  .band-children::before { content: ""; position: absolute; left: -1rem; width: 1rem; top: 50%; border-top: 1px solid var(--border); }
-  .band-children > .band-item { position: relative; padding: 0.15rem 0; }
-  .band-children > .band-item::before { content: ""; position: absolute; left: -0.9rem; width: 0.9rem; top: 50%; border-top: 1px solid var(--border); }
-  .band-children > .band-item::after { content: ""; position: absolute; left: -0.9rem; top: 0; bottom: 0; border-left: 1px solid var(--border); }
-  .band-children > .band-item:first-child::after { top: 50%; }
-  .band-children > .band-item:last-child::after { bottom: 50%; }
-  .band-children > .band-item:only-child::after { display: none; }
-  .band-node { display: inline-flex; align-items: center; }
-  .band-draw { display: inline-flex; align-items: center; gap: 0.45rem; }
-  .band-node .band-draw { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
-  .band-node .band-draw:only-child { border-radius: 4px !important; }
-  .band-node .band-compare { padding: 0 0.45rem !important; margin-left: -1px; border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
-  .band-node.band-compared .band-compare, .band-compare[aria-pressed="true"] { border-color: var(--accent) !important; color: var(--accent); font-weight: 600; }
-  .band-compare.band-choose { border-color: var(--accent) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
-  .band-horizon { font-size: 0.75rem; opacity: 0.75; }
-  .band-counts { font-size: 0.75rem; font-variant-numeric: tabular-nums; opacity: 0.85; }
+  .band-field { display: flex; align-items: center; gap: 0.5rem; flex: 1 1 11rem; min-width: 0; max-width: 28rem; }
+  .band-field .plateau-label { flex: none; }
+  .band-field select { flex: 1 1 auto; min-width: 0; width: 100%; height: 2rem; font-size: 0.85rem; text-overflow: ellipsis; }
+  .band-mistakes { border-color: var(--danger) !important; color: var(--danger); flex: none; }
   .band-flag { color: var(--danger); font-weight: 700; }
   /* The pages below Timeline (wave 014, run 0081): a bar of their own under the band, as quiet as the band; it wraps and never makes the page scroll sideways. */
   .page-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; padding: 0.2rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); min-width: 0; max-width: 100%; box-sizing: border-box; }
@@ -215,10 +199,6 @@
   .timeline-count-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.3rem; }
   .timeline-actions { display: flex; }
   .timeline-actions button { height: 1.75rem; padding: 0 0.7rem !important; font-size: 0.8rem; }
-  .band-node.band-broken .band-draw { border-color: var(--danger) !important; }
-  .band-compare-control { display: inline-flex; align-items: center; gap: 0.25rem 0.5rem; flex-wrap: wrap; min-width: 0; max-width: 100%; }
-  .band-status { font-size: 0.8rem; color: var(--muted); min-width: 0; }
-  .band-note { font-size: 0.8rem; }
   .band-readonly { color: var(--muted); }
   /* Writing in a layer (wave 014, run 0082): where a write goes, and the controls of the plateau drawn. */
   .band-writing { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.5rem; font-size: 0.8rem; min-width: 0; max-width: 100%; }
@@ -227,8 +207,8 @@
   .timeline-actions { gap: 0.4rem; flex-wrap: wrap; }
   .layer-confirm-list { margin: 0.3rem 0 0.2rem 1.2rem; padding: 0; list-style: disc; overflow-wrap: anywhere; }
   .app-dialog select { width: 100%; box-sizing: border-box; }
-  .band-errors { flex-basis: 100%; font-size: 0.8rem; }
-  .band-errors ul { margin: 0.2rem 0 0 1.2rem; list-style: disc; }
+  .band-errors { font-size: 0.85rem; margin-bottom: 0.6rem; }
+  .band-errors ul { margin: 0.2rem 0 0 1.2rem; list-style: disc; overflow-wrap: anywhere; }
   .field-origin { margin-left: 0.5rem; font-size: 0.72rem; color: var(--muted); font-style: italic; }
   .field-origin[data-origin="patch"] { color: var(--accent); }
   .origin-block { margin-top: 0.4rem; }
@@ -632,7 +612,7 @@
   .button-group button[aria-pressed="true"] { position: relative; z-index: 1; }
   /* The neighbours overlap by one border (margin -1px): the hovered or focused button rises above them, so none of its borders is hidden. */
   .button-group button:hover, .button-group button:focus-visible { position: relative; z-index: 2; }
-  .perspective-tabs button[aria-pressed="true"], .page-tabs button[aria-pressed="true"], .files-scope button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"], .band-draw[aria-pressed="true"], .band-toggles button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .perspective-tabs button[aria-pressed="true"], .page-tabs button[aria-pressed="true"], .files-scope button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
   /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
   .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -4737,10 +4717,9 @@ function cascadeOf(removals, base) {
 }
 
 // =====================================================================
-// The band of plateaus (wave 014, run 0080). Always on the page of an open workspace, the one way to choose and compare the plateaus. It shows `baseline` alone when no
-// manifest says `plateau:`, else one node per plateau placed by the tree. A click on a node draws that plateau (the whole editor draws it: `AppState.index` is its
-// resolved model); two toggles compare it with the past (the plateau it overrides) or the future (the plateau that overrides it; the band asks which when there are
-// several); a button on any other node compares the two. The comparison is the machinery of run 0039: `AppState.baseline` is the plateau compared with.
+// The band of plateaus (wave 014, run 0080; read-only and on the pages of Timeline only since wave 015, run 0097). The state it chooses is `AppState.layers`: the plateau drawn
+// (the whole editor draws it: `AppState.index` is its resolved model) and the comparison (`AppState.baseline` is the plateau compared with, the machinery of run 0039).
+// The comparison is the past (the plateau it overrides), the future (the plateau that overrides it; the band lists each when there are several) or any other plateau.
 // =====================================================================
 
 /**
@@ -5067,10 +5046,10 @@ function cachedNodeCounts(id) {
   return cache && cache.counts && cache.counts.has(id) ? cache.counts.get(id) : undefined;
 }
 
-/** Compute the counts of the nodes that have none yet, one per turn of the event loop, and draw the band again as they come (a big tree does not hold the first drawing). */
+/** Compute the counts of the plateaus that have none yet, one per turn of the event loop, and write them in the page Plateaus as they come (a big tree does not hold the first drawing). Only while that page is on screen (wave 015, run 0097: the band no longer says them). */
 let bandCountsTimer = null;
-function scheduleBandCounts() {
-  if (bandCountsTimer !== null || !AppState.layers || !loadedKernel || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
+function schedulePlateauCounts() {
+  if (bandCountsTimer !== null || currentPageId() !== 'plateaus' || !AppState.layers || !loadedKernel || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
   const settings = AppState.workspace.settings;
   const missing = () => {
     const cache = ensureLayerCache(settings);
@@ -5079,19 +5058,11 @@ function scheduleBandCounts() {
   if (!missing().length) return;
   bandCountsTimer = setTimeout(function step() {
     bandCountsTimer = null;
-    if (!AppState.layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
+    if (currentPageId() !== 'plateaus' || !AppState.layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
     const next = missing()[0];
     if (next === undefined) return;
     layerNodeCounts(next);
-    // the counts are put into the buttons where they are (the band is not drawn again: a button that has the focus keeps it)
     if (typeof document !== 'undefined' && document.querySelectorAll) {
-      for (const button of Array.from(document.querySelectorAll('.band-draw'))) {
-        const id = button.getAttribute('data-plateau');
-        const counts = AppState.plateauTree.nodes.has(id) ? layerNodeCounts(id) : null;
-        if (!counts || button.querySelector('.band-counts')) continue;
-        button.insertAdjacentHTML('beforeend', '<span class="band-counts" data-counts="' + escapeHtml(id) + '">' + escapeHtml(bandCountsText(counts)) + '</span>');
-        button.setAttribute('title', bandNodeTitle(id));
-      }
       // the Plateaus page, when it is on screen, has the same counts in its entries
       for (const holder of Array.from(document.querySelectorAll('.timeline-item .timeline-changes'))) {
         const item = holder.closest('.timeline-item');
@@ -5103,51 +5074,17 @@ function scheduleBandCounts() {
   }, 0);
 }
 
-/** The counts as the band says them: `+3 ~5 −11` (new, changed, removed elements), the three signs always there so that a node reads the same everywhere. */
-function bandCountsText(counts) {
-  const e = counts.elements;
-  return '+' + e.new + ' ~' + e.changed + ' −' + e.removed;
-}
-
 // ---- The band ----
+//
+// Wave 015 (run 0097, W-9, #98): the band chooses the plateau drawn and the plateau compared with, on the pages of the perspective Timeline, and does nothing else.
+// Two lists, one row: "Plateau" (every plateau of the tree, indented by its depth) and "Compare with" (nothing, the past, the future, any other plateau), then, only when
+// there is one, a button that opens the mistakes of the plateaus. What the tree of buttons held moved to where it belongs: the tree and the counts of each plateau are on the
+// page Plateaus, the sentence that said what is compared is the Changes panel's (and the list says it), Everything / Changes only is among the tools of the diagram, and the
+// mistakes are behind the button. The state is `AppState.layers`, not the band's: the band is not drawn on Stories, Files and Settings, and nothing is reset there.
 
-/** What the tooltip of a node says: its id, its horizon, the plateau it overrides, the changes it brings over it, and what is wrong with it. */
-function bandNodeTitle(id) {
-  const node = AppState.plateauTree.nodes.get(id);
-  const cache = AppState.workspace ? ensureLayerCache(AppState.workspace.settings) : null;
-  const counts = node && node.parent !== null && cache && cache.counts ? cache.counts.get(id) : null;
-  const parts = [id];
-  if (node && node.horizon) parts.push(node.horizon);
-  if (node && node.parent !== null) parts.push('overrides ' + node.parent);
-  if (counts) parts.push(bandCountsText(counts) + ' over ' + node.parent);
-  const broken = layerModelBroken(id);
-  return parts.join(' · ') + (broken ? ' · ' + (layerModelOf(id, AppState.workspace.settings).undrawable ? 'cannot be drawn: ' : 'refused by the command line: ') + broken[0] : '');
-}
-
-function bandNodeHtml(item, tree) {
-  const layers = AppState.layers;
-  const model = layerPlateauModel(item.id);
-  const drawn = item.id === layers.current;
-  const compared = layers.compare && layers.compare.other === item.id && !!layerCompareOther();
-  const disabled = layers.blocked && item.id !== BASELINE_PLATEAU;
-  const target = layerModelBroken(item.id);
-  const counts = item.node.parent === null ? null : (AppState.workspace && ensureLayerCache(AppState.workspace.settings).counts ? ensureLayerCache(AppState.workspace.settings).counts.get(item.id) : null);
-  const title = bandNodeTitle(item.id);
-  const pending = layers.compare && layers.compare.mode === 'future' && !layers.compare.other && layerIsBelow(item.id, layers.current) && AppState.plateauTree.nodes.get(item.id).parent === layers.current;
-  let html = '<li class="band-item"><div class="band-node' + (drawn ? ' band-drawn' : '') + (compared ? ' band-compared' : '') + (target ? ' band-broken' : '') + '" data-plateau="' + escapeHtml(item.id) + '">' +
-    '<button type="button" class="band-draw" data-action="draw-plateau" data-plateau="' + escapeHtml(item.id) + '" aria-pressed="' + drawn + '"' + (drawn ? ' aria-current="true"' : '') + (disabled ? ' disabled' : '') + ' title="' + escapeHtml(title) + '">' +
-      '<span class="band-name">' + escapeHtml(plateauTitle(model)) + '</span>' +
-      (item.node.horizon ? '<span class="band-horizon">' + escapeHtml(item.node.horizon) + '</span>' : '') +
-      (counts ? '<span class="band-counts" data-counts="' + escapeHtml(item.id) + '">' + escapeHtml(bandCountsText(counts)) + '</span>' : '') +
-      (target ? '<span class="band-flag" role="img" aria-label="has mistakes">!</span>' : '') +
-    '</button>';
-  if (!drawn && !disabled) {
-    const label = 'Compare ' + plateauTitle(layerPlateauModel(layers.current)) + ' with ' + plateauTitle(model); // the label stays; `aria-pressed` says whether it is on
-    html += '<button type="button" class="band-compare' + (pending ? ' band-choose' : '') + '" data-action="compare-plateau" data-plateau="' + escapeHtml(item.id) + '" aria-pressed="' + compared + '" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '">⇄</button>';
-  }
-  html += '</div>';
-  if (item.children.length) html += '<ul class="band-children">' + item.children.map((child) => bandNodeHtml(child, tree)).join('') + '</ul>';
-  return html + '</li>';
+/** The band is on screen: a workspace is open, it has layers, and the page is one of the perspective Timeline. */
+function bandIsShown() {
+  return !!(AppState.workspace && !AppState.fatalError && AppState.layers && AppState.plateauTree && PERSPECTIVES[currentPageId()].group === 'timeline');
 }
 
 /** The sentences of the first layer of the chain of a plateau that the command line refuses, or null (resolves the plateau if it was not: a click on its node would). */
@@ -5156,64 +5093,109 @@ function layerModelBroken(id) {
   return layerModelOf(id, AppState.workspace.settings).problems;
 }
 
-/** The band: the tree of the plateaus, the two toggles, what is compared, and the mistakes of the plateau drawn. Nothing while no workspace is open. */
+/** The text of a plateau in a list of the band: its name (else its id) and its horizon, a `!` before it when the command line refuses it. */
+function bandPlateauLabel(id) {
+  const node = AppState.plateauTree.nodes.get(id);
+  return (layerModelBroken(id) ? '! ' : '') + plateauTitle(layerPlateauModel(id)) + (node && node.horizon ? ' · ' + node.horizon : '');
+}
+
+function bandOptionHtml(value, label, selected, extra) {
+  return '<option value="' + escapeHtml(value) + '"' + (selected ? ' selected' : '') + (extra || '') + '>' + escapeHtml(label) + '</option>';
+}
+
+/** The list "Plateau": every plateau in the order of the tree, each indented by its depth; the one drawn is selected. */
+function bandPlateauSelectHtml(root, disabled) {
+  const layers = AppState.layers;
+  const options = [];
+  const walk = (item, depth) => {
+    options.push(bandOptionHtml(item.id, ' '.repeat(Math.min(depth, 6)) + bandPlateauLabel(item.id), item.id === layers.current));
+    item.children.forEach((child) => walk(child, depth + 1));
+  };
+  walk(root, 0);
+  const node = AppState.plateauTree.nodes.get(layers.current);
+  return '<label class="band-field"><span class="plateau-label" id="band-plateau-label">Plateau</span>' +
+    '<select id="band-plateau" data-band-select="plateau" aria-labelledby="band-plateau-label"' + (disabled ? ' disabled' : '') + ' title="The plateau drawn in the whole editor' + (node && node.parent !== null ? ' (it overrides ' + escapeHtml(node.parent) + ')' : '') + '">' + options.join('') + '</select></label>';
+}
+
+/**
+ * The list "Compare with": nothing; the past (the plateau the drawn one overrides); the future (the plateau that overrides it: one entry for each when several do);
+ * any other plateau, as `archicode diff --plateau <drawn> --against <id>`. A future the address asked for with several plateaus on top of it is told as a choice still to make.
+ */
+function bandCompareSelectHtml(root, disabled) {
+  const layers = AppState.layers;
+  const tree = AppState.plateauTree;
+  const node = tree.nodes.get(layers.current);
+  const parent = node && node.parent !== null ? node.parent : null;
+  const listing = !layers.blocked; // a write in flight disables the list, it does not change what it says; blocked plateaus have nothing to choose from
+  const children = listing ? layerChildrenOf(layers.current) : [];
+  const compare = layers.compare;
+  const other = layerCompareOther();
+  let selected = '';
+  if (compare && compare.mode === 'past') selected = 'past';
+  else if (compare && !other) selected = 'future'; // waiting for the choice of the future
+  else if (other) selected = children.length === 1 && other.id === children[0] ? 'future' : 'plateau:' + other.id;
+  const listed = new Set([layers.current]);
+  let html = bandOptionHtml('', 'Nothing', selected === '');
+  if (compare && !other && compare.mode === 'future') html += bandOptionHtml('future', 'Future: choose one', true, ' disabled');
+  if (parent !== null) { html += bandOptionHtml('past', 'Past: ' + bandPlateauLabel(parent), selected === 'past'); listed.add(parent); }
+  if (children.length === 1) html += bandOptionHtml('future', 'Future: ' + bandPlateauLabel(children[0]), selected === 'future');
+  else for (const child of children) html += bandOptionHtml('plateau:' + child, 'Future: ' + bandPlateauLabel(child), selected === 'plateau:' + child);
+  children.forEach((child) => listed.add(child));
+  const rest = listing ? bandOrderOf(tree).filter((id) => !listed.has(id)) : [];
+  if (rest.length) html += '<optgroup label="Other plateaus">' + rest.map((id) => bandOptionHtml('plateau:' + id, bandPlateauLabel(id), selected === 'plateau:' + id)).join('') + '</optgroup>';
+  return '<label class="band-field"><span class="plateau-label" id="band-compare-label">Compare with</span>' +
+    '<select id="band-compare" data-band-select="compare" aria-labelledby="band-compare-label"' + (disabled ? ' disabled' : '') + ' title="What the plateau drawn is compared with: the Changes panel lists what differs">' + html + '</select></label>';
+}
+
+/**
+ * The mistakes of the plateaus the page knows of, as sections `{ heading, lines }` (the heading may be null): why only baseline is drawn, the sentences of the first layer of the
+ * chain of the plateau drawn that the command line refuses, and the same for the plateau it is compared with. `note` is the one thing said without being counted: why nothing is written.
+ */
+function bandMistakes() {
+  const layers = AppState.layers;
+  const sections = [];
+  if (layers.blocked) sections.push({ heading: 'Only baseline is drawn:', lines: [layers.blocked] });
+  if (AppState.layerProblems) {
+    const name = plateauTitle(layerPlateauModel(layers.current));
+    sections.push({ heading: AppState.layerUndrawable ? name + ' cannot be drawn.' : name + ' is drawn, and the command line refuses it:', lines: AppState.layerProblems });
+  }
+  if (AppState.baseline && AppState.baseline.problem) {
+    const name = plateauTitle(AppState.baseline.plateau);
+    sections.push({ heading: AppState.baseline.undrawable ? name + ', which the drawing is compared with, cannot be drawn.' : name + ', which the drawing is compared with, is refused by the command line:', lines: AppState.baseline.problem.split('\n') });
+  }
+  return { sections, count: sections.reduce((n, section) => n + section.lines.length, 0), note: readOnlyPlateauMessage() };
+}
+
+/** The body of the dialog of the mistakes (the band's button opens it): the sections of `bandMistakes`, read from the state each time the page is drawn. */
+function renderMistakesDialogBodyHtml() {
+  const mistakes = AppState.layers ? bandMistakes() : { sections: [], count: 0, note: null };
+  if (!mistakes.count) return '<p>No mistake in the plateaus.</p>';
+  return mistakes.sections.map((section) => '<section class="band-errors">' + (section.heading ? '<strong>' + escapeHtml(section.heading) + '</strong>' : '') +
+    '<ul>' + section.lines.map((line) => '<li>' + duplicateMessageHtml(line) + '</li>').join('') + '</ul></section>').join('') +
+    (mistakes.note ? '<p class="band-readonly">' + duplicateMessageHtml(mistakes.note) + '</p>' : '');
+}
+
+/** The band: the plateau drawn and what it is compared with, and, when there are some, the button of the mistakes. Nothing while no workspace is open. */
 function renderPlateauBandHtml() {
   const layers = AppState.layers;
   if (!layers || !AppState.workspace || !AppState.plateauTree) return '';
   const tree = AppState.plateauTree;
   const root = bandTreeOf(tree) || { id: BASELINE_PLATEAU, node: { id: BASELINE_PLATEAU, name: null, horizon: null, parent: null }, children: [] };
-  const busy = saveInFlight ? ' disabled' : '';
-  const compare = layers.compare;
-  const other = layerCompareOther();
-  const node = tree.nodes.get(layers.current);
-  const canPast = !layers.blocked && !!node && node.parent !== null;
-  const canFuture = !layers.blocked && layerChildrenOf(layers.current).length > 0;
-  const status = !compare ? 'Nothing compared.'
-    : !other ? 'Choose the future on the band: press ⇄ on one of the plateaus that override ' + plateauTitle(layerPlateauModel(layers.current)) + '.'
-    : (layerCompareIsFuture() ? plateauTitle(layerPlateauModel(layers.current)) + ' compared with its future, ' + plateauTitle(other) + '.' : plateauTitle(layerPlateauModel(layers.current)) + ' compared with ' + plateauTitle(other) + '.');
-  let html = '<nav class="plateau-band col-span-3" id="plateau-band" aria-label="Plateaus">' +
-    '<span class="plateau-label" id="band-label">Plateaus</span>' +
-    '<ul class="band-tree" aria-labelledby="band-label">' + bandNodeHtml(root, tree) + '</ul>' +
-    '<span class="band-compare-control"><span class="plateau-label" id="band-compare-label">Compare with</span>' +
-    '<span class="button-group band-toggles" role="group" aria-labelledby="band-compare-label">' +
-      '<button type="button" data-action="compare-past" aria-pressed="' + !!(compare && compare.mode === 'past') + '"' + (canPast && !busy ? '' : ' disabled') + ' title="The plateau drawn compared with the plateau it overrides: what it adds, changes and removes">Past</button>' +
-      '<button type="button" data-action="compare-future" aria-pressed="' + !!(compare && compare.mode === 'future') + '"' + (canFuture && !busy ? '' : ' disabled') + ' title="The plateau drawn compared with the plateau that overrides it: what the next plateau adds, changes and removes">Future</button>' +
-    '</span>';
-  if (other) {
-    html += '<span class="button-group changes-switch" role="group" aria-label="What the diagrams draw of the comparison">' +
-      '<button type="button" data-action="set-changes-only" data-value="0" aria-pressed="' + !AppState.changesOnly + '" title="Draw the whole plateau, with what changed marked">Everything</button>' +
-      '<button type="button" data-action="set-changes-only" data-value="1" aria-pressed="' + AppState.changesOnly + '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>';
-  }
-  html += '<span class="band-status" role="status">' + escapeHtml(status) + '</span></span>';
-  if (layers.blocked) html += '<span class="plateau-problem band-note" role="alert">' + escapeHtml(layers.blocked) + '</span>';
-  if (AppState.layerProblems) {
-    const name = plateauTitle(layerPlateauModel(layers.current));
-    html += '<div class="plateau-problem band-errors" role="alert"><strong>' + escapeHtml(AppState.layerUndrawable ? name + ' cannot be drawn.' : name + ' is drawn, and the command line refuses it:') + '</strong><ul>' +
-      AppState.layerProblems.map((p) => '<li>' + duplicateMessageHtml(p) + '</li>').join('') + '</ul></div>';
-  }
-  if (AppState.baseline && AppState.baseline.problem) {
-    const name = plateauTitle(AppState.baseline.plateau);
-    html += '<div class="plateau-problem band-errors" role="alert"><strong>' + escapeHtml(AppState.baseline.undrawable ? name + ', which the drawing is compared with, cannot be drawn.' : name + ', which the drawing is compared with, is refused by the command line:') + '</strong><ul>' +
-      AppState.baseline.problem.split('\n').map((p) => '<li>' + duplicateMessageHtml(p) + '</li>').join('') + '</ul></div>';
-  }
-  const readOnly = readOnlyPlateauMessage();
-  if (readOnly) html += '<span class="band-note band-readonly" role="status">' + escapeHtml(readOnly) + '</span>';
-  return html + bandWritingHtml() + '</nav>';
+  const disabled = !!layers.blocked || saveInFlight;
+  const mistakes = bandMistakes();
+  return '<nav class="plateau-band col-span-3" id="plateau-band" aria-label="Plateaus">' +
+    bandPlateauSelectHtml(root, disabled) + bandCompareSelectHtml(root, disabled) +
+    (mistakes.count ? '<button type="button" class="band-mistakes" data-action="open-mistakes" title="' + escapeHtml(mistakes.sections[0].lines[0]) + '">' +
+      '<span class="band-flag" aria-hidden="true">!</span> ' + mistakes.count + (mistakes.count === 1 ? ' mistake' : ' mistakes') + '</button>' : '') +
+    '</nav>';
 }
 
 /**
- * Where a write goes, and how to make a plateau (wave 014, run 0082): "writing in: <plateau>" says the plateau drawn is the one a write goes to (when the workspace has
- * layers); the buttons make a plateau that overrides it, and rename it, give it a horizon or another parent.
+ * The controls of the plateaus (wave 014, run 0082; the page Plateaus, wave 015, run 0096, W-8, #99): "writing in: <plateau>" says the plateau drawn is the one a write goes to
+ * (when the workspace has layers), the buttons make a plateau that overrides it, and rename it, give it a horizon or another parent. They are on the page Plateaus and nowhere
+ * else: the band does not write.
  */
-function bandWritingHtml() {
-  return plateauWritingHtml('band-writing');
-}
-
-/**
- * The same controls for the page Plateaus (wave 015, run 0096, W-8, #99): the editing of the plateaus is that page's. The band still has them until the run that makes it
- * read-only (W-9) takes them away, so nothing is lost between the two. `domId` is the id of the element (the band's is `band-writing`; the page has none: one id per document).
- */
-function plateauWritingHtml(domId) {
+function plateauWritingHtml() {
   const layers = AppState.layers;
   const tree = AppState.plateauTree;
   if (!layers || !tree || layers.blocked) return '';
@@ -5221,11 +5203,52 @@ function plateauWritingHtml(domId) {
   const title = plateauTitle(layerPlateauModel(id));
   const writing = writingPlateau();
   const busy = saveInFlight ? ' disabled' : '';
-  return '<span class="band-writing"' + (domId ? ' id="' + domId + '"' : '') + '>' +
+  return '<span class="band-writing">' +
     (writing !== null ? '<span class="band-writing-label" role="status">writing in: <strong>' + escapeHtml(title) + '</strong>' + (title !== id ? ' <code>' + escapeHtml(id) + '</code>' : '') + '</span>' : '') +
     '<button type="button" data-action="plateau-create" data-plateau="' + escapeHtml(id) + '"' + busy + ' title="Create a plateau that overrides ' + escapeHtml(title) + '">New plateau</button>' +
     (tree.layered ? '<button type="button" data-action="plateau-edit" data-plateau="' + escapeHtml(id) + '"' + busy + ' title="Rename ' + escapeHtml(title) + ', give it a horizon or another parent">Edit plateau</button>' : '') +
     '</span>';
+}
+
+/**
+ * What a change of one of the two lists of the band does: draw the plateau, or compare. The lists are the band's way to say it, the functions are the ones the page, the address
+ * and the tests use (`drawPlateau`, `toggleCompareWithPast`, `toggleCompareWithFuture`, `compareWithPlateau`). A refusal (a form that was typed in and not kept, a write in flight,
+ * a plateau that cannot be drawn) puts the list back as it was.
+ */
+function chooseOnBand(select) {
+  const layers = AppState.layers;
+  const value = select.value;
+  const kind = select.getAttribute('data-band-select');
+  if (!layers || !AppState.plateauTree || layers.blocked || saveInFlight || (draftTyped && !confirmDiscardingDraft())) {
+    restoreBandLists();
+    return;
+  }
+  const compare = layers.compare;
+  let changed = true;
+  if (kind === 'plateau') changed = drawPlateau(value);
+  else if (value === '') {
+    if (compare) {
+      layers.compare = null;
+      rememberLayerChoice();
+      settleAfterLayerChange();
+    }
+  } else if (value === 'past') {
+    if (!compare || compare.mode !== 'past') toggleCompareWithPast();
+  } else if (value === 'future') {
+    if (!compare || compare.mode !== 'future') toggleCompareWithFuture();
+  } else if (value.indexOf('plateau:') === 0) {
+    compareWithPlateau(value.slice('plateau:'.length));
+  }
+  if (!changed) restoreBandLists();
+}
+
+/** Puts the two lists of the band back on what the state says, without drawing the page again: what was typed in a form of the page stays where it is. */
+function restoreBandLists() {
+  const band = typeof document !== 'undefined' ? document.getElementById('plateau-band') : null;
+  if (!band || !AppState.layers) return;
+  const holder = document.createElement('template');
+  holder.innerHTML = renderPlateauBandHtml();
+  if (holder.content && holder.content.firstElementChild) band.replaceWith(holder.content.firstElementChild);
 }
 
 /** The form of a plateau: a new one that overrides `id` (`create`), or `id` itself (`edit`). */
@@ -5243,7 +5266,7 @@ function openPlateauDialog(mode, id) {
 
 // ---- Writing in a layer (wave 014, run 0082, W-8) ----
 //
-// A write goes to the plateau drawn ("writing in: <plateau>" on the band), in the file of that plateau and nowhere else:
+// A write goes to the plateau drawn ("writing in: <plateau>" on the page Plateaus), in the file of that plateau and nowhere else:
 //   - a new element, view or story is a manifest whose header says `plateau: <the plateau>` (none for baseline, the default);
 //   - a field of an element the plateau declares is edited in the manifest that declares it, as before;
 //   - a field of an element the plateau inherits is a patch of the plateau (`SET`, `ADD` or `MERGE`, see `patchFor`), found again by (target, field) so that a second
@@ -11064,6 +11087,10 @@ function handleAppInput(e) {
     updateStoryField(storyField);
     return;
   }
+  if (e.target.getAttribute && e.target.getAttribute('data-band-select')) { // wave 015 (run 0097): the two lists of the band
+    chooseOnBand(e.target);
+    return;
+  }
   if (e.target.id === 'diagram-facet-select') {
     pushDiagramHistory();
     diagramFacet = e.target.value || null;
@@ -12106,7 +12133,7 @@ function renderStateWordHintsHtml(layer, reference) {
 function acceptCandidate(candidate) {
   const refuse = (message) => { candidateMessage = message; render(); return { ok: false, message }; };
   const state = comparisonState();
-  if (!state || !state.records) return refuse('Nothing is compared: press Past, Future or ⇄ on the band first.');
+  if (!state || !state.records) return refuse('Nothing is compared: choose a plateau in Compare with, on the band, first.');
   return acceptLayeredCandidate(candidate, state, refuse);
 }
 
@@ -12568,7 +12595,7 @@ function timelineChangesHtml(id) {
   const node = AppState.plateauTree.nodes.get(id);
   if (node.parent === null) return '<span class="muted">The root: it overrides nothing.</span>';
   const counts = cachedNodeCounts(id);
-  if (counts === undefined) return '<span class="muted">Counting…</span>'; // `scheduleBandCounts` computes them one plateau per turn and writes them here (see its step)
+  if (counts === undefined) return '<span class="muted">Counting…</span>'; // `schedulePlateauCounts` computes them one plateau per turn and writes them here (see its step)
   if (!counts) return '<span class="muted">Not counted: the plateau or the one it overrides has mistakes.</span>';
   const group = (title, c) => '<span class="timeline-count-group" data-counts-of="' + title.toLowerCase() + '"><span class="changes-count-label">' + title + '</span>' +
     CHANGE_STATES.filter((name) => c[name] !== undefined).map((name) => changeChipHtml(name, c[name])).join('') + '</span>';
@@ -12627,10 +12654,10 @@ function renderPlateausPageHtml() {
   const tree = AppState.plateauTree;
   let body = '';
   if (layers && tree) {
-    const writing = plateauWritingHtml(null);
+    const writing = plateauWritingHtml();
     const drawn = layerPlateauModel(layers.current);
     const other = layerCompareOther();
-    const status = other ? plateauTitle(drawn) + ' is compared with ' + plateauTitle(other) + (comparisonPanelOn() ? ': the Changes panel on the right lists what differs.' : ', but the two cannot be compared: the band says what is wrong.')
+    const status = other ? plateauTitle(drawn) + ' is compared with ' + plateauTitle(other) + (comparisonPanelOn() ? ': the Changes panel on the right lists what differs.' : ', but the two cannot be compared: the diagram of Applications says why.')
       : tree.layered ? plateauTitle(drawn) + ' is drawn. “Changes” draws a plateau and lists what it changes over the plateau it overrides.' : '';
     body = (tree.layered ? '' : '<p class="timeline-note">This workspace has one plateau, <code>baseline</code>. A plateau is a layer over another one: the manifests that say <code>plateau: &lt;id&gt;</code> in their header belong to it, ' +
         'and a manifest of kind <code>archicode.morin.io/plateau</code> gives it a name, a horizon, the plateau it overrides and its patches (see the manual).</p>') +
@@ -12824,7 +12851,7 @@ let navActiveKey = null;
  * the twins apart (the tab, the zoom direction, the perspective). Null for anything else, which keeps no focus.
  */
 function headerControlSelector(el) {
-  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band button, .page-tabs button, .timeline-view button, .files-scope button') : null;
+  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band select, .plateau-band button, .page-tabs button, .timeline-view button, .files-scope button') : null;
   if (!control) return null;
   if (control.id) return '#' + control.id;
   const action = control.getAttribute('data-action');
@@ -15264,6 +15291,10 @@ function renderDiagramCanvasHtml(record, overlayHtml, host) {
           '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
           '<button type="button" data-action="unfold-all" title="Unfold every folded box and open the boxes that hide children (one more level each time)">Unfold all</button></span>') +
       '<button type="button" data-action="toggle-hide-unlinked" aria-pressed="' + hideUnlinked + '" title="Leave out the boxes that no link reaches, such as the children a facet left without any relationship">Hide unlinked</button>' +
+      // wave 015 (run 0097, W-9, #98): what the diagram draws of a comparison is the diagram's choice, not the band's; only while a plateau is compared
+      (layerCompareOther() ? '<span class="button-group changes-switch" role="group" aria-label="What the diagram draws of the comparison">' +
+        '<button type="button" data-action="set-changes-only" data-value="0" aria-pressed="' + !AppState.changesOnly + '" title="Draw the whole plateau, with what changed marked">Everything</button>' +
+        '<button type="button" data-action="set-changes-only" data-value="1" aria-pressed="' + AppState.changesOnly + '" title="Draw only what is new, changed or removed, with the boxes around it and the ends of the changed links (drawn faded) to place it">Changes only</button></span>' : '') +
       '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
       renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
       '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
@@ -16563,6 +16594,10 @@ function renderAppDialogHtml() {
     title = move.title;
     body = move.body;
     actions = move.actions;
+  } else if (appDialog.kind === 'mistakes') {
+    title = 'Mistakes in the plateaus';
+    body = renderMistakesDialogBodyHtml();
+    actions = '<button type="button" class="btn-primary" data-action="dialog-cancel" data-dialog-autofocus>Close</button>';
   } else if (appDialog.kind === 'layer-confirm') {
     title = 'Writing in ' + appDialog.plateau + ' changes other plateaus';
     confirmLabel = 'Write in ' + appDialog.plateau;
@@ -16604,7 +16639,7 @@ function renderAppDialogHtml() {
     body = '<label class="app-dialog-field" for="app-dialog-text">' + escapeHtml(appDialog.label) + '</label>' +
       '<input type="text" id="app-dialog-text" data-dialog-text data-dialog-autofocus value="' + escapeHtml(appDialog.value || '') + '">';
   }
-  return '<div class="app-dialog-backdrop"><div class="app-dialog' + (appDialog.kind === 'move' || appDialog.kind === 'layer-confirm' ? ' app-dialog-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
+  return '<div class="app-dialog-backdrop"><div class="app-dialog' + (appDialog.kind === 'move' || appDialog.kind === 'layer-confirm' || appDialog.kind === 'mistakes' ? ' app-dialog-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
     '<h2 id="app-dialog-title">' + escapeHtml(title) + '</h2>' + body +
     '<div class="app-dialog-error" id="app-dialog-error" role="alert">' + (appDialog.error ? escapeHtml(appDialog.error) : '') + '</div>' +
     '<div class="app-dialog-actions">' + (actions !== null ? actions :
@@ -16626,6 +16661,7 @@ function readAppDialogValues() {
 function submitAppDialog(values) {
   const dialog = appDialog;
   if (!dialog || dialog.kind === 'move') return;
+  if (dialog.kind === 'mistakes') { closeAppDialog(); return; }
   const v = values || readAppDialogValues();
   const fail = (message) => {
     const line = document.getElementById('app-dialog-error');
@@ -17341,8 +17377,9 @@ function renderActivePerspectiveHtml() {
  * grid-template-columns.
  */
 function renderShellHtml() {
-  // wave 014 (run 0080): the band of plateaus sits under the top bar, for every open workspace
-  const band = AppState.workspace && !AppState.fatalError && AppState.layers ? renderPlateauBandHtml() : '';
+  // wave 014 (run 0080): the band of plateaus sits under the top bar; wave 015 (run 0097, W-9, #98): only while a page of the perspective Timeline is on screen (the plateau
+  // drawn and the comparison are the editor's state, `AppState.layers`, and stay what they were while Stories, Files or Settings is open)
+  const band = bandIsShown() ? renderPlateauBandHtml() : '';
   // wave 014 (run 0081): under the band, the pages of the Timeline perspective (Plateaus, Applications, Environments, Elements)
   const pages = AppState.workspace && !AppState.fatalError ? renderPageTabsHtml() : '';
   const rows = 1 + (band ? 1 : 0) + (pages ? 1 : 0);
@@ -17404,7 +17441,7 @@ async function cancelChanges() {
 
 /** The clicks that replace the form on screen. Without a "Save all changes" first, what was typed in it is lost. */
 const ACTIONS_LEAVING_THE_FORM = new Set([
-  'draw-plateau', 'compare-plateau', 'compare-past', 'compare-future', 'timeline-draw', 'timeline-changes',
+  'timeline-draw', 'timeline-changes',
   'set-perspective', 'set-page', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
   'select-link', 'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
   'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
@@ -17508,17 +17545,8 @@ function handleAppClick(e) {
     case 'timeline-changes':
       showPlateauChanges(target.getAttribute('data-plateau'));
       break;
-    case 'draw-plateau': // wave 014 (run 0080): the band
-      drawPlateau(target.getAttribute('data-plateau'));
-      break;
-    case 'compare-plateau':
-      compareWithPlateau(target.getAttribute('data-plateau'));
-      break;
-    case 'compare-past':
-      toggleCompareWithPast();
-      break;
-    case 'compare-future':
-      toggleCompareWithFuture();
+    case 'open-mistakes': // wave 015 (run 0097): the band's button; the lists of the band are `chooseOnBand`
+      openAppDialog({ kind: 'mistakes' });
       break;
     case 'set-changes-only': { // run 0040: the diagrams draw the changes with their context, or everything
       const only = target.getAttribute('data-value') === '1';
@@ -18736,7 +18764,7 @@ function render() {
     if (activeRow && activeRow.scrollIntoView) activeRow.scrollIntoView({ block: 'nearest' });
   }
   syncHashFromState();
-  scheduleBandCounts(); // what each node of the band says is computed after the drawing, one node per turn
+  schedulePlateauCounts(); // what each plateau of the page Plateaus says is computed after the drawing, one plateau per turn
 }
 
 // =====================================================================

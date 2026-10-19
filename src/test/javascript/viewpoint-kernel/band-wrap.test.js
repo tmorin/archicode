@@ -53,10 +53,22 @@ function computed(chain) {
   return Object.assign({}, ...matching.map((rule) => rule.declarations));
 }
 
+/** The declarations of the rules whose selector is exactly `selector` (a descendant selector of classes and an element name), merged in source order. */
+function simpleRulesFor(selector) {
+  const out = {};
+  for (const m of CSS.matchAll(/(?<=^|\})\s*([^{}@]+)\{([^{}]*)\}/g)) {
+    if (!m[1].split(',').map((x) => x.trim()).includes(selector)) continue;
+    for (const d of m[2].split(';').map((x) => x.trim()).filter(Boolean)) {
+      const i = d.indexOf(':');
+      out[d.slice(0, i).trim()] = d.slice(i + 1).replace('!important', '').trim();
+    }
+  }
+  return out;
+}
+
 const HEADER = ['top-panel'];
 const BAND = [['plateau-band']];
-const COMPARE = [['plateau-band'], ['band-compare-control']];
-const WRITING = [['plateau-band'], ['band-writing']];
+const FIELD = [['plateau-band'], ['band-field']];
 
 test('the band is never wider than the window: it wraps, it may shrink, and it is capped at the width of the page', () => {
   const style = computed(BAND);
@@ -66,13 +78,16 @@ test('the band is never wider than the window: it wraps, it may shrink, and it i
   assert.match(style['display'], /flex/);
 });
 
-test('what the band holds wraps inside its own groups, which are capped at the width of the band', () => {
-  for (const chain of [COMPARE, WRITING]) {
-    const style = computed(chain);
-    assert.equal(style['flex-wrap'], 'wrap', chain.map((c) => c[0]).join(' '));
-    assert.equal(style['max-width'], '100%');
-    assert.equal(style['min-width'], '0');
-  }
+test('what the band holds takes what is left of the row and no more, so that it wraps under the width of the window: a list may shrink to nothing, and says it with an ellipsis', () => {
+  const field = computed(FIELD);
+  assert.match(field['display'], /flex/);
+  assert.equal(field['min-width'], '0', 'a field may be narrower than its content');
+  assert.match(field['flex'], /^1 1 /, 'it grows and shrinks from a basis, so a row holds the two lists when the window is wide and one under the other when it is not');
+  assert.match(field['max-width'], /rem$/, 'and a very wide window does not stretch it');
+  const rules = simpleRulesFor('.band-field select');
+  assert.equal(rules['min-width'], '0');
+  assert.equal(rules['width'], '100%');
+  assert.equal(rules['text-overflow'], 'ellipsis');
 });
 
 test('the perspective tabs keep their size, and the header holds neither the plateaus nor a list to compare to', async () => {
@@ -84,13 +99,16 @@ test('the perspective tabs keep their size, and the header holds neither the pla
   assert.match(header, /class="perspective-tabs/);
 });
 
-test('on four plateaus with long names the band has a node for each, and a toggle to compare the plateau drawn with its past or its future', async () => {
+test('on four plateaus with long names the band is two lists, the plateau drawn in one and what it is compared with in the other, and no tree, no toggle and no write', async () => {
   const { sandbox } = await openLayered(createApp, memFolder, LONG_NAMES, { drawn: 'inhouse' });
   const band = sandbox.renderPlateauBandHtml();
   assert.ok(band.startsWith('<nav class="plateau-band col-span-3" id="plateau-band" aria-label="Plateaus">'));
-  assert.equal((band.match(/data-action="draw-plateau"/g) || []).length, 5, 'baseline and the four plateaus');
-  for (const id of IDS) assert.match(band, new RegExp('<div class="band-node[^"]*" data-plateau="' + id + '">'));
-  assert.match(band, /data-action="compare-past"/);
-  assert.match(band, /data-action="compare-future"/);
+  assert.equal((band.match(/<select /g) || []).length, 2, 'the plateau, and the comparison');
+  const plateau = band.slice(band.indexOf('id="band-plateau"'), band.indexOf('</select>'));
+  for (const id of ['baseline'].concat(IDS)) assert.match(plateau, new RegExp('<option value="' + id + '"'), id);
+  assert.match(plateau, /<option value="inhouse" selected>/, 'the plateau drawn is the one selected');
+  for (const gone of ['band-tree', 'band-node', 'band-draw', 'data-action="compare-past"', 'data-action="compare-future"', 'data-action="compare-plateau"', 'band-writing', 'band-status', 'set-changes-only']) {
+    assert.ok(!band.includes(gone), gone + ' is not on the band');
+  }
   assert.ok(Math.max(...NAMES.map((n) => n.length)) >= 30, 'the names are as long as the issue says');
 });

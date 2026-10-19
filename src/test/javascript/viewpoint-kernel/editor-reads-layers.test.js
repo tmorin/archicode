@@ -12,6 +12,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, makeDirHandle } = require('./harness');
 const { memFolder } = require('./mem-folder');
+const { bandOf, chooseOnBand } = require('./layered-folders');
 
 const BRIGHTCART = path.resolve(__dirname, '../../resources/brightcart');
 const LAYERED = path.join(BRIGHTCART, 'layered');
@@ -100,9 +101,7 @@ test('a horizon decides the order of the siblings in the page', async () => {
     'plateaus/c.yaml': plateau('gamma', '2027-10')
   });
   assert.deepEqual(Array.from(sandbox.bandOrderOf(state.plateauTree)), ['baseline', 'beta', 'gamma', 'alpha']);
-  const html = sandbox.renderPlateauBandHtml();
-  const at = (id) => html.indexOf('data-plateau="' + id + '"');
-  assert.ok(at('beta') < at('gamma') && at('gamma') < at('alpha'), 'the nodes of the band are in that order');
+  assert.deepEqual(plain(bandOf(sandbox).plateaus.map((o) => o.value)), ['baseline', 'beta', 'gamma', 'alpha'], 'the list of the band is in that order');
 });
 
 // ---- the band ----
@@ -112,12 +111,10 @@ test('a workspace with no plateau has the band, with baseline alone, drawn, and 
   assert.deepEqual(plain(state.layers), { current: 'baseline', compare: null, blocked: null });
   const html = sandbox.renderPlateauBandHtml();
   assert.match(html, /<nav class="plateau-band col-span-3" id="plateau-band" aria-label="Plateaus">/);
-  assert.equal((html.match(/data-action="draw-plateau"/g) || []).length, 1);
-  assert.match(html, /data-action="draw-plateau" data-plateau="baseline" aria-pressed="true" aria-current="true"/);
-  assert.doesNotMatch(html, /data-action="compare-plateau"/, 'nothing to compare baseline with');
-  assert.match(html, /data-action="compare-past" aria-pressed="false" disabled/);
-  assert.match(html, /data-action="compare-future" aria-pressed="false" disabled/);
-  assert.match(html, /Nothing compared\./);
+  const band = bandOf(sandbox);
+  assert.deepEqual(plain(band.plateaus.map((o) => [o.value, o.selected])), [['baseline', true]], 'baseline alone, drawn');
+  assert.deepEqual(plain(band.compare.map((o) => [o.value, o.selected])), [['', true]], 'nothing to compare baseline with: no past, no future, no other plateau');
+  assert.equal(band.mistakes, null);
   assert.match(sandbox.renderShellHtml(), /grid-rows-\[auto_auto_auto_minmax\(0,1fr\)\]/, 'the shell has a row for it, and one for the pages below Timeline');
   // a click on it changes nothing
   const before = state.index;
@@ -128,16 +125,50 @@ test('a workspace with no plateau has the band, with baseline alone, drawn, and 
   assert.equal(state.index.application.size, 1);
 });
 
-test('the band of the layered Brightcart has one node per plateau, baseline drawn, and a compare button on every other one', async () => {
+test('the band of the layered Brightcart lists the four plateaus in the order of the tree, baseline drawn, and offers each of the other three to compare with', async () => {
   const { sandbox, state } = await openLayered();
-  const html = sandbox.renderPlateauBandHtml();
-  for (const id of ['baseline', 'inhouse', 'marketplace', 'saas']) assert.match(html, new RegExp('data-action="draw-plateau" data-plateau="' + id + '" aria-pressed="' + (id === 'baseline') + '"'));
-  assert.equal((html.match(/data-action="compare-plateau"/g) || []).length, 3, 'baseline has none, being drawn');
-  assert.match(html, /data-action="compare-past" aria-pressed="false" disabled/, 'baseline overrides nothing');
-  assert.match(html, /data-action="compare-future" aria-pressed="false" title/, 'two plateaus override baseline');
-  assert.match(html, /Buy the commerce platform/, 'a node says the name of its plateau');
-  assert.match(html, /2027-Q4/, 'and its horizon');
+  const band = bandOf(sandbox);
+  assert.deepEqual(plain(band.plateaus.map((o) => o.value)), ['baseline', 'inhouse', 'marketplace', 'saas'], 'the order of the tree');
+  assert.equal(band.drawn, 'baseline');
+  assert.match(band.plateaus.find((o) => o.value === 'saas').label, /Buy the commerce platform/, 'an entry says the name of its plateau');
+  assert.match(band.plateaus.find((o) => o.value === 'saas').label, /2026-Q4/, 'and its horizon');
+  assert.match(band.html, /<option value="marketplace">\u2003\u2003/, 'a plateau is indented by its depth: marketplace overrides inhouse');
+  // baseline overrides nothing (no past), two plateaus override it (each is a future of its own), and the one further down is another plateau
+  assert.deepEqual(plain(band.compare.map((o) => o.value)), ['', 'plateau:inhouse', 'plateau:saas', 'plateau:marketplace']);
+  assert.deepEqual(plain(band.compare.slice(1, 3).map((o) => o.label.split(':')[0])), ['Future', 'Future']);
+  assert.match(band.html, /<optgroup label="Other plateaus"><option value="plateau:marketplace"/);
+  assert.equal(band.compared, '');
   assert.equal(state.layers.blocked, null);
+  assert.ok(!/<(ul|li)\b|data-action="(draw|compare)-/.test(band.html), 'no tree and no button that chooses');
+});
+
+test('a choice in the lists of the band is what the buttons were: draw a plateau, compare with the past, the future, or any other plateau, or with nothing', async () => {
+  const { sandbox, state } = await openLayered();
+  chooseOnBand(sandbox, 'plateau', 'marketplace');
+  assert.equal(state.layers.current, 'marketplace');
+  assert.equal(bandOf(sandbox).drawn, 'marketplace');
+  chooseOnBand(sandbox, 'compare', 'past');
+  assert.deepEqual(plain(state.layers.compare), { mode: 'past', other: 'inhouse', chosen: false });
+  let band = bandOf(sandbox);
+  assert.equal(band.compared, 'past');
+  assert.match(band.compare.find((o) => o.value === 'past').label, /^Past: Build commerce services/);
+  chooseOnBand(sandbox, 'compare', 'plateau:saas');
+  assert.deepEqual(plain(state.layers.compare), { mode: 'other', other: 'saas', chosen: true }, 'a plateau that is neither the past nor a future of the one drawn');
+  assert.equal(bandOf(sandbox).compared, 'plateau:saas');
+  chooseOnBand(sandbox, 'compare', '');
+  assert.equal(state.layers.compare, null);
+  assert.equal(bandOf(sandbox).compared, '');
+  // inhouse is overridden by marketplace alone: the future is one entry
+  chooseOnBand(sandbox, 'plateau', 'inhouse');
+  band = bandOf(sandbox);
+  assert.deepEqual(plain(band.compare.map((o) => o.value)), ['', 'past', 'future', 'plateau:saas']);
+  chooseOnBand(sandbox, 'compare', 'future');
+  assert.deepEqual(plain(state.layers.compare), { mode: 'future', other: 'marketplace', chosen: false });
+  assert.equal(bandOf(sandbox).compared, 'future');
+  // a list put back on what it was when nothing can be done: the plateaus are blocked (a mistake in the tree), a write is in flight
+  state.layers.blocked = 'blocked for the test';
+  chooseOnBand(sandbox, 'plateau', 'saas');
+  assert.equal(state.layers.current, 'inhouse');
 });
 
 test('a workspace with settings.plateaus is refused with the one sentence of the command line, and there is no band and no selector to draw', async () => {
@@ -310,11 +341,10 @@ test('the future gives the same numbers: the plateau drawn is the base, the plat
   sandbox.drawPlateau('baseline');
   assert.deepEqual(plain(state.layers.compare), { mode: 'future', other: null, chosen: false });
   assert.equal(sandbox.comparisonState(), null, 'nothing is compared until the target is chosen');
-  const asking = sandbox.renderPlateauBandHtml();
-  assert.match(asking, /Choose the future on the band/);
-  assert.match(asking, /band-compare band-choose" data-action="compare-plateau" data-plateau="inhouse"/);
-  assert.match(asking, /band-compare band-choose" data-action="compare-plateau" data-plateau="saas"/);
-  assert.doesNotMatch(asking, /band-compare band-choose" data-action="compare-plateau" data-plateau="marketplace"/, 'only what overrides it directly');
+  const asking = bandOf(sandbox);
+  assert.deepEqual(plain(asking.compare.slice(0, 4).map((o) => [o.value, o.selected, o.disabled])), [['', false, false], ['future', true, true], ['plateau:inhouse', false, false], ['plateau:saas', false, false]], 'the list says the choice is still to make, and offers what overrides it directly');
+  assert.match(asking.compare[1].label, /Future: choose one/);
+  assert.ok(!asking.compare.slice(0, 4).some((o) => o.value === 'plateau:marketplace'), 'marketplace is not one of the plateaus on top of baseline, it is in the other plateaus');
   sandbox.compareWithPlateau('saas');
   comparison = sandbox.comparisonState();
   assert.equal(comparison.base.id, 'baseline');
@@ -489,9 +519,10 @@ test('a patch that selects nothing is the sentence of the command line, naming t
   assert.deepEqual(plain(state.layerProblems), ['plateau later: patch 1 (SET target nope): selects nothing, there is no element nope in the application layer']);
   assert.equal(state.layerUndrawable, true);
   assert.equal(state.index.application.size, 0, 'nothing of it is drawn');
-  const html = sandbox.renderPlateauBandHtml();
-  assert.match(html, /role="alert"><strong>later cannot be drawn\.<\/strong><ul><li>plateau later: patch 1 \(SET target nope\)/);
-  assert.match(html, /band-node[^"]*band-broken" data-plateau="later"/, 'the node says so');
+  const band = bandOf(sandbox);
+  assert.equal(band.mistakes, '! 1 mistake', 'the band has one button, that says there is a mistake');
+  assert.match(band.plateaus.find((o) => o.value === 'later').label, /^! later/, 'and the plateau is marked in the list');
+  assert.match(sandbox.renderMistakesDialogBodyHtml(), /<strong>later cannot be drawn\.<\/strong><ul><li>plateau later: patch 1 \(SET target nope\)/, 'the button opens the sentences of the command line');
   assert.deepEqual(plain(sandbox.comparisonState()), null, 'nothing is compared');
   sandbox.toggleCompareWithPast();
   assert.match(sandbox.comparisonState().problems[0], /cannot be drawn, so there is nothing to compare/);
@@ -520,9 +551,10 @@ test('a plateau the command line refuses for a link to nothing is drawn all the 
   assert.deepEqual(plain(state.layerProblems), plain(sandbox.layerModelOf('baseline', state.workspace.settings).problems), 'the first layer that is wrong ends the chain, and says what is wrong in it');
   assert.equal(sandbox.layerModelOf('later', state.workspace.settings).failedAt, 'baseline');
   assert.ok(!state.index.application.has('dock'), 'later is drawn');
-  const html = sandbox.renderPlateauBandHtml();
-  assert.match(html, /later is drawn, and the command line refuses it:/);
-  assert.match(html, /band-node[^"]*band-broken" data-plateau="baseline"/);
+  const band = bandOf(sandbox);
+  assert.match(sandbox.renderMistakesDialogBodyHtml(), /later is drawn, and the command line refuses it:/);
+  assert.equal(band.mistakes, '! 3 mistakes', 'every sentence is counted');
+  assert.match(band.plateaus.find((o) => o.value === 'baseline').label, /^! /, 'the plateau that is wrong in the chain is marked in the list');
 });
 
 test('the cascade of a REMOVE takes the link to the removed element, so the plateau that removes it is not wrong for it', async () => {
@@ -574,9 +606,11 @@ test('a mistake in the tree leaves baseline drawn and the other nodes out, with 
   assert.ok(state.plateauTree.problems.length > 0);
   assert.equal(state.layers.current, 'baseline');
   assert.ok(state.index.application.has('ferry'));
-  const html = sandbox.renderPlateauBandHtml();
-  assert.match(html, /The plateaus have a mistake/);
-  assert.equal((html.match(/data-action="draw-plateau"/g) || []).length, 1);
+  const band = bandOf(sandbox);
+  assert.match(sandbox.renderMistakesDialogBodyHtml(), /The plateaus have a mistake/);
+  assert.equal(band.mistakes, '! 1 mistake');
+  assert.equal(band.disabled, true, 'only baseline is drawn: nothing to choose');
+  assert.deepEqual(plain(band.plateaus.map((o) => o.value)), ['baseline'], 'the plateau with the mistake is not offered: it is not drawn');
   sandbox.drawPlateau('one');
   assert.equal(state.layers.current, 'baseline');
 });
@@ -604,7 +638,7 @@ test('a plateau that cannot be drawn is not written: every writer refuses with o
   sandbox.drawPlateau('later');
   const message = sandbox.readOnlyPlateauMessage();
   assert.equal(message, 'The plateau `later` cannot be drawn, so nothing is written in it: repair its patches in Files first.');
-  assert.match(sandbox.renderPlateauBandHtml(), /band-readonly/);
+  assert.match(sandbox.renderMistakesDialogBodyHtml(), /<p class="band-readonly">The plateau <code>later<\/code> cannot be drawn, so nothing is written in it/, 'the dialog of the mistakes says why nothing is written');
   for (const write of [
     () => sandbox.commitElementEdit('ferry', (node) => { node.name = 'x'; }, 'application'),
     () => sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', id: 'zz', name: 'zz', description: '' }),
@@ -781,14 +815,15 @@ test('what the cascade of a REMOVE took out of an element that stays says so in 
   assert.match(sandbox.originText(origin), /^taken out by patch \d+ of saas \(REMOVE target shop\.cache\)$/);
 });
 
-test('the band keeps the focus where it was: a button of the band is found again after the page is drawn', async () => {
+test('the band keeps the focus where it was: a list of the band is found again after the page is drawn', async () => {
   const { sandbox } = await openLayered();
-  const control = (action, plateau) => ({
-    getAttribute: (name) => ({ 'data-action': action, 'data-plateau': plateau || null, 'data-value': null }[name] || null),
-    id: ''
-  });
-  const el = { closest: (selector) => (/plateau-band button/.test(selector) ? control('draw-plateau', 'saas') : null) };
-  assert.equal(sandbox.headerControlSelector(el), '[data-action="draw-plateau"][data-plateau="saas"]');
+  const control = (id) => ({ getAttribute: () => null, id });
+  for (const id of ['band-plateau', 'band-compare']) {
+    const el = { closest: (selector) => (/plateau-band select/.test(selector) ? control(id) : null) };
+    assert.equal(sandbox.headerControlSelector(el), '#' + id);
+  }
+  const mistakes = { closest: (selector) => (/plateau-band button/.test(selector) ? { getAttribute: (name) => (name === 'data-action' ? 'open-mistakes' : null), id: '' } : null) };
+  assert.equal(sandbox.headerControlSelector(mistakes), '[data-action="open-mistakes"]');
 });
 
 test('a selection that was a form to create something does not outlive the plateau it was opened in', async () => {

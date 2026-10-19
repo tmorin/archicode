@@ -56,7 +56,7 @@ async function openLayered(createApp, memFolder, files, options) {
   return { sandbox, state, mem };
 }
 
-/** Compare the plateau drawn with `id` on the band, as a press on its ⇄ does; `''` stops the comparison, whichever plateau it was with. */
+/** Compare the plateau drawn with `id`, as `compareWithPlateau` does (what a choice of "plateau:<id>" in the list "Compare with" of the band calls); `''` stops the comparison, whichever plateau it was with. */
 function compareWith(sandbox, id) {
   const state = sandbox.__state();
   if (id === '' || id === null) {
@@ -68,4 +68,44 @@ function compareWith(sandbox, id) {
   sandbox.compareWithPlateau(id);
 }
 
-module.exports = { inPlateau, plateauManifest, layeredFiles, openLayered, compareWith };
+/**
+ * A choice made in one of the two lists of the band (wave 015, run 0097): `kind` is `plateau` (the list "Plateau") or `compare` (the list "Compare with"), `value` the value of the
+ * option chosen, as `renderPlateauBandHtml` writes it (a plateau id; for the comparison: '' for nothing, `past`, `future`, `plateau:<id>`). What the page does when the person changes the list.
+ */
+function chooseOnBand(sandbox, kind, value) {
+  const attributes = { 'data-band-select': kind };
+  const target = { id: 'band-' + kind, value, tagName: 'SELECT', matches: () => false, closest: () => null, getAttribute: (name) => (name in attributes ? attributes[name] : null) };
+  sandbox.handleAppInput({ target });
+}
+
+/**
+ * What the band says, read from its markup: `plateaus` and `compare` are the options of the two lists (`{ value, label, selected, disabled }`; a label is the text as the person reads it,
+ * without the indentation), `mistakes` the text of the button of the mistakes or null, and `disabled` whether the lists are.
+ */
+function bandOf(sandbox) {
+  const html = sandbox.renderPlateauBandHtml();
+  const unescape = (text) => text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const list = (id) => {
+    const at = html.indexOf('<select id="' + id + '"');
+    if (at < 0) return null;
+    const block = html.slice(at, html.indexOf('</select>', at));
+    return {
+      disabled: /^<select[^>]*\sdisabled/.test(block),
+      options: Array.from(block.matchAll(/<option value="([^"]*)"([^>]*)>([^<]*)<\/option>/g)).map((m) => ({ value: unescape(m[1]), label: unescape(m[3]).replace(/^\u2003+/, ''), selected: /\sselected/.test(m[2]), disabled: /\sdisabled/.test(m[2]) }))
+    };
+  };
+  const plateau = list('band-plateau');
+  const compare = list('band-compare');
+  const button = html.match(/<button[^>]*class="band-mistakes"[^>]*>(.*?)<\/button>/);
+  return {
+    html,
+    plateaus: plateau ? plateau.options : null,
+    compare: compare ? compare.options : null,
+    disabled: !!(plateau && plateau.disabled),
+    drawn: plateau ? (plateau.options.find((o) => o.selected) || {}).value : null,
+    compared: compare ? (compare.options.find((o) => o.selected) || {}).value : null,
+    mistakes: button ? button[1].replace(/<[^>]*>/g, '').trim() : null
+  };
+}
+
+module.exports = { inPlateau, plateauManifest, layeredFiles, openLayered, compareWith, chooseOnBand, bandOf };

@@ -527,7 +527,7 @@ test('a candidate is refused when the replaced element is still in the plateau d
   assert.equal(scalar.state.dirtyReferences.size, 0);
   // and without any comparison there is nothing to accept
   const none = await open({ compare: false });
-  assert.equal(none.sandbox.acceptCandidate({ layer: 'application', from: 'library.loans', to: 'library.lending' }).message, 'Nothing is compared: press Past, Future or ⇄ on the band first.');
+  assert.equal(none.sandbox.acceptCandidate({ layer: 'application', from: 'library.loans', to: 'library.lending' }).message, 'Nothing is compared: choose a plateau in Compare with, on the band, first.');
 });
 
 // ---- 5. By hand ----

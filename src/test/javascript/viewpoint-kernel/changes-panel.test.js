@@ -443,16 +443,20 @@ test('the block is in the inspection, so the page of a view in the Library has i
 
 // ---- 5. Changes only ----
 
-test('Changes only sits on the band, next to what is compared, only while a comparison is on, and says which of the two is pressed', async () => {
+test('Changes only is among the tools of the diagram, not on the band, only while a comparison is on, and says which of the two is pressed', async () => {
   const off = await open('');
+  assert.doesNotMatch(off.sandbox.renderDiagramCanvasHtml(null, '', null), /Changes only|set-changes-only/, 'nothing is compared: nothing to choose');
   assert.doesNotMatch(off.sandbox.renderPlateauBandHtml(), /Changes only|set-changes-only/);
   assert.doesNotMatch(off.sandbox.renderTopPanelHtml(), /Changes only|set-changes-only/, 'not in the top bar any more');
   const { sandbox } = await open('as-is');
-  const band = sandbox.renderPlateauBandHtml();
-  assert.ok(band.indexOf('data-action="compare-future"') < band.indexOf('data-action="set-changes-only"') && band.indexOf('data-action="set-changes-only"') < band.indexOf('class="band-status"'));
-  assert.match(band, /<span class="button-group changes-switch" role="group" aria-label="What the diagrams draw of the comparison"><button type="button" data-action="set-changes-only" data-value="0" aria-pressed="true"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="false"[^>]*>Changes only<\/button><\/span>/);
+  assert.doesNotMatch(sandbox.renderPlateauBandHtml(), /Changes only|set-changes-only/, 'the band chooses the plateaus and does nothing else (#98)');
+  for (const tools of [sandbox.renderDiagramCanvasHtml(null, '', null), sandbox.renderDiagramCanvasHtml({ name: 'Shop', id: 'shop', reference: 'shop' }, '', null)]) {
+    assert.ok(tools.indexOf('data-action="toggle-hide-unlinked"') < tools.indexOf('data-action="set-changes-only"') && tools.indexOf('data-action="set-changes-only"') < tools.indexOf('aria-label="Show"'), 'in the toolbar, after Hide unlinked');
+    assert.match(tools, /<span class="button-group changes-switch" role="group" aria-label="What the diagram draws of the comparison"><button type="button" data-action="set-changes-only" data-value="0" aria-pressed="true"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="false"[^>]*>Changes only<\/button><\/span>/);
+  }
   click(sandbox, { 'data-action': 'set-changes-only', 'data-value': '1' });
-  assert.match(sandbox.renderPlateauBandHtml(), /data-value="0" aria-pressed="false"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="true"/);
+  assert.match(sandbox.renderDiagramCanvasHtml(null, '', null), /data-value="0" aria-pressed="false"[^>]*>Everything<\/button><button type="button" data-action="set-changes-only" data-value="1" aria-pressed="true"/);
+  assert.match(sandbox.renderDiagramCanvasHtml(null, '', { view: { id: 'v1' }, isMap: true, hideUnlinked: false, shows: undefined }), /set-changes-only/, 'the page of a view in the Library has it too: the switch is the diagram\'s wherever it is drawn');
 });
 
 test('Changes only reaches the kernel as only_changes, for the Map and for the diagram of an element; without it, nothing is added', async () => {

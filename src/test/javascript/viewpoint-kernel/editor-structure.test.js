@@ -99,9 +99,10 @@ test('the pages of Timeline are in a bar under the band: Plateaus, Applications,
     sandbox.setPerspective(page);
     assert.equal(sandbox.renderPageTabsHtml(), '', page + ' has no pages below it');
     assert.doesNotMatch(sandbox.renderShellHtml(), /id="page-tabs"/);
+    assert.doesNotMatch(sandbox.renderShellHtml(), /id="plateau-band"/, page + ' has no band either (wave 015, run 0097, #98)');
   }
   sandbox.setPerspective('files');
-  assert.match(sandbox.renderShellHtml(), /grid-rows-\[auto_auto_minmax\(0,1fr\)\]/, 'the band and no pages: two rows above the page');
+  assert.match(sandbox.renderShellHtml(), /grid-rows-\[auto_minmax\(0,1fr\)\]/, 'neither the band nor pages: one row above the page');
 });
 
 test('a click on a page of the bar opens it, with its own address', async () => {
@@ -688,6 +689,6 @@ test('the status of the Plateaus page does not promise a panel that is not there
   assert.match(stripTags(sandbox.renderPlateausPageHtml()), /Buy the commerce platform is compared with Monolith: the Changes panel on the right lists what differs\./);
   // a plateau the comparison cannot be made on
   run(sandbox, "comparisonState = () => ({ problems: ['x'] })");
-  assert.match(stripTags(sandbox.renderPlateausPageHtml()), /compared with Monolith, but the two cannot be compared: the band says what is wrong\./);
+  assert.match(stripTags(sandbox.renderPlateausPageHtml()), /compared with Monolith, but the two cannot be compared: the diagram of Applications says why./);
   assert.ok(state.layers.compare);
 });

@@ -13,6 +13,7 @@ const vm = require('node:vm');
 const { createApp } = require('./harness');
 const { memFolder } = require('./mem-folder');
 const { click } = require('./library-page');
+const { chooseOnBand } = require('./layered-folders');
 
 const LAYERED = path.resolve(__dirname, '../../resources/brightcart/layered');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
@@ -81,7 +82,7 @@ test('#/timeline opens Applications, whatever follows it, and the page then writ
   assert.equal(state.layers.current, 'baseline');
 });
 
-test('the page Plateaus makes a plateau and edits one: the controls of the band are on it, so nothing is lost while the band still has them', async () => {
+test('the page Plateaus makes a plateau and edits one: the controls are on it and nowhere else (the band is read-only)', async () => {
   const { sandbox } = await openLayered();
   sandbox.drawPlateau('saas');
   const page = sandbox.renderPlateausPageHtml();
@@ -89,8 +90,7 @@ test('the page Plateaus makes a plateau and edits one: the controls of the band 
   assert.match(page, /writing in: <strong>Buy the commerce platform<\/strong> <code>saas<\/code>/);
   assert.match(page, /data-action="plateau-create" data-plateau="saas"[^>]*>New plateau</);
   assert.match(page, /data-action="plateau-edit" data-plateau="saas"[^>]*>Edit plateau</);
-  assert.doesNotMatch(page, /id="band-writing"/, 'the band owns that id: one id per document');
-  assert.match(sandbox.renderPlateauBandHtml(), /id="band-writing"/, 'and the band keeps its controls until W-9 takes them away');
+  assert.doesNotMatch(sandbox.renderPlateauBandHtml(), /band-writing|plateau-create|plateau-edit/, 'and not on the band');
   click(sandbox, { 'data-action': 'plateau-edit', 'data-plateau': 'saas' });
   assert.equal(run(sandbox, 'appDialog').kind, 'plateau-form');
   assert.equal(run(sandbox, 'appDialog').mode, 'edit');
@@ -228,7 +228,7 @@ test('choosing a plateau is an entry of the history, and Back and Forward betwee
   const history = sandbox.__history;
   const start = history.entries.length;
   assert.equal(sandbox.location.hash, '#/timeline/applications');
-  click(sandbox, { 'data-action': 'draw-plateau', 'data-plateau': 'saas' });
+  chooseOnBand(sandbox, 'plateau', 'saas');
   assert.equal(sandbox.location.hash, '#/timeline/applications?plateau=saas');
   assert.equal(history.entries.length, start + 1, 'one entry for the plateau');
   assert.deepEqual(history.entries.slice(-2), ['#/timeline/applications', '#/timeline/applications?plateau=saas'], 'the place before is kept, not rewritten');
@@ -249,7 +249,7 @@ test('choosing a plateau is an entry of the history, and Back and Forward betwee
 
 test('Back across a change of page and of plateau returns to both', async () => {
   const { sandbox, state } = await openLayered();
-  click(sandbox, { 'data-action': 'draw-plateau', 'data-plateau': 'saas' });
+  chooseOnBand(sandbox, 'plateau', 'saas');
   sandbox.setPerspective('files');
   assert.deepEqual([run(sandbox, 'currentPageId()'), state.layers.current], ['files', 'saas']);
   sandbox.history.back();
@@ -261,9 +261,9 @@ test('Back across a change of page and of plateau returns to both', async () => 
 test('a comparison chosen on the band does not add an entry (the address does not change), and the Changes button of the page adds one for its plateau', async () => {
   const { sandbox, state } = await openLayered();
   const history = sandbox.__history;
-  click(sandbox, { 'data-action': 'draw-plateau', 'data-plateau': 'marketplace' });
+  chooseOnBand(sandbox, 'plateau', 'marketplace');
   const entries = history.entries.length;
-  click(sandbox, { 'data-action': 'compare-past' });
+  chooseOnBand(sandbox, 'compare', 'past');
   assert.equal(run(sandbox, 'layerCompareChoice()'), 'past');
   assert.equal(history.entries.length, entries, 'Past is not in the address: it is a choice of whoever looks, kept for the folder');
   click(sandbox, { 'data-action': 'timeline-changes', 'data-plateau': 'saas' });
@@ -274,7 +274,7 @@ test('a comparison chosen on the band does not add an entry (the address does no
 
 test('a plateau chosen is remembered for the folder, as before', async () => {
   const { sandbox } = await openLayered();
-  click(sandbox, { 'data-action': 'draw-plateau', 'data-plateau': 'saas' });
+  chooseOnBand(sandbox, 'plateau', 'saas');
   typeAddress(sandbox, '#/files?plateau=marketplace&compare=past');
   assert.equal(run(sandbox, 'recalledPlateauId()'), 'marketplace', 'an address that draws a plateau is a choice made');
   assert.equal(run(sandbox, 'recalledComparison()'), 'past');

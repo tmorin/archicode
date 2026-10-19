@@ -15,7 +15,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createApp, openFixture } = require('./harness');
 const { memFolder } = require('./mem-folder');
-const { inPlateau, layeredFiles, openLayered, compareWith } = require('./layered-folders');
+const { inPlateau, layeredFiles, openLayered, compareWith, bandOf } = require('./layered-folders');
 
 const HTML = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
 const CSS = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
@@ -127,16 +127,16 @@ test('comparing on the band reads the other plateau as the baseline, says so on 
   assert.doesNotMatch(sandbox.renderTopPanelHtml(), /compare-to|Compare to|data-action="set-plateau"/, 'the top bar has no selector and no list to compare to: the band is the way');
   compareWith(sandbox, 'as-is');
   assert.equal(state.baseline.plateau.id, 'as-is');
-  let band = sandbox.renderPlateauBandHtml();
-  assert.match(band, /<div class="band-node band-compared" data-plateau="as-is">/);
-  assert.match(band, /To be compared with As is\./);
+  let band = bandOf(sandbox);
+  assert.equal(band.compared, 'plateau:as-is', 'the list says what is compared');
+  assert.match(band.compare.find((o) => o.selected).label, /^As is/);
   compareWith(sandbox, 'interim');
   assert.equal(state.baseline.plateau.id, 'interim');
   compareWith(sandbox, '');
   assert.equal(state.baseline, null);
-  band = sandbox.renderPlateauBandHtml();
-  assert.match(band, /Nothing compared\./);
-  assert.doesNotMatch(band, /band-compared/);
+  band = bandOf(sandbox);
+  assert.equal(band.compared, '');
+  assert.equal(band.compare.find((o) => o.selected).label, 'Nothing');
 });
 
 test('the same plateau compared with itself compares nothing', async () => {

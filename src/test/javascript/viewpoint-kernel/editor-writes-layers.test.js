@@ -736,21 +736,22 @@ test('a new parent for a plateau changes what it inherits: it asks first, and a 
   assert.equal(state.plateauTree.nodes.get('saas').parent, 'baseline');
 });
 
-test('the band says where a write goes, and has the controls of a plateau', async () => {
+test('the page Plateaus says where a write goes and has the controls of a plateau; the band has none (wave 015, run 0097, #98)', async () => {
   const { sandbox } = await openLayeredCopy('saas');
   const band = sandbox.renderPlateauBandHtml();
-  assert.match(band, /<span class="band-writing-label" role="status">writing in: <strong>Buy the commerce platform<\/strong> <code>saas<\/code><\/span>/);
-  assert.match(band, /data-action="plateau-create" data-plateau="saas"/);
-  assert.match(band, /data-action="plateau-edit" data-plateau="saas"/);
+  assert.doesNotMatch(band, /writing in|data-action="plateau-(create|edit)"|New plateau|Edit plateau/, 'the band chooses the plateau drawn and the comparison, and writes nothing');
   const timeline = sandbox.renderPlateausPageHtml();
+  assert.match(timeline, /<span class="band-writing-label" role="status">writing in: <strong>Buy the commerce platform<\/strong> <code>saas<\/code><\/span>/);
+  assert.match(timeline, /data-action="plateau-create" data-plateau="saas"[^>]*>New plateau</);
+  assert.match(timeline, /data-action="plateau-edit" data-plateau="saas"[^>]*>Edit plateau</);
   assert.match(timeline, /data-action="plateau-create" data-plateau="baseline"[^>]*>New plateau after this</);
   assert.match(timeline, /data-action="plateau-edit" data-plateau="marketplace"[^>]*>Edit</);
   // a workspace with no plateau offers to make the first one, and does not say where it writes: it has one plateau
   const plain1 = await openIn({ 'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n' });
-  const band1 = plain1.sandbox.renderPlateauBandHtml();
-  assert.doesNotMatch(band1, /writing in:/);
-  assert.match(band1, /data-action="plateau-create" data-plateau="baseline"/);
-  assert.doesNotMatch(band1, /data-action="plateau-edit"/);
+  const page1 = plain1.sandbox.renderPlateausPageHtml();
+  assert.doesNotMatch(page1, /writing in:/);
+  assert.match(page1, /data-action="plateau-create" data-plateau="baseline"/);
+  assert.doesNotMatch(page1, /data-action="plateau-edit"/);
 });
 
 test('the form of a plateau creates it: the dialog reads its fields, refuses in place, and draws the new plateau', async () => {
