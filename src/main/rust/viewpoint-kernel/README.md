@@ -10,10 +10,10 @@ that reached it among its children. `pinned` keeps the relationships that touch 
 elements out. Pinned on one element with nothing open it draws that element's overview, which the tests check against
 the views the CLI generates.
 
-A second, a third, a fourth and a fifth entry point sit next to `compute`: `apply_facet` (the facets, see below), `compare`, which says what
+A second, a third, a fourth, a fifth and a sixth entry point sit next to `compute`: `apply_facet` (the facets, see below), `compare`, which says what
 changed between two plateaus of an architecture (see "Comparing two plateaus"), `apply_patches`, which changes the graph of a
 plateau by the ordered patches of its layer (see "Applying the patches of a plateau"), and `states`, which says the seven state words of a
-comparison once (see "The state words"). What `compare` says can be drawn: `compute`
+comparison once (see "The state words"), and `quiet`, which says which elements have nothing to draw, in one call (see "Which elements have nothing to draw"). What `compare` says can be drawn: `compute`
 tells every box and link of a view what changed (see "Views of a comparison").
 
 It is written once and runs in both places that draw views, so they cannot disagree:
@@ -288,6 +288,32 @@ compared the lists). It takes no input (what is sent is not read) and answers
 The CLI reads it once, on first use (`KernelStates`), and the editor when it loads the module (the four arrays of the page are filled from it and have
 no word of their own). What a host keeps is the look of each word (a glyph, a line style), not the list: a test of each host fails when a state of the kernel
 has no look.
+
+## Which elements have nothing to draw
+
+The editor greys, in its tree, the elements that a facet leaves with nothing to draw. It used to ask `compute` for the view of every element, one call each (420 ms for
+the 82 elements of the largest plateau of the Brightcart fixture, issue #81: the input, with every element of the model, was read, filtered and drawn once per
+element). `quiet` (`src/lib.rs`, the exported function `quiet`, `quiet_json` in Rust) answers for all of them in one call: the input is read once, the
+`change`s are checked once and the facet is applied once, then the view of each element is built as `compute` builds it.
+
+```
+input : the input of compute, without `focal`, and
+        focals: [ { reference, viewpoint? } ]        (the elements to ask about; the viewpoint of the input when one says none; never "map")
+output: { version, quiet: [ reference ] }            (those of `focals` that have nothing to draw, in the order given)
+      | { error }
+```
+
+- **Nothing to draw** is the rule the editor applied to the answer of `compute`: the view has no link that is not `secondary`. A view that cannot be built (the
+  facet removed the element, or what the view needs of it, so `compute` says `dangling reference` or `unknown focal element`) is quiet when the input has a `facet`
+  and is not when it has none (the element has no view, which is not the same as an empty one).
+- **One error for all of them**: an input that cannot be read, a `change` that is not a word, a facet that fails and a `focals` that is missing are the `{error}`
+  that `compute` gives for each of them, once. The editor reads an error through a facet as "every element is quiet", as it did.
+- **Why an entry point and not an extension of `compute`.** `compute` answers with one view; a list of views would change the shape of its answer for every host,
+  and `expandable` (which builds the view again for every box that could open) and the stereotypes, which `quiet` does not need, would be built for nothing. A new entry point is additive: nothing the others
+  take or give changes (the views of every workspace of the repository are byte for byte those of the commit before), the number stays 5, and the answer says it.
+  The command line has no use for it (it draws views, it does not grey a tree), so `ViewpointKernel.java` does not expose it.
+- **The cases** are in `src/quiet_tests.rs`: the answer is compared, for the three viewpoints and for facets that remove relationships, one element, a parent and
+  everything, with what one `compute` per element says. The editor's tests (`quiet-references.test.js`) do the same through the embedded module on the layered Brightcart.
 
 ## Applying the patches of a plateau
 

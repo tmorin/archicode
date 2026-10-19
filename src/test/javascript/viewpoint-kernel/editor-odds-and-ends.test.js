@@ -50,7 +50,7 @@ const SETTINGS = '  current: next\n' +
 
 /**
  * The page on the ferry company, as layers (see layered-folders.js: `now` and `next` are siblings over an empty baseline), `next` drawn and compared on the band with `compareTo`,
- * with the counters: `kernelInputs` (the walks of a model that make a kernel input), `computes` (the kernel's `compute`) and `models`
+ * with the counters: `kernelInputs` (the walks of a model that make a kernel input), `computes` (the kernel's `compute`), `quiets` (its `quiet`) and `models`
  * (the serialisations of a model by `JSON.stringify`), a canvas and a recipe the test moves, and `showDiagramScene` collecting what the page shows.
  */
 async function open({ compareTo = null, files = FILES, folderHandle = null } = {}) {
@@ -71,12 +71,13 @@ async function open({ compareTo = null, files = FILES, folderHandle = null } = {
   sandbox.__scenes = [];
   sandbox.__recipe = null;
   run(sandbox, `
-    globalThis.__count = { kernelInputs: 0, computes: 0, models: 0 };
+    globalThis.__count = { kernelInputs: 0, computes: 0, quiets: 0, models: 0 };
     showDiagramScene = (scene) => { __scenes.push(scene); };
     diagramRecipeOf = () => __recipe;
     loadElk = async () => null; // no layout engine here: the drawing is the list of relationships, which is the page's own fallback and is cached all the same
     { const toKernel = toKernelElements; toKernelElements = function (...a) { __count.kernelInputs++; return toKernel.apply(this, a); }; }
     { const kernel = loadedKernel; const compute = kernel.compute; kernel.compute = function (input) { __count.computes++; return compute.call(this, input); }; }
+    { const kernel = loadedKernel; const quiet = kernel.quiet; kernel.quiet = function (input) { __count.quiets++; return quiet.call(this, input); }; } // wave 015, issue #81: the quiet references are one call per layer
     { const stringify = JSON.stringify; JSON.stringify = function (...a) { const text = stringify.apply(this, a); if (typeof text === 'string' && text.includes('"reference"') && text.includes('"relationships"')) __count.models++; return text; }; }
   `);
   const count = () => plain(run(sandbox, '__count'));
@@ -291,13 +292,13 @@ test('#37: a drawing computed before an edit is not served after it, even when t
 
 // ---- 3. The quiet references ----
 
-test('#37: the quiet references of two renders of an unchanged model are the same set, found without a kernel input, a compute or a serialised model', async () => {
+test('#37: the quiet references of two renders of an unchanged model are the same set, found without a kernel input, a kernel call or a serialised model', async () => {
   for (const compareTo of [null, 'now']) {
     const ctx = await open({ compareTo });
     const facet = ctx.facet('no-ferry');
     const first = ctx.sandbox.quietReferencesThroughFacet(ctx.kernel, facet);
     const before = ctx.count();
-    assert.ok(before.kernelInputs > 0 && before.computes > 0);
+    assert.ok(before.kernelInputs > 0 && before.quiets > 0 && before.computes === 0, 'the first answer: one call per layer, no compute');
     for (let i = 0; i < 3; i++) assert.equal(ctx.sandbox.quietReferencesThroughFacet(ctx.kernel, facet), first, 'the same answer, not a copy of it');
     assert.deepEqual(ctx.count(), before);
   }
@@ -311,11 +312,11 @@ test('#37: the quiet references are computed again after a change of the model, 
   const noFerry = ctx.facet('no-ferry');
   const noRadio = ctx.facet('no-radio');
   const step = (label, facet, change) => {
-    const before = ctx.count().computes;
+    const before = ctx.count().quiets;
     const prior = quiet(facet);
     change();
     const after = quiet(facet);
-    assert.ok(ctx.count().computes > before, label + ': computed');
+    assert.ok(ctx.count().quiets > before, label + ': computed');
     assert.notEqual(after, prior, label + ': another set');
     assert.deepEqual(sorted(after), fresh(facet), label + ': the set of a page without a cache');
     return after;
@@ -334,10 +335,10 @@ test('#37: the quiet references are computed again after a change of the model, 
   step('Changes only', noFerry, () => { ctx.sandbox.__state().changesOnly = true; });
   // a comparison turned off, then on with the other plateau
   const prior = quiet(noFerry);
-  const computes = ctx.count().computes;
+  const computes = ctx.count().quiets;
   compareWith(ctx.sandbox, '');
   const alone = quiet(noFerry);
-  assert.ok(ctx.count().computes > computes, 'no comparison: computed');
+  assert.ok(ctx.count().quiets > computes, 'no comparison: computed');
   assert.notEqual(alone, prior);
   assert.deepEqual(sorted(alone), fresh(noFerry));
 });

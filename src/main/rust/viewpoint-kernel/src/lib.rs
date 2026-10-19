@@ -104,6 +104,10 @@
 //!   - the elements of `compare`'s union say `contains_changes` (and `contains_more_than_wording`), additive keys (issue #96, wave 015): the number stays 5.
 //!     `compute` removes them from its input, so they are no free-form field for a facet.
 //! `compute`, `apply_facet` and `apply_patches` take what they took; their answers say the version, 5, and an item of a comparison gained `contains_changes`.
+//!
+//! A sixth entry point says which elements have nothing to draw, `quiet` (issue #81, wave 015; additive, the number stays 5; see `quiet_json`):
+//!   input : the input of `compute` without `focal`, and `focals: [{reference, viewpoint?}]`
+//!   output: { version, quiet: [reference] } | { error }
 mod compare;
 mod facet;
 mod patch;
@@ -1422,21 +1426,75 @@ fn check_changes(input: &mut Input) -> Result<(), String> {
     Ok(())
 }
 
+/// What `compute` and `quiet` do to an input before they build a view: check the `change`s, then apply the facet to the elements (it is taken out of
+/// the input, which then says `application_links` and `hide_unlinked` for it). Returns the warnings of the facet.
+fn prepare(input: &mut Input) -> Result<Vec<String>, String> {
+    check_changes(input)?;
+    match input.facet.take() {
+        Some(facet) => {
+            input.application_links = true;
+            input.hide_unlinked |= facet.hide_unlinked;
+            facet::apply_to_input(input, &facet)
+        }
+        None => Ok(Vec::new()),
+    }
+}
+
+/// An element `quiet` is asked about: its reference, and the viewpoint to draw it in when it is not the one of the input.
+#[derive(Deserialize)]
+struct QuietFocal {
+    reference: String,
+    #[serde(default, deserialize_with = "null_as_default")]
+    viewpoint: String,
+}
+
+/// Which elements have nothing to draw (the sixth entry point, issue #81): the input of `compute`, without `focal`, and `focals`, the
+/// elements to ask about (each `{reference, viewpoint?}`, the viewpoint of the input when it says none). The facet and the checks of the input are
+/// done once, then the view of each focal element is built as `compute` would build it, and the answer is the references, in the order given, whose view
+/// has no link that is not `secondary` (the view an author sees empty). A view that cannot be built is one of them when the input has a `facet` (the
+/// facet removed the element, or what it needs: the same answer `compute` gives as an error) and none otherwise. An input that cannot be read, a
+/// facet that fails and a `change` that is not a word are the one `{error}` for all the focal elements, as they are for `compute`. The map has no focal
+/// element and is refused. `warnings` of the facet are not repeated: `compute` says them.
+pub fn quiet_json(input: &str) -> String {
+    let result = serde_json::from_str::<serde_json::Value>(input)
+        .map_err(|e| format!("invalid input: {e}"))
+        .and_then(|mut value| {
+            let focals = value
+                .as_object_mut()
+                .and_then(|object| object.remove("focals"))
+                .ok_or_else(|| "invalid input: missing field `focals`".to_string())?;
+            let focals = serde_json::from_value::<Vec<QuietFocal>>(focals).map_err(|e| format!("invalid input: {e}"))?;
+            let mut input = serde_json::from_value::<Input>(value).map_err(|e| format!("invalid input: {e}"))?;
+            let through_facet = input.facet.is_some();
+            prepare(&mut input)?;
+            let default_viewpoint = input.viewpoint.clone();
+            let mut quiet: Vec<String> = Vec::new();
+            for focal in focals {
+                input.viewpoint = if focal.viewpoint.is_empty() { default_viewpoint.clone() } else { focal.viewpoint };
+                if input.viewpoint == "map" {
+                    return Err("the map has no focal element: nothing to ask quiet about".to_string());
+                }
+                input.focal = focal.reference.clone();
+                let nothing_to_draw = match build(&input) {
+                    Ok((_, links)) => links.iter().all(|link| link.secondary),
+                    Err(_) => through_facet,
+                };
+                if nothing_to_draw {
+                    quiet.push(focal.reference);
+                }
+            }
+            Ok(serde_json::json!({ "version": CONTRACT_VERSION, "quiet": quiet }).to_string())
+        });
+    result.unwrap_or_else(|e| serde_json::json!({ "error": e }).to_string())
+}
+
 pub fn compute_json(input: &str) -> String {
     // the entries of `pinned`, `opened` and `hidden` that the map cannot find, when it fails on one of them (see `dangling_in_lists`)
     let mut dangling: Vec<String> = Vec::new();
     let result = serde_json::from_str::<Input>(input)
         .map_err(|e| format!("invalid input: {e}"))
         .and_then(|mut input| {
-            check_changes(&mut input)?;
-            let warnings = match input.facet.take() {
-                Some(facet) => {
-                    input.application_links = true;
-                    input.hide_unlinked |= facet.hide_unlinked;
-                    facet::apply_to_input(&mut input, &facet)?
-                }
-                None => Vec::new(),
-            };
+            let warnings = prepare(&mut input)?;
             let (mut items, links) = build(&input).map_err(|e| {
                 dangling = dangling_in_lists(&input);
                 e
@@ -1526,6 +1584,12 @@ pub unsafe extern "C" fn compare(ptr: *const u8, len: usize) -> usize {
     respond(ptr, len, compare_json)
 }
 
+/// Which elements have nothing to draw (contract 5, issue #81): see `quiet_json`.
+#[no_mangle]
+pub unsafe extern "C" fn quiet(ptr: *const u8, len: usize) -> usize {
+    respond(ptr, len, quiet_json)
+}
+
 /// The patches of a plateau: see `apply_patches_json`.
 #[no_mangle]
 pub unsafe extern "C" fn apply_patches(ptr: *const u8, len: usize) -> usize {
@@ -1554,6 +1618,9 @@ mod change_tests;
 
 #[cfg(test)]
 mod patch_tests;
+
+#[cfg(test)]
+mod quiet_tests;
 
 #[cfg(test)]
 mod tests {
