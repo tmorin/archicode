@@ -1,0 +1,35 @@
+# A story belongs to no plateau: it is the same story whatever plateau is drawn. A step may say where it is told (`at`) and what it is
+# compared with (`against`), with the id of a plateau; a step that says neither is drawn in the plateau the reader has drawn.
+header:
+  kind: "archicode.morin.io/story"
+  version: "1"
+content:
+  id: "migration"
+  name: "From the shop to the new shop"
+  description: "What the new shop changes, one look at a time."
+  steps:
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "shop"
+      at: "baseline"
+      text: "Today the shop is one system: orders, invoices and receipts, and an inventory of its own."
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "shop"
+      at: "to-be"
+      against: "baseline"
+      text: "The same system next year, with what changed marked: orders are split in two, invoices and receipts are merged."
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "warehouse"
+      at: "to-be"
+      text: "The inventory moved to the warehouse."
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "shop.web"
+      against: "baseline"
+      text: "The web site in the plateau that is drawn, compared with where we are today."

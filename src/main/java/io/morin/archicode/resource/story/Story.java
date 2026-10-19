@@ -89,5 +89,18 @@ public class Story {
          * What to say about the view, as plain text.
          */
         String text;
+
+        /**
+         * The plateau the step is told at (wave 015, run 0101, issue #24). Absent: the plateau that is drawn. It is not the
+         * {@code plateau:} of a header, which says what a manifest belongs to: a story belongs to no plateau, a step may
+         * be told at one. Only the editor plays it; the command line checks that it names a plateau.
+         */
+        String at;
+
+        /**
+         * The plateau the step is compared with, as {@code archicode diff --plateau <at> --against <against>} would. Absent:
+         * the step is not a comparison. With no {@link #at}, the step is told at the plateau that is drawn.
+         */
+        String against;
     }
 }

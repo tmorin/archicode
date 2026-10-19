@@ -67,6 +67,14 @@ function said(sandbox, state, compared) {
     if (problem) viewProblems[view.id] = problem;
   }
   if (Object.keys(viewProblems).length) out.viewProblems = viewProblems;
+  const stepProblems = {}; // a step of a story that the plateau drawn cannot draw, or whose own plateau lacks what it names (run 0101): story -> step number -> the sentence of the page
+  for (const story of state.workspace ? sandbox.storiesList() : []) {
+    sandbox.storySteps(story).forEach((step, i) => {
+      const problem = sandbox.stepProblem(step);
+      if (problem) (stepProblems[story.id] = stepProblems[story.id] || {})[i + 1] = problem;
+    });
+  }
+  if (Object.keys(stepProblems).length) out.stepProblems = stepProblems;
   if (state.baseline && state.baseline.problem) out.baselineProblem = state.baseline.problem;
   const errors = state.manifestFiles.filter((f) => f.error);
   if (errors.length) out.manifestErrors = Object.fromEntries(errors.map((f) => [f.relPath, f.error]));
@@ -115,7 +123,7 @@ test('the editor sentences are the command line sentences, up to the capital, th
     const bare = new Set(lines.map((line) => normal(line.replace(FILE, '')))); // without the file: the editor's badge on a file says the sentence of the file alone
     for (const step of c.editor) {
       for (const [key, value] of Object.entries(step.expect)) {
-        if (typeof value === 'number' || key === 'viewProblems') continue; // a count, told by a badge and not by a sentence; what the page says in a view it cannot draw here
+        if (typeof value === 'number' || key === 'viewProblems' || key === 'stepProblems') continue; // a count, told by a badge and not by a sentence; what the page says in a view it cannot draw here
         const texts = typeof value === 'string' ? [value] : Array.isArray(value) ? value : Object.values(value);
         const known = key === 'manifestErrors' || key === 'fatalError' ? bare : whole; // the banner for workspace.yaml names the file in its heading
         for (const text of texts) assert.ok(known.has(normal(text)), c.id + ': the editor says (' + key + ') "' + text + '" and the command line does not say it');

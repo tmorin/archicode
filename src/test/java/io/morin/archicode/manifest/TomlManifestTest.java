@@ -214,9 +214,10 @@ class TomlManifestTest {
     }
 
     /**
-     * The kinds no manifest of the repository uses: a view and a story are written in the manual (README.adoc, "Stories")
-     * and the examples keep them in their workspace file, so these two have a sample of their own below. A shipped file that
-     * starts to use one fails this test: the sample is then taken from the files.
+     * The kinds no manifest of the repository uses: a view is written in the manual (README.adoc, "Stories") and the examples
+     * keep it in their workspace file, so it has a sample of its own below. A shipped file that starts to use one fails this
+     * test: the sample is then taken from the files (the story went that way in wave 015, run 0101: the example of the
+     * plateaus has one).
      */
     private static final Map<ManifestKind, String> SAMPLES = Map.of(
         ManifestKind.VIEW,
@@ -232,26 +233,30 @@ class TomlManifestTest {
           properties:
             element: shop
             wrap: true
-        """,
-        ManifestKind.STORY,
-        """
-        header:
-          kind: archicode.morin.io/story
-          version: "1"
-        content:
-          id: order_flow
-          name: How an order travels
-          description: From the shop to the payment provider.
-          steps:
-            - view: shop_overview
-              text: The shop receives the order.
-            - viewpoint: overview
-              layer: application
-              properties:
-                element: shop
-              text: And pays.
         """
     );
+
+    /**
+     * A story of a workspace that has no plateau (so no step is told at one). The shipped files have stories now, so the sample
+     * is only for {@link #shouldGiveTheSameModelFromTheTomlTwinOfAViewAndAStory}.
+     */
+    private static final String STORY_SAMPLE = """
+    header:
+      kind: archicode.morin.io/story
+      version: "1"
+    content:
+      id: order_flow
+      name: How an order travels
+      description: From the shop to the payment provider.
+      steps:
+        - view: shop_overview
+          text: The shop receives the order.
+        - viewpoint: overview
+          layer: application
+          properties:
+            element: shop
+          text: And pays.
+    """;
 
     @Test
     void shouldFindEveryKindOfManifestInTheShippedFilesButTheOnesWithASample() {
@@ -318,8 +323,8 @@ class TomlManifestTest {
                 folder.resolve("manifests/shop." + format),
                 format.equals("yaml") ? SHOP_YAML : tomlOfText(SHOP_YAML)
             );
-            for (val kind : SAMPLES.keySet()) {
-                val text = SAMPLES.get(kind);
+            for (val kind : List.of(ManifestKind.VIEW, ManifestKind.STORY)) {
+                val text = kind == ManifestKind.VIEW ? SAMPLES.get(kind) : STORY_SAMPLE;
                 Files.writeString(
                     folder.resolve("manifests/" + kind.name().toLowerCase() + "." + format),
                     format.equals("yaml") ? text : tomlOfText(text)

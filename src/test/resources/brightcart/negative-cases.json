@@ -1,5 +1,5 @@
 {
-  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of workspace.yaml:`, `Could not read/parse workspace.yaml: `), and the position `(line L, column C)` of a file is not told: the page reads a file into a tree that has no positions, and the column the command line gives is where its reader stopped, so a copy of it would be a guess (decided in wave 015, run 0092; brightcart-negative.test.js pins that no sentence of the page carries one). A null where a list or an object is expected is absent in both tools (N59 to N63, M65 to M73), a number is no kind and no value of an enum (N64, N66, N67), a list is no element (N65), the facets are told in kebab-case (N72 to N75, the camel-case spelling is read too, N76), and `0x1F` for an `int` is a known difference (N77, issue #103). One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type. Run 0100 (wave 015, W-12, issues #100 and #86) adds N79 to N82: a view and a story belong to no plateau, `plateau:` in their header is ignored with a warning (N79), what they name must exist in at least one plateau (N80, `entryProblems` of the page), and a name that another plateau has but the plateau drawn lacks is left out of a map and makes any other view undrawable in this plateau, which the command line skips with a warning and the page says in the view (N81, N82: `viewProblems` of the page, the sentence of the page alone).",
+  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of workspace.yaml:`, `Could not read/parse workspace.yaml: `), and the position `(line L, column C)` of a file is not told: the page reads a file into a tree that has no positions, and the column the command line gives is where its reader stopped, so a copy of it would be a guess (decided in wave 015, run 0092; brightcart-negative.test.js pins that no sentence of the page carries one). A null where a list or an object is expected is absent in both tools (N59 to N63, M65 to M73), a number is no kind and no value of an enum (N64, N66, N67), a list is no element (N65), the facets are told in kebab-case (N72 to N75, the camel-case spelling is read too, N76), and `0x1F` for an `int` is a known difference (N77, issue #103). One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type. Run 0100 (wave 015, W-12, issues #100 and #86) adds N79 to N82: a view and a story belong to no plateau, `plateau:` in their header is ignored with a warning (N79), what they name must exist in at least one plateau (N80, `entryProblems` of the page), and a name that another plateau has but the plateau drawn lacks is left out of a map and makes any other view undrawable in this plateau, which the command line skips with a warning and the page says in the view (N81, N82: `viewProblems` of the page, the sentence of the page alone). Run 0101 (wave 015, W-13, issue #24) adds N83 to N85: a step of a story may say `at` (the plateau it is told at) and `against` (the plateau it is compared with); each must be a plateau and the two cannot be one plateau (N83, N85: `entryProblems` of the page, the sentence of both tools), and a name that the plateau of the step lacks is no mistake (N84: the command line does not draw stories and says nothing, the page says it in the step, `stepProblems`: story -> step number -> the sentence of the page alone). A workspace that has no plateau refuses such a step too: the cases here are all layered, so `StepPlateausTest.java` and `story-steps-plateaus.test.js` say it.",
   "cases": [
     {
       "id": "N7",
@@ -2957,6 +2957,148 @@
           "plateau": "inhouse",
           "compareTo": null,
           "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N83",
+      "variant": "-",
+      "title": "#24: a step of a story that is told at a plateau, or compared with one, that is none is one sentence with its story, its file and its number (the page tells it as the other mistakes of the stories)",
+      "ops": [
+        {
+          "op": "write",
+          "file": "catalog/story.tour.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"tour\"\n  steps:\n    - viewpoint: \"overview\"\n      layer: \"application\"\n      properties:\n        element: \"shop\"\n      at: inhous\n    - viewpoint: \"overview\"\n      layer: \"application\"\n      properties:\n        element: \"shop\"\n      at: baseline\n      against: marketplac\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "baseline"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: the story `tour` (`catalog/story.tour.yaml`) step 1 says `at: inhous`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse`, `marketplace`, `saas`)",
+            "error: the story `tour` (`catalog/story.tour.yaml`) step 2 says `against: marketplac`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse`, `marketplace`, `saas`)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "baseline",
+          "compareTo": null,
+          "expect": {
+            "entryProblems": [
+              "the story `tour` (`catalog/story.tour.yaml`) step 1 says `at: inhous`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse`, `marketplace`, `saas`)",
+              "the story `tour` (`catalog/story.tour.yaml`) step 2 says `against: marketplac`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse`, `marketplace`, `saas`)"
+            ],
+            "stepProblems": {
+              "tour": {
+                "1": "The plateau “inhous” is not a plateau of this workspace.",
+                "2": "The plateau “marketplac” is not a plateau of this workspace."
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N84",
+      "variant": "-",
+      "title": "#24: a step told at a plateau that lacks a name it carries is no mistake: the command line loads the plateau and says nothing (it does not draw stories), the page says in the step that the element is not in the plateau of the step, whichever plateau is drawn",
+      "ops": [
+        {
+          "op": "write",
+          "file": "catalog/story.tour.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"tour\"\n  steps:\n    - viewpoint: \"overview\"\n      layer: \"application\"\n      properties:\n        element: \"commerce.catalog\"\n      at: saas\n    - viewpoint: \"overview\"\n      layer: \"application\"\n      properties:\n        element: \"commerce.catalog\"\n      at: inhouse\n      against: saas\n    - viewpoint: \"overview\"\n      layer: \"application\"\n      properties:\n        element: \"commerce.catalog\"\n      against: baseline\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "inhouse"
+          ],
+          "exit": 0,
+          "stderr": []
+        },
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "baseline",
+          "compareTo": null,
+          "expect": {
+            "stepProblems": {
+              "tour": {
+                "1": "The element “commerce.catalog” is not in the plateau “saas”.",
+                "3": "The element “commerce.catalog” is not in the plateau “baseline”."
+              }
+            }
+          }
+        },
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {
+            "stepProblems": {
+              "tour": {
+                "1": "The element “commerce.catalog” is not in the plateau “saas”."
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N85",
+      "variant": "-",
+      "title": "#24: a step that is told at a plateau and compared with the same one is one sentence",
+      "ops": [
+        {
+          "op": "write",
+          "file": "catalog/story.tour.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"tour\"\n  steps:\n    - viewpoint: \"overview\"\n      layer: \"application\"\n      properties:\n        element: \"shop\"\n      at: saas\n      against: saas\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: the story `tour` (`catalog/story.tour.yaml`) step 1 says `at: saas` and `against: saas`: a plateau is never compared with itself"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "entryProblems": [
+              "the story `tour` (`catalog/story.tour.yaml`) step 1 says `at: saas` and `against: saas`: a plateau is never compared with itself"
+            ],
+            "stepProblems": {
+              "tour": {
+                "1": "A plateau is never compared with itself: “saas” is both where the step is told and what it is compared with."
+              }
+            }
+          }
         }
       ]
     }

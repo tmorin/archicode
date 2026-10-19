@@ -405,6 +405,7 @@ public class WorkspaceFactory {
         }
         // there are no plateaus, and `--plateau` and `settings.current` have nothing to name
         requireNoPlateaus(rawWorkspace.getSettings(), plateauId);
+        requireNoPlateauInSteps(parsed, fixedRawWorkspace);
 
         return new Loaded(
             fixedRawWorkspace.toBuilder().views(parsed.views()).stories(parsed.stories()).build(),
@@ -434,6 +435,32 @@ public class WorkspaceFactory {
      */
     private void requireNoPlateaus(Settings settings, String requested) {
         val problems = noPlateausProblems(settings, requested);
+        if (!problems.isEmpty()) {
+            throw new ArchiCodeException("%s", String.join("\n", problems));
+        }
+    }
+
+    /**
+     * Refuse a step of a story that is told at a plateau, or compared with one ({@code at}, {@code against}, wave 015 run 0101),
+     * in a workspace that has no plateau at all: there is nothing for it to name. A layered workspace checks them with the
+     * other names of the stories, once its layers are built ({@link LayerLoader}).
+     */
+    private void requireNoPlateauInSteps(ManifestParser.Parsed parsed, Workspace workspace) {
+        val problems = new ArrayList<String>();
+        for (val entry : LayerLoader.storiesOf(parsed, workspace)) {
+            val steps = entry.item().getSteps();
+            for (int i = 0; i < steps.size(); i++) {
+                problems.addAll(
+                    LayerLoader.stepPlateauProblems(
+                        entry.source(),
+                        entry.item().getId(),
+                        i + 1,
+                        steps.get(i),
+                        List.of()
+                    )
+                );
+            }
+        }
         if (!problems.isEmpty()) {
             throw new ArchiCodeException("%s", String.join("\n", problems));
         }

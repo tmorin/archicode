@@ -593,6 +593,9 @@
   .story-step-tools { display: inline-flex; gap: 0.3rem; margin-left: auto; }
   .story-step-tools button { padding: 0.15rem 0.6rem !important; font-size: 0.8rem; }
   .story-step.broken .story-step-view, .story-view-row.broken .story-view-name { color: var(--danger); }
+  .story-step-plateaus { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0 0 0.3rem; font-size: 0.85rem; }
+  .story-step-plateau select { margin-left: 0.3rem; }
+  .story-bar-plateaus { color: var(--muted); font-size: 0.85rem; }
   .story-step-problem { flex-basis: 100%; color: var(--danger); font-size: 0.85rem; margin: 0 0 0.3rem; }
   .story-add { display: flex; gap: 0.5rem; margin: 0.5rem 0 1rem; }
   .story-view-list { list-style: none; padding: 0; margin: 0; }
@@ -4442,12 +4445,16 @@ function declaredAnywhereCached() {
  * after those of the manifests.
  */
 function entryProblemsOf(settings) {
-  if (!AppState.plateauTree || !AppState.plateauTree.layered) return [];
-  const cache = ensureLayerCache(settings);
-  if (cache.entryProblems !== undefined) return cache.entryProblems;
+  const tree = AppState.plateauTree;
+  const layered = !!(tree && tree.layered);
+  // a workspace with no plateau has no layer cache to keep it in (and little to look at: the steps that name a plateau)
+  const cache = layered ? ensureLayerCache(settings) : null;
+  if (cache && cache.entryProblems !== undefined) return cache.entryProblems;
   const out = [];
-  const declared = declaredAnywhereCached();
+  // what a view or a story step names must exist in a plateau: a workspace with no plateau is not looked at (the editor says a view that cannot be drawn in its place)
+  const declared = layered ? declaredAnywhereCached() : null;
   const told = (noun, id, source, recipe) => {
+    if (!layered) return;
     for (const name of namedByProperties(recipe.properties)) {
       if (!declared[entryLayerOf(recipe.layer)].has(name)) out.push('the ' + noun + ' `' + id + '` (`' + source + '`) names `' + name + '`, which exists in no plateau');
     }
@@ -4455,16 +4462,53 @@ function entryProblemsOf(settings) {
   const files = (kind) => AppState.manifestFiles.filter((mf) => !mf.error && mf.header && mf.content && isPlainObject(mf.content) && manifestKindName(mf.header.kind) === kind);
   // the views and stories of workspace.yaml (an older place for them) come after those of the manifests, unless a manifest has the id: it shadows them (`entriesOf`)
   const legacy = (key, kind) => { const own = new Set(files(kind).map((mf) => String(mf.content.id))); return legacyEntries(key).filter((entry) => !own.has(entry.id)); };
-  for (const mf of files('view')) told('view', mf.content.id, mf.relPath, mf.content);
-  for (const view of legacy('views', 'view')) told('view', view.id, 'workspace.yaml', view);
-  for (const mf of files('story')) {
-    for (const step of Array.isArray(mf.content.steps) ? mf.content.steps : []) if (isPlainObject(step)) told('story', mf.content.id, mf.relPath, step);
+  if (layered) {
+    for (const mf of files('view')) told('view', mf.content.id, mf.relPath, mf.content);
+    for (const view of legacy('views', 'view')) told('view', view.id, 'workspace.yaml', view);
   }
-  for (const story of legacy('stories', 'story')) {
-    for (const step of Array.isArray(story.steps) ? story.steps : []) if (isPlainObject(step)) told('story', story.id, 'workspace.yaml', step);
+  const ids = layered ? tree.ids : [];
+  const broken = !!(tree && tree.problems && tree.problems.length); // a tree that is refused names the plateaus that exist no better than a workspace with none: the tree is what is told
+  const tellSteps = (id, source, steps) => {
+    // the steps are numbered as the command line does: an item with no value in the list is absent (run 0092), so it takes no number
+    (Array.isArray(steps) ? steps : []).filter((step) => step !== null && step !== undefined).forEach((step, i) => {
+      if (!isPlainObject(step)) return;
+      if (!broken) for (const sentence of stepPlateauProblems(source, id, i + 1, step, ids)) out.push(sentence);
+      told('story', id, source, step);
+    });
+  };
+  for (const mf of files('story')) tellSteps(mf.content.id, mf.relPath, mf.content.steps);
+  for (const story of legacy('stories', 'story')) tellSteps(story.id, 'workspace.yaml', story.steps);
+  const problems = Array.from(new Set(out));
+  if (cache) cache.entryProblems = problems;
+  return problems;
+}
+
+/**
+ * What a step of a story says about the plateau it is told at (`at`) and the plateau it is compared with (`against`), wave 015 run 0101 (issue #24): each is a text, and
+ * an empty one names nothing (`readText`: a key with no value is absent). Returns `{ at, against }`, each a plateau id or null.
+ */
+function stepPlateauKeys(step) {
+  const text = (value) => ((typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') && String(value) !== '' ? String(value) : null);
+  return { at: text(step.at), against: text(step.against) };
+}
+
+/**
+ * The sentences about the plateaus of a step: each must be a plateau of the workspace (`ids`, empty when it has none), and they cannot be one plateau, since a plateau is
+ * never compared with itself. `against` with no `at` is read (the step is told at the plateau drawn). The sentences of `LayerLoader.stepPlateauProblems`: keep them alike.
+ */
+function stepPlateauProblems(source, id, number, step, ids) {
+  const keys = stepPlateauKeys(step);
+  const where = 'the story `' + id + '` (`' + source + '`) step ' + number + ' says `';
+  const out = [];
+  let unknown = false;
+  for (const key of ['at', 'against']) {
+    const value = keys[key];
+    if (value === null || ids.includes(value)) continue;
+    unknown = true;
+    out.push(ids.length ? where + key + ': ' + value + '`, which is not a plateau of this workspace (the plateaus are ' + ids.map((i) => '`' + i + '`').join(', ') + ')' : where + key + ': ' + value + '` but the workspace declares no plateau' + NO_PLATEAU);
   }
-  cache.entryProblems = Array.from(new Set(out));
-  return cache.entryProblems;
+  if (!unknown && keys.at !== null && keys.at === keys.against) out.push(where + 'at: ' + keys.at + '` and `against: ' + keys.against + '`: a plateau is never compared with itself');
+  return out;
 }
 
 /**
@@ -5225,8 +5269,12 @@ function bandMistakes() {
     sections.push({ heading: AppState.baseline.undrawable ? name + ', which the drawing is compared with, cannot be drawn.' : name + ', which the drawing is compared with, is refused by the command line:', lines: AppState.baseline.problem.split('\n') });
   }
   // not a mistake of a plateau: a view or a story names an element that no plateau has (wave 015, run 0100); told whatever plateau is drawn
+  // the steps of a story that name a plateau that is none are told apart from the names (run 0101): a workspace with no plateau has them too
   const entries = entryProblemsOf(AppState.workspace.settings);
-  if (entries.length) sections.push({ heading: 'The views and the stories name elements that no plateau has:', lines: entries });
+  const names = entries.filter((line) => line.endsWith(', which exists in no plateau'));
+  const steps = entries.filter((line) => !names.includes(line));
+  if (names.length) sections.push({ heading: 'The views and the stories name elements that no plateau has:', lines: names });
+  if (steps.length) sections.push({ heading: 'The steps of the stories name plateaus that are none:', lines: steps });
   return { sections, count: sections.reduce((n, section) => n + section.lines.length, 0), note: readOnlyPlateauMessage() };
 }
 
@@ -6269,7 +6317,7 @@ const READ_SCHEMA = {
     "Plateau": { "fields": { "horizon": "text", "id": "text", "name": "text", "override": "text", "patches": "[Patch]" }, "required": ["id"] },
     "Patch": { "fields": { "expect": "int", "field": "text", "json-path": "text", "layer": "enum:APPLICATION,TECHNOLOGY", "operator": "enum:ADD,MERGE,REMOVE,SET", "target": "text", "value": "any", "where": "Where" }, "aliases": { "json_path": "json-path" }, "required": ["operator"] },
     "Where": { "fields": { "destination": "text", "label": "text" }, "required": ["destination"] },
-    "Step": { "lenient": true, "fields": { "layer": "enum:APPLICATION,TECHNOLOGY", "name": "text", "properties": "any", "text": "text", "view": "text", "viewpoint": "text" } },
+    "Step": { "lenient": true, "fields": { "against": "text", "at": "text", "layer": "enum:APPLICATION,TECHNOLOGY", "name": "text", "properties": "any", "text": "text", "view": "text", "viewpoint": "text" } },
     "Application": { "fields": { "elements": "[*ApplicationElement]" } },
     "Technology": { "fields": { "elements": "[*TechnologyElement]" } },
     "Workspace": { "fields": { "application": "Application", "formatters": "Formatters", "settings": "Settings", "stories": "any", "story": "any", "styles": "Styles", "technology": "Technology", "view": "any", "views": "any" } },
@@ -11128,6 +11176,10 @@ function handleAppInput(e) {
   }
   if (e.target.matches && e.target.matches('[data-story-repair]')) {
     if (e.target.value) repairStoryStep(e.target.getAttribute('data-story'), Number(e.target.getAttribute('data-step')), e.target.value);
+    return;
+  }
+  if (e.target.matches && e.target.matches('[data-story-step-plateau]')) { // wave 015 (run 0101): where a step is told, and what it is compared with
+    setStepPlateau(e.target.getAttribute('data-story'), Number(e.target.getAttribute('data-step')), e.target.getAttribute('data-story-step-plateau'), e.target.value);
     return;
   }
   const storyField = e.target.closest && e.target.closest('[data-story-field]');
@@ -16067,6 +16119,7 @@ function entriesOf(kind, key) {
 
 /** workspace.yaml has changed in memory: "Save all changes" writes it (with the settings). */
 function markWorkspaceYamlChanged() {
+  if (layerCache) layerCache.entryProblems = undefined; // the views and stories it keeps are looked at by `entryProblemsOf`, which keeps its answer with the layers
   const workspace = AppState.workspace;
   workspace.settingsDirty = true;
   workspace.settingsRevision = (workspace.settingsRevision || 0) + 1;
@@ -16099,13 +16152,47 @@ function stepView(step) {
   return typeof step.viewpoint === 'string' && step.viewpoint ? step : null;
 }
 
-/** Why a step cannot be drawn now, or null when it can. */
+/**
+ * Why a step cannot be drawn now, or null when it can. A step is drawn in the plateau it says (`at`, else the plateau drawn, which is what the page has when the step is
+ * played) and compared with the one it names (`against`): the plateau that is not one, and one the editor cannot draw, are told before the view is looked at, and the
+ * view is looked at in the plateau of the step, not in the one that happens to be drawn now.
+ */
 function stepProblem(step) {
+  const plateau = stepPlateauProblem(step);
+  if (plateau) return plateau.problem;
+  const at = stepPlateauKeys(step).at;
   if (typeof step.view === 'string' && step.view) {
     const view = findSavedView(step.view);
-    return view ? viewProblem(view) : 'The view “' + step.view + '” does not exist any more.';
+    return view ? viewProblem(view, at) : 'The view “' + step.view + '” does not exist any more.';
   }
-  return typeof step.viewpoint === 'string' && step.viewpoint ? viewProblem(step) : 'This step has no view.';
+  return typeof step.viewpoint === 'string' && step.viewpoint ? viewProblem(step, at) : 'This step has no view.';
+}
+
+/**
+ * What is wrong with the plateaus a step names, as `{ problem }`, or null: a plateau that is none (the sentence of `stepPlateauProblems` without the story and the file:
+ * what the step is told in its own place), one the editor cannot draw (the band says why), or a comparison with the plateau it is told at (it is no comparison).
+ */
+function stepPlateauProblem(step) {
+  const keys = stepPlateauKeys(step);
+  if (keys.at === null && keys.against === null) return null;
+  if (AppState.layers && AppState.layers.blocked) {
+    // the tree is wrong: only baseline is drawn, and there is nothing to compare it with
+    if ((keys.at !== null && keys.at !== BASELINE_PLATEAU) || keys.against !== null) return { problem: 'Only baseline is drawn (' + AppState.layers.blocked + '), so a step cannot be told at another plateau or compared.' };
+    return null;
+  }
+  const tree = AppState.plateauTree;
+  const ids = tree && tree.layered ? tree.ids : [];
+  for (const key of ['at', 'against']) {
+    const value = keys[key];
+    if (value === null || ids.includes(value)) continue;
+    return { problem: ids.length ? 'The plateau “' + value + '” is not a plateau of this workspace.' : 'This workspace has no plateau, so a step cannot be told at “' + value + '”.' };
+  }
+  if (keys.at !== null && keys.at === keys.against) return { problem: 'A plateau is never compared with itself: “' + keys.at + '” is both where the step is told and what it is compared with.' };
+  for (const id of [keys.at, keys.against]) {
+    // `layerStateOf` is what a plateau is drawn from (kept with the layers): no model is built to ask whether the kernel refused its patches
+    if (id !== null && layerStateOf(id, AppState.workspace.settings).fatal) return { problem: 'The plateau “' + id + '” cannot be drawn: the command line refuses its patches.' };
+  }
+  return null;
 }
 
 function storyLabel(story) { return story.name || story.id; }
@@ -16185,21 +16272,35 @@ function describeViewDefinition(view) {
 
 function viewLabel(view) { return (typeof view.name === 'string' && view.name) || describeViewDefinition(view); }
 
-/** Why a saved view cannot be drawn now, or null when it can. */
-function viewProblem(view) {
+/**
+ * The elements of a plateau, by layer: `AppState.index` for the plateau drawn, else the model the plateau gives (a step is told at a plateau that is not the one on screen).
+ * Null for the plateau drawn, which `viewProblem` reads from the page's state as it always did.
+ */
+function indexOfPlateau(plateau) {
+  const layers = AppState.layers;
+  if (plateau === null || plateau === undefined || !layers || plateau === layers.current) return AppState.index;
+  return layerModelOf(plateau, AppState.workspace.settings).index;
+}
+
+/**
+ * Why a saved view cannot be drawn now, or null when it can. `plateau` is the plateau it is looked at in (a step that is told at one, wave 015 run 0101): absent, the
+ * plateau drawn.
+ */
+function viewProblem(view, plateau) {
   if (!isPlainObject(view)) return 'This view does not exist.';
   const properties = isPlainObject(view.properties) ? view.properties : {};
+  const index = indexOfPlateau(plateau);
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
     const layer = view.layer === 'technology' ? 'technology' : 'application';
-    if (!pinned.length || pinned.some((reference) => AppState.index[layer].has(reference))) return null;
-    return viewLacksInPlateau(pinned, layer) || 'None of the elements it was pinned on exists any more.';
+    if (!pinned.length || pinned.some((reference) => index[layer].has(reference))) return null;
+    return viewLacksInPlateau(pinned, layer, plateau) || 'None of the elements it was pinned on exists any more.';
   }
   if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint)) return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
   const layer = view.layer === 'technology' ? 'technology' : 'application';
   if (typeof properties.element !== 'string' || !properties.element) return 'This view has no element.';
-  if (!AppState.index[layer].has(properties.element)) {
-    return viewLacksInPlateau([properties.element], layer) || 'The element “' + properties.element + '” does not exist any more.';
+  if (!index[layer].has(properties.element)) {
+    return viewLacksInPlateau([properties.element], layer, plateau) || 'The element “' + properties.element + '” does not exist any more.';
   }
   return null;
 }
@@ -16207,15 +16308,16 @@ function viewProblem(view) {
 /**
  * A view belongs to no plateau (wave 015, run 0100, issue #100), and the plateau drawn may lack what it names: the view then cannot be drawn *in this plateau*, which is no
  * mistake of the view (an entry of a map that the plateau lacks is simply left out). The sentence when the workspace has plateaus and a plateau declares what the view names,
- * else null (the element is gone altogether, or the workspace has one plateau). `references` are the names the plateau drawn lacks.
+ * else null (the element is gone altogether, or the workspace has one plateau). `references` are the names the plateau lacks, `plateau` the plateau looked at (a step told at
+ * one, run 0101), else the plateau drawn.
  */
-function viewLacksInPlateau(references, layer) {
-  const plateau = writingPlateau();
-  if (plateau === null) return null;
+function viewLacksInPlateau(references, layer, plateau) {
+  const named = plateau === null || plateau === undefined ? writingPlateau() : plateau;
+  if (named === null) return null;
   const declared = declaredAnywhereCached()[layer];
   const there = references.filter((reference) => declared.has(reference));
   if (!there.length) return null;
-  return (references.length === 1 ? 'The element “' + references[0] + '”' : 'The elements it was pinned on') + ' ' + (references.length === 1 ? 'is' : 'are') + ' not in the plateau “' + plateau + '”.';
+  return (references.length === 1 ? 'The element “' + references[0] + '”' : 'The elements it was pinned on') + ' ' + (references.length === 1 ? 'is' : 'are') + ' not in the plateau “' + named + '”.';
 }
 
 /** Puts the editor where the view was saved. Returns why it cannot, or null once it is done (the caller redraws). */
@@ -16878,12 +16980,70 @@ function addCurrentViewToStoryChoice(choice) {
   render();
 }
 
+/**
+ * What is drawn now, as far as a step is concerned (wave 015, run 0101): the plateau, and the plateau it is compared with (null: nothing, or the future that is not chosen yet).
+ */
+function currentPlateauDrawing() {
+  const layers = AppState.layers;
+  if (!layers) return null;
+  const other = layerCompareOther();
+  return { plateau: layers.current, against: other ? other.id : null };
+}
+
+/**
+ * What the reader chose before a story was told, kept while it is told (`goToStoryStep`): a step that names no plateau is drawn there, as one that names `at` is drawn at
+ * its plateau. `story` is the story walked, `set` what the last step drew (so that a plateau or a comparison the reader chose on the band in the middle of the story is the
+ * new home, and not overwritten by the next step).
+ */
+let storyHome = null;
+
+/** The plateau and the comparison a step draws: `at` and `against` as the step says them, else the home (what was drawn before the story, or what the reader chose since). */
+function stepDrawing(step, home) {
+  const keys = stepPlateauKeys(step);
+  const plateau = keys.at !== null ? keys.at : home.plateau;
+  // a step that is told at a plateau of its own is a comparison only when it says so; one that says nothing is drawn as the reader had it
+  const against = keys.against !== null ? keys.against : keys.at !== null ? null : home.against;
+  return { plateau, against: against === plateau ? null : against };
+}
+
+/** Where the home is for the step about to be drawn in the story: what was drawn when the story began, unless the reader changed it since. */
+function homeOfStory(storyId) {
+  const now = currentPlateauDrawing();
+  if (!now) return null;
+  if (!storyHome || storyHome.story !== storyId || !activeStory || activeStory.id !== storyId) storyHome = { story: storyId, plateau: now.plateau, against: now.against, set: now };
+  else if (storyHome.set && (storyHome.set.plateau !== now.plateau || storyHome.set.against !== now.against)) { storyHome.plateau = now.plateau; storyHome.against = now.against; }
+  return storyHome;
+}
+
+/**
+ * Draws the plateau and the comparison of a step, when it has something to say about them (or the reader moved them since the story began): the plateau is drawn as the band
+ * draws it, without an entry in the history (the step is the entry). A step with a plateau that is none, or one the editor cannot draw, changes nothing: the bar says why.
+ */
+function drawPlateausOfStep(storyId, step) {
+  const home = homeOfStory(storyId);
+  if (!home || !AppState.plateauTree || !AppState.plateauTree.layered || stepPlateauProblem(step)) return;
+  const wanted = stepDrawing(step, home);
+  drawPlateau(wanted.plateau, { compare: wanted.against ? 'other:' + wanted.against : '', fromAddress: true });
+  home.set = currentPlateauDrawing();
+}
+
+/** Whether the plateau and the comparison on screen are the ones a step draws (the story bar offers *Back to this step* when they are not). */
+function stepPlateausMatchScreen(step) {
+  const now = currentPlateauDrawing();
+  if (!now || !AppState.plateauTree || !AppState.plateauTree.layered) return true;
+  const keys = stepPlateauKeys(step);
+  if (keys.at === null && keys.against === null) return true; // the reader's own plateau is what it is told at
+  const wanted = stepDrawing(step, storyHome && activeStory && storyHome.story === activeStory.id ? storyHome : now);
+  return wanted.plateau === now.plateau && wanted.against === now.against;
+}
+
 /** Draws a step of a story on the Map or in Elements. A step that cannot be drawn is said in the story bar, which stays, so that the others can be reached. */
 function goToStoryStep(storyId, index) {
   const story = findStory(storyId);
   const steps = story ? storySteps(story) : [];
   if (!story || index < 0 || index >= steps.length) return;
   selectedStoryId = storyId;
+  drawPlateausOfStep(storyId, steps[index]);
   const problem = stepProblem(steps[index]) || applySavedView(stepView(steps[index]));
   if (problem && !mapIsShown() && currentPerspective !== 'elements') { currentPerspective = 'map'; useDiagramHost('main'); } // somewhere to show the bar
   activeStory = { id: storyId, step: index };
@@ -16977,6 +17137,23 @@ function addStoryStep(storyId, viewId) {
   render();
 }
 
+/**
+ * The plateau a step is told at (`at`) or compared with (`against`) is chosen in the story editor (wave 015, run 0101, issue #24): the key is written in the step, or taken
+ * out when the choice is the default (the plateau drawn, nothing). The story is changed in memory and its manifest rewritten line by line (`markEntryChanged`), as for the
+ * words of a step; nothing in the models changes, so no cache is dropped. Returns whether the step changed.
+ */
+function setStepPlateau(storyId, index, key, value) {
+  const story = findStory(storyId);
+  const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
+  if ((key !== 'at' && key !== 'against') || !isPlainObject(step)) return false;
+  if (value === '' ? step[key] === undefined : step[key] === value) return false;
+  if (value === '') delete step[key]; else step[key] = value;
+  markEntryChanged(story);
+  pendingFocusSelector = '[data-story-step-plateau="' + key + '"][data-story="' + story.id + '"][data-step="' + index + '"]';
+  render();
+  return true;
+}
+
 /** A step whose view is gone points at another one. */
 function repairStoryStep(storyId, index, viewId) {
   const story = findStory(storyId);
@@ -16998,7 +17175,12 @@ function keepStepAsNamedView(storyId, index) {
     if (!isPlainObject(current) || current.view) { render(); return; }
     const view = viewForDefinition(canonicalViewDefinition(current), name);
     const text = current.text;
-    target.steps[index] = text ? { view: view.id, text } : { view: view.id };
+    // the plateaus the step is told at and compared with are the step's, not the view's: they stay (wave 015, run 0101)
+    const kept = { view: view.id };
+    if (current.at !== undefined) kept.at = current.at;
+    if (current.against !== undefined) kept.against = current.against;
+    if (text) kept.text = text;
+    target.steps[index] = kept;
     markEntryChanged(target);
     render();
   });
@@ -17116,7 +17298,7 @@ function renderStoryBarHtml() {
   const n = activeStory.step;
   const view = stepView(steps[n]);
   const problem = stepProblem(steps[n]);
-  const here = !!view && !problem && viewMatchesScreen(view);
+  const here = !!view && !problem && viewMatchesScreen(view) && stepPlateausMatchScreen(steps[n]);
   const text = steps[n].text || '';
   const words = storyBarEditing
     ? '<textarea class="story-bar-text" rows="2" data-story="' + escapeHtml(story.id) + '" data-story-field="step-text" data-step="' + n + '" aria-label="What to say about this step" placeholder="What to say about this diagram…">' + escapeHtml(text) + '</textarea>'
@@ -17125,6 +17307,7 @@ function renderStoryBarHtml() {
     '<div class="story-bar-line">' +
       '<span class="story-bar-title">' + escapeHtml(storyLabel(story)) + '</span>' +
       '<span class="story-bar-step">Step ' + (n + 1) + ' of ' + steps.length + (view ? ' · ' + escapeHtml(viewLabel(view)) : '') + '</span>' +
+      stepPlateausHtml(steps[n], 'story-bar-plateaus') +
       '<span class="story-bar-actions">' +
         '<span class="button-group" role="group" aria-label="Steps">' +
           '<button type="button" data-action="story-prev"' + (n === 0 ? ' disabled' : '') + ' title="The step before">Previous</button>' +
@@ -17168,6 +17351,39 @@ function renderStoriesNavHtml() {
   return html + '</div>';
 }
 
+/** The plateaus a step names, as words: *Told at* and *Compared with* (nothing when it names none). `className` is the class of the span. */
+function stepPlateausHtml(step, className) {
+  const keys = stepPlateauKeys(step);
+  if (keys.at === null && keys.against === null) return '';
+  const tree = AppState.plateauTree;
+  const titled = (id) => (tree && tree.layered && tree.nodes.has(id) ? plateauTitle(layerPlateauModel(id)) : id);
+  const parts = [];
+  if (keys.at !== null) parts.push('told at ' + escapeHtml(titled(keys.at)));
+  if (keys.against !== null) parts.push('compared with ' + escapeHtml(titled(keys.against)));
+  return '<span class="' + className + '">' + parts.join(', ') + '</span>';
+}
+
+/**
+ * The two lists of a step in the story editor: the plateau it is told at (the plateau drawn when none) and the plateau it is compared with (nothing when none). Only in a
+ * workspace that has plateaus, or when the step already names one (so that it can be put right). A plateau the workspace does not have is listed, flagged, so that it is not lost.
+ */
+function renderStepPlateausHtml(story, step, index) {
+  const tree = AppState.plateauTree;
+  const ids = tree && tree.layered ? tree.ids : [];
+  const keys = stepPlateauKeys(step);
+  if (!ids.length && keys.at === null && keys.against === null) return '';
+  const id = escapeHtml(story.id);
+  const select = (key, label, none, value) => {
+    const known = value === null || ids.includes(value);
+    return '<label class="story-step-plateau">' + label + ' <select data-story-step-plateau="' + key + '" data-story="' + id + '" data-step="' + index + '" aria-label="' + label + ' (step ' + (index + 1) + ')">' +
+      '<option value="">' + none + '</option>' +
+      ids.map((plateau) => '<option value="' + escapeHtml(plateau) + '"' + (plateau === value ? ' selected' : '') + '>' + escapeHtml(plateauTitle(layerPlateauModel(plateau))) + '</option>').join('') +
+      (known ? '' : '<option value="' + escapeHtml(value) + '" selected>' + escapeHtml(value) + ' (not a plateau)</option>') +
+      '</select></label>';
+  };
+  return '<div class="story-step-plateaus">' + select('at', 'Told at', 'The plateau drawn', keys.at) + select('against', 'Compared with', 'Nothing', keys.against) + '</div>';
+}
+
 function renderStoryStepHtml(story, step, index, count) {
   const view = stepView(step);
   const problem = stepProblem(step);
@@ -17190,6 +17406,7 @@ function renderStoryStepHtml(story, step, index, count) {
         button('story-step-remove', 'Remove') +
       '</span>' +
     '</div>' +
+    renderStepPlateausHtml(story, step, index) +
     (problem ? '<div class="story-step-problem" role="status">' + escapeHtml(problem) + '</div>' : '') +
     (others.length ? '<select class="story-repair" data-story-repair data-story="' + id + '" data-step="' + index + '" aria-label="Use another view for step ' + (index + 1) + '"><option value="">Choose another view…</option>' +
       others.map((other) => '<option value="' + escapeHtml(other.id) + '">' + escapeHtml(viewLabel(other)) + '</option>').join('') + '</select>' : '') +

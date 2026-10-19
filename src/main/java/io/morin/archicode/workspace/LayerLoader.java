@@ -462,19 +462,13 @@ public class LayerLoader {
         for (val entry : views) {
             checkNames("view", entry, entry.item().getLayer(), entry.item().getProperties(), drawn, declared, out);
         }
-        val manifestStories = new java.util.HashSet<String>();
-        val stories = new ArrayList<Entry<Story>>();
-        for (val placed : parsed.placedStories()) {
-            manifestStories.add(placed.item().getId());
-            stories.add(new Entry<>(placed.source(), placed.item()));
-        }
-        start
-            .getStories()
-            .stream()
-            .filter(story -> !manifestStories.contains(story.getId()))
-            .forEach(story -> stories.add(new Entry<>(LEGACY_SOURCE, story)));
-        for (val entry : stories) {
-            for (val step : entry.item().getSteps()) {
+        for (val entry : storiesOf(parsed, start)) {
+            val steps = entry.item().getSteps();
+            for (int i = 0; i < steps.size(); i++) {
+                val step = steps.get(i);
+                out.addAll(
+                    stepPlateauProblems(entry.source(), entry.item().getId(), i + 1, step, parsed.plateaus().ids())
+                );
                 checkNames("story", entry, step.getLayer(), step.getProperties(), drawn, declared, out);
             }
         }
@@ -484,7 +478,7 @@ public class LayerLoader {
     /** Where the views and the stories that an older workspace keeps in its workspace file are said to be. */
     private static final String LEGACY_SOURCE = "workspace.yaml";
 
-    private record Entry<T>(String source, T item) {}
+    record Entry<T>(String source, T item) {}
 
     /** What the manifests and the workspace file declare, in any plateau, by layer; worked out the first time a name is missing from the plateau drawn. */
     private static final class Declared {
@@ -524,6 +518,86 @@ public class LayerLoader {
     /** The sentence of the plateau-free check; the editor says the same ({@code entryProblemsOf}): keep them alike. */
     private static String existsInNoPlateau(String noun, String id, String source, String reference) {
         return "the " + noun + " `" + id + "` (`" + source + "`) names `" + reference + "`, which exists in no plateau";
+    }
+
+    /**
+     * The stories of the workspace with the file of each: those of the manifests, then those of {@code workspace.yaml} (an
+     * older place for them) that no manifest shadows, as the editor lists them.
+     */
+    static List<Entry<Story>> storiesOf(ManifestParser.Parsed parsed, Workspace start) {
+        val manifestStories = new java.util.HashSet<String>();
+        val stories = new ArrayList<Entry<Story>>();
+        for (val placed : parsed.placedStories()) {
+            manifestStories.add(placed.item().getId());
+            stories.add(new Entry<>(placed.source(), placed.item()));
+        }
+        start
+            .getStories()
+            .stream()
+            .filter(story -> !manifestStories.contains(story.getId()))
+            .forEach(story -> stories.add(new Entry<>(LEGACY_SOURCE, story)));
+        return stories;
+    }
+
+    /**
+     * What a step says about the plateau it is told at ({@code at}) and the plateau it is compared with ({@code against}),
+     * wave 015 run 0101 (issue #24): each must be a plateau of the workspace, and they cannot be one plateau (a plateau is
+     * never compared with itself). {@code against} with no {@code at} is read: the step is told at the plateau that is drawn.
+     * An empty text names nothing, as a key with no value. The editor says the same sentences ({@code stepPlateauProblems}):
+     * keep them alike.
+     *
+     * @param plateaus the ids of the plateaus of the workspace, empty when it has none
+     */
+    static List<String> stepPlateauProblems(
+        String source,
+        String id,
+        int number,
+        Story.Step step,
+        List<String> plateaus
+    ) {
+        val out = new ArrayList<String>();
+        val at = written(step.getAt());
+        val against = written(step.getAgainst());
+        val where = "the story `" + id + "` (`" + source + "`) step " + number + " says `";
+        val unknown = new java.util.HashSet<String>();
+        for (val pair : List.of(
+            Map.entry("at", at == null ? "" : at),
+            Map.entry("against", against == null ? "" : against)
+        )) {
+            val key = pair.getKey();
+            val value = pair.getValue();
+            if (value.isEmpty() || plateaus.contains(value)) {
+                continue;
+            }
+            unknown.add(key);
+            out.add(
+                plateaus.isEmpty()
+                    ? where +
+                          key +
+                          ": " +
+                          value +
+                          "` but the workspace declares no plateau" +
+                          WorkspaceFactory.NO_PLATEAU
+                    : where +
+                          key +
+                          ": " +
+                          value +
+                          "`, which is not a plateau of this workspace (the plateaus are " +
+                          plateaus
+                              .stream()
+                              .map(i -> "`" + i + "`")
+                              .collect(java.util.stream.Collectors.joining(", ")) +
+                          ")"
+            );
+        }
+        if (at != null && at.equals(against) && unknown.isEmpty()) {
+            out.add(where + "at: " + at + "` and `against: " + against + "`: a plateau is never compared with itself");
+        }
+        return out;
+    }
+
+    private static String written(String value) {
+        return value == null || value.isEmpty() ? null : value;
     }
 
     private static String layerName(View.Layer layer) {
