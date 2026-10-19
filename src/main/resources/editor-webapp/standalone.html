@@ -285,6 +285,14 @@
   .change-rel-path { font-weight: 600; }
   .change-rel-label { color: var(--muted); }
   .change-none { margin: 0; font-size: 0.8rem; }
+  /* reading a long list (wave 015, run 0103, #27): the two filters, "12 of 167", and the buttons that walk the list */
+  .changes-reading { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.4rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .changes-filters { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; }
+  .changes-filter { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.75rem; color: var(--muted); flex: 1 1 8rem; min-width: 0; }
+  .changes-filter select { font-size: 0.82rem; max-width: 100%; }
+  .changes-shown { margin: 0; font-size: 0.82rem; font-weight: 600; }
+  .changes-walk { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
+  .changes-position { font-size: 0.8rem; color: var(--muted); }
   .what-changed { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
   .what-changed .inspection-subhead { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
   .change-natures { margin: 0; }
@@ -11395,6 +11403,10 @@ function handleAppInput(e) {
     updateStoryField(storyField);
     return;
   }
+  if (e.target.getAttribute && e.target.getAttribute('data-changes-filter')) { // wave 015 (run 0103): the two filters of the list of changes
+    setChangesFilter(e.target.getAttribute('data-changes-filter'), e.target.value);
+    return;
+  }
   if (e.target.getAttribute && e.target.getAttribute('data-band-select')) { // wave 015 (run 0097): the two lists of the band
     chooseOnBand(e.target);
     return;
@@ -12227,28 +12239,249 @@ function renderChangeRowHtml(row, selected, rows, splits) {
     changeChipHtml(row.change) + '<span class="change-main">' + main + '</span>' + (from ? '<span class="change-from">' + escapeHtml(from) + '</span>' : '') + (natures ? '<span class="change-natures">' + escapeHtml(natures) + '</span>' : '') + '</button></li>';
 }
 
-/** Is this row the selection of the page: the element selected, the removed box picked, or the link selected. */
+/** Is this row the selection of the page: the element selected, the removed box picked, or the link selected. On the page of a view in Stories it is the page's own selection (`diagramSelection`). */
 function changeRowIsSelected(row, pick) {
-  const sel = AppState.selection;
+  const library = currentPerspective === 'library';
+  const sel = library ? diagramSelection() : AppState.selection;
   if (row.thing === 'relationship') return sel.kind === 'link' && sel.from === row.reference && sel.to === row.destination;
   if (elementIsOnlyInTheOtherPlateau(row.layer, row.reference, row.change)) return !!pick && pick.reference === row.reference && pick.layer === row.layer;
-  const element = elementSelection();
+  const element = library ? sel : elementSelection();
   return element.kind === 'element' && element.key === row.reference && layerOfReference(element.key, element.layer) === row.layer;
+}
+
+// ---- Reading a long list of changes (wave 015, run 0103, #27) ----
+// The list is read one change at a time (Previous change, Next change) and narrowed by two filters (a state, a layer) that say how many of how many they show. All of it is
+// view state: no model changes, so none of it calls `modelsChanged()`, and it is not an input of the comparison (the cache of the comparison, the diagram and the quiet
+// references are not keyed on it): a filter changes the list and nothing the diagrams draw (Everything / Changes only is the tool that does). The list is one function,
+// `renderChangesPanelHtml`, called from the pages that have it: Plateaus, Applications, Environments, Elements and Stories.
+
+/** The two filters, for the pair of plateaus they were chosen for: the pair changes, they are all again (turning the comparison off and on with the same pair keeps them). */
+let changesFilter = { pair: null, state: 'all', layer: 'all' };
+/** The change the reader walked to last: `{ key, selection }`, `selection` being the selection of the page right after, so that a selection made since (a click elsewhere) is told from it. */
+let changesWalk = null;
+
+/** The pair of plateaus a comparison is about, as the filters and the walk remember it. */
+function comparisonPairKey(state) {
+  return state.base.id + '>' + state.target.id;
+}
+
+/** The filters of the comparison `state`: reset (with the walk) when the pair of plateaus is not the one they were chosen for. */
+function changesFilterFor(state) {
+  const pair = comparisonPairKey(state);
+  if (changesFilter.pair !== pair) {
+    changesFilter = { pair, state: 'all', layer: 'all' };
+    changesWalk = null;
+  }
+  return changesFilter;
+}
+
+/** What names a row of the table (an element, or a relationship with its label); the same text from the row and from the attributes of its button. */
+function changeKey(thing, layer, reference, destination, label) {
+  return [thing, layer, reference, thing === 'relationship' ? destination : '', thing === 'relationship' ? (label || '') : ''].join('\u0000');
+}
+
+function changeRowKey(row) {
+  return changeKey(row.thing, row.layer, row.reference, row.destination, row.label);
+}
+
+/** Every row of the table in the order of the list: the elements, then the relationships, each as `sortedChangeRows` sorts them. The order is the one Next and Previous walk. */
+function orderedChangeRows(state) {
+  const rows = sortedChangeRows(state.changes || []);
+  return rows.filter((row) => row.thing === 'element').concat(rows.filter((row) => row.thing === 'relationship'));
+}
+
+/** Does the row pass the two filters (`except`: leave one of them out, to count what the other would show). */
+function changeRowIsShown(row, filter, except) {
+  return (except === 'state' || filter.state === 'all' || row.change === filter.state) && (except === 'layer' || filter.layer === 'all' || row.layer === filter.layer);
+}
+
+/** The rows the filters keep, in the order of the list. */
+function shownChangeRows(rows, filter) {
+  return rows.filter((row) => changeRowIsShown(row, filter));
+}
+
+/** How many rows each choice of each filter would show, with the other filter as it is: `{ states: { all, new, ... }, layers: { all, application, technology } }`. */
+function changeFilterCounts(rows, filter) {
+  const states = { all: 0 };
+  const layers = { all: 0, application: 0, technology: 0 };
+  for (const row of rows) {
+    if (changeRowIsShown(row, filter, 'state')) {
+      states.all++;
+      states[row.change] = (states[row.change] || 0) + 1;
+    }
+    if (changeRowIsShown(row, filter, 'layer')) {
+      layers.all++;
+      layers[row.layer] = (layers[row.layer] || 0) + 1;
+    }
+  }
+  return { states, layers };
+}
+
+/** The selection of the page as the walk remembers it: what is selected, and the removed box picked, if any. */
+function changesSelectionStamp() {
+  return JSON.stringify([diagramSelection(), removedPick ? [removedPick.reference, removedPick.layer] : null]);
+}
+
+/** The removed box the page has picked, as the list reads it (see `renderChangesPanelHtml`). */
+function changesPick() {
+  return currentPerspective === 'library' ? removedInspectionOf(diagramSelection(), 'library') : removedInspectionOf(AppState.selection, mapIsShown() ? 'map' : 'elements');
+}
+
+/**
+ * The change the reader is at: the row last walked to (or clicked) while nothing else was selected since; else the first row that is the selection of the page; else none.
+ * Relationships that share a pair of elements are all "the selection" of one link, and a relationship that is told by its source (Elements, no diagram) selects an element that
+ * has a row of its own: the walk is what keeps Next going forward in both cases.
+ */
+function currentChangeOf(rows, pick) {
+  const selected = rows.filter((row) => changeRowIsSelected(row, pick));
+  const walked = changesWalk ? rows.find((row) => changeRowKey(row) === changesWalk.key) : null;
+  if (walked && (!selected.length || selected.includes(walked) || changesWalk.selection === changesSelectionStamp())) return walked;
+  return selected[0] || null;
+}
+
+/** The rows that are marked in the list: the current change when it was walked to, else every row that is the selection (a pair of elements may have several relationships). */
+function markedChangeKeys(rows, pick) {
+  const current = currentChangeOf(rows, pick);
+  const selected = rows.filter((row) => changeRowIsSelected(row, pick));
+  const marked = current && !selected.includes(current) ? [current] : selected;
+  return new Set(marked.map(changeRowKey));
+}
+
+/** The next (or previous) row that the filters keep, after `current` in the order of the list; with no current change, the first (the last). Null at the end: the walk stops there. */
+function neighbourChange(rows, filter, current, direction) {
+  const step = direction === 'previous' ? -1 : 1;
+  const at = current ? rows.findIndex((row) => changeRowKey(row) === changeRowKey(current)) : -1;
+  for (let i = at < 0 ? (step > 0 ? 0 : rows.length - 1) : at + step; i >= 0 && i < rows.length; i += step) {
+    if (changeRowIsShown(rows[i], filter)) return rows[i];
+  }
+  return null;
+}
+
+/** The row the filters keep that is nearest to `current` in the order of the list (the one after it when two are as near). Null when none is kept, or `current` is not in the list. */
+function nearestShownChange(rows, filter, current) {
+  const at = current ? rows.findIndex((row) => changeRowKey(row) === changeRowKey(current)) : -1;
+  if (at < 0) return null;
+  for (let distance = 1; distance < rows.length; distance++) {
+    for (const i of [at + distance, at - distance]) if (i >= 0 && i < rows.length && changeRowIsShown(rows[i], filter)) return rows[i];
+  }
+  return null;
+}
+
+/** Does the page show a selection, so that walking to a change selects it? The page Plateaus draws nothing, and Stories draws a diagram only for a view that can be drawn. */
+function changeSelectionIsShown() {
+  if (currentPerspective === 'plateaus') return false;
+  if (currentPerspective === 'library') return libraryTab === 'views' && !!selectedViewId && !!libraryDiagramRecipe(findSavedView(selectedViewId));
+  return true;
+}
+
+/**
+ * Walk to a row of the list: where the page shows a selection the change is selected as a click on its row selects it (the diagram, the panel), but the list stays on screen
+ * (`keepList`); elsewhere only the mark moves. The row is brought into view in the list. `focus`: the control to give the focus back to (the list is drawn again).
+ */
+function goToChange(row, focus) {
+  pendingFocusSelector = focus || null;
+  if (changeSelectionIsShown()) {
+    selectChange({ thing: row.thing, change: row.change, layer: row.layer, ref: row.reference, to: row.destination, label: row.label || '' }, { keepList: true });
+    return;
+  }
+  changesWalk = { key: changeRowKey(row), selection: changesSelectionStamp() };
+  scrollChangesToSelection = true;
+  render();
+}
+
+/** Next change / Previous change: the walk stops at the ends of the list (the button there is disabled), it does not wrap. Returns whether the reader moved. */
+function walkChange(direction) {
+  const state = comparisonState();
+  if (!state || !state.changes) return false;
+  const filter = changesFilterFor(state);
+  const rows = orderedChangeRows(state);
+  const current = currentChangeOf(rows, changesPick());
+  const row = neighbourChange(rows, filter, current, direction);
+  if (!row) return false;
+  const further = neighbourChange(rows, filter, row, direction);
+  goToChange(row, '[data-action="change-' + (further ? direction === 'previous' ? 'previous' : 'next' : direction === 'previous' ? 'next' : 'previous') + '"]'); // at the end the other button keeps the focus
+  return true;
+}
+
+/** Choose a state or a layer in the filters ('all' for none). The change the reader is at, if the filter leaves it out, moves to the nearest change that is shown. Returns whether it was a valid choice. */
+function setChangesFilter(kind, value) {
+  const state = comparisonState();
+  if (!state || !state.changes || (kind !== 'state' && kind !== 'layer')) return false;
+  const known = kind === 'state' ? ['all'].concat(CHANGE_STATES) : ['all', 'application', 'technology'];
+  if (!known.includes(value)) return false;
+  const filter = changesFilterFor(state);
+  filter[kind] = value;
+  const rows = orderedChangeRows(state);
+  const current = currentChangeOf(rows, changesPick());
+  const focus = '[data-changes-filter="' + kind + '"]';
+  const near = current && !changeRowIsShown(current, filter) ? nearestShownChange(rows, filter, current) : null;
+  if (near) goToChange(near, focus);
+  else {
+    pendingFocusSelector = focus;
+    render();
+  }
+  return true;
+}
+
+/** Both filters back to "all". */
+function clearChangesFilter() {
+  const state = comparisonState();
+  if (!state || !state.changes) return;
+  const filter = changesFilterFor(state);
+  filter.state = 'all';
+  filter.layer = 'all';
+  pendingFocusSelector = '[data-changes-filter="state"]';
+  render();
+}
+
+/** The two filters, the line that says how many of how many are shown, and the buttons that walk the list. `rows`: every row; `shown`: the ones the filters keep; `current`: the change the reader is at. */
+function renderChangesReadingHtml(rows, filter, shown, current) {
+  if (!rows.length) return '';
+  const counts = changeFilterCounts(rows, filter);
+  const option = (value, label, count, chosen) => '<option value="' + value + '"' + (chosen === value ? ' selected' : '') + '>' + escapeHtml(label) + ' (' + count + ')</option>';
+  const present = (name) => counts.states[name] > 0 || filter.state === name;
+  const stateOptions = option('all', 'All states', counts.states.all, filter.state) +
+    Object.keys(CHANGE_STATE_ORDER).filter((name) => CHANGE_STATES.includes(name) && present(name)).map((name) => option(name, CHANGE_WORDS[name].word.charAt(0).toUpperCase() + CHANGE_WORDS[name].word.slice(1), counts.states[name] || 0, filter.state)).join('');
+  const layerOptions = option('all', 'Both layers', counts.layers.all, filter.layer) + option('application', 'Application', counts.layers.application, filter.layer) +
+    option('technology', 'Technology', counts.layers.technology, filter.layer);
+  const filtered = filter.state !== 'all' || filter.layer !== 'all';
+  const at = current ? shown.findIndex((row) => changeRowKey(row) === changeRowKey(current)) : -1;
+  const before = neighbourChange(rows, filter, current, 'previous');
+  const after = neighbourChange(rows, filter, current, 'next');
+  return '<div class="changes-reading" role="group" aria-label="Reading the changes">' +
+    '<div class="changes-filters">' +
+      '<label class="changes-filter">State<select data-changes-filter="state">' + stateOptions + '</select></label>' +
+      '<label class="changes-filter">Layer<select data-changes-filter="layer">' + layerOptions + '</select></label>' +
+    '</div>' +
+    '<p class="changes-shown" data-changes-shown="' + shown.length + '" data-changes-total="' + rows.length + '" role="status">' +
+      (filtered ? shown.length + ' of ' + rows.length + ' changes' : rows.length + (rows.length === 1 ? ' change' : ' changes')) + '</p>' +
+    '<div class="changes-walk"><span class="button-group" role="group" aria-label="Walk the changes">' +
+      '<button type="button" data-action="change-previous"' + (before ? '' : ' disabled') + ' title="The change before this one in the list">Previous change</button>' +
+      '<button type="button" data-action="change-next"' + (after ? '' : ' disabled') + ' title="The change after this one in the list">Next change</button></span>' +
+      (at >= 0 ? '<span class="changes-position" data-changes-position="' + (at + 1) + '">' + (at + 1) + ' of ' + shown.length + '</span>' : '') +
+      (filtered ? '<button type="button" data-action="change-filters-clear" title="Show every change again">Show all</button>' : '') +
+    '</div></div>';
 }
 
 /**
  * The Changes panel: what the comparison found, in numbers and in two lists (Elements, Relationships), with the toggle that sets the wording-only
- * changes aside. A click on a row selects the thing (see `selectChange`). `state` is `comparisonState()` of a comparison that can be drawn.
+ * changes aside. A click on a row selects the thing (see `selectChange`). Under the counts, the two filters, the line "12 of 167 changes" and the buttons Previous change / Next change
+ * (`renderChangesReadingHtml`, wave 015, run 0103, #27). The pages Plateaus, Applications, Environments, Elements and Stories all write it with this function. `state` is `comparisonState()` of a comparison that can be drawn.
  */
 function renderChangesPanelHtml(state) {
-  const pick = removedInspectionOf(AppState.selection, mapIsShown() ? 'map' : 'elements');
+  const pick = changesPick();
   const rows = sortedChangeRows(state.changes || []);
   const splits = splitElementsOf(rows);
+  const filter = changesFilterFor(state); // wave 015, run 0103 (#27): the two filters of the list, and where the reader is in it
+  const ordered = orderedChangeRows(state);
+  const shown = shownChangeRows(ordered, filter);
+  const marked = markedChangeKeys(ordered, pick);
   const group = (thing, title) => {
-    const list = rows.filter((row) => row.thing === thing);
-    return '<h4 class="inspection-subhead">' + title + ' <span class="field-count">' + list.length + '</span></h4>' +
-      (list.length ? '<ul class="change-list" aria-label="' + title + ' that differ">' + list.map((row) => renderChangeRowHtml(row, changeRowIsSelected(row, pick), rows, splits)).join('') + '</ul>'
-        : '<p class="muted change-none">None.</p>');
+    const all = rows.filter((row) => row.thing === thing);
+    const list = all.filter((row) => changeRowIsShown(row, filter));
+    return '<h4 class="inspection-subhead">' + title + ' <span class="field-count">' + (list.length === all.length ? list.length : list.length + ' of ' + all.length) + '</span></h4>' +
+      (list.length ? '<ul class="change-list" aria-label="' + title + ' that differ">' + list.map((row) => renderChangeRowHtml(row, marked.has(changeRowKey(row)), rows, splits)).join('') + '</ul>'
+        : '<p class="muted change-none">' + (all.length ? 'None of the ' + all.length + ' matches the filters.' : 'None.') + '</p>');
   };
   const counts = state.counts;
   const countRow = (title, c) => '<div class="changes-count-row"><span class="changes-count-label">' + title + '</span>' +
@@ -12267,6 +12500,7 @@ function renderChangesPanelHtml(state) {
     (candidateMessage ? '<p class="changes-message" role="alert">' + escapeHtml(candidateMessage) + '</p>' : '') +
     renderCandidatesHtml(state) + renderWarningsHtml(state) + renderStateWordsHtml(state) + renderCascadeHtml(state) +
     (rows.length ? '' : '<p class="inspection-note">Nothing differs between the two plateaus.</p>') +
+    renderChangesReadingHtml(ordered, filter, shown, currentChangeOf(ordered, pick)) +
     group('element', 'Elements') + group('relationship', 'Relationships') + '</div>';
 }
 
@@ -12580,6 +12814,12 @@ function refreshRightPanel() {
 
 /** The Selected | Changes tabs: the Changes tab shows the list while the selection is what it is now. */
 function setRightTab(tab) {
+  if (currentPerspective === 'library') { // the page Stories has its own pair of tabs: View | Changes
+    libraryRightTab = tab === 'changes' ? 'changes' : 'view';
+    scrollChangesToSelection = tab === 'changes';
+    render();
+    return;
+  }
   changesTabPick = tab === 'changes' ? { stamp: rightPanelStamp() } : null;
   scrollChangesToSelection = tab === 'changes';
   render();
@@ -12597,20 +12837,43 @@ function openOnMap(reference) {
 
 /**
  * A click on a row of the list selects the thing as a click on its box or its link does, and shows it: on the Map its enclosing boxes are opened and the
- * view is centred on it (Center); a removed element opens the read-only panel of run 0039; a relationship selects its link.
- * `row`: `{ thing, change, layer, ref, to }` (the attributes of the button).
+ * view is centred on it (Center); a removed element opens the read-only panel of run 0039; a relationship selects its link. The page Plateaus, and Stories when its
+ * page draws no view, show no element: the row opens it in Elements. On the page of a view in Stories the thing is selected on the page itself.
+ * `row`: `{ thing, change, layer, ref, to, label }` (the attributes of the button). `options.keepList` (Next change, Previous change, a filter that moves the selection): the list
+ * stays on screen, and the row is brought into view in it, instead of the panel of the selection taking its place.
  */
-function selectChange(row) {
-  if (currentPerspective === 'plateaus') { // the Plateaus page lists the changes and shows no element: the row opens it in Elements
+function selectChange(row, options) {
+  const keepList = !!(options && options.keepList);
+  const layer = row.layer || 'application';
+  const done = () => { // the selection is made: where the reader is in the list, the tab, the row in view, and the page drawn
+    changesWalk = { key: changeKey(row.thing, layer, row.ref, row.to, row.label), selection: null };
+    changesTabPick = keepList ? { stamp: rightPanelStamp() } : null; // the new selection is what the panel shows; the Changes tab is one click away
+    if (currentPerspective === 'library') libraryRightTab = keepList ? 'changes' : 'view';
+    scrollChangesToSelection = keepList;
+    render();
+    changesWalk.selection = changesSelectionStamp();
+  };
+  if (currentPerspective === 'library' && changeSelectionIsShown()) { // the page of a view: the thing is selected on the page, its address and the Map's selection stay
+    candidateMessage = null;
+    removedPick = null;
+    const removed = row.thing === 'element' && elementIsOnlyInTheOtherPlateau(layer, row.ref, row.change);
+    libraryPickFor(selectedViewId).selection = removed ? { kind: 'baseline-element', key: row.ref, layer, mode: 'view' }
+      : row.thing === 'relationship' ? linkSelectionFor(row.ref, row.to, layer, null, null)
+      : { kind: 'element', key: row.ref, layer, mode: 'view' };
+    const canvas = document.getElementById('diagram-canvas');
+    if (canvas && diagramScale === 'auto') takeOverDiagramFraming(canvas); // what is on screen stays: selecting must not jump the view
+    done();
+    if (!keepList) bringLibrarySelectionIntoSight();
+    return;
+  }
+  if (currentPerspective === 'plateaus' || currentPerspective === 'library') { // these pages list the changes and show no element: the row opens it in Elements
     history.pushState(null, '', location.href); // the page that was left is an entry of the history: the next address rewrites this one
     currentPerspective = 'elements';
     useDiagramHost('main');
   }
   if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4: a selection is never the draft's file
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
-  changesTabPick = null; // the new selection is what the panel shows; the Changes tab is one click away
   candidateMessage = null;
-  const layer = row.layer || 'application';
   if (mapIsShown() && layer !== mapLayer()) { // a row of the other layer: the Map of that layer is the page that draws it
     history.pushState(null, '', location.href);
     currentPerspective = layer === 'technology' ? 'environments' : 'map';
@@ -12621,7 +12884,7 @@ function selectChange(row) {
     if (onMap) openOnMap(row.ref);
     if (onMap) AppState.selection = { kind: 'none', key: null, mode: 'view' };
     removedPick = { reference: row.ref, layer, selection: JSON.stringify(AppState.selection) };
-    render();
+    done();
     return;
   }
   removedPick = null;
@@ -12631,7 +12894,7 @@ function selectChange(row) {
     AppState.selection = linkSelectionFor(row.ref, row.to, layer, null, null);
     revealLinkAfterDrawing = { nth: null };
     diagramLinkStop = null;
-    render();
+    done();
     return;
   }
   if (onMap) openOnMap(row.ref);
@@ -12640,7 +12903,7 @@ function selectChange(row) {
   scrollNavToSelection = true;
   // in Elements a relationship is selected by the element that declares it, and its link when that element is drawn as a diagram
   if (row.thing === 'relationship' && diagramTabShown()) AppState.selection = linkSelectionFor(row.ref, row.to, layer, null, row.ref);
-  render();
+  done();
 }
 
 /** After each drawing of the Map: say, in the panel, when the selected element is not on the map as it is drawn now. */
@@ -12882,9 +13145,12 @@ function filePlateauOf(mf) {
 
 /** The Plateaus page mounts no diagram, so nothing else asks for the kernel that its Changes panel waits for (`rightPanelPending`): it is loaded, and the panel is written again. */
 function settlePlateausPanel() {
-  if (currentPerspective !== 'plateaus' || !rightPanelPending) return;
+  if ((currentPerspective !== 'plateaus' && currentPerspective !== 'library') || !rightPanelPending) return;
+  const page = currentPerspective;
   loadViewpointKernel().then(() => {
-    if (currentPerspective === 'plateaus') refreshRightPanel();
+    if (currentPerspective !== page) return;
+    if (page === 'plateaus') refreshRightPanel();
+    else render(); // Stories: its panel and its tabs are written again with the list (the drawing of a view is kept in its cache)
   }).catch((e) => console.error('ArchiCode: the viewpoint kernel could not be loaded, the changes are not listed', e));
 }
 
@@ -17844,10 +18110,41 @@ function renderLibraryPerspectiveHtml() {
   return {
     left: recipe && diagramMaximized ? null : renderLeftPanelWrapperHtml(onViews ? renderViewsNavHtml() : renderStoriesNavHtml()),
     center,
-    right: recipe && !diagramMaximized ? renderLibraryPanelHtml(recipe.view) : null,
-    rightLabel: 'View and selection',
+    right: libraryRightHtml(recipe),
+    rightLabel: recipe && !diagramMaximized ? 'View and selection' : 'Changes',
     bottom: null
   };
+}
+
+/**
+ * The tab of the right-hand panel of the page Stories that is shown: 'view' (what the view is and what is selected in it) or 'changes' (the list of the changes of the comparison, wave 015,
+ * run 0103, #27). A choice of whoever looks; the tab is offered only while a comparison is on, and 'view' is shown otherwise.
+ */
+let libraryRightTab = 'view';
+
+/** The comparison the page Stories lists the changes of: null when nothing is compared, or the two plateaus cannot be compared (the other pages say why). While the kernel loads: `{ pending }`. */
+function libraryChangesState() {
+  if (currentPerspective !== 'library') return null;
+  const state = comparisonState();
+  return state && !state.problems ? state : null;
+}
+
+/**
+ * The right-hand panel of the page Stories (null: none). A view that can be drawn has its panel; with a comparison on it has two tabs, View and Changes, and the Changes tab holds the
+ * very list the other pages have (`renderChangesPanelHtml`, with its filters and its Next and Previous buttons). A story, or a view that cannot be drawn, has no panel of its own: with a
+ * comparison on the Changes panel is alone on the right, as on the page Plateaus, so that a story is read with the list of changes on screen.
+ */
+function libraryRightHtml(recipe) {
+  const state = libraryChangesState();
+  rightPanelPending = !!(state && state.pending);
+  const panel = recipe && !diagramMaximized ? renderLibraryPanelHtml(recipe.view) : null;
+  if (!state || (recipe && diagramMaximized)) return panel;
+  const changes = state.pending ? renderChangesPendingHtml() : renderChangesPanelHtml(state);
+  if (panel === null) return changes;
+  const showChanges = libraryRightTab === 'changes';
+  const tab = (id, label, on) => '<button type="button" data-action="set-right-tab" data-tab="' + id + '" aria-pressed="' + on + '">' + label + '</button>';
+  return '<div class="right-tabs button-group" role="group" aria-label="Right panel">' + tab('view', 'View', !showChanges) +
+    tab('changes', 'Changes' + (state.pending ? '' : ' <span class="field-count">' + state.changes.length + '</span>'), showChanges) + '</div>' + (showChanges ? changes : panel);
 }
 
 /** The right-hand panel of the page of a view: what the view is, then — once a box or a link of its diagram is selected — the inspection of the selection. */
@@ -18080,6 +18377,13 @@ function handleAppClick(e) {
     case 'set-right-tab':
       setRightTab(target.getAttribute('data-tab'));
       break;
+    case 'change-next': // wave 015, run 0103 (#27): the list is read one change at a time
+    case 'change-previous':
+      walkChange(action === 'change-next' ? 'next' : 'previous');
+      break;
+    case 'change-filters-clear':
+      clearChangesFilter();
+      break;
     case 'accept-candidate':
       acceptCandidate({ layer: target.getAttribute('data-layer'), from: target.getAttribute('data-from'), to: target.getAttribute('data-to') });
       break;
@@ -18090,7 +18394,7 @@ function handleAppClick(e) {
       restoreCandidates();
       break;
     case 'select-change':
-      selectChange({ thing: target.getAttribute('data-thing'), change: target.getAttribute('data-change'), layer: target.getAttribute('data-layer'), ref: target.getAttribute('data-ref'), to: target.getAttribute('data-to') });
+      selectChange({ thing: target.getAttribute('data-thing'), change: target.getAttribute('data-change'), layer: target.getAttribute('data-layer'), ref: target.getAttribute('data-ref'), to: target.getAttribute('data-to'), label: target.getAttribute('data-label') || '' });
       break;
     case 'select-file': {
       const relPath = target.getAttribute('data-relpath');
