@@ -50,7 +50,11 @@ import lombok.val;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class Comparison {
 
-    /** An element of the union. {@code layer} is {@code application} or {@code technology}. */
+    /**
+     * An element of the union. {@code layer} is {@code application} or {@code technology}. {@code containsChanges} is the kernel's own
+     * word that the element did not change itself and holds a change below it (the state {@code contains-changes}, said by the union
+     * and not worked out again from the references, issue #96).
+     */
     public record ElementChange(
         String layer,
         String reference,
@@ -58,7 +62,8 @@ public class Comparison {
         List<String> natures,
         boolean wordingOnly,
         List<String> replaces,
-        List<String> replacedBy
+        List<String> replacedBy,
+        boolean containsChanges
     ) {}
 
     /** A relationship of the union, keyed (layer, from, destination, label). */
@@ -219,7 +224,8 @@ public class Comparison {
                     strings(element.path("natures")),
                     element.path("wording_only").asBoolean(false),
                     strings(element.path("replaces")),
-                    strings(element.path("replaced_by"))
+                    strings(element.path("replaced_by")),
+                    element.path("contains_changes").asBoolean(false)
                 )
             );
             val union = (ObjectNode) element.deepCopy();

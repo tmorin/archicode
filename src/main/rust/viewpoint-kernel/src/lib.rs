@@ -101,6 +101,8 @@
 //!   - an item of a comparison says `contains_changes: true` when the kernel computed that it did not change and holds a change (the stereotype
 //!     `contains-changes` that ended its list was also a word an author could write by hand). The key is absent otherwise, and in a view that does not compare.
 //!   - a fifth entry point, `states`, says the seven state words once (`relationship`, `identity`, `container`, `states`); the hosts keep no list of their own.
+//!   - the elements of `compare`'s union say `contains_changes` (and `contains_more_than_wording`), additive keys (issue #96, wave 015): the number stays 5.
+//!     `compute` removes them from its input, so they are no free-form field for a facet.
 //! `compute`, `apply_facet` and `apply_patches` take what they took; their answers say the version, 5, and an item of a comparison gained `contains_changes`.
 mod compare;
 mod facet;
@@ -1391,6 +1393,12 @@ fn mark_expandable(items: &mut [OutItem], links: &[OutLink], input: &mut Input) 
 /// Every `change` of the input must be one of the four words; a view is a comparison when any element or relationship has one.
 /// Read before the facets run, so that a facet that removes everything that changed does not turn the comparison into a view.
 fn check_changes(input: &mut Input) -> Result<(), String> {
+    // `compare` says `contains_changes` on the elements of its union, and `compute` works the state out for the elements it is given (after the
+    // facets): the key is not a free-form field here, a facet does not see it and it does not travel (contract 5, issue #96)
+    for element in input.elements.iter_mut().chain(input.app_elements.iter_mut()) {
+        element.other.remove("contains_changes");
+        element.other.remove("contains_more_than_wording");
+    }
     for element in input.elements.iter().chain(input.app_elements.iter()) {
         match element.other.get("change") {
             None | Some(serde_json::Value::Null) => {}

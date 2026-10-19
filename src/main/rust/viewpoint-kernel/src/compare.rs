@@ -26,7 +26,9 @@
 //!    The list of the *natures* of the change is closed, in this order: `kind`, `name`, `description`, `qualifiers`,
 //!    `tags`, `deployment`, `relationships-added`, `relationships-removed`, `relationships-changed`. A change of the
 //!    description alone is `wording_only`. The other free-form fields of an element are not properties: they travel
-//!    in the union (those of the side that is shown) and are never compared.
+//!    in the union (those of the side that is shown) and are never compared. The union says the state of a box itself (issue #96):
+//!    `contains_changes` on an element that did not change and has a new, changed, removed, moved, split or merged one below it in the
+//!    reference tree, and `contains_more_than_wording` when the same is true leaving out the changes that are `wording_only`.
 //! 3. **A relationship is keyed by (layer, source, destination, label)**; an empty label is no label. In both plateaus
 //!    it is unchanged, or `changed` when its `qualifiers` (a set) or its tags (`rendering-*` ignored) differ; in one
 //!    only, `new` or `removed`. When, for one (source, destination), exactly one relationship was removed and exactly
@@ -79,8 +81,9 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 const LAYERS: [&str; 2] = ["application", "technology"];
 const RENDERING_PREFIX: &str = "rendering-";
 /// What `OutElement` writes itself: an extra field of that name never reaches the union.
-const RESERVED: [&str; 17] = [
+const RESERVED: [&str; 19] = [
     "layer", "reference", "parent", "parent_reference", "kind", "name", "description", "qualifiers", "tags", "applications", "uses", "relationships", "change", "natures", "wording_only", "replaces", "replaced_by",
+    "contains_changes", "contains_more_than_wording",
 ];
 
 const NEW: &str = "new";
@@ -538,6 +541,14 @@ struct OutElement {
     /// an element of the base that was replaced and is in the union only because something below it was removed
     #[serde(skip_serializing_if = "Vec::is_empty")]
     replaced_by: Vec<String>,
+    /// the element did not change itself and something below it in the reference tree is new, changed, removed, moved, split or
+    /// merged: the state `contains-changes`, said once here and not worked out again by a host (contract 5, issue #96)
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    contains_changes: bool,
+    /// something below it in the reference tree changed otherwise than in its description alone, whatever the element itself did:
+    /// what a host that sets the wording-only changes aside reads in place of `contains_changes`
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    contains_more_than_wording: bool,
     #[serde(flatten)]
     other: BTreeMap<String, Value>,
     #[serde(skip)]
@@ -573,6 +584,8 @@ fn out_element(layer: &'static str, e: &Elem, p: &Props, change: &'static str) -
         wording_only: false,
         replaces: Vec::new(),
         replaced_by: Vec::new(),
+        contains_changes: false,
+        contains_more_than_wording: false,
         other: e
             .other
             .iter()
@@ -906,6 +919,7 @@ fn run(input: &str) -> Result<CompareOutput, String> {
         }
     }
     elements.sort_by(|a, b| (a.layer, &a.reference).cmp(&(b.layer, &b.reference)));
+    mark_containers(&mut elements);
 
     let mut counts = Counts::default();
     let mut changes: Vec<Value> = Vec::new();
@@ -985,6 +999,28 @@ fn run(input: &str) -> Result<CompareOutput, String> {
         .collect();
     let candidates = candidates(&input, &identities, &rewrite, on_one_chain);
     Ok(CompareOutput { version: CONTRACT_VERSION, elements, relationships, changes, counts, candidates, warnings })
+}
+
+/// `contains_changes` and `contains_more_than_wording` on the elements of the union (the rule of `compute`, which draws the union: an
+/// element that did not change itself and has below it, in the reference tree and not only among the elements listed, one that is new,
+/// changed, removed, moved, split or merged). A reference is looked at in its own layer.
+fn mark_containers(elements: &mut [OutElement]) {
+    let mut above: HashSet<(&'static str, String)> = HashSet::new();
+    let mut above_more: HashSet<(&'static str, String)> = HashSet::new();
+    for e in elements.iter().filter(|e| e.change != NONE) {
+        let p: Vec<&str> = e.reference.split('.').collect();
+        for i in 1..p.len() {
+            above.insert((e.layer, p[..i].join(".")));
+            if !e.wording_only {
+                above_more.insert((e.layer, p[..i].join(".")));
+            }
+        }
+    }
+    for e in elements.iter_mut() {
+        let key = (e.layer, e.reference.clone());
+        e.contains_changes = e.change == NONE && above.contains(&key);
+        e.contains_more_than_wording = above_more.contains(&key);
+    }
 }
 
 /// The comparison of two plateaus: see the top of this file.
@@ -2111,5 +2147,122 @@ mod tests {
         assert_ne!(shuffled.to_string(), input.to_string(), "the test must really shuffle");
         assert_eq!(first, compare_json(&shuffled.to_string()));
         assert_eq!(first, compare_json(&reordered(&shuffled).to_string()));
+    }
+
+    // ---- the state of a container is said by the union (contract 5, issue #96) ----
+
+    /// base and target of a small tree: `top` holds `top.mid`, which holds `top.mid.new`, `top.mid.leaf` and a removed `top.mid.gone`;
+    /// `reworded` holds a leaf whose description changed; `quiet` holds nothing that changed.
+    fn tree() -> Value {
+        let base = vec![
+            el("top", json!({})),
+            el("top.mid", json!({ "parent": true })),
+            el("top.mid.leaf", json!({})),
+            el("top.mid.gone", json!({})),
+            el("reworded", json!({})),
+            el("reworded.leaf", json!({ "description": "one" })),
+            el("quiet", json!({})),
+            el("quiet.leaf", json!({})),
+        ];
+        let target = vec![
+            el("top", json!({})),
+            el("top.mid", json!({ "parent": true })),
+            el("top.mid.leaf", json!({})),
+            el("top.mid.new", json!({})),
+            el("reworded", json!({})),
+            el("reworded.leaf", json!({ "description": "two" })),
+            el("quiet", json!({})),
+            el("quiet.leaf", json!({})),
+        ];
+        app(base, target)
+    }
+
+    #[test]
+    fn the_union_says_which_elements_contain_changes() {
+        let out = tree();
+        for reference in ["top", "top.mid", "reworded"] {
+            assert_eq!(element(&out, reference)["contains_changes"], json!(true), "{reference}: it did not change and holds a change");
+        }
+        for reference in ["top.mid.new", "top.mid.gone", "top.mid.leaf", "reworded.leaf", "quiet", "quiet.leaf"] {
+            assert!(element(&out, reference).get("contains_changes").is_none(), "{reference}: a change says `change`, an element that holds none says nothing");
+        }
+        // the rule is the reference tree, not the elements listed: a change whose parent is not in the union still marks its ancestors
+        let orphan = app(vec![], vec![el("a.b.c", json!({}))]);
+        assert!(element(&orphan, "a.b.c").get("contains_changes").is_none());
+    }
+
+    #[test]
+    fn the_union_says_what_holds_more_than_a_rewording() {
+        let out = tree();
+        for reference in ["top", "top.mid"] {
+            assert_eq!(element(&out, reference)["contains_more_than_wording"], json!(true), "{reference}");
+        }
+        for reference in ["reworded", "quiet", "reworded.leaf", "top.mid.new"] {
+            assert!(element(&out, reference).get("contains_more_than_wording").is_none(), "{reference}: nothing below it but a rewording, or nothing");
+        }
+        // whatever the element did itself: a changed element that holds a new one
+        let out = app(vec![el("x", json!({ "name": "A" }))], vec![el("x", json!({ "name": "B" })), el("x.y", json!({}))]);
+        assert_eq!(element(&out, "x")["change"], "changed");
+        assert!(element(&out, "x").get("contains_changes").is_none());
+        assert_eq!(element(&out, "x")["contains_more_than_wording"], json!(true));
+    }
+
+    #[test]
+    fn the_two_layers_have_their_own_trees() {
+        let base = plateau(vec![el("shop", json!({}))], vec![el("shop", json!({}))]);
+        let target = plateau(vec![el("shop", json!({})), el("shop.cart", json!({}))], vec![el("shop", json!({}))]);
+        let out = compare(base, target);
+        let flags: Vec<(&str, bool)> = out["elements"].as_array().unwrap().iter().map(|e| (e["layer"].as_str().unwrap(), e.get("contains_changes").is_some())).collect();
+        assert_eq!(flags, [("application", true), ("application", false), ("technology", false)]);
+    }
+
+    #[test]
+    fn what_replaced_elements_hold_is_counted_as_compute_counts_it() {
+        // a replaced element is in the union as `removed` (a place) only because something below it was removed: it is a change, and it marks what is above it
+        let base = plateau(vec![el("old", json!({})), el("old.child", json!({})), el("zone", json!({})), el("zone.old", json!({}))], vec![]);
+        let target = plateau(vec![replacing("fresh", json!(["old"]), json!({})), el("zone", json!({}))], vec![]);
+        let out = compare_json(&json!({ "base": base, "target": target, "on_one_chain": true }).to_string());
+        let out: Value = serde_json::from_str(&out).unwrap();
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(element(&out, "fresh")["change"], "moved");
+        assert!(element(&out, "fresh").get("contains_changes").is_none());
+        assert_eq!(element(&out, "zone")["contains_changes"], json!(true), "{out}");
+    }
+
+    #[test]
+    fn a_free_form_field_cannot_say_it_for_the_union() {
+        let out = one(json!({ "contains_changes": true, "contains_more_than_wording": true }), json!({ "contains_changes": true, "contains_more_than_wording": true }));
+        assert!(element(&out, "a").get("contains_changes").is_none());
+        assert!(element(&out, "a").get("contains_more_than_wording").is_none());
+        assert_eq!(out["counts"]["elements"]["changed"], 0, "and it is no change of the element");
+    }
+
+    /// What the union says, drawn: `compute` is given the union of each layer as it is, and every item says the same as the element.
+    #[test]
+    fn compute_works_out_the_same_states_as_the_union_says() {
+        let out = tree();
+        let elements: Vec<Value> = out["elements"].as_array().unwrap().iter().filter(|e| e["layer"] == "application").cloned().collect();
+        let opened: Vec<&str> = elements.iter().filter(|e| e["parent"] == true).map(|e| e["reference"].as_str().unwrap()).collect();
+        let mut input = json!({ "viewpoint": "map", "layer": "application", "focal": "", "elements": elements, "opened": opened });
+        let drawn: Value = serde_json::from_str(&crate::compute_json(&input.to_string())).unwrap();
+        assert!(drawn.get("error").is_none(), "{drawn}");
+        let items = drawn["items"].as_array().unwrap();
+        assert_eq!(items.len(), elements.len(), "every element is drawn");
+        for item in items {
+            let reference = item["reference"].as_str().unwrap();
+            assert_eq!(item.get("contains_changes"), element(&out, reference).get("contains_changes"), "{reference}");
+        }
+        // the key travels in the input and is not read: the drawing is what it was without it
+        for e in input["elements"].as_array_mut().unwrap() {
+            e.as_object_mut().unwrap().remove("contains_changes");
+            e.as_object_mut().unwrap().remove("contains_more_than_wording");
+        }
+        assert_eq!(drawn, serde_json::from_str::<Value>(&crate::compute_json(&input.to_string())).unwrap());
+        // and a facet does not see it
+        input["elements"] = json!(elements);
+        input["facet"] = json!({ "actions": [{ "operator": "REMOVE", "json_path": "$..elements[?(@.contains_changes == true)]" }] });
+        let faceted: Value = serde_json::from_str(&crate::compute_json(&input.to_string())).unwrap();
+        assert!(faceted.get("error").is_none(), "{faceted}");
+        assert_eq!(faceted["items"].as_array().unwrap().len(), items.len(), "the facet removed nothing: it never saw the key");
     }
 }

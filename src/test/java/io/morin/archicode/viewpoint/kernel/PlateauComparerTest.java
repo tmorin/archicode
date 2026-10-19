@@ -559,4 +559,100 @@ class PlateauComparerTest {
         Assertions.assertEquals("moved", till.getStereotypes().getLast());
         Assertions.assertEquals(Change.MERGED, itemsOf(viewpoint).get("stock.place").getChange());
     }
+
+    // ---- the state of a container is said by the kernel, on the union and on the view (issue #96) ----
+
+    private static io.morin.archicode.resource.element.application.Component cmp(
+        String id,
+        Relationship... relationships
+    ) {
+        return io.morin.archicode.resource.element.application.Component.builder()
+            .id(id)
+            .relationships(Set.of(relationships))
+            .build();
+    }
+
+    private static Container box(String id, io.morin.archicode.resource.element.application.Component... components) {
+        return Container.builder()
+            .id(id)
+            .elements(Set.<io.morin.archicode.resource.element.application.ContainerElement>of(components))
+            .build();
+    }
+
+    /** Three levels: {@code shop.web} holds a component that is new and one that did not change, {@code shop.db} holds none that changed. */
+    private Comparison threeLevels() {
+        val feeds = rel("shop.db.store", "feeds");
+        val base = raw(
+            sys("shop", box("web", cmp("cart", feeds), cmp("old", feeds)), box("db", cmp("store"))),
+            sys("quiet", box("q", cmp("a", rel("quiet.q.b", "calls")), cmp("b")))
+        );
+        val target = raw(
+            sys("shop", box("web", cmp("cart", feeds), cmp("fresh", feeds)), box("db", cmp("store"))),
+            sys("quiet", box("q", cmp("a", rel("quiet.q.b", "calls")), cmp("b")))
+        );
+        return new PlateauComparer(objectMapper).compare(
+            workspaceFactory.create(base, Map.of()),
+            workspaceFactory.create(target, Map.of())
+        );
+    }
+
+    @Test
+    void shouldReadTheStateOfAContainerFromTheUnionAndFindItAgainOnTheItemsOfTheView() {
+        val comparison = threeLevels();
+        val says = comparison
+            .getElements()
+            .stream()
+            .filter(e -> e.layer().equals("application"))
+            .collect(Collectors.toMap(Comparison.ElementChange::reference, Function.identity()));
+        // what the union says: the boxes above a change, whatever their depth, and no other
+        Assertions.assertTrue(says.get("shop").containsChanges());
+        Assertions.assertTrue(says.get("shop.web").containsChanges());
+        for (val reference : List.of(
+            "shop.web.fresh",
+            "shop.web.old",
+            "shop.web.cart",
+            "shop.db",
+            "shop.db.store",
+            "quiet",
+            "quiet.q"
+        )) {
+            Assertions.assertFalse(says.get(reference).containsChanges(), reference);
+        }
+        Assertions.assertEquals(Change.NEW, says.get("shop.web.fresh").change());
+        Assertions.assertEquals(Change.REMOVED, says.get("shop.web.old").change());
+
+        // and the view draws the same data through `compute`, which works the state out on its own: every item says what the union says
+        val union = raw(
+            sys(
+                "shop",
+                box(
+                    "web",
+                    cmp("cart", rel("shop.db.store", "feeds")),
+                    cmp("fresh", rel("shop.db.store", "feeds")),
+                    cmp("old", rel("shop.db.store", "feeds"))
+                ),
+                box("db", cmp("store"))
+            ),
+            sys("quiet", box("q", cmp("a", rel("quiet.q.b", "calls")), cmp("b")))
+        );
+        var compared = 0;
+        for (val focal : List.of("shop", "quiet")) {
+            val view = ResourceFixtures.createDeepViewBuilder("view", focal).layer(View.Layer.APPLICATION).build();
+            val drawn = new KernelViewpointFactory("deep", objectMapper, comparison, false).create(
+                workspaceFactory.create(union, Map.of()),
+                view
+            );
+            for (val item : itemsOf(drawn).values()) {
+                val element = says.get(item.getReference());
+                Assertions.assertNotNull(element, item.getReference());
+                Assertions.assertEquals(
+                    element.containsChanges(),
+                    item.isContainsChanges(),
+                    item.getReference() + ": the item says what the union says"
+                );
+                compared++;
+            }
+        }
+        Assertions.assertTrue(compared >= 6, "the check looked at the boxes: " + compared);
+    }
 }

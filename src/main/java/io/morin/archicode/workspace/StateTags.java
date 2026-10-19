@@ -1,7 +1,6 @@
 package io.morin.archicode.workspace;
 
 import io.morin.archicode.resource.element.Element;
-import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.KernelStates;
 import java.util.ArrayList;
@@ -82,35 +81,32 @@ public class StateTags {
         return words;
     }
 
-    /** The change of each element of a layer, by reference. */
-    private Map<String, Change> computed(String layer, Comparison comparison) {
-        val changes = new TreeMap<String, Change>();
+    /** What the union says of each element of a layer, by reference. */
+    private Map<String, Comparison.ElementChange> computed(String layer, Comparison comparison) {
+        val elements = new TreeMap<String, Comparison.ElementChange>();
         if (comparison != null) {
             comparison
                 .getElements()
                 .stream()
                 .filter(e -> e.layer().equals(layer))
-                .forEach(e -> changes.put(e.reference(), e.change()));
+                .forEach(e -> elements.put(e.reference(), e));
         }
-        return changes;
+        return elements;
     }
 
     /**
-     * The state of an element in a comparison: its own change, else {@code contains-changes} when an element below it in
-     * the tree of references has one (the rule of the kernel), else null.
+     * The state of an element in a comparison: its own change, else {@code contains-changes} when the kernel says it holds a
+     * change ({@code contains_changes} of the union, issue #96: the rule is the kernel's and is not written again here), else null.
      */
-    private String stateOf(String reference, Map<String, Change> changes) {
-        val own = changes.getOrDefault(reference, Change.NONE);
-        if (own.isChange()) {
-            return own.word();
+    private String stateOf(String reference, Map<String, Comparison.ElementChange> elements) {
+        val element = elements.get(reference);
+        if (element == null) {
+            return null;
         }
-        val prefix = reference + ".";
-        return changes
-            .entrySet()
-            .stream()
-            .anyMatch(e -> e.getValue().isChange() && e.getKey().startsWith(prefix))
-            ? KernelStates.container()
-            : null;
+        if (element.change().isChange()) {
+            return element.change().word();
+        }
+        return element.containsChanges() ? KernelStates.container() : null;
     }
 
     private String sentence(

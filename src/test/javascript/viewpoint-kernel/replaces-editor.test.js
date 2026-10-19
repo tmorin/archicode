@@ -302,7 +302,7 @@ test('the trees mark a moved, split or merged element with its glyph, and what i
   assert.match(mark, /^<span class="tree-change" data-state="merged" title="Merged since Base" aria-hidden="true">⊕<\/span>$/);
   assert.match(CSS, /\.tree-change\[data-state="moved"\][^}]*border-style: dashed/);
   assert.match(CSS, /\.tree-change\[data-state="merged"\][^}]*border-style: double/);
-  assert.ok(state.above.application.has('archive'));
+  assert.equal(state.records.get('application|archive').contains_changes, true, 'the kernel says it, on the element of the union');
 });
 
 // ---- 2. The Changes panel ----

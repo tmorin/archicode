@@ -112,6 +112,7 @@ input : { base:   { application: [element], technology: [element] },
 output: { version,
           elements:      [ { layer, reference, parent, parent_reference?, kind?, name?, description?, qualifiers, tags,
                              applications, uses, change, natures?, wording_only?, replaces?, replaced_by?,
+                             contains_changes?, contains_more_than_wording?,
                              ...the other fields of the element } ],
           relationships: [ { layer, from, destination, label, qualifiers, tags, change, natures? } ],
           changes:       [ row ],
@@ -191,7 +192,9 @@ output: { version,
   contract number is the signal for a host written for 4, which refuses a kernel that answers `version: 5`.
 - **The contract version.** `compare` itself added nothing to version 2; the views of a comparison (below) changed what `compute`
   gives, and moved the contract to 3; `replaces` (new words of `change`, `replaces`, `candidates`, `warnings`) moved it to 4;
-  `on_one_chain` (a required input) moved it to 5, with `contains_changes` and `states` (below).
+  `on_one_chain` (a required input) moved it to 5, with `contains_changes` and `states` (below). **The elements of the union say
+  `contains_changes` and `contains_more_than_wording`** (issue #96, wave 015): two keys added to the answer of `compare`, absent
+  when false, which no host written for 5 can trip over, so the contract stays at 5 (see "Views of a comparison").
 
 ## Views of a comparison
 
@@ -243,6 +246,16 @@ output link  : { ..., relationships: [{ ..., change? }], change? }
   box that holds no change. A host that has to tell the two (the CLI draws the default look of a state only for a box that has it computed, the
   editor does the same) reads the key, not the last stereotype. The key is absent when the box does not hold a change and in a view
   that does not compare.
+- **The union says it too** (`compare`, issue #96; before, a host that works on the union and not on a view, such as the warning about a
+  state written by hand or a tree of elements, worked the rule out again from the references). An element of the union says
+  `contains_changes: true` when it did not change itself and an element below it in the reference tree (the elements listed or not, in its own layer)
+  is new, changed, removed, moved, split or merged (a replaced element kept as a place for what was removed below it counts: it is `removed`);
+  it is `compute`'s rule, on the whole union. `contains_more_than_wording: true` is the same question asked without the elements whose only change is
+  their description (`wording_only`), and for every element, whatever it did itself: it is what a host that sets the wording-only changes aside
+  (the editor's toggle: it gives those elements to `compute` as unchanged) reads, for an element that is then unchanged, in place of `contains_changes`.
+  Both are absent when false. **They are not free-form fields in `compute`**: the keys are removed from the elements of the input before the
+  facets run (a facet does not see them, the drawing does not depend on them), and `compute` says its own `contains_changes` on the items of what it
+  draws, after the facets, as before; a free-form field of that name in the input of `compare` never reaches the union either.
 - **`only_changes`** keeps, of the view as it is drawn (after the facets, `hide_unlinked` and the folds), the items and the links
   whose `change` is new, changed or removed; the ends of those links; a folded item that hides changes; the focal item (so that a
   view without changes is not empty; the map has none); and what encloses all of them. An item kept for no change of its own has
