@@ -305,7 +305,7 @@ wave_manifest:
       slug: native-checks-as-integration-tests
       phase: P2
       depends_on: [W-2, W-3]
-      run: null
+      run: 0105
       delegation: standard
       likely_paths:
         - 'pom.xml'
