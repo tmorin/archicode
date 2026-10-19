@@ -164,7 +164,7 @@ wave_manifest:
       slug: layer-checks-shared-cases
       phase: P0
       depends_on: [W-3]
-      run: null
+      run: 0093
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/workspace/**'
