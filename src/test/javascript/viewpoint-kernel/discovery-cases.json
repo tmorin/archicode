@@ -253,7 +253,7 @@
     },
     {
       "id": "D11",
-      "what": "the extensions are those of a path without /**: .yaml, .yml, .json (and .toml, in ManifestDiscoveryTest) in lower case; the editor reads the YAML ones and counts the .json as unread",
+      "what": "the extensions are those of a path without /**: .yaml, .yml, .json (and .toml: D36) in lower case; the editor reads the YAML ones and counts the .json as unread",
       "paths": [
         "manifests/**"
       ],
@@ -683,6 +683,27 @@
         "read": [
           "reports/a.yaml",
           "reports/gap.json"
+        ]
+      }
+    },
+    {
+      "id": "D36",
+      "what": "a TOML manifest is a manifest of the command line, as a YAML or a JSON one (#84): its element is loaded; the editor does not read TOML and says so, it counts the file among those it does not read",
+      "paths": [
+        "manifests/**"
+      ],
+      "files": {
+        "manifests/a.yaml": "a",
+        "manifests/b.toml": "b",
+        "manifests/sub/c.toml": "c",
+        "manifests/sub/d.yml": "d"
+      },
+      "expect": {
+        "read": [
+          "manifests/a.yaml",
+          "manifests/b.toml",
+          "manifests/sub/c.toml",
+          "manifests/sub/d.yml"
         ]
       }
     }

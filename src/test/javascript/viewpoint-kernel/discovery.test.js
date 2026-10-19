@@ -14,8 +14,9 @@ const { memFolder } = require('./mem-folder');
 const DOCUMENT = JSON.parse(fs.readFileSync(path.join(__dirname, 'discovery-cases.json'), 'utf8'));
 const KIND = 'archicode.morin.io/system';
 
-/** The manifest the cases name by its id: YAML, or JSON when the file says so. */
+/** The manifest the cases name by its id: YAML, or JSON or TOML when the file says so. */
 function manifestOf(file, id) {
+  if (file.endsWith('.toml')) return '[header]\nkind = "' + KIND + '"\nversion = "1"\n[content]\nid = "' + id + '"\nname = "' + id + '"\n';
   if (file.endsWith('.json')) return JSON.stringify({ header: { kind: KIND, version: '1' }, content: { id, name: id } }) + '\n';
   return 'header:\n  kind: "' + KIND + '"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + id + '"\n';
 }

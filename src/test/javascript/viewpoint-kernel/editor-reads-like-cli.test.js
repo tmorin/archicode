@@ -15,8 +15,8 @@ const HEADER = 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n';
 const manifest = (content, header = HEADER) => header + 'content:\n' + content;
 const errorOf = (text) => app.parseManifestText(text).error;
 const KNOWN_KINDS =
-  'archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, ' +
-  'archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view';
+  'archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, ' +
+  'archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view';
 
 test('an unknown header.kind gives one sentence, with the value and the kinds there are (#76)', () => {
   assert.equal(errorOf(manifest('  id: s\n', 'header:\n  kind: "archicode.morin.io/persn"\n  version: "1"\n')), 'unrecognized `header.kind` "archicode.morin.io/persn" (known: ' + KNOWN_KINDS + ')');
@@ -86,8 +86,10 @@ test('what the command line accepts, the editor accepts', () => {
   assert.equal(errorOf(manifest('  id: 5\n  name: 12\n  description: true\n  qualifiers: [a, 1, true]\n  tags:\n    a: 1\n    b: true\n    c:\n')), null);
   assert.equal(errorOf(manifest('  id: s\n  replaces: x\n')), null, 'what replaces holds is read by the comparison, not by the reader');
   assert.equal(errorOf(manifest('  id: s\n  kind: container\n')), null, 'the kind of the root is the one of the header');
-  // a group at the root of a manifest is not read by the command line yet (tmorin/archicode#79): the editor does not check what it does not know
-  assert.equal(errorOf(manifest('  id: g\n  foo: 1\n', 'header:\n  kind: "archicode.morin.io/system-group"\n  version: "1"\n')), null);
+  // a group is an element nested in another, not a kind: container-group, solution-group and system-group give the one sentence of an unknown kind, as on the command line (#79; N56 to N58 of negative-cases.json)
+  for (const group of ['container-group', 'solution-group', 'system-group']) {
+    assert.equal(errorOf(manifest('  id: g\n', 'header:\n  kind: "archicode.morin.io/' + group + '"\n  version: "1"\n')), 'unrecognized `header.kind` "archicode.morin.io/' + group + '" (known: ' + KNOWN_KINDS + ')');
+  }
 });
 
 test('workspace.yaml: the keys and the shapes of the settings, the styles and the formatters are the command line\'s', () => {

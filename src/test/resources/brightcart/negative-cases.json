@@ -683,7 +683,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view) (line 2, column 9)"
+            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
           ]
         }
       ],
@@ -693,7 +693,7 @@
           "compareTo": null,
           "expect": {
             "manifestErrors": {
-              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view)"
+              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/persn\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
             }
           }
         }
@@ -1933,6 +1933,117 @@
               "in the plateau `baseline`, `probe-a` has a relationship towards `nowhere`, which does not exist (1 more element of the plateau points at it)"
             ],
             "danglingRelationships": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "N56",
+      "variant": "-",
+      "title": "a manifest whose header.kind is `container-group`, which is no kind: a group is an element nested in another (#79)",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "baseline/application/agent.yaml",
+          "from": "kind: \"archicode.morin.io/person\"",
+          "to": "kind: \"archicode.morin.io/container-group\""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/container-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": {
+              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/container-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N57",
+      "variant": "-",
+      "title": "a manifest whose header.kind is `solution-group`, which is no kind: a group is an element nested in another (#79)",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "baseline/application/agent.yaml",
+          "from": "kind: \"archicode.morin.io/person\"",
+          "to": "kind: \"archicode.morin.io/solution-group\""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/solution-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": {
+              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/solution-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N58",
+      "variant": "-",
+      "title": "a manifest whose header.kind is `system-group`, which is no kind: a group is an element nested in another (#79)",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "baseline/application/agent.yaml",
+          "from": "kind: \"archicode.morin.io/person\"",
+          "to": "kind: \"archicode.morin.io/system-group\""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/system-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": {
+              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/system-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
+            }
           }
         }
       ]

@@ -3794,22 +3794,16 @@ function parseSettings(rawSettings) {
 
 const ARCHICODE_KIND_PREFIX = 'archicode.morin.io/';
 
-// Mirrors ManifestKind's ten element constants (it has two more, `view` and `story`: manifests that are not elements,
-// see "Stories") (ASM-3a's fully-qualified
-// vocabulary). The JS mirror follows the marker-interface nesting rule
-// (ASM-4), not ManifestKind.java's mispaired SYSTEM_GROUP type field —
-// that distinction only matters for DEC-8's tree nesting, which this
-// task does not implement; the category/rootKind mapping itself is
-// exactly this static table.
+// Mirrors ManifestKind's seven element constants (it has three more, `view`, `story` and `plateau`: manifests that are not elements,
+// see "Stories" and "The plateaus of a workspace") (ASM-3a's fully-qualified vocabulary). A group is an element nested in a
+// container, a solution or a system, never a manifest of its own: `container-group`, `solution-group` and `system-group`
+// are no kinds, here and on the command line (issue #79).
 const ARCHICODE_KIND_MAP = {
   'component': { category: 'application', rootKind: 'component' },
   'container': { category: 'application', rootKind: 'container' },
-  'container-group': { category: 'application', rootKind: 'group' },
   'person': { category: 'application', rootKind: 'person' },
   'solution': { category: 'application', rootKind: 'solution' },
-  'solution-group': { category: 'application', rootKind: 'group' },
   'system': { category: 'application', rootKind: 'system' },
-  'system-group': { category: 'application', rootKind: 'group' },
   'environment': { category: 'technology', rootKind: 'environment' },
   'node': { category: 'technology', rootKind: 'node' }
 };
@@ -3918,21 +3912,6 @@ function childKindOptionsForLevel(level) {
 /** `childKindOptionsForLevel`, keyed off an `ElementRecord`'s own `level` (DEC-3). */
 function childKindOptionsFor(record) {
   return childKindOptionsForLevel(record.level);
-}
-
-/**
- * A top-level manifest kind's own "reduced level" (TDD-0010 DEC-3/step 8):
- * strip a trailing `-group` suffix to recover the base level a group
- * flavor sits at (`'system-group'` -> `'system'`), else the kind itself is
- * already a valid level name (`'person'`/`'component'`/`'environment'`/
- * `'node'`/`'system'`/`'container'`/`'solution'`). Mirrors `buildIndex`'s
- * own `groupLevelMatch` computation for a manifest root, generalized for
- * reuse by the top-level create form's attach-under validation so the
- * same regex is not re-inlined at every call site.
- */
-function reducedLevelForKind(kind) {
-  const m = /^(.+)-group$/.exec(kind);
-  return m ? m[1] : kind;
 }
 
 // =====================================================================
@@ -4446,8 +4425,7 @@ function resolveLayerStep(parent, node, context) {
   for (const mf of own.elements) {
     const bare = stripArchicodeKindPrefix(mf.header.kind);
     const { category, rootKind } = ARCHICODE_KIND_MAP[bare];
-    const groupLevel = /^(.+)-group$/.exec(bare);
-    const level = groupLevel ? groupLevel[1] : rootKind;
+    const level = rootKind;
     const parentReference = mf.header.parent ? String(mf.header.parent) : null;
     const reference = parentReference ? parentReference + '.' + mf.content.id : String(mf.content.id);
     const json = clonePlain(mf.content);
@@ -5990,15 +5968,8 @@ function buildIndex(manifestFiles, settings) {
       continue;
     }
     const { category, rootKind } = mapping;
-    // DEC-3: the root's own nesting-rule level, computed from the
-    // un-generalized `bareKind` (e.g. 'system-group') *before*
-    // ARCHICODE_KIND_MAP's own reduction to the generic 'group' rootKind
-    // erases that distinction — strip a trailing '-group' suffix to get
-    // the base level; else rootKind itself is already a valid level name
-    // ('person'/'component'/'environment'/'node'/'system'/'container'/
-    // 'solution').
-    const groupLevelMatch = /^(.+)-group$/.exec(bareKind);
-    const rootLevel = groupLevelMatch ? groupLevelMatch[1] : rootKind;
+    // DEC-3: the root's own nesting-rule level is its kind: a group is never the root of a manifest
+    const rootLevel = rootKind;
     const rootReference = mf.header.parent
       ? (mf.header.parent + '.' + mf.content.id)
       : String(mf.content.id);
@@ -6178,8 +6149,8 @@ const READ_SCHEMA = {
     "NodeElement": { "node": "Node" }
   },
   "manifestKinds": {
-    "component": "Component", "container": "Container", "container-group": null, "environment": "Environment", "node": "Node", "person": "Person",
-    "plateau": "Plateau", "solution": "Solution", "solution-group": null, "story": "Story", "system": "System", "system-group": null, "view": "View"
+    "component": "Component", "container": "Container", "environment": "Environment", "node": "Node", "person": "Person",
+    "plateau": "Plateau", "solution": "Solution", "story": "Story", "system": "System", "view": "View"
   }
 };
 // READ_SCHEMA end
@@ -7774,8 +7745,7 @@ function commitSettingsEdit(mutatorFn) {
 // =====================================================================
 
 /** PRD FR-4's fixed per-category top-level kind list (the full header.kind flavors, not the nested-child vocabulary childKindOptionsForLevel returns). */
-// The `*-group` kinds are not offered here: ManifestKind.getSubTypeName() gives `_group` for them, so one such
-// manifest makes the whole workspace unreadable for the CLI. The editor still reads and edits them when they exist.
+// The `*-group` kinds are not offered here: they are no kinds (a group is an element nested in another, issue #79).
 const TOP_LEVEL_KIND_OPTIONS = {
   application: ['person', 'system', 'solution', 'container', 'component'],
   technology: ['environment', 'node']
@@ -7909,7 +7879,7 @@ function commitCreateChildElement({ parentReference, layer, kind, id, name, desc
   try {
     let written;
     if (inheritedParent) {
-      const headerKind = kind === 'group' ? parentRecord.level + '-group' : kind;
+      const headerKind = kind; // a group has no manifest of its own: ARCHICODE_KIND_MAP has no `group`
       if (!ARCHICODE_KIND_MAP[headerKind]) {
         return { ok: false, field: 'kind', error: 'A ' + kind + ' under “' + parentReference + '” (declared in the plateau `' + parentRecord.declaredIn + '`) cannot be written in a manifest of its own: draw `' + parentRecord.declaredIn + '` to add it.' };
       }
@@ -9750,7 +9720,7 @@ function navTabIndex(key) {
 const NAV_KIND_ORDER = ['solution', 'system', 'container', 'component', 'person', 'group', 'environment', 'node'];
 function navKindRank(kind) {
   const k = String(kind);
-  const rank = NAV_KIND_ORDER.indexOf(k.replace(/^.*-/, '')); // "container-group" is a group
+  const rank = NAV_KIND_ORDER.indexOf(k);
   return rank === -1 ? NAV_KIND_ORDER.length : rank;
 }
 function sortedForNav(records) {
@@ -15565,10 +15535,10 @@ function markMapScope() {
 /** A short form of the kind for the tree of the map, where every pixel of the row is wanted by the name. */
 const MAP_KIND_ABBREVIATIONS = { person: 'PRS', system: 'SYS', solution: 'SOL', container: 'CTN', component: 'CMP', group: 'GRP', environment: 'ENV', node: 'NOD' };
 
-/** The short form of a kind for the rows of both trees ("container-group" reads GRP; the full kind is in the tooltip). */
+/** The short form of a kind for the rows of both trees (the full kind is in the tooltip). */
 function kindAbbreviation(kind) {
   const k = String(kind);
-  return MAP_KIND_ABBREVIATIONS[k] || MAP_KIND_ABBREVIATIONS[k.replace(/^.*-/, '')] || k.slice(0, 3).toUpperCase();
+  return MAP_KIND_ABBREVIATIONS[k] || k.slice(0, 3).toUpperCase();
 }
 
 /** Pin and Hide on the rows of the tree of the map: two small icons, 14px, each drawing the state the element is in (outline: not, filled / crossed: yes). */
@@ -18126,9 +18096,7 @@ function handleAppClick(e) {
           setInlineErrorText('create-attach-under-error', 'No element "' + attachUnder + '" exists in this category.');
           break;
         }
-        const attachOk = (rootKind === 'group')
-          ? reducedLevelForKind(chosenKind) === parentRecord.level
-          : childKindOptionsForLevel(parentRecord.level).indexOf(rootKind) !== -1;
+        const attachOk = childKindOptionsForLevel(parentRecord.level).indexOf(rootKind) !== -1;
         if (!attachOk) {
           setInlineErrorText('create-attach-under-error', 'Element "' + attachUnder + '" cannot contain a "' + chosenKind + '".');
           break;

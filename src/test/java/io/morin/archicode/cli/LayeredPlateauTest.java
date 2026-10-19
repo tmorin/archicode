@@ -26,10 +26,9 @@ import picocli.CommandLine;
 class LayeredPlateauTest {
 
     private static final String KINDS =
-        "archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, " +
-        "archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, " +
-        "archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/solution-group, " +
-        "archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, " +
+        "archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, " +
+        "archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, " +
+        "archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, " +
         "archicode.morin.io/view";
 
     @Inject

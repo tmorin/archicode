@@ -164,7 +164,7 @@ test('a shipped fixture whose manifest has a kind nobody knows does not open', a
   const { dir, manifest } = altered('src/test/resources/hyphen-ids', (text) => text.replace(/kind: "archicode\.morin\.io\/\w+"/, 'kind: "archicode.morin.io/nothing"'));
   try {
     const [[, problems]] = await openEveryPlateau(dir);
-    assert.deepEqual(problems, ['`' + manifest + '` is not valid: unrecognized `header.kind` "archicode.morin.io/nothing" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view)']);
+    assert.deepEqual(problems, ['`' + manifest + '` is not valid: unrecognized `header.kind` "archicode.morin.io/nothing" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)']);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

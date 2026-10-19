@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ManifestConverter {
 
+    /** Reads JSON text: the content is turned into JSON text whatever the format of the file it comes from (YAML, JSON or TOML). */
     @NonNull
     ObjectMapper mapper;
 

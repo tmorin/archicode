@@ -306,10 +306,12 @@ test('the editor does not offer the *-group kinds for a top-level manifest', asy
   same(Array.from(kinds.application), ['person', 'system', 'solution', 'container', 'component']);
 });
 
-test('a container-group manifest that exists is still read', async () => {
+test('a container-group manifest is no kind: the editor refuses it with the sentence of the command line', async () => {
   const group = 'header:\n  kind: "archicode.morin.io/container-group"\n  version: "1"\n  parent: "hub.core"\ncontent:\n  id: "grp"\n';
   const { state } = await openMem(Object.assign({}, TWO_LAYERS, { 'manifests/app.hub.core.grp.yaml': group }));
-  assert.ok(state.index.application.has('hub.core.grp'));
+  assert.ok(!state.index.application.has('hub.core.grp'));
+  const file = state.manifestFiles.find((f) => f.relPath === 'manifests/app.hub.core.grp.yaml');
+  assert.match(file.error, /^unrecognized `header.kind` "archicode.morin.io\/container-group" \(known: /);
 });
 
 // ---- 6. ids ----

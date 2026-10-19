@@ -334,6 +334,22 @@ test('a new element of baseline has no `plateau:` and every plateau that stands 
   assert.ok(state.index.application.has('loyalty'));
 });
 
+test('a group is an element nested in another, never a manifest of its own (#79): written in the file of a parent the plateau declares, refused under one it inherits', async () => {
+  const opened = await openLayeredCopy('saas');
+  const { sandbox, state } = opened;
+  const refused = sandbox.commitCreateChildElement({ parentReference: 'shop', layer: 'application', kind: 'group', id: 'extras', name: 'Extras', description: '' });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.field, 'kind');
+  assert.match(refused.error, /^A group under .shop. \(declared in the plateau `baseline`\) cannot be written in a manifest of its own: draw `baseline` to add it\.$/);
+  assert.deepEqual(dirtyFiles(state), [], 'nothing is written');
+  const declared = sandbox.commitCreateChildElement({ parentReference: 'commerce-saas', layer: 'application', kind: 'group', id: 'extras', name: 'Extras', description: '' });
+  assert.equal(declared.ok, true, declared.error);
+  const out = await saved(opened);
+  assert.deepEqual(Object.keys(out.files), ['saas/application/commerce-saas.yaml']);
+  assert.match(out.files['saas/application/commerce-saas.yaml'].after, /elements:\n[\s\S]*- kind: "?group"?\n\s+id: "?extras"?/);
+  assert.equal(state.index.application.get('commerce-saas.extras').kind, 'group');
+});
+
 test('a child of an element the plateau inherits is a manifest of the plateau with `header.parent`; a child of an element it declares is written in the file of its parent', async () => {
   const opened = await openLayeredCopy('saas');
   const { sandbox, state } = opened;

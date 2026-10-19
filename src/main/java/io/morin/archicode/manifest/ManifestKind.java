@@ -19,15 +19,13 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum ManifestKind {
-    // APPLICATION
+    // APPLICATION: a group is an element nested in a container, a solution or a system (kind `group` below them), never a
+    // manifest of its own: `container-group`, `solution-group` and `system-group` are not kinds (issue #79)
     COMPONENT(Component.class, Application.class),
     CONTAINER(Container.class, Application.class),
-    CONTAINER_GROUP(ContainerGroup.class, Application.class),
     PERSON(Person.class, Application.class),
     SOLUTION(Solution.class, Application.class),
-    SOLUTION_GROUP(SolutionGroup.class, Application.class),
     SYSTEM(System.class, Application.class),
-    SYSTEM_GROUP(SolutionGroup.class, Application.class),
     // TECHNOLOGY
     ENVIRONMENT(Environment.class, Technology.class),
     NODE(Node.class, Technology.class),
@@ -48,8 +46,6 @@ public enum ManifestKind {
     }
 
     public String getSubTypeName() {
-        return this.name()
-            .toLowerCase()
-            .substring(Math.max(this.name().indexOf("_"), 0));
+        return this.name().toLowerCase();
     }
 }

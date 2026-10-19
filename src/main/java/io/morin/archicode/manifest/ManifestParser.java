@@ -99,7 +99,12 @@ public class ManifestParser {
             }
             final Object item;
             try {
-                item = ManifestConverter.builder().manifest(resource).mapper(mapper).build().convert();
+                // the content is read again from JSON text, whatever the format of the file was (issue #84)
+                item = ManifestConverter.builder()
+                    .manifest(resource)
+                    .mapper(mapperFactory.create(MapperFormat.JSON))
+                    .build()
+                    .convert();
             } catch (JsonProcessingException e) {
                 // the content is read again from a string: the line and the column are not those of the file
                 throw missingKey(e, "content")

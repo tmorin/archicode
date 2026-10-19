@@ -21,7 +21,7 @@ async function open(files) {
   return { sandbox, state };
 }
 
-const KNOWN_KINDS = 'archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/container-group, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/solution-group, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/system-group, archicode.morin.io/view';
+const KNOWN_KINDS = 'archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view';
 
 for (const kind of ['archicode.morin.io/plateau', 'archicode.morin.io/Plateau', '  ARCHICODE.Morin.IO/PLATEAU ']) {
   test('kind ' + JSON.stringify(kind) + ' is a plateau, in any case and with spaces around it, as the command line reads a kind', async () => {
