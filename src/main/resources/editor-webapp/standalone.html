@@ -4450,16 +4450,27 @@ function entryProblemsOf(settings) {
   // a workspace with no plateau has no layer cache to keep it in (and little to look at: the steps that name a plateau)
   const cache = layered ? ensureLayerCache(settings) : null;
   if (cache && cache.entryProblems !== undefined) return cache.entryProblems;
+  const problems = entryProblemsIn(AppState.manifestFiles, tree, layered ? declaredAnywhereCached() : null);
+  if (cache) cache.entryProblems = problems;
+  return problems;
+}
+
+/**
+ * `entryProblemsOf` for a list of manifests and the tree of plateaus they make, kept nowhere: what the check would say of the workspace if it had these files (the dialog
+ * that deletes a plateau asks it of the files that stay, wave 015 run 0102). `declared`: `declaredReferencesOf(manifestFiles)` when it is known already, else it is computed.
+ */
+function entryProblemsIn(manifestFiles, tree, declaredGiven) {
+  const layered = !!(tree && tree.layered);
   const out = [];
   // what a view or a story step names must exist in a plateau: a workspace with no plateau is not looked at (the editor says a view that cannot be drawn in its place)
-  const declared = layered ? declaredAnywhereCached() : null;
+  const declared = layered ? declaredGiven || declaredReferencesOf(manifestFiles) : null;
   const told = (noun, id, source, recipe) => {
     if (!layered) return;
     for (const name of namedByProperties(recipe.properties)) {
       if (!declared[entryLayerOf(recipe.layer)].has(name)) out.push('the ' + noun + ' `' + id + '` (`' + source + '`) names `' + name + '`, which exists in no plateau');
     }
   };
-  const files = (kind) => AppState.manifestFiles.filter((mf) => !mf.error && mf.header && mf.content && isPlainObject(mf.content) && manifestKindName(mf.header.kind) === kind);
+  const files = (kind) => manifestFiles.filter((mf) => !mf.error && mf.header && mf.content && isPlainObject(mf.content) && manifestKindName(mf.header.kind) === kind);
   // the views and stories of workspace.yaml (an older place for them) come after those of the manifests, unless a manifest has the id: it shadows them (`entriesOf`)
   const legacy = (key, kind) => { const own = new Set(files(kind).map((mf) => String(mf.content.id))); return legacyEntries(key).filter((entry) => !own.has(entry.id)); };
   if (layered) {
@@ -4478,9 +4489,7 @@ function entryProblemsOf(settings) {
   };
   for (const mf of files('story')) tellSteps(mf.content.id, mf.relPath, mf.content.steps);
   for (const story of legacy('stories', 'story')) tellSteps(story.id, 'workspace.yaml', story.steps);
-  const problems = Array.from(new Set(out));
-  if (cache) cache.entryProblems = problems;
-  return problems;
+  return Array.from(new Set(out));
 }
 
 /**
@@ -5319,7 +5328,15 @@ function plateauWritingHtml() {
     (writing !== null ? '<span class="band-writing-label" role="status">writing in: <strong>' + escapeHtml(title) + '</strong>' + (title !== id ? ' <code>' + escapeHtml(id) + '</code>' : '') + '</span>' : '') +
     '<button type="button" data-action="plateau-create" data-plateau="' + escapeHtml(id) + '"' + busy + ' title="Create a plateau that overrides ' + escapeHtml(title) + '">New plateau</button>' +
     (tree.layered ? '<button type="button" data-action="plateau-edit" data-plateau="' + escapeHtml(id) + '"' + busy + ' title="Rename ' + escapeHtml(title) + ', give it a horizon or another parent">Edit plateau</button>' : '') +
+    (tree.layered && id !== BASELINE_PLATEAU ? plateauDeleteButtonHtml(id, 'Delete plateau', busy) : '') +
     '</span>';
+}
+
+/** The button that opens the dialog of the delete (run 0102): offered for every plateau but the root; the dialog says why one that others override cannot go. */
+function plateauDeleteButtonHtml(id, label, busy) {
+  const children = layerChildrenOf(id);
+  const title = children.length ? 'Cannot be deleted: ' + (children.length === 1 ? children[0] + ' overrides it' : children.join(', ') + ' override it') : 'Delete ' + plateauTitle(layerPlateauModel(id)) + ' and its files, after a list of what goes';
+  return '<button type="button" class="btn-danger" data-action="plateau-delete" data-plateau="' + escapeHtml(id) + '"' + busy + ' title="' + escapeHtml(title) + '">' + escapeHtml(label) + '</button>';
 }
 
 /**
@@ -5459,6 +5476,8 @@ function snapshotWriteState() {
     expanded: new Set(AppState.expanded),
     selection: Object.assign({}, AppState.selection),
     topLevel: workspace ? copyJson(workspace.topLevel) : undefined,
+    settingsCurrent: workspace ? workspace.settings.current : undefined, // the delete of a plateau takes out a `settings.current` that names it (run 0102)
+    layers: AppState.layers ? { current: AppState.layers.current, compare: copyJson(AppState.layers.compare) } : null, // and draws another plateau when it was the one drawn
     settingsDirty: workspace ? workspace.settingsDirty : undefined,
     settingsRevision: workspace ? workspace.settingsRevision : undefined,
     saveStatus,
@@ -5488,6 +5507,7 @@ function restoreWriteState(snapshot) {
   const workspace = AppState.workspace;
   if (workspace) {
     workspace.topLevel = snapshot.topLevel;
+    workspace.settings.current = snapshot.settingsCurrent;
     workspace.settingsDirty = snapshot.settingsDirty;
     workspace.settingsRevision = snapshot.settingsRevision;
   }
@@ -5499,6 +5519,10 @@ function restoreWriteState(snapshot) {
   mapOpened = snapshot.mapOpened;
   technologyMapState = snapshot.technologyMapState;
   navActiveKey = snapshot.navActiveKey;
+  if (snapshot.layers && AppState.layers) {
+    AppState.layers.current = snapshot.layers.current;
+    AppState.layers.compare = snapshot.layers.compare;
+  }
 }
 
 /**
@@ -5522,9 +5546,20 @@ function layerDigest() {
   return digest;
 }
 
+/**
+ * A sentence of a check as two states of the workspace are compared on it: the list of the plateaus some sentences end with is left out, and a step that names no plateau
+ * is the same mistake whether the workspace has other plateaus or none. A step that was wrong before a plateau is created or deleted is not a new mistake (run 0102).
+ */
+function comparableSentence(sentence) {
+  const text = String(sentence);
+  const step = text.match(/^(the story .* step \d+ says `(?:at|against): [^`]*`)(?:, which is not a plateau of this workspace| but the workspace declares no plateau)/);
+  if (step) return step[1] + ': not a plateau';
+  return text.replace(/ \(the plateaus are [^)]*\)$/, '');
+}
+
 /** `{ broken, changed }`: the first sentence of what a write broke (a plateau that resolved no longer does, or the command line refuses it for a new reason), and the plateaus other than `written` whose graph it changed. */
 function judgeLayerWrite(before, after, written) {
-  const fresh = (now, then) => now.find((sentence) => !then.includes(sentence)) || null;
+  const fresh = (now, then) => { const known = then.map(comparableSentence); return now.find((sentence) => !known.includes(comparableSentence(sentence))) || null; };
   const mistake = fresh(after.sentences, before.sentences);
   if (mistake) return { broken: oneLine(mistake), changed: [] };
   const changed = [];
@@ -6111,6 +6146,170 @@ function commitPlateauEdit(spec, options) {
       }
     }
   });
+}
+
+// ---- Plateaus: deleted (wave 015, run 0102, W-14, issue #93) ----
+//
+// Only a plateau that no other plateau overrides can go (a leaf: nothing inherits what it declares or patches, so nothing else changes with it), and never the root. What
+// goes is listed before anything is done, and nothing else goes: its manifest of kind `archicode.morin.io/plateau` and every manifest whose header says its id (a view or a
+// story that says it belongs to no plateau, run 0100: it stays). The files are queued for removal like the files of a deleted element (`pendingFileRemovals`): they leave
+// the disk at the next "Save all changes", with its check that the disk did not change meanwhile. Two things name a plateau besides its files:
+//   - `settings.current`: the delete takes it out of workspace.yaml (the editor has no other place to change it, and a `current` that names no plateau stops both tools);
+//   - a step of a story (`at`, `against`, run 0101): the delete is refused and lists the steps, as it is for a view or a step that names an element that only this
+//     plateau declares. Which plateau the step should be told at instead is the author's choice, made with the two lists of the step in Stories.
+
+/**
+ * What deleting the plateau `id` would do, computed from the manifests as they are and changing nothing: `refusal` (one sentence: the root, a plateau others override,
+ * plateaus that cannot be drawn), `overriding` (the plateaus that override it), `files` (`[{ relPath, plateau, unsaved, modified }]`, the files that go: `plateau` is its
+ * manifest of kind plateau), `current` (the `settings.current` that is taken out, or null), `blocking` (the sentences both tools would say of the files that stay and do not
+ * say now: the steps that name the plateau, the views and steps that name an element only it declares), `kept` (the views and stories that say `plateau: <id>`) and `unread`
+ * (every `.toml` and `.json` manifest, whose text the editor does not keep, and the YAML files it could not read whose text has the id: none is deleted, and one that says
+ * `plateau: <id>` would keep the plateau for the command line).
+ */
+function plateauDeletion(id) {
+  const tree = AppState.plateauTree;
+  const layers = AppState.layers;
+  const node = tree ? tree.nodes.get(id) : null;
+  const plan = { id, refusal: null, overriding: [], files: [], current: null, blocking: [], kept: [], unread: [] };
+  if (!layers || !tree || !tree.layered) { plan.refusal = 'This workspace has no plateau but baseline, which cannot be deleted.'; return plan; }
+  if (layers.blocked) { plan.refusal = 'No plateau is deleted while the plateaus cannot be drawn: ' + oneLine(layers.blocked); return plan; }
+  if (!node) { plan.refusal = 'The plateau `' + id + '` does not exist.'; return plan; }
+  if (node.parent === null) { plan.refusal = 'The plateau `' + id + '` is the root of the plateaus: every other plateau stands on it, so it cannot be deleted.'; return plan; }
+  plan.overriding = layerChildrenOf(id);
+  if (plan.overriding.length) {
+    plan.refusal = 'The plateau `' + id + '` cannot be deleted: ' + (plan.overriding.length === 1 ? 'the plateau ' + plateauNames(plan.overriding) + ' overrides it' : 'the plateaus ' + plateauNames(plan.overriding, true) + ' override it') +
+      '. Only a plateau that no other plateau overrides can be deleted: delete ' + (plan.overriding.length === 1 ? 'it' : 'them') + ' first, or give ' + (plan.overriding.length === 1 ? 'it' : 'them') + ' another parent with Edit.';
+    return plan;
+  }
+  const goes = new Set([node.manifest].concat(node.headers).filter((relPath) => relPath));
+  plan.files = AppState.manifestFiles.filter((mf) => goes.has(mf.relPath)).map((mf) => ({ relPath: mf.relPath, plateau: mf.relPath === node.manifest, unsaved: !mf.existedOnDisk, modified: !!(mf.existedOnDisk && mf.dirty) }));
+  plan.kept = AppState.manifestFiles.filter((mf) => !mf.error && isPlateauFreeManifest(mf) && headerPlateau(mf.header) === id).map((mf) => mf.relPath);
+  const named = new RegExp('(^|[^a-z0-9_-])' + id.replace(/[-]/g, '\\-') + '($|[^a-z0-9_-])', 'm');
+  plan.unread = (AppState.unreadManifestFiles || []).concat(AppState.manifestFiles.filter((mf) => mf.error && named.test(String(mf.rawText || ''))).map((mf) => mf.relPath)).sort(compareCodePoints);
+  const stays = AppState.manifestFiles.filter((mf) => !goes.has(mf.relPath));
+  const after = buildPlateauTreeOf(stays);
+  const settings = AppState.workspace.settings;
+  const now = entryProblemsOf(settings).map(comparableSentence);
+  plan.blocking = entryProblemsIn(stays, after, null).filter((sentence) => !now.includes(comparableSentence(sentence))); // a step that was wrong already is not the delete's
+  // `current` naming the plateau, or `baseline` in a workspace that has no plateau left: both tools would refuse the workspace (a `current` that was wrong already is not the delete's)
+  if (settings.current === id || (settings.current === BASELINE_PLATEAU && !after.layered)) plan.current = settings.current;
+  return plan;
+}
+
+/** The sentence that refuses a delete for what the files that stay would say (`plan.blocking`), naming the first of them. */
+function plateauDeletionBlockedMessage(plan) {
+  return 'The plateau `' + plan.id + '` cannot be deleted: ' + (plan.blocking.length === 1 ? 'a view or a story would no longer be valid' : plan.blocking.length + ' views or story steps would no longer be valid') +
+    ' (' + oneLine(plan.blocking[0]).replace(/\.$/, '') + '). Change ' + (plan.blocking.length === 1 ? 'it' : 'them') + ' in Stories first.';
+}
+
+/**
+ * Deletes the plateau `id` (see `plateauDeletion`): its files leave the model and are queued for removal, a `settings.current` that names it is taken out, and the page
+ * draws the plateau it overrode when it was the one drawn (with no comparison), or stops the comparison when it was the one compared with. Under `guardedLayerWrite`: every
+ * plateau that stays is resolved again, and the delete is kept only if none is refused that was not, else everything is put back (the files, the queue of removals, the
+ * settings, the plateau drawn). Returns `{ removed, current, drawn }`, or `{ pending: true }` when the dialog of the plateaus it changes is open (never for a leaf).
+ */
+function commitPlateauDelete(id, options) {
+  if (saveInFlight) throw new Error('The folder is being saved: delete the plateau once the save has ended.');
+  const plan = plateauDeletion(id);
+  if (plan.refusal) throw new Error(plan.refusal);
+  if (plan.blocking.length) throw new Error(plateauDeletionBlockedMessage(plan));
+  const goes = new Set(plan.files.map((f) => f.relPath));
+  const parent = AppState.plateauTree.nodes.get(id).parent;
+  const drawingBefore = AppState.layers.current + '|' + layerCompareChoice();
+  const result = guardedLayerWrite({
+    plateau: id,
+    confirmed: !!(options && options.confirmed),
+    summary: 'Delete the plateau `' + id + '`',
+    again: () => commitPlateauDelete(id, Object.assign({}, options, { confirmed: true })),
+    write: () => {
+      for (const mf of AppState.manifestFiles) {
+        if (!goes.has(mf.relPath)) continue;
+        if (mf.existedOnDisk && !AppState.pendingFileRemovals.includes(mf.relPath)) { // a file that is not on disk yet just leaves the model
+          AppState.pendingFileRemovals.push(mf.relPath);
+          AppState.removedFileBaselines.set(mf.relPath, mf.lastKnownDiskModified); // the save checks the disk did not change since
+        }
+        if (rawYamlEditDraft && rawYamlEditDraft.relPath === mf.relPath) rawYamlEditDraft = null;
+        if (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) AppState.selection = { kind: 'none', key: null, mode: 'view' };
+      }
+      // the marks of what is modified, for a reference no file that stays declares (a plateau beside it may declare the same one: its mark stays)
+      const declaredAfter = declaredReferencesOf(AppState.manifestFiles.filter((mf) => !goes.has(mf.relPath)));
+      for (const mf of AppState.manifestFiles) {
+        const layer = goes.has(mf.relPath) ? manifestLayer(mf) : null;
+        if (layer) walkContentNodes(mf, (node, reference) => { if (!declaredAfter[layer].has(reference)) AppState.dirtyReferences.delete(nodeKey(reference, layer)); });
+      }
+      AppState.manifestFiles = AppState.manifestFiles.filter((mf) => !goes.has(mf.relPath));
+      if (plan.current !== null) {
+        const raw = AppState.workspace.topLevel && AppState.workspace.topLevel.settings;
+        if (isPlainObject(raw)) delete raw.current; // workspace.yaml is written line by line: the line of the key goes, nothing else
+        AppState.workspace.settings.current = '';
+        markWorkspaceYamlChanged();
+      }
+      const layers = AppState.layers;
+      if (layers.current === id) {
+        layers.current = parent; // the plateau it overrode: what the author built it on
+        layers.compare = null;
+      } else if (layers.compare && layers.compare.other === id) {
+        layers.compare = null;
+      }
+      pendingDeleteConfirmation = null;
+      saveStatus = { state: 'idle' };
+      rebuildIndexAndRender();
+      return { removed: Array.from(goes).sort(compareCodePoints), current: plan.current, drawn: layers.current };
+    },
+    verify: () => {
+      if (AppState.plateauTree.nodes.has(id) || AppState.manifestFiles.some((mf) => goes.has(mf.relPath))) throw new Error('Not written: the plateau `' + id + '` is still read after the delete. Nothing was changed.');
+    }
+  });
+  // another plateau drawn, or no comparison: remembered as it is now, and what the page held of the plateau drawn before is let go. The address is rewritten, not added to
+  // the history (the plateau it named is gone)
+  if (!result.pending && AppState.layers.current + '|' + layerCompareChoice() !== drawingBefore) {
+    rememberLayerChoice();
+    settleAfterLayerChange(false);
+    render();
+  }
+  return result;
+}
+
+/** The dialog that deletes a plateau: it says what goes before anything goes. */
+function openPlateauDeleteDialog(id) {
+  if (!AppState.layers || !AppState.plateauTree || !AppState.plateauTree.nodes.has(id)) return;
+  openAppDialog({ kind: 'plateau-delete', plateau: id });
+}
+
+/** The body and the buttons of the dialog of `openPlateauDeleteDialog`, from `plateauDeletion` (computed each time it is drawn). */
+function renderPlateauDeleteDialogHtml(dialog) {
+  const plan = plateauDeletion(dialog.plateau);
+  const title = 'Delete the plateau ' + plateauTitle(layerPlateauModel(dialog.plateau));
+  const cancel = (focus) => '<button type="button" data-action="dialog-cancel"' + (focus ? ' class="btn-primary" data-dialog-autofocus' : '') + '>' + (focus ? 'Close' : 'Cancel') + '</button>';
+  const code = (text) => '<code>' + escapeHtml(text) + '</code>';
+  const list = (items) => '<ul class="layer-confirm-list">' + items.join('') + '</ul>';
+  if (plan.refusal) {
+    return { title, body: '<p class="app-dialog-subject">' + duplicateMessageHtml(plan.refusal) + '</p>' +
+      (plan.overriding.length ? list(plan.overriding.map((child) => '<li>' + code(child) + (layerPlateauModel(child).name ? ' ' + escapeHtml(layerPlateauModel(child).name) : '') + '</li>')) : ''), actions: cancel(true) };
+  }
+  const fileItem = (f) => '<li>' + code(f.relPath) + (f.plateau ? ' <span class="muted">the manifest of the plateau</span>' : '') +
+    (f.unsaved ? ' <span class="muted">(new, not saved yet)</span>' : f.modified ? ' <strong>(modified, not saved: the changes go with it)</strong>' : '') + '</li>';
+  let body = '<p class="app-dialog-subject">' + code(dialog.plateau) + (plan.files.length ? '' : ' has no file.') + '</p>';
+  if (plan.files.length) body += '<p>' + (plan.files.length === 1 ? 'This file goes' : 'These ' + plan.files.length + ' files go') + ', and nothing else:</p>' + list(plan.files.map(fileItem));
+  if (plan.blocking.length) {
+    body += '<p><strong>It cannot be deleted yet:</strong> once these files are gone, ' + (plan.blocking.length === 1 ? 'this sentence would be' : 'these sentences would be') + ' a mistake for the command line and the editor. Change ' + (plan.blocking.length === 1 ? 'it' : 'them') + ' in Stories first.</p>' +
+      list(plan.blocking.map((sentence) => '<li>' + duplicateMessageHtml(sentence) + '</li>'));
+    return { title, body, actions: cancel(true) };
+  }
+  if (plan.current !== null) body += '<p><code>settings.current</code> names ' + code(plan.current) + ': the key is taken out of <code>workspace.yaml</code> (the command line then draws the last plateau when the plateaus are one line, and asks for <code>--plateau</code> otherwise).</p>';
+  if (plan.unread.length) body += '<p>The editor does not read ' + (plan.unread.length === 1 ? 'this file' : 'these files') + ' (TOML, JSON, or YAML it could not read), so ' + (plan.unread.length === 1 ? 'it is' : 'they are') + ' not deleted: if one says <code>plateau: ' + escapeHtml(dialog.plateau) + '</code>, the command line still reads the plateau. Look at ' + (plan.unread.length === 1 ? 'it' : 'them') + ' in a text editor.</p>' + list(plan.unread.map((relPath) => '<li>' + code(relPath) + '</li>'));
+  if (plan.kept.length) body += '<p>' + (plan.kept.length === 1 ? 'This view or story says' : 'These views and stories say') + ' <code>plateau: ' + escapeHtml(dialog.plateau) + '</code> in the header, which names no plateau: ' + (plan.kept.length === 1 ? 'it stays' : 'they stay') + '.</p>' + list(plan.kept.map((relPath) => '<li>' + code(relPath) + '</li>'));
+  const views = viewsFolderName();
+  if (views) body += '<p class="muted">The views the command line generated for it (' + code(views + '-' + dialog.plateau) + ' and the folders of its comparisons) are not manifests: they stay where they are.</p>';
+  body += '<p>The files leave the disk at the next “Save all changes”.' + (AppState.layers.current === dialog.plateau ? ' The plateau it overrides, ' + code(AppState.plateauTree.nodes.get(dialog.plateau).parent) + ', is drawn instead.' : '') + '</p>';
+  return { title, body, actions: cancel(false) + '<button type="button" class="btn-danger-solid" data-action="dialog-submit">Delete plateau</button>' };
+}
+
+/** The name of the folder of the generated views (`views.path`), or null when it is not a plain relative folder. */
+function viewsFolderName() {
+  const path = AppState.workspace && AppState.workspace.settings.views ? AppState.workspace.settings.views.path : null;
+  if (typeof path !== 'string' || plateauPathProblem(path)) return null;
+  return path.replace(/\/+$/, '').replace(/^\.\//, '');
 }
 
 /**
@@ -8569,6 +8768,15 @@ function serializeManagedSettings(settings) {
 }
 
 /**
+ * Whether the settings the editor manages say what the file says (wave 015, run 0102): a save of workspace.yaml for another reason (a story kept in it, a `settings.current`
+ * taken out by the delete of a plateau) then writes the settings as they are in the file, and not every default the editor knows of.
+ */
+function managedSettingsAsRead(settings, rawSettings) {
+  if (!isPlainObject(rawSettings)) return false;
+  return canonicalJson(serializeManagedSettings(settings)) === canonicalJson(serializeManagedSettings(parseSettings(rawSettings)));
+}
+
+/**
  * Write `workspace.yaml` (TDD-0010 DEC-9/DEC-10): `styles`/`formatters`
  * carried through verbatim from `AppState.workspace` (no editing surface
  * in this wave ever touches them), `settings` serialized via
@@ -8581,7 +8789,7 @@ async function writeWorkspaceYaml() {
   const managed = {
     styles: ws.styles,
     formatters: ws.formatters,
-    settings: serializeSettingsToRaw(ws.settings, top.settings)
+    settings: managedSettingsAsRead(ws.settings, top.settings) ? top.settings : serializeSettingsToRaw(ws.settings, top.settings)
   };
   // The top-level keys of the file as they were (and in their order); only the three managed ones are replaced.
   // `styles` and `formatters` are added when the file had none only if they are no longer empty.
@@ -12734,7 +12942,8 @@ function timelineItemHtml(item, depth) {
     (!layers.blocked || parent ? '<div class="timeline-actions">' +
       (parent && !disabled ? '<button type="button" data-action="timeline-changes" data-plateau="' + escapeHtml(item.id) + '" title="Draw this plateau and list what it changes over ' + escapeHtml(item.node.parent) + ' in the Changes panel">Changes</button>' : '') +
       (!layers.blocked ? '<button type="button" data-action="plateau-create" data-plateau="' + escapeHtml(item.id) + '" title="Create a plateau that overrides ' + escapeHtml(plateauTitle(model)) + '">New plateau after this</button>' +
-        (AppState.plateauTree.layered ? '<button type="button" data-action="plateau-edit" data-plateau="' + escapeHtml(item.id) + '" title="Rename this plateau, give it a horizon or another parent">Edit</button>' : '') : '') +
+        (AppState.plateauTree.layered ? '<button type="button" data-action="plateau-edit" data-plateau="' + escapeHtml(item.id) + '" title="Rename this plateau, give it a horizon or another parent">Edit</button>' : '') +
+        (AppState.plateauTree.layered && parent ? plateauDeleteButtonHtml(item.id, 'Delete', saveInFlight ? ' disabled' : '') : '') : '') +
       '</div>' : '') +
     '</li>';
 }
@@ -16792,6 +17001,11 @@ function renderAppDialogHtml() {
     body = '<p class="app-dialog-subject">' + escapeHtml(appDialog.summary) + '</p>' +
       '<p>' + (appDialog.changed.length === 1 ? 'The plateau that inherits it changes too:' : 'The ' + appDialog.changed.length + ' plateaus that inherit it change too:') + '</p>' +
       '<ul class="layer-confirm-list">' + appDialog.changed.map((id) => '<li><code>' + escapeHtml(id) + '</code>' + (layerPlateauModel(id).name ? ' ' + escapeHtml(layerPlateauModel(id).name) : '') + '</li>').join('') + '</ul>';
+  } else if (appDialog.kind === 'plateau-delete') {
+    const deletion = renderPlateauDeleteDialogHtml(appDialog);
+    title = deletion.title;
+    body = deletion.body;
+    actions = deletion.actions;
   } else if (appDialog.kind === 'plateau-form') {
     const v = appDialog.values;
     const creating = appDialog.mode === 'create';
@@ -16827,7 +17041,7 @@ function renderAppDialogHtml() {
     body = '<label class="app-dialog-field" for="app-dialog-text">' + escapeHtml(appDialog.label) + '</label>' +
       '<input type="text" id="app-dialog-text" data-dialog-text data-dialog-autofocus value="' + escapeHtml(appDialog.value || '') + '">';
   }
-  return '<div class="app-dialog-backdrop"><div class="app-dialog' + (appDialog.kind === 'move' || appDialog.kind === 'layer-confirm' || appDialog.kind === 'mistakes' ? ' app-dialog-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
+  return '<div class="app-dialog-backdrop"><div class="app-dialog' + (appDialog.kind === 'move' || appDialog.kind === 'layer-confirm' || appDialog.kind === 'mistakes' || appDialog.kind === 'plateau-delete' ? ' app-dialog-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
     '<h2 id="app-dialog-title">' + escapeHtml(title) + '</h2>' + body +
     '<div class="app-dialog-error" id="app-dialog-error" role="alert">' + (appDialog.error ? escapeHtml(appDialog.error) : '') + '</div>' +
     '<div class="app-dialog-actions">' + (actions !== null ? actions :
@@ -16859,6 +17073,20 @@ function submitAppDialog(values) {
     appDialog = null;
     pendingFocusSelector = dialog.returnFocus;
     confirmLayerWrite(dialog);
+    return;
+  }
+  if (dialog.kind === 'plateau-delete') {
+    let result;
+    try {
+      result = commitPlateauDelete(dialog.plateau);
+    } catch (e) {
+      fail(e && e.message ? e.message : String(e));
+      return;
+    }
+    if (result && result.pending) return; // the dialog of the plateaus it changes has taken this one's place
+    appDialog = null;
+    pendingFocusSelector = dialog.returnFocus;
+    render();
     return;
   }
   if (dialog.kind === 'plateau-form') {
@@ -18025,6 +18253,9 @@ function handleAppClick(e) {
       break;
     case 'plateau-edit':
       openPlateauDialog('edit', target.getAttribute('data-plateau'));
+      break;
+    case 'plateau-delete':
+      openPlateauDeleteDialog(target.getAttribute('data-plateau'));
       break;
     case 'dialog-cancel':
       closeAppDialog();
