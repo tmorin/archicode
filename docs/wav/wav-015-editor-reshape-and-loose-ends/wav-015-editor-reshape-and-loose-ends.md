@@ -261,7 +261,7 @@ wave_manifest:
       slug: story-steps-plateau-and-compare
       phase: P1
       depends_on: [W-12]
-      run: null
+      run: 0101
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/resource/story/**'
