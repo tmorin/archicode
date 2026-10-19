@@ -233,7 +233,7 @@ wave_manifest:
       slug: technology-map
       phase: P1
       depends_on: []
-      run: null
+      run: 0099
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
