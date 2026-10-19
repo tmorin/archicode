@@ -118,110 +118,15 @@ jobs:
           java-version: "25"
           distribution: "mandrel"
           cache: maven
-      - name: "Build the native image"
-        # No unit tests here (Build runs them) and no manual: the project has no integration test to run against the
-        # image, the next step is what runs the image.
+      - name: "Build the native image and run the integration tests against it"
+        # `-Dnative` (the `native` profile of pom.xml) builds the image, skips the unit tests (Build runs them) and runs
+        # Failsafe, whose `*IT` classes (src/test/java/io/morin/archicode/it) start the native runner as a process on the
+        # examples of the manual and on the fixtures, and check what it prints, its exit codes and the files it writes.
+        # The same classes run against the JVM jar with `./mvnw verify -DskipITs=false`. Failsafe names the class
+        # and the test that failed; no manual (`plugin.asciidoctor.skip`): the examples are read from src/doc/examples.
         run: |
           ./mvnw verify \
             --batch-mode \
             --update-snapshots \
             -Dnative \
-            -DskipTests \
             -Dplugin.asciidoctor.skip=true
-      - name: "Run the native image on the examples of the manual"
-        # Every check runs, and the step lists the ones that failed at the end: a gap is found with the next one, not one build later.
-        run: |
-          set -u -o pipefail
-          runner="$(realpath target/*-runner)"
-          work="$(mktemp -d)"
-          cp -r src/doc/examples/domain_workspace "$work/workspace"
-          cp -r src/doc/examples/domain_plateaus "$work/plateaus"
-          cp -r src/test/resources/brightcart/layered "$work/brightcart"
-          workspace="$work/workspace/workspace.yaml"
-          plateaus="$work/plateaus/workspace.yaml"
-          brightcart="$work/brightcart/workspace.yaml"
-          failed=()
-
-          # expect <label> <pattern> <command...>: the command succeeds and what it prints has the pattern
-          expect() {
-            local label="$1" pattern="$2" out
-            shift 2
-            if out="$("$@" 2>&1)" && grep -q -- "$pattern" <<< "$out"; then
-              echo "ok: $label"
-            else
-              echo "::error::native image: $label"
-              head -n 20 <<< "$out"
-              failed+=("$label")
-            fi
-          }
-
-          # expect_exit <label> <code> <command...>: the command ends with this exit code (diff --fail-on: 3 for a change, 1 for an error)
-          expect_exit() {
-            local label="$1" code="$2" rc
-            shift 2
-            # the step runs with `bash -e`: the exit code is read without ending the step
-            "$@" > /dev/null 2>&1 && rc=0 || rc=$?
-            if [ "$rc" -eq "$code" ]; then
-              echo "ok: $label"
-            else
-              echo "::error::native image: $label (exit code $rc, expected $code)"
-              failed+=("$label")
-            fi
-          }
-
-          expect "help" "" "$runner" --help
-
-          # the kernel (WebAssembly translated to bytecode) assembles the views; the renderer writes PlantUML
-          expect "views generate" "" "$runner" -w "$workspace" views generate -o views
-          expect "views generate writes the views" "" test -s "$work/workspace/views/plantuml/application/ArchiCode-overview.puml"
-
-          # Jackson reaches the model and the results by reflection
-          expect "query views" "ArchiCode-deep" "$runner" -w "$workspace" query views
-          expect "query schemas" "urn:jsonschema" "$runner" -w "$workspace" query schemas
-          expect "query graph" '"reference":"ArchiCode"' "$runner" -w "$workspace" query graph
-
-          # plateaus (layers: the manifests of `plateaus/baseline` are the root, `to-be` overrides it): the comparison goes through the kernel as well
-          expect "diff" "^comparing " "$runner" -w "$plateaus" diff
-          expect "views generate --against" "" "$runner" -w "$plateaus" views generate -o views --against baseline
-          expect "views generate --against writes the table" "" test -s "$work/plateaus/views-to-be-vs-baseline/gap.md"
-          # a build fails on a change (exit code 3, 1 for an error) and a view of a comparison keeps only what changed (the customer overview gets shorter)
-          expect_exit "diff --fail-on exits 3 on a change of a listed state" 3 "$runner" -w "$plateaus" diff --fail-on moved,removed
-          expect_exit "diff --fail-on refuses an unknown state" 1 "$runner" -w "$plateaus" diff --fail-on nothing
-          expect "views generate --only-changes" "" "$runner" -w "$plateaus" views generate -o changes --against baseline --only-changes
-          expect "views generate --only-changes draws less" "" test "$(wc -c < "$work/plateaus/changes-to-be-vs-baseline/plantuml/application/customer-overview.puml")" -lt "$(wc -c < "$work/plateaus/views-to-be-vs-baseline/plantuml/application/customer-overview.puml")"
-
-          # Brightcart (src/test/resources/brightcart/layered, a copy: the views are written next to workspace.yaml): four plateaus as layers, a `plateau:` header on
-          # each manifest and the patches of a plateau in its `Kind: Plateau`, whose elements replace others. The tree forks, so the plateau is always named; the comparison
-          # is made with the plateau it overrides unless `--against` names another. `replacing` is the line of the moved, split and merged elements; `saas` generates with
-          # its comparison and its facets (`inhouse` and `marketplace` are left to the unit tests)
-          expect "plateau list on Brightcart" "^marketplace  *inhouse" "$runner" -w "$brightcart" plateau list
-          expect "diff on Brightcart" "^replacing " "$runner" -w "$brightcart" diff --plateau inhouse
-          expect "diff on Brightcart, against a sibling" "^comparing inhouse .* with saas" "$runner" -w "$brightcart" diff --plateau inhouse --against saas
-          expect "views generate on Brightcart" "" "$runner" -w "$brightcart" views generate --plateau saas
-          expect "views generate on Brightcart writes the plateau" "" test -s "$work/brightcart/views-saas/plantuml/application/shop-overview.puml"
-          expect "views generate on Brightcart writes the comparison" "" test -s "$work/brightcart/views-saas-vs-baseline/gap.json"
-          expect "views generate on Brightcart lists the cascade of a REMOVE" '"cascade"' cat "$work/brightcart/views-saas-vs-baseline/gap.json"
-          expect "views generate on Brightcart writes a facet" "" test -s "$work/brightcart/views-saas-journey/plantuml/application/shop-overview.puml"
-
-          # the editor page is a resource of the image
-          "$runner" -w "$workspace" editor serve --port 0 > "$work/editor.log" 2>&1 &
-          editor=$!
-          trap 'kill "$editor" 2>/dev/null || true' EXIT
-          url=""
-          for _ in $(seq 1 30); do
-            url="$(grep -o 'http://127.0.0.1:[0-9]*/?token=[0-9a-zA-Z_-]*' "$work/editor.log" | head -1 || true)"
-            [ -n "$url" ] && break
-            sleep 1
-          done
-          if [ -n "$url" ]; then
-            expect "editor serve" "<html" curl --fail --silent "$url"
-          else
-            echo "::error::native image: editor serve did not print its address"
-            cat "$work/editor.log"
-            failed+=("editor serve")
-          fi
-
-          if [ "${#failed[@]}" -ne 0 ]; then
-            echo "failed: ${failed[*]}"
-            exit 1
-          fi

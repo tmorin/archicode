@@ -7,10 +7,12 @@ CLI tool (Quarkus + Picocli) for architecture-as-code: reads a `workspace.yaml` 
 ```bash
 ./mvnw clean install       # build
 ./mvnw test                 # unit tests only
-./mvnw verify                # unit + integration tests (what CI runs)
+./mvnw verify                # unit tests; the Build job of CI runs this
+./mvnw verify -DskipITs=false  # unit tests, then the integration tests against the packaged jar
+./mvnw verify -Dnative       # the native image and the integration tests against it, no unit tests (the Native job of CI; needs Mandrel or GraalVM)
 ```
 
-Integration tests (Failsafe) are skipped by default (`skipITs=true` in pom.xml) unless run with `-Dnative` or on the `native` profile.
+Integration tests (Failsafe) are skipped by default (`skipITs=true` in pom.xml) unless run with `-DskipITs=false`, `-Dnative` or on the `native` profile (which also skips Surefire: the unit tests are the Build job's). They are the `*IT` classes of `src/test/java/io/morin/archicode/it` (`@QuarkusMainIntegrationTest`, wave 015 run 0105, #62): each launches the packaged application as a process, the jar or the native runner, on copies of the shipped examples (`src/doc/examples`, the Brightcart and bookshop fixtures) in a temp folder, and checks what it prints, its exit code and the files it writes (`views generate`, `query views|schemas|graph`, `diff`, `diff --fail-on`, `--against`, `--only-changes`, a TOML manifest, `editor serve`: started on a free port, one request, stopped). They are what the Native job runs on the native image, so a test must talk to the application through its command line and its HTTP port only. A change to the checks is a change to those classes, not to the workflow; a new class that the application reads by reflection goes to `reflect-config.json`.
 
 Viewpoint kernel (Rust compiled to WebAssembly, shared by the CLI and the standalone editor — see `src/main/rust/viewpoint-kernel/README.md`):
 

@@ -276,6 +276,19 @@
                 <skipITs>false</skipITs>
                 <quarkus.native.enabled>true</quarkus.native.enabled>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <!-- The unit tests are the Build job's (they run on the JVM, and need graphviz, which the Native job does not
+                             install): with -Dnative Surefire is skipped and Failsafe runs the *IT classes of
+                             src/test/java/io/morin/archicode/it against the native runner (the jar, without -Dnative). -->
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>
