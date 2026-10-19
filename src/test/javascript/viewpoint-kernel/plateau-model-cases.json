@@ -1,5 +1,5 @@
 {
-  "comment": "The cases of the plateau model (run 0077, wave 014, W-3): the header key `plateau`, the manifest of kind `plateau` with its patches, the tree of the plateaus, and the references declared once in a chain. PlateauModelTest.java (command line) and plateau-model.test.js (editor) read this file; add a case here and both run it. `settings`: the text of workspace.yaml (`settings: {}` when absent; `manifests/` is read). `files`: a path from the folder of workspace.yaml -> the text of the file. `expect.loaded`: the references of the application layer that are drawn (nothing but the plateau baseline is drawn until the plateaus are loaded as layers, W-4); `expect.warnings`: the warnings, without `warning: ` (checked when the workspace loads: a load that stops says its mistakes and no warning); `expect.errors`: the mistakes of the tree and of the references (the command line prints one `error:` line for each; the editor lists them in the model of the plateaus); `expect.fileError`: a manifest the reader refuses (`file`, the `sentence`, and the `where` the command line adds when it reads the file itself: ` (line L, column C)`); `expect.removedKey`: the sentence of the key that no longer exists (the command line prints it as the one `error:` line; the editor's banner is `expect.editorSays`: `Could not read/parse workspace.yaml: ` and the same sentence); `expect.noPlateau`: the sentence the command line prints for `settings.current` (M54) or `--plateau` (`plateau`, M55) in a workspace that has no plateau, and `expect.editorSays` the editor's banner for the first (`Could not read the plateaus of workspace.yaml:` and the sentence); the editor has no `--plateau`, so M55 gives `expect.editorDraws`: what the page draws when the address names (`?plateau=`) a plateau the workspace does not have.",
+  "comment": "The cases of the plateau model (run 0077, wave 014, W-3): the header key `plateau`, the manifest of kind `plateau` with its patches, the tree of the plateaus, and the references declared once in a chain. PlateauModelTest.java (command line) and plateau-model.test.js (editor) read this file; add a case here and both run it. `settings`: the text of workspace.yaml (`settings: {}` when absent; `manifests/` is read). `files`: a path from the folder of workspace.yaml -> the text of the file. `expect.loaded`: the references of the application layer that are drawn (nothing but the plateau baseline is drawn until the plateaus are loaded as layers, W-4); `expect.warnings`: the warnings, without `warning: ` (checked when the workspace loads: a load that stops says its mistakes and no warning); `expect.errors`: the mistakes of the tree and of the references (the command line prints one `error:` line for each; the editor lists them in the model of the plateaus); `expect.fileError`: a manifest the reader refuses (`file`, the `sentence`, and the `where` the command line adds when it reads the file itself: ` (line L, column C)`); `expect.removedKey`: the sentence of the key that no longer exists (the command line prints it as the one `error:` line; the editor's banner is `expect.editorSays`: `Could not read/parse workspace.yaml: ` and the same sentence); `expect.noPlateau`: the sentence the command line prints for `settings.current` (M54) or `--plateau` (`plateau`, M55) in a workspace that has no plateau, and `expect.editorSays` the editor's banner for the first (`Could not read the plateaus of workspace.yaml:` and the sentence); the editor has no `--plateau`, so M55 gives `expect.editorDraws`: what the page draws when the address names (`?plateau=`) a plateau the workspace does not have. Run 0092 (wave 015, W-4) adds M65 to M80: a null where a list or an object is expected, an empty workspace.yaml (`settings` is the empty text: the file has nothing in it), and the YAML 1.1 words (`yes`, `On`, `TRUE`) in `header.parent` and `header.plateau` (the text as written) and in `content.id` (the boolean, which both tools say as `true`).",
   "cases": [
     {
       "id": "M01",
@@ -917,6 +917,241 @@
           "the plateau `baselin` exists only through the `plateau` key of the header of `manifests/baselin.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name",
           "the plateaus `baselin` and `baseline` have ids one letter apart: check that one of them is not a typo"
         ]
+      }
+    },
+    {
+      "id": "M65",
+      "what": "#80: `settings:` with nothing after it is a workspace with the default settings (the command line failed with a null pointer)",
+      "settings": "settings:\n",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M66",
+      "what": "#80: `settings.manifests:` with nothing after it reads the default folder `manifests`",
+      "settings": "settings:\n  manifests:\n",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M67",
+      "what": "#80: `settings.manifests.paths:` with nothing after it reads the default folder `manifests`",
+      "settings": "settings:\n  manifests:\n    paths:\n",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M68",
+      "what": "#80: `paths: [null]` is an empty list: no folder is read, and nothing is drawn",
+      "settings": "settings:\n  manifests:\n    paths: [null]\n",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M69",
+      "what": "#80: an item with no value in `paths` is no item: the others are read",
+      "settings": "settings:\n  manifests:\n    paths:\n      -\n      - manifests\n",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M70",
+      "what": "#80: the sections and the values of `settings` and of `workspace.yaml` that have nothing after their key are absent",
+      "settings": "settings:\n  name:\n  current:\n  facets:\n    global-enabled:\n    directory-name-template:\n    customs:\n  views:\n    path:\n    labels:\n    properties:\n  relationships:\n    default-synthetic-label:\nstyles:\nformatters:\napplication:\ntechnology:\n",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M71",
+      "what": "#80: `elements:` with nothing after it in an element is an element with no child",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M72",
+      "what": "#80: an item with no value in `elements` is no element: the others are read",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  elements:\n    -\n    - kind: \"container\"\n      id: \"web\"\n    - null\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop",
+          "shop.web"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M73",
+      "what": "#80: `qualifiers:` and `tags:` with nothing after them on a relationship, and `steps:` with nothing after it in a story, are empty",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  relationships:\n    - destination: \"shop\"\n      qualifiers:\n      tags:\n",
+        "manifests/tour.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"tour\"\n  steps:\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M74",
+      "what": "#80: a workspace.yaml with nothing in it is a workspace with the default settings (the command line said `No content to map due to end-of-input`)",
+      "settings": "",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M75",
+      "what": "#80: a workspace.yaml with only a comment in it is the same",
+      "settings": "# nothing here yet\n",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M76",
+      "what": "#85: a header.parent written `yes` is the text `yes` (the editor read the boolean, and drew `true.c`)",
+      "files": {
+        "manifests/y.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"yes\"\n  name: \"Yes\"\n",
+        "manifests/c.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  parent: yes\n  version: \"1\"\ncontent:\n  id: \"c\"\n  name: \"C\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "yes",
+          "yes.c"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M77",
+      "what": "#85: the other words YAML 1.1 reads as a boolean (`On`, `True`, `TRUE`, `off`) are the text as written in header.parent",
+      "files": {
+        "manifests/on.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"On\"\n",
+        "manifests/true.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"True\"\n",
+        "manifests/upper.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"TRUE\"\n",
+        "manifests/off.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"off\"\n",
+        "manifests/c1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  parent: On\n  version: \"1\"\ncontent:\n  id: \"c1\"\n",
+        "manifests/c2.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  parent: True\n  version: \"1\"\ncontent:\n  id: \"c2\"\n",
+        "manifests/c3.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  parent: TRUE\n  version: \"1\"\ncontent:\n  id: \"c3\"\n",
+        "manifests/c4.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  parent: off\n  version: \"1\"\ncontent:\n  id: \"c4\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "On",
+          "On.c1",
+          "True",
+          "True.c2",
+          "TRUE",
+          "TRUE.c3",
+          "off",
+          "off.c4"
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "id": "M78",
+      "what": "#85: a header.plateau written `yes` is the plateau `yes` (the editor read `true`)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  plateau: yes\n  version: \"1\"\ncontent:\n  id: \"later\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "the plateau `yes` exists only through the `plateau` key of the header of `manifests/later.yaml`: it has no manifest of kind `archicode.morin.io/plateau`, so it overrides `baseline` and has no name"
+        ]
+      }
+    },
+    {
+      "id": "M79",
+      "what": "#85: a header.plateau written `On` is the text `On`, which is no plateau id (the editor read `true`, which is one)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  plateau: On\n  version: \"1\"\ncontent:\n  id: \"later\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the plateau id `On` in `manifests/later.yaml` is not valid: use lowercase letters, digits, `_` and `-`"
+        ]
+      }
+    },
+    {
+      "id": "M80",
+      "what": "#85: a content.id written `yes` is the text `true` in both tools, which read a YAML 1.1 boolean of the content as the boolean and say its text (a header field is the text as written)",
+      "files": {
+        "manifests/y.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: yes\n  name: No\n"
+      },
+      "expect": {
+        "loaded": [
+          "true"
+        ],
+        "warnings": []
       }
     }
   ]

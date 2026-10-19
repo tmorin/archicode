@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -376,8 +377,14 @@ public class WorkspaceFactory {
             if (workspaceMapper.readTree(path.toFile()).path("settings").has("plateaus")) {
                 throw new ArchiCodeException("%s", REMOVED_KEY);
             }
-            rawWorkspace = workspaceMapper.readValue(path.toFile(), Workspace.class);
+            // a file with nothing in it (or only comments, or only `null`) is a workspace with nothing in it: every default
+            rawWorkspace = Optional.ofNullable(workspaceMapper.readValue(path.toFile(), Workspace.class)).orElseGet(
+                () -> Workspace.builder().build()
+            );
         } catch (JsonProcessingException e) {
+            if (ManifestParser.isEmptyDocument(e)) {
+                return new Source(Workspace.builder().build(), path.toFile().getParentFile().toPath());
+            }
             throw ManifestParser.missingKey(e, "")
                 .map(reason -> new ArchiCodeException("`%s` is not valid: %s", path.getFileName().toString(), reason))
                 .orElseGet(() -> ArchiCodeException.unreadable(path.getFileName().toString(), e, true));
@@ -440,9 +447,14 @@ public class WorkspaceFactory {
         }
     }
 
+    /** Whether {@code settings.current} names a plateau: an empty text, like a key with no value, names none (the editor reads it so). */
+    private static boolean isWritten(String current) {
+        return current != null && !current.isEmpty();
+    }
+
     private static List<String> noPlateausProblems(Settings settings, String requested) {
         val problems = new ArrayList<String>();
-        if (settings.getCurrent() != null) {
+        if (isWritten(settings.getCurrent())) {
             problems.add(
                 "`settings.current` is `" +
                     settings.getCurrent() +
@@ -493,7 +505,7 @@ public class WorkspaceFactory {
         if (requested != null) {
             return tree.node(requested).id();
         }
-        if (current != null) {
+        if (isWritten(current)) {
             if (!tree.contains(current)) {
                 throw new ArchiCodeException(
                     "`settings.current` names the plateau `%s`, which is not a plateau of this workspace (the plateaus are %s)",

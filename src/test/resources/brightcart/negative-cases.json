@@ -1,5 +1,5 @@
 {
-  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of workspace.yaml:`, `Could not read/parse workspace.yaml: `), and the position `(line L, column C)` of a file is not told. One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type.",
+  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of workspace.yaml:`, `Could not read/parse workspace.yaml: `), and the position `(line L, column C)` of a file is not told: the page reads a file into a tree that has no positions, and the column the command line gives is where its reader stopped, so a copy of it would be a guess (decided in wave 015, run 0092; brightcart-negative.test.js pins that no sentence of the page carries one). A null where a list or an object is expected is absent in both tools (N59 to N63, M65 to M73), a number is no kind and no value of an enum (N64, N66, N67), a list is no element (N65), the facets are told in kebab-case (N72 to N75, the camel-case spelling is read too, N76), and `0x1F` for an `int` is a known difference (N77, issue #103). One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type.",
   "cases": [
     {
       "id": "N7",
@@ -2043,6 +2043,696 @@
           "expect": {
             "manifestErrors": {
               "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/system-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N59",
+      "variant": "-",
+      "title": "#80: `elements:` with nothing after it in a manifest is read as absent; `diff` goes on",
+      "ops": [
+        {
+          "op": "write",
+          "file": "baseline/application/probe.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  name: \"Probe\"\n  elements:\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N60",
+      "variant": "-",
+      "title": "#80: an item with no value in `elements` is no element",
+      "ops": [
+        {
+          "op": "write",
+          "file": "baseline/application/probe.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  name: \"Probe\"\n  elements:\n    -\n    - null\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N61",
+      "variant": "-",
+      "title": "#80: `qualifiers:` and `tags:` with nothing after them on a relationship, and `steps:` with nothing after it in a story, are read as empty",
+      "ops": [
+        {
+          "op": "write",
+          "file": "baseline/application/probe.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  name: \"Probe\"\n  relationships:\n    - destination: \"probe\"\n      qualifiers:\n      tags:\n"
+        },
+        {
+          "op": "write",
+          "file": "baseline/application/probe-story.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\ncontent:\n  id: \"probe-story\"\n  steps:\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N62",
+      "variant": "-",
+      "title": "#80: an item with no value in `settings.manifests.paths` is no item",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "paths: [\"./**\"]",
+          "to": "paths:\n      -\n      - \"./**\""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N63",
+      "variant": "-",
+      "title": "#80: the sections and the values of workspace.yaml that have nothing after their key are absent (the default is read)",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "  views:\n    path: \"views\"\n",
+          "to": "  relationships:\n    default-synthetic-label:\n  views:\n    path:\n    labels:\n"
+        },
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "  facets:\n",
+          "to": "  facets:\n    global-enabled:\n    directory-name-template:\n"
+        },
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "styles:\n  by-tags:",
+          "to": "formatters:\napplication:\ntechnology:\nstyles:\n  by-tags:"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N64",
+      "variant": "-",
+      "title": "#80: a header.kind written as a whole number is no kind (the command line read it as the position of a kind in its list)",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "baseline/application/agent.yaml",
+          "from": "kind: \"archicode.morin.io/person\"",
+          "to": "kind: 5"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"5\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": {
+              "baseline/application/agent.yaml": "unrecognized `header.kind` \"5\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N65",
+      "variant": "-",
+      "title": "#80: an item of `elements` that is a list is the wrong shape (the command line read its first item as a kind)",
+      "ops": [
+        {
+          "op": "write",
+          "file": "baseline/application/probe.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  name: \"Probe\"\n  elements: [[1]]\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/probe.yaml` is not valid: the value has the wrong shape (found an array) at `elements[0]`"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": {
+              "baseline/application/probe.yaml": "the value has the wrong shape (found an array) at `elements[0]`"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N66",
+      "variant": "-",
+      "title": "#80: a `layer` written as a whole number is no layer (the command line read it as the position of a value)",
+      "ops": [
+        {
+          "op": "write",
+          "file": "baseline/application/probe-view.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"probe-view\"\n  viewpoint: \"overview\"\n  layer: 1\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/probe-view.yaml` is not valid: unrecognized `layer` \"1\" (known: APPLICATION, TECHNOLOGY)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": {
+              "baseline/application/probe-view.yaml": "unrecognized `layer` \"1\" (known: APPLICATION, TECHNOLOGY)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N67",
+      "variant": "-",
+      "title": "#80: an `operator` written as a whole number is no operator",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "operator: REMOVE",
+          "to": "operator: 0"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: unrecognized `settings.facets.customs[0].actions[0].operator` \"0\" (known: REMOVE) (line 9, column 23)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unrecognized `settings.facets.customs[0].actions[0].operator` \"0\" (known: REMOVE)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N68",
+      "variant": "-",
+      "title": "#80: an unrecognized value is told without the blanks around it, by both tools",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "operator: REMOVE",
+          "to": "operator: \" drop \""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: unrecognized `settings.facets.customs[0].actions[0].operator` \"drop\" (known: REMOVE) (line 9, column 23)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unrecognized `settings.facets.customs[0].actions[0].operator` \"drop\" (known: REMOVE)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N69",
+      "variant": "-",
+      "title": "#80: a whole number beyond the 32 bits of an `int` is told with the range",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "line-gap: 4",
+          "to": "line-gap: 9999999999"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: Numeric value (9999999999) out of range of int (-2147483648 - 2147483647) at `styles.by-tags.legacy.line-gap` (line 27, column 27)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: Numeric value (9999999999) out of range of int (-2147483648 - 2147483647) at `styles.by-tags.legacy.line-gap`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N70",
+      "variant": "-",
+      "title": "#85: a header.kind written `yes` is a boolean, which is no kind",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "baseline/application/agent.yaml",
+          "from": "kind: \"archicode.morin.io/person\"",
+          "to": "kind: yes"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/agent.yaml` is not valid: the value has the wrong shape (found a boolean) at `header.kind` (line 2, column 9)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": {
+              "baseline/application/agent.yaml": "the value has the wrong shape (found a boolean) at `header.kind`"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N71",
+      "variant": "-",
+      "title": "#80: `settings.current` written as an empty text names no plateau, as when it is absent",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "  name: \"Brightcart\"\n",
+          "to": "  name: \"Brightcart\"\n  current: \"\"\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N72",
+      "variant": "-",
+      "title": "#80: the keys of `settings.facets` are told in the spelling of the manual (kebab-case), not by the name of the field",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "  facets:\n",
+          "to": "  facets:\n    nothing: 1\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: unknown key `nothing` (known: customs, directory-name-template, global-enabled) at `settings.facets.nothing` (line 6, column 15)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `nothing` (known: customs, directory-name-template, global-enabled) at `settings.facets.nothing`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N73",
+      "variant": "-",
+      "title": "#80: the keys of a facet are told in the spelling of the manual",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "      - name: \"journey\"",
+          "to": "      - nothing: 1\n        name: \"journey\""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: unknown key `nothing` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].nothing` (line 7, column 19)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `nothing` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].nothing`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N74",
+      "variant": "-",
+      "title": "#80: the keys of an action are told in the spelling of the manual",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "          - operator: REMOVE\n",
+          "to": "          - nothing: 1\n            operator: REMOVE\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: unknown key `nothing` (known: json-path, operator) at `settings.facets.customs[0].actions[0].nothing` (line 9, column 23)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `nothing` (known: json-path, operator) at `settings.facets.customs[0].actions[0].nothing`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N75",
+      "variant": "-",
+      "title": "#80: the key an action lacks is told in the spelling of the manual",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "            json-path: \"$.application..elements[?(@.id == 'agent' || @.id == 'merchandiser' || @.id == 'backoffice' || @.id == 'fulfilment')]\"\n",
+          "to": ""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: Missing settings.facets.customs[0].actions[0].json-path"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: Missing settings.facets.customs[0].actions[0].json-path"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N76",
+      "variant": "-",
+      "title": "#80: the older spellings of the keys of a facet are still read (camel-case)",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "json-path: \"$.application..elements[?(@.id == 'cart')]\"",
+          "to": "jsonPath: \"$.application..elements[?(@.id == 'cart')]\""
+        },
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "  facets:\n",
+          "to": "  facets:\n    globalEnabled: true\n    directoryNameTemplate: \"%s-%s\"\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N77",
+      "variant": "-",
+      "title": "#80: `line-gap: 0x1F` is read as a number by the command line (YAML 1.1); the editor keeps a plain scalar it cannot print back as it is as a text, and refuses it",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "line-gap: 4",
+          "to": "line-gap: 0x1F"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": null,
+      "reason": "YAML 1.1 numbers (0x1F, 012, 1_0, 5.0, 1e2) are read as numbers by the command line and kept as text by the editor, which tells a plain scalar from a quoted one by no mark (issue #103); pinned by editor-reads-like-cli.test.js"
+    },
+    {
+      "id": "N78",
+      "variant": "-",
+      "title": "#80: a manifest that holds only `null` has no header (the command line failed with a null pointer)",
+      "ops": [
+        {
+          "op": "write",
+          "file": "baseline/application/probe.yaml",
+          "text": "~\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/probe.yaml` is not valid: Missing header.kind"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": {
+              "baseline/application/probe.yaml": "Missing header.kind"
             }
           }
         }

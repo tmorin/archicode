@@ -2,6 +2,8 @@ package io.morin.archicode.resource.plateau;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Builder;
 import lombok.NonNull;
@@ -72,7 +74,8 @@ public class Patch {
     /** Finds the relationship a {@code SET} changes: by its destination and its label. */
     Where where;
 
-    /** What is set, added or merged. */
+    /** What is set, added or merged. A {@code null} that is written is a value of the patch, not a missing one. */
+    @JsonSetter(nulls = Nulls.SET)
     JsonNode value;
 
     /** How a relationship is found: a relationship has no id of its own. */

@@ -14,7 +14,7 @@ const { memFolder } = require('./mem-folder');
 const DOCUMENT = JSON.parse(fs.readFileSync(path.join(__dirname, 'plateau-model-cases.json'), 'utf8'));
 
 async function open(c, hash) {
-  const files = Object.assign({ 'workspace.yaml': c.settings || 'settings: {}\n' }, c.files);
+  const files = Object.assign({ 'workspace.yaml': c.settings !== undefined ? c.settings : 'settings: {}\n' }, c.files); // an empty text is a workspace.yaml with nothing in it (M74)
   const mem = memFolder(files);
   const sandbox = createApp({});
   if (hash) vm.runInContext('location.hash = ' + JSON.stringify(hash), sandbox);

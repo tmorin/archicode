@@ -1,6 +1,8 @@
 package io.morin.archicode.resource.view;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Builder;
 import lombok.NonNull;
@@ -52,6 +54,7 @@ public class View {
      * A custom object containing properties to drive the execution of the viewpoint and/or renderer service.
      */
     @ToString.Include
+    @JsonSetter(nulls = Nulls.SET)
     JsonNode properties;
 
     public enum Layer {

@@ -125,3 +125,19 @@ test('a plateau id the editor does not know changes nothing: it stays on the pla
   sandbox.compareWithPlateau('basline');
   assert.equal(state.layers.compare, null, 'a comparison it does not know is not made');
 });
+
+test('no sentence of the page tells the line and the column of a file: the command line does, the page reads a tree that has no positions (run 0092)', () => {
+  const POSITION = /\(line \d+, column \d+\)/;
+  let withPosition = 0;
+  for (const c of CASES) {
+    if (c.cli.some((command) => command.stderr.some((line) => POSITION.test(line)))) withPosition++;
+    if (c.editor === null) continue;
+    for (const step of c.editor) {
+      for (const value of Object.values(step.expect)) {
+        const texts = typeof value === 'string' ? [value] : Array.isArray(value) ? value : value !== null && typeof value === 'object' ? Object.values(value) : [];
+        for (const text of texts) assert.ok(!POSITION.test(String(text)), c.id + ': the page says a position: ' + text);
+      }
+    }
+  }
+  assert.ok(withPosition > 10, 'the command line does say it for the sentences of a file: the difference is real (' + withPosition + ' cases)');
+});

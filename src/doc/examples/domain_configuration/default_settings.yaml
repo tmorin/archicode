@@ -7,5 +7,5 @@ settings:
   views:
     path: "views"
   facets:
-    globalEnabled: true
-    directoryNameTemplate: "%s-%s"
+    global-enabled: true
+    directory-name-template: "%s-%s"

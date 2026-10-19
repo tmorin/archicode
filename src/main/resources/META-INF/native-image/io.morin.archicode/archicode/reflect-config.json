@@ -36,6 +36,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.MapperFactory$ElementIsNoArray",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.MapperFormat",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,

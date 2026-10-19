@@ -98,7 +98,7 @@ test('workspace.yaml: the keys and the shapes of the settings, the styles and th
   assert.equal(problem('settings:\n  foo: 1\n'), 'unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo`');
   assert.equal(problem('foo: 1\n'), 'unknown key `foo` (known: application, formatters, settings, stories, story, styles, technology, view, views) at `foo`');
   assert.equal(problem('settings:\n  facets:\n    global-enabled: false\n    customs:\n      - name: a\n        hide-unlinked: true\n        actions:\n          - operator: REMOVE\n            json-path: "$"\n'), null, 'the other names of a key');
-  assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        actions:\n          - operator: REMOVE\n'), 'Missing settings.facets.customs[0].actions[0].jsonPath');
+  assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        actions:\n          - operator: REMOVE\n'), 'Missing settings.facets.customs[0].actions[0].json-path');
   assert.equal(problem('settings:\n  manifests:\n    paths: m\n'), 'the value has the wrong shape (found a string) at `settings.manifests.paths`');
   assert.equal(problem('settings:\n  views:\n    labels:\n      a: b\n    properties:\n      a: {x: 1}\n'), null);
   assert.equal(problem('styles:\n  composite:\n    line-style: x\n'), 'the value has the wrong shape (found a string) at `styles.composite.line-style`');
@@ -137,4 +137,154 @@ test('every type and every kind the table names is in the table, and every spec 
   }
   for (const [iface, kinds] of Object.entries(schema.kinds)) for (const type of Object.values(kinds)) assert.ok(types.includes(type), iface + ' -> ' + type);
   for (const type of Object.values(schema.manifestKinds)) assert.ok(type === null || types.includes(type), String(type));
+});
+
+// ---- run 0092 (wave 015, W-4): issues #80 and #85. The cases that both tools run are in negative-cases.json (N59 to N77) and plateau-model-cases.json (M65 to M80).
+
+test('a header field the command line types as text is the text as written: yes, On and TRUE are not booleans there (#85)', () => {
+  const header = (extra) => 'header:\n  kind: "archicode.morin.io/container"\n' + extra + '  version: "1"\ncontent:\n  id: c\n';
+  for (const word of ['yes', 'Yes', 'YES', 'on', 'On', 'ON', 'no', 'No', 'off', 'OFF', 'True', 'TRUE', 'False', 'true', 'false']) {
+    const parsed = app.parseManifestText(header('  parent: ' + word + '\n  plateau: ' + word + '\n'));
+    assert.equal(parsed.header.parent, word, 'parent: ' + word);
+    assert.equal(parsed.header.plateau, word, 'plateau: ' + word);
+  }
+  const flow = app.parseManifestText('header: {kind: "archicode.morin.io/container", version: yes, parent: On, plateau: "yes"}\ncontent: {id: c}\n');
+  assert.deepEqual([flow.header.version, flow.header.parent, flow.header.plateau], ['yes', 'On', 'yes'], 'in a flow mapping too');
+  // nothing else of the header changes: a number is a number, null is no value, a quoted text is a text
+  const other = app.parseManifestText(header('  parent: 5\n  plateau: ~\n'));
+  assert.deepEqual([other.header.parent, other.header.plateau], [5, null]);
+  // the kind is an enum, which the command line reads by the kind of the value: a boolean is the wrong shape, not an unknown kind
+  assert.equal(errorOf(manifest('  id: s\n', 'header:\n  kind: yes\n  version: "1"\n')), 'the value has the wrong shape (found a boolean) at `header.kind`');
+  // the content keeps reading a YAML 1.1 boolean as the boolean, as the command line does (it says `true` for it)
+  const content = app.parseManifestText(manifest('  id: yes\n  name: No\n'));
+  assert.deepEqual([content.content.id, content.content.name], [true, false]);
+  assert.equal(content.error, null);
+});
+
+test('a manifest that says parent: yes is saved with that line as it was written (#85)', () => {
+  const text = '# the cart\nheader:\n  kind: "archicode.morin.io/container"\n  parent: yes\n  plateau: On\n  version: "1"\ncontent:\n  id: c\n  name: C\n';
+  const parsed = app.parseManifestText(text);
+  parsed.content.name = 'Cart';
+  assert.equal(app.patchYamlText(text, { header: parsed.header, content: parsed.content }), text.replace('name: C', 'name: Cart'));
+  const untouched = app.parseManifestText(text);
+  assert.equal(app.patchYamlText(text, { header: untouched.header, content: untouched.content }), text, 'no edit, no change');
+});
+
+test('a null where the command line reads an absent value is absent here too (#80)', () => {
+  const settings = (text) => JSON.parse(JSON.stringify(app.parseSettings(app.parseYaml(text).settings)));
+  assert.deepEqual(settings('settings:\n  manifests:\n    paths: [null, a, ~, "", b]\n').manifests.paths, ['a', '', 'b'], 'an item with no value is no item');
+  assert.deepEqual(settings('settings:\n  manifests:\n    paths: [null]\n').manifests.paths, [], 'a list of nothing is an empty list, not the default folder');
+  assert.deepEqual(settings('settings:\n  manifests:\n    paths:\n').manifests.paths, ['manifests'], 'a key with nothing after it is absent');
+  assert.equal(errorOf(manifest('  id: s\n  elements:\n')), null);
+  assert.equal(errorOf(manifest('  id: s\n  elements: [null, ~]\n')), null);
+  assert.equal(errorOf(manifest('  id: s\n  relationships:\n    - destination: s\n      qualifiers:\n      tags:\n')), null);
+  assert.equal(errorOf('header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: t\n  steps:\n'), null);
+});
+
+test('an item of a list of elements that is a list is the wrong shape, as it is for the command line (#80)', () => {
+  assert.equal(errorOf(manifest('  id: s\n  elements: [[1]]\n')), 'the value has the wrong shape (found an array) at `elements[0]`');
+  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: container\n      id: c\n      elements:\n        - [a]\n')), 'the value has the wrong shape (found an array) at `elements[0].elements[0]`');
+  assert.equal(errorOf(manifest('  id: s\n  elements: [5]\n')), 'missing `kind` (known: container, group) at `elements[0]`', 'a scalar is an element with no kind');
+});
+
+test('the sentences name the keys of the facets as the manual writes them, and the other spelling is still read (#80)', () => {
+  const problem = (text) => app.workspaceProblem(app.parseYaml(text));
+  assert.equal(problem('settings:\n  facets:\n    nothing: 1\n'), 'unknown key `nothing` (known: customs, directory-name-template, global-enabled) at `settings.facets.nothing`');
+  assert.equal(problem('settings:\n  facets:\n    customs:\n      - nothing: 1\n'), 'unknown key `nothing` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].nothing`');
+  assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        actions:\n          - nothing: 1\n'), 'unknown key `nothing` (known: json-path, operator) at `settings.facets.customs[0].actions[0].nothing`');
+  assert.equal(problem('settings:\n  facets:\n    globalEnabled: false\n    directoryNameTemplate: "%s"\n    customs:\n      - name: a\n        hideUnlinked: true\n        actions:\n          - operator: REMOVE\n            jsonPath: "$"\n'), null);
+  assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        actions:\n          - jsonPath: "$"\n'), 'Missing settings.facets.customs[0].actions[0].operator');
+});
+
+test('a number is no value of an enum, a value of an enum is told without the blanks around it, and a whole number fits an int (#80)', () => {
+  const problem = (text) => app.workspaceProblem(app.parseYaml(text));
+  const view = (layer) => errorOf('header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: v\n  viewpoint: p\n  layer: ' + layer + '\n');
+  assert.equal(view('1'), 'unrecognized `layer` "1" (known: APPLICATION, TECHNOLOGY)');
+  assert.equal(view('"  tech  "'), 'unrecognized `layer` "tech" (known: APPLICATION, TECHNOLOGY)');
+  assert.equal(view('" technology "'), null, 'the blanks do not count when it is a value');
+  const gap = (value) => problem('styles:\n  composite:\n    line-gap: ' + value + '\n');
+  assert.equal(gap('2147483647'), null);
+  assert.equal(gap('-2147483648'), null);
+  assert.equal(gap('2147483648'), 'Numeric value (2147483648) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`');
+  assert.equal(gap('-9999999999'), 'Numeric value (-9999999999) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`');
+  assert.equal(gap('"9999999999"'), 'the value has the wrong shape (found a string) at `styles.composite.line-gap`', 'a text is a text that is no int, as it is for the command line');
+  assert.equal(gap('"５"'), null, 'any digit, as the command line reads it');
+});
+
+test('KNOWN DIFFERENCE (issue #103): a plain scalar spelled as a YAML 1.1 number that JavaScript would print another way is kept as text by the page, the command line reads a number', () => {
+  const problem = (text) => app.workspaceProblem(app.parseYaml(text));
+  // where a number is expected the page refuses the text (the command line accepts each of them, case N77 of negative-cases.json)
+  for (const spelled of ['0x1F', '0b11', '1_0', '5.0', '1e2', '1E2', '.5', '1.']) {
+    assert.equal(problem('styles:\n  composite:\n    line-gap: ' + spelled + '\n'), 'the value has the wrong shape (found a string) at `styles.composite.line-gap`', spelled);
+  }
+  assert.equal(problem('styles:\n  composite:\n    line-gap: 5\n'), null);
+  assert.equal(problem('styles:\n  composite:\n    line-gap: 012\n'), null, 'digits only are a whole number for both');
+  for (const spelled of ['0x1', '012']) assert.equal(problem('styles:\n  composite:\n    shadowing: ' + spelled + '\n'), 'the value has the wrong shape (found a string) at `styles.composite.shadowing`', spelled);
+  // where a text is expected the page keeps the spelling, the command line says the number (`id: 010` is the reference `8` there: YamlOneDotOneNumbersTest.java)
+  const id = (spelled) => app.parseManifestText(manifest('  id: ' + spelled + '\n')).content.id;
+  assert.equal(id('010'), '010');
+  assert.equal(id('0x1F'), '0x1F');
+  assert.equal(id('1.50'), '1.50');
+  assert.equal(id('1_000'), '1_000');
+  assert.equal(id('1e3'), '1e3');
+  // and a header.parent of 0 is no parent for the page (a falsy number), the reference `0.c` for the command line
+  const parent = app.parseManifestText('header:\n  kind: "archicode.morin.io/container"\n  parent: 0\n  version: "1"\ncontent:\n  id: c\n').header.parent;
+  assert.equal(parent, 0);
+});
+
+test('KNOWN DIFFERENCE: the page does not tell the line and the column of a file, the command line does (negative-cases.json)', () => {
+  const sentence = errorOf(manifest('  id: s\n  foo: 1\n'));
+  assert.equal(sentence, 'unknown key `foo` (known: description, elements, id, name, qualifiers, relationships, replaces, tags) at `foo`');
+  assert.doesNotMatch(sentence, /\(line \d+, column \d+\)/);
+});
+
+test('a header line that says parent: yes stays as written when the file is saved with its comments and a flow list (#85)', () => {
+  const text = '# the cart\nheader: {kind: "archicode.morin.io/container", parent: yes, version: "1"}\ncontent:\n  id: c\n  name: C  # the name\n  qualifiers: [a, b]\n';
+  const parsed = app.parseManifestText(text);
+  assert.equal(parsed.header.parent, 'yes');
+  parsed.content.name = 'Cart';
+  assert.equal(app.patchYamlText(text, { header: parsed.header, content: parsed.content }), text.replace('name: C ', 'name: Cart '));
+  const keyColumn = '# the cart\nheader:\n  kind: "archicode.morin.io/container"\n  parent: On\n  version: "1"\ncontent:\n  id: c\n  name: C\n  qualifiers:\n  - a\n  - b\n';
+  const again = app.parseManifestText(keyColumn);
+  again.content.name = 'Cart';
+  assert.equal(app.patchYamlText(keyColumn, { header: again.header, content: again.content }), keyColumn.replace('name: C', 'name: Cart'), 'a list written at the column of its key too');
+});
+
+test('a scalar of settings that has nothing after its key is absent: the default is read (#80)', () => {
+  const settings = (text) => JSON.parse(JSON.stringify(app.parseSettings(app.parseYaml(text).settings)));
+  const read = settings('settings:\n  name:\n  current:\n  relationships:\n    default-synthetic-label:\n  views:\n    path:\n  facets:\n    global-enabled:\n    directory-name-template:\n');
+  assert.equal(read.relationships.defaultSyntheticLabel, 'uses');
+  assert.equal(read.views.path, 'views');
+  assert.equal(read.facets.globalEnabled, true, 'the default, as the command line reads it');
+  assert.equal(read.facets.directoryNameTemplate, '%s-%s');
+  assert.equal(read.current, '');
+});
+
+test('an item with no value is no qualifier, no application and no use (#80)', async () => {
+  const mem = memFolder({
+    'workspace.yaml': 'settings:\n  manifests:\n    paths: [m]\n',
+    'm/a.yaml': manifest('  id: s\n  qualifiers: [a, null, b]\n  relationships:\n    - destination: s\n      qualifiers:\n        -\n        - q\n'),
+    'm/e.yaml': 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: e\n  uses: [~, s]\n  elements:\n    - kind: node\n      id: n\n      applications: [null, s]\n'
+  });
+  const sandbox = createApp({});
+  const state = sandbox.__state();
+  state.folder = { handle: mem.handle, name: 'ws' };
+  state.permissionState = 'granted';
+  await sandbox.loadWorkspace(mem.handle);
+  const s = state.index.application.get('s');
+  assert.deepEqual(JSON.parse(JSON.stringify(s.qualifiers)), ['a', 'b']);
+  assert.deepEqual(JSON.parse(JSON.stringify(s.relationships[0].qualifiers)), ['q']);
+  assert.deepEqual(JSON.parse(JSON.stringify(state.index.technology.get('e').uses)), ['s']);
+  assert.deepEqual(JSON.parse(JSON.stringify(state.index.technology.get('e.n').applications)), ['s']);
+});
+
+test('KNOWN DIFFERENCE (issue #105): an item with no value in relationships is a relationship with no destination for the page, none for the command line', async () => {
+  const mem = memFolder({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: [m]\n', 'm/a.yaml': manifest('  id: s\n  relationships: [null]\n') });
+  const sandbox = createApp({});
+  const state = sandbox.__state();
+  state.folder = { handle: mem.handle, name: 'ws' };
+  state.permissionState = 'granted';
+  await sandbox.loadWorkspace(mem.handle);
+  assert.equal(state.manifestFiles[0].error, null, 'it is read, not refused, as it is by the command line');
+  assert.equal(state.index.application.get('s').relationships.length, 1, 'the page keeps the place of the item (the form of a relationship addresses the file by position)');
 });

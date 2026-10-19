@@ -1235,6 +1235,12 @@ function stripYamlComment(line) {
 }
 
 /**
+ * Set while `parseManifestText` reads the header a second time: a word YAML 1.1 reads as a boolean (`yes`, `On`, `FALSE`) is then the text as written. The command line
+ * reads the fields of a header (`kind`, `version`, `parent`, `plateau`) as the text they are written as (issue #85); the rest of a manifest is read as the value, as it does.
+ */
+let yamlKeepWords = false;
+
+/**
  * Resolve a plain (unquoted) scalar into its JS value: null (`null`/`~`/empty), a boolean (true/false/yes/no/on/off,
  * as the Java side reads them), a number, else the text itself. A number is only turned into a JS number when the text
  * is exactly what `String(number)` gives back (so `01234`, `1.50`, `2.0`, `-0` and integers beyond 2^53 stay the text
@@ -1242,8 +1248,8 @@ function stripYamlComment(line) {
  */
 function resolveYamlPlain(text) {
   if (text === '' || text === '~' || /^(null|Null|NULL)$/.test(text)) return null;
-  if (/^(true|True|TRUE|yes|Yes|YES|on|On|ON)$/.test(text)) return true;
-  if (/^(false|False|FALSE|no|No|NO|off|Off|OFF)$/.test(text)) return false;
+  if (/^(true|True|TRUE|yes|Yes|YES|on|On|ON)$/.test(text)) return yamlKeepWords ? text : true;
+  if (/^(false|False|FALSE|no|No|NO|off|Off|OFF)$/.test(text)) return yamlKeepWords ? text : false;
   if (/^-?\d+$/.test(text) || /^-?\d+\.\d+$/.test(text)) {
     const number = Number(text);
     return String(number) === text ? number : text;
@@ -2167,7 +2173,7 @@ function closeYamlDecorations(patched, opened, emitted) {
   const build = (items) => bom + items.map((item) => item.text).join(eol);
   const says = (items) => {
     try {
-      return serializeYamlValue(parseYaml(build(items)), 0) === emitted;
+      return serializeYamlValue(parseYamlAsModel(build(items)), 0) === emitted;
     } catch (e) {
       return false;
     }
@@ -2212,7 +2218,7 @@ function patchYamlTextPlain(oldText, newValue) {
   const back = unmarkKeyColumnLists(patchYamlTextAt(marked, newValue));
   try {
     // a result is accepted only if re-reading it gives the emitter's value
-    return back !== null && serializeYamlValue(parseYaml(back), 0) === emitted ? back : emitted;
+    return back !== null && serializeYamlValue(parseYamlAsModel(back), 0) === emitted ? back : emitted;
   } catch (e) {
     return emitted;
   }
@@ -2224,7 +2230,7 @@ function patchYamlTextAt(oldText, newValue) {
   // what is written must say what the edit says, in the emitter's own terms
   const says = (text) => {
     try {
-      return serializeYamlValue(parseYaml(text), 0) === emitted;
+      return serializeYamlValue(parseYamlAsModel(text), 0) === emitted;
     } catch (e) {
       return false;
     }
@@ -2744,7 +2750,7 @@ function locateEmittedLines(original, before) {
 function patchYamlLines(oldText, emitted, newValue, styled) {
   let oldValue;
   try {
-    oldValue = parseYaml(oldText);
+    oldValue = parseYamlAsModel(oldText); // the model holds `parent: yes` as the text it is (issue #85), so does the old value it is compared with
   } catch (e) {
     return null;
   }
@@ -2947,7 +2953,7 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
     const before = emittedBlockOf(oldValue, oldPath);
     const after = emittedBlockOf(newValue, newPath);
     if (before === null || after === null) return null;
-    if (serializeYamlValue(parseYaml(source), 0) !== before.lines.join('\n')) return null; // the model is not what the file says: no guess
+    if (serializeYamlValue(parseYamlAsModel(source), 0) !== before.lines.join('\n')) return null; // the model is not what the file says: no guess
     // the value without the element (and without its parent's `elements` if that was the last one)
     const without = JSON.parse(JSON.stringify(oldValue));
     const parent = elementNodeAt(without.content, oldPath.slice(0, -2));
@@ -2989,7 +2995,7 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
     }
     const moved = out.join(eol) + (endsWithBreak ? eol : '');
     const text = opened ? closeFlowLists(moved, opened.lists) : moved;
-    return serializeYamlValue(parseYaml(text), 0) === after.lines.join('\n') ? text : null;
+    return serializeYamlValue(parseYamlAsModel(text), 0) === after.lines.join('\n') ? text : null;
   } catch (e) {
     return null;
   }
@@ -3540,8 +3546,9 @@ function workspaceLabel() {
 
 function readAliased(obj, camelKey, kebabKey, fallback) {
   if (!obj || typeof obj !== 'object') return fallback;
-  if (Object.prototype.hasOwnProperty.call(obj, camelKey)) return obj[camelKey];
-  if (Object.prototype.hasOwnProperty.call(obj, kebabKey)) return obj[kebabKey];
+  // a key with nothing after it is a key that is not there (the command line leaves the default alone: `views: {path: }` is `views`)
+  if (Object.prototype.hasOwnProperty.call(obj, camelKey) && obj[camelKey] !== null) return obj[camelKey];
+  if (Object.prototype.hasOwnProperty.call(obj, kebabKey) && obj[kebabKey] !== null) return obj[kebabKey];
   return fallback;
 }
 
@@ -3768,7 +3775,8 @@ function parseSettings(rawSettings) {
     name: name.trim() === '' ? '' : name,
     manifests: {
       // a number or a boolean is read as the text it is, as the command line reads it
-      paths: Array.isArray(manifestsRaw.paths) ? manifestsRaw.paths.map((p) => (typeof p === 'number' || typeof p === 'boolean' ? String(p) : p)) : ['manifests']
+      // an item with no value is no item (`paths: [null]` is an empty list), as the command line reads it
+      paths: Array.isArray(manifestsRaw.paths) ? manifestsRaw.paths.filter((p) => p !== null && p !== undefined).map((p) => (typeof p === 'number' || typeof p === 'boolean' ? String(p) : p)) : ['manifests']
     },
     current: plateauText(raw.current),
     relationships: {
@@ -3816,6 +3824,11 @@ function stripArchicodeKindPrefix(fullKind) {
   return fullKind;
 }
 
+/** Whether an item of a list has a value: the command line leaves an item with no value (`- ` or `null`) out of a list. */
+function isPresent(item) {
+  return item !== null && item !== undefined;
+}
+
 /**
  * Recursively index one element node (manifest-root or nested) and its
  * descendants (content.elements, at any depth) into `index[category]`.
@@ -3840,7 +3853,7 @@ function indexElementRecursive(node, kind, reference, sourceFile, category, inde
       // The label as written in the manifest (null when absent): the viewpoint kernel needs it, because ArchiCode
       // draws a natural link without a label, whereas `label` above is the display fallback.
       rawLabel: (rel.label !== undefined && rel.label !== null) ? rel.label : null,
-      qualifiers: Array.isArray(rel.qualifiers) ? rel.qualifiers : [],
+      qualifiers: Array.isArray(rel.qualifiers) ? rel.qualifiers.filter(isPresent) : [], // an item with no value is no item
       tags: rel.tags && typeof rel.tags === 'object' ? rel.tags : {},
       resolved: false // filled in by resolveRelationships (FLOW-4)
     };
@@ -3854,10 +3867,10 @@ function indexElementRecursive(node, kind, reference, sourceFile, category, inde
     id: node.id,
     name: node.name !== undefined ? node.name : null,
     description: node.description !== undefined ? node.description : null,
-    qualifiers: Array.isArray(node.qualifiers) ? node.qualifiers : [],
+    qualifiers: Array.isArray(node.qualifiers) ? node.qualifiers.filter(isPresent) : [],
     tags: node.tags && typeof node.tags === 'object' ? node.tags : {},
-    applications: Array.isArray(node.applications) ? node.applications : [],
-    uses: Array.isArray(node.uses) ? node.uses : [], // an environment: where the dependencies of its applications are looked for
+    applications: Array.isArray(node.applications) ? node.applications.filter(isPresent) : [],
+    uses: Array.isArray(node.uses) ? node.uses.filter(isPresent) : [], // an environment: where the dependencies of its applications are looked for
     replaces: Array.isArray(node.replaces) ? node.replaces : [], // wave 009: the references of the baseline this element replaces (the comparison reads it; nothing else does)
     relationships,
     children: [],
@@ -6129,9 +6142,9 @@ const READ_SCHEMA = {
     "Manifests": { "fields": { "paths": "texts" } },
     "Relationships": { "fields": { "default-synthetic-label": "text" } },
     "Views": { "fields": { "labels": "text-map", "path": "text", "properties": "object-map" } },
-    "Facets": { "fields": { "customs": "[Facet]", "directoryNameTemplate": "text", "globalEnabled": "bool" }, "aliases": { "directory-name-template": "directoryNameTemplate", "global-enabled": "globalEnabled" } },
-    "Facet": { "fields": { "actions": "[Action]", "hideUnlinked": "bool", "name": "text" }, "aliases": { "hide-unlinked": "hideUnlinked" }, "required": ["name"] },
-    "Action": { "fields": { "jsonPath": "text", "operator": "enum:REMOVE" }, "aliases": { "json-path": "jsonPath" }, "required": ["operator", "jsonPath"] },
+    "Facets": { "fields": { "customs": "[Facet]", "directory-name-template": "text", "global-enabled": "bool" }, "aliases": { "directoryNameTemplate": "directory-name-template", "globalEnabled": "global-enabled" } },
+    "Facet": { "fields": { "actions": "[Action]", "hide-unlinked": "bool", "name": "text" }, "aliases": { "hideUnlinked": "hide-unlinked" }, "required": ["name"] },
+    "Action": { "fields": { "json-path": "text", "operator": "enum:REMOVE" }, "aliases": { "jsonPath": "json-path" }, "required": ["operator", "json-path"] },
     "Styles": { "fields": { "atomic": "Style", "by-qualifiers": "{Style}", "by-tags": "{Style}", "composite": "Style" } },
     "Style": { "fields": { "background-color": "text", "font-color": "text", "font-style": "text", "line-color": "text", "line-gap": "int", "line-style": "int", "line-thickness": "int", "round-corner": "int", "shadowing": "bool" } },
     "Formatters": { "fields": { "atomic": "AtomicFormatter", "composite": "CompositeFormatter", "link": "LinkFormatter" } },
@@ -6209,6 +6222,10 @@ function unrecognizedKindProblem(value) {
   return 'unrecognized `header.kind` "' + value + '" (known: ' + known.join(', ') + ')';
 }
 
+/** The range of a Java `int`: what the command line takes for a whole number of `workspace.yaml` (`line-gap`, `round-corner`...). */
+const READ_INT_MIN = -2147483648;
+const READ_INT_MAX = 2147483647;
+
 /** The first problem of one value against its spec, in document order, or null. `prefix`: where the `Missing` sentences start. */
 function readValue(spec, value, path, prefix) {
   if (readIsMissing(value) || spec === 'any') return null;
@@ -6217,7 +6234,15 @@ function readValue(spec, value, path, prefix) {
   if (spec === 'text') return nested ? wrong() : null;
   if (spec === 'int') {
     if (nested || typeof value === 'boolean') return wrong();
-    return typeof value === 'string' && value !== '' && !/^\s*[-+]?\d+\s*$/.test(value) ? wrong() : null; // an empty text is no value
+    // a whole number must fit in the 32 bits of the command line's `int`: said with its sentence for a number, as a text that is no number for a quoted one
+    if (typeof value === 'number' && Number.isInteger(value) && (value > READ_INT_MAX || value < READ_INT_MIN)) {
+      return 'Numeric value (' + value + ') out of range of int (' + READ_INT_MIN + ' - ' + READ_INT_MAX + ')' + (path ? ' at `' + path + '`' : '');
+    }
+    if (typeof value === 'string' && value !== '') {
+      if (!/^\s*[-+]?\p{Nd}+\s*$/u.test(value)) return wrong(); // an empty text is no value
+      if (/^\s*[-+]?\d+\s*$/.test(value) && (BigInt(value.trim()) > BigInt(READ_INT_MAX) || BigInt(value.trim()) < BigInt(READ_INT_MIN))) return wrong();
+    }
+    return null;
   }
   if (spec === 'bool') {
     if (nested) return wrong();
@@ -6245,7 +6270,7 @@ function readValue(spec, value, path, prefix) {
     if (nested || typeof value === 'boolean' || (typeof value === 'number' && !Number.isInteger(value))) return wrong();
     const values = spec.slice('enum:'.length).split(',');
     if (values.some((v) => v.toLowerCase() === String(value).trim().toLowerCase())) return null;
-    return 'unrecognized `' + path + '` "' + value + '" (known: ' + values.join(', ') + ')';
+    return 'unrecognized `' + path + '` "' + String(value).trim() + '" (known: ' + values.join(', ') + ')'; // the command line says the value without the blanks around it
   }
   if (spec.startsWith('[')) {
     if (!Array.isArray(value)) return wrong();
@@ -6299,6 +6324,7 @@ function readObject(typeName, node, path, prefix, consumesKind) {
 /** An element of a list whose `kind` says its type: the kind is read first, whatever its place in the object. */
 function readTyped(iface, node, path, prefix) {
   const kinds = READ_SCHEMA.kinds[iface];
+  if (Array.isArray(node)) return readWrongShape(node, path); // a list is no element (the command line does not read the array form of a type id)
   const written = readIsObject(node) ? node.kind : undefined;
   const known = Object.keys(kinds).sort().join(', ');
   if (typeof written !== 'string' && typeof written !== 'number' && typeof written !== 'boolean') {
@@ -6312,6 +6338,9 @@ function readTyped(iface, node, path, prefix) {
 
 /** The keys the header of a manifest has, in the order the command line lists them (`Manifest.Header`: `kind`, `parent`, `plateau`, `version`). */
 const MANIFEST_HEADER_KEYS = ['kind', 'parent', 'plateau', 'version'];
+
+/** The keys of the header that the command line types as text: it keeps what is written, a `yes` is `yes` (`kind` is an enum, which it reads by the kind of the value: a boolean is a wrong shape). */
+const MANIFEST_HEADER_TEXT_KEYS = ['parent', 'plateau', 'version'];
 
 /** The kind of a manifest as the command line reads it: the prefix is required, the case and the spaces around are not. Null when it is not one. */
 function manifestKindName(value) {
@@ -6401,6 +6430,28 @@ function workspaceProblem(raw) {
 }
 
 /**
+ * `parseYaml` for a file of the model (a manifest): the fields of its header that YAML 1.1 reads as a boolean (`parent: yes`, `plateau: On`) are the text as written, as the
+ * command line reads them (issue #85). The model then holds `yes`, not `true`, and a save compares the file with the model on the same terms.
+ */
+function parseYamlAsModel(text) {
+  const value = parseYaml(text);
+  if (value !== null && typeof value === 'object') keepHeaderAsWritten(value, text);
+  return value;
+}
+
+/** The header is read once more, keeping the words, only when one of its fields came out as a boolean (which is rare): those fields take the text as written. */
+function keepHeaderAsWritten(parsed, text) {
+  if (!readIsObject(parsed.header) || !MANIFEST_HEADER_TEXT_KEYS.some((key) => typeof parsed.header[key] === 'boolean')) return;
+  yamlKeepWords = true;
+  try {
+    const again = parseYaml(text);
+    for (const key of MANIFEST_HEADER_TEXT_KEYS) if (typeof parsed.header[key] === 'boolean') parsed.header[key] = again.header[key];
+  } finally {
+    yamlKeepWords = false;
+  }
+}
+
+/**
  * Parse one manifest file's text the way every load/edit path needs
  * (loadWorkspace, commitFileEdit, reloadManifestFile): `{ header, content,
  * error }`, `error` set (and header/content null) when the text is not
@@ -6408,7 +6459,7 @@ function workspaceProblem(raw) {
  */
 function parseManifestText(text) {
   try {
-    const parsed = parseYaml(text) || {};
+    const parsed = parseYamlAsModel(text) || {};
     const header = (parsed.header && typeof parsed.header === 'object') ? parsed.header : null;
     const content = (parsed.content && typeof parsed.content === 'object') ? parsed.content : null;
     return { header, content, error: manifestProblem(parsed) };

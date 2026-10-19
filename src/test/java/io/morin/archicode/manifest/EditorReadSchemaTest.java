@@ -272,8 +272,10 @@ class EditorReadSchemaTest {
                     if (!m.find()) {
                         throw e;
                     }
-                    order.add(m.group(1));
-                    json.put(m.group(1), dummy(fields.get(m.group(1))));
+                    // the sentence says the key as the manual writes it (`json-path`), the field is named `jsonPath`
+                    val key = ManifestParser.documented(m.group(1));
+                    order.add(key);
+                    json.put(key, dummy(fields.get(key)));
                 }
             }
             assertEquals(required(types, name), order, "the keys " + name + " needs, in the order it checks them");

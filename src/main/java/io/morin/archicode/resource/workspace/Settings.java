@@ -113,6 +113,11 @@ public class Settings {
         Map<String, ObjectNode> properties = new LinkedHashMap<>();
     }
 
+    /**
+     * The facets. A key is written in kebab-case ({@code global-enabled}, {@code directory-name-template}, {@code
+     * hide-unlinked}, {@code json-path}), which is what the sentences of the readers say; the camel-case spelling is the
+     * older one and is still read.
+     */
     @Value
     @Jacksonized
     @Builder(toBuilder = true)
@@ -122,7 +127,8 @@ public class Settings {
          * Enable/disable the global facet.
          */
         @Builder.Default
-        @JsonAlias("global-enabled")
+        @JsonProperty("global-enabled")
+        @JsonAlias("globalEnabled")
         boolean globalEnabled = true;
 
         /**
@@ -132,7 +138,8 @@ public class Settings {
          */
         @NonNull
         @Builder.Default
-        @JsonAlias("directory-name-template")
+        @JsonProperty("directory-name-template")
+        @JsonAlias("directoryNameTemplate")
         String directoryNameTemplate = "%s-%s";
 
         /**
@@ -166,7 +173,8 @@ public class Settings {
              * Leave out, from the views of the technology layer, the elements none of the links of the facet goes through.
              */
             @Builder.Default
-            @JsonAlias("hide-unlinked")
+            @JsonProperty("hide-unlinked")
+            @JsonAlias("hideUnlinked")
             boolean hideUnlinked = false;
 
             @Value
@@ -178,7 +186,8 @@ public class Settings {
                 Operator operator;
 
                 @NonNull
-                @JsonAlias("json-path")
+                @JsonProperty("json-path")
+                @JsonAlias("jsonPath")
                 String jsonPath;
 
                 public enum Operator {

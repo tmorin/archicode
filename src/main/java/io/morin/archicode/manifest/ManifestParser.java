@@ -97,6 +97,10 @@ public class ManifestParser {
                     .map(reason -> new ArchiCodeException("`%s` is not valid: %s", source, reason))
                     .orElseGet(() -> ArchiCodeException.unreadable(source, e, true));
             }
+            if (resource == null) {
+                // a file that holds only `null` (or `~`) is a file with no header
+                throw new ArchiCodeException("`%s` is not valid: Missing header.kind", source);
+            }
             final Object item;
             try {
                 // the content is read again from JSON text, whatever the format of the file was (issue #84)
@@ -186,11 +190,16 @@ public class ManifestParser {
 
     /** What is said of a manifest that is empty: it lacks its header, which is told by the first key it needs. */
     static Optional<String> emptyManifest(JsonProcessingException e) {
-        return e instanceof JsonMappingException mapping &&
+        return isEmptyDocument(e) ? Optional.of("Missing header.kind") : Optional.empty();
+    }
+
+    /** Whether the reader failed because the file holds nothing to read (no content, or only comments). */
+    public static boolean isEmptyDocument(JsonProcessingException e) {
+        return (
+            e instanceof JsonMappingException mapping &&
             mapping.getOriginalMessage() != null &&
             mapping.getOriginalMessage().startsWith("No content to map due to end-of-input")
-            ? Optional.of("Missing header.kind")
-            : Optional.empty();
+        );
     }
 
     private static final Pattern NON_NULL = Pattern.compile("(\\w+) is marked non-null but is null");
@@ -214,7 +223,7 @@ public class ManifestParser {
         if (!found.find()) {
             return Optional.empty();
         }
-        val key = found.group(1);
+        val key = documented(found.group(1));
         val where = new StringBuilder(under);
         val path = mapping.getPath();
         for (int i = 0; i < path.size(); i++) {
@@ -239,6 +248,14 @@ public class ManifestParser {
             );
         }
         return Optional.of("Missing " + where + "." + key);
+    }
+
+    /**
+     * A key as the manual writes it: {@code jsonPath} is {@code json-path}. Lombok names the key by the field, the file says it
+     * in kebab-case (the camel-case spelling is the older one, still read).
+     */
+    static String documented(String field) {
+        return field.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase(Locale.ROOT);
     }
 
     /**

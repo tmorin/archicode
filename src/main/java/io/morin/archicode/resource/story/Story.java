@@ -1,6 +1,8 @@
 package io.morin.archicode.resource.story;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import java.util.List;
 import lombok.Builder;
 import lombok.NonNull;
@@ -75,6 +77,7 @@ public class Story {
         /**
          * The properties of the view the step carries.
          */
+        @JsonSetter(nulls = Nulls.SET)
         com.fasterxml.jackson.databind.JsonNode properties;
 
         /**
