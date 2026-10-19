@@ -227,6 +227,9 @@ test('KNOWN DIFFERENCE (issue #103): a plain scalar spelled as a YAML 1.1 number
   assert.equal(id('1.50'), '1.50');
   assert.equal(id('1_000'), '1_000');
   assert.equal(id('1e3'), '1e3');
+  // and an id with a dot (issue #104) is judged on the spelling: `1.50` is refused as `1.50` (the command line says `1.5`), `1e3` has no dot for the page and is `1000.0` for the command line, which refuses it
+  assert.equal(app.parseManifestText(manifest('  id: 1.50\n')).error, 'the id `1.50` contains a dot, which separates the levels of a reference, at `content.id`');
+  assert.equal(app.parseManifestText(manifest('  id: 1e3\n')).error, null);
   // and a header.parent of 0 is no parent for the page (a falsy number), the reference `0.c` for the command line
   const parent = app.parseManifestText('header:\n  kind: "archicode.morin.io/container"\n  parent: 0\n  version: "1"\ncontent:\n  id: c\n').header.parent;
   assert.equal(parent, 0);

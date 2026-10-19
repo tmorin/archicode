@@ -36,4 +36,9 @@ public class Environment extends AbstractElement implements Parent<EnvironmentEl
     public Environment withElements(Set<EnvironmentElement> elements) {
         return toBuilder().elements(elements).build();
     }
+
+    @Override
+    public Class<EnvironmentElement> elementType() {
+        return EnvironmentElement.class;
+    }
 }

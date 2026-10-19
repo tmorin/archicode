@@ -24,4 +24,9 @@ public class Solution extends AbstractElement implements Parent<SolutionElement>
     public Solution withElements(Set<SolutionElement> elements) {
         return toBuilder().elements(elements).build();
     }
+
+    @Override
+    public Class<SolutionElement> elementType() {
+        return SolutionElement.class;
+    }
 }

@@ -127,6 +127,10 @@ public class ManifestParser {
             }
 
             if (item instanceof Element element) {
+                // an id with a dot would be read as two levels of a reference (issue #104); the editor says the same
+                dottedId(resource.getContent(), "content").ifPresent(reason -> {
+                    throw new ArchiCodeException("`%s` is not valid: %s", source, reason);
+                });
                 declare(
                     declarations
                         .computeIfAbsent(plateau, p -> new HashMap<>())
@@ -146,6 +150,7 @@ public class ManifestParser {
                     .reference(reference)
                     .element(element)
                     .plateau(plateau)
+                    .source(source)
                     .build();
                 map.putIfAbsent(resource.getKind().getCategory(), new HashSet<>());
                 map.get(resource.getKind().getCategory()).add(candidate);
@@ -186,6 +191,40 @@ public class ManifestParser {
             throw new ArchiCodeException("%s", String.join("\n", problems));
         }
         return new Parsed(map, views, stories, tree);
+    }
+
+    /**
+     * The first element of a manifest (the root, then what it holds, in the order of the file) whose id has a dot, as the
+     * sentence for it. The dot separates the levels of a reference ({@code shop.web}): an id that holds one is two ids.
+     * {@code standalone.html} says the same ({@code dottedIdProblem}): keep them alike.
+     *
+     * @param node the content of the manifest, or an element it holds
+     * @param path where {@code node} is in the manifest
+     * @return the sentence, or empty when no id has a dot
+     */
+    static Optional<String> dottedId(JsonNode node, String path) {
+        val id = node.get("id");
+        if (id != null && id.isValueNode() && !id.isNull() && id.asText().contains(".")) {
+            return Optional.of(
+                "the id `" +
+                    id.asText() +
+                    "` contains a dot, which separates the levels of a reference, at `" +
+                    path +
+                    ".id`"
+            );
+        }
+        val children = node.get("elements");
+        if (children != null && children.isArray()) {
+            for (int i = 0; i < children.size(); i++) {
+                if (children.get(i).isObject()) {
+                    val found = dottedId(children.get(i), path + ".elements[" + i + "]");
+                    if (found.isPresent()) {
+                        return found;
+                    }
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     /** What is said of a manifest that is empty: it lacks its header, which is told by the first key it needs. */
@@ -426,5 +465,14 @@ public class ManifestParser {
         @NonNull
         @Builder.Default
         String plateau = Plateau.BASELINE;
+
+        /**
+         * The file that declares the element, from the folder of the workspace; null for a candidate that is made of an
+         * element already read (the removed elements of a comparison), which is not checked again. It is no part of the identity of
+         * a candidate: the candidates are kept in a hash set and added to their parents in its order, which must not depend on the
+         * name of a file.
+         */
+        @EqualsAndHashCode.Exclude
+        String source;
     }
 }

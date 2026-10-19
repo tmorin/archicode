@@ -24,4 +24,9 @@ public class ApplicationGroup extends AbstractElement implements Parent<Applicat
     public ApplicationGroup withElements(Set<ApplicationElement> elements) {
         return toBuilder().elements(elements).build();
     }
+
+    @Override
+    public Class<ApplicationElement> elementType() {
+        return ApplicationElement.class;
+    }
 }

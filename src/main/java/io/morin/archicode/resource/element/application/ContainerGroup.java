@@ -24,4 +24,9 @@ public class ContainerGroup extends AbstractElement implements Parent<ContainerE
     public ContainerGroup withElements(Set<ContainerElement> elements) {
         return toBuilder().elements(elements).build();
     }
+
+    @Override
+    public Class<ContainerElement> elementType() {
+        return ContainerElement.class;
+    }
 }

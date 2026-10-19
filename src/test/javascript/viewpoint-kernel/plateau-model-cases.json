@@ -1,5 +1,5 @@
 {
-  "comment": "The cases of the plateau model (run 0077, wave 014, W-3): the header key `plateau`, the manifest of kind `plateau` with its patches, the tree of the plateaus, and the references declared once in a chain. PlateauModelTest.java (command line) and plateau-model.test.js (editor) read this file; add a case here and both run it. `settings`: the text of workspace.yaml (`settings: {}` when absent; `manifests/` is read). `files`: a path from the folder of workspace.yaml -> the text of the file. `expect.loaded`: the references of the application layer that are drawn (nothing but the plateau baseline is drawn until the plateaus are loaded as layers, W-4); `expect.warnings`: the warnings, without `warning: ` (checked when the workspace loads: a load that stops says its mistakes and no warning); `expect.errors`: the mistakes of the tree and of the references (the command line prints one `error:` line for each; the editor lists them in the model of the plateaus); `expect.fileError`: a manifest the reader refuses (`file`, the `sentence`, and the `where` the command line adds when it reads the file itself: ` (line L, column C)`); `expect.removedKey`: the sentence of the key that no longer exists (the command line prints it as the one `error:` line; the editor's banner is `expect.editorSays`: `Could not read/parse workspace.yaml: ` and the same sentence); `expect.noPlateau`: the sentence the command line prints for `settings.current` (M54) or `--plateau` (`plateau`, M55) in a workspace that has no plateau, and `expect.editorSays` the editor's banner for the first (`Could not read the plateaus of workspace.yaml:` and the sentence); the editor has no `--plateau`, so M55 gives `expect.editorDraws`: what the page draws when the address names (`?plateau=`) a plateau the workspace does not have. Run 0092 (wave 015, W-4) adds M65 to M80: a null where a list or an object is expected, an empty workspace.yaml (`settings` is the empty text: the file has nothing in it), and the YAML 1.1 words (`yes`, `On`, `TRUE`) in `header.parent` and `header.plateau` (the text as written) and in `content.id` (the boolean, which both tools say as `true`).",
+  "comment": "The cases of the plateau model (run 0077, wave 014, W-3): the header key `plateau`, the manifest of kind `plateau` with its patches, the tree of the plateaus, and the references declared once in a chain. PlateauModelTest.java (command line) and plateau-model.test.js (editor) read this file; add a case here and both run it. `settings`: the text of workspace.yaml (`settings: {}` when absent; `manifests/` is read). `files`: a path from the folder of workspace.yaml -> the text of the file. `expect.loaded`: the references of the application layer that are drawn (nothing but the plateau baseline is drawn until the plateaus are loaded as layers, W-4); `expect.warnings`: the warnings, without `warning: ` (checked when the workspace loads: a load that stops says its mistakes and no warning); `expect.errors`: the mistakes of the tree and of the references (the command line prints one `error:` line for each; the editor lists them in the model of the plateaus); `expect.fileError`: a manifest the reader refuses (`file`, the `sentence`, and the `where` the command line adds when it reads the file itself: ` (line L, column C)`); `expect.removedKey`: the sentence of the key that no longer exists (the command line prints it as the one `error:` line; the editor's banner is `expect.editorSays`: `Could not read/parse workspace.yaml: ` and the same sentence); `expect.noPlateau`: the sentence the command line prints for `settings.current` (M54) or `--plateau` (`plateau`, M55) in a workspace that has no plateau, and `expect.editorSays` the editor's banner for the first (`Could not read the plateaus of workspace.yaml:` and the sentence); the editor has no `--plateau`, so M55 gives `expect.editorDraws`: what the page draws when the address names (`?plateau=`) a plateau the workspace does not have. Run 0092 (wave 015, W-4) adds M65 to M80: a null where a list or an object is expected, an empty workspace.yaml (`settings` is the empty text: the file has nothing in it), and the YAML 1.1 words (`yes`, `On`, `TRUE`) in `header.parent` and `header.plateau` (the text as written) and in `content.id` (the boolean, which both tools say as `true`). Run 0093 (wave 015, W-5) adds M81 to M83: an id with a dot (#104), which is two levels of a reference; the checks of a layer are in layer-checks-cases.json.",
   "cases": [
     {
       "id": "M01",
@@ -1152,6 +1152,49 @@
           "true"
         ],
         "warnings": []
+      }
+    },
+    {
+      "id": "M81",
+      "what": "#104: an id with a dot is two levels of a reference: one sentence with the file, in both tools (the command line used to fail with a null pointer when another manifest was declared under it)",
+      "files": {
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a.b\"\n",
+        "manifests/c.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: \"a.b\"\ncontent:\n  id: \"c\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/a.yaml",
+          "sentence": "the id `a.b` contains a dot, which separates the levels of a reference, at `content.id`",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M82",
+      "what": "#104: the id of an element nested in a manifest says the same, at the place it is written",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n    - kind: \"container\"\n      id: \"api\"\n      elements:\n        - kind: \"component\"\n          id: \"v1.2\"\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/shop.yaml",
+          "sentence": "the id `v1.2` contains a dot, which separates the levels of a reference, at `content.elements[1].elements[0].id`",
+          "where": ""
+        }
+      }
+    },
+    {
+      "id": "M83",
+      "what": "#104: the id of a manifest of the technology layer, and a number that has a dot, are ids with a dot too",
+      "files": {
+        "manifests/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: 1.5\n"
+      },
+      "expect": {
+        "fileError": {
+          "file": "manifests/prod.yaml",
+          "sentence": "the id `1.5` contains a dot, which separates the levels of a reference, at `content.id`",
+          "where": ""
+        }
       }
     }
   ]

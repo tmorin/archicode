@@ -13,4 +13,12 @@ public interface Parent<C extends Element> {
      * @return the copy
      */
     Parent<C> withElements(Set<C> elements);
+
+    /**
+     * The kind of element this one holds: the interface its children implement (the kinds it names with {@code @JsonSubTypes} are the
+     * kinds that can be declared under it). This is the one place where the model says which kind a parent holds ({@link Nesting}).
+     *
+     * @return the interface of the children
+     */
+    Class<C> elementType();
 }

@@ -1,10 +1,101 @@
 ---
 type: run
 run: 0093
-status: proposed
+status: completed
 wave: 015
 ---
 
 # Run 0093: Layer checks shared cases
 
-Wave 015 (`editor-reshape-and-loose-ends`), item W-5 (phase P0). Focus: the checks of a layer and the nesting rule are written once as cases that both tools run (#90, #87)
+Wave 015 (`editor-reshape-and-loose-ends`), item W-5 (phase P0). Focus: the checks of a layer and the nesting rule are written once as cases that both tools run (#90, #87), plus #104 (found by run 0092: the command line crashes with a null pointer when `header.parent` names an element whose id contains a dot).
+
+Document profile: `single-document`, as runs 0089 to 0092: the scope is settled by the plan (the W-5 row, the fifth criterion of P0) and by the three issues; there is no PRD, TDD or pln. The review passes (a KDMLLC read of this document, the open-question resolution, the C scan against the code, a read-only review of the working tree by a sub-agent) are answered below.
+
+## Scope
+
+In:
+
+- #90: the checks made after each layer (a relationship, an entry of `uses`, an application hosted on a node, a `parent` that is not there, a view or a story that names a missing element) and their sentences are cases in one file, `src/test/javascript/viewpoint-kernel/layer-checks-cases.json`, read by `LayerLoaderTest` (Java) and `layer-checks.test.js` (node). The cases say which tool stops at the first wrong layer (the command line, which draws nothing) and which draws the plateau all the same (the editor).
+- #87: an element declared with `header.parent` under a parent that cannot hold its kind is refused when it is added, for every path (no plateau, a root with plateaus, a layer with or without patches, a parent of a lower plateau), in both tools, with one sentence that names the file. The rule "which kind a parent holds" is written once.
+- #104: an id that contains a dot is one `error:` line in both tools, pinned by cases.
+
+Out: the manual (W-18; what it must say is in Findings), the root kinds that no layer holds (#106, filed), the ids of the elements `workspace.yaml` holds itself, the `[[plateau-limits]]` text.
+
+## Decisions
+
+- **D1. The rule "which kind a parent holds" is written once, in the model classes.** A `Parent<C>` now says `elementType()` (the interface its children implement, one line in each of the eleven classes that are parents); `Nesting.holds` and `Nesting.kindsHeldBy` read it, and the kinds that implement the interface are the `@JsonSubTypes` of that interface, the very annotation Jackson reads. The page derives its two tables from `READ_SCHEMA`, which `EditorReadSchemaTest` already compared with the classes: `childKindOptionsForLevel` (the creation form and the Move dialog, which used a hand-written `switch`) is now `nestingKindsOfType(<Level>)`, from the `elements` of the type and the kinds of that interface (`group` last, as the form lists them; only a type that extends `Element` is a level, so `Application` and `Technology` are not). `EditorReadSchemaTest.shouldNameWhatEachParentHolds` is new: a type has `elements` in the table if and only if the class is a `Parent`, and the table's interface is the class's `elementType()`. The third statement of the rule is data, `nesting.holds` of the cases file, which `LayerLoaderTest.theClassesSayWhichKindEachParentHolds` compares with the classes and `layer-checks.test.js` compares with the page; both tools then load every pair (a parent kind, or a group in it, and a child kind of the same layer), 44 pairs each, and must accept or tell as the table says. A data file nobody derives anything from would have been a third copy that can drift; here it is a pin both sides are compared with.
+- **D2. The sentence is the reader's, with the file.** The reader (Jackson) says, for a nested element of a kind its parent does not hold, ``unknown kind `system` (known: component, group) at `elements[0].elements[0]` `` after ``<file> is not valid:``. For a manifest declared under a parent the same words are used, since an author sees the same fault in the same words whichever way the element is written: ``\`<file>\` is not valid: unknown kind `system` under `shop.web` (known: component, group) at `header.kind` ``. `under <parent>` is the one addition, because the list of known kinds is that of the parent and not of the whole model; `header.kind` is where the fault is written (the cause, `header.parent`, is named in the sentence); the kinds are in alphabetical order in both tools (the order of the page's `unknown kind` sentence for nested elements), and `none` when the parent holds nothing (a person, a component). Alternatives rejected: a sentence in the words of the Move dialog (``a system cannot be put under ...``), which is another voice for the same fault and would have needed a second form of the "known" list; the sentence of the patched layer today (``in the plateau `inhouse`, the elements cannot be read once the patches are applied: unknown kind ...``), which names no file and tells a consequence of the graph being written as JSON and not the fault.
+- **D3. Where it is checked: when the element is added, in `ElementIndexFactory.create`, so every path goes through it.** `WorkspaceFactory.create` (no layers) and `LayerLoader` (each layer, before the patches run) call it. The check needs the file, so `ManifestParser.Candidate` gets a `source`; it is **not** part of the candidate's `equals`/`hashCode` (`@EqualsAndHashCode.Exclude`): the candidates are in a `HashSet` and are added to their parent in its iteration order, which would then have depended on the name of a file (the first run of the gate found it: the TOML twins of the shipped workspaces listed the children in another order). A candidate made of an element already read (the removed elements of a comparison, `WorkspaceFactory.addRemoved`) has no source and is not checked: its parent is the same element as in the plateau it was read from. The mistakes of a layer are told together, sorted by reference, application layer then technology layer (`ElementIndexFactory.indexLayers`, which the two call sites share), and they are told **alone**: the command line stops there, before it looks for the parents that are not there; the page does the same.
+- **D4. The page tells the same and draws all the same.** `resolveLayerStep` checks the host of a manifest when it attaches it (`nestingLevelIn`: the kind of the host, or for a group the level of the nearest ancestor that is not one) and keeps the element where its manifest puts it, so that it can be repaired; the sentences are `state.problems` of the first layer of the chain that is wrong (`failedAt`), as for every other check.
+- **D5. The patched layer is no special case, and a patch cannot reach the same fault.** A patch refuses `elements` and `parent` (`a patch never changes an id or a parent`), so no patch can put an element under a parent that cannot hold it: the old failure ("the elements cannot be read once the patches are applied") could only come from a manifest, and that path now stops earlier. The sentence stays in `LayerLoader.applyPatches` as a defence for a graph the kernel returns that the model cannot read; the test that pinned it with a manifest (`aGraphTheModelCannotHoldOnceItIsWrittenIsToldWithItsLayer`) became `anElementUnderAParentThatCannotHoldItsKindIsToldWithItsFileWhateverTheLayerHas`. A fixture of `LayerLoaderTest` itself broke the rule (a `container` under the container `shop.cache`, in `anElementDeclaredUnderAParentThatAPatchOfTheLayerRemovesGoesWithIt`): it is a `component` now.
+- **D6. #104: an id with a dot is refused, the root's and the nested ones'.** The dot separates the levels of a reference, so `a.b.c` has no unique meaning, and the editor's own form already refuses it for a new element (`validateElementId`). One sentence in both tools: ``the id `a.b` contains a dot, which separates the levels of a reference, at `content.id` `` (`content.elements[1].elements[0].id` for a nested one), told after the shape of the file has been read (a file the reader refuses says its own fault first) and framed by the file as every other (``\`m/a.yaml\` is not valid: ...``). The first file that has one ends the load of the command line, as for any manifest the reader refuses; the page marks each such file. The alternative in the issue (stop splitting a reference on the dot) is a change of the reference syntax under the whole model and the kernel, and the documentation says an id is a name like a variable. `ElementIndexFactory.reindexAncestors` no longer dereferences a null either (an element of `workspace.yaml` with a dotted id is not looked at, and an element declared under it no longer crashes the index; `LayerLoaderTest.anIdWithADotInTheWorkspaceFileIsNotAnIndexMistake`). A number is judged on the text the tool holds: `id: 1.50` is `1.50` for the page and `1.5` for the command line, and `1e3` is `1000.0` (refused) for the command line and has no dot for the page: the known difference of #103, pinned on both sides (`YamlOneDotOneNumbersTest`, `editor-reads-like-cli.test.js`). The tests of run 0092 that used a float as the carrier of the YAML 1.1 number moved their dotted spellings to `shouldRefuseANumberThatHasADotAsAnId`.
+- **D7. `SolutionGroup` no longer has an immutable set of children.** The pair test found that a manifest declared under a group of a solution failed with `UnsupportedOperationException` (a stack trace): `SolutionGroup.elements` was `@Singular`, which builds an immutable set, unlike the other groups (`@Builder.Default` over a `LinkedHashSet`). It is the same now; the side effect is that the key `element` that `@Singular` made readable (`READ_SCHEMA` listed it as `any`) is gone, in the class and in the table.
+- **D8. The cases.** `layer-checks-cases.json`: K01 to K14 (the checks after a layer: a relationship, `uses`, a hosted application, a view, a story, many elements pointing at one missing thing, a parent that is not there (one and several), the first layer that is wrong and the plateaus above it, below it and beside it, a parent told alone before the graph is looked at, a patch that leaves a stale list), K20 to K31 (the nesting rule: without plateau, in the root of a layered workspace, in a layer without and with patches, a parent of a lower plateau, a leaf parent, a group, several mistakes together, the technology layer, the two layers together, nesting told before a missing parent), and the table `nesting.holds`. Each case names `cli` (`error` lines, or `loaded`) and `editor` (`problems`, `failedAt`, `drawn`). M81 to M83 of `plateau-model-cases.json` carry #104 (that file already has the `fileError` form and is run by both tools).
+
+## Tasks
+
+- [x] T1. Read the plan row, the three issues, runs 0091 and 0092, `LayerLoader`, `ElementIndexFactory`, the page's `layerProblemsOf`/`resolveLayerStep`, the model classes, `EditorReadSchemaTest`, the case files and their two runners.
+- [x] T2. Model: `Parent#elementType()` (eleven classes), `Nesting`, `SolutionGroup`; `reflect-config.json` (`Nesting`, required by `NativeReflectionConfigTest`).
+- [x] T3. Command line: `Candidate.source`, `ElementIndexFactory` (the check, `indexLayers`, the null guard), `WorkspaceFactory` and `LayerLoader` (the shared call), `ManifestParser.dottedId`.
+- [x] T4. Page: `nestingKindsOfType`, `childKindOptionsForLevel`, `nestingLevelIn`, `nestingProblem`, `resolveLayerStep`, `dottedIdProblem` in `manifestProblem`, `READ_SCHEMA` (`SolutionGroup`).
+- [x] T5. Cases and tests: `layer-checks-cases.json`, `layer-checks.test.js`, the new tests of `LayerLoaderTest` (the cases, the table against the classes, the 44 pairs), `EditorReadSchemaTest.shouldNameWhatEachParentHolds`, M81 to M83, the pins of #103.
+- [x] T6. `CLAUDE.md`, issue #106, the review pass (a sub-agent, answered below), the gate commands, byte-identity, one commit.
+
+## Canonical impact
+
+None to the architecture model (no TDD, no `CI-arc` or `CI-dom` packet; the repository declares no register for it). `CLAUDE.md` is corrected where it describes the checks of a layer and where it lists the limits the manual keeps (#87 is no longer one).
+
+## Shipped files
+
+The run ships no example or fixture for the users. The forms it adds, and where each is loaded by both tools:
+
+| form | command line | editor |
+|---|---|---|
+| the checks of a layer (K01 to K14), the nesting rule (K20 to K31) and the table `nesting.holds` | `LayerLoaderTest.shouldTellWhatTheCaseSays`, `theClassesSayWhichKindEachParentHolds`, `shouldAcceptTheKindsAParentHoldsAndTellTheOthers` (44 pairs) | `layer-checks.test.js` (the cases, the table against `READ_SCHEMA` and `childKindOptionsForLevel`, the same 44 pairs) |
+| an id with a dot (M81 to M83) | `PlateauModelTest`: the one `error:` line, exit 1, no stack trace | `plateau-model.test.js`: the sentence of the file's error |
+
+## Verification
+
+Run on the final tree, by me (JDK 25, `PLANTUML_JAR` set to `plantuml-1.2024.7.jar`, so no test is skipped):
+
+| Command | Result |
+|---|---|
+| `./mvnw -o verify` | BUILD SUCCESS, 806 tests, 0 failures, 0 errors, 0 skipped (run 0092 left 730; this run adds 72 to `LayerLoaderTest` (26 before: the 30 cases, the table against the classes, the 44 pairs, the guard, minus the test it replaced), `EditorReadSchemaTest` 1, M81 to M83 in `PlateauModelTest` 3, and moves three spellings of `YamlOneDotOneNumbersTest` to a test of their own; integration tests are skipped by default, `skipITs=true`) |
+| `cargo test --manifest-path src/main/rust/viewpoint-kernel/Cargo.toml` | 190 passed (no Rust change) |
+| `src/main/rust/viewpoint-kernel/embed.sh --check` | ok, 715537 bytes |
+| `node --test "src/test/javascript/**/*.test.js"` | 1591 tests, 1591 pass (1516 before; `layer-checks.test.js` adds 72, M81 to M83 add 3) |
+| `npx prettier --check "src/**/*.java"` | clean |
+
+The first runs of the gate found three things that are fixed above: `NativeReflectionConfigTest` asked for `Nesting` (and later `ElementIndexFactory$Layers`) in `reflect-config.json`; `TomlManifestTest` found the order of the children changed (D3, `@EqualsAndHashCode.Exclude`); `YamlOneDotOneNumbersTest` of run 0092 used floats as ids (D6).
+
+*Fail before, pass after.* With the check of the nesting turned off in `ElementIndexFactory` and the dotted-id check in `ManifestParser` (the cases and tests kept): 51 tests fail (48 in `LayerLoaderTest`, 3 in `PlateauModelTest`: M81 to M83). With the page of `HEAD` put back (the new test files kept): 50 tests fail in `layer-checks.test.js` and `plateau-model.test.js`, none with the new page. With the null guard of `reindexAncestors` removed, `anIdWithADotInTheWorkspaceFileIsNotAnIndexMistake` fails with the null pointer of the issue.
+
+*The two reproductions of the issues, on the jar of the tree* (`target/quarkus-app`, `-w workspace.yaml query graph`): #87's (a `system` under a container, no patch) is ``error: `m/odd.yaml` is not valid: unknown kind `system` under `shop.web` (known: component, group) at `header.kind` ``, exit 1 (it loaded and drew before); #104's is ``error: `m/a.yaml` is not valid: the id `a.b` contains a dot, which separates the levels of a reference, at `content.id` ``, exit 1 (a stack trace before).
+
+*Byte-identity against `25471b3`* (a workspace without plateaus must give the same views). `identity85.py` (scratchpad, the jar built from `git archive 25471b3` outside the repository, compared with the jar of the tree), on the 11 tracked `workspace.yaml` without plateau (`src/doc/examples/domain_application`, `domain_manifest_folders`, `domain_technology`, `domain_viewpoint_views`, `domain_workspace`, `facet_example_step_1` to `_4`, `src/test/resources/hyphen-ids`, `src/test/resources/viewpoint-kernel/workspace`), three commands each on a fresh copy for each jar (`views generate`, `query graph`, `diff`): 33 commands, 19 identical (821 files compared), 14 differ, the same 14 as at the end of run 0092 and all known (the 11 `diff` rewordings, `domain_manifest_folders views generate` and `query graph`, which the old jar cannot read, the order of the deprecated-facet warnings of `viewpoint-kernel/workspace views generate`). The shipped examples have no dotted id and no element under a parent that cannot hold it.
+
+## Review pass, answered
+
+A `general-purpose` sub-agent at the standard tier, read-only, on the working tree. No S0, no S1.
+
+- S2 a number id is judged on the text each tool holds (`1e3`, `1.50`): the known difference of #103, now pinned on both sides (D6). Kept.
+- S2 a dotted id outside a manifest (an element of `workspace.yaml`, the `value` of a patch) is not looked at, and the null guard had no test: a test reaches the guard (it fails with the null pointer when the guard is removed), and a patch cannot add an element (D5). The elements of `workspace.yaml` are not looked at; the page does not read them into a layer. Kept, said in Not verified.
+- S2 a root manifest of a kind that no layer holds (`component`, `node`, `container` with no parent) is indexed and held by no tree: confirmed on the command line (a patch cannot select a root `node`), filed as #106 with the options, to be settled with W-16 (the kinds that may be roots).
+- S3 the page keyed the nesting sentences by reference only, so the same reference in the two layers overwrote one; and the two layers were not told together by the command line either: both fixed (`ElementIndexFactory.indexLayers`; the page keeps one map per layer), and K30 pins them.
+- S3 the first dotted manifest ends the load of the command line while the page marks each file: the same as for any manifest the reader refuses. Kept.
+- S3 `nestingLevelIn` gives `none` for a group at the top: not reachable (a group of `workspace.yaml` is not in the page's layer graph). Kept.
+- Tests that would pass without the fix: the `else` branch of `layer-checks.test.js` compares two expectations of the same file (`editor.drawn` with `cli.loaded`): it is a consistency check of the case file, and what the page really draws is asserted just above and what the command line loads by `LayerLoaderTest`. The hash order of the candidates is pinned by `TomlManifestTest` (it failed on the first run without `@EqualsAndHashCode.Exclude`).
+
+## Findings
+
+- F1 (wave, for W-18: what the manual must now say). An element declared with `header.parent` under a parent that cannot hold its kind is an error on both tools (`unknown kind ... under ... (known: ...) at header.kind`, with the file): solution holds system and group; system holds container and group; container holds component and group; environment and node hold node; a group holds what the element it sits in holds; a person and a component hold nothing. The limit #87 of `[[plateau-limits]]` is gone. An id is a name without a dot (an error in both tools). The key `element` of a group in a solution is not read any more. The checks of a layer are the same in both tools (sentences and order), the command line stops at the first layer that is wrong and the editor draws the plateau all the same.
+- F2 (wave, for W-16). The kinds that may be roots are not the kinds the layers hold: #106. `TOP_LEVEL_KIND_OPTIONS` offers `container`, `component` and `node`, which `Application` and `Technology` do not hold.
+- F3 (wave, for W-12). The checks that remain plateau-aware are now in `layer-checks-cases.json` (K04, K05 for the view and the story); W-12 revises them by changing that file and the two readers of it.
+- F4. Files outside the `likely_paths`: `src/main/java/io/morin/archicode/manifest/ManifestParser.java` (`Candidate.source`, `dottedId`), `src/main/resources/META-INF/native-image/io.morin.archicode/archicode/reflect-config.json` (`Nesting`, required by `NativeReflectionConfigTest`), `CLAUDE.md` and this document. The two wave files were not written.
+
+## Not verified
+
+- The native image: `Nesting` reads `@JsonSubTypes` through reflection, as Jackson does for the same interfaces (they are registered), and is registered itself; whether the native runner gives the same sentence is CI's (W-17 plans the `@QuarkusIntegrationTest`s).
+- The editor on a real screen: the page was run in the Node sandbox of the repository, not in a browser.
+- The elements that `workspace.yaml` holds itself: neither a dotted id nor the nesting of an element declared under them is checked beyond what the index does.
+- `tooling/docs/check-backlog.py` and the `docs/bkg/` close-out sweep of `complete-run`: neither exists in this repository.

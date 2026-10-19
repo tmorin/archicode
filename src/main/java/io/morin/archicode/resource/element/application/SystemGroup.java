@@ -24,4 +24,9 @@ public class SystemGroup extends AbstractElement implements Parent<SystemElement
     public SystemGroup withElements(Set<SystemElement> elements) {
         return toBuilder().elements(elements).build();
     }
+
+    @Override
+    public Class<SystemElement> elementType() {
+        return SystemElement.class;
+    }
 }

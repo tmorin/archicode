@@ -24,4 +24,9 @@ public class Container extends AbstractElement implements Parent<ContainerElemen
     public Container withElements(Set<ContainerElement> elements) {
         return toBuilder().elements(elements).build();
     }
+
+    @Override
+    public Class<ContainerElement> elementType() {
+        return ContainerElement.class;
+    }
 }

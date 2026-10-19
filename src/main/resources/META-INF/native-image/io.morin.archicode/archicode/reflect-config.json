@@ -864,6 +864,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.resource.element.application.Nesting",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.resource.element.application.Parent",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -1792,6 +1801,15 @@
   },
   {
     "name": "io.morin.archicode.workspace.ElementIndexFactory$ElementIndexFactoryBuilder",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.workspace.ElementIndexFactory$Layers",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,

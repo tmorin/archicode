@@ -29,4 +29,9 @@ public class Node extends AbstractElement implements Parent<NodeElement>, Enviro
     public Node withElements(Set<NodeElement> elements) {
         return toBuilder().elements(elements).build();
     }
+
+    @Override
+    public Class<NodeElement> elementType() {
+        return NodeElement.class;
+    }
 }

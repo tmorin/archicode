@@ -7,23 +7,42 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.LayeredFixtures;
+import io.morin.archicode.resource.element.Element;
+import io.morin.archicode.resource.element.application.Component;
+import io.morin.archicode.resource.element.application.Container;
+import io.morin.archicode.resource.element.application.ContainerGroup;
+import io.morin.archicode.resource.element.application.Nesting;
 import io.morin.archicode.resource.element.application.Parent;
+import io.morin.archicode.resource.element.application.Person;
+import io.morin.archicode.resource.element.application.Solution;
+import io.morin.archicode.resource.element.application.SolutionGroup;
+import io.morin.archicode.resource.element.application.SystemGroup;
+import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.PlateauComparer;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Stream;
+import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * A layered plateau is loaded as its chain (run 0078, wave 014, W-4): for each plateau from the root, the manifests that say
@@ -400,9 +419,10 @@ class LayerLoaderTest {
     }
 
     @Test
-    void aGraphTheModelCannotHoldOnceItIsWrittenIsToldWithItsLayer() {
+    void anElementUnderAParentThatCannotHoldItsKindIsToldWithItsFileWhateverTheLayerHas() {
         val files = LayeredFixtures.files();
-        // a system under a container: nothing reads it without patches, and the patches write the graph as JSON
+        // a system under a container (issue #87): the layer has patches, and it used to be refused only once the graph was written as JSON for the
+        // kernel and read back, with the sentence of the reader and the plateau; without patches it loaded. It is told when the element is added now
         files.put(
             "plateaus/inhouse/odd.yaml",
             """
@@ -415,15 +435,31 @@ class LayerLoaderTest {
               id: "odd"
             """
         );
-        val message = errorOf(files, "inhouse");
-        assertTrue(
-            message.startsWith(
-                "in the plateau `inhouse`, the elements cannot be read once the patches are applied: unknown kind `"
-            ),
-            message
+        val sentence =
+            "`plateaus/inhouse/odd.yaml` is not valid: unknown kind `system` under `shop.web` (known: component, group) at `header.kind`";
+        assertEquals(sentence, errorOf(files, "inhouse"), "inhouse has patches");
+        assertEquals(sentence, errorOf(files, "marketplace"), "and so does the plateau that overrides it");
+        assertNotNull(load(files, "baseline"), "the layers below are not looked at");
+        // the same element in a layer that has no patch: the same sentence
+        files.remove("plateaus/inhouse/odd.yaml");
+        files.put(
+            "plateaus/saas/odd.yaml",
+            """
+            header:
+              kind: "archicode.morin.io/system"
+              version: "1"
+              plateau: saas
+              parent: "shop.web"
+            content:
+              id: "odd"
+            """
         );
-        assertFalse(message.contains("\n"));
-        assertFalse(message.contains("Exception"));
+        assertEquals(
+            "`plateaus/saas/odd.yaml` is not valid: unknown kind `system` under `shop.web` (known: component, group) at `header.kind`",
+            errorOf(files, "saas"),
+            "saas has no patch"
+        );
+        assertNotNull(load(files, "inhouse"), "a sibling is not concerned");
     }
 
     @Test
@@ -465,7 +501,7 @@ class LayerLoaderTest {
             "plateaus/inhouse/queue.yaml",
             """
             header:
-              kind: "archicode.morin.io/container"
+              kind: "archicode.morin.io/component"
               version: "1"
               plateau: inhouse
               parent: "shop.cache"
@@ -649,5 +685,201 @@ class LayerLoaderTest {
             new java.util.TreeMap<>(second.appIndex.elementByReferenceIndex).keySet()
         );
         assertEquals(first.getRemovals(), second.getRemovals());
+    }
+
+    // ---- the cases both tools run (layer-checks-cases.json, run 0093 of wave 015: issues #90 and #87) ----
+
+    private static final Path CASES = Path.of("src/test/javascript/viewpoint-kernel/layer-checks-cases.json");
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    @SneakyThrows
+    private static JsonNode caseDocument() {
+        return JSON.readTree(Files.readString(CASES));
+    }
+
+    static Stream<String> layerCheckCaseIds() {
+        val ids = new ArrayList<String>();
+        caseDocument()
+            .get("cases")
+            .forEach(c -> ids.add(c.get("id").asText()));
+        return ids.stream();
+    }
+
+    private static List<String> textsOf(JsonNode array) {
+        val out = new ArrayList<String>();
+        array.forEach(a -> out.add(a.asText()));
+        return out;
+    }
+
+    /** A workspace of the case files: the manifests of {@code manifests/**} and nothing else. */
+    @SneakyThrows
+    private Path writeCase(Map<String, String> files) {
+        val folder = fresh();
+        Files.createDirectories(folder);
+        Files.writeString(folder.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n");
+        for (val file : files.entrySet()) {
+            val target = folder.resolve(file.getKey());
+            Files.createDirectories(target.getParent());
+            Files.writeString(target, file.getValue());
+        }
+        return folder.resolve("workspace.yaml");
+    }
+
+    private static Map<String, String> filesOf(JsonNode node) {
+        val files = new java.util.LinkedHashMap<String, String>();
+        node.properties().forEach(e -> files.put(e.getKey(), e.getValue().asText()));
+        return files;
+    }
+
+    private static Set<String> referencesOf(ElementIndex index) {
+        return new TreeSet<>(index.elementByReferenceIndex.keySet());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("layerCheckCaseIds")
+    void shouldTellWhatTheCaseSays(String id) {
+        JsonNode c = null;
+        for (val candidate : caseDocument().get("cases")) {
+            if (candidate.get("id").asText().equals(id)) {
+                c = candidate;
+            }
+        }
+        val workspace = writeCase(filesOf(c.get("files")));
+        val plateau = c.get("plateau").isNull() ? null : c.get("plateau").asText();
+        val expect = c.get("cli");
+        val label = id + ": " + c.get("what").asText();
+        if (expect.has("error")) {
+            // the command line stops at the first layer that is wrong, and draws nothing
+            val error = assertThrows(ArchiCodeException.class, () -> workspaceFactory.create(workspace, null, plateau));
+            assertEquals(textsOf(expect.get("error")), error.getMessage().lines().toList(), label);
+        } else {
+            val loaded = workspaceFactory.create(workspace, null, plateau);
+            assertEquals(
+                new TreeSet<>(textsOf(expect.get("loaded").get("application"))),
+                referencesOf(loaded.appIndex),
+                label + ": the application layer"
+            );
+            assertEquals(
+                new TreeSet<>(textsOf(expect.get("loaded").get("technology"))),
+                referencesOf(loaded.techIndex),
+                label + ": the technology layer"
+            );
+        }
+    }
+
+    // ---- the nesting rule: written once, as data, from the model classes ----
+
+    private static JsonNode holds() {
+        return caseDocument().get("nesting").get("holds");
+    }
+
+    @Test
+    void theClassesSayWhichKindEachParentHolds() {
+        val table = holds();
+        val instances = Map.<String, Element>of(
+            "solution",
+            Solution.builder().id("x").build(),
+            "system",
+            io.morin.archicode.resource.element.application.System.builder().id("x").build(),
+            "container",
+            Container.builder().id("x").build(),
+            "component",
+            Component.builder().id("x").build(),
+            "person",
+            Person.builder().id("x").build(),
+            "environment",
+            Environment.builder().id("x").build(),
+            "node",
+            io.morin.archicode.resource.element.technology.Node.builder().id("x").build()
+        );
+        assertEquals(new TreeSet<>(instances.keySet()), new TreeSet<>(textsOf(JSON.valueToTree(table.fieldNames()))));
+        instances.forEach((kind, element) ->
+            assertEquals(textsOf(table.get(kind)), Nesting.kindsHeldBy(element), "the kinds a " + kind + " holds")
+        );
+        // a group holds what the element it sits in holds
+        assertEquals(textsOf(table.get("solution")), Nesting.kindsHeldBy(SolutionGroup.builder().id("x").build()));
+        assertEquals(textsOf(table.get("system")), Nesting.kindsHeldBy(SystemGroup.builder().id("x").build()));
+        assertEquals(textsOf(table.get("container")), Nesting.kindsHeldBy(ContainerGroup.builder().id("x").build()));
+    }
+
+    private static final List<String> APPLICATION = List.of("solution", "system", "container", "component", "person");
+    private static final List<String> TECHNOLOGY = List.of("environment", "node");
+
+    /** Every parent (a manifest, or a group in a manifest) with every kind of the same layer. */
+    static Stream<Arguments> pairs() {
+        val out = new ArrayList<Arguments>();
+        for (val layer : List.of(APPLICATION, TECHNOLOGY)) {
+            for (val parent : layer) {
+                for (val child : layer) {
+                    out.add(Arguments.of(parent, false, child));
+                    if (List.of("solution", "system", "container").contains(parent)) {
+                        out.add(Arguments.of(parent, true, child));
+                    }
+                }
+            }
+        }
+        return out.stream();
+    }
+
+    static String manifest(String kind, String id, String parent, String body) {
+        return (
+            "header:\n  kind: \"archicode.morin.io/" +
+            kind +
+            "\"\n  version: \"1\"\n" +
+            (parent == null ? "" : "  parent: \"" + parent + "\"\n") +
+            "content:\n  id: \"" +
+            id +
+            "\"\n" +
+            body
+        );
+    }
+
+    @ParameterizedTest(name = "a {2} under a {0}{1}")
+    @MethodSource("pairs")
+    void shouldAcceptTheKindsAParentHoldsAndTellTheOthers(String parentKind, boolean inGroup, String childKind) {
+        val files = new java.util.LinkedHashMap<String, String>();
+        files.put(
+            "manifests/parent.yaml",
+            manifest(parentKind, "p", null, inGroup ? "  elements:\n    - kind: \"group\"\n      id: \"g\"\n" : "")
+        );
+        val under = inGroup ? "p.g" : "p";
+        files.put("manifests/child.yaml", manifest(childKind, "c", under, ""));
+        val workspace = writeCase(files);
+        val allowed = textsOf(holds().get(parentKind));
+        if (allowed.contains(childKind)) {
+            val loaded = workspaceFactory.create(workspace, null, null);
+            val index = APPLICATION.contains(childKind) ? loaded.appIndex : loaded.techIndex;
+            val element = index.getElementByReference(under + ".c");
+            val parent = (Parent<?>) index.getElementByReference(under);
+            assertTrue(parent.getElements().contains(element), "the child is in its parent");
+        } else {
+            val error = assertThrows(ArchiCodeException.class, () -> workspaceFactory.create(workspace, null, null));
+            assertEquals(
+                "`manifests/child.yaml` is not valid: unknown kind `" +
+                    childKind +
+                    "` under `" +
+                    under +
+                    "` (known: " +
+                    (allowed.isEmpty() ? "none" : String.join(", ", allowed)) +
+                    ") at `header.kind`",
+                error.getMessage()
+            );
+        }
+    }
+
+    @Test
+    @SneakyThrows
+    void anIdWithADotInTheWorkspaceFileIsNotAnIndexMistake() {
+        // issue #104: the id of a manifest is refused (M81 to M83 of plateau-model-cases.json); the elements that workspace.yaml holds itself are not
+        // looked at, and an element declared under one of them must not make the index fail with a null pointer
+        val folder = fresh();
+        Files.createDirectories(folder.resolve("manifests"));
+        Files.writeString(
+            folder.resolve("workspace.yaml"),
+            "settings:\n  manifests:\n    paths: [\"manifests\"]\napplication:\n  elements:\n    - kind: system\n      id: \"a.b\"\n"
+        );
+        Files.writeString(folder.resolve("manifests/c.yaml"), manifest("container", "c", "a.b", ""));
+        val loaded = workspaceFactory.create(folder.resolve("workspace.yaml"), null, null);
+        assertTrue(loaded.appIndex.searchElement("a.b.c").isPresent());
     }
 }

@@ -23,4 +23,9 @@ public class Technology implements Parent<TechnologyElement> {
     public Technology withElements(Set<TechnologyElement> elements) {
         return toBuilder().elements(elements).build();
     }
+
+    @Override
+    public Class<TechnologyElement> elementType() {
+        return TechnologyElement.class;
+    }
 }

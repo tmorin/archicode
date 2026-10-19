@@ -24,4 +24,9 @@ public class System extends AbstractElement implements ApplicationElement, Paren
     public System withElements(Set<SystemElement> elements) {
         return toBuilder().elements(elements).build();
     }
+
+    @Override
+    public Class<SystemElement> elementType() {
+        return SystemElement.class;
+    }
 }

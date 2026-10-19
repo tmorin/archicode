@@ -3904,22 +3904,26 @@ function indexElementRecursive(node, kind, reference, sourceFile, category, inde
 }
 
 /**
- * The child-kind nesting-rule table (TDD DEC-3, TG-4) — mirrors `W-1`'s
- * TDD `DEC-8` tree nesting rules as one small, shared, table-driven
- * helper. Returns the list of bare kinds a node at `level` may contain as
- * a new child (always including `'group'` where any non-leaf nesting is
- * allowed); an empty array means `level` is a leaf (`'component'`/
- * `'person'`, or any unrecognized level).
+ * The kinds a parent of a type holds: the kinds of the interface its `elements` takes, from `READ_SCHEMA`, which `EditorReadSchemaTest` compares with the classes (the
+ * `Parent<...>` each class implements and the `@JsonSubTypes` of that interface). This is the one rule of the page for "which kind a parent holds" (issue #87); the command
+ * line reads it from the same classes (`Nesting.java`). `group` comes last, as the creation form lists the kinds; a type that holds nothing (a person, a component) gives [].
+ */
+function nestingKindsOfType(typeName) {
+  const type = READ_SCHEMA.types[typeName];
+  const spec = type && type.extends === 'Element' && type.fields ? type.fields.elements : undefined; // an element: the workspace and its two layers hold elements, and are no level
+  const iface = typeof spec === 'string' && spec.indexOf('[*') === 0 ? spec.slice(2, -1) : null;
+  const kinds = iface ? Object.keys(READ_SCHEMA.kinds[iface] || {}) : [];
+  return kinds.filter((kind) => kind !== 'group').sort().concat(kinds.indexOf('group') === -1 ? [] : ['group']);
+}
+
+/**
+ * The child-kind nesting-rule table (TDD DEC-3, TG-4) as a function of the nesting-rule level of the parent ('solution', 'system', 'container', 'environment', 'node';
+ * a group has the level of the element it sits in). Returns the list of bare kinds a node at `level` may contain as a new child (always including `'group'` where any
+ * non-leaf nesting is allowed); an empty array means `level` is a leaf (`'component'`/`'person'`, or any unrecognized level).
  */
 function childKindOptionsForLevel(level) {
-  switch (level) {
-    case 'solution': return ['system', 'group'];
-    case 'system': return ['container', 'group'];
-    case 'container': return ['component', 'group'];
-    case 'environment': return ['node'];
-    case 'node': return ['node'];
-    default: return [];
-  }
+  if (typeof level !== 'string' || level === '') return [];
+  return nestingKindsOfType(level.charAt(0).toUpperCase() + level.slice(1));
 }
 
 /** `childKindOptionsForLevel`, keyed off an `ElementRecord`'s own `level` (DEC-3). */
@@ -4419,6 +4423,30 @@ function layerProblemsOf(plateau, graph, own) {
 }
 
 /**
+ * The level of a node of a graph for the nesting rule: its kind, or for a group the level of the nearest ancestor that is not one (a group holds what the element it sits
+ * in holds). `refs` is the map reference -> node of a layer. Null when the node is not there, or a group sits at the top.
+ */
+function nestingLevelIn(refs, reference) {
+  let at = reference;
+  for (;;) {
+    const node = refs.get(at);
+    if (!node) return null;
+    if (node.kind !== 'group') return typeof node.kind === 'string' ? node.kind : null;
+    const cut = at.lastIndexOf('.');
+    if (cut < 0) return null;
+    at = at.slice(0, cut);
+  }
+}
+
+/**
+ * The sentence for a manifest declared under a parent that cannot hold its kind: the one of the reader for a nested element of a kind its parent does not hold, with
+ * the file, the parent and the place of the fault (`ElementIndexFactory.refusal`): keep them alike.
+ */
+function nestingProblem(item, held) {
+  return '`' + item.mf.relPath + '` is not valid: unknown kind `' + item.rootKind + '` under `' + item.parentReference + '` (known: ' + (held.length ? held.slice().sort(compareUnits).join(', ') : 'none') + ') at `header.kind`';
+}
+
+/**
  * One layer: the state of the plateau above (null for the root) with the elements of the manifests of `node` added, then its patches applied by the kernel, then
  * the checks. Returns `{ state }` (`state.problems` holds the sentences of the first layer of the chain that is wrong, told by the command line, which stops there; the
  * graph is built all the same), or `{ fatal, plateau }` when the kernel refuses the patches of the layer: there is no graph then.
@@ -4435,6 +4463,7 @@ function resolveLayerStep(parent, node, context) {
     walk(json, reference);
   };
   const waiting = [];
+  const nesting = { application: new Map(), technology: new Map() }; // reference -> the sentence for a manifest declared under a parent that cannot hold its kind (the command line refuses it when the element is added)
   for (const mf of own.elements) {
     const bare = stripArchicodeKindPrefix(mf.header.kind);
     const { category, rootKind } = ARCHICODE_KIND_MAP[bare];
@@ -4459,6 +4488,9 @@ function resolveLayerStep(parent, node, context) {
     for (const item of pending) {
       const host = refs[item.category].get(item.parentReference);
       if (!host) { left.push(item); continue; }
+      // the parent has to hold the kind (issue #87): told as the command line tells it, and drawn where the manifest puts it, so that it can be repaired
+      const held = childKindOptionsForLevel(nestingLevelIn(refs[item.category], item.parentReference));
+      if (held.indexOf(item.rootKind) === -1) nesting[item.category].set(item.reference, nestingProblem(item, held));
       if (!Array.isArray(host.elements)) host.elements = [];
       host.elements.push(item.json);
       register(item.category, item.json, item.reference);
@@ -4469,7 +4501,9 @@ function resolveLayerStep(parent, node, context) {
   }
   // before the patches: a patch may remove a parent, and the elements declared under it go with it. A manifest whose parent is not there is told, and stays at the top
   // (the editor draws what it can, so that the mistake can be repaired in it)
+  // told first, and alone (the command line stops there): the application layer, then the technology layer, each by reference, as `ElementIndexFactory.indexLayers` tells them
   let mine = [];
+  for (const category of LAYER_NAMES) mine = mine.concat(Array.from(nesting[category].keys()).sort(compareUnits).map((reference) => nesting[category].get(reference)));
   if (pending.length) {
     const sentences = new Map();
     for (const item of pending) {
@@ -4478,7 +4512,8 @@ function resolveLayerStep(parent, node, context) {
       state.unplaced.set(item.category + '|' + item.json.id, item.reference);
       state.roots.set(item.category + '|' + item.reference, { kind: item.rootKind, level: item.level, file: item.mf.relPath, plateau: node.id });
     }
-    mine = foldParentProblems(Array.from(sentences.keys()).sort(compareUnits).map((k) => sentences.get(k)));
+    const folded = foldParentProblems(Array.from(sentences.keys()).sort(compareUnits).map((k) => sentences.get(k)));
+    if (!mine.length) mine = folded;
   }
 
   if (node.patches.length) {
@@ -6125,7 +6160,7 @@ const READ_SCHEMA = {
     "System": { "extends": "Element", "fields": { "elements": "[*SystemElement]" } },
     "SystemGroup": { "extends": "Element", "fields": { "elements": "[*SystemElement]" } },
     "Solution": { "extends": "Element", "fields": { "elements": "[*SolutionElement]" } },
-    "SolutionGroup": { "extends": "Element", "fields": { "element": "any", "elements": "[*SolutionElement]" } },
+    "SolutionGroup": { "extends": "Element", "fields": { "elements": "[*SolutionElement]" } },
     "ApplicationGroup": { "extends": "Element", "fields": { "elements": "[*ApplicationElement]" } },
     "Environment": { "extends": "Element", "fields": { "elements": "[*EnvironmentElement]", "uses": "texts" } },
     "Node": { "extends": "Element", "fields": { "applications": "texts", "elements": "[*NodeElement]" } },
@@ -6398,7 +6433,28 @@ function manifestProblem(root) {
   if (type === null || type === undefined) return readIsMissing(root.content.id) ? 'Missing content.id' : null;
   const problem = readObject(type, root.content, '', 'content', true);
   if (problem) return problem;
-  return manifestKindName(root.header.kind) === 'plateau' ? plateauShapeProblem(root.content) : null;
+  const kind = manifestKindName(root.header.kind);
+  if (kind === 'plateau') return plateauShapeProblem(root.content);
+  return ARCHICODE_KIND_MAP[kind] ? dottedIdProblem(root.content, 'content') : null;
+}
+
+/**
+ * The first element of a manifest (the root, then what it holds, in the order of the file) whose id has a dot, as the command line's sentence (`ManifestParser.dottedId`):
+ * the dot separates the levels of a reference (`shop.web`), so an id that holds one is two ids (issue #104). Null when no id has one.
+ */
+function dottedIdProblem(node, path) {
+  if (readIsMissing(node) || !readIsObject(node)) return null;
+  if (typeof node.id === 'string' || typeof node.id === 'number' || typeof node.id === 'boolean') {
+    const id = String(node.id);
+    if (id.indexOf('.') !== -1) return 'the id `' + id + '` contains a dot, which separates the levels of a reference, at `' + path + '.id`';
+  }
+  if (Array.isArray(node.elements)) {
+    for (let i = 0; i < node.elements.length; i++) {
+      const found = dottedIdProblem(node.elements[i], path + '.elements[' + i + ']');
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 /**

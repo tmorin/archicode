@@ -19,6 +19,7 @@ import io.morin.archicode.resource.element.application.Component;
 import io.morin.archicode.resource.element.application.Container;
 import io.morin.archicode.resource.element.application.ContainerElement;
 import io.morin.archicode.resource.element.application.ContainerGroup;
+import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.application.Person;
 import io.morin.archicode.resource.element.application.Relationship;
 import io.morin.archicode.resource.element.application.Solution;
@@ -305,6 +306,35 @@ class EditorReadSchemaTest {
                 .fields()
                 .forEachRemaining(e -> actual.put(e.getKey(), e.getValue().asText()));
             assertEquals(expected, actual, "the kinds of " + entry.getKey());
+        }
+    }
+
+    /**
+     * Which kind a parent holds (issue #87): the command line reads it from the classes ({@code Parent#elementType()}, {@code Nesting}), the
+     * page from the {@code elements} of each type of its table and the kinds of that interface. They are the same.
+     */
+    @Test
+    @SneakyThrows
+    void shouldNameWhatEachParentHolds() {
+        val schema = schema();
+        val types = schema.get("types");
+        val kinds = schema.get("kinds");
+        for (val entry : CLASSES.entrySet()) {
+            val fields = fields(types, entry.getKey());
+            val holds = fields.containsKey("elements");
+            assertEquals(
+                holds,
+                Parent.class.isAssignableFrom(entry.getValue()),
+                entry.getKey() + " has `elements` in the table if and only if it is a parent"
+            );
+            if (holds) {
+                val json = minimal(kinds, entry.getKey());
+                if (fields.containsKey("id")) {
+                    json.put("id", "x");
+                }
+                val parent = (Parent<?>) MAPPER.readValue(MAPPER.writeValueAsString(json), entry.getValue());
+                assertEquals("[*" + parent.elementType().getSimpleName() + "]", fields.get("elements"), entry.getKey());
+            }
         }
     }
 

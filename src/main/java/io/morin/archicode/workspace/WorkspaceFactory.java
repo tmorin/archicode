@@ -57,19 +57,10 @@ public class WorkspaceFactory {
         Workspace resources,
         Map<Class<?>, Set<ManifestParser.Candidate>> manifests
     ) {
-        log.debug("index the application elements");
-        val appIndex = ElementIndexFactory.builder()
-            .root(resources.getApplication())
-            .candidates(manifests.getOrDefault(Application.class, Set.of()))
-            .build()
-            .create();
-
-        log.debug("index the technology elements");
-        val depIndex = ElementIndexFactory.builder()
-            .root(resources.getTechnology())
-            .candidates(manifests.getOrDefault(Technology.class, Set.of()))
-            .build()
-            .create();
+        log.debug("index the elements of the application layer and of the technology layer");
+        val indexes = ElementIndexFactory.indexLayers(resources, manifests);
+        val appIndex = indexes.application();
+        val depIndex = indexes.technology();
 
         log.debug("index the views");
         val viewIndex = ViewIndexFactory.builder().views(resources.getViews()).build().create();
