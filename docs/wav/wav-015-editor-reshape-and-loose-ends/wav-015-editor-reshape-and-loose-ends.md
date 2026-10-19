@@ -191,7 +191,7 @@ wave_manifest:
       slug: quiet-references-in-one-call
       phase: P0
       depends_on: []
-      run: null
+      run: 0095
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
