@@ -246,7 +246,7 @@ wave_manifest:
       slug: stories-and-views-untied
       phase: P1
       depends_on: [W-5, W-10]
-      run: null
+      run: 0100
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/resource/plateau/**'
