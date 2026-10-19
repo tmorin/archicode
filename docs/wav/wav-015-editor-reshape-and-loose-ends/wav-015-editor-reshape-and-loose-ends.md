@@ -213,7 +213,7 @@ wave_manifest:
       slug: lean-read-only-band
       phase: P1
       depends_on: [W-8]
-      run: null
+      run: 0097
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
