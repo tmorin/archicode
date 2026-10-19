@@ -274,7 +274,7 @@ wave_manifest:
       slug: delete-a-plateau
       phase: P1
       depends_on: [W-8, W-9]
-      run: null
+      run: 0102
       delegation: hard_judgment
       delegation_reason: 'data deletion: the editor removes a plateau''s manifests from the author''s workspace'
       likely_paths:
