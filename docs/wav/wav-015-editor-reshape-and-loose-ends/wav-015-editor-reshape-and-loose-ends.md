@@ -150,7 +150,7 @@ wave_manifest:
       slug: editor-reads-like-the-command-line
       phase: P0
       depends_on: [W-3]
-      run: null
+      run: 0092
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/manifest/**'
