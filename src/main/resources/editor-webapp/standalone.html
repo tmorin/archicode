@@ -332,14 +332,14 @@
   .file-row { justify-content: space-between; }
   .file-relpath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-row.has-error .file-relpath { color: var(--danger); }
-  /* The plateau of a file (wave 014, run 0081): a quiet badge after the name, and an amber one when the folder is the name of another plateau. */
-  .plateau-badge { font-size: 0.65rem; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0.02rem 0.3rem; flex-shrink: 1; min-width: 0; max-width: 6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .warning-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-modified); background: var(--modified); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
   .file-plateau-warning { padding: 0.5rem 0; color: var(--fg); }
-  .files-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; padding: 0.2rem 1rem 0.4rem; }
-  .files-scope .button-group button { height: 1.75rem; padding: 0 0.5rem !important; font-size: 0.75rem; }
-  .files-scope-note, .files-scope-plateau { flex-basis: 100%; font-size: 0.75rem; color: var(--muted); }
-  .files-scope-note:empty { display: none; }
+  /* The Files page groups its files by plateau (wave 015, run 0098): the heading of a group is the heading of a branch of the trees, its rows are a little further in. */
+  .files-note { padding: 0.2rem 1rem 0.4rem; font-size: 0.75rem; color: var(--muted); }
+  .files-group-name { font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+  .files-group-count { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--muted); flex-shrink: 0; white-space: nowrap; }
+  .files-group .tree-branch-title { min-width: 0; }
+  .files-group .file-row { padding-left: 1.5rem; }
   .error-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-accent); background: var(--danger); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
   .modified-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--on-modified); background: var(--modified); border-radius: 3px; padding: 0.05rem 0.35rem; flex-shrink: 0; }
 
@@ -612,7 +612,7 @@
   .button-group button[aria-pressed="true"] { position: relative; z-index: 1; }
   /* The neighbours overlap by one border (margin -1px): the hovered or focused button rises above them, so none of its borders is hidden. */
   .button-group button:hover, .button-group button:focus-visible { position: relative; z-index: 2; }
-  .perspective-tabs button[aria-pressed="true"], .page-tabs button[aria-pressed="true"], .files-scope button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .perspective-tabs button[aria-pressed="true"], .page-tabs button[aria-pressed="true"], .viewpoint-switch button[aria-pressed="true"], .changes-switch button[aria-pressed="true"], .right-tabs button[aria-pressed="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
   .element-header select { height: 2rem; padding: 0 0.5rem !important; font-size: 0.875rem; max-width: 10rem; min-width: 7rem; }
   /* the title gives way first (it is cut with an ellipsis); the controls keep their size */
   .element-header-subject { color: var(--muted); font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -6672,6 +6672,11 @@ async function readManifestFolder(rootHandle, relDir, options) {
 }
 
 async function loadWorkspace(dirHandle) {
+  if (filesFoldsOwner !== dirHandle) { // the folds of the Files page belong to one folder; a reload of it keeps them
+    filesFolded = new Set();
+    filesSelectionSeen = null;
+    filesFoldsOwner = dirHandle;
+  }
   landingBusy = null; // the next render() is the result (workspace or error), not another "Opening…"
   AppState.fatalError = null;
   AppState.workspace = null;
@@ -10147,31 +10152,51 @@ function renderUnreadManifestsHtml(list) {
 }
 
 /**
- * Which files the Files page lists when the workspace has layers (wave 014, run 0081): 'plateau' (the manifests of the plateau drawn), 'chain' (those of the plateau drawn and
- * of the plateaus it overrides: what its state is made of) or 'all'. The page remembers the choice for as long as it is open.
+ * The Files page lists every file of the workspace, always (wave 015, run 0098, #101; there is no scope to choose). With layers the files are grouped by plateau, and a group
+ * folds and unfolds. The folded groups are kept for as long as the editor is open on the same folder, and are never written in the workspace. A group has a key: `plateau:<id>`,
+ * or `none` for the files that belong to no plateau (those the editor could not read; the stories and the views join them once they are not tied to a plateau).
  */
-let filesScope = 'plateau';
-const FILES_SCOPES = [
-  { id: 'plateau', label: 'This plateau', title: 'The manifests that belong to the plateau drawn' },
-  { id: 'chain', label: 'With its past', title: 'The manifests of the plateau drawn and of the plateaus it overrides: what its state is made of' },
-  { id: 'all', label: 'All files', title: 'Every manifest of the workspace' }
-];
+let filesFolded = new Set();
+let filesFoldsOwner = null; // the folder handle the folds belong to: a reload of the same folder keeps them, another folder starts again
+let filesSelectionSeen = null; // the open file and the group it was in when its group was last unfolded for it
 
-/** The layers the Files page filters by, or null: a workspace with no layer (or whose plateaus are blocked) lists every file, as it always did. */
-function filesLayersOrNull() {
-  const layers = AppState.layers;
-  const tree = AppState.plateauTree;
-  return layers && tree && tree.layered && !layers.blocked && tree.nodes.has(layers.current) ? { current: layers.current, chain: layerChainSet(), tree } : null;
+const FILES_NO_PLATEAU_GROUP = 'none';
+
+/** The group of the Files page a file is in. */
+function filesGroupOf(mf) {
+  const plateau = filePlateauOf(mf);
+  return plateau === null ? FILES_NO_PLATEAU_GROUP : 'plateau:' + plateau;
 }
 
-/** Whether the Files page lists a file now. A file that could not be read has no plateau and is always listed; so is the file that is open, so that the list never loses it. */
-function fileIsListed(mf) {
-  const layered = filesLayersOrNull();
-  if (!layered || filesScope === 'all') return true;
-  if (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) return true;
-  const plateau = filePlateauOf(mf);
-  if (plateau === null) return true;
-  return filesScope === 'chain' ? layered.chain.has(plateau) : plateau === layered.current;
+/** Whether the Files page groups its files: the workspace has plateaus (a manifest of kind Plateau, or a header that says `plateau:`). Else the list is flat, as it always was. */
+function filesAreGrouped() {
+  return !!(AppState.plateauTree && AppState.plateauTree.layered);
+}
+
+/** The groups of the files, in the order of the plateaus (the root first, then each plateau under the one it overrides), the ones the tree does not know after them, and no plateau last. Empty groups are left out. */
+function filesGroups(files) {
+  const byKey = new Map();
+  for (const mf of files) {
+    const key = filesGroupOf(mf);
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(mf);
+  }
+  const tree = AppState.plateauTree;
+  const known = tree ? tree.ids.map((id) => 'plateau:' + id) : [];
+  const unknown = Array.from(byKey.keys()).filter((key) => key !== FILES_NO_PLATEAU_GROUP && !known.includes(key)).sort(compareUnits);
+  return known.concat(unknown, [FILES_NO_PLATEAU_GROUP]).filter((key) => byKey.has(key)).map((key) => ({ key, files: byKey.get(key) }));
+}
+
+/** The group of the open file is unfolded the first time it is open there (a file opened from the list, an address, a link), so that the list never loses it; a fold the author makes after that is kept. */
+function unfoldGroupOfOpenFile() {
+  const selection = AppState.selection;
+  if (!filesAreGrouped() || selection.kind !== 'file') return;
+  const mf = AppState.manifestFiles.find((f) => f.relPath === selection.key);
+  if (!mf) return;
+  const seen = selection.key + '\0' + filesGroupOf(mf);
+  if (seen === filesSelectionSeen) return;
+  filesSelectionSeen = seen;
+  filesFolded.delete(filesGroupOf(mf));
 }
 
 /**
@@ -10195,39 +10220,64 @@ function filePlateauFolderWarning(mf) {
   return null;
 }
 
-/** The choice of what the Files page lists, with how many files it leaves out. Only with layers. */
-function renderFilesScopeHtml(hidden, misplaced) {
-  const buttons = FILES_SCOPES.map((scope) => '<button type="button" data-action="set-files-scope" data-value="' + scope.id + '" aria-pressed="' + (scope.id === filesScope) + '" title="' + escapeHtml(scope.title) + '">' + escapeHtml(scope.label) + '</button>').join('');
-  const layered = filesLayersOrNull();
-  return '<div class="files-scope"><span class="plateau-label" id="files-scope-label">Files of</span><span class="button-group" role="group" aria-labelledby="files-scope-label">' + buttons + '</span>' +
-    '<span class="files-scope-note" role="status">' + (hidden > 0 ? hidden + (hidden === 1 ? ' file of another plateau is not listed.' : ' files of other plateaus are not listed.') : '') +
-    (misplaced > 0 ? ' ' + misplaced + (misplaced === 1 ? ' file sits' : ' files sit') + ' in the folder of another plateau.' : '') + '</span>' +
-    '<span class="files-scope-plateau">Plateau drawn: <code>' + escapeHtml(layered.current) + '</code></span></div>';
+/** One row of the Files list: the file, and what is odd about it. */
+function renderFileRowHtml(mf) {
+  const active = (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) ? ' active' : '';
+  const duplicates = duplicatesOfFile(mf.relPath);
+  const errorClass = mf.error || duplicates.length ? ' has-error' : '';
+  const warning = filesAreGrouped() ? filePlateauFolderWarning(mf) : null;
+  return '<div class="nav-row file-row' + active + errorClass + '" role="button" tabindex="0"' + (active ? ' aria-current="true"' : '') + ' data-action="select-file" data-relpath="' + escapeHtml(mf.relPath) + '">' +
+           '<span class="file-relpath">' + escapeHtml(mf.relPath) + '</span>' +
+           (warning ? '<span class="warning-badge" title="' + escapeHtml(warning) + '">folder</span>' : '') +
+           (mf.dirty ? '<span class="modified-badge" title="Unsaved changes">modified</span>' : '') +
+           (mf.error ? '<span class="error-badge" title="' + escapeHtml(mf.error) + '">error</span>' : '') +
+           (duplicates.length ? '<span class="error-badge" title="' + escapeHtml(duplicates.map((d) => d.message).join('\n')) + '">duplicate</span>' : '') +
+         '</div>';
 }
 
-/** The manifest files list, no wrapper — the Files perspective's left panel. With layers each row says the plateau of the file, and the list is the plateau of the band's (see `filesScope`). */
+/** One group of the Files list: its heading (the plateau, its name, how many files), which folds it, and its rows. */
+function renderFilesGroupHtml(group) {
+  const folded = filesFolded.has(group.key);
+  const none = group.key === FILES_NO_PLATEAU_GROUP;
+  const id = none ? null : group.key.slice('plateau:'.length);
+  const node = id !== null && AppState.plateauTree ? AppState.plateauTree.nodes.get(id) : null;
+  const title = none ? 'No plateau' : id;
+  const name = node && node.name ? node.name : '';
+  const hint = none ? 'Files that belong to no plateau' : 'Files of the plateau `' + id + '`';
+  const count = group.files.length + (group.files.length === 1 ? ' file' : ' files');
+  // what a folded group would show on its rows, so that a fold never hides a mistake or an unsaved file
+  const hidden = !folded ? '' :
+    (group.files.some((mf) => mf.error || duplicatesOfFile(mf.relPath).length) ? '<span class="error-badge" title="A file of this group has an error">error</span>' : '') +
+    (group.files.some((mf) => mf.dirty) ? '<span class="modified-badge" title="A file of this group has unsaved changes">modified</span>' : '');
+  let html = '<div class="files-group" data-files-group="' + escapeHtml(group.key) + '"' + (id !== null ? ' data-plateau-of="' + escapeHtml(id) + '"' : '') + '>';
+  html += '<div class="tree-branch-header" data-action="toggle-files-group" data-branch="files:' + escapeHtml(group.key) + '" data-group="' + escapeHtml(group.key) + '">' +
+            '<span class="tree-branch-title" role="button" tabindex="0" aria-expanded="' + !folded + '" title="' + escapeHtml(hint) + '">' + (folded ? '▸' : '▾') + ' ' + escapeHtml(title) +
+              (name ? ' <span class="files-group-name">' + escapeHtml(name) + '</span>' : '') + '</span>' +
+            '<span class="files-group-count">' + hidden + count + '</span>' +
+          '</div>';
+  if (!folded) html += '<div class="tree-branch-body">' + group.files.map(renderFileRowHtml).join('') + '</div>';
+  return html + '</div>';
+}
+
+/** Unfold all / Fold all for the groups of the Files list. */
+function renderFilesToolsHtml() {
+  const icon = (d) => '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  return '<button type="button" class="map-scope-btn" data-action="files-unfold-all" title="Unfold every group of files" aria-label="Unfold every group of files">' + icon('M4 3.5l4 3 4-3M4 9.5l4 3 4-3') + '</button>' +
+    '<button type="button" class="map-scope-btn" data-action="files-fold-all" title="Fold every group of files" aria-label="Fold every group of files">' + icon('M4 6.5l4-3 4 3M4 12.5l4-3 4 3') + '</button>';
+}
+
+/** The manifest files list, no wrapper — the Files perspective's left panel. Every file is listed; with plateaus they are in a group per plateau (see `filesFolded`). */
 function renderFilesNavHtml() {
-  const layered = filesLayersOrNull();
-  const showPlateau = !!(AppState.plateauTree && AppState.plateauTree.layered && AppState.layers);
-  const shown = AppState.manifestFiles.filter(fileIsListed);
-  const misplaced = showPlateau ? AppState.manifestFiles.filter((mf) => filePlateauFolderWarning(mf) !== null).length : 0;
+  const grouped = filesAreGrouped();
   let html = '<div class="nav-section">';
-  html += renderNavHeaderHtml('Files');
-  if (layered) html += renderFilesScopeHtml(AppState.manifestFiles.length - shown.length, misplaced);
-  for (const mf of shown) {
-    const active = (AppState.selection.kind === 'file' && AppState.selection.key === mf.relPath) ? ' active' : '';
-    const duplicates = duplicatesOfFile(mf.relPath);
-    const errorClass = mf.error || duplicates.length ? ' has-error' : '';
-    const plateau = showPlateau ? filePlateauOf(mf) : null;
-    const warning = showPlateau ? filePlateauFolderWarning(mf) : null;
-    html += '<div class="nav-row file-row' + active + errorClass + '" role="button" tabindex="0"' + (active ? ' aria-current="true"' : '') + ' data-action="select-file" data-relpath="' + escapeHtml(mf.relPath) + '">' +
-              '<span class="file-relpath">' + escapeHtml(mf.relPath) + '</span>' +
-              (plateau !== null ? '<span class="plateau-badge" data-plateau-of="' + escapeHtml(plateau) + '" title="Plateau: ' + escapeHtml(plateau) + '">' + escapeHtml(plateau) + '</span>' : '') +
-              (warning ? '<span class="warning-badge" title="' + escapeHtml(warning) + '">folder</span>' : '') +
-              (mf.dirty ? '<span class="modified-badge" title="Unsaved changes">modified</span>' : '') +
-              (mf.error ? '<span class="error-badge" title="' + escapeHtml(mf.error) + '">error</span>' : '') +
-              (duplicates.length ? '<span class="error-badge" title="' + escapeHtml(duplicates.map((d) => d.message).join('\n')) + '">duplicate</span>' : '') +
-            '</div>';
+  html += renderNavHeaderHtml('Files', grouped ? renderFilesToolsHtml() : '');
+  if (grouped) {
+    unfoldGroupOfOpenFile();
+    const misplaced = AppState.manifestFiles.filter((mf) => filePlateauFolderWarning(mf) !== null).length;
+    if (misplaced > 0) html += '<div class="files-note" role="status">' + misplaced + (misplaced === 1 ? ' file sits' : ' files sit') + ' in the folder of another plateau.</div>';
+    html += filesGroups(AppState.manifestFiles).map(renderFilesGroupHtml).join('');
+  } else {
+    html += AppState.manifestFiles.map(renderFileRowHtml).join('');
   }
   html += '</div>';
   return renderPlateauTreeHtml() + renderDuplicateReferencesHtml() + html + renderUnreadManifestsHtml(true);
@@ -12851,7 +12901,7 @@ let navActiveKey = null;
  * the twins apart (the tab, the zoom direction, the perspective). Null for anything else, which keeps no focus.
  */
 function headerControlSelector(el) {
-  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band select, .plateau-band button, .page-tabs button, .timeline-view button, .files-scope button') : null;
+  const control = el && el.closest ? el.closest('.element-header button, .element-header select, .diagram-tools button, .top-panel button, .top-panel select, .plateau-band select, .plateau-band button, .page-tabs button, .timeline-view button') : null;
   if (!control) return null;
   if (control.id) return '#' + control.id;
   const action = control.getAttribute('data-action');
@@ -17533,12 +17583,21 @@ function handleAppClick(e) {
     case 'set-page': // the bar under the band (the pages below Timeline) and the top bar (a perspective) open a page the same way
       setPerspective(target.getAttribute('data-perspective'));
       break;
-    case 'set-files-scope': { // wave 014 (run 0081): what the Files page lists
-      const value = target.getAttribute('data-value');
-      if (FILES_SCOPES.some((scope) => scope.id === value)) filesScope = value;
+    case 'toggle-files-group': { // wave 015 (run 0098): a group of the Files page folds and unfolds
+      const group = target.getAttribute('data-group');
+      if (filesFolded.has(group)) filesFolded.delete(group);
+      else filesFolded.add(group);
       render();
       break;
     }
+    case 'files-fold-all':
+      filesGroups(AppState.manifestFiles).forEach((group) => filesFolded.add(group.key));
+      render();
+      break;
+    case 'files-unfold-all':
+      filesFolded.clear();
+      render();
+      break;
     case 'timeline-draw': // wave 014 (run 0081): the Plateaus page
       drawPlateau(target.getAttribute('data-plateau'));
       break;
@@ -18633,6 +18692,7 @@ function pageTitle() {
 
 function render() {
   const app = document.getElementById('app');
+  if (AppState.selection.kind !== 'file') filesSelectionSeen = null; // opening the file again, from anywhere, unfolds its group again
   draftTyped = !!rawYamlEditDraft; // a redraw gives every form afresh; only a rejected YAML text is kept
 
   // Every branch below replaces #app's innerHTML wholesale, which already

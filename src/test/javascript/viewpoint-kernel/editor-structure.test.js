@@ -1,7 +1,7 @@
 'use strict';
 // The structure of the editor (wave 014, run 0081, W-7): the perspectives are Timeline (with the pages Plateaus, Applications, Environments and Elements), Stories, Files and
 // Settings; every page has its own route and the former routes (#/map, #/elements, #/library, #/stories) still open; the Plateaus page lists the plateaus with what each
-// changes over the one it overrides; Stories and Files show what belongs to the plateau of the band, and Files says the plateau of each manifest. The layered Brightcart
+// changes over the one it overrides; Stories show what belongs to the plateau of the band, and Files lists every file in a group per plateau (wave 015, run 0098); the plateau of each manifest. The layered Brightcart
 // (src/test/resources/brightcart/layered/) is the workspace for the counts, read from expected/comparisons.json as in editor-reads-layers.test.js; the other workspaces are
 // small files written here (a ferry company).
 // Run with: node --test "src/test/javascript/**/*.test.js"
@@ -465,58 +465,157 @@ const MOVED = Object.assign({}, FERRY, {
   'fast/plateau.later.yaml': PLATEAU('later', 'Later') // declares later, sits in fast
 });
 
-test('Files says the plateau of each file, as a badge, and a Plateau manifest is the plateau it declares', async () => {
+/** What the Files list says: its groups in order, with the files listed under each (a folded group lists none) and whether it is folded. */
+function filesGroupsOf(sandbox) {
+  const html = sandbox.renderFilesNavHtml();
+  return Array.from(html.split('<div class="files-group" ').slice(1), (chunk) => ({
+    key: /data-files-group="([^"]+)"/.exec(chunk)[1],
+    folded: /aria-expanded="(true|false)"/.exec(chunk)[1] === 'false',
+    count: /files-group-count">(?:<span[^>]*>[^<]*<\/span>)*([^<]+)</.exec(chunk)[1],
+    files: Array.from(chunk.matchAll(/data-action="select-file" data-relpath="([^"]+)"/g), (m) => m[1])
+  }));
+}
+const filesOfGroup = (groups, key) => (groups.find((g) => g.key === key) || { files: [] }).files;
+
+test('Files lists every file, in a group per plateau, whatever plateau is drawn; a file of a sibling plateau is listed', async () => {
   const { sandbox } = await openFiles(FERRY);
   sandbox.setPerspective('files');
-  sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (a) => ({ 'data-action': 'set-files-scope', 'data-value': 'all' })[a] ?? null }), classList: { contains: () => false } } });
-  const rows = new Map(Array.from(sandbox.renderFilesNavHtml().matchAll(/data-relpath="([^"]+)">\s*<span class="file-relpath">[^<]*<\/span><span class="plateau-badge" data-plateau-of="([^"]+)"/g), (m) => [m[1], m[2]]));
-  assert.equal(rows.get('baseline/app.fleet.yaml'), 'baseline', 'no header: baseline');
-  assert.equal(rows.get('fast/app.jet.yaml'), 'fast');
-  assert.equal(rows.get('fast/plateau.yaml'), 'fast', 'the plateau a manifest of kind Plateau declares');
-  assert.equal(rows.get('green/story.wind.yaml'), 'green', 'a story has a plateau too');
-  assert.equal(rows.size, Object.keys(FERRY).length);
+  const everything = Object.keys(FERRY).sort();
+  const listed = () => filesGroupsOf(sandbox).flatMap((g) => g.files).sort();
+  const of = (plateau) => everything.filter((f) => f.startsWith(plateau + '/'));
+  for (const drawn of ['baseline', 'fast', 'green']) {
+    sandbox.drawPlateau(drawn);
+    assert.deepEqual(listed(), everything, drawn + ' is drawn: all the files are listed');
+  }
+  const groups = filesGroupsOf(sandbox);
+  assert.deepEqual(groups.map((g) => g.key), ['plateau:baseline', 'plateau:fast', 'plateau:green'], 'the root first, then the plateaus in the order of the tree');
+  assert.deepEqual(filesOfGroup(groups, 'plateau:baseline'), of('baseline'));
+  assert.deepEqual(filesOfGroup(groups, 'plateau:fast'), of('fast'));
+  assert.deepEqual(filesOfGroup(groups, 'plateau:green'), of('green'), 'drawing fast, a file of the sibling green is listed');
+  assert.equal(groups[1].count, '4 files');
+  const nav = sandbox.renderFilesNavHtml();
+  assert.match(stripTags(nav), /fast Faster crossings 4 files/, 'a group says its plateau, its name and how many files');
+  assert.doesNotMatch(nav, /not listed|This plateau|With its past|All files|plateau-badge/, 'there is no scope to choose and no badge on a row: the group says the plateau');
   assert.equal(sandbox.filePlateauOf(sandbox.__state().manifestFiles.find((f) => f.relPath === 'fast/view.jet_view.yaml')), 'fast');
+  assert.equal(sandbox.filePlateauOf(sandbox.__state().manifestFiles.find((f) => f.relPath === 'fast/plateau.yaml')), 'fast', 'a manifest of kind Plateau is the plateau it declares');
 });
 
-test('Files lists the files of the plateau of the band, with its past, or all of them; the choice is on the page', async () => {
-  const { sandbox } = await openFiles(FERRY);
-  const listed = () => Array.from(sandbox.renderFilesNavHtml().matchAll(/data-action="select-file" data-relpath="([^"]+)"/g), (m) => m[1]).sort();
-  const files = Object.keys(FERRY).sort();
-  const of = (plateau) => files.filter((f) => f.startsWith(plateau + '/'));
-  assert.deepEqual(listed(), of('baseline'), 'baseline is drawn: its files');
-  sandbox.drawPlateau('fast');
-  assert.deepEqual(listed(), of('fast'), 'fast is drawn: its files');
-  assert.match(stripTags(sandbox.renderFilesNavHtml()), /Plateau drawn: fast/);
-  assert.match(stripTags(sandbox.renderFilesNavHtml()), /7 files of other plateaus are not listed\./);
-  click(sandbox, { 'data-action': 'set-files-scope', 'data-value': 'chain' });
-  assert.deepEqual(listed(), of('baseline').concat(of('fast')).sort(), 'with its past: the files of fast and baseline, not green');
-  click(sandbox, { 'data-action': 'set-files-scope', 'data-value': 'all' });
-  assert.deepEqual(listed(), files);
-  assert.doesNotMatch(stripTags(sandbox.renderFilesNavHtml()), /not listed/);
-  click(sandbox, { 'data-action': 'set-files-scope', 'data-value': 'plateau' });
+test('a group of Files folds and unfolds, as the author wishes, and the folds are kept while the editor stays open on the folder', async () => {
+  const { sandbox, state } = await openFiles(FERRY);
+  sandbox.setPerspective('files');
+  assert.ok(filesGroupsOf(sandbox).every((g) => !g.folded && g.files.length > 0), 'all unfolded to begin with');
+  click(sandbox, { 'data-action': 'toggle-files-group', 'data-group': 'plateau:fast' });
+  let groups = filesGroupsOf(sandbox);
+  assert.deepEqual(groups.map((g) => [g.key, g.folded, g.files.length > 0]), [['plateau:baseline', false, true], ['plateau:fast', true, false], ['plateau:green', false, true]]);
+  assert.equal(groups[1].count, '4 files', 'a folded group still says how many files it holds');
+  assert.match(sandbox.renderFilesNavHtml(), /data-action="toggle-files-group"[^>]*><span class="tree-branch-title" role="button" tabindex="0" aria-expanded="false"/);
   sandbox.drawPlateau('green');
-  assert.deepEqual(listed(), of('green'), 'the list follows the band');
-  const bar = sandbox.renderFilesNavHtml();
-  assert.match(bar, /data-action="set-files-scope" data-value="plateau" aria-pressed="true"/);
-  assert.match(bar, /data-action="set-files-scope" data-value="all" aria-pressed="false"/);
+  sandbox.setPerspective('settings');
+  sandbox.setPerspective('files');
+  assert.equal(filesGroupsOf(sandbox)[1].folded, true, 'drawing another plateau and visiting another page keep the fold');
+  click(sandbox, { 'data-action': 'files-fold-all' });
+  assert.ok(filesGroupsOf(sandbox).every((g) => g.folded && g.files.length === 0), 'Fold all');
+  click(sandbox, { 'data-action': 'files-unfold-all' });
+  assert.ok(filesGroupsOf(sandbox).every((g) => !g.folded && g.files.length > 0), 'Unfold all');
+  click(sandbox, { 'data-action': 'toggle-files-group', 'data-group': 'plateau:green' });
+  click(sandbox, { 'data-action': 'toggle-files-group', 'data-group': 'plateau:green' });
+  assert.equal(filesGroupsOf(sandbox)[2].folded, false, 'a second click unfolds it again');
+  // reading the workspace again keeps them (a reload of the same folder), nothing is written in the workspace
+  click(sandbox, { 'data-action': 'toggle-files-group', 'data-group': 'plateau:baseline' });
+  await sandbox.loadWorkspace(state.folder.handle);
+  assert.equal(filesGroupsOf(sandbox)[0].folded, true, 'a reload of the same folder keeps the folds');
+  assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 0, 'a fold changes no file');
+  assert.doesNotMatch(Object.values(state.manifestFiles).map((f) => f.rawText).join('\n'), /fold/i);
 });
 
-test('the file that is open stays in the list, and so does a file that could not be read', async () => {
+test('opening a file unfolds its group, and the open file stays in the list', async () => {
+  const { sandbox, state } = await openFiles(FERRY);
+  sandbox.setPerspective('files');
+  click(sandbox, { 'data-action': 'files-fold-all' });
+  state.selection = { kind: 'file', key: 'green/app.sail.yaml', mode: 'view' }; // however it is opened: an address, a link, a row
+  let groups = filesGroupsOf(sandbox);
+  assert.deepEqual(groups.map((g) => g.folded), [true, true, false], 'the group of the open file is unfolded, the others stay folded');
+  assert.ok(filesOfGroup(groups, 'plateau:green').includes('green/app.sail.yaml'));
+  assert.match(sandbox.renderFilesNavHtml(), /file-row active[^"]*" role="button" tabindex="0" aria-current="true" data-action="select-file" data-relpath="green\/app\.sail\.yaml"/);
+  // the author folds the group of the open file: the fold is kept, until another file is opened there
+  click(sandbox, { 'data-action': 'toggle-files-group', 'data-group': 'plateau:green' });
+  assert.equal(filesGroupsOf(sandbox)[2].folded, true);
+  click(sandbox, { 'data-action': 'select-file', 'data-relpath': 'fast/app.jet.yaml' });
+  groups = filesGroupsOf(sandbox);
+  assert.deepEqual(groups.map((g) => g.folded), [true, false, true], 'selecting a row unfolds its group');
+});
+
+test('opening the same file again, after the page has been left, unfolds its group again', async () => {
+  const { sandbox, state } = await openFiles(FERRY);
+  sandbox.setPerspective('files');
+  click(sandbox, { 'data-action': 'select-file', 'data-relpath': 'fast/app.jet.yaml' });
+  filesGroupsOf(sandbox); // the list is written with the file open
+  click(sandbox, { 'data-action': 'toggle-files-group', 'data-group': 'plateau:fast' });
+  assert.equal(filesGroupsOf(sandbox)[1].folded, true);
+  state.selection = { kind: 'none', key: null, mode: 'view' };
+  sandbox.render();
+  click(sandbox, { 'data-action': 'select-file', 'data-relpath': 'fast/app.jet.yaml' });
+  assert.equal(filesGroupsOf(sandbox)[1].folded, false, 'the same file, opened again');
+});
+
+test('a folded group still says that one of its files has an error or unsaved changes', async () => {
   const { sandbox, state } = await openFiles(Object.assign({ 'baseline/broken.yaml': 'header: [unclosed\n' }, FERRY));
-  const listed = () => Array.from(sandbox.renderFilesNavHtml().matchAll(/data-action="select-file" data-relpath="([^"]+)"/g), (m) => m[1]);
-  sandbox.drawPlateau('green');
-  assert.ok(listed().includes('baseline/broken.yaml'), 'a file with an error belongs to no plateau: it is always listed');
-  assert.ok(!listed().includes('baseline/app.fleet.yaml'));
-  state.selection = { kind: 'file', key: 'baseline/app.fleet.yaml', mode: 'view' };
-  assert.ok(listed().includes('baseline/app.fleet.yaml'), 'the open file is not lost from the list');
-  assert.match(sandbox.renderFilesNavHtml(), /data-relpath="baseline\/broken\.yaml">\s*<span class="file-relpath">[^<]*<\/span><span class="error-badge"/, 'and it has no plateau badge');
+  sandbox.setPerspective('files');
+  state.manifestFiles.find((f) => f.relPath === 'fast/app.jet.yaml').dirty = true;
+  click(sandbox, { 'data-action': 'files-fold-all' });
+  const heading = (key) => sandbox.renderFilesNavHtml().split('<div class="files-group" ').find((chunk) => chunk.includes('data-files-group="' + key + '"')).split('tree-branch-body')[0];
+  assert.match(heading('plateau:fast'), /modified-badge[^>]*>modified</);
+  assert.doesNotMatch(heading('plateau:fast'), /error-badge/);
+  assert.match(heading('none'), /error-badge[^>]*>error</);
+  assert.doesNotMatch(heading('plateau:green'), /error-badge|modified-badge/);
+  click(sandbox, { 'data-action': 'files-unfold-all' });
+  assert.doesNotMatch(heading('none'), /error-badge/, 'unfolded, the rows say it');
 });
 
-test('a workspace with no layer lists every file, with no filter and no badge, as it always did', async () => {
+test('the folds belong to one folder: another folder starts unfolded', async () => {
+  const { sandbox, state } = await openFiles(FERRY);
+  sandbox.setPerspective('files');
+  click(sandbox, { 'data-action': 'files-fold-all' });
+  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' }, FERRY));
+  state.folder = { handle: mem.handle, name: 'other' };
+  await sandbox.loadWorkspace(mem.handle);
+  assert.ok(filesGroupsOf(sandbox).every((g) => !g.folded));
+});
+
+test('the files that belong to no plateau are a group of their own, last, whoever they are; the open one is not lost', async () => {
+  const { sandbox, state } = await openFiles(Object.assign({ 'baseline/broken.yaml': 'header: [unclosed\n' }, FERRY));
+  sandbox.setPerspective('files');
+  sandbox.drawPlateau('green');
+  let groups = filesGroupsOf(sandbox);
+  assert.deepEqual(groups.map((g) => g.key), ['plateau:baseline', 'plateau:fast', 'plateau:green', 'none'], 'the group of the files with no plateau comes last');
+  assert.deepEqual(filesOfGroup(groups, 'none'), ['baseline/broken.yaml'], 'a file with an error belongs to no plateau');
+  assert.ok(!filesOfGroup(groups, 'plateau:baseline').includes('baseline/broken.yaml'));
+  assert.match(stripTags(sandbox.renderFilesNavHtml()), /No plateau 1 file/);
+  assert.match(sandbox.renderFilesNavHtml(), /data-relpath="baseline\/broken\.yaml">\s*<span class="file-relpath">[^<]*<\/span><span class="error-badge"/);
+  // the group is generic: it holds what filePlateauOf says is null, it is not made for one file
+  assert.equal(sandbox.filePlateauOf(state.manifestFiles.find((f) => f.relPath === 'baseline/broken.yaml')), null);
+  click(sandbox, { 'data-action': 'toggle-files-group', 'data-group': 'none' });
+  assert.equal(filesGroupsOf(sandbox)[3].folded, true);
+  click(sandbox, { 'data-action': 'select-file', 'data-relpath': 'baseline/broken.yaml' });
+  groups = filesGroupsOf(sandbox);
+  assert.equal(groups[3].folded, false);
+  assert.deepEqual(groups[3].files, ['baseline/broken.yaml']);
+});
+
+test('a plateau the tree refuses still has its group: the files are listed whatever the mistake', async () => {
+  const { sandbox, state } = await openFiles({ 'a/app.x.yaml': SYSTEM('x', 'two'), 'a/plateau.yaml': PLATEAU('two', 'Two').replace('name: "Two"', 'name: "Two"\n  override: "nowhere"'), 'a/app.y.yaml': SYSTEM('y') });
+  sandbox.setPerspective('files');
+  assert.ok(state.plateauTree.problems.length > 0);
+  const groups = filesGroupsOf(sandbox);
+  assert.deepEqual(groups.flatMap((g) => g.files).sort(), ['a/app.x.yaml', 'a/app.y.yaml', 'a/plateau.yaml']);
+  assert.deepEqual(groups.map((g) => g.key), ['plateau:baseline', 'plateau:two']);
+});
+
+test('a workspace with no layer lists every file, with no group and no badge, as it always did', async () => {
   const { sandbox } = await openFiles({ 'manifests/app.fleet.yaml': SYSTEM('fleet'), 'manifests/env.harbour.yaml': ENVIRONMENT('harbour') });
   const nav = sandbox.renderFilesNavHtml();
   assert.equal((nav.match(/data-action="select-file"/g) || []).length, 2);
-  assert.doesNotMatch(nav, /files-scope|plateau-badge|warning-badge/);
+  assert.doesNotMatch(nav, /files-group|toggle-files-group|plateau-badge|warning-badge/, 'one plateau only: no groups to fold');
 });
 
 test('a manifest whose plateau disagrees with the folder it is in, when that is the name of another plateau, gets a warning', async () => {
@@ -538,7 +637,6 @@ test('a manifest whose plateau disagrees with the folder it is in, when that is 
 test('the warning is on the row, in the list\'s count, and on the page of the file; nothing is blocked', async () => {
   const { sandbox, state } = await openFiles(MOVED);
   sandbox.setPerspective('files');
-  click(sandbox, { 'data-action': 'set-files-scope', 'data-value': 'all' });
   const nav = sandbox.renderFilesNavHtml();
   assert.equal((nav.match(/class="warning-badge"/g) || []).length, 3);
   assert.match(stripTags(nav), /3 files sit in the folder of another plateau\./);
@@ -576,7 +674,7 @@ test('the bar of the pages and the Plateaus page hold the width: they wrap, and 
   assert.match(html, /\.timeline-item \{[^}]*min-width: 0;[^}]*margin-left: calc\(var\(--depth, 0\) \* 1rem\);/);
   assert.match(html, /\.timeline-main \{[^}]*flex-wrap: wrap;/);
   assert.match(html, /\.grid-rows-\\\[auto_auto_auto_minmax\\\(0\\,1fr\\\)\\\] \{ grid-template-rows: auto auto auto minmax\(0, 1fr\); \}/);
-  assert.match(html, /\.files-scope \{[^}]*flex-wrap: wrap;/);
+  assert.match(html, /\.files-group \.tree-branch-title \{ min-width: 0; \}/);
   // 360 px (issue #82): four pages in one row, and the fields of Settings under their labels, never wider than what holds them
   assert.match(html, /\.page-tabs \.button-group \{ flex-wrap: wrap; max-width: 100%;/);
   const narrow = html.slice(html.indexOf('@media (max-width: 40rem) {'), html.indexOf('</style>'));
