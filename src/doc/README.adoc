@@ -37,7 +37,7 @@ ArchiCode provides a structured data model that empowers architects to design an
 Seamlessly define the structure of technology nodes within your architecture to ensure your technology strategies are accurately captured.
 
 .Flexible Source Formats
-ArchiCode adapts to your preferences by supporting multiple source formats: YAML and JSON for manifests (a manifest written in TOML is found but does not load yet, see <<plateau-limits>>), and YAML, TOML and JSON for the workspace file.
+ArchiCode adapts to your preferences by supporting multiple source formats: YAML, JSON and TOML for the manifests and for the workspace file (the editor reads YAML only, see <<editor-reads>>).
 
 .Manifest-Style Source Code Organization
 ArchiCode simplifies the management of complex architectures by embracing a Kubernetes-like manifest approach to organize your source code more efficiently.
@@ -91,7 +91,7 @@ In ArchiCode, a workspace is a fundamental construct that orchestrates the found
 
 - Centralized Definition and Configuration: The workspace serves as a central repository for defining and configuring your architecture work. This consolidation streamlines your workflow and provides a clear reference point for all aspects of your project.
 
-- Enrichment with Manifests: Workspaces can be enriched through the inclusion of manifests. A manifest, also presented as a plain text file in YAML or JSON format (a manifest written in TOML is found but does not load yet, see <<plateau-limits>>), further refines and specifies architectural details within the workspace.
+- Enrichment with Manifests: Workspaces can be enriched through the inclusion of manifests. A manifest, also presented as a plain text file in YAML, JSON or TOML format, further refines and specifies architectural details within the workspace. The command line reads the three; the editor reads YAML only (see <<editor-reads>>).
 
 - Manifest for Enhanced Organization: The concept of manifests introduces a structural layer that enhances source code organization. By encapsulating architectural components, manifests contribute to a cleaner and more comprehensible separation of concerns.
 
@@ -99,7 +99,7 @@ In ArchiCode, a workspace is a fundamental construct that orchestrates the found
 
 - Optional Name: a workspace can be given a name with `settings.name`. The editor shows it in place of the name of the folder (see <<editor-workspace-name>>); the command line does not need it. A workspace without a name stays valid.
 
-- Optional Plateaus: the states of the architecture are layers, written as manifests that say `plateau: <id>` in their header and, for each plateau, a manifest of kind `archicode.morin.io/plateau` (see <<plateaus>>). A workspace that does not write any keeps the one set of manifests it always had.
+- Optional Plateaus: the states of the architecture are layers, written as manifests that say `plateau: <id>` in their header and, for each plateau, a manifest of kind `archicode.morin.io/plateau` (see <<plateaus>>). Views and stories belong to no plateau (see <<plateau-untied>>). A workspace that does not write any plateau keeps the one set of manifests it always had.
 
 The following snippet describes a workspace named `ArchiCode`, designing the `CommandLineInterface` container of the `ArchiCode` system and its localization in the `Reference` environment.
 
@@ -134,6 +134,58 @@ the reference `shop` is declared twice: in `manifests/a.yaml` and `manifests/b.y
 
 The editor reports the same thing, in the same words (see <<editor-folders>>). With plateaus the rule is the one of <<plateau-header>>: a reference declared in a plateau and again in a plateau it stands on is the error, and the same reference in two plateaus that do not stand on each other is not.
 
+[[manifest-formats]]
+==== Manifest formats and kinds
+
+A manifest is a file of YAML (`.yaml`, `.yml`), JSON (`.json`) or TOML (`.toml`) with a `header` and a `content`. The command line reads the three the same way, so that a manifest written in TOML gives the same graph as its YAML twin. This is the TOML twin of `manifests/user.yaml` above:
+
+.The TOML twin of `manifests/user.yaml`: `manifests/user.toml`
+[source,toml]
+----
+[header]
+kind = "archicode.morin.io/person"
+version = "1"
+
+[content]
+id = "User"
+
+[[content.relationships]]
+destination = "ArchiCode.CommandLineInterface"
+qualifiers = ["Console"]
+----
+
+TOML has no null: a key with nothing to say is not written, and is absent. An element nested in another one is a `[[content.elements]]` table (a list of tables, as `[[content.relationships]]` above). The editor reads YAML only: it lists the `.toml` and `.json` files it finds as files it does not read (see <<editor-reads>>).
+
+[[manifest-kinds]]
+*The kinds.* The `kind` of the `header` is one of ten, each written `archicode.morin.io/<kind>`:
+
+[cols="1,3"]
+|===
+| `person`, `solution`, `system`, `container`, `component` | the elements of the application layer (see <<application-layer>>)
+| `environment`, `node` | the elements of the technology layer
+| `view`, `story` | the views and the stories (see <<viewpoints>> and <<stories>>); they belong to no plateau
+| `plateau` | a plateau (see <<plateau-manifest>>)
+|===
+
+`container-group`, `solution-group` and `system-group` are no kinds, in the command line and in the editor: a group is an element of kind `group`, nested in a container, a solution or a system (`kind: group` in its `elements`). A manifest of one of those three kinds is refused with the one sentence, which lists the kinds there are:
+
+----
+error: `manifests/grp.yaml` is not valid: unrecognized `header.kind` "archicode.morin.io/system-group" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)
+----
+
+[[nesting]]
+*What a parent holds.* A solution holds systems and groups; a system holds containers and groups; a container holds components and groups; an environment and a node hold nodes; a group holds what the element it sits in holds; a person and a component hold nothing. An element declared under a parent that cannot hold its kind (`header.parent`: a system under a container) is an error in both tools, with or without plateaus, that names the file and says what the parent holds:
+
+----
+error: `manifests/grp.yaml` is not valid: unknown kind `system` under `ArchiCode.CommandLineInterface` (known: component, group) at `header.kind`
+----
+
+An `id` is a name without a dot, since the dot separates the levels of a reference: `a.b` is refused by both tools.
+
+----
+error: `manifests/dot.yaml` is not valid: the id `a.b` contains a dot, which separates the levels of a reference, at `content.id`
+----
+
 [[manifests-folders]]
 ==== Manifests in folders
 
@@ -162,8 +214,8 @@ The command line and the editor read the same files, in the same order, by these
 
 . A path that does not end in `/**` is read exactly as it always was: the files directly in the folder. `./**` is the folder of `workspace.yaml` and everything below it, the file `workspace.yaml` excepted. A folder that does not exist reads nothing, with `/**` as without.
 . The files are read in the order of their path from the folder of `workspace.yaml`, written with `/` and compared by Unicode code point, whatever the file system or the language of the system: `B.yaml` comes before `a.yaml`, and `a.yaml` before `a/b.yaml`. A file that two paths find (`manifests` and `manifests/**`) is read once. The order tells which file an error names first and the order of the files in the editor; the views do not depend on it.
-. Below a path that ends in `/**`, these are not read: a file or a folder whose name begins with a dot (`.git`, `.cache`); a symbolic link to a folder (a link is never followed, so a link that points to its own folder is no loop; a link to a file is read like the file); and the folders of the generated views, which can hold files that are no manifests (the comparison of two plateaus writes a `gap.json`). These are the folder that `settings.views.path` names, as it is written in `workspace.yaml`, and the folders beside it whose name begins with that name and a dash: with `views`, the folders `views`, `views-to-be`, `views-to-be-vs-baseline` and `views-shop`. The folder of an `--output` option, and the folders of a `directory-name-template` of the facets that does not begin with `views.path`, are not known to a reader of the manifests, except by `views generate -o` itself, which skips the folders it writes: for the other commands, write the views where `settings.views.path` says (see <<plateau-limits>>). A folder that is deeper than `views.path`, or whose name only looks like it (`viewsx`, `views_extra`), is read. A path that names such a folder itself (`.manifests/**`, `views-notes/**`) reads it: the rule applies to what is found below a path, not to the path. A path that is a link to a folder is read, as it is without `/**`.
-. Every `.yaml`, `.yml`, `.json` and `.toml` file that is found is a manifest, as in a folder read without `/**`: a YAML file that is not a manifest (a CI file, a `values.yaml`) is refused with its name, so keep such files out of the folders you name, or in a hidden folder. A `.toml` file is found and then refused, because a manifest in TOML does not load yet (see <<plateau-limits>>). The editor reads the YAML ones and says which files it does not read (see <<editor-folders>>).
+. Below a path that ends in `/**`, these are not read: a file or a folder whose name begins with a dot (`.git`, `.cache`); a symbolic link to a folder (a link is never followed, so a link that points to its own folder is no loop; a link to a file is read like the file); and the folders of the generated views, which can hold files that are no manifests (the comparison of two plateaus writes a `gap.json`). These are the folder that `settings.views.path` names, as it is written in `workspace.yaml`, and the folders beside it whose name begins with that name and a dash: with `views`, the folders `views`, `views-to-be`, `views-to-be-vs-baseline` and `views-shop`; and any folder that holds both files a comparison writes, `gap.json` and `gap.md`, whatever `--output` named it and whichever command wrote it (a folder with only a `gap.json` is read, since a manifest may be called so). A folder that is deeper than `views.path`, or whose name only looks like it (`viewsx`, `views_extra`), is read. A path that names such a folder itself (`.manifests/**`, `views-notes/**`) reads it: the rule applies to what is found below a path, not to the path. A path that is a link to a folder is read, as it is without `/**`.
+. Every `.yaml`, `.yml`, `.json` and `.toml` file that is found is a manifest, as in a folder read without `/**`: a YAML file that is not a manifest (a CI file, a `values.yaml`) is refused with its name, so keep such files out of the folders you name, or in a hidden folder. A TOML manifest is a manifest like the others (see <<manifest-formats>>). The editor reads the YAML ones and says which files it does not read (see <<editor-reads>>).
 . A reference declared in two of the files that are found is the error of <<duplicate-references>>, in the same line, with the two files in the order above.
 . `**` means something only at the end of a path, after a `/`. `manifests/**/shop`, `manifests/**x`, `a**/b` and `**` are refused with one line that names the path and says what is read, in the command line and in the editor (where the Settings screen refuses them too). A path that contains `..` or is absolute is refused as before, with `/**` or without. A folder whose name contains `**` can no longer be named by a path.
 
@@ -218,7 +270,7 @@ include::examples/domain_plateaus/workspace.yaml[]
 The folders are only a habit, and the example (`src/doc/examples/domain_plateaus` in the source repository) names them after the plateaus to be easy to read. What puts a manifest in a plateau is the `plateau` key of its header, not the folder it is in. (The editor warns when the two disagree, see <<editor-files>>; the command line says nothing.)
 
 [[plateau-header]]
-*The header.* A manifest of any kind (an element, a view, a story) can say which plateau it belongs to in its header:
+*The header.* A manifest of an element can say which plateau it belongs to in its header:
 
 [source,yaml]
 ----
@@ -234,6 +286,15 @@ content:
 
 Without `plateau`, the manifest belongs to `baseline`, the implicit root. A plateau exists as soon as a header names it (a plateau that only headers name has no name, no horizon and overrides `baseline`: it is told with a warning, see below) or a manifest of kind `archicode.morin.io/plateau` declares it. The elements of a plateau are added to the ones of the plateau it overrides, so a plateau sees everything its ancestors declare. A reference is declared once in a plateau and in all the plateaus it stands on (see <<duplicate-references>>): the same reference in a plateau and in its ancestor is an error, and in two plateaus that do not stand on each other (two alternatives) it is no duplicate.
 
+[[plateau-untied]]
+*Views and stories belong to no plateau.* Only the elements, the patches and the plateaus are layers. A view and a story exist whatever plateau is drawn: the same view or story is the one of every plateau, nothing patches them, and each is declared once in the whole workspace (the error of <<duplicate-references>>, between plateaus that do not stand on each other as well). A `plateau:` in the header of a view or of a story is ignored, with one warning that names the file, and it does not make a workspace of plateaus (a plateau that only a story names is no plateau):
+
+----
+warning: `manifests/view.shop.yaml` is a view and says `plateau: to-be` in its header, which is ignored: a view exists whatever plateau is drawn
+----
+
+What a view or a story names is looked at without a plateau, once the layers are read: every element it names must exist in at least one plateau, else it is an error, whichever plateau is asked for (a workspace without plateaus is not checked, and a view is looked at when it is drawn). A name that another plateau has and the plateau drawn lacks is no mistake of the view: that view cannot be drawn in that plateau (see <<plateau-views-lacking>>).
+
 [[plateau-manifest]]
 *The manifest of a plateau.* A manifest of kind `archicode.morin.io/plateau` qualifies one plateau; it is optional, and there is at most one for a plateau.
 
@@ -241,14 +302,14 @@ Without `plateau`, the manifest belongs to `baseline`, the implicit root. A plat
 |===
 | `id` | Required. What `plateau:` in a header, `override`, `--plateau` and `--against` name. Lowercase letters, digits, `_` and `-` (no dot, no capital): the identifier is also used in folder names. `baseline` is the id of the root.
 | `name` | Optional. The name shown to people; the `id` when absent.
-| `horizon` | Optional. A free-text label for when the plateau is meant to hold, such as `2027-Q1`. ArchiCode does not interpret it, except to order sibling plateaus in the band of the editor and to warn when it is earlier than the horizon of the parent, when both read as a period (see below).
+| `horizon` | Optional. A free-text label for when the plateau is meant to hold, such as `2027-Q1`. ArchiCode does not interpret it, except to order sibling plateaus in the lists of the editor and to warn when it is earlier than the horizon of the parent, when both read as a period (see below).
 | `override` | Optional. The one plateau this one is a layer over: `baseline` when absent. The plateaus form a tree whose root is `baseline`; two plateaus that override the same one are alternatives. The root overrides nothing.
 | `patches` | Optional. What the plateau changes in what it inherits, applied in order (see <<plateau-patches>>).
 |===
 
 The manifest of the example, with all its patches, is in step 3 of the tutorial (see <<plateaus-overview>>).
 
-*What is checked, and the lines you get.* The tree is checked when the manifests are read, and each mistake is one `error:` line that names the plateau and the file, or one `warning:` (see <<errors-and-warnings>>). A plateau is read as its chain, from the root: for each plateau, the elements, views and stories that say `plateau: <id>` are added to the graph, the patches of the plateau are applied, and the result is checked (a relationship, a `uses` entry, a hosted application, a parent, and what the views and the stories placed in the plateau name must exist). The first plateau that is wrong ends the load, and the plateaus above it are not looked at.
+*What is checked, and the lines you get.* The tree is checked when the manifests are read, and each mistake is one `error:` line that names the plateau and the file, or one `warning:` (see <<errors-and-warnings>>). A plateau is read as its chain, from the root: for each plateau, the elements that say `plateau: <id>` are added to the graph, the patches of the plateau are applied, and the result is checked (a relationship, a `uses` entry, a hosted application and a parent must exist, and an element must be declared under a parent that can hold its kind, see <<nesting>>). The first plateau that is wrong ends the load, and the plateaus above it are not looked at. The views and the stories are checked once, after the layers (see <<plateau-untied>>), and so are the plateaus that the steps of a story name (see <<stories>>).
 
 ----
 error: the plateau `to-be` (`plateaus/to-be/plateau.to-be.yaml`) overrides `asis`, which is not a plateau of this workspace (the plateaus are `baseline` and `to-be`)
@@ -257,9 +318,10 @@ error: the plateau id `To.Be` in `plateaus/to-be/plateau.to-be.yaml` is not vali
 error: the reference `customer` is declared in the plateau `to-be` (`plateaus/to-be/customer.yaml`) and again in its ancestor `baseline` (`plateaus/baseline/customer.yaml`)
 error: in the plateau `to-be`, `shopp.cart` is declared under `shopp`, which does not exist
 error: in the plateau `to-be`, `shop.web` has a relationship towards `shop.nowhere`, which does not exist
+error: the view `shop_overview` (`manifests/view.shop_overview.yaml`) names `shopp`, which exists in no plateau
 ----
 
-The first three are about the tree (an `override` that names nothing, a plateau declared by two manifests, an id that is not valid). Two more are told the same way: a plateau that overrides itself, directly or through others (`error: the plateau `to-be` overrides itself`), and a `baseline` manifest that overrides (`error: the plateau `baseline` (`plateaus/baseline/plateau.baseline.yaml`) is the root of the plateaus and cannot override `to-be``). The last three are about a plateau: a reference declared again in an ancestor, an element declared under a parent that does not exist, a relationship that leads nowhere. A mistake in a plateau names the plateau, so that the line says which layer to open.
+The first three are about the tree (an `override` that names nothing, a plateau declared by two manifests, an id that is not valid). Two more are told the same way: a plateau that overrides itself, directly or through others (`error: the plateau `to-be` overrides itself`), and a `baseline` manifest that overrides (`error: the plateau `baseline` (`plateaus/baseline/plateau.baseline.yaml`) is the root of the plateaus and cannot override `to-be``). The next three are about a plateau: a reference declared again in an ancestor, an element declared under a parent that does not exist, a relationship that leads nowhere. A mistake in a plateau names the plateau, so that the line says which layer to open. The last one is about no plateau: a view that names an element that exists in none.
 
 *One cause, one line.* When one mistake has many consequences, the tools say the first one (by reference) and count the others. The elements a plateau declares under a parent that is not there are one sentence, whatever the parents are called (here a typo in the `parent` of three manifests): the first one told is a symptom of the missing layer, and a second wrong parent shows once the first is repaired. The elements that point at one reference that is not there are one sentence for each missing reference (here two relationships added towards `shop.nowhere`). The views and the stories that name something that is not there keep one line each, since they are not consequences of one another. When a manifest cannot be read, the command line stops at it, before any layer is built, with one line: the file and what is wrong. The editor draws what it can, and says that same line in place of the consequences the missing elements would leave behind.
 
@@ -301,7 +363,7 @@ The selector is exactly one of these two:
 | `json-path` | A JSONPath (RFC 9535) over the document `application.elements` and `technology.elements` of the plateau, which selects at least one node (an element or something in it). `expect: 3` asks for exactly three: a number of nodes that differs is an error, which turns a silent drift into a message.
 |===
 
-`field` is the field of the element that is changed (`name`, `description`, `qualifiers`, `tags`, `relationships`, `applications`, `uses`...); with a `json-path`, a patch with no `field` changes the selected nodes themselves. `where: {destination: "shop.catalog", label: "reads"}` finds one relationship by its destination and its label (a missing label is none); zero or several matches is an error. `id`, `parent` and `elements` cannot be changed: a patch never renames or moves an element, and an element that moved is told with `replaces` (see <<plateau-replaces>>). Views and stories cannot be patched.
+`field` is the field of the element that is changed (`name`, `description`, `qualifiers`, `tags`, `relationships`, `applications`, `uses`...); with a `json-path`, a patch with no `field` changes the selected nodes themselves. `where: {destination: "shop.catalog", label: "reads"}` finds one relationship by its destination and its label (a missing label is none); zero or several matches is an error. `id`, `parent` and `elements` cannot be changed: a patch never renames or moves an element, and an element that moved is told with `replaces` (see <<plateau-replaces>>). A patch never takes a field out (see <<plateau-limits>>). Views and stories belong to no plateau, so there is nothing to patch in them (see <<plateau-untied>>).
 
 [source,yaml]
 ----
@@ -422,6 +484,7 @@ styles:
 
 A facet can read what changed: in a comparison, every element and every relationship has a `change` (`none`, `new`, `changed` or `removed`, and, for an element that says what it replaces, `moved`, `split` or `merged`) that a JSONPath selects like any other field, such as `$..relationships[?(@.change == 'removed')]`. The other facets work as they always did.
 
+[[application-layer]]
 === Application Layer
 
 // - In ArchiCode, the Application Layer matches the Application Layer of ArchiMate.
@@ -725,6 +788,33 @@ ArchiCode places a strong emphasis on the dynamic generation of views, fostering
 include::examples/domain_viewpoint_views/workspace.yaml[]
 ----
 
+A view that has an `id` is a named view. Without `--view`, `archicode views generate` draws the views it finds from the elements of the model; `archicode views generate --view terminal-session` (or `-i`) draws that view too, into `views/plantuml/technology/terminal-session.puml`. A view can be a manifest of its own, in the folders of the manifests (see <<stories>>); it belongs to no plateau, see <<plateau-untied>>.
+
+[[map-viewpoint]]
+*The map.* A view of the `map` viewpoint draws a whole layer instead of the surroundings of one element: `layer: application` (the default) or `layer: technology`, folded, so that only the top of the layer shows and a link joins the boxes its two ends land on. Three lists of references, in `properties`, shape it: `pinned` keeps only what touches these elements, `hidden` leaves these elements, what is inside them and their relationships out, and `opened` opens these boxes, so that their children show. The editor draws the same view on its page Applications (the application layer) and its page Environments (the technology layer, see <<editor-map>>), and both tools draw the same boxes (the example below has the boxes of each view pinned by a test). The command line draws a map when it is asked for it by its `id`, as for any named view:
+
+.The content of `workspace.yaml` of the example `domain_technology_map`: three maps of a technology layer
+[source,yaml]
+----
+include::examples/domain_technology_map/workspace.yaml[]
+----
+
+[source,shell]
+----
+archicode views generate --view datacentre-map-open
+----
+
+writes `views/plantuml/technology/datacentre-map-open.puml`. The command line does not read what the editor keeps in a map besides the three lists (`facet`, `hide-unlinked` and the texts of the diagram). A list that names an element that does not exist is one `error:` line that names the view (`error: the view datacentre-map-database: dangling reference: datacentre.rack.dbx`); in the views of a facet, where the facet may have removed the element, the entry is dropped. A comparison of two plateaus gives a map the states of its boxes, as it does for the other viewpoints. A technology map draws only the relationships that the technology elements declare themselves, not the links that `uses` and the applications deployed on the nodes give to the diagram of an environment (see <<plateau-limits>>).
+
+[[plateau-views-lacking]]
+*A view in a workspace of plateaus.* A view is read against one plateau at a time. A name that the plateau drawn does not have, and another plateau has, is not a mistake of the view, and the two tools say the same: an entry of `pinned`, `opened` or `hidden` is left out of the map (`warning: the view `m` is drawn without `x`, which the plateau `p` does not have`), and a view that cannot be drawn without the name (the `element` of an overview, a map none of whose `pinned` elements is there) cannot be drawn in that plateau. `archicode views generate --view <id>` skips such a view with a warning, and does not fail, since asking for a view in every plateau of a loop is legitimate:
+
+----
+warning: skip `x`: it names `shop.mailer`, which the plateau `to-be` does not have
+----
+
+The editor says it in the view (_The element “x” is not in the plateau “p”._). A name that exists in no plateau is the error of <<plateau-untied>>.
+
 By embracing dynamic view generation, leveraging pluggable Viewpoint Services, and facilitating ad-hoc view definitions, ArchiCode equips architects with a toolkit for capturing, communicating, and exploring architectural insights in a dynamic and tailored manner. As we navigate deeper into ArchiCode's capabilities, you'll uncover the rendering of views and how they enhance your architectural workflow.
 
 [[stories]]
@@ -775,7 +865,32 @@ content:
     wrap: true
 ----
 
-A step either names a view by its `id`, or carries one: a `viewpoint`, a `layer` and `properties`, as a view has. A named view can be used by several stories and generated by the command line (its `id` is what `--view-ids` takes); a view written in a step is only for that step, and has no file of its own. The text is plain text. A step on a view that is not declared is reported as a warning by the command line, and shown as missing by the editor. The command line ignores the stories, skips the views of the `map` viewpoint (the editor alone draws it), and generates the views of its own viewpoints as it always did.
+A step either names a view by its `id`, or carries one: a `viewpoint`, a `layer` and `properties`, as a view has. A named view can be used by several stories and generated by the command line (its `id` is what `--view` takes); a view written in a step is only for that step, and has no file of its own. The text is plain text. A step on a view that is not declared is reported as a warning by the command line, and shown as missing by the editor. The command line does not draw the stories (see below): it reads them and checks them, and it generates the views of the workspace as it always did, the views of the `map` viewpoint included (see <<map-viewpoint>>).
+
+A story belongs to no plateau, like a view (see <<plateau-untied>>): it is the same story whatever plateau is drawn, and it is declared once in the whole workspace. A `plateau:` in its header is ignored, with a warning.
+
+[[story-step-plateaus]]
+*A step told at a plateau.* A step may say which plateau it is told at and which plateau it is compared with, with two optional keys, `at` and `against`, each the `id` of a plateau. They are not the `plateau:` of a header, which says that a manifest belongs to a plateau: here the story belongs to none and a step says where to look.
+
+* Without `at`, the step is told at the plateau the reader has drawn. Without `against`, nothing is compared. A step that names neither is drawn as the reader had it, the plateau and the comparison.
+* `against` without `at` is allowed: the step is told at the plateau drawn and compared with `against` (_what changes from `baseline` to where I am_). When `against` is the plateau drawn, nothing is compared, which is no mistake.
+* A key with nothing after it, or an empty text (`at: ""`), names nothing.
+
+.`plateaus/story.migration.yaml` of the example `domain_plateaus`
+[source,yaml]
+----
+include::examples/domain_plateaus/plateaus/story.migration.yaml[]
+----
+
+Both tools check the keys when the manifests are read, one sentence for each, with the story, the file and the number of the step (from 1), after the layers and before the names the step carries:
+
+----
+error: the story `migration` (`plateaus/story.migration.yaml`) step 1 says `at: tobe`, which is not a plateau of this workspace (the plateaus are `baseline`, `to-be`)
+error: the story `migration` (`plateaus/story.migration.yaml`) step 2 says `at: to-be` and `against: to-be`: a plateau is never compared with itself
+error: the story `s` (`manifests/story.s.yaml`) step 1 says `at: to-be` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)
+----
+
+The last one is told for a workspace that has no plateau too. The command line only checks the steps: it does not draw a story, so a step told at a plateau is never drawn by it (see <<plateau-limits>>). A name that the plateau of a step lacks is no mistake either, and the command line does not say it. The editor plays the steps, draws their plateaus and tells it (see <<editor-stories>>).
 
 Workspaces written before stories became manifests keep their views in `views:` of `workspace.yaml`, and may have a `stories:` there too: both are still read. The editor offers to move them to manifests, which keeps `workspace.yaml` small and free of the rewrites an editor save makes to it.
 
@@ -910,7 +1025,7 @@ By affording you the capability to tailor the configuration of ArchiCode, the to
 [[plateaus-overview]]
 == States of an architecture (plateaus)
 
-An architecture is never finished: it is how it runs today, how it should run next year, and what the year after may bring. ArchiCode calls each of these states a _plateau_ and tells you what changes from one to the next. This section is the story in one place, from the idea to a review of the changes; the rules are in <<plateaus,Plateaus>> and <<plateau-comparison,Comparing two plateaus>> (in the Domain section), the commands in <<plateau-choose,Choosing a plateau>>, <<diff,Compare plateaus>> and <<generate-views,Generate views>>, and the editor in <<editor-band,The band of plateaus>>, <<editor-writing,Writing in a plateau>> and <<editor-compare,Comparing two plateaus in the editor>>. What does not work yet is in <<plateau-limits,Limits of today>>.
+An architecture is never finished: it is how it runs today, how it should run next year, and what the year after may bring. ArchiCode calls each of these states a _plateau_ and tells you what changes from one to the next. This section is the story in one place, from the idea to a review of the changes; the rules are in <<plateaus,Plateaus>> and <<plateau-comparison,Comparing two plateaus>> (in the Domain section), the commands in <<plateau-choose,Choosing a plateau>>, <<diff,Compare plateaus>> and <<generate-views,Generate views>>, and the editor in <<editor-pages,The pages>>, <<editor-band,The band of plateaus>>, <<editor-plateaus,The Plateaus page>>, <<editor-writing,Writing in a plateau>> and <<editor-compare,Comparing two plateaus in the editor>>. What does not work yet is in <<plateau-limits,Limits of today>>.
 
 IMPORTANT: *Breaking changes.* `settings.plateaus`, `archicode plateau add` and `--baseline` no longer exist: a plateau is a layer (see <<plateaus>>, and <<plateaus-upgrade>> to convert a workspace by hand). A path of `settings.manifests.paths` may no longer contain `..` nor be absolute, a reference declared twice is an error, and a plateau id is now lowercase letters, digits, `_` and `-`. A workspace that has no plateau and does neither is read and drawn exactly as before.
 
@@ -967,7 +1082,7 @@ The command line tells you where a word and the comparison disagree, one line pe
 warning: the element `customer` carries `new` (`rendering-stereotypes` tag), but the comparison of `to-be` with `baseline` finds that it did not change and holds no change: it is drawn with your own `styles` entry named `new` (if any) and not with the default look of the state. The comparison computes the states, so the word can be dropped.
 ----
 
-`archicode diff` and `archicode views generate` check the plateau they compare. `archicode views generate` of a plateau that is not compared says that a state word is a state of a comparison and that nothing is compared here. A workspace with no plateau has no comparison to disagree with, and is never told anything: there the words are your own stereotypes, as they always were. A word that agrees with the comparison is never reported. The editor draws the same: a hand-written word is a badge and a style, and the look of a state only where the state is computed. It tells you the same, in the same sentences, when a plateau is compared (*Past*, *Future* or *⇄* on the band): in the panel of the element, under what changed, and in the *Hand-written states* list of the *Changes* panel (see <<editor-compare>>). Nothing is told when nothing is compared, since the comparison is a choice of the page.
+`archicode diff` and `archicode views generate` check the plateau they compare. `archicode views generate` of a plateau that is not compared says that a state word is a state of a comparison and that nothing is compared here. A workspace with no plateau has no comparison to disagree with, and is never told anything: there the words are your own stereotypes, as they always were. A word that agrees with the comparison is never reported. The editor draws the same: a hand-written word is a badge and a style, and the look of a state only where the state is computed. It tells you the same, in the same sentences, when a plateau is compared (*Compare with* on the band): in the panel of the element, under what changed, and in the *Hand-written states* list of the *Changes* panel (see <<editor-compare>>). Nothing is told when nothing is compared, since the comparison is a choice of the page.
 
 [[plateau-replaces]]
 === Saying what an element replaces
@@ -1171,7 +1286,7 @@ to-be    6 REMOVE target shop.inventory  removed  application  shop.inventory.le
 to-be    6 REMOVE target shop.inventory  dropped  application  warehouse.picking      relationships: shop.inventory (counts with)
 ----
 
-The NATURES column says what changed in an element that changed (here `qualifiers` and the relationships of `shop.web`, `description (wording only)` for the catalog), and the DETAILS column says from what and to what. Two elements changed, one only by its wording, and two moved, two were split and one merged: the table says in each row what changed or where the element came from (see <<diff>> for the options and the other formats). The replaced elements have no row and are not counted as removed, and `shop.mailer` and `shop.reviews` are, because nothing replaces them. The last section is the cascade of the `REMOVE` patches (see <<plateau-cascade>>): the removal of the mailer took the link of the web site towards it (patch 1), and the removal of the inventory took its component `levels` and the link of `picking` (patch 6). Nothing is written, and a difference is not an error.
+The NATURES column says what changed in an element that changed (here `qualifiers` and the relationships of `shop.web`, `description (wording only)` for the catalog), and the DETAILS column says from what and to what. Two elements changed, one only by its wording, and two moved, two were split and one merged: the table says in each row what changed or where the element came from (see <<diff>> for the options and the other formats). The replaced elements have no row and are not counted as removed, and `shop.mailer` and `shop.reviews` are, because nothing replaces them. The last section is the cascade of the `REMOVE` patches (see <<plateau-cascade>>): the removal of the mailer took the link of the web site towards it (patch 1), and the removal of the inventory took its component `levels` and the link of `picking` (patch 6). Nothing is written, and a difference is not an error, unless you ask for it to be: `archicode diff --fail-on removed,moved` prints the same table and exits with the code 3, because the example has removed and moved elements (a state the plateau does not hold gives 0; see <<diff>>). That is the line to put in a build that must not let a removal through.
 
 *Step 6. Decide about the candidates.* The candidate section is a pair: `shop.reviews` is removed, `shop.ratings` is new, they are of the same kind in the same layer and their descriptions share most of their words, so the comparison thinks they may be one thing said twice (see <<plateau-candidates>>). It never applies a candidate. If it is the same thing, write `replaces: ["shop.reviews"]` on `ratings`: `ratings` becomes a moved element (`moved`, natures `name,description`, `from shop.reviews`), the counts read `elements +1 ~2 -1` and `replacing 3 moved, 2 split, 1 merged`, and the table lists a new, weaker candidate, `shop.mailer` to `shop.payments` with the reason `parent`: with the reviews and the ratings settled they are the only removed and the only new container of the shop. They are not the same thing, and the answer is to do nothing. If the reviews and the ratings are not the same thing either, do nothing, as this example does, and the output stays as it is. The editor writes the line for you (step 8).
 
@@ -1194,7 +1309,7 @@ gap.md
 plantuml
 ----
 
-(The `ls` shows what a clean folder shows; a folder that already had `manifests` or `views-baseline` still has them: they are not removed.) `views-to-be` holds the views of the plateau, as for any workspace. `views-to-be-vs-baseline` holds the views of the comparison, and `gap.md` and `gap.json`, the table of changes of step 5 in a file that a pull request can carry (with the cascade, the key `cascade` of the JSON). Every box and every link of these views that changed says its state with a mark and a line style, and the views that have a change have a legend. The overview of the container `shop.web`:
+(The `ls` shows what a clean folder shows; a folder that already had `manifests` or `views-baseline` still has them: they are not removed.) `views-to-be` holds the views of the plateau, as for any workspace. `views-to-be-vs-baseline` holds the views of the comparison, and `gap.md` and `gap.json`, the table of changes of step 5 in a file that a pull request can carry (with the cascade, the key `cascade` of the JSON). `archicode views generate --only-changes` draws, in `views-to-be-vs-baseline` only, what changed and the context faded: the views of `views-to-be` and the table stay as they are. Every box and every link of these views that changed says its state with a mark and a line style, and the views that have a change have a legend. The overview of the container `shop.web`:
 
 .The overview of `shop.web` in `views-to-be-vs-baseline`
 [plantuml, plateaus_shop_web_overview]
@@ -1220,18 +1335,20 @@ The inventory is drawn where it is now, in the warehouse, with `→` and `(from 
 include::examples/domain_plateaus/views-to-be-vs-baseline/plantuml/application/warehouse_inventory_levels-overview.puml[]
 ----
 
-*Step 8. Look at it in the editor.* `archicode editor serve` opens the folder in your browser (see <<serve-the-editor>>). 
+*Step 8. Look at it in the editor.* `archicode editor serve` opens the folder in your browser (see <<serve-the-editor>>).
 
 The editor opens the plateau of the address (`plateau=`), else the one this browser drew last in this folder, else the one `settings.current` names, else the root, `baseline`: here the root. The command line, without a name, draws the last plateau.
 
-. The band under the top bar has one node for each plateau, with its name, its horizon and what it brings over the plateau it overrides (`+2 ~2 −2`). A click on *To be* draws it, in the whole editor, and the band says *writing in: To be* (see <<editor-band,The band of plateaus>>).
-. *Past* compares the plateau drawn with the plateau it overrides, *As is*: Applications shows the states, the new, changed, removed, moved, split and merged boxes, and the key under the drawing is the legend (see <<editor-compare,Comparing two plateaus in the editor>>). *Future* compares it with the plateau that overrides it, and the button *⇄* of another node with that plateau.
-. The *Timeline* page, and the right-hand panel of *Applications* and *Elements*, have the *Changes* panel: the counts (`+ 2 new`, `~ 2 changed`, `− 2 removed`, `→ 2 moved`, `⋔ 2 split`, `⊕ 1 merged` for the elements), the candidates, the *Cascade of the removals* with the three rows of step 5, then every element and relationship that changed. They are the rows of step 5, in the same words. A click on a row shows it (see <<editor-changes-panel>>).
+. The top bar has four buttons, *Timeline*, *Stories*, *Files* and *Settings*. *Timeline* opens *Applications* and has four pages, in a bar of their own: *Plateaus*, *Applications*, *Environments* and *Elements*. On those four pages, and on those only, the band under the top bar has two lists: *Plateau*, which draws a plateau in the whole editor, and *Compare with*. Choose *To be* in *Plateau* (see <<editor-band,The band of plateaus>>). The page *Plateaus* says the same as a tree: one entry for each plateau, with its name, its horizon and what it brings over the plateau it overrides (chips such as `+ 2 new`, `~ 2 changed` and `− 2 removed`), and it is where a plateau is written (see <<editor-plateaus,The Plateaus page>>).
+. In *Compare with*, choose *Past: As is*: Applications shows the states, the new, changed, removed, moved, split and merged boxes, and the key under the drawing is the legend (see <<editor-compare,Comparing two plateaus in the editor>>). *Future* compares the plateau with the plateau that overrides it, and *Other plateaus* with any other.
+. *Plateaus*, *Applications*, *Environments* and *Elements*, and *Stories* while a comparison is on, have the *Changes* panel on the right: the counts (`+ 2 new`, `~ 2 changed`, `− 2 removed`, `→ 2 moved`, `⋔ 2 split`, `⊕ 1 merged` for the elements), the candidates, the *Cascade of the removals* with the three rows of step 5, then every element and relationship that changed. They are the rows of step 5, in the same words. *Next change* and *Previous change* walk through them, one by one, and the lists *State* and *Layer* narrow what is read; a click on a row shows it (see <<editor-changes-panel>>).
 . Select a changed element in *Elements*: the block *What changed* gives each property _Before_ and _After_ and its relationships that changed; for a moved, split or merged element it says what it replaces (see <<editor-what-changed>>). The page of the element says where each value comes from: for _Web site_, the name and the description are _inherited from baseline_ and the qualifiers are _set by patch 7 of to-be (SET target shop.web)_.
-. *Changes only* keeps what changed and the boxes needed to place it, and *Hide wording-only changes* sets the rewording aside (see <<editor-changes-only>>).
+. *Changes only*, among the tools of a diagram, keeps what changed and the boxes needed to place it, and *Hide wording-only changes* sets the rewording aside (see <<editor-changes-only>>).
 . Under the counts, the *Candidates* section proposes the pair of step 6, _Reviews_ and _Ratings_, with its reason, _close description_. *Write replaces* adds `replaces: [shop.reviews]` to `ratings` in the manifest that declares it, `plateaus/to-be/ratings.yaml`, and changes nothing else in the file; `ratings` is now `moved`, the counts read `→ 3 moved`, and *Save all changes* writes the file. With the clear pair resolved, the comparison proposes a weaker one: _Mailer_ and _Payments_ are now the only removed and the only new container under `shop`, which is the reason it gives (_the only two of their kind under the same parent_). They are not the same thing, so *Not related* is the answer (see <<editor-replaces>>).
 . A change is written in the plateau that is drawn. In *To be*, select _Web site_, *Edit*, change its description and *Save all changes*: the description comes from `baseline`, so the editor adds one `SET` patch at the end of the `patches` of `plateaus/to-be/plateau.to-be.yaml` and leaves `plateaus/baseline/shop.yaml` as it was. The same edit made in *As is*, on a field that `to-be` inherits (the description of _Picking_), writes the root and, because `to-be` sees the change, asks first (_Writing in baseline changes other plateaus_, with the list of the plateaus) (see <<editor-writing>>).
-. *Move* puts an element under another parent, with what is inside it, and rewrites the references to it (see <<editor-move>>); it moves an element that the plateau drawn declares, such as _Ratings_ of `to-be`, and refuses one it inherits.
+. *Move* puts an element under another parent (or, for a kind that may be a root, at the top level), with what is inside it, and rewrites the references to it (see <<editor-move>>); it moves an element that the plateau drawn declares, such as _Ratings_ of `to-be`, and refuses one it inherits. *Move* writes no `replaces`.
+. *Stories* lists the stories and the views of the workspace, whatever plateau is drawn. The story _From the shop to the new shop_ (`plateaus/story.migration.yaml`, the file shown in <<story-step-plateaus>>) tells it in four steps: *Play* walks through them, and each step that says `at` and `against` draws that plateau and that comparison first, so that the first step shows the shop of _As is_ and the second the shop of _To be_ with what changed marked. The bar says _told at To be, compared with As is_ (see <<editor-stories>>).
+. *Files* lists every file, in a group for each plateau: _As is_ with its five manifests, _To be_ with its seven, and, last, _No plateau_ with the story, which belongs to none (see <<editor-files>>).
 
 A change is written in the plateau that is drawn; the comparison itself writes nothing (see <<editor-writing>>).
 
@@ -1289,6 +1406,8 @@ new      element  application  shop.search    -        name: "Search"
 
 (The command also prints, on the error output, the warning of step 3 about the hand-written `new` of `shop.payments`: against `to-be` that element did not change, so the word is only the author's.) `archicode diff --plateau later --against baseline` compares the last plateau with the first one, and `archicode plateau list` shows the three. When two plateaus override the same one, the tree forks and the commands ask for the plateau with `--plateau` (see <<plateau-choose>>); the editor opens the root, then the plateau you drew last.
 
+*Step 10. Put it away.* A plateau that no other plateau overrides can be deleted in the editor, from the page *Plateaus* (see <<editor-plateaus,The Plateaus page>>): *Delete* opens a dialog that lists the files that go, here `plateaus/later/plateau.later.yaml` and `plateaus/later/search.yaml`, and nothing else. The files leave the disk at the next *Save all changes*. The command line deletes nothing: remove the files by hand, and the folders `views-later` and `views-later-vs-to-be` that `views generate` wrote, if you made them.
+
 [[plateaus-upgrade]]
 === Upgrading: what breaks, and what does not
 
@@ -1308,12 +1427,22 @@ Four differences to know: the views of a plateau are written in `views-<plateau>
 
 Nothing is to be changed in the manifests themselves: their format is the one it always was, with two optional keys more, `plateau` in the header and `replaces` (see <<plateau-replaces>>), that an older version of ArchiCode ignores.
 
+*Later changes.* Layers came with the editor reshaped; a few things moved after them, and what a workspace written for the first version of layers may meet is this:
+
+. *A view or a story that says `plateau:`.* It is ignored, with one warning (see <<plateau-untied>>). A workspace whose only `plateau:` is on a view or a story is no longer a workspace of plateaus, so `--plateau` and `settings.current` are errors for it, as for any workspace without plateaus. Two plateaus that each declared a view of one id, or a story of one id, are now one error: a view and a story are declared once.
+. *Kinds.* `container-group`, `solution-group` and `system-group` are refused, in both tools: write an element of kind `group` in the `elements` of the container, the solution or the system (see <<manifest-kinds>>). An element declared with `header.parent` under a parent that cannot hold its kind (a system under a container) is an error, with or without patches, where it used to load in a plateau that had none (see <<nesting>>); an id with a dot is an error; and the key `element` of a group in a solution, which was read by mistake, is not read.
+. *Empty values and spellings.* A key with nothing after it and an item with no value in a list are absent, in both tools (`global-enabled:` with nothing is `true`; an empty `workspace.yaml` is the default workspace). The keys of `settings.facets` are `global-enabled`, `directory-name-template`, `hide-unlinked` and `json-path`; the camel-case spelling is still read. The text of `header.parent`, `header.plateau` and `header.version` is the text as written: `parent: yes` is the reference `yes`.
+. *The maps.* `archicode views generate --view <id>` draws a view of the `map` viewpoint, which it used to skip with a warning (see <<map-viewpoint>>).
+. *The order of the warnings.* The facets are read in the order of the file, so the warnings that name them, and the creation of their folders, come in that order.
+. *Folders of a comparison.* A folder that holds both `gap.json` and `gap.md` is left out of a `/**` read, whichever command wrote it (see <<manifests-folders>>).
+. *The editor.* The pages are Plateaus, Applications, Environments, Elements, Stories, Files and Settings (see <<editor-pages>>); the band has two lists; Files has no choice of what it lists.
+
 One more thing changed for a workspace that has plateaus and that marks its boxes by hand with a state word (`rendering-stereotypes: "new"` or `"changed"`). A word that agrees with the comparison is drawn as before. A word on an element that does not have that state used to give the box the default look of the state in the views of the command line, and the editor did not: it now gives it nothing in both, and the command says so on its error output (see <<plateau-state-tags>>). The files that a workspace without a state word writes are the same, byte for byte.
 
 [[plateau-limits]]
 === Limits of today
 
-These are things that do not work yet, or not the way you might expect. Each is known and filed (the issue is `tmorin/archicode#N` on GitHub), and the tools say so when they meet one, except #87, which is silent.
+These are things that do not work yet, or not the way you might expect. Each is known and filed (the issue is `tmorin/archicode#N` on GitHub), and the tools say so when they meet one.
 
 *Plateaus.*
 
@@ -1325,15 +1454,23 @@ warning: replaces of discovery.search (application layer): commerce.search is no
 +
 and lists `discovery.search` as `new` and `shop.app.search` as `removed`. Compared with the plateau it overrides, the same plateau reads the move right. Compare the plateaus one step at a time to see a move that took two.
 * *A patch cannot take a field out* (#94). `SET`, `ADD` and `MERGE` need a value, and `REMOVE` takes an element, so a plateau cannot say "this inherited description is gone". A list or tags can be emptied (`SET` of `[]` or `{}`), a text can be set to another text. The editor refuses to clear an inherited text with one sentence.
-* *The editor does not move an element a plateau inherits* (a patch never changes an `id` or a `parent`), and the dialog of *Move* has no way to write `replaces` in a workspace of plateaus (#97): the key is written by hand, or from *Write replaces* in the Changes panel.
-* *Views and stories cannot be patched.* A layer brings its own, and a layer that removes an element that a view of its ancestor names does not repair the view: that view fails when it is asked for in that plateau (`views generate -i <view>`) (#86).
-* *An element declared under a parent that cannot hold its kind* (a system under a container) loads in a plateau that has no patches, and is refused with a sentence in one that has (#87).
+* *The editor does not move an element a plateau inherits* (a patch never changes an `id` or a `parent`): draw the plateau that declares it. It does not move a group under a parent of a plateau that the plateau drawn overrides either (#114): the group is written inside a file and has no manifest of its own to say where it goes.
+* *A plateau that other plateaus override cannot be deleted in the editor* (#112): the dialog says which plateaus override it, and nothing is deleted. Delete the plateaus above it first, or change their `override` in *Edit*. The editor draws the plateau of the address, then the one this browser drew last, then `settings.current`, and it has no field to choose `settings.current` (#111): write the key in `workspace.yaml`.
+* *A story told at a plateau is never drawn by the command line* (#109). `archicode` checks `at` and `against` and draws no story, so there is nothing to draw a step with. The editor plays them. *Add to story...* writes no `at` and no `against` (#110): they are written in the form of the story, or by hand.
+* *The map of the technology layer draws only the relationships that the technology elements declare* (#107). The links that `uses` and the applications deployed on the nodes give to the diagram of an environment are not on the map, in the editor and on the command line alike: a workspace whose nodes declare no relationship has a technology map with boxes and no link.
+* *A root manifest of kind `container`, `component` or `node` is indexed by the command line and held by no layer* (#106). It is drawn, but a patch cannot select it. The editor does not offer these kinds at the top level and does not move an element there; a root is a person, a solution or a system, and an environment.
 
 *Reading and writing files.*
 
-* *A manifest written in TOML is found by the discovery and does not load yet* (#84). The command line refuses it with `error: `plateaus/baseline/t.toml` is not valid: Unknown token`, whatever the file holds, and the editor ignores `.toml` files and says so in *Files*. Write manifests in YAML or JSON. A `workspace.toml` is read.
 * *The save of the editor writes a file again in its own layout* in these cases (#78): an anchor, an alias or a tag inside square or curly brackets (`qualifiers: [&a oven, *a]`); a tag on a text that goes over several lines, when the tag changes what the text reads as; and a layout the save does not follow (an anchor on a list item whose map starts on the next line); an anchor or a tag on a key (`&k name: x`) is the other case: the command line reads it and the editor refuses with `an anchor or a tag on a key is not supported`. In the first two the file is read and the model is what it says, but the comments are lost and the aliases are written as their values; the third is not opened.
-* *`views generate -o` and the manifests read with `/**`* (#88). The folders of the views that `settings.views.path` names, and the folders beside them that begin with that name and a dash, are never read as manifests. `views generate -o out` is told of `out` and its folders (`out-to-be`, `out-to-be-vs-baseline`) and skips them, so running it twice is fine; the other commands know no `--output`, so when `manifests.paths` has an entry such as `./**`, the next `archicode diff` or `archicode query graph` reads `out-to-be-vs-baseline/gap.json` as a manifest and stops with `error: `out-to-be-vs-baseline/gap.json` is not valid: unknown key `plateau` (known: content, header) at `plateau` (line 2, column 15)`. Write the views where `settings.views.path` says, or give `-o` a folder that no path with `/**` reads.
+* *The two tools read a few plain scalars differently* (#103, #105). A plain scalar written as a number in YAML 1.1 that a browser cannot print back as it was written (`0x1F`, `010`, `1_0`, `5.0`, `1e2`) is a number for the command line and a text for the editor; quote it where it is an id or a reference. The editor draws a relationship for an item of `relationships` with no value, which the command line leaves out. The editor does not tell the line and the column of a mistake in a file: it names the place by its path in the file, as the command line does (see <<errors-and-warnings>>).
+* *The editor reads the `layer` of a saved view in lower case only* (#108), the command line in any case: write `application` and `technology`.
+
+*The command line.*
+
+* *`archicode diff` cannot compare with another version of the workspace in git* (`--baseline-ref`, #25), and its text table is not wrapped (#26): read it with `less -S`, or take the Markdown or the JSON format. `--fail-on` and `--only-changes` are built (see <<diff>> and <<generate-views>>).
+
+*The editor on a small screen* (#82). On a window 360 pixels wide the top bar still wraps onto several lines (about 105 pixels), and the regions under it keep the heights they have on a large screen. Nobody has judged the editor on a phone.
 
 [[editor]]
 == Editor
@@ -1355,64 +1492,67 @@ The editor loads `elkjs` (the diagram layout) and CodeMirror (the file editor) f
 
 In *Settings*, the paths of the manifests are one per line, and a path that ends in `/**` is read with the folders below it (see <<manifests-folders>>); a new element, view or story is written in the folder of the first path. The editor served by `archicode editor serve` does not list the hidden entries of a folder at all, so a path that names a hidden folder reads nothing there, and does not list a link to a file that points out of the folder, which the command line reads. A browser that lets the page read a folder gives no way to tell a link from a folder: the page stops at a folder that is one it is inside of, but reads a link to another folder, which the command line does not.
 
-The editor reads and writes YAML manifests (`.yaml` and `.yml`) only. The command line reads JSON manifests too, and finds TOML ones, which do not load yet (see <<plateau-limits>>): the editor reads neither, so what such a file declares is missing from its trees and diagrams, and relationships that point at it show as dangling. It says so, in *Files* (which names the files) and above the trees of *Elements* (which counts them).
+[[editor-reads]]
+The editor reads and writes YAML manifests (`.yaml` and `.yml`) only. The command line reads JSON and TOML manifests too (see <<manifest-formats>>): the editor reads neither, so what such a file declares is missing from its trees and diagrams, and relationships that point at it show as dangling. It says so, in *Files* (which names the files) and above the trees of *Elements* (which counts them).
 
 A reference declared more than once is reported, not chosen: a red note above the trees of *Elements* and of *Files* gives the same message as the command line, each file that takes part is marked _duplicate_ in *Files* and says so when opened, and no diagram is drawn until each reference is declared once (a view or a story with a duplicated `id` is reported too, and does not stop the diagrams). Nothing else is blocked: the editor still edits and saves, so that the duplicate can be fixed in it.
 
 [[editor-pages]]
 === The perspectives and their pages
 
-The top bar has four perspectives: *Timeline*, *Stories*, *Files* and *Settings*. *Timeline* has four pages, in a bar of their own under the band of plateaus (see <<editor-band>>): *Timeline* itself, then *Applications*, *Environments* and *Elements*. A click on a perspective opens its first page, and the one that is on screen is the pressed one.
+The top bar has four buttons: *Timeline*, *Stories*, *Files* and *Settings*. *Timeline* has four pages, in a bar of their own under the top bar: *Plateaus*, *Applications*, *Environments* and *Elements*. A click on *Timeline* opens *Applications*, a click on one of the others opens its first page, and the page that is on screen is the pressed one. On the four pages of Timeline, and on those only, the *band* shows the plateau that is drawn and the one it is compared with (see <<editor-band>>).
 
 [cols="2,3,3"]
 |===
 | Page | What it is | Address
 
-| Timeline | the plateaus as a list, each with what it changes over the plateau it overrides (see <<editor-timeline>>) | `#/timeline`
-| Applications | the drawing of the application layer, with no element selected (see <<editor-map>>); the page that was called the _Map_ | `#/timeline/applications`
-| Environments | the tree of the technology layer, and the page and the diagrams of the element selected in it (see <<editor-elements>>) | `#/timeline/environments`
-| Elements | the trees of both layers, and the page and the diagrams of the element selected in them (see <<editor-elements>>) | `#/timeline/elements`
-| Stories | the stories and the views of the plateau that is drawn (see <<editor-stories>>); the page that was called the _Library_ | `#/stories` and `#/stories/views`
-| Files | the manifests, with the plateau of each (see <<editor-files>>) | `#/files`
+| Plateaus | the plateaus as a tree, each with what it changes over the plateau it overrides; the page where a plateau is made, edited and deleted (see <<editor-plateaus>>) | `#/timeline/plateaus` (and `#/plateaus`)
+| Applications | the Map of the application layer, with no element selected (see <<editor-map>>) | `#/timeline/applications`
+| Environments | the Map of the technology layer, with no element selected (see <<editor-map>>) | `#/timeline/environments`
+| Elements | the trees of both layers, and the page and the diagrams of the element selected in them (see <<editor-elements>>); where an element is edited, created and deleted | `#/timeline/elements`
+| Stories | the stories and the views of the workspace, the same whatever plateau is drawn (see <<editor-stories>>) | `#/stories` and `#/stories/views`
+| Files | every manifest of the workspace, in a group for each plateau (see <<editor-files>>) | `#/files`
 | Settings | the settings of the workspace (see <<technical-configuration>>) | `#/settings`
 |===
 
-The addresses of the earlier versions still open: `#/map` opens Applications, `#/elements` opens Elements, `#/library`, `#/library/stories` and `#/stories` open the Stories side of Stories, `#/library/views` its Views side, and `#/diagram` opens Elements as it always did. The page then writes its own address, in place of the one that was typed, without adding an entry to the history of the browser. The parameters of an address (`ref`, `tab`, `pin`, `facet`, `story`, `view`, `plateau`...) are the ones they were.
+The addresses of the earlier versions still open: `#/map` opens Applications, `#/elements` opens Elements, `#/library`, `#/library/stories` and `#/stories` open the Stories side of Stories, `#/library/views` its Views side, and `#/diagram` opens Elements as it always did. `#/timeline` used to name the list of the plateaus: it now opens Applications, like the button, and the list is `#/timeline/plateaus`, or `#/plateaus`. The page writes its own address in place of the one that was typed, without adding an entry to the history of the browser. The parameters of an address (`ref`, `tab`, `pin`, `facet`, `story`, `view`, `plateau`...) are the ones they were.
 
-*Environments* is the Elements page with the tree of the technology layer alone: there is no map of environments, and an environment is drawn by the *Overview*, *Detailed* and *Deep* tabs of the element, as it was. An application element that an address or a link selects there opens Elements, which lists both trees; leaving Elements or Applications for Environments with an application element selected lets the selection go, since the tree does not list it.
+*The address says the plateau.* A link with `plateau=<id>` draws that plateau, and `compare=` the comparison it names (see <<editor-changes-address>>); an address with no `plateau=` is the root, `baseline`, which the page never writes. This is also true once the editor is open: an address that is typed in the tab, followed, or reached by Back and Forward draws the plateau it names (an unknown plateau leaves the one that is drawn). A plateau that you choose, on the band or on the page Plateaus, is an entry of the history, so Back walks back through the plateaus you drew. A comparison chosen on the band changes no address, so Back between two comparisons of the same plateau does nothing.
 
-*Settings* has no section for plateaus: a workspace of layers writes its plateaus in its manifests (see <<editor-band>>), and has the paths of its manifests, as a workspace with no plateau does. The rest of this chapter still says _the Map_ for the page Applications, and _the Library_ for the perspective Stories, where it speaks of the drawing and of the lists. A workspace that writes no layer has the same perspectives and the same pages: what it had under the names _Map_ and _Library_ is now *Applications* and *Stories*, and its band has one node. Its files are read, drawn and saved as they were.
+*Environments* is a Map like Applications, on the technology layer: the tree of environments and nodes on the left, the pins, the eye, the chips, the Changes panel and *Name view...* are the ones of Applications. The page *Elements* keeps the tree of both layers, and is where an environment or a node is edited and created, as an application element is. *Show on map*, on an element of either layer, opens the Map of that layer with the element pinned, and a row of the *Changes* panel about the other layer leaves the Map on screen for the Map of that layer.
+
+*Settings* has no section for plateaus: a workspace of layers writes its plateaus in its manifests (see <<editor-plateaus>>), and has the paths of its manifests, as a workspace with no plateau does. The rest of this chapter says _the Map_ for what Applications and Environments draw, one for each layer. A workspace that writes no layer has the same perspectives and the same pages, and its band has one plateau. Its files are read, drawn and saved as they were.
 
 [[editor-elements]]
 === Elements
 
-The *Elements* page is the tree of the workspace on the left (the page *Environments* has the technology tree alone), and the selected element in the center. The center has four tabs:
+The *Elements* page is the tree of both layers of the workspace on the left, and the selected element in the center. The center has four tabs:
 
 - *Details*: the fields, qualifiers, tags and relationships of the element, with *Edit* to change them (change its id and every reference to it follows; *Move*, in the edit form, puts it under another parent, see <<editor-move>>), and *Delete* (the relationships of other elements that pointed at it are listed first, so that none is left dangling by surprise).
 - *Overview*, *Detailed* and *Deep*: the viewpoints of the same names, drawn live from the model, as the command line generates them. *Detailed* is for an element that can contain others. Clicking a box in a diagram selects that element.
 
 The badges and colours of styled stereotypes, on the boxes and in the tree, are explained in <<stereotypes-and-styles>>.
 
-Changes stay in memory, with a mark on the tree for each modified element, until *Save all changes* writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one. A file that is saved keeps what the changes did not touch: its comments, its blank lines, the quotes of the values and its final line break. Only the lines that changed are rewritten, and a value written anew (a renamed id, a new parent, a reference that follows, a `replaces`) keeps the quoting of the line it replaces, the way its key is written and its trailing comment; a line that is added is written like the lines around it (double quotes, single quotes or none, as the file does), and plain when the file quotes nothing. A list or a map written in square or curly brackets (`replaces: [a, b]`, `tags: {zone: north}`, on one line or on several, nested, as an item of a list of maps) stays as written when the change does not reach it; a change to it writes it as a block, in which the comments that were inside its brackets stay as lines of the block (a comment above a value above it, a comment after a value at the end of its line), and the quotes of its values and of its keys and the words of its booleans (`on`, `yes`) are the ones you wrote, except for a value the change sets. The same words (`yes`, `no`, `on`, `off`, `~`) and a key with no value (`description:`) stay as written in the lines the change does not reach, and a comment or a blank line above a line that is rewritten stays above it. A list written at the same column as its key (`tags:` then `- a` at the same column) is followed too: its items and comments stay, and an item that is added is written at the column the list uses; the comment after `[]`, `{}` or a key with no value stays on the line when a change fills the collection, and the comments inside empty brackets stay under the key. A manifest that uses a YAML anchor, an alias or a tag is read by the editor and by the command line the same way: an alias (`description: *n`) is the value of the anchor it points at (`name: &n "Bakery"`), not its name, and a tag qualifies a scalar (`!!str 12` is the text `12`; `!!int`, `!!float`, `!!bool` and `!!null` read it as such, any other tag as a text). A merge key (`<<: *base`) is not a merge: it is a key named `<<`. The anchor, the alias and the tag stay as written in the lines a change does not touch, and a line a change rewrites keeps its anchor and its tag; an alias stays an alias as long as the line still says what its anchor says, and is written as its value when a change makes them differ. The editor does not follow an anchor, an alias or a tag inside square or curly brackets (`[&a one, *a]`), nor a tag on a text that goes over several lines: such a file is written again entirely in the editor's own layout, its comments lost and its aliases written as their values (see tmorin/archicode#78). An anchor or a tag on a key (`&k name: x`) is read by the command line and refused by the editor, which does not open the file and says so (see <<plateau-limits>>). When a file is laid out in a way the editor does not write (an indentation other than two spaces, for example), it is written again entirely in the editor's own layout, and its comments are lost.
+Changes stay in memory, with a mark on the tree for each modified element, until *Save all changes* writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one. A file that is saved keeps what the changes did not touch: its comments, its blank lines, the quotes of the values and its final line break. Only the lines that changed are rewritten, and a value written anew (a renamed id, a new parent, a reference that follows, a `replaces`) keeps the quoting of the line it replaces, the way its key is written and its trailing comment; a line that is added is written like the lines around it (double quotes, single quotes or none, as the file does), and plain when the file quotes nothing. A list or a map written in square or curly brackets (`replaces: [a, b]`, `tags: {zone: north}`, on one line or on several, nested, as an item of a list of maps) stays as written when the change does not reach it; a change to it writes it as a block, in which the comments that were inside its brackets stay as lines of the block (a comment above a value above it, a comment after a value at the end of its line), and the quotes of its values and of its keys and the words of its booleans (`on`, `yes`) are the ones you wrote, except for a value the change sets. The same words (`yes`, `no`, `on`, `off`, `~`) and a key with no value (`description:`) stay as written in the lines the change does not reach, and a comment or a blank line above a line that is rewritten stays above it. A list written at the same column as its key (`tags:` then `- a` at the same column) is followed too: its items and comments stay, and an item that is added is written at the column the list uses; the comment after `[]`, `{}` or a key with no value stays on the line when a change fills the collection, and the comments inside empty brackets stay under the key. A manifest that uses a YAML anchor, an alias or a tag is read by the editor and by the command line the same way: an alias (`description: *n`) is the value of the anchor it points at (`name: &n "Bakery"`), not its name, and a tag qualifies a scalar (`!!str 12` is the text `12`; `!!int`, `!!float`, `!!bool` and `!!null` read it as such, any other tag as a text). A merge key (`+<<: *base+`) is not a merge: it is a key named `+<<+`. The anchor, the alias and the tag stay as written in the lines a change does not touch, and a line a change rewrites keeps its anchor and its tag; an alias stays an alias as long as the line still says what its anchor says, and is written as its value when a change makes them differ. The editor does not follow an anchor, an alias or a tag inside square or curly brackets (`[&a one, *a]`), nor a tag on a text that goes over several lines: such a file is written again entirely in the editor's own layout, its comments lost and its aliases written as their values (see tmorin/archicode#78). An anchor or a tag on a key (`&k name: x`) is read by the command line and refused by the editor, which does not open the file and says so (see <<plateau-limits>>). When a file is laid out in a way the editor does not write (an indentation other than two spaces, for example), it is written again entirely in the editor's own layout, and its comments are lost.
 
 [[editor-map]]
-=== Applications
+=== Applications and Environments: the Map
 
-The *Applications* page, which the editor called the *Map* until wave 014, draws the whole application layer, with no element selected. It opens folded: only the systems and solutions show, and a link is drawn between the boxes its two ends land on, so opening a box splits the links that reached it among its children.
+The *Applications* page, which the editor called the *Map* until wave 014, draws the whole application layer, with no element selected, and the *Environments* page draws the whole technology layer the same way, with the same tools: one Map for each layer. The tree on the left of each lists the elements of its layer only (*Environments* in the title of the tree of the technology Map), the pins, hidden elements and open boxes of a layer are that Map's own (a reference can exist in both layers, and a pin of one means nothing in the other), and a technology element is the pin of the Map of its layer. A Map opens folded: only the top of the layer shows (the solutions and systems, or the environments), and a link is drawn between the boxes its two ends land on, so opening a box splits the links that reached it among its children.
 
 In the tree on the left, each row has two buttons, which appear when the pointer is over the row or the row has the focus:
 
 - *Pin* (the pin) keeps only what touches the element. Pin several to keep what touches any of them. With nothing pinned, the whole layer is drawn.
 - *Hide* (the eye) leaves the element, what is inside it and their relationships out of the map.
 
-The pinned and hidden elements are also shown as chips over the map, each removable, with *Clear all* once there are several. In the tree, rows of the elements the map does not draw are greyed. Folding the tree does not change the boxes of the map: use *Fold all* and *Unfold all* in the toolbar of the map, or the buttons of the boxes. *Hide unlinked* leaves out the boxes that no link reaches; it is in the toolbar of the diagrams of Elements too, where the element itself always stays. It is in the URL (`hide-unlinked=1`) and in a saved view.
+The pinned and hidden elements are also shown as chips over the map, each removable, with *Clear all* once there are more than two. In the tree, rows of the elements the map does not draw are greyed. Folding the tree does not change the boxes of the map: use *Fold all* and *Unfold all* in the toolbar of the map, or the buttons of the boxes. *Hide unlinked* leaves out the boxes that no link reaches; it is in the toolbar of the diagrams of Elements too, where the element itself always stays. It is in the URL (`hide-unlinked=1`) and in a saved view. A saved view of a Map keeps the layer it draws, and the command line draws it too (see <<map-viewpoint>>).
 
 *Center* puts the selected box in the middle at a readable size (with nothing selected on the Map: the top of the map, centered across), never below 80%, and *Fit* shows the whole diagram, however small. Fit is in the URL (`frame=fit`) and Center, how a diagram opens, is a URL with no `frame`, so a link opens the diagram framed as you left it; a zoom or a move of your own is not part of the link. *PNG* and *SVG*, in the header, download the diagram.
 
 [[editor-inspection]]
 === The inspection panel
 
-Beside a diagram, on the right, a panel shows the data of the selected element without leaving the view: its name and styled stereotypes, its kind, its layer, its id and reference, its description, qualifiers and tags, and the file that declares it. It is there on the *Map*, on the *Overview*, *Detailed* and *Deep* tabs of Elements (where a click on a box moves to that element, and the panel follows) and on the page of a view in the Library (where a click on a box selects it on the page only, see <<editor-stories>>); it is not on *Details* and in the edit form, which show the same things themselves. Nothing is shown, and no room is kept, while nothing is selected. The panel is resized by dragging its edge (the width is remembered; a double click on the edge gives the default back), it goes away with *Maximize*, and on the Map its *x* button deselects the element. On the Map the panel says so when the selected element is not drawn (a pin, a hidden element or a folded box leaves it out), and when it is a technology element, which the Map never draws. A click does what it did before: on the Map it selects, in Elements it moves to the element.
+Beside a diagram, on the right, a panel shows the data of the selected element without leaving the view: its name and styled stereotypes, its kind, its layer, its id and reference, its description, qualifiers and tags, and the file that declares it. It is there on the *Map* (Applications and Environments), on the *Overview*, *Detailed* and *Deep* tabs of Elements (where a click on a box moves to that element, and the panel follows) and on the page of a view in Stories (where a click on a box selects it on the page only, see <<editor-stories>>); it is not on *Details* and in the edit form, which show the same things themselves. Nothing is shown, and no room is kept, while nothing is selected. The panel is resized by dragging its edge (the width is remembered; a double click on the edge gives the default back), it goes away with *Maximize*, and on the Map its *x* button deselects the element. On the Map the panel says so when the selected element is not drawn (a pin, a hidden element or a folded box leaves it out), and when it is an element of the other layer, which the Map never draws (*This map draws the technology layer only.* on Environments, *The map draws applications only.* on Applications). A click does what it did before: on the Map it selects, in Elements it moves to the element.
 
 A click on a link of the diagram, or on its caption, selects it instead, and the panel lists each relationship the link stands for: its label, its qualifiers and its tags (`tcp-port`, `doc-exchange`...), with the element that declares it (a button: it selects that element, in the layer of the drawing, as a click on its box does) and the one it points at. What is selected is the pair of boxes the link joins, so a link that groups several relationships lists them all (and says so), a link between folded boxes names the folded end and how many elements it hides (open it to see the relationships one by one), and a link to an unknown element says it points at nothing. The links of that pair are outlined. When several links join the same two boxes, the panel says how many, and marks (with the words _Clicked link_) the relationships of the one you clicked, unless they cannot be told from the others'. The links of a diagram are one stop of the Tab key, however many there are, and so are its boxes (Tab goes from one group to the other): once on a link, the arrow keys move to the next and the previous link, in the order the diagram draws them, and Home and End go to the first and the last. Enter or Space selects the link that has the focus. The stop is where the focus last was among the links, or else the selected link, or else the first one; for the boxes it is where the focus last was, or else the selected box, or else the one in focus of the diagram, or else the first one. *x* or Escape deselects: on the Map the panel goes, in Elements the panel of the element comes back. Selecting a link changes neither the perspective nor the tab, and in Elements the element stays the one being looked at (the tree, the tabs and the URL keep it). On the Map, if the panel that appears leaves the link behind its edge, the view moves by the least it takes to show it, once; a link already in view does not move the view. The selected link is in the URL, after the other parameters of the view (`link-from=customer&link-to=shop`: the two boxes of the drawing), so a copied URL, a reload and Back or Forward bring it back, and bring the view to it if it is not in sight. Selecting a link rewrites the current entry of the history, like a zoom, and does not add one. A link the drawing does not have when the URL is opened (it was renamed, or the boxes it joins are folded differently, which the URL does not carry) is dropped, and the URL with it. The selection ends as soon as the diagram it was made on is no longer the one on screen (another perspective, Details, another element, or a drawing that no longer has the link: a fold, a pin, a facet). A click on a box does what it did before and ends the link selection. A relationship the diagram does not draw (secondary links between deployed applications, unless a facet asks for them) cannot be selected.
 
@@ -1443,32 +1583,34 @@ The diagram of an element starts with the labels and the qualifiers, as the comm
 [[editor-stories]]
 === Stories: stories and views
 
-The *Stories* perspective, which the editor called the *Library* until wave 014, keeps what the workspace says about itself, on two sides: *Stories* (see <<stories>>) and *Views*, the named diagrams that the stories are made of. Each side has its list on the left and its page in the center, and they lead to one another: the view of a step is a link to that view, and a view lists the steps that show it. The URL says which side is open (`#/stories` and `#/stories/views`; the former `#/library/stories` and `#/library/views` still open them). With layers, the page lists the stories and the views of the plateau that is drawn and of the plateaus it overrides, which is how the command line loads them, and says how many others belong to plateaus that do not stack on it: draw one of them to see them. A story or a view that the plateau drawn does not have is no longer the one that is open when it is drawn. A new story or view takes an id that no plateau uses, so that it is never declared again in a plateau that overrides. A diagram on the Applications page or in Elements has two buttons in its header:
+The *Stories* perspective, which the editor called the *Library* until wave 014, keeps what the workspace says about itself, on two sides: *Stories* (see <<stories>>) and *Views*, the named diagrams that the stories are made of. Each side has its list on the left and its page in the center, and they lead to one another: the view of a step is a link to that view, and a view lists the steps that show it. The URL says which side is open (`#/stories` and `#/stories/views`; the former `#/library/stories` and `#/library/views` still open them). The page lists the same stories and the same views whatever plateau is drawn: a story and a view belong to no plateau (see <<plateau-untied>>), so there is no list per plateau and no note about other plateaus, and a story or a view is edited, renamed and deleted from any plateau. A new story or view is a manifest in the first folder of `manifests.paths`, with no `plateau:` in its header, in a workspace of plateaus as in one without. A diagram on the Applications page, on the Environments page or in Elements has two buttons in its header:
 
-- *Name view...* keeps the diagram as a view, in a file of its own (`view.<id>.yaml`): the element and the viewpoint (Elements), or what is pinned, hidden and open (Map), with the facet, *Hide unlinked* and the texts it draws. It keeps the recipe, not a picture: the view is drawn again from the model each time. A named view can be put in several stories, and generated by the command line.
-- *Add to story...* puts the diagram in a story, as a step after the one being told, or at the end. A dialog asks which story (a list to pick from, or the name of a new one: a name that is already a story's is that story). The step carries its own view (no extra file), unless the diagram is one that was named: then it points at it.
+- *Name view...* keeps the diagram as a view, in a file of its own (`view.<id>.yaml`): the element and the viewpoint (Elements), or what is pinned, hidden and open, and the layer (Map), with the facet, *Hide unlinked* and the texts it draws. It keeps the recipe, not a picture: the view is drawn again from the model each time. A named view can be put in several stories, and generated by the command line.
+- *Add to story...* puts the diagram in a story, as a step after the one being told, or at the end. A dialog asks which story (a list to pick from, or the name of a new one: a name that is already a story's is that story). The step carries its own view (no extra file), unless the diagram is one that was named: then it points at it. It writes no `at` and no `against` (see <<plateau-limits>>).
 
 While a story is being walked through, a bar over the diagram says where you are, with *Previous* and *Next*, and the words of the step, to read; *Edit text* turns them into a box to type in (it opens by itself right after *Add to story...*, so that you can write as you go). *Back to this step* draws the saved view again when you moved away from it, and *Leave story* closes the bar. A step that cannot be drawn (its element was deleted) says why in the bar, which stays: *Next* and *Previous* still work. The story is in the URL, so a link or Back lands on the same step.
 
-On the Stories side, a story is open as soon as there is one, and edited in place: its name, its text, the order of its steps (*Up*, *Down*, *Remove*, which can be undone right away) and the words of each step. The step that is showing on the diagrams is marked. *Play* walks through the story from its first step, and *Show on diagram* draws one step. A step that carries its own view says so, and *Keep as named view* gives it a name and a file; a step whose view was deleted offers to point at another one. Renaming an element updates the views and steps that point at it. A change that is not saved yet is marked *modified*.
+*A step told at a plateau.* A step that says `at` or `against` (see <<story-step-plateaus>>) draws its plateau and its comparison before it draws its view, in the whole editor: the band, the *Changes* panel and the diagram are the ones of that plateau, and it is the step, not the plateau, that is an entry of the history. The bar says _told at To be, compared with As is_. A step that names none is drawn as the reader had it when the story began; a plateau or a comparison that the reader chooses on the band in the middle of the story is the new home of the steps that name none. *Back to this step* is offered when the plateau or the comparison on screen is not the step's, and *Leave story* closes the bar and changes nothing: the diagram stays as it is. A name that the plateau of the step lacks is no mistake of the story: the step says _The element “x” is not in the plateau “p”._ and cannot be drawn. A step whose plateau is none, or cannot be drawn, changes nothing, says why in the bar, and stays.
 
-On the Views side, the page of a view that can be drawn draws it in the center, from the model, with the canvas and the tools of the Map and Elements: zoom, *Center*, *Fit*, *Hide unlinked*, the four texts (see <<editor-texts>>), and *PNG* and *SVG* in the header. The facet of the view is applied: it is drawn here, not picked. There is no folding on this page, since the open boxes of a Map view are part of the view. The zoom and the moves are the page's own and are not changes to the view, and the page changes nothing the Map and Elements show (selection, pins, tab, facet, texts, address). The header keeps *Open on diagram*, which draws the view on the Map or in Elements to explore it with their tools, *Rename* and *Delete*, and has *Maximize*, which hides the list of views and the right-hand panel (`M` maximizes, `Esc` restores; the Map is not touched).
+On the Stories side, a story is open as soon as there is one, and edited in place: its name, its text, the order of its steps (*Up*, *Down*, *Remove*, which can be undone right away) and the words of each step. In a workspace that has plateaus, each step has two lists, *Told at* (the plateau drawn, by default) and *Compared with* (nothing, by default): a choice that is the default takes the key out of the step, a plateau that is none is listed and flagged _(not a plateau)_ so that it is not lost, and *Keep as named view* keeps the two keys with the step. The step that is showing on the diagrams is marked. *Play* walks through the story from its first step, and *Show on diagram* draws one step. A step that carries its own view says so, and *Keep as named view* gives it a name and a file; a step whose view was deleted offers to point at another one. Renaming an element updates the views and steps that point at it. A change that is not saved yet is marked *modified*.
 
-The panel on the right, resized and hidden as the one of the Map (see <<editor-inspection>>), has the view first: what it draws and the file that keeps it, then a field for each attribute of the view, and the steps of the stories that show it, each a link to its story. Once something is selected, the inspection of the selection comes under it; the panel stays where it is when the top of the inspection is in sight, and otherwise scrolls by the least it takes to show its first lines, so that the fields of the view stay in sight as long as there is room. A click on a box, or Enter on the box that has the focus, selects the element and shows its panel, which has a *Show in Elements* button: it leaves the page and selects the element there, on the tab Elements was left on. A click on a link or on its caption shows the relationships it stands for, and the elements named in that panel select on the page too. The selected box is outlined, and *x* or `Esc` deselects. A box for a relationship that points at nothing cannot be clicked here. This selection is the page's own: it does not select anything on the Map or in Elements, it is forgotten when another view is shown, and it is not in the URL, which carries no more than `#/library/views?view=<id>`.
+On the Views side, the page of a view that can be drawn draws it in the center, from the model, with the canvas and the tools of the Map and Elements: zoom, *Center*, *Fit*, *Hide unlinked*, the four texts (see <<editor-texts>>), and *PNG* and *SVG* in the header. The facet of the view is applied: it is drawn here, not picked. There is no folding on this page, since the open boxes of a Map view are part of the view. The zoom and the moves are the page's own and are not changes to the view, and the page changes nothing the Map and Elements show (selection, pins, tab, facet, texts, address). The header keeps *Open on diagram*, which draws the view on the Map of its layer or in Elements to explore it with their tools, *Rename* and *Delete*, and has *Maximize*, which hides the list of views and the right-hand panel (`M` maximizes, `Esc` restores; the Map is not touched).
+
+The panel on the right, resized and hidden as the one of the Map (see <<editor-inspection>>), has the view first (while a plateau is compared, it has two tabs, *View* and *Changes*, see <<editor-changes-panel>>): what it draws and the file that keeps it, then a field for each attribute of the view, and the steps of the stories that show it, each a link to its story. Once something is selected, the inspection of the selection comes under it; the panel stays where it is when the top of the inspection is in sight, and otherwise scrolls by the least it takes to show its first lines, so that the fields of the view stay in sight as long as there is room. A click on a box, or Enter on the box that has the focus, selects the element and shows its panel, which has a *Show in Elements* button: it leaves the page and selects the element there, on the tab Elements was left on. A click on a link or on its caption shows the relationships it stands for, and the elements named in that panel select on the page too. The selected box is outlined, and *x* or `Esc` deselects. A box for a relationship that points at nothing cannot be clicked here. This selection is the page's own: it does not select anything on the Map or in Elements, it is forgotten when another view is shown, and it is not in the URL, which carries no more than `#/stories/views?view=<id>` (and the plateau).
 
 [[editor-view-edit]]
 A view is changed by its fields, and the diagram follows at once:
 
-- *Viewpoint*: *Overview*, *Detailed*, *Deep* or *Map*. From an element viewpoint to the Map, the element becomes the pinned element (a technology element gives none: the Map draws the application layer); from the Map to an element viewpoint, the first pinned element that still exists becomes the element, and the hidden and open elements are dropped. What the view showed of the texts is kept. *Cancel* gives the change up as long as it has not been saved.
-- *Layer* and *Element* (the element viewpoints): the element is typed, with the references of the layer as suggestions, and applied with `Enter` or by leaving the field. A reference that is not an element of the layer is refused, with the reason under the field, and stays there to be corrected. Changing the layer keeps the element when the other layer has it, and otherwise leaves the view without one: it then says so and cannot be drawn until one is chosen.
-- *Pinned*, *Hidden* and *Open* (the Map): each is a list of elements, with a cross to take one out and a field to add one (`Enter`). The drawing of this page is not edited itself, on purpose: a click on a box selects it. To choose pins by clicking, use *Open on diagram*.
+- *Viewpoint*: *Overview*, *Detailed*, *Deep* or *Map*. From an element viewpoint to the Map, the element becomes the pinned element, in the layer the view has (a technology element is the pin of the Map of the technology layer); from the Map to an element viewpoint, the first pinned element that still exists becomes the element, and the hidden and open elements are dropped; the layer stays. What the view showed of the texts is kept. *Cancel* gives the change up as long as it has not been saved.
+- *Layer* (every viewpoint: a Map draws the layer it names) and *Element* (the element viewpoints): the element is typed, with the references of the layer as suggestions, and applied with `Enter` or by leaving the field. A reference that is not an element of the layer is refused, with the reason under the field, and stays there to be corrected. Changing the layer keeps the element when the other layer has it, and otherwise leaves the view without one: it then says so and cannot be drawn until one is chosen; for a Map it keeps the entries of its three lists that exist in the other layer.
+- *Pinned*, *Hidden* and *Open* (the Map): each is a list of elements of the layer of the view (an element of the other layer is refused), with a cross to take one out and a field to add one (`Enter`). The drawing of this page is not edited itself, on purpose: a click on a box selects it. To choose pins by clicking, use *Open on diagram*.
 - *Facet*: the facets of the workspace, or none. *Hide unlinked*, *Labels*, *Qualifiers*, *Descriptions* and *Wrap* are boxes to tick, and they are the same as the buttons of the tools over the diagram. A text that is what that kind of diagram draws by default is not written to the file, as for any view.
 
 Nothing is written to the disk by an edit. The view gets the mark *modified*, in the header and in the list, and loses it when what you did is put back, as soon as the file of the view would be the one on disk (the last one written); *Save all changes* writes the file of the view and no other (the comments and the layout of the file stay, as for any manifest; a property that an edit takes out and puts back again is written where the editor writes it, element, facet, *Hide unlinked*, then the texts), and *Cancel* gives every unsaved change up: the view, and the diagram with it, are the saved ones again. A view that an edit left impossible to draw (no element, nothing that was pinned exists) says why in the center, with the same fields to correct it, and can still be saved. Renaming an element in Elements still rewrites the views that point at it; the steps of the stories point at the view, so they show the edited view, saved or not.
 
 A view that cannot be drawn (its element was deleted, nothing that was pinned exists any more, the viewpoint is unknown) keeps its message, what it draws, its fields and its steps in the center of the page, with no diagram and no panel.
 
-A story is a file (`story.<id>.yaml`) in the first manifests folder, and so is each named view. They wait in memory, like the other changes, with a mark on the file, for *Save all changes*, and *Cancel* gives them up: only the files that changed are written. When an older workspace still has views or stories in `workspace.yaml`, the Library says so, on both sides, with *Move to manifests*. The Map of a technology layer does not exist: to tell about environments, use views of Elements on the environments or the nodes.
+A story is a file (`story.<id>.yaml`) in the first manifests folder, and so is each named view. They wait in memory, like the other changes, with a mark on the file, for *Save all changes*, and *Cancel* gives them up: only the files that changed are written. When an older workspace still has views or stories in `workspace.yaml`, Stories says so, on both sides, with *Move to manifests*, which works whatever plateau is drawn.
 
 [[editor-facets]]
 === Facets
@@ -1478,13 +1620,15 @@ The facets of the workspace (see <<facets>>) are in a list in the header of the 
 [[editor-files]]
 === Files
 
-*Files* lists the manifests of the workspace on the left, and the text of the one that is open in the center, which can be edited (see <<editor-open>> for what the editor reads). A workspace that has layers adds two things to the list.
+*Files* lists every manifest of the workspace on the left, and the text of the one that is open in the center, which can be edited (see <<editor-reads>> for what the editor reads). Whatever plateau is drawn, the list holds every file: there is no choice of what it shows. A workspace that has layers lists them in groups.
 
-*The plateau of each file.* Each row says the plateau its manifest belongs to, after its name: the plateau its header names (`plateau: saas`), `baseline` when the header names none, and for a manifest of kind `archicode.morin.io/plateau` the plateau it declares. A file the editor cannot read belongs to none and is always listed, with its error.
+*A group for each plateau.* The heading of a group says the plateau, its name and the number of its files. The groups come in the order of the tree, the root first and then each plateau under the one it overrides. The plateau of a manifest is the one its header names (`plateau: saas`), `baseline` when the header names none, and, for a manifest of kind `archicode.morin.io/plateau`, the plateau it declares. A group that holds no file has no heading. A workspace with no layer lists its files as it always did, with no group and nothing to fold.
 
-*What the list shows.* The list is the plateau of the band: *This plateau* (the manifests that belong to the plateau drawn), *With its past* (those of the plateau drawn and of the plateaus it overrides, which is what its state is made of) or *All files*. The page says how many files of other plateaus it leaves out, and the choice lasts as long as the page is open. The file that is open stays in the list. A workspace with no layer lists every file, with no choice and no plateau, as it always did.
+*Fold and unfold.* A click on the heading of a group folds and unfolds it (Enter and Space do the same), and *Fold all* and *Unfold all* do every group. A folded group still tells, in its heading, that one of its files has an _error_ or is _modified_. Opening a file, by its row, by an address or by a link of a message, unfolds its group; a fold that you make afterwards is kept. The folds are the page's own: they last as long as the editor stays open on the same folder, they are not written in the workspace, and they do not make a file _modified_.
 
-*A plateau that disagrees with the folder.* The folder of a manifest does not matter to the tools: the plateau is what the header says. The folders of a project are often named after its plateaus, though, and a file moved from one to the other with its header left alone is read as the plateau of its header, not of its folder. When a manifest sits in a folder that is named like another plateau of the workspace (the deepest such folder counts), its row has a _folder_ mark and its page has a warning: `a/x.yaml` says `plateau: b` in its header but sits in the folder `a`; `b/y.yaml` has no `plateau` key, so it belongs to `baseline`, but sits in the folder `b`. It is only a warning: nothing is refused, the command line says nothing, and the file is where you put it. A folder that is named like no plateau says nothing.
+*Files that belong to no plateau.* The last group, *No plateau*, holds the files that belong to no plateau: the views and the stories (they are declared in no plateau, see <<plateau-untied>>) and a file the editor could not read, which is always listed, with its error. `workspace.yaml` is not in the list: it is the page *Settings*.
+
+*A plateau that disagrees with the folder.* The folder of a manifest does not matter to the tools: the plateau is what the header says. The folders of a project are often named after its plateaus, though, and a file moved from one to the other with its header left alone is read as the plateau of its header, not of its folder. When a manifest sits in a folder that is named like another plateau of the workspace (the deepest such folder counts), its row has a _folder_ mark, a note above the groups counts such files (_N files sit in the folder of another plateau_), and its page has a warning: `a/x.yaml` says `plateau: b` in its header but sits in the folder `a`; `b/y.yaml` has no `plateau` key, so it belongs to `baseline`, but sits in the folder `b`. It is only a warning: nothing is refused, the command line says nothing, and the file is where you put it. A folder that is named like no plateau says nothing.
 
 [[editor-workspace-name]]
 === Name of the workspace
@@ -1496,24 +1640,30 @@ When the workspace has a name, the editor shows it at the top left of the window
 [[editor-band]]
 === The band of plateaus
 
-Under the top bar, every workspace has the band: the tree of its plateaus, one node for each, with the name of the plateau, its horizon and, after it, what it brings over the plateau it overrides. It is the one way to choose the plateau that is drawn and the one it is compared with: there is no plateau selector, no _Compare to_ list and no section of the Settings for plateaus. A workspace that writes no layer has one node, `baseline`, drawn. A workspace of layers (a `plateau` key in the header of a manifest, or a manifest of kind `archicode.morin.io/plateau`) has one node for each plateau, placed by the tree: `baseline` first, then what overrides it, each followed by what overrides it.
+Under the top bar, on the four pages of Timeline and nowhere else, the band chooses the plateau that is drawn and the one it is compared with. It is lean and read-only: two lists and, when something is wrong, one button. It writes nothing, and it has no tree, no counts and no sentence of its own (the tree and the counts are on the page Plateaus, see <<editor-plateaus>>). The plateau drawn and the comparison are the state of the editor, not of the band: Stories, Files and Settings have no band, and draw the plateau that was chosen. There is no plateau selector, no _Compare to_ list and no section of the Settings for plateaus. A workspace that writes no layer has one plateau, `baseline`. A workspace of layers (a `plateau` key in the header of a manifest, or a manifest of kind `archicode.morin.io/plateau`) has one for each plateau.
 
-*The order of the siblings.* Plateaus that override the same plateau are placed by their `horizon`, when it reads as a date, and by their id otherwise. A horizon reads as a date when it is a year (`2027`), a month (`2027-03`), a day (`2027-03-18`), a quarter (`2027-Q4`) or a half (`2027-H2`); the date of a quarter or a half is the first day of the period. The plateaus whose horizon reads as a date come first, from the nearest to the farthest, those with the same date by id; the others follow, by id. The rule is the same every time the folder is opened. (`archicode plateau list` orders the siblings by id only, and the band by horizon: the tree is the same.) (The tree does not need a horizon: it is the `override` of each plateau that places it, the horizon only orders the siblings. Any other text in a `horizon` is a label that no tool interprets.)
+* *Plateau* draws a plateau in the whole editor. It lists every plateau in the order of the tree, `baseline` first and then what overrides it, each followed by what overrides it and indented by its depth, with its name and its horizon. A plateau that the command line refuses has a `!` in front of its name.
+* *Compare with* says what the plateau drawn is compared with: _Nothing_, _Past_ (the plateau it overrides), _Future_ (the plateau that overrides it: one entry for each when several plateaus override the drawn one, and _Future: choose one_, which cannot be chosen, when an address asked for a future and left the choice open) and, under _Other plateaus_, any other plateau of the tree, a sibling or a cousin as well (`archicode diff --plateau <drawn> --against <other>`).
+* *! N mistakes*, when there are some, opens the dialog _Mistakes in the plateaus_: why only `baseline` is drawn, the sentences of the plateau drawn and of the plateau compared with that the command line refuses (the sentences of the command line, see <<plateaus>>), the views and the stories that name elements no plateau has, the steps of the stories that name plateaus that are none (see <<plateau-untied>> and <<story-step-plateaus>>), and the sentence that nothing is written in a plateau that cannot be drawn.
 
-*Drawing a plateau.* A click on a node draws that plateau, in the whole editor: the trees, Applications, the diagrams, Stories and the panel on the right show the plateau of the band. The plateau is its chain: the manifests that say `plateau: <id>` are added to the elements of the plateau it overrides, then its patches change them (`REMOVE`, `SET`, `ADD`, `MERGE`, applied by the same kernel as the command line), and every plateau of the chain is checked, with the sentences of the command line: a patch that selects nothing names the plateau, the rank of the patch and what it selected; a relationship, an entry of `uses` or an application hosted on a node that leads nowhere, a manifest whose `parent` is not there, a view or a story that names an element the plateau does not have, name the plateau. The click reads nothing from the disk and loses nothing: the manifests stay as they are, and each plateau is resolved once and kept until a manifest changes. When the kernel refuses the patches of a plateau, that plateau cannot be drawn (the band says why, and `baseline` is one click away); when only the checks fail, the plateau is drawn all the same, flagged `!`, with the sentences that the command line would stop on, so that the mistake can be repaired in it. The plateau that opens is the one the address names (`plateau=`), else the one this browser drew last in this folder, else the one `settings.current` names (a name that is no plateau is an error with the sentence of the command line), else `baseline`. Next to each node the band shows what the plateau brings over the plateau it overrides, as `+3 ~5 −11` (elements new, changed and removed).
+*Everything | Changes only* is not on the band: it is among the tools of a diagram, and is shown while a plateau is compared (see <<editor-changes-only>>).
 
-*Comparing.* Two toggles, *Past* and *Future*, compare the plateau that is drawn with the plateau it overrides, or with the plateau that overrides it. With the future, the band asks which one when several plateaus override the drawn one: press the button *⇄* of the plateau you mean. That button, on every node but the drawn one, compares the drawn plateau with any other plateau of the band, a sibling or a cousin as well (`archicode diff --plateau <drawn> --against <other>`); the same button again stops the comparison. The comparison is the one of <<editor-compare>>: the Map, the diagrams, the Library and the *Changes* panel tell what is new, changed, removed, moved, split or merged, with the same counts and the same table as `archicode diff` for the same two plateaus; *Everything* and *Changes only* choose what the diagrams draw. With the past the plateau drawn is the more recent one, with the future it is the older one, and what only the other plateau has is read in the panel on the right, as a removed element is. The choice is remembered by this browser for this folder.
+*The order of the siblings.* Plateaus that override the same plateau are placed by their `horizon`, when it reads as a date, and by their id otherwise. A horizon reads as a date when it is a year (`2027`), a month (`2027-03`), a day (`2027-03-18`), a quarter (`2027-Q4`) or a half (`2027-H2`); the date of a quarter or a half is the first day of the period. The plateaus whose horizon reads as a date come first, from the nearest to the farthest, those with the same date by id; the others follow, by id. The rule is the same every time the folder is opened. (`archicode plateau list` orders the siblings by id only, and the editor by horizon: the tree is the same.) (The tree does not need a horizon: it is the `override` of each plateau that places it, the horizon only orders the siblings. Any other text in a `horizon` is a label that no tool interprets.)
+
+*Drawing a plateau.* A choice in *Plateau* draws that plateau, in the whole editor: the trees, Applications, Environments, the diagrams, Stories and the panel on the right show the plateau of the band. The plateau is its chain: the manifests that say `plateau: <id>` are added to the elements of the plateau it overrides, then its patches change them (`REMOVE`, `SET`, `ADD`, `MERGE`, applied by the same kernel as the command line), and every plateau of the chain is checked, with the sentences and in the order of the command line: a patch that selects nothing names the plateau, the rank of the patch and what it selected; a relationship, an entry of `uses` or an application hosted on a node that leads nowhere, a manifest whose `parent` is not there or cannot hold its kind, name the plateau. The views and the stories belong to no plateau: a name that they have and the plateau lacks is told in the view (see <<editor-stories>>), and a name that no plateau has is in the dialog of the mistakes. The choice reads nothing from the disk and loses nothing: the manifests stay as they are, and each plateau is resolved once and kept until a manifest changes. When the kernel refuses the patches of a plateau, that plateau cannot be drawn (the dialog says why, and `baseline` is one choice away); when only the checks fail, the plateau is drawn all the same, flagged `!`, with the sentences that the command line would stop on, so that the mistake can be repaired in it. The plateau that opens is the one the address names (`plateau=`), else the one this browser drew last in this folder, else the one `settings.current` names (a name that is no plateau is an error with the sentence of the command line), else `baseline`.
+
+*Comparing.* *Compare with* compares the plateau that is drawn with another one. The comparison is the one of <<editor-compare>>: the Map, the diagrams, Stories and the *Changes* panel tell what is new, changed, removed, moved, split or merged, with the same counts and the same table as `archicode diff` for the same two plateaus; *Everything* and *Changes only* choose what the diagrams draw. With the past the plateau drawn is the more recent one, with the future it is the older one, and what only the other plateau has is read in the panel on the right, as a removed element is. The choice is remembered by this browser for this folder.
 
 *Cascade.* Below the lists, the Changes panel has *Cascade of the removals* when a `REMOVE` of the more recent plateau took more than what it selects: the elements that went with the selected one, and the entries taken out of elements that stay (a relationship towards it, an entry of `uses` or of `applications`), among what the other plateau has, as `archicode diff` lists them after the table. *Write replaces* and *Not related* work on the pairs of any two plateaus; *Write replaces* writes `replaces` in the manifest that declares the new element, and refuses an element the plateau only inherits (it is declared in a plateau above, which the key would change).
 
 *Where a value comes from.* In the panel of an element, each value (name, description, qualifiers, tags, relationships, replaces, uses, applications) says where it comes from: _declared in_ the plateau drawn, _inherited from_ another plateau (the one whose manifest declares the element), or _set by patch N_ of a plateau (with the operator and the selector of the patch, and "inherited" when the patch is one of a plateau above). A block *Origin* lists the plateau that declares the element and the patches that selected it.
 
-*Writing.* The plateau that is drawn is the one a write goes to, and the band says so (_writing in: Buy the commerce platform_). What an edit writes, and what is refused, is in <<editor-writing>>.
+*Writing.* The plateau that is drawn is the one a write goes to, and the page Plateaus says so (_writing in: Buy the commerce platform_). What an edit writes, and what is refused, is in <<editor-writing>>.
 
 [[editor-writing]]
 === Writing in a plateau
 
-A write goes to the plateau that is drawn, in the files of that plateau, and nowhere else. The band says _writing in: <plateau>_ when the workspace has layers. A workspace that writes no layer saves as it always did.
+A write goes to the plateau that is drawn, in the files of that plateau, and nowhere else. The page Plateaus says _writing in: <plateau>_ when the workspace has layers. A workspace that writes no layer saves as it always did.
 
 [cols="2,3",options="header"]
 |===
@@ -1528,16 +1678,18 @@ A write goes to the plateau that is drawn, in the files of that plateau, and now
 | that patch
 | a new element (top level, or a child of an element the plateau inherits)
 | a manifest whose header says `plateau: <the plateau>` (and `parent` for a child), in the folder of the manifests the plateau already has. A child of an element the plateau declares is written in the file of its parent, as before
-| a new view or story
-| a manifest whose header says `plateau: <the plateau>`
+| a new view or story (they belong to no plateau, whatever plateau is drawn)
+| a manifest with no `plateau:` in its header, in the first folder of `manifests.paths`
 | removing an element the plateau inherits
 | a `REMOVE` at the end of the patches (with `layer: technology` for a technology element). The kernel takes what is in the element and what points at it; the manifests of the plateau above are not touched
 | removing an element the plateau declares
 | its manifests are deleted, as before, and the patches of the plateau that name it (their `target`, the relationship they find with `where` or add) are taken out with them
-| a new plateau (_New plateau_ on the band, or on the Timeline page)
+| a new plateau (_New plateau_, on the page Plateaus)
 | a manifest of kind `archicode.morin.io/plateau` with its `id`, `name`, `horizon` and `override` (none when it overrides `baseline`)
 | the name, horizon or parent of a plateau (_Edit plateau_)
 | the same manifest; a plateau that exists through headers only gets one
+| deleting a plateau (_Delete_)
+| its manifest of kind `archicode.morin.io/plateau` and the manifests whose header says its id are deleted, after a dialog that lists them (see <<editor-plateaus>>)
 |===
 
 *Asking first.* A plateau that other plateaus stand on is not written without a word: when an edit changes the resolution of a plateau that overrides the one written, the editor lists those plateaus (the ones that inherit what was written and do not set it themselves) and writes only when you say yes. `baseline` is the plateau most often in that case. A plateau at the end of the chain, or an edit that no other plateau sees, is written at once.
@@ -1549,24 +1701,36 @@ A write goes to the plateau that is drawn, in the files of that plateau, and now
 - Renaming (`id`) or moving an element the plateau inherits: a patch never changes an id or a parent; draw the plateau that declares the element. Renaming or moving an element the plateau declares works as it does in `baseline`; the `target` of patches, the relationships they add, and the `replaces` entries that name it follow the new reference.
 - A value that comes from another plateau cannot be taken out by a patch (a patch sets a value); write a new text, or draw the plateau that declares it. A list or tags can be emptied (`SET` of an empty list or object).
 - A field that a patch written by hand with a free `json-path` sets (for instance a `MERGE` of tags on every element that has a qualifier): the editor shows it, with its origin, and does not edit it field by field. Edit the patch in *Files*.
-- A view or a story another plateau declares: views and stories cannot be patched; draw the plateau that declares it. A plateau cannot be drawn when the kernel refuses its patches: nothing is written in it until they are repaired in *Files*.
-- *Move to manifests* (the views and stories of `workspace.yaml`) is available in `baseline` only.
+- A plateau cannot be drawn when the kernel refuses its patches: nothing is written in it until they are repaired in *Files*.
+- A group under an element that the plateau inherits: a group has no manifest of its own, so it cannot be written in the plateau drawn (_A group under “shop” (declared in the plateau `baseline`) cannot be written in a manifest of its own: draw `baseline` to add it._).
 
-Not written by the editor: deleting a plateau, and patches with a free `json-path` or an `expect` (they are written by hand in *Files*). A new plateau manifest is written next to the other manifests (`plateau.<id>.yaml` in the first folder of `manifests.paths`; for a plateau that exists through headers only, in the folder of its files). The text editor of *Files* writes the text of any file whatever plateau is drawn, and is the way to repair or write what the forms do not.
+Not written by the editor: patches with a free `json-path` or an `expect` (they are written by hand in *Files*). A new plateau manifest is written next to the other manifests (`plateau.<id>.yaml` in the first folder of `manifests.paths`; for a plateau that exists through headers only, in the folder of its files). The text editor of *Files* writes the text of any file whatever plateau is drawn, and is the way to repair or write what the forms do not.
 
-[[editor-timeline]]
-=== The Timeline page
+[[editor-plateaus]]
+=== The Plateaus page
 
-*Timeline*, the first page of the perspective of the same name, lists the plateaus where the band draws them as a tree: one entry for each, in the order of the band, each indented by its depth. An entry says the name of the plateau, its id, its `horizon`, whether it is the one drawn or the one compared, and, in a line below, the plateau it overrides, where it is written (`described in inhouse/plateau.yaml`, or `exists only through the plateau key of a header` for a plateau that has no manifest of its own), how many patches it has and how many files belong to it. Below that, what it changes over the plateau it overrides, as the chips of the *Changes* panel, for the elements and for the relationships: new, changed, removed, and moved, split and merged when there are some. They are the counts of `archicode diff --plateau <id>`; a plateau that the command line refuses, or that overrides one it refuses, says it is not counted. The root overrides nothing, and says so.
+*Plateaus*, a page of the perspective Timeline (its address is `#/timeline/plateaus`, or `#/plateaus`), lists the plateaus as a tree: one entry for each, in the order of the tree, each indented by its depth. An entry says the name of the plateau, its id, its `horizon`, whether it is the one drawn or the one compared, and, in a line below, the plateau it overrides, where it is written (`described in inhouse/plateau.yaml`, or `exists only through the plateau key of a header` for a plateau that has no manifest of its own), how many patches it has and how many files belong to it. Below that, what it changes over the plateau it overrides, as the chips of the *Changes* panel, for the elements and for the relationships: new, changed, removed, and moved, split and merged when there are some. They are the counts of `archicode diff --plateau <id>`; a plateau that the command line refuses, or that overrides one it refuses, says it is not counted (a `!` marks it). The root overrides nothing, and says so. A workspace that writes no layer has the page too: one entry, `baseline`, and a note on what a plateau is. This page is the one place that lists the plateaus as a tree with their counts and the one place that writes a plateau: the band chooses and writes nothing.
 
-The name of a plateau draws it, as a click on its node of the band does. *New plateau after this* makes a plateau that overrides it and *Edit* changes its name, horizon or parent (see <<editor-writing>>). *Changes* draws the plateau and compares it with the plateau it overrides in one step, and the *Changes* panel opens on the right with the same lists as on the other pages; a click on one of its rows opens the element in *Elements*, since this page draws none. A workspace that writes no layer has the page too: one entry, `baseline`, and a note on what a plateau is.
+The name of a plateau draws it, as a choice in the list *Plateau* of the band does. *Changes* draws the plateau and compares it with the plateau it overrides in one step, and the *Changes* panel opens on the right with the same lists as on the other pages; a click on one of its rows opens the element in *Elements*, since this page draws none (*Next change* and *Previous change* only move the mark, see <<editor-changes-panel>>).
+
+*Writing a plateau.* *New plateau after this* (on an entry) and *New plateau* (above the list, for the plateau drawn, with _writing in: <plateau>_) make a plateau that overrides it; *Edit* (*Edit plateau* beside *New plateau*) changes its name, horizon or parent. The manifest is written as <<editor-writing>> says.
+
+[[editor-plateau-delete]]
+*Deleting a plateau.* *Delete* is on the entry of every plateau but the root, and *Delete plateau* beside *New plateau* for the plateau drawn. It opens a dialog that says what goes before anything does.
+
+* *What can go.* Only a plateau that no other plateau overrides: nothing inherits what it declares or patches, so no other plateau changes with it. The dialog refuses, with one sentence and without a *Delete* button, the root (_every other plateau stands on it_), a plateau that others override (it names them, and says to delete them first or to give them another parent with *Edit*; deleting a plateau that others override is not built, #112), a workspace that has no plateau but `baseline`, plateaus that cannot be drawn, and a save in flight. The button of a plateau that others override stays, with a tooltip that says why: a button that vanishes says nothing.
+* *What goes, and only that.* Its manifest of kind `archicode.morin.io/plateau` and every manifest whose header says its id, listed one by one (a file not saved yet is marked _new, not saved yet_, and a modified one says its changes go with it). A view or a story that says `plateau: <id>` belongs to no plateau: it stays, and the dialog says so. The files leave the disk at the next *Save all changes*, like any change, and *Cancel* gives the delete up with the others.
+* *Files that the editor does not read.* A `.toml` or `.json` manifest, or a YAML file that the editor cannot read, may say `plateau: <id>` for the command line: the delete does not touch them, the dialog lists them, and says that the command line still reads the plateau if one of them names it.
+* *`settings.current`.* When it names the plateau (or `baseline`, when the last plateau goes), the key is taken out of `workspace.yaml`, and the dialog says that the command line then draws the last plateau when the plateaus form one line, and asks for `--plateau` otherwise. A `current` that names another plateau, gone already, is left as it is.
+* *What blocks it.* A step of a story that names the plateau in `at` or `against`, and a view or a story step that names an element that only this plateau declares (it would exist in no plateau): the dialog lists the sentences, offers no *Delete*, and says to change them in Stories first. They are not cleared for you: a step told at a plateau is your statement of which state it shows.
+* *After it.* The plateau it overrode is drawn, with no comparison, when the plateau drawn was the one deleted; the plateau drawn stays, compared with nothing, when the one deleted was the one compared with. The folders of views that the command line generated (`views-<id>` and the folders of its comparisons) are not manifests: they stay where they are.
 
 [[editor-compare]]
 === Comparing two plateaus
 
-The band compares the plateau that is drawn with another one (see <<editor-band>>): *Past* is the plateau it overrides, *Future* the plateau that overrides it, and *⇄* on another node any other plateau, a sibling or a cousin included. With nothing compared, which is the default, the plateau is drawn alone, exactly as the editor always did. A comparison draws the plateau together with the other one: Applications, the diagrams of Elements and the page of a view in Stories tell what is new, what changed and what was removed (and, for the elements that say what they replace, what moved, was split or merged, see <<editor-replaces>>), with the same states as `archicode views generate` (see <<plateau-comparison>>). Like the plateau, the choice is remembered by this browser for this folder (not in the workspace), and it is ignored when the workspace no longer has that plateau. A plateau is never compared with itself. The address carries the plateau (`plateau=<id>`, when it is not `baseline`), and the comparison only next to the selection of a removed element (`compare=past`, `compare=future:<id>` or `compare=other:<id>`, see <<editor-changes-address>>).
+*Compare with*, on the band, compares the plateau that is drawn with another one (see <<editor-band>>): *Past* is the plateau it overrides, *Future* the plateau that overrides it, and *Other plateaus* any other plateau, a sibling or a cousin included. With nothing compared, which is the default, the plateau is drawn alone, exactly as the editor always did. A comparison draws the plateau together with the other one: Applications, the diagrams of Elements and the page of a view in Stories tell what is new, what changed and what was removed (and, for the elements that say what they replace, what moved, was split or merged, see <<editor-replaces>>), with the same states as `archicode views generate` (see <<plateau-comparison>>). Like the plateau, the choice is remembered by this browser for this folder (not in the workspace), and it is ignored when the workspace no longer has that plateau. A plateau is never compared with itself. The address carries the plateau (`plateau=<id>`, when it is not `baseline`), and the comparison only next to the selection of a removed element (`compare=past`, `compare=future:<id>` or `compare=other:<id>`, see <<editor-changes-address>>); a link that has `compare=` draws that comparison, and one that has none leaves the comparison as it is.
 
-The plateau compared with is _read_, not written: the editor resolves it from the manifests it has already read (there is no second folder to pick), keeps it apart from the plateau that is drawn, and an edit goes to the plateau drawn (see <<editor-writing>>). Its elements are not in the trees of the plateau drawn, and what only it has is listed in the *Changes* panel and read in the panel on the right. A plateau that cannot be resolved cannot be compared, and the band says why. The one write that is made for the comparison is *Write replaces* (see <<editor-replaces>>).
+The plateau compared with is _read_, not written: the editor resolves it from the manifests it has already read (there is no second folder to pick), keeps it apart from the plateau that is drawn, and an edit goes to the plateau drawn (see <<editor-writing>>). Its elements are not in the trees of the plateau drawn, and what only it has is listed in the *Changes* panel and read in the panel on the right. A plateau that cannot be resolved cannot be compared, and the dialog of the mistakes (the button of the band) says why. The one write that is made for the comparison is *Write replaces* (see <<editor-replaces>>).
 
 The diagram is drawn from the union of the two plateaus, and the boxes are laid out on that union: what was removed is drawn where it was, so a box does not move when the comparison is turned on from the other plateau or when you choose the other plateau of the pair (when nothing is compared, the plateau is laid out alone, as before). The editor tells the states without relying on colour: each one has a mark in front of the title of the box and of the caption of the link, a line style, and a pill with its name on the box.
 
@@ -1594,16 +1758,22 @@ Under the diagram, the key adds an entry for each state the drawing uses, with a
 [[editor-changes-panel]]
 ==== The Changes panel
 
-While a comparison is on, the panel on the right of Applications, of Elements and of Timeline is never empty. With nothing selected it is the *Changes* panel; with something selected it has two tabs, *Selected* (what is selected, as before) and *Changes* (with the number of rows). It is not in the page of a view in the Library, whose panel is the one of the view.
+While a comparison is on, the panel on the right of Plateaus, Applications, Environments and Elements is never empty. With nothing selected it is the *Changes* panel; with something selected it has two tabs, *Selected* (what is selected, as before) and *Changes* (with the number of rows). On Stories the panel is the one of the view, and while a comparison is on and can be drawn it has two tabs, *View* (what was there) and *Changes*; a story, or a view that cannot be drawn, had no panel and has the *Changes* panel alone.
 
 The panel starts with the counts: elements and relationships, each _new_, _changed_ and _removed_, as chips that carry a mark and a word (`+ 38 new`, `~ 26 changed`, `− 5 removed`), so that they read without colour; the elements add `→ 1 moved`, `⋔ 2 split` and `⊕ 1 merged` when there are some. The same chip is the state on every row below. Two lists follow, *Elements* and *Relationships*, in the order a review reads them: what is new, then what changed, then what moved, was split or merged, then what was removed, and by reference inside each. A row has the chip, the name and the reference of the element (a relationship reads `source → destination “label”`) and, for something that changed, what changed in it in words: `name`, `description (wording only)`, `qualifiers`, `tags`, `deployment`, `relationships added`, `relationships removed`, `relationships changed`, and for a relationship `label`, `qualifiers`, `tags`. A relationship whose label changed is one row that says the label before and after. A row of a moved, split or merged element says where it came from (`from shop.till`, `from shop.report; split with shop.report-b`), as `archicode diff` does.
+
+*Reading a long list.* A comparison of a large workspace has hundreds of changes (the pair `before` and `after-declared` of the fixture `replaces-large-pair` has 360). Under the counts, the panel says how many there are (`167 changes`) and has what it takes to read them without losing the place:
+
+* *Previous change* and *Next change* walk through the list, in the order of the list (the elements, then the relationships). They stop at the ends and do not wrap, and the panel says where you are (`3 of 12`). With no change selected, *Next change* goes to the first and *Previous change* to the last. The walk selects the change as a click on its row does, and leaves the list on screen (the *Changes* tab stays). On the page Plateaus, and on a story with no view drawn, nothing can be shown, so the walk only moves the mark.
+* The lists *State* (all, then the states that some row has, each with its count) and *Layer* (both, application, technology) narrow what is listed: the line then reads `12 of 167 changes`, each group says `n of N`, and *Show all* clears both. `contains-changes` is not a choice: it is the state of a box that holds a change, never of a row. A filter that leaves out the change you are at moves you to the nearest one that is shown.
+* The filters change the list only, never what the diagrams draw (*Changes only* does that, see <<editor-changes-only>>), nor the counts above them. They are the editor's, not the workspace's: they start again when the pair of plateaus compared changes. There is no keyboard shortcut for the walk (#113): the buttons keep the focus, so Tab and Enter walk it.
 
 A click on a row selects the thing as a click on its box or its link does, and shows it. On the Map the boxes around it are opened so that it is drawn, and the view is centred on it (what the *Center* button does); a pin or a hidden element of your own is not undone, and the panel says when the element is not on the map. A removed element opens the read-only panel described above, a relationship selects its link (in Elements, the element that declares it, and its link when that element's diagram is shown). The row of the selection is marked in the list, and the *Changes* tab brings the list back with that row in view.
 
 [[editor-what-changed]]
 ==== What changed
 
-The panel of a selected element, link or removed box adds a *What changed* block, first, so that a long description does not push it out of sight; it is the same on the page of a view in the Library.
+The panel of a selected element, link or removed box adds a *What changed* block, first, so that a long description does not push it out of sight; it is the same on the page of a view in Stories.
 
 - For a *changed* element, the natures in words, then each property that differs with its value _Before_ and _After_ (name, kind, description, qualifiers, tags, and the applications or `uses` of a node), then its relationships that are new, changed or removed, each a line with its chip. The *Before* and *After* lines carry a sign and a word, and the old value is struck, so nothing relies on colour.
 - For a *new* element, "Whole element is new": its properties are the ones listed below the block, and the relationships it declares are listed as new.
@@ -1614,7 +1784,7 @@ The panel of a selected element, link or removed box adds a *What changed* block
 [[editor-changes-only]]
 ==== Changes only and wording-only changes
 
-On the band, while a comparison is on, the group *Everything | Changes only* sets what the diagrams draw: with *Changes only* a diagram keeps what is new, changed or removed, the boxes that enclose them and the ends of the changed links; the links that did not change are left out. The boxes kept only to place the changes, the _context_, are drawn faded, say no state and are told in the key ("context, faded: shown to place the changes", with their number). The focal element of a diagram always stays and is never faded. It works the same on the Map, on the diagrams of Elements and on the page of a view in the Library, and together with the pins, the hidden elements, a facet and *Hide unlinked*.
+*Everything | Changes only*, among the tools of a diagram and shown while a plateau is compared, sets what the diagrams draw: with *Changes only* a diagram keeps what is new, changed or removed, the boxes that enclose them and the ends of the changed links; the links that did not change are left out. The boxes kept only to place the changes, the _context_, are drawn faded, say no state and are told in the key ("context, faded: shown to place the changes", with their number). The focal element of a diagram always stays and is never faded. It works the same on the Map, on the diagrams of Elements and on the page of a view in Stories, and together with the pins, the hidden elements, a facet and *Hide unlinked*.
 
 A change of the description alone is a change of wording, not of structure. The *Changes* panel counts them apart ("10 of the changed elements are changes of wording only") and keeps them visible by default; the checkbox *Hide wording-only changes* sets them aside in one click: those elements are drawn as unchanged (and a box that only they changed is no longer marked `contains-changes`, nor kept by *Changes only*), their rows leave the list, the counts of changed elements drop by their number and the panel says "10 wording-only changes hidden". Relationships are never set aside: a change of a label, a qualifier or a tag is structure.
 
@@ -1623,7 +1793,7 @@ Both choices are yours and not the workspace's: they are remembered per folder i
 [[editor-changes-address]]
 ==== The address and the trees
 
-The address of the page carries a selection, so that a reload or a shared link reopens it: `ref=` for an element, `link-from=` and `link-to=` for a link, as before, and `removed=` for a removed element (`removed-layer=technology` for one of the technology layer). A removed element exists only next to its comparison, so the address then also carries `compare=` (`past`, `future:<id>` or `other:<id>`, as the band says it): opening such an address chooses that comparison, as if you had chosen it, even if this browser remembered another one. The other choices of the comparison are not in the address.
+The address of the page carries a selection, so that a reload or a shared link reopens it: `ref=` for an element, `link-from=` and `link-to=` for a link, as before, and `removed=` for a removed element (`removed-layer=technology` for one of the technology layer). A removed element exists only next to its comparison, so the address then also carries `compare=` (`past`, `future:<id>` or `other:<id>`, as *Compare with* says it): opening such an address chooses that comparison, as if you had chosen it, even if this browser remembered another one. The other choices of the comparison are not in the address.
 
 While a comparison is on, a row of the tree of Elements and of the tree of the Map has a small mark after its name: `+` for a new element, `~` for a changed one, `→`, `⋔` or `⊕` for a moved, split or merged one, and `±` for one that did not change but has a change below it. The word is in its tooltip and is read by a screen reader. A removed element is not in these trees (it is not an element of the plateau drawn, so it can be neither pinned nor hidden nor edited): the *Changes* panel lists it and opens its panel.
 
@@ -1648,11 +1818,13 @@ An element of the plateau that is drawn can say which elements of the plateau it
 [[editor-move]]
 ==== Moving an element under another parent
 
-In the edit form of an element, *Move* (after *Delete*, before *Add child*) puts the element, and everything inside it, under another parent, without breaking a reference. It is offered for the elements that can have a parent: a system, a container, a component, a group, a node. A solution, a person or an environment is never put under anything, and has no *Move*; a system can go under a solution, and has no *Move* when the workspace has none. It works on the plateau that is drawn, and never on the one it is compared with, which is read-only. In a plateau of layers it moves an element that plateau declares; an element it inherits is refused (a patch never changes a parent), and says which plateau declares it.
+In the edit form of an element, *Move* (after *Delete*, before *Add child*) puts the element, and everything inside it, under another parent, or at the top level, without breaking a reference. It is offered when the dialog has at least one place to offer, the top level included: a solution, a person and an environment are at the top already and have nowhere else to go, so they have no *Move*; a system can go under a solution, and goes to the top level from there. It works on the plateau that is drawn, and never on the one it is compared with, which is read-only. In a plateau of layers it moves an element that plateau declares; an element it inherits is refused (a patch never changes a parent), and says which plateau declares it.
 
-The dialog has a search field (it keeps the parents that have every word you type in their name, id, reference or kind) and the list of the *valid parents*, in the layer of the element: an element that may hold the kind of this one (the rules that create an element under a parent: a system holds containers and groups, a container holds components and groups, an environment or a node holds nodes), but not the element itself, nor anything inside it, nor the parent it already has, nor a parent that already holds an element with the same id. It says how many elements follow, how many references will be rewritten in how many files, and how many saved views follow.
+The dialog has a search field (it keeps the places that have every word you type in their name, id, reference or kind) and the list of the places the element can go, in the layer of the element: the _top level_, when it may be there, then the *valid parents*, each an element that may hold the kind of this one (the rules that create an element under a parent, see <<nesting>>). It says how many elements follow, how many references will be rewritten in how many files, and how many saved views follow. Under the places, a closed list says, for every element of the layer that is not offered, why not, with the same search: _N places are not offered, and why_. The reasons are the sentences that refuse a move: it is the element itself, it is inside the element, it is its parent already, its kind cannot be held by that parent (the sentence says what the parent holds), the parent already holds an element with that id, the parent is declared twice, and a group cannot go under a parent of a plateau that the plateau drawn overrides (#114). A reason that stops every move (an element inside it is declared twice, a manifest cannot be read, a reference cannot be rewritten as text) is told once, at the top, as _No move can be written now_.
 
-*What follows.* The reference of the element becomes the reference of the new parent followed by its id, and so does the reference of each element inside it. Every reference to the element or to something inside it is rewritten, in every file of the workspace, by the machinery of an id change:
+*The top level.* The kinds that may be at the top level are the ones the layer holds there: a person, a solution and a system in the application layer, an environment in the technology layer; a group is no root. For any other kind the list says so (_A container is never at the top level: the application layer holds only person, solution and system there._), and the editor neither offers it nor moves an element there. In practice the top level is offered for a system that sits in a solution.
+
+*What follows.* The reference of the element becomes the reference of the new parent followed by its id (its id alone, at the top level), and so does the reference of each element inside it. Every reference to the element or to something inside it is rewritten, in every file of the workspace, by the machinery of an id change:
 
 * the `destination` of the relationships of any element of the same layer;
 * the `applications` of the nodes of the technology layer (for an application element) and the `uses` of the environments (for a technology element);
@@ -1662,14 +1834,18 @@ The dialog has a search field (it keeps the parents that have every word you typ
 
 The facets (their JSONPath is not a reference) are not read, as when an id changes. Nothing else of a file is touched.
 
-*What is written.* How a move is written depends on how the manifest holds the element, and the lines that are not part of it stay as the author wrote them (comments, blank lines, quotes), as for any other edit:
+*What is written.* There are four ways, chosen by how the manifest holds the element and where the new parent is declared, and the dialog says which one a place gets. The lines that are not part of the move stay as the author wrote them (comments, blank lines, quotes), as for any other edit:
 
-* An element that has a manifest of its own (`app.shop.till.yaml`, with its `header.parent`) stays in its file: only the `header.parent` line changes, and the manifests attached below it follow by their own `header.parent`. The new parent can be in any file.
-* An element that is nested in the manifest of another one (in its `content.elements`) is moved as a block inside that manifest: its lines, with the comments just above it and those at the end of its lines, go to the `elements` of the new parent, one level deeper or shallower, and the `elements` it leaves is dropped when it was the last element. The new parent has to be in the same file. A parent in another file would mean cutting the block out of one file and pasting it into another, which the editor does not do: the dialog says how many parents it leaves out for that reason, and the move is refused if you ask for one. Give the element a manifest of its own first, or move it by hand. The comments on lines of their own inside the block go with it. A comment after the last line of the block, before the next element, is the next element's and stays where it was.
+* An element that has a manifest of its own (`app.shop.till.yaml`, with its `header.parent`) stays in its file: only the `header.parent` line changes (at the top level the line goes), and the manifests attached below it follow by their own `header.parent`. The new parent can be in any file.
+* An element that is nested in the manifest of another one (in its `content.elements`) and goes under a parent of the same file is moved as a block inside that manifest: its lines, with the comments just above it and those at the end of its lines, go to the `elements` of the new parent, one level deeper or shallower, and the `elements` it leaves is dropped when it was the last element.
+* A nested element that goes under a parent in another file (declared in another manifest of the plateau written) is cut out of its file and pasted in the other, with its comments and its quotes. Both files are marked as modified, and a refused write changes neither.
+* A nested element that goes to the top level, or under a parent declared in a plateau whose files the plateau drawn does not write (a plateau it overrides), gets a manifest of its own, next to the file it leaves (`app.<reference>.yaml`, `env.` for the technology layer, and `-2` when the name is taken), with its `kind`, its `version`, the `plateau` drawn when it is not `baseline` and the `parent`, none at the top level. A group has no kind of manifest, so a group cannot go there: that is #114.
 
-*Replaces.* *Move* does not write `replaces`. The element that a move can reach is declared by the plateau that is drawn, and the plateaus it overrides do not have its old reference, so there is nothing for the key to name; when a comparison is on, the dialog says why it offers nothing more than *Move*. The dialog still carries a hint about `replaces` (_compare the plateau with another one on the band_): it is for a key that *Move* does not write here (#97). To say that an element replaces one of another plateau, use *Write replaces* in the *Changes* panel, or the *Replaces* section of the form of the element (see <<editor-replaces>>).
+The comments on lines of their own inside the block go with it. A comment after the last line of the block, before the next element, is the next element's and stays where it was. A file whose layout the move cannot follow (an anchor, an alias, a tag, a list written at the column of its key) is written by the ordinary save: the move works and the file says the right thing, and the comments of the block are the price. The end of line of each file is its own.
 
-*A move that is refused* changes nothing at all, and the reason is told in the dialog, which stays open with what you chose: the new parent is the element or something inside it, it is its parent already, it cannot hold that kind, it already holds an element with that id, the element or the parent is declared twice or belongs to the plateau compared with, a manifest cannot be read (a reference in it could not be rewritten), a reference is written as a number (`destination: 8080`) and cannot be rewritten as the reference of another element, or a nested element is asked to go to another file.
+*Replaces.* *Move* does not write `replaces`: the element that a move can reach is declared by the plateau that is drawn, and the plateaus it overrides do not have its old reference, so there is nothing for the key to name. In a workspace of plateaus the dialog says so in one line. To say that an element replaces one of another plateau, use *Write replaces* in the *Changes* panel, or the *Replaces* section of the form of the element (see <<editor-replaces>>).
+
+*A move that is refused* changes nothing at all, and the reason is told in the dialog, which stays open with what you chose: the new parent is the element or something inside it, it is its parent already, it cannot hold that kind, it already holds an element with that id, the element or the parent is declared twice or belongs to the plateau compared with, a manifest cannot be read (a reference in it could not be rewritten), a reference is written as a number (`destination: 8080`) and cannot be rewritten as the reference of another element, or an id has a `/` or a `\` in it, which cannot be the name of a file (rename the element first).
 
 Like every edit, a move is not written until *Save all changes*, and *Cancel* gives it up with the others (the folder is read again). The files it changed are marked as modified, and so is the moved element.
 
@@ -1713,7 +1889,7 @@ As you delve deeper into the Command section of ArchiCode's documentation, you'l
 
 Every command speaks on its error output in the same way, and keeps its standard output for what it produces (the files it announces, a table, a graph), so that `archicode diff > changes.txt` or `archicode query graph | jq` never mixes the two.
 
-*Errors.* When a command cannot do what you asked, it prints one line for each problem on the error output, starts it with `error: ` and exits with the code 1. It prints no stack trace. The line says what is wrong and where, for instance:
+*Errors.* When a command cannot do what you asked, it prints one line for each problem on the error output, starts it with `error: ` and exits with the code 1. It prints no stack trace. The exit codes are 0 (done), 1 (an error), 2 (a usage error, below) and 3, which only `archicode diff --fail-on` gives, when the comparison holds a change it was asked to fail on (see <<diff>>). The line says what is wrong and where, for instance:
 
 ----
 error: dangling reference: payments
@@ -1739,7 +1915,9 @@ An option that does not exist or a missing argument is a usage error: the comman
 
 * a facet written in the old dialect (`anyof`, `noneof`, `== null`): it is rewritten, and the warning gives the standard form (see <<facets>>);
 * a step of a story that names a view nobody declares;
-* a view of a viewpoint that the command line does not generate (the map is drawn by the editor), skipped by `views generate --view`;
+* a view or a story that says `plateau:` in its header, which is ignored (see <<plateau-untied>>);
+* a view that cannot be drawn in the plateau, because it names an element that the plateau does not have and another plateau has: skipped by `views generate --view`, or, for the entries of the lists of a map, left out (see <<plateau-views-lacking>>);
+* a viewpoint that the command line has no service for, skipped by `views generate --view`;
 * what a comparison ignored in the `replaces` of a plateau, with `archicode diff` and `archicode views generate` (see <<plateau-replaces-warnings>>);
 * a state word you wrote by hand on an element, where it disagrees with the comparison (see <<plateau-state-tags>>).
 
@@ -1815,12 +1993,20 @@ archicode views generate --plateau to-be --against baseline
 
 A facet applies to the views of a comparison as it does to the others, and a facet can select on `change` (see <<plateau-comparison>>).
 
-- Selective View Rendering: The power of customization lies in your hands. The command can be tailored to render specific views based on their unique identifier, providing you with control over the scope of generated visualizations.
+- Only the changes: `--only-changes` draws, in the views of the comparison only (`views-<plateau>-vs-<against>` and the folders of its facets), what changed: the new, changed, removed, moved, split and merged elements and relationships, the ends of their links, the elements that hold a change and what encloses them. The rest is kept as context and drawn faded, and a view with nothing to show still draws its own element. The views of the plateau itself and the table of changes (`gap.md` and `gap.json`) are as they are without the option. The option needs a comparison: with no plateau, or with the root and no `--against`, it is one `error:` line, and nothing is written.
+
+.Generate Views - Only the changes
+[source,shell]
+----
+archicode views generate --plateau to-be --against baseline --only-changes
+----
+
+- Selective View Rendering: The power of customization lies in your hands. The command can be tailored to render specific views based on their unique identifier, providing you with control over the scope of generated visualizations. A view that a manifest or `workspace.yaml` names (its `id`), a map included (see <<map-viewpoint>>), is drawn when it is asked for.
 
 .Generate Views - Selective View Rendering
 [source,shell]
 ----
-archicode views generate --view-id=view_a  --view-id=view_b
+archicode views generate --view=view_a --view=view_b
 ----
 
 - Renderer Engine Flexibility: You have the freedom to opt for a preferred Renderer Engine. The command allows you to specify a particular engine, aligning the rendering process with your architectural preferences.
@@ -1982,6 +2168,7 @@ to-be    6 REMOVE target shop.inventory  dropped  application  warehouse.picking
 - `--against`: the plateau it is compared with: any plateau of the tree, a sibling or the future included; else the plateau it overrides (see <<plateau-comparison>>). The root overrides nothing, so `--plateau baseline` needs it.
 - `--format` (`-f`): `text` (the default; its lines are as long as the longest reference, several hundred characters on a large workspace, so read them with `less -S` or take `markdown`), `markdown` (a table to paste in a pull request) or `json` (the counts and one object per change, with `before` and `after` for a changed element).
 - `--no-wording`: leaves the elements whose description is the only thing that changed out of the table, and says how many are left out. The counts still include them. It changes nothing to the elements that moved, split or merged, nor to the candidates.
+- `--fail-on` `<state>[,<state>...]`: makes the command a check for a build. It exits with the code 3 when the comparison holds a change of one of the states it lists, and with 0 otherwise. The states are `new`, `changed`, `removed`, `moved`, `split`, `merged` (the six states of a row), `contains-changes` (an element that did not change itself and holds a change), and `any`, which stands for the six of a row. The option may be repeated, and the words are in lower case. With `--no-wording`, a description that is the only thing that changed does not count. The table is printed as it is without the option, and nothing on the error output says why the build failed: the table does. An unknown or an empty state is one `error:` line and the exit code 1, before anything is read.
 
 The table lists the elements, then the relationships, sorted by layer and reference (the reference of an element that moved, split or merged is its own, not the one it replaces): the same output for the same two plateaus, byte for byte, whatever the machine.
 
@@ -2022,7 +2209,7 @@ after    4 REMOVE target shop.report  removed  application  shop.report.chart
 - The candidates are listed after the table, marked _not applied_: write `replaces` on the element in the `TO` column to accept one (see <<plateau-candidates>>). The mailer and the postman are still removed and new.
 - In JSON, a row of an element that replaces others has a `replaces` list (the references, sorted), the counts of `elements` have `moved`, `split` and `merged` when there are some, and `candidates` is a list of `layer`, `from`, `to`, `reasons` and `"applied": false`. In Markdown, the candidates are a section, `## Candidates, not applied`.
 - The relationships of a split element are not compared with the other plateau (which half would own them is a guess), so those of the halves, and those that end on a half, read as new. When there are some, the header has a line `of a split` (in Markdown, a sentence under the counts; in JSON, `counts.relationships.of_split`) that says how many of the new relationships they are, and each of those rows ends with `of the split` and the element or elements concerned (in JSON, `of_split`, a list). Nothing is invented as removed, and the counts of `new` still include them. The editor's *Changes* panel says the same under its counts and on each row.
-- A plateau that does not use `replaces` gets the table it always had, byte for byte. A difference is not an error: the exit code is 0. The command stops with an error (exit code 1) that says what to do when the workspace has no plateau, when the plateau is the root and `--against` names none, and when the plateau named by `--against` is unknown or is the plateau itself.
+- A plateau that does not use `replaces` gets the table it always had, byte for byte. A difference is not an error: the exit code is 0, unless `--fail-on` asks otherwise (the exit code is then 3, see above). The command stops with an error (exit code 1) that says what to do when the workspace has no plateau, when the plateau is the root and `--against` names none, and when the plateau named by `--against` is unknown or is the plateau itself.
 
 === Generate JSON Schemas
 
@@ -2672,10 +2859,10 @@ Efficiently organizing your source code is a cornerstone of successful architect
 - project_dir/ <1>
     - manifests/ <2>
         - application/ <3>
-            - <FILENAME>.{yaml,json} <4>
+            - <FILENAME>.{yaml,json,toml} <4>
             - ....
         - technology/ <5>
-            - <FILENAME>.{yaml,json}
+            - <FILENAME>.{yaml,json,toml}
             - ....
     - views/ <6>
         - <RENDERER NAME>/ <7>
@@ -2926,6 +3113,62 @@ Its format should match the variable name in Java or Javascript.
 |properties
 |any
 |A custom object containing properties to drive the execution of the viewpoint and/or renderer service.
+
+|===
+
+==== Story
+
+The content of a manifest of kind `archicode.morin.io/story` (see <<stories>>).
+
+.Attributes of Story
+|===
+|Name |Type |Comment
+
+|id
+|string
+|Required. The identifier of the story, declared once in the workspace.
+
+|name
+|string
+|The human name of the story.
+
+|description
+|string
+|What the story is about, in a few words.
+
+|steps
+|a list of Step
+|The steps, in the order they are told.
+
+|===
+
+==== Step
+
+An item of the `steps` of a Story. A step names a view (`view`) or carries one (`viewpoint`, `layer`, `properties`).
+
+.Attributes of Step
+|===
+|Name |Type |Comment
+
+|view
+|string
+|The `id` of a view of the workspace.
+
+|viewpoint, layer, properties, name
+|as a View
+|The view the step carries, when it names none.
+
+|text
+|string
+|What to say about the view, as plain text.
+
+|at
+|string
+|The `id` of the plateau the step is told at. Absent: the plateau that is drawn (see <<story-step-plateaus>>).
+
+|against
+|string
+|The `id` of the plateau the step is compared with. Absent: no comparison.
 
 |===
 

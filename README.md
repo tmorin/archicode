@@ -30,7 +30,8 @@ A workspace can have states, the plateaus, each a layer over another one: the ma
 in their header, and a manifest of kind `archicode.morin.io/plateau` that lists what the layer changes.
 `diff` tells what is new, changed and removed in a plateau, compared with the plateau it overrides, and what moved,
 was split or merged when an element says what it `replaces`; `--against` names another plateau to compare with, and
-`views generate` draws the comparison next to the views. See "States of an architecture (plateaus)" in the manual.
+`views generate` draws the comparison next to the views, and `diff --fail-on removed,moved` exits with the code 3 when
+the comparison holds a change of one of the listed states, to fail a build. See "States of an architecture (plateaus)" in the manual.
 
 ```shell
 docker run \
@@ -43,7 +44,7 @@ docker run \
 docker run \
   -u "$(id -u):$(id -g)" \
   -v "$(pwd):/workdir" -w "/workdir" \
-  --rm ghcr.io/tmorin/archicode views generate --against as-is
+  --rm ghcr.io/tmorin/archicode views generate --against baseline
 ```
 
 **Get the JSON schema for the Workspace resource**
@@ -78,7 +79,7 @@ The command prints a URL, `http://127.0.0.1:48080/?token=...`: opening it in a
 browser serves the editor and opens the folder of `workspace.yaml` in it, with
 nothing to pick (the page is refused without the token; the editor removes it
 from the address bar, and a session cookie lets a reload in): browse the elements,
-edit them, see their diagrams and the map of the workspace, and save. It works
+edit them, see their diagrams and the maps of the application and technology layers, and save. It works
 in any browser. The same editor is published next to the manual, at
 https://tmorin.github.io/archicode/editor/, and is a single file
 (`standalone.html`): opened from there, or from a file, it asks for a folder
