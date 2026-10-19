@@ -1,0 +1,32 @@
+{
+  "comment": "The boxes and the links that the command line and the editor draw for the views of layer `technology` and viewpoint `map` of the example src/doc/examples/domain_technology_map (wave 015, run 0099, issue #92). One file, read by TechnologyMapTest.java (the viewpoint of the command line) and technology-map-shared.test.js (the page of a view in the editor, over the embedded kernel): either side drifting fails a test. A box is the reference of its element, a link is `from -> to` between two boxes. Both lists are sorted.",
+  "workspace": "src/doc/examples/domain_technology_map",
+  "views": {
+    "datacentre-map": {
+      "boxes": ["backup", "datacentre"],
+      "links": ["datacentre -> backup"]
+    },
+    "datacentre-map-open": {
+      "boxes": [
+        "backup",
+        "datacentre",
+        "datacentre.edge",
+        "datacentre.edge.balancer",
+        "datacentre.edge.firewall",
+        "datacentre.rack",
+        "datacentre.rack.db",
+        "datacentre.rack.web"
+      ],
+      "links": [
+        "datacentre.edge.balancer -> datacentre.rack.web",
+        "datacentre.edge.firewall -> datacentre.edge.balancer",
+        "datacentre.rack.db -> backup",
+        "datacentre.rack.web -> datacentre.rack.db"
+      ]
+    },
+    "datacentre-map-database": {
+      "boxes": ["backup", "datacentre", "datacentre.rack", "datacentre.rack.db", "datacentre.rack.web"],
+      "links": ["datacentre.rack.db -> backup", "datacentre.rack.web -> datacentre.rack.db"]
+    }
+  }
+}

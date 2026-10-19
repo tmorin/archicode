@@ -53,7 +53,7 @@ function typeAddress(sandbox, hash) {
   for (const fn of sandbox.__windowListeners.hashchange) fn();
 }
 
-const where = (sandbox, state) => ({ plateau: state.layers.current, compare: run(sandbox, 'layerCompareChoice()'), page: run(sandbox, 'currentPageId()'), hash: sandbox.location.hash });
+const where = (sandbox, state) => ({ plateau: state.layers.current, compare: run(sandbox, 'layerCompareChoice()'), page: run(sandbox, 'currentPerspective'), hash: sandbox.location.hash });
 
 // ---- the page Plateaus (#99) ----
 
@@ -65,7 +65,7 @@ test('the page is called Plateaus, at #/timeline/plateaus, and #/plateaus opens 
   for (const hash of ['#/timeline/plateaus', '#/plateaus', '#/timeline/plateaus?plateau=saas']) {
     run(sandbox, 'location.hash = ' + JSON.stringify(hash));
     sandbox.syncPerspectiveFromHash();
-    assert.equal(run(sandbox, 'currentPageId()'), 'plateaus', hash);
+    assert.equal(run(sandbox, 'currentPerspective'), 'plateaus', hash);
   }
   const center = sandbox.renderPlateausPageHtml();
   assert.match(center, /<h2>Plateaus<\/h2>/);
@@ -76,7 +76,7 @@ test('#/timeline opens Applications, whatever follows it, and the page then writ
   const { sandbox, state } = await openLayered();
   for (const [typed, written] of [['#/timeline', '#/timeline/applications'], ['#/timeline?x=1', '#/timeline/applications'], ['#/timeline/nowhere', '#/timeline/applications']]) {
     typeAddress(sandbox, typed);
-    assert.equal(run(sandbox, 'currentPageId()'), 'map', typed);
+    assert.equal(run(sandbox, 'currentPerspective'), 'map', typed);
     assert.equal(sandbox.location.hash, written, typed + ' is rewritten as #/map is');
   }
   assert.equal(state.layers.current, 'baseline');
@@ -115,7 +115,7 @@ test('an address that names a plateau draws it: nothing is read from the disk an
   mem.failGetFile = 'the disk was read'; // any read of the folder from here on is an error
   typeAddress(sandbox, '#/files?plateau=inhouse');
   assert.equal(state.layers.current, 'inhouse', 'the plateau of the address is drawn');
-  assert.equal(run(sandbox, 'currentPageId()'), 'files');
+  assert.equal(run(sandbox, 'currentPerspective'), 'files');
   assert.equal(state.fatalError, null);
   assert.equal(state.index, sandbox.layerModelOf('inhouse', workspace.settings).index, 'what is drawn is the resolution of inhouse');
   assert.equal(state.index.application.get('shop.web').name, inherited);
@@ -251,11 +251,11 @@ test('Back across a change of page and of plateau returns to both', async () => 
   const { sandbox, state } = await openLayered();
   chooseOnBand(sandbox, 'plateau', 'saas');
   sandbox.setPerspective('files');
-  assert.deepEqual([run(sandbox, 'currentPageId()'), state.layers.current], ['files', 'saas']);
+  assert.deepEqual([run(sandbox, 'currentPerspective'), state.layers.current], ['files', 'saas']);
   sandbox.history.back();
-  assert.deepEqual([run(sandbox, 'currentPageId()'), state.layers.current], ['map', 'saas']);
+  assert.deepEqual([run(sandbox, 'currentPerspective'), state.layers.current], ['map', 'saas']);
   sandbox.history.back();
-  assert.deepEqual([run(sandbox, 'currentPageId()'), state.layers.current], ['map', 'baseline']);
+  assert.deepEqual([run(sandbox, 'currentPerspective'), state.layers.current], ['map', 'baseline']);
 });
 
 test('a comparison chosen on the band does not add an entry (the address does not change), and the Changes button of the page adds one for its plateau', async () => {

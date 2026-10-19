@@ -107,20 +107,20 @@ test('the pages of Timeline are in a bar under the band: Plateaus, Applications,
 
 test('a click on a page of the bar opens it, with its own address', async () => {
   const { sandbox } = await openLayered();
-  const at = () => [sandbox.currentRouteHash(), run(sandbox, 'currentPerspective'), run(sandbox, 'elementsScope')];
+  const at = () => [sandbox.currentRouteHash(), run(sandbox, 'currentPerspective')];
   click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'environments' });
-  assert.deepEqual(at(), ['/timeline/environments', 'elements', 'technology']);
+  assert.deepEqual(at(), ['/timeline/environments', 'environments']);
   click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'elements' });
-  assert.deepEqual(at(), ['/timeline/elements', 'elements', 'all']);
+  assert.deepEqual(at(), ['/timeline/elements', 'elements']);
   click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'map' });
-  assert.deepEqual(at(), ['/timeline/applications', 'map', 'all']);
+  assert.deepEqual(at(), ['/timeline/applications', 'map']);
   click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'plateaus' });
-  assert.deepEqual(at(), ['/timeline/plateaus', 'plateaus', 'all']);
+  assert.deepEqual(at(), ['/timeline/plateaus', 'plateaus']);
   // the button Timeline of the top bar opens the first page that draws something, Applications, whichever page of the perspective is on screen
   const top = Array.from(sandbox.renderPerspectiveTabsHtml().matchAll(/data-action="set-perspective" data-perspective="([a-z]+)"[^>]*>([^<]+)</g), (m) => [m[1], m[2]]);
   assert.deepEqual(top[0], ['map', 'Timeline'], 'the button Timeline opens Applications');
   click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': top[0][0] });
-  assert.deepEqual(at(), ['/timeline/applications', 'map', 'all']);
+  assert.deepEqual(at(), ['/timeline/applications', 'map']);
   click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': 'library' });
   assert.equal(sandbox.currentRouteHash(), '/stories');
   click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': 'files' });
@@ -131,27 +131,27 @@ test('a click on a page of the bar opens it, with its own address', async () => 
 
 // ---- the routes ----
 
-/** What an address opens: the page, the perspective the code holds, the scope of Elements, and the side of Stories. */
+/** What an address opens: the page, the perspective the code holds (the same since wave 015, run 0099), and the side of Stories. */
 function opens(sandbox, hash) {
   run(sandbox, 'location.hash = ' + JSON.stringify(hash));
   sandbox.syncPerspectiveFromHash();
-  return { page: sandbox.pageIdFromHash(), perspective: run(sandbox, 'currentPerspective'), scope: run(sandbox, 'elementsScope'), side: sandbox.libraryTabFromHash() };
+  return { page: sandbox.pageIdFromHash(), perspective: run(sandbox, 'currentPerspective'), side: sandbox.libraryTabFromHash() };
 }
 
 test('each page has one address, and that address opens it', async () => {
   const { sandbox } = await openLayered();
   const routes = [
-    ['#/timeline/plateaus', 'plateaus', 'plateaus', 'all'],
-    ['#/timeline/applications', 'map', 'map', 'all'],
-    ['#/timeline/environments', 'environments', 'elements', 'technology'],
-    ['#/timeline/elements', 'elements', 'elements', 'all'],
-    ['#/stories', 'library', 'library', 'all'],
-    ['#/files', 'files', 'files', 'all'],
-    ['#/settings', 'settings', 'settings', 'all']
+    ['#/timeline/plateaus', 'plateaus', 'plateaus'],
+    ['#/timeline/applications', 'map', 'map'],
+    ['#/timeline/environments', 'environments', 'environments'],
+    ['#/timeline/elements', 'elements', 'elements'],
+    ['#/stories', 'library', 'library'],
+    ['#/files', 'files', 'files'],
+    ['#/settings', 'settings', 'settings']
   ];
-  for (const [hash, page, perspective, scope] of routes) {
+  for (const [hash, page, perspective] of routes) {
     const got = opens(sandbox, hash);
-    assert.deepEqual([got.page, got.perspective, got.scope], [page, perspective, scope], hash);
+    assert.deepEqual([got.page, got.perspective], [page, perspective], hash);
     assert.equal('#' + sandbox.currentRouteHash(), hash, hash + ' is the address the page writes for itself');
   }
   assert.equal(opens(sandbox, '#/stories/views').side, 'views');
@@ -190,7 +190,7 @@ for (const [former, page, address] of FORMER_ROUTES) {
     sandbox.applySelectionFromHashRef();
     sandbox.syncHashFromState(); // the end of every drawing
     assert.equal(sandbox.location.hash, '#' + address, 'the address is rewritten, without a new entry in the history');
-    assert.equal(run(sandbox, 'currentPageId()'), page);
+    assert.equal(run(sandbox, 'currentPerspective'), page);
   });
 }
 
@@ -204,7 +204,7 @@ test('an address opens the page when the workspace is loaded, as a bookmark does
     state.folder = { handle: mem.handle, name: 'ws' };
     state.permissionState = 'granted';
     await sandbox.loadWorkspace(mem.handle);
-    assert.equal(run(sandbox, 'currentPageId()'), page, former);
+    assert.equal(run(sandbox, 'currentPerspective'), page, former);
   }
 });
 
@@ -228,52 +228,60 @@ test('Applications is the page the Map was: the drawing of the application layer
   assert.doesNotMatch(page.center, /<h2>Map<\/h2>/);
 });
 
-test('Environments lists the technology tree alone; Elements lists both; the two show the same pages of an element', async () => {
+test('Elements lists both trees; Environments is a Map of the technology layer, with a tree of its own that pins and hides', async () => {
   const { sandbox, state } = await openFiles(FERRY);
   sandbox.setPerspective('elements');
   const both = sandbox.renderActivePerspectiveHtml();
   assert.match(both.left, /aria-label="Applications"/);
   assert.match(both.left, /aria-label="Environments"/);
+  assert.match(both.left, /open-create-top-level-form" data-category="application"/);
+  assert.match(both.left, /open-create-top-level-form" data-category="technology"/);
   sandbox.setPerspective('environments');
   const technology = sandbox.renderActivePerspectiveHtml();
-  assert.doesNotMatch(technology.left, /data-ref="fleet"/, 'the application tree is not there');
-  assert.doesNotMatch(technology.left, />\s*▾ Applications|▸ Applications/);
-  assert.match(technology.left, /data-action="select-element" data-ref="harbour" data-layer="technology"/);
-  assert.match(technology.left, /open-create-top-level-form" data-category="technology"/, 'an environment can be added here');
-  assert.doesNotMatch(technology.left, /open-create-top-level-form" data-category="application"/);
-  assert.match(technology.center, /Select an environment/);
-  // an environment is selected: its page is the page of Elements
+  assert.match(technology.center, /<h2>Environments<\/h2>/, 'the page is titled by what it draws');
+  assert.match(technology.center, /data-map="true"/, 'and it is a Map');
+  assert.match(technology.left, /role="tree" aria-label="Technology elements of the map"/);
+  assert.match(technology.left, /data-node="technology:harbour"/);
+  assert.doesNotMatch(technology.left, /data-node="application:fleet"/, 'the application tree is not there');
+  assert.match(technology.left, /data-action="map-pin" data-ref="harbour"/, 'an environment is pinned from its row');
+  assert.match(technology.left, /data-action="map-hide" data-ref="harbour"/, 'and hidden from it');
+  assert.doesNotMatch(technology.left, /open-create-top-level-form/, 'the Map adds nothing: that is the page Elements');
+  // a row of the tree selects nothing and is not a page of the element: an element is selected on the map by a click on its box
+  assert.equal(state.selection.kind, 'none');
+  // the page of the same environment is Elements
   click(sandbox, { 'data-action': 'select-element', 'data-ref': 'harbour', 'data-layer': 'technology' });
-  assert.equal(state.selection.key, 'harbour');
   assert.equal(sandbox.currentRouteHash(), '/timeline/environments?ref=harbour');
-  const onEnvironments = sandbox.renderActivePerspectiveHtml();
   sandbox.setPerspective('elements');
-  const onElements = sandbox.renderActivePerspectiveHtml();
-  assert.equal(onEnvironments.center, onElements.center, 'the same page of the element');
   assert.equal(state.selection.key, 'harbour', 'the selection goes with the page');
 });
 
-test('an application element is not on the Environments page: arriving there drops it, and an address that names one opens Elements', async () => {
+test('an application element selected on Environments stays selected, and the panel says the Map does not draw it; so does a technology one on Applications', async () => {
   const { sandbox, state } = await openFiles(FERRY);
   sandbox.setPerspective('elements');
   click(sandbox, { 'data-action': 'select-element', 'data-ref': 'fleet', 'data-layer': 'application' });
-  assert.equal(state.selection.key, 'fleet');
   sandbox.setPerspective('environments');
-  assert.equal(state.selection.kind, 'none', 'the selection is let go, not kept behind a tree that does not list it');
-  assert.equal(sandbox.currentRouteHash(), '/timeline/environments');
-  const got = opens(sandbox, '#/timeline/environments?ref=fleet');
-  assert.deepEqual([got.perspective, got.scope], ['elements', 'all'], 'an application element is the page of Elements');
-  assert.equal(state.selection.key, 'fleet');
-  assert.equal(opens(sandbox, '#/timeline/environments?ref=harbour').scope, 'technology');
-  assert.equal(state.selection.key, 'harbour');
+  assert.equal(state.selection.key, 'fleet', 'nothing lets the selection go');
+  assert.match(sandbox.renderActivePerspectiveHtml().right, /This map draws the technology layer only\./);
+  assert.equal(sandbox.currentRouteHash(), '/timeline/environments?ref=fleet');
+  sandbox.setPerspective('elements');
+  click(sandbox, { 'data-action': 'select-element', 'data-ref': 'harbour', 'data-layer': 'technology' });
+  sandbox.setPerspective('map');
+  assert.match(sandbox.renderActivePerspectiveHtml().right, /The map draws applications only\./);
 });
 
-test('Environments keeps the diagram tabs of an environment and writes them in its address', async () => {
-  const { sandbox } = await openFiles(FERRY);
-  opens(sandbox, '#/timeline/environments?ref=harbour&tab=overview');
+test('Environments writes the pins of its Map in its address, and an address with pins opens them', async () => {
+  const { sandbox, state } = await openFiles(FERRY);
+  const got = opens(sandbox, '#/timeline/environments?pin=harbour');
+  assert.equal(got.perspective, 'environments');
   sandbox.applySelectionFromHashRef();
-  assert.equal(run(sandbox, 'elementTab'), 'overview');
-  assert.equal(sandbox.currentRouteHash(), '/timeline/environments?ref=harbour&tab=overview');
+  assert.deepEqual(plain(run(sandbox, 'technologyMapState.pinned')), ['harbour']);
+  assert.deepEqual(plain(run(sandbox, 'mapPinned')), [], 'the pins of the other Map are its own');
+  assert.equal(sandbox.currentRouteHash(), '/timeline/environments?pin=harbour');
+  // a pin that is not an element of the technology layer is dropped, whatever the other layer has
+  opens(sandbox, '#/timeline/environments?pin=fleet');
+  sandbox.applySelectionFromHashRef();
+  assert.deepEqual(plain(run(sandbox, 'technologyMapState.pinned')), []);
+  assert.equal(state.fatalError, null);
 });
 
 // ---- the Plateaus page ----
@@ -357,7 +365,7 @@ test('with a comparison the Plateaus page has the Changes panel on the right, wi
   const attrs = Object.fromEntries(Array.from(tag[0].matchAll(/(data-[a-z-]+)="([^"]*)"/g), (m) => [m[1], m[2]]));
   const ref = attrs['data-ref'];
   click(sandbox, attrs);
-  assert.equal(run(sandbox, 'currentPageId()'), 'elements', 'the Plateaus page shows no element: the row opens it in Elements');
+  assert.equal(run(sandbox, 'currentPerspective'), 'elements', 'the Plateaus page shows no element: the row opens it in Elements');
   assert.equal(state.selection.key, ref);
 });
 
@@ -688,7 +696,7 @@ test('the bar of the pages and the Plateaus page hold the width: they wrap, and 
 
 // ---- what the review of the run found ----
 
-test('an address that names an application element on Environments is Elements when the workspace is loaded, as a bookmark is', async () => {
+test('an address that names an application element on Environments opens Environments when the workspace is loaded, as a bookmark does', async () => {
   const sandbox = createApp({});
   run(sandbox, "location.hash = '#/timeline/environments?ref=fleet'");
   sandbox.syncPerspectiveFromHash();
@@ -697,24 +705,19 @@ test('an address that names an application element on Environments is Elements w
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  assert.deepEqual([run(sandbox, 'currentPageId()'), state.selection.key], ['elements', 'fleet'], 'the tree of Environments does not list it');
+  assert.deepEqual([run(sandbox, 'currentPerspective'), state.selection.key], ['environments', 'fleet']);
   sandbox.syncHashFromState(); // the end of the drawing
-  assert.equal(sandbox.location.hash, '#/timeline/elements?ref=fleet', 'and the address says so');
+  assert.equal(sandbox.location.hash, '#/timeline/environments?ref=fleet');
 });
 
-test('a link from Environments to an application element, and a row of the Changes panel, open Elements', async () => {
+test('a link from Environments to an element of the other layer selects it where it is: both Maps keep a selection of the other layer', async () => {
   const { sandbox, state } = await openFiles(FERRY);
   sandbox.setPerspective('environments');
-  click(sandbox, { 'data-action': 'select-element', 'data-ref': 'harbour', 'data-layer': 'technology' });
-  assert.equal(run(sandbox, 'currentPageId()'), 'environments');
+  click(sandbox, { 'data-action': 'goto-element', 'data-ref': 'harbour', 'data-layer': 'technology' });
+  assert.equal(run(sandbox, 'currentPerspective'), 'environments');
   click(sandbox, { 'data-action': 'goto-element', 'data-ref': 'fleet', 'data-layer': 'application' });
   assert.equal(state.selection.key, 'fleet');
-  assert.equal(run(sandbox, 'currentPageId()'), 'elements', 'the tree of Environments cannot show the row of an application element');
-  assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=fleet');
-  // an environment stays on Environments
-  sandbox.setPerspective('environments');
-  click(sandbox, { 'data-action': 'goto-element', 'data-ref': 'harbour', 'data-layer': 'technology' });
-  assert.equal(run(sandbox, 'currentPageId()'), 'environments');
+  assert.equal(run(sandbox, 'currentPerspective'), 'environments');
 });
 
 test('renaming an element reaches the views and stories of every plateau, and deleting a view counts the steps of every plateau', async () => {

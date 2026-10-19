@@ -1112,10 +1112,10 @@ test('the Map is where the editor opens: with no route, or one it does not know'
   const { sandbox } = await openFixture();
   for (const hash of ['', '#', '#/', '#/nowhere?x=1']) {
     sandbox.location.hash = hash;
-    assert.equal(sandbox.perspectiveIdFromHash(), 'map', JSON.stringify(hash));
+    assert.equal(sandbox.pageIdFromHash(), 'map', JSON.stringify(hash));
   }
   sandbox.location.hash = '#/elements?ref=shop';
-  assert.equal(sandbox.perspectiveIdFromHash(), 'elements', 'a route that names a perspective still wins');
+  assert.equal(sandbox.pageIdFromHash(), 'elements', 'a route that names a perspective still wins');
 });
 
 test('Fit is in the URL, Center is how a diagram opens, and a link restores either', async () => {

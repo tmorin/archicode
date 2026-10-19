@@ -15,8 +15,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The editor keeps stories, and the views they are made of, in {@code workspace.yaml}. The command line reads them
- * (and warns about a step on a view nobody declared) but only generates the views of its own viewpoints: the map,
- * drawn by the editor, is skipped instead of stopping the generation.
+ * (and warns about a step on a view nobody declared) but only generates the views of its own viewpoints: a viewpoint it
+ * does not know (the editor may draw more than the command line does) is skipped instead of stopping the generation.
  */
 @QuarkusTest
 class StoriesTest extends AbstractGenerateViews {
@@ -38,8 +38,8 @@ class StoriesTest extends AbstractGenerateViews {
           element: "sol_a"
           facet: "flow"
       - id: "the_map"
-        name: "Map of Sol A"
-        viewpoint: "map"
+        name: "Matrix of Sol A"
+        viewpoint: "matrix"
         layer: "application"
         properties:
           pinned:

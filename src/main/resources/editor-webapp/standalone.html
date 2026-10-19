@@ -5049,7 +5049,7 @@ function cachedNodeCounts(id) {
 /** Compute the counts of the plateaus that have none yet, one per turn of the event loop, and write them in the page Plateaus as they come (a big tree does not hold the first drawing). Only while that page is on screen (wave 015, run 0097: the band no longer says them). */
 let bandCountsTimer = null;
 function schedulePlateauCounts() {
-  if (bandCountsTimer !== null || currentPageId() !== 'plateaus' || !AppState.layers || !loadedKernel || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
+  if (bandCountsTimer !== null || currentPerspective !== 'plateaus' || !AppState.layers || !loadedKernel || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
   const settings = AppState.workspace.settings;
   const missing = () => {
     const cache = ensureLayerCache(settings);
@@ -5058,7 +5058,7 @@ function schedulePlateauCounts() {
   if (!missing().length) return;
   bandCountsTimer = setTimeout(function step() {
     bandCountsTimer = null;
-    if (currentPageId() !== 'plateaus' || !AppState.layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
+    if (currentPerspective !== 'plateaus' || !AppState.layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.layered || AppState.layers.blocked) return;
     const next = missing()[0];
     if (next === undefined) return;
     layerNodeCounts(next);
@@ -5084,7 +5084,7 @@ function schedulePlateauCounts() {
 
 /** The band is on screen: a workspace is open, it has layers, and the page is one of the perspective Timeline. */
 function bandIsShown() {
-  return !!(AppState.workspace && !AppState.fatalError && AppState.layers && AppState.plateauTree && PERSPECTIVES[currentPageId()].group === 'timeline');
+  return !!(AppState.workspace && !AppState.fatalError && AppState.layers && AppState.plateauTree && PERSPECTIVES[currentPerspective].group === 'timeline');
 }
 
 /** The sentences of the first layer of the chain of a plateau that the command line refuses, or null (resolves the plateau if it was not: a click on its node would). */
@@ -5399,6 +5399,7 @@ function snapshotWriteState() {
     mapPinned: mapPinned.slice(),
     mapHidden: mapHidden.slice(),
     mapOpened: mapOpened ? new Set(mapOpened) : mapOpened,
+    technologyMapState: { pinned: technologyMapState.pinned.slice(), hidden: technologyMapState.hidden.slice(), opened: technologyMapState.opened ? new Set(technologyMapState.opened) : technologyMapState.opened },
     navActiveKey
   };
 }
@@ -5428,6 +5429,7 @@ function restoreWriteState(snapshot) {
   mapPinned = snapshot.mapPinned;
   mapHidden = snapshot.mapHidden;
   mapOpened = snapshot.mapOpened;
+  technologyMapState = snapshot.technologyMapState;
   navActiveKey = snapshot.navActiveKey;
 }
 
@@ -7151,6 +7153,7 @@ function resetUiState() {
   mapPinned = [];
   mapHidden = [];
   mapOpened = null;
+  technologyMapState = { opened: null, pinned: [], hidden: [] };
   navActiveKey = null;
   treeExpandedApplications = true;
   treeExpandedEnvironments = true;
@@ -7301,8 +7304,8 @@ let treeExpandedEnvironments = true;
  * Wave 014 (run 0081, W-7): the perspectives are Timeline (the pages Plateaus, Applications, Environments and Elements), Stories, Files and
  * Settings. Wave 015 (run 0096, W-8): the page that lists and edits the plateaus is called Plateaus (`plateaus`, "#/timeline/plateaus"; it was the page Timeline) and
  * the button Timeline of the top bar opens Applications, the first page of the perspective that draws something. The ids `map`, `elements` and `library` are the former perspectives and stay the names the code uses: `map` is the page called Applications,
- * `library` the one called Stories. `environments` is not a perspective of its own in the code: it is Elements with `elementsScope` set to the technology layer
- * (see `currentPageId`), because the pages of an element are the same and only the tree on the left differs.
+ * `library` the one called Stories. Wave 015 (run 0099, W-11, #92): `environments` is a perspective of its own, the Map of the technology layer, as `map` is the Map of the application
+ * layer (`mapIsShown`, `mapLayer`); the page Elements keeps its tree of both layers.
  */
 const PERSPECTIVES = {
   plateaus: { label: 'Plateaus', group: 'timeline', route: 'timeline/plateaus' },
@@ -7324,14 +7327,6 @@ const PERSPECTIVE_GROUPS = [
 const TIMELINE_PAGES = ['map', 'environments', 'elements'];
 const DEFAULT_PERSPECTIVE = 'map';
 let currentPerspective = DEFAULT_PERSPECTIVE;
-/** What the Elements page lists on the left: 'all' (Applications and Environments) or 'technology' (the page called Environments). Only read while `currentPerspective` is 'elements'. */
-let elementsScope = 'all';
-
-/** The page on screen, as the second bar and the address name it: `environments` is Elements with the technology tree. */
-function currentPageId() {
-  return currentPerspective === 'elements' && elementsScope === 'technology' ? 'environments' : currentPerspective;
-}
-
 /**
  * The page an address names, by the id of `PERSPECTIVES`: "#/timeline/applications", and the former routes, which still open (an old link keeps working):
  * "#/timeline" (it named the list of the plateaus; it now opens Applications, and "#/timeline/plateaus" or "#/plateaus" opens the list), "#/map" (Applications), "#/elements" (Elements), "#/library" and "#/stories" (Stories), "#/diagram" (Elements, see `applyDiagramParamsFromHash`).
@@ -7347,12 +7342,6 @@ function pageIdFromHash() {
   if (id === 'stories') return 'library'; // the page was the Library, then the Stories perspective: both names open it
   if (id === 'applications') return 'map';
   return Object.prototype.hasOwnProperty.call(PERSPECTIVES, id) ? id : DEFAULT_PERSPECTIVE;
-}
-
-/** The perspective an address names, as `currentPerspective` holds it: `environments` is Elements (`elementsScope` tells which tree). */
-function perspectiveIdFromHash() {
-  const id = pageIdFromHash();
-  return id === 'environments' ? 'elements' : id;
 }
 
 /** The Stories page has two sides, Stories and Views: "#/stories/views" (or the former "#/library/views") says the second; "#/stories" and anything else, the first. */
@@ -7377,8 +7366,8 @@ function refFromHash() {
  * (`syncPerspectiveFromHash`, below).
  */
 function applyDiagramParamsFromHash() {
-  const id = perspectiveIdFromHash();
-  if (id !== 'elements' && id !== 'map' && id !== 'library') return;
+  const id = pageIdFromHash();
+  if (id !== 'elements' && id !== 'map' && id !== 'environments' && id !== 'library') return;
   const queryIdx = location.hash.indexOf('?');
   const params = new URLSearchParams(queryIdx === -1 ? '' : location.hash.slice(queryIdx + 1));
   const storyParam = params.get('story');
@@ -7400,8 +7389,10 @@ function applyDiagramParamsFromHash() {
     elementTab = tab && Object.prototype.hasOwnProperty.call(ELEMENT_TABS, tab) ? tab : 'details';
   } else {
     const pin = params.get('pin');
-    mapPinned = pin ? pin.split(',').filter((reference) => AppState.index.application.has(reference)) : [];
-    mapPinned.forEach(expandParentsOf);
+    const layer = id === 'environments' ? 'technology' : 'application';
+    const state = mapStateOf(layer);
+    state.pinned = pin ? pin.split(',').filter((reference) => AppState.index[layer].has(reference)) : [];
+    state.pinned.forEach((reference) => expandParentsOf(reference, layer));
   }
   const shown = {};
   for (const name of DIAGRAM_SHOW_NAMES) shown[name] = params.get(name) === '1' ? true : params.get(name) === '0' ? false : null;
@@ -7437,11 +7428,11 @@ function linkFromHash() {
 function restoreLinkFromHash() {
   const link = linkFromHash();
   if (!link) return;
-  const id = perspectiveIdFromHash();
+  const id = pageIdFromHash();
   const key = link.from + ' -> ' + link.to;
   const sel = AppState.selection;
-  if (id === 'map') {
-    AppState.selection = { kind: 'link', key, from: link.from, to: link.to, layer: 'application', mode: 'view' };
+  if (id === 'map' || id === 'environments') {
+    AppState.selection = { kind: 'link', key, from: link.from, to: link.to, layer: id === 'environments' ? 'technology' : 'application', mode: 'view' };
   } else if (id === 'elements' && sel.kind === 'element' && sel.mode === 'view' && elementTab !== 'details' && findElementRecord(sel.key, sel.layer)) {
     AppState.selection = { kind: 'link', key, from: link.from, to: link.to, layer: layerOfReference(sel.key, sel.layer) || 'application', mode: 'view', focal: sel.key };
   } else {
@@ -7478,8 +7469,8 @@ function removedFromHash() {
 function restoreRemovedFromHash() {
   removedPick = null;
   const removed = removedFromHash();
-  const id = perspectiveIdFromHash();
-  if (!removed || (id !== 'map' && id !== 'elements') || !compareTargetPlateau()) return;
+  const id = pageIdFromHash();
+  if (!removed || (id !== 'map' && id !== 'environments' && id !== 'elements') || !compareTargetPlateau()) return;
   removedPick = { reference: removed.reference, layer: removed.layer, selection: JSON.stringify(AppState.selection) };
 }
 
@@ -7488,7 +7479,6 @@ function applySelectionFromHashRef() {
   selectFromHashRef();
   restoreLinkFromHash();
   restoreRemovedFromHash();
-  widenElementsScopeToSelection(); // an address that names an application element on the page Environments is a link to Elements
 }
 
 /** The element or manifest file the hash's `ref=` names, else nothing selected. */
@@ -7515,24 +7505,12 @@ function selectFromHashRef() {
 
 /** Re-sync `currentPerspective` (and, once a workspace is loaded, the selection) from the URL — bootstrap and every 'hashchange' (back/forward, a hand-edited URL). */
 function syncPerspectiveFromHash() {
-  const page = pageIdFromHash();
-  currentPerspective = perspectiveIdFromHash();
-  elementsScope = page === 'environments' ? 'technology' : 'all';
+  currentPerspective = pageIdFromHash();
   useDiagramHost(diagramHostOf(currentPerspective)); // the framing an address carries (`frame=fit`) is that of the diagram it will draw
   if (AppState.workspace) {
     drawLayersNamedByAddress(); // before the selection: an element may exist in the plateau the address names only
     applySelectionFromHashRef();
   }
-}
-
-/**
- * The Environments page lists the technology tree: an application element selected there (an address, a link to one of its applications, a row of the Changes panel)
- * is the Elements page's, which lists both trees. Called by every drawing and by the reading of an address.
- */
-function widenElementsScopeToSelection() {
-  if (currentPerspective !== 'elements' || elementsScope !== 'technology' || !AppState.index) return;
-  const sel = elementSelection();
-  if (sel.kind === 'element' && layerOfReference(sel.key, sel.layer) !== 'technology') elementsScope = 'all';
 }
 
 /**
@@ -7545,7 +7523,7 @@ function pushFrameParam(params) {
 
 /** A change of framing (Fit, Center, a zoom, a move) is in the address bar at once, without an entry in the history. */
 function diagramFramingChanged() {
-  if (AppState.workspace && (currentPerspective === 'elements' || currentPerspective === 'map')) syncHashFromState();
+  if (AppState.workspace && (currentPerspective === 'elements' || mapIsShown())) syncHashFromState();
 }
 
 /** What the diagram shows otherwise than by default (its texts, the boxes no link reaches), for the URL. */
@@ -7562,12 +7540,12 @@ function pushShowParams(params, isMap) {
 function linkInRoute() {
   const sel = AppState.selection;
   if (!sel || sel.kind !== 'link') return null;
-  return (sel.focal ? currentPerspective === 'elements' && diagramTabShown() : currentPerspective === 'map') ? sel : null;
+  return (sel.focal ? currentPerspective === 'elements' && diagramTabShown() : mapIsShown()) ? sel : null;
 }
 
 /** The removed element the address should carry: the pick of the page while it holds (the selection is what it was), when the comparison is on and has the element (or is still being read). */
 function removedPickForRoute() {
-  if (!removedPick || (currentPerspective !== 'map' && currentPerspective !== 'elements')) return null;
+  if (!removedPick || (!mapIsShown() && currentPerspective !== 'elements')) return null;
   if (removedPick.selection !== JSON.stringify(AppState.selection)) return null;
   const state = comparisonState();
   if (!state || state.problems) return null;
@@ -7589,9 +7567,10 @@ function currentRouteHash() {
     pushShowParams(params, false);
     pushFrameParam(params);
   }
-  if (currentPerspective === 'map') {
+  if (mapIsShown()) {
     if (diagramFacet) params.push('facet=' + encodeURIComponent(diagramFacet));
-    if (mapPinned.length) params.push('pin=' + mapPinned.map(encodeURIComponent).join(','));
+    const pinned = mapStateOf().pinned;
+    if (pinned.length) params.push('pin=' + pinned.map(encodeURIComponent).join(','));
     pushShowParams(params, true);
     pushFrameParam(params);
   }
@@ -7599,7 +7578,7 @@ function currentRouteHash() {
     if (libraryTab === 'stories' && selectedStoryId) params.push('story=' + encodeURIComponent(selectedStoryId));
     if (libraryTab === 'views' && selectedViewId) params.push('view=' + encodeURIComponent(selectedViewId));
   }
-  if ((currentPerspective === 'elements' || currentPerspective === 'map') && activeStory) {
+  if ((currentPerspective === 'elements' || mapIsShown()) && activeStory) {
     params.push('story=' + encodeURIComponent(activeStory.id), 'step=' + activeStory.step);
   }
   const link = linkInRoute();
@@ -7614,7 +7593,7 @@ function currentRouteHash() {
   }
   // wave 014 (run 0080): the plateau of the band, when it is not the root
   if (AppState.layers && AppState.plateauTree && AppState.plateauTree.layered && AppState.layers.current !== BASELINE_PLATEAU) params.push('plateau=' + encodeURIComponent(AppState.layers.current));
-  return '/' + PERSPECTIVES[currentPageId()].route + (currentPerspective === 'library' && libraryTab === 'views' ? '/views' : '') + (params.length ? '?' + params.join('&') : '');
+  return '/' + PERSPECTIVES[currentPerspective].route + (currentPerspective === 'library' && libraryTab === 'views' ? '/views' : '') + (params.length ? '?' + params.join('&') : '');
 }
 
 /**
@@ -7646,12 +7625,7 @@ function syncHashFromState() {
  */
 function setPerspective(id) {
   if (!Object.prototype.hasOwnProperty.call(PERSPECTIVES, id)) return;
-  if (id === 'environments') { // the page lists the technology tree: an application element is not one of its own, so the selection is let go
-    const sel = elementSelection();
-    if (sel.kind === 'element' && layerOfReference(sel.key, sel.layer) !== 'technology') AppState.selection = { kind: 'none', key: null, mode: 'view' };
-  }
-  currentPerspective = id === 'environments' ? 'elements' : id;
-  elementsScope = id === 'environments' ? 'technology' : 'all';
+  currentPerspective = id;
   useDiagramHost(diagramHostOf(id)); // the address below is written from the framing of the diagram it leads to
   if (rawYamlEditDraft) rawYamlEditDraft = null;
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
@@ -8892,7 +8866,7 @@ function rewriteReferenceValue(value, oldRef, newRef) {
  * The UI state that holds element references, rewritten for a rename (no render): the selection, the expanded sets,
  * the "modified" markers, the row of the tree that has the focus, and the state of the Map (pinned, hidden, opened) —
  * left alone, a stale pin on the map would silently disappear, or re-attach to a later element with the same
- * reference. `layer` limits what is layer-bound (the selection; the Map, which only draws the application layer).
+ * reference. `layer` limits what is layer-bound (the selection; the Map of each layer).
  */
 function rewriteUiReferences(oldPrefix, newPrefix, layer) {
   const rewrite = (value) => rewriteReferenceValue(value, oldPrefix, newPrefix);
@@ -8912,10 +8886,12 @@ function rewriteUiReferences(oldPrefix, newPrefix, layer) {
   // rename-aware rewrite runs) — carry it over to the new one.
   AppState.dirtyReferences = rewriteKeys(AppState.dirtyReferences);
   if (navActiveKey) navActiveKey = rewriteKey(navActiveKey);
-  if (!layer || layer === 'application') {
-    mapPinned = mapPinned.map(rewrite);
-    mapHidden = mapHidden.map(rewrite);
-    if (mapOpened) mapOpened = rewriteSet(mapOpened);
+  for (const mapped of ['application', 'technology']) {
+    if (layer && layer !== mapped) continue;
+    const state = mapStateOf(mapped);
+    state.pinned = state.pinned.map(rewrite);
+    state.hidden = state.hidden.map(rewrite);
+    if (state.opened) state.opened = rewriteSet(state.opened);
   }
   // a delete confirmation lists what the old reference would take with it: it is stale now
   pendingDeleteConfirmation = null;
@@ -8936,11 +8912,10 @@ function forgetUiReferences(deletedRefs, layer) {
     AppState.dirtyReferences.delete(nodeKey(ref, layer));
   }
   if (navActiveKey && nodeKeyLayer(navActiveKey) === layer && gone(nodeKeyReference(navActiveKey))) navActiveKey = null;
-  if (layer === 'application') {
-    mapPinned = mapPinned.filter((ref) => !gone(ref));
-    mapHidden = mapHidden.filter((ref) => !gone(ref));
-    if (mapOpened) for (const ref of Array.from(mapOpened)) if (gone(ref)) mapOpened.delete(ref);
-  }
+  const state = mapStateOf(layer);
+  state.pinned = state.pinned.filter((ref) => !gone(ref));
+  state.hidden = state.hidden.filter((ref) => !gone(ref));
+  if (state.opened) for (const ref of Array.from(state.opened)) if (gone(ref)) state.opened.delete(ref);
 }
 
 /**
@@ -9767,7 +9742,7 @@ function renderSaveStatusHtml() {
  * (`renderPageTabsHtml`).
  */
 function renderPerspectiveTabsHtml() {
-  const group = PERSPECTIVES[currentPageId()].group;
+  const group = PERSPECTIVES[currentPerspective].group;
   let html = '<span class="perspective-tabs button-group" role="group" aria-label="Perspectives">';
   for (const entry of PERSPECTIVE_GROUPS) {
     html += '<button type="button" data-action="set-perspective" data-perspective="' + entry.page + '" aria-pressed="' + (entry.id === group) + '">' +
@@ -9782,7 +9757,7 @@ function renderPerspectiveTabsHtml() {
  * The pages of the Timeline perspective (Plateaus, Applications, Environments, Elements), in a bar of their own under the band. Only while one of them is on screen.
  */
 function renderPageTabsHtml() {
-  const page = currentPageId();
+  const page = currentPerspective;
   if (PERSPECTIVES[page].group !== 'timeline') return '';
   let html = '<nav class="page-tabs col-span-3" id="page-tabs" aria-label="Pages of the Timeline"><span class="button-group" role="group" aria-label="Pages">';
   for (const id of ['plateaus'].concat(TIMELINE_PAGES)) {
@@ -10040,10 +10015,9 @@ function renderElementsNavHtml(showAddButton) {
   const appElements = (AppState.workspace && AppState.workspace.application && AppState.workspace.application.elements) || [];
   const techElements = (AppState.workspace && AppState.workspace.technology && AppState.workspace.technology.elements) || [];
   // one tab stop for both trees: the row the user was on, else the selected one, else the first
-  const technologyOnly = currentPerspective === 'elements' && elementsScope === 'technology'; // the page called Environments lists the technology tree alone
   const visible = [];
   const collect = (record) => { visible.push(recordKey(record)); if (AppState.expanded.has(recordKey(record))) sortedForNav(record.children).forEach(collect); };
-  if (treeExpandedApplications && !technologyOnly) sortedForNav(appElements).forEach(collect);
+  if (treeExpandedApplications) sortedForNav(appElements).forEach(collect);
   if (treeExpandedEnvironments) sortedForNav(techElements).forEach(collect);
   const selected = elementSelection();
   resolveNavActive(visible, selected.kind === 'element' ? nodeKey(selected.key, selected.layer) : null);
@@ -10055,7 +10029,7 @@ function renderElementsNavHtml(showAddButton) {
   treeComparison = comparisonForTrees();
   try {
     return note + renderPlateauTreeHtml() + renderDuplicateReferencesHtml() + renderUnreadManifestsHtml(false) +
-           (technologyOnly ? '' : renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton)) +
+           renderTreeBranchHtml('applications', 'Applications', 'application', appElements, treeExpandedApplications, showAddButton) +
            renderTreeBranchHtml('environments', 'Environments', 'technology', techElements, treeExpandedEnvironments, showAddButton);
   } finally {
     treeComparison = null;
@@ -11603,7 +11577,6 @@ function renderCenterPanelHtml() {
     if (sel.mode === 'edit') { elementTab = 'details'; return renderElementEditionFormHtml(sel.key); }
     return diagramTabShown() ? renderElementDiagramHtml(findElementRecord(sel.key)) : renderElementViewHtml(sel.key);
   }
-  if (currentPerspective === 'elements' && elementsScope === 'technology') return '<div class="center-placeholder">Select an environment, a node or one of their parts on the left, or use "+ Add" above the Environments tree to create your first one.</div>';
   return '<div class="center-placeholder">Select an item on the left, or use "+ Add" above the Applications/Environments tree to create your first element.</div>';
 }
 
@@ -11702,8 +11675,8 @@ function inspectionPanelHtml(sel, mode) {
       : '') + '</div>';
   html += '<div class="inspection-name"><span>' + escapeHtml(record.name || record.id) + '</span>' + stereotypeBadgesHtml(stereotypesOfRecord(record)) + '</div>';
   if (onMap) {
-    html += layer === 'technology'
-      ? '<p class="inspection-note">The map draws applications only.</p>'
+    html += layer !== mapLayer()
+      ? '<p class="inspection-note">' + (mapLayer() === 'technology' ? 'This map draws the technology layer only.' : 'The map draws applications only.') + '</p>'
       : '<p class="inspection-note" id="inspection-offmap" hidden>Not on the map right now (a pin, a hidden element or a folded box leaves it out).</p>';
   }
   html += renderWhatChangedHtml(layer, record.reference, false); // a comparison: what differs from the other plateau, first: a long description must not push it out of sight
@@ -12292,7 +12265,7 @@ function rightPanelStamp() {
 /** A comparison is on and can be listed (or is being read): the Map and Elements keep a right-hand panel for it. */
 function comparisonPanelOn() {
   const state = comparisonState();
-  return !!state && !state.problems && (currentPerspective === 'map' || currentPerspective === 'elements' || currentPerspective === 'plateaus');
+  return !!state && !state.problems && (mapIsShown() || currentPerspective === 'elements' || currentPerspective === 'plateaus');
 }
 
 /**
@@ -12347,26 +12320,28 @@ function selectChange(row) {
   if (currentPerspective === 'plateaus') { // the Plateaus page lists the changes and shows no element: the row opens it in Elements
     history.pushState(null, '', location.href); // the page that was left is an entry of the history: the next address rewrites this one
     currentPerspective = 'elements';
-    elementsScope = 'all';
     useDiagramHost('main');
   }
   if (rawYamlEditDraft) rawYamlEditDraft = null; // DEC-10/FLOW-4: a selection is never the draft's file
   if (pendingDeleteConfirmation) pendingDeleteConfirmation = null;
   changesTabPick = null; // the new selection is what the panel shows; the Changes tab is one click away
   candidateMessage = null;
+  const layer = row.layer || 'application';
+  if (mapIsShown() && layer !== mapLayer()) { // a row of the other layer: the Map of that layer is the page that draws it
+    history.pushState(null, '', location.href);
+    currentPerspective = layer === 'technology' ? 'environments' : 'map';
+  }
   const onMap = mapIsShown();
   if (onMap) diagramScale = 'auto'; // Center: the thing is put in the middle
-  const layer = row.layer || 'application';
-  const onMapLayer = onMap && layer === 'application';
   if (row.thing === 'element' && elementIsOnlyInTheOtherPlateau(layer, row.ref, row.change)) {
-    if (onMapLayer) openOnMap(row.ref);
+    if (onMap) openOnMap(row.ref);
     if (onMap) AppState.selection = { kind: 'none', key: null, mode: 'view' };
     removedPick = { reference: row.ref, layer, selection: JSON.stringify(AppState.selection) };
     render();
     return;
   }
   removedPick = null;
-  if (row.thing === 'relationship' && onMapLayer) {
+  if (row.thing === 'relationship' && onMap) {
     openOnMap(row.ref);
     openOnMap(row.to);
     AppState.selection = linkSelectionFor(row.ref, row.to, layer, null, null);
@@ -12375,7 +12350,7 @@ function selectChange(row) {
     render();
     return;
   }
-  if (onMapLayer) openOnMap(row.ref);
+  if (onMap) openOnMap(row.ref);
   AppState.selection = { kind: 'element', key: row.ref, layer, mode: 'view' };
   expandAncestorsOf(row.ref, layer); // the trees show it
   scrollNavToSelection = true;
@@ -12427,7 +12402,7 @@ function dropLinkSelection() {
 function settleLinkSelection() {
   const sel = AppState.selection;
   if (!sel || sel.kind !== 'link') { revealLinkAfterDrawing = false; return; }
-  if (!(sel.focal ? diagramTabShown() : currentPerspective === 'map')) { dropLinkSelection(); revealLinkAfterDrawing = false; }
+  if (!(sel.focal ? diagramTabShown() : mapIsShown())) { dropLinkSelection(); revealLinkAfterDrawing = false; }
 }
 
 /**
@@ -12886,13 +12861,35 @@ const DIAGRAM_VIEWPOINTS = {
 /** Element kinds that can never contain other elements — the kernel's `parent` flag is the opposite. */
 const LEAF_KINDS = ['person', 'component'];
 
-// ---- The map viewpoint: no focal element, every application element is in play ----
+// ---- The map viewpoint: no focal element, every element of the layer is in play ----
+// Wave 015 (run 0099, W-11, #92): there are two Maps, the page Applications (the application layer) and the page Environments (the technology layer). They are one code with the layer
+// as a parameter (`mapLayer()`), and each keeps its own pins, hidden elements and open boxes: a reference can exist in both layers, and a pin of one layer means nothing in the other.
 
-/** What is open on the map; null until the map is first drawn, then the default plus what the user opened or closed. */
+/** What is open on the map of the application layer; null until the map is first drawn, then the default plus what the user opened or closed. */
 let mapOpened = null;
-/** The elements the map is about (none: all of them), and the ones it leaves out. */
+/** The elements the map of the application layer is about (none: all of them), and the ones it leaves out. */
 let mapPinned = [];
 let mapHidden = [];
+/** The same three, for the map of the technology layer (the page Environments). */
+let technologyMapState = { opened: null, pinned: [], hidden: [] };
+
+/** The layer the Map on screen draws: the page Environments draws the technology layer, the page Applications the application layer. */
+function mapLayer() {
+  return currentPerspective === 'environments' ? 'technology' : 'application';
+}
+
+/**
+ * The pins, the hidden elements and the open boxes of the Map of a layer, to read and to write (`state.pinned = ...`). The application layer keeps its three variables
+ * (`mapPinned`, `mapHidden`, `mapOpened`); the technology layer a record. No layer asked: the Map on screen.
+ */
+function mapStateOf(layer) {
+  if ((layer || mapLayer()) === 'technology') return technologyMapState;
+  return {
+    get pinned() { return mapPinned; }, set pinned(value) { mapPinned = value; },
+    get hidden() { return mapHidden; }, set hidden(value) { mapHidden = value; },
+    get opened() { return mapOpened; }, set opened(value) { mapOpened = value; }
+  };
+}
 /** The row (a `nodeKey`) of the tree that takes the focus when the user tabs into it (one tab stop for the whole tree). */
 let navActiveKey = null;
 
@@ -12924,8 +12921,8 @@ function resolveNavActive(visible, preferred) {
 let scrollNavToSelection = false;
 
 /** Unfold the branches above an element, so that its row in the tree of the map can be seen (the element itself stays as it is). */
-function expandParentsOf(reference) {
-  expandAncestorsOf(String(reference).split('.').slice(0, -1).join('.'), 'application'); // the map draws the application layer only
+function expandParentsOf(reference, layer) {
+  expandAncestorsOf(String(reference).split('.').slice(0, -1).join('.'), layer || mapLayer()); // a map draws one layer
 }
 /** Past this many boxes, "Unfold all" asks before drawing them. */
 const MAP_UNFOLD_CONFIRM_BOXES = 150;
@@ -12936,8 +12933,9 @@ function defaultMapOpened() {
 }
 
 function currentMapOpened() {
-  if (!mapOpened) mapOpened = defaultMapOpened();
-  return mapOpened;
+  const state = mapStateOf();
+  if (!state.opened) state.opened = defaultMapOpened();
+  return state.opened;
 }
 
 /**
@@ -12950,27 +12948,29 @@ let mapSelectionCheck = false;
 /** What the kernel has already warned about (a facet in a syntax that is going away): said once, not at every redraw. */
 const kernelWarningsShown = new Set();
 
-/** The Map perspective is on screen (the Diagram and Elements perspectives are about one element). */
+/** A Map is on screen: the page Applications or the page Environments (the pages Elements and Stories are about one element or one view). */
 function mapIsShown() {
-  return currentPerspective === 'map';
+  return currentPerspective === 'map' || currentPerspective === 'environments';
 }
 
 
 /** What the kernel is given: only references that still exist (an element can be deleted while the map is on). */
 function currentMapState() {
-  const known = (list) => Array.from(list).filter((reference) => AppState.index.application.has(reference));
+  const layer = mapLayer();
+  const state = mapStateOf(layer);
+  const known = (list) => Array.from(list).filter((reference) => AppState.index[layer].has(reference));
   // a comparison also draws the elements only the baseline has (removed): a box of the map that is one can be opened
-  const knownToOpen = (list) => Array.from(list).filter((reference) => AppState.index.application.has(reference) || comparisonHasApplication(reference));
-  return { opened: knownToOpen(currentMapOpened()), pinned: known(mapPinned), hidden: known(mapHidden) };
+  const knownToOpen = (list) => Array.from(list).filter((reference) => AppState.index[layer].has(reference) || comparisonHasElement(layer, reference));
+  return { opened: knownToOpen(currentMapOpened()), pinned: known(state.pinned), hidden: known(state.hidden) };
 }
 
 /** How many boxes the map would draw once `extra` more elements are open, children of open boxes being all drawn. */
 function mapBoxesIfOpened(extra) {
   const opened = new Set(currentMapOpened());
   for (const reference of extra) opened.add(reference);
-  const hidden = new Set(mapHidden);
+  const hidden = new Set(mapStateOf().hidden);
   let count = 0;
-  for (const record of AppState.index.application.values()) {
+  for (const record of AppState.index[mapLayer()].values()) {
     const parts = record.reference.split('.');
     let shown = true;
     for (let i = 1; i < parts.length && shown; i++) shown = opened.has(parts.slice(0, i).join('.'));
@@ -13271,10 +13271,10 @@ function comparisonState() {
   return Object.assign({ base: future ? drawn : AppState.baseline.plateau, target: future ? AppState.baseline.plateau : drawn, future, cascade: value.cascade, candidates: value.answer.candidates || [], warnings: value.answer.warnings || [], full: value.shown.full }, value.shown[AppState.hideWording ? 'quiet' : 'full']);
 }
 
-/** Whether the references of the union (the elements of both plateaus) include this one in the application layer: the map can open a removed box. */
-function comparisonHasApplication(reference) {
+/** Whether the references of the union (the elements of both plateaus) include this one in a layer: the map can open a removed box. */
+function comparisonHasElement(layer, reference) {
   const state = comparisonState();
-  return !!(state && state.records && state.records.has('application|' + reference));
+  return !!(state && state.records && state.records.has(layer + '|' + reference));
 }
 
 /** A facet of the settings as the kernel reads it. */
@@ -13290,6 +13290,7 @@ function toKernelFacet(facet) {
  * The kernel input for one viewpoint of one element, from the current in-memory model.
  * options.layer — only needed when an application element and a technology element share a reference (the
  *   selection carries its layer: without one, `layerOfReference` decides — the selected element's layer, else the application one);
+ *   a map has no element to decide: its layer is this one, else the application one;
  * options.facet — a facet of the settings: the diagram is then the one the CLI generates for that facet;
  * options.collapsed — ids of the diagram boxes that are folded;
  * options.expanded — ids of the diagram boxes that are opened (overview and detailed only).
@@ -13297,14 +13298,15 @@ function toKernelFacet(facet) {
 function buildKernelInput(viewpoint, reference, options) {
   const opts = options || {};
   const isMap = viewpoint === 'map';
-  const layer = isMap ? 'application' : (opts.layer || layerOfReference(reference) || 'technology'); // no layer asked: the selected element's own, else the application one
+  const layer = isMap ? (opts.layer === 'technology' ? 'technology' : 'application') : (opts.layer || layerOfReference(reference) || 'technology'); // no layer asked: the selected element's own, else the application one
   const main = toKernelElements(AppState.index[layer], !!opts.facet);
-  const apps = layer === 'technology' ? toKernelElements(AppState.index.application, !!opts.facet) : { elements: [], dangling: 0 };
+  // the applications deployed on the nodes are what the viewpoints of an element draw inside a node (and derive links from): a map draws one layer, and needs no other
+  const apps = layer === 'technology' && !isMap ? toKernelElements(AppState.index.application, !!opts.facet) : { elements: [], dangling: 0 };
   // run 0039: with a comparison on, the kernel draws the union of the two plateaus (each element and relationship says what changed); `dangling` is still the plateau drawn's own
   const comparison = comparisonState();
   if (comparison && comparison.layers) {
     main.elements = comparison.layers[layer];
-    if (layer === 'technology') apps.elements = comparison.layers.application;
+    if (layer === 'technology' && !isMap) apps.elements = comparison.layers.application;
   }
   const input = {
     viewpoint,
@@ -13353,7 +13355,7 @@ function diagramTabShown() {
 
 /** Whether a diagram (of an element, or the map) is on screen. */
 function anyDiagramShown() {
-  return diagramTabShown() || currentPerspective === 'map';
+  return diagramTabShown() || mapIsShown();
 }
 
 /** Whether the page of a view in the Library is drawing its view: the other place a diagram can be, with its own selection and its own Maximize. */
@@ -14285,7 +14287,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   // what the drawing is for is decided when it is asked for, not when it ends (the user may have left the map meanwhile)
   const isMap = options && options.map !== undefined ? options.map : mapIsShown();
   const openedByUser = new Set(options && options.opened ? options.opened : (isMap ? currentMapOpened() : []));
-  const pinnedOnMap = options && options.pinned ? options.pinned : (isMap ? mapPinned : []);
+  const pinnedOnMap = options && options.pinned ? options.pinned : (isMap ? mapStateOf().pinned : []);
   const show = options && options.show ? options.show : {};
   // the page of a view in the Library offers no way to change what it draws: nothing folds, a box that points at nothing is not a way
   // to its owner's form; a box and a link still select (on that page, in its panel: `handleAppClick` decides where)
@@ -14543,11 +14545,11 @@ async function markElementTabs() {
   }
 }
 
-function diagramStatusText(viewpoint, reference, facet, result, ghosts) {
+function diagramStatusText(viewpoint, reference, facet, result, ghosts, layer) {
   const links = result.links.filter((link) => !link.secondary && !link.ghost);
   const aggregated = links.filter((link) => link.synthetic).length;
   const items = result.items.filter((item) => !item.ghost).length;
-  let text = (viewpoint === 'map' ? 'Map' : DIAGRAM_VIEWPOINTS[viewpoint].label) + ' of ' + (viewpoint === 'map' ? 'the workspace' : reference) + (facet ? ' through facet “' + facet.name + '”' : '') + ' — ' +
+  let text = (viewpoint === 'map' ? 'Map' : DIAGRAM_VIEWPOINTS[viewpoint].label) + ' of ' + (viewpoint === 'map' ? (layer === 'technology' ? 'the technology layer' : 'the workspace') : reference) + (facet ? ' through facet “' + facet.name + '”' : '') + ' — ' +
     items + (items === 1 ? ' item, ' : ' items, ') + links.length + (links.length === 1 ? ' link' : ' links');
   if (aggregated) text += ' (' + aggregated + ' dashed: relationships grouped under an enclosing element)';
   if (ghosts.total) {
@@ -15316,7 +15318,7 @@ function linkSelectionFor(from, to, layer, nth, focal) {
 
 /** Moving to another element or viewpoint is a step the browser's Back button should be able to undo. */
 function pushDiagramHistory() {
-  if (currentPerspective === 'elements' || currentPerspective === 'map') history.pushState(null, '', location.href);
+  if (currentPerspective === 'elements' || mapIsShown()) history.pushState(null, '', location.href);
 }
 
 // ---- Diagram: the perspective's markup and the computation behind it ----
@@ -15327,8 +15329,8 @@ function pushDiagramHistory() {
  * canvas names the view, its tools show what that page draws and offer no folding (a Map view's open boxes are part of the view).
  */
 function renderDiagramCanvasHtml(record, overlayHtml, host) {
-  // no record: the map of the whole workspace
-  const subject = host ? 'the view ' + escapeHtml(viewLabel(host.view)) : record ? escapeHtml(record.name || record.id) : 'the workspace';
+  // no record: the map of the whole layer (the workspace for the application layer)
+  const subject = host ? 'the view ' + escapeHtml(viewLabel(host.view)) : record ? escapeHtml(record.name || record.id) : mapLayer() === 'technology' ? 'the technology layer' : 'the workspace';
   const canvasAttributes = host
     ? ' data-host="library" data-view="' + escapeHtml(host.view.id) + '" tabindex="0" aria-label="Diagram of ' + subject + '. Arrow keys move between boxes, Enter selects one, plus and minus zoom."'
     : (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
@@ -15427,7 +15429,7 @@ function modelsKey(comparison, facet) {
 /** The key of the drawing `recipe` asks for (see `mountDiagramIfNeeded`): the models and the knobs of the kernel input, then what is drawn from its answer. */
 function diagramCacheKey(recipe, comparison, viewKey) {
   const { isMap, reference, viewpoint, facet, mapState, shows, hideUnlinked } = recipe;
-  const layer = isMap ? 'application' : (recipe.layer || layerOfReference(reference) || 'technology'); // as `buildKernelInput` settles it
+  const layer = isMap ? (recipe.layer === 'technology' ? 'technology' : 'application') : (recipe.layer || layerOfReference(reference) || 'technology'); // as `buildKernelInput` settles it
   return [
     modelsKey(comparison, facet), viewpoint, layer, reference,
     isMap ? JSON.stringify([mapState.opened, mapState.pinned, mapState.hidden]) : '',
@@ -15445,7 +15447,7 @@ let treeQuietCache = null;
  */
 function quietReferencesThroughFacet(kernel, facet) {
   // issue #37: found in the cache from the version of the models and the knobs, before any kernel input is built
-  const viewpointKey = currentPerspective === 'map' || elementTab === 'details' ? 'overview' : elementTab;
+  const viewpointKey = mapIsShown() || elementTab === 'details' ? 'overview' : elementTab;
   const key = viewpointKey + '|' + modelsKey(comparisonState(), facet);
   if (treeQuietCache && treeQuietCache.key === key && modelsAreThoseOf(treeQuietCache)) return treeQuietCache.quiet;
   const models = modelsNow();
@@ -15455,7 +15457,7 @@ function quietReferencesThroughFacet(kernel, facet) {
     if (first === undefined) continue;
     const focals = [];
     for (const [reference, record] of AppState.index[layer]) {
-      const viewpoint = currentPerspective === 'map' || elementTab === 'details' || (elementTab === 'detailed' && LEAF_KINDS.includes(record.kind)) ? 'overview' : elementTab;
+      const viewpoint = mapIsShown() || elementTab === 'details' || (elementTab === 'detailed' && LEAF_KINDS.includes(record.kind)) ? 'overview' : elementTab;
       focals.push({ reference, viewpoint });
     }
     const input = buildKernelInput('overview', first, { layer, facet }).input;
@@ -15511,7 +15513,7 @@ function mainDiagramRecipe(canvas) {
   const record = isMap ? null : findElementRecord(reference);
   if (!isMap && !record) return null;
   return {
-    host: 'main', view: null, isMap, reference, record, layer: undefined,
+    host: 'main', view: null, isMap, reference, record, layer: isMap ? mapLayer() : undefined,
     // the diagram of the Elements perspective is always the overview of the element, whatever the Diagram perspective shows
     viewpoint: isMap ? 'map' : effectiveDiagramViewpoint(record),
     facet: currentDiagramFacet(),
@@ -15547,7 +15549,7 @@ function libraryDiagramRecipe(view) {
   if (!view || viewProblem(view)) return null;
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const isMap = view.viewpoint === 'map';
-  const layer = !isMap && view.layer === 'technology' ? 'technology' : 'application';
+  const layer = view.layer === 'technology' ? 'technology' : 'application';
   const facet = typeof properties.facet === 'string' ? AppState.workspace.settings.facets.customs.find((candidate) => candidate.name === properties.facet) || null : null;
   const shows = shownTextsOf(view);
   const recipe = {
@@ -15556,7 +15558,7 @@ function libraryDiagramRecipe(view) {
     shows
   };
   if (isMap) {
-    const known = (list) => stringList(list).filter((reference) => AppState.index.application.has(reference));
+    const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
     recipe.mapState = { opened: known(properties.opened), pinned: known(properties.pinned), hidden: known(properties.hidden) };
   } else {
     recipe.reference = properties.element;
@@ -15598,7 +15600,7 @@ function mountDiagramIfNeeded() {
   }
   // issue #37: the key is the version of the models and the small parts that vary, so a render that finds its drawing in `diagramCache` builds no kernel input
   // and serialises no model. The input is built below, only when the drawing is to be computed.
-  const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].concat(readonly ? ['view:' + recipe.view.id] : []).join('|');
+  const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].concat(isMap && recipe.layer === 'technology' ? ['technology'] : [], readonly ? ['view:' + recipe.view.id] : []).join('|');
   const comparison = comparisonState();
   const key = diagramCacheKey(recipe, comparison, viewKey);
   const duplicates = elementDuplicates();
@@ -15646,7 +15648,7 @@ function mountDiagramIfNeeded() {
         const ids = new Set(kept.items.map((item) => item.id));
         shownResult = Object.assign({}, result, { items: result.items.filter((item) => ids.has(item.id)), links: result.links.filter((link) => ids.has(link.from) && ids.has(link.to)) });
       }
-      let status = diagramStatusText(viewpoint, reference, facet, shownResult, ghosts);
+      let status = diagramStatusText(viewpoint, reference, facet, shownResult, ghosts, input.layer);
       if (hiddenCount) status += ' ' + hiddenCount + ' unlinked ' + (hiddenCount === 1 ? 'box' : 'boxes') + ' hidden.';
       // the styled stereotypes of the boxes on screen, each once, in the order they are met
       const drawnStereotypes = [];
@@ -15657,7 +15659,7 @@ function mountDiagramIfNeeded() {
         scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer, readonly), status, '', { width: 0, height: 0 }, null);
         scene.drawnIds = new Set(drawn.items.filter((item) => !item.ghost).map((item) => item.id));
       } else if (isMap && !drawn.items.length) {
-        scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no application element' +
+        scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no ' + (input.layer === 'technology' ? 'technology' : 'application') + ' element' +
           (input.hidden.length ? ' left once the hidden ones are out' + (readonly ? '.' : ': show some again with their eye, or with the chips above the map.') : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
         scene.drawnIds = new Set();
       } else if (!isMap && diagramHasNothingToDraw(drawn)) {
@@ -15692,26 +15694,31 @@ function renderElementDiagramHtml(record) {
     renderDiagramCanvasHtml(record) + '</div>';
 }
 
-/** Elements → Map: the same element, in the whole workspace. */
+/** Elements → Map: the same element, in the whole layer it lives in (the page Applications, or the page Environments for an element of the technology layer). */
 function renderShowOnMapButtonHtml(record) {
-  if (!AppState.index.application.has(record.reference)) return '';
-  return '<button type="button" class="with-icon" data-action="show-on-map" data-ref="' + escapeHtml(record.reference) + '" aria-label="Show on map" title="Draw the map of the workspace keeping only what touches this element">' +
+  const layer = record.layer === 'technology' ? 'technology' : 'application';
+  if (!AppState.index[layer].has(record.reference)) return '';
+  return '<button type="button" class="with-icon" data-action="show-on-map" data-ref="' + escapeHtml(record.reference) + '" data-layer="' + layer + '" aria-label="Show on map" title="Draw the map of the ' + (layer === 'technology' ? 'technology layer' : 'workspace') + ' keeping only what touches this element">' +
     controlIconHtml(CONTROL_ICON_PATHS.map) + '<span class="control-label">Show on map</span></button>';
 }
 
+/** The title of a page that draws a Map, by the layer it draws. */
+const MAP_PAGE_TITLES = { application: 'Applications', technology: 'Environments' };
+
 /**
- * Map perspective — the whole workspace from its systems down, whatever is selected: the element tree on the left says
+ * Map perspective — the whole layer from its roots down, whatever is selected: the element tree on the left says
  * what the map is about (pin) and what it leaves out (hide); picking an element finds it on the map, and clicking a
  * box selects it. The selected element is read in the panel on the right (nothing is rendered while nothing is selected,
- * or when maximized); its relationships are on its Details, one click away.
+ * or when maximized); its relationships are on its Details, one click away. Two pages are a Map: Applications (the application layer)
+ * and Environments (the technology layer, wave 015, run 0099); `mapLayer()` tells which one is on screen.
  */
 function renderMapPerspectiveHtml() {
   const sel = AppState.selection;
-  const record = sel.kind === 'element' ? findElementRecord(sel.key) : null;
+  const record = sel.kind === 'element' ? findElementRecord(sel.key, sel.layer) : null;
   return {
     left: diagramMaximized ? null : renderLeftPanelWrapperHtml(renderMapScopeHtml()),
     center: '<div class="diagram-view">' + renderStoryBarHtml() +
-      renderElementHeaderHtml('<h2>Applications</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
+      renderElementHeaderHtml('<h2>' + MAP_PAGE_TITLES[mapLayer()] + '</h2>' + (record ? '<span class="element-header-subject" title="Selected on the map">' + escapeHtml(record.name || record.id) + '</span>' : ''),
         renderDiagramHeaderActionsHtml(renderOpenAsDiagramButtonHtml(record))) +
       renderDiagramCanvasHtml(null, renderMapChipsHtml()) + '</div>',
     right: renderInspectionHtml(true),
@@ -15722,25 +15729,26 @@ function renderMapPerspectiveHtml() {
 /** Map → Diagram: the selected element, on its own. */
 function renderOpenAsDiagramButtonHtml(record) {
   if (!record) return '';
-  return '<button type="button" class="with-icon" data-action="open-as-diagram" data-ref="' + escapeHtml(record.reference) + '" aria-label="Open in Elements" title="Open this element in Elements, on its diagram: its relationships, on their own">' +
+  return '<button type="button" class="with-icon" data-action="open-as-diagram" data-ref="' + escapeHtml(record.reference) + '" data-layer="' + escapeHtml(record.layer || 'application') + '" aria-label="Open in Elements" title="Open this element in Elements, on its diagram: its relationships, on their own">' +
     controlIconHtml(CONTROL_ICON_PATHS.elements) + '<span class="control-label">Open in Elements</span></button>';
 }
 
-/** The application elements, each with what the map does with it: Pin keeps only what touches it, Hide leaves it out. */
+/** The elements of the layer the Map draws, each with what the map does with it: Pin keeps only what touches it, Hide leaves it out. */
 function renderMapScopeHtml() {
-  const roots = (AppState.workspace && AppState.workspace.application && AppState.workspace.application.elements) || [];
+  const layer = mapLayer();
+  const roots = (AppState.workspace && AppState.workspace[layer] && AppState.workspace[layer].elements) || [];
   const visible = [];
-  const collect = (record) => { visible.push(nodeKey(record.reference, 'application')); if (AppState.expanded.has(nodeKey(record.reference, 'application'))) sortedForNav(record.children).forEach(collect); };
+  const collect = (record) => { visible.push(nodeKey(record.reference, layer)); if (AppState.expanded.has(nodeKey(record.reference, layer))) sortedForNav(record.children).forEach(collect); };
   sortedForNav(roots).forEach(collect);
   // one tab stop for the whole tree: the row the user was on, or the first one
   resolveNavActive(visible);
   navTabStopGiven = false;
-  let html = '<div class="nav-section map-scope">' + renderNavHeaderHtml('Applications', renderNavToolsHtml('application')) +
+  let html = '<div class="nav-section map-scope">' + renderNavHeaderHtml(MAP_PAGE_TITLES[layer], renderNavToolsHtml(layer)) +
              '<div class="map-scope-hint" id="map-scope-hint">Pin (P) keeps only what touches an element. The eye (H) leaves it out. Greyed rows are not on the map.</div>';
   treeComparison = comparisonForTrees();
   try {
     html += roots.length
-      ? '<div role="tree" aria-label="Application elements of the map" aria-describedby="map-scope-hint">' + sortedForNav(roots).map((r) => renderMapScopeNodeHtml(r, 1)).join('') + '</div>'
+      ? '<div role="tree" aria-label="' + (layer === 'technology' ? 'Technology' : 'Application') + ' elements of the map" aria-describedby="map-scope-hint">' + sortedForNav(roots).map((r) => renderMapScopeNodeHtml(r, 1)).join('') + '</div>'
       : '<div class="tree-empty">No elements.</div>';
   } finally {
     treeComparison = null;
@@ -15800,18 +15808,20 @@ const MAP_HIDE_ICON = MAP_ICON_OPEN + MAP_EYE + '<path d="M2.5 13.5l11-11" strok
 function renderMapScopeNodeHtml(record, level) {
   const reference = record.reference;
   const hasChildren = Array.isArray(record.children) && record.children.length > 0;
-  const key = nodeKey(reference, 'application'); // the map draws the application layer only
+  const layer = mapLayer(); // a map draws one layer
+  const map = mapStateOf(layer);
+  const key = nodeKey(reference, layer);
   const isExpanded = AppState.expanded.has(key);
-  const pinned = mapPinned.includes(reference);
-  const hidden = mapHidden.some((h) => reference === h || reference.startsWith(h + '.'));
-  const hiddenItself = mapHidden.includes(reference);
-  const encloses = mapPinned.some((p) => p === reference || p.startsWith(reference + '.'));
+  const pinned = map.pinned.includes(reference);
+  const hidden = map.hidden.some((h) => reference === h || reference.startsWith(h + '.'));
+  const hiddenItself = map.hidden.includes(reference);
+  const encloses = map.pinned.some((p) => p === reference || p.startsWith(reference + '.'));
   const offMap = mapElementIsOnMap(reference) === false && !hidden;
   const label = (record.name !== undefined && record.name !== null && record.name !== '') ? record.name : record.id;
   const ref = escapeHtml(reference);
   const kind = String(record.kind);
   const abbreviation = kindAbbreviation(kind);
-  const groupId = treeGroupId('map-scope-group-', record.layer || 'application', reference);
+  const groupId = treeGroupId('map-scope-group-', record.layer || layer, reference);
   const styled = styledStereotypesOf(stereotypesOfRecord(record));
   const change = treeChangeOf(record); // a comparison: the glyph after the name (run 0040)
   // a row folds or unfolds its branch, nothing more: the tree of the map selects no element
@@ -15819,7 +15829,7 @@ function renderMapScopeNodeHtml(record, level) {
              ' role="treeitem" style="--level:' + level + '" aria-level="' + level + '"' + (hasChildren ? ' aria-expanded="' + isExpanded + '"' + (isExpanded ? ' aria-owns="' + groupId + '"' : '') : '') +
              ' tabindex="' + navTabIndex(key) + '" data-node="' + escapeHtml(key) + '" data-name="' + escapeHtml(label) + '"' + (styled.length ? ' data-stereotypes="' + escapeHtml(styled.join(', ')) + '"' : '') + (change ? ' data-change="' + change + '"' : '') +
              ' aria-label="' + escapeHtml(mapScopeRowLabel(label, pinned, hidden, offMap, styled.join(', '), change)) + '"' + (offMap ? ' title="Not on the map right now"' : '') +
-             (hasChildren ? ' data-action="toggle-element" data-ref="' + ref + '" data-layer="application"' : '') + '>';
+             (hasChildren ? ' data-action="toggle-element" data-ref="' + ref + '" data-layer="' + layer + '"' : '') + '>';
   html += hasChildren
     ? '<span class="tree-toggle" aria-hidden="true">' + (isExpanded ? '▾' : '▸') + '</span>'
     : '<span class="tree-toggle tree-toggle-empty" aria-hidden="true">▸</span>';
@@ -15930,17 +15940,18 @@ function handleNavKeydown(e) {
 
 /** The pinned and the hidden elements of the map, each removable. */
 function renderMapChipsHtml() {
-  if (!mapPinned.length && !mapHidden.length) return '';
+  const map = mapStateOf();
+  if (!map.pinned.length && !map.hidden.length) return '';
   const chip = (reference, kind) => {
-    const record = AppState.index.application.get(reference);
+    const record = AppState.index[mapLayer()].get(reference);
     if (!record) return '';
     return '<span class="map-chip map-chip-' + kind + '"><span>' + (kind === 'pin' ? 'Pinned' : 'Hidden') + ': ' + escapeHtml(record.name || record.id) + '</span>' +
       '<button type="button" data-action="map-' + (kind === 'pin' ? 'unpin' : 'unhide') + '" data-ref="' + escapeHtml(reference) + '" aria-label="' +
       (kind === 'pin' ? 'Unpin ' : 'Show again ') + escapeHtml(record.name || record.id) + '" title="' + (kind === 'pin' ? 'Unpin' : 'Show again') + '">×</button></span>';
   };
-  const clear = mapPinned.length + mapHidden.length > 2
+  const clear = map.pinned.length + map.hidden.length > 2
     ? '<button type="button" class="map-chips-clear" data-action="map-clear" title="Show the whole map again: nothing pinned, nothing hidden">Clear all</button>' : '';
-  return '<div class="map-chips">' + mapPinned.map((r) => chip(r, 'pin')).join('') + mapHidden.map((r) => chip(r, 'hide')).join('') + clear + '</div>';
+  return '<div class="map-chips">' + map.pinned.map((r) => chip(r, 'pin')).join('') + map.hidden.map((r) => chip(r, 'hide')).join('') + clear + '</div>';
 }
 
 /**
@@ -16124,7 +16135,7 @@ function canonicalViewDefinition(view) {
   // a text drawn as the default of that diagram says is not a choice: it is not remembered
   const defaults = DIAGRAM_SHOW_DEFAULTS[viewpoint === 'map' ? 'map' : 'elements'];
   for (const name of DIAGRAM_SHOW_NAMES) if (properties[name] === defaults[name]) delete properties[name];
-  return { viewpoint, layer: viewpoint === 'map' || view.layer !== 'technology' ? 'application' : 'technology', properties };
+  return { viewpoint, layer: view.layer === 'technology' ? 'technology' : 'application', properties };
 }
 
 /** What the diagram on screen is, as a view; null when no diagram is on screen (a page, a form). */
@@ -16132,7 +16143,7 @@ function currentViewDefinition() {
   const facetName = diagramFacet && currentDiagramFacet() ? diagramFacet : null;
   if (mapIsShown()) {
     const state = currentMapState();
-    return canonicalViewDefinition({ viewpoint: 'map', layer: 'application', properties: Object.assign({ pinned: state.pinned, hidden: state.hidden, opened: state.opened, facet: facetName, 'hide-unlinked': diagramHideUnlinked }, diagramShowOverrides(true)) });
+    return canonicalViewDefinition({ viewpoint: 'map', layer: mapLayer(), properties: Object.assign({ pinned: state.pinned, hidden: state.hidden, opened: state.opened, facet: facetName, 'hide-unlinked': diagramHideUnlinked }, diagramShowOverrides(true)) });
   }
   if (diagramTabShown()) {
     const sel = elementSelection();
@@ -16157,7 +16168,7 @@ function describeViewDefinition(view) {
   let text;
   if (definition.viewpoint === 'map') {
     const pinned = stringList(definition.properties.pinned);
-    text = pinned.length ? 'Map of ' + pinned.slice(0, 3).map((reference) => nameOf(reference, 'application')).join(', ') + (pinned.length > 3 ? ' and ' + (pinned.length - 3) + ' more' : '') : 'Map';
+    text = pinned.length ? 'Map of ' + pinned.slice(0, 3).map((reference) => nameOf(reference, definition.layer)).join(', ') + (pinned.length > 3 ? ' and ' + (pinned.length - 3) + ' more' : '') : (definition.layer === 'technology' ? 'Map of the environments' : 'Map');
   } else {
     text = (definition.properties.element ? nameOf(definition.properties.element, definition.layer) : '(no element)') + ' — ' + capitalizeWord(definition.viewpoint);
   }
@@ -16172,7 +16183,8 @@ function viewProblem(view) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
-    return pinned.length && !pinned.some((reference) => AppState.index.application.has(reference)) ? 'None of the elements it was pinned on exists any more.' : null;
+    const layer = view.layer === 'technology' ? 'technology' : 'application';
+    return pinned.length && !pinned.some((reference) => AppState.index[layer].has(reference)) ? 'None of the elements it was pinned on exists any more.' : null;
   }
   if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint)) return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
   const layer = view.layer === 'technology' ? 'technology' : 'application';
@@ -16192,13 +16204,15 @@ function applySavedView(view) {
   setDiagramShow(properties);
   diagramHideUnlinked = properties['hide-unlinked'] === true;
   if (view.viewpoint === 'map') {
-    const known = (list) => stringList(list).filter((reference) => AppState.index.application.has(reference));
-    mapPinned = known(properties.pinned);
-    mapHidden = known(properties.hidden);
-    mapOpened = new Set(known(properties.opened));
-    mapPinned.forEach(expandParentsOf);
+    const layer = view.layer === 'technology' ? 'technology' : 'application'; // the page Environments draws the technology layer, the page Applications the application layer
+    const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
+    const map = mapStateOf(layer);
+    map.pinned = known(properties.pinned);
+    map.hidden = known(properties.hidden);
+    map.opened = new Set(known(properties.opened));
+    map.pinned.forEach((reference) => expandParentsOf(reference, layer));
     mapSelectionCheck = true;
-    currentPerspective = 'map';
+    currentPerspective = layer === 'technology' ? 'environments' : 'map';
     useDiagramHost('main');
   } else {
     const layer = view.layer === 'technology' ? 'technology' : 'application';
@@ -16207,7 +16221,6 @@ function applySavedView(view) {
     expandAncestorsOf(properties.element, layer);
     scrollNavToSelection = true;
     currentPerspective = 'elements';
-    elementsScope = 'all';
     useDiagramHost('main');
   }
   if (rawYamlEditDraft) rawYamlEditDraft = null;
@@ -16297,7 +16310,7 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
     const element = rewriteReferenceValue(properties.element, oldRef, newRef);
     if (element !== properties.element) { properties.element = element; changed = true; }
   }
-  if (recipe.viewpoint === 'map' && layer === 'application') {
+  if (recipe.viewpoint === 'map' && viewLayer === layer) {
     for (const key of ['pinned', 'hidden', 'opened']) {
       if (!Array.isArray(properties[key])) continue;
       const next = properties[key].map((reference) => rewriteReferenceValue(reference, oldRef, newRef));
@@ -16309,7 +16322,7 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
 
 /**
  * An element was renamed: the saved views, and the steps that carry their own view, follow it (the Map's pinned,
- * hidden and open elements are of the application layer; the element of a view is of its own layer).
+ * hidden and open elements are of the layer of the view, and so is the element of any other view).
  */
 function rewriteSavedViewReferences(oldRef, newRef, layer) {
   let changed = false;
@@ -16457,18 +16470,27 @@ function setViewElement(view, reference) {
   return true;
 }
 
-/** The layer of an element viewpoint. The element stays when it exists in the other layer, else the view needs one. */
+/**
+ * The layer of a view. An element viewpoint: the element stays when it exists in the other layer, else the view needs one. The Map: the pinned, hidden
+ * and open elements that are elements of the other layer stay, the others go (they named elements of the layer the Map no longer draws).
+ */
 function setViewLayer(view, layer) {
-  if (view.viewpoint === 'map' || (layer !== 'application' && layer !== 'technology') || viewLayerOf(view) === layer) return false;
+  if ((layer !== 'application' && layer !== 'technology') || viewLayerOf(view) === layer) return false;
   view.layer = layer;
-  if (typeof view.properties.element !== 'string' || !AppState.index[layer].has(view.properties.element)) delete view.properties.element;
+  if (view.viewpoint === 'map') {
+    for (const list of VIEW_LISTS) {
+      if (!Array.isArray(view.properties[list])) continue;
+      const kept = view.properties[list].filter((reference) => AppState.index[layer].has(reference));
+      if (kept.length) view.properties[list] = kept; else delete view.properties[list];
+    }
+  } else if (typeof view.properties.element !== 'string' || !AppState.index[layer].has(view.properties.element)) delete view.properties.element;
   return true;
 }
 
 /**
- * The viewpoint. Between the three element viewpoints only the viewpoint changes. To the Map the element becomes the pinned element; back from
- * it the first pinned element becomes the element and the Map's lists go. What the view showed of the texts is kept: the two kinds of diagram
- * have other defaults.
+ * The viewpoint. Between the three element viewpoints only the viewpoint changes. To the Map the element becomes the pinned element (the Map is the one
+ * of the layer of the view); back from it the first pinned element becomes the element and the Map's lists go. What the view showed of the texts is kept:
+ * the two kinds of diagram have other defaults.
  */
 function setViewViewpoint(view, viewpoint) {
   if (viewpoint !== 'map' && !STORY_DIAGRAM_VIEWPOINTS.includes(viewpoint)) return false;
@@ -16477,15 +16499,13 @@ function setViewViewpoint(view, viewpoint) {
   const shows = shownTextsOf(view);
   if (viewpoint === 'map' && view.viewpoint !== 'map') {
     const element = properties.element;
-    const pinned = typeof element === 'string' && element && viewLayerOf(view) === 'application' ? [element] : [];
+    const pinned = typeof element === 'string' && element ? [element] : [];
     delete properties.element;
     if (pinned.length) putViewProperty(properties, 'pinned', pinned);
-    view.layer = 'application';
   } else if (viewpoint !== 'map' && view.viewpoint === 'map') {
-    const first = stringList(properties.pinned).find((reference) => AppState.index.application.has(reference)); // the first pin that is still an element, in the order of the file
+    const first = stringList(properties.pinned).find((reference) => AppState.index[viewLayerOf(view)].has(reference)); // the first pin that is still an element, in the order of the file
     for (const key of ['pinned', 'hidden', 'opened']) delete properties[key];
     if (first) putViewProperty(properties, 'element', first); else delete properties.element;
-    view.layer = 'application';
   }
   view.viewpoint = viewpoint;
   for (const name of DIAGRAM_SHOW_NAMES) setViewShow(view, name, shows[name]);
@@ -16494,14 +16514,14 @@ function setViewViewpoint(view, viewpoint) {
 
 const VIEW_LISTS = ['pinned', 'hidden', 'opened'];
 
-/** Adds an application element to the pinned, hidden or opened elements of a Map view, or takes one out. A reference that is not an element is refused. */
+/** Adds an element of the layer of the view to the pinned, hidden or opened elements of a Map view, or takes one out. A reference that is not an element of that layer is refused. */
 function setViewListItem(view, list, reference, add) {
   if (view.viewpoint !== 'map' || !VIEW_LISTS.includes(list)) return false;
   const items = stringList(view.properties[list]);
   const wanted = String(reference).trim();
   if (add) {
     if (!wanted) return false;
-    if (!AppState.index.application.has(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is not an element of the application layer.', wanted);
+    if (!AppState.index[viewLayerOf(view)].has(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is not an element of the ' + viewLayerOf(view) + ' layer.', wanted);
     if (items.includes(wanted)) return refuseViewEdit(view, list, '“' + wanted + '” is already there.', wanted);
     putViewProperty(view.properties, list, items.concat(wanted));
     return true;
@@ -16850,7 +16870,7 @@ function goToStoryStep(storyId, index) {
   if (!story || index < 0 || index >= steps.length) return;
   selectedStoryId = storyId;
   const problem = stepProblem(steps[index]) || applySavedView(stepView(steps[index]));
-  if (problem && currentPerspective !== 'map' && currentPerspective !== 'elements') { currentPerspective = 'map'; useDiagramHost('main'); } // somewhere to show the bar
+  if (problem && !mapIsShown() && currentPerspective !== 'elements') { currentPerspective = 'map'; useDiagramHost('main'); } // somewhere to show the bar
   activeStory = { id: storyId, step: index };
   storyBarEditing = false;
   storyBarNotice = null;
@@ -17227,17 +17247,18 @@ function renderViewFactsHtml(view) {
     row('Kept in', '<code>' + escapeHtml(entryFileLabel(view)) + '</code>') +
   '</dl><div class="view-edit">';
   html += field('view-edit-viewpoint', 'Viewpoint', '<select id="view-edit-viewpoint" data-view-field="viewpoint">' + viewpoints + '</select>', 'viewpoint');
+  // the layer of the view: the one its element is of, or the one its map draws (the page Applications, the page Environments)
+  html += field('view-edit-layer', 'Layer', '<select id="view-edit-layer" data-view-field="layer">' + option('application', 'Application', layer === 'application') + option('technology', 'Technology', layer === 'technology') + '</select>', 'layer');
   if (isMap) {
     for (const [list, label, hint] of [['pinned', 'Pinned', 'The elements the map is about'], ['hidden', 'Hidden', 'Elements the map leaves out'], ['opened', 'Open', 'Boxes drawn unfolded']]) {
       const items = stringList(properties[list]);
       html += field('view-edit-add-' + list, label,
         '<div class="view-pills" role="list" aria-label="' + label + ' elements">' + items.map((reference) =>
-          '<span class="pill' + (AppState.index.application.has(reference) ? '' : ' pill-missing') + '" role="listitem"' + (AppState.index.application.has(reference) ? '' : ' title="This element does not exist any more"') + '>' + escapeHtml(reference) +
+          '<span class="pill' + (AppState.index[layer].has(reference) ? '' : ' pill-missing') + '" role="listitem"' + (AppState.index[layer].has(reference) ? '' : ' title="This element does not exist any more"') + '>' + escapeHtml(reference) +
           '<button type="button" class="pill-remove" data-action="view-list-remove" data-list="' + list + '" data-ref="' + escapeHtml(reference) + '" aria-label="Remove ' + escapeHtml(reference) + ' from ' + label.toLowerCase() + '" title="Remove">×</button></span>').join('') + '</div>' +
-        '<input type="text" id="view-edit-add-' + list + '" data-view-list="' + list + '" list="archicode-application-references" value="' + escapeHtml(typedOr(list, '')) + '" placeholder="Add an element…" autocomplete="off" spellcheck="false" title="' + escapeHtml(hint) + '. Press Enter to add it.">', list);
+        '<input type="text" id="view-edit-add-' + list + '" data-view-list="' + list + '" list="archicode-' + layer + '-references" value="' + escapeHtml(typedOr(list, '')) + '" placeholder="Add an element…" autocomplete="off" spellcheck="false" title="' + escapeHtml(hint) + '. Press Enter to add it.">', list);
     }
   } else {
-    html += field('view-edit-layer', 'Layer', '<select id="view-edit-layer" data-view-field="layer">' + option('application', 'Application', layer === 'application') + option('technology', 'Technology', layer === 'technology') + '</select>', 'layer');
     html += field('view-edit-element', 'Element',
       '<input type="text" id="view-edit-element" data-view-field="element" list="archicode-' + layer + '-references" value="' + escapeHtml(typedOr('element', typeof properties.element === 'string' ? properties.element : '')) + '" placeholder="Reference of an element" autocomplete="off" spellcheck="false" title="Press Enter to apply it.">' +
       (record ? '<div class="muted view-element-name">' + escapeHtml(record.name || record.id) + '</div>' : ''), 'element');
@@ -17408,7 +17429,7 @@ function renderLibraryPanelHtml(view) {
 /** Dispatch to the active perspective's region content. */
 function renderActivePerspectiveHtml() {
   if (currentPerspective === 'plateaus') return renderPlateausPerspectiveHtml();
-  if (currentPerspective === 'map') return renderMapPerspectiveHtml();
+  if (mapIsShown()) return renderMapPerspectiveHtml();
   if (currentPerspective === 'library') return renderLibraryPerspectiveHtml();
   if (currentPerspective === 'files') return renderFilesPerspectiveHtml();
   if (currentPerspective === 'settings') return renderSettingsPerspectiveHtml();
@@ -17687,31 +17708,35 @@ function handleAppClick(e) {
     case 'map-pin': {
       const ref = target.getAttribute('data-ref');
       pushDiagramHistory();
-      mapPinned = mapPinned.includes(ref) ? mapPinned.filter((r) => r !== ref) : mapPinned.concat([ref]);
-      mapHidden = mapHidden.filter((h) => !(ref === h || ref.startsWith(h + '.')));
-      if (mapPinned.includes(ref)) expandParentsOf(ref);
+      const map = mapStateOf();
+      map.pinned = map.pinned.includes(ref) ? map.pinned.filter((r) => r !== ref) : map.pinned.concat([ref]);
+      map.hidden = map.hidden.filter((h) => !(ref === h || ref.startsWith(h + '.')));
+      if (map.pinned.includes(ref)) expandParentsOf(ref);
       mapSelectionCheck = true;
       render();
       break;
     }
     case 'map-unpin':
       pushDiagramHistory();
-      mapPinned = mapPinned.filter((r) => r !== target.getAttribute('data-ref'));
+      mapStateOf().pinned = mapStateOf().pinned.filter((r) => r !== target.getAttribute('data-ref'));
       render();
       break;
     case 'map-hide': {
       const ref = target.getAttribute('data-ref');
-      mapHidden = mapHidden.includes(ref) ? mapHidden.filter((r) => r !== ref) : mapHidden.concat([ref]);
+      const map = mapStateOf();
+      map.hidden = map.hidden.includes(ref) ? map.hidden.filter((r) => r !== ref) : map.hidden.concat([ref]);
       mapSelectionCheck = true;
       render();
       break;
     }
     case 'show-on-map': {
       const ref = target.getAttribute('data-ref');
-      mapPinned = [ref];
-      mapHidden = mapHidden.filter((h) => !(ref === h || ref.startsWith(h + '.')));
-      expandParentsOf(ref);
-      setPerspective('map');
+      const layer = target.getAttribute('data-layer') === 'technology' ? 'technology' : 'application'; // the layer of the element on the page: the Map of that layer
+      const map = mapStateOf(layer);
+      map.pinned = [ref];
+      map.hidden = map.hidden.filter((h) => !(ref === h || ref.startsWith(h + '.')));
+      expandParentsOf(ref, layer);
+      setPerspective(layer === 'technology' ? 'environments' : 'map');
       break;
     }
     case 'open-as-diagram':
@@ -17848,16 +17873,16 @@ function handleAppClick(e) {
     }
     case 'map-clear':
       pushDiagramHistory();
-      mapPinned = [];
-      mapHidden = [];
+      mapStateOf().pinned = [];
+      mapStateOf().hidden = [];
       render();
       break;
     case 'map-unhide':
-      mapHidden = mapHidden.filter((r) => r !== target.getAttribute('data-ref'));
+      mapStateOf().hidden = mapStateOf().hidden.filter((r) => r !== target.getAttribute('data-ref'));
       render();
       break;
     case 'fold-all':
-      if (mapIsShown()) { mapOpened = defaultMapOpened(); mapSelectionCheck = true; render(); }
+      if (mapIsShown()) { mapStateOf().opened = defaultMapOpened(); mapSelectionCheck = true; render(); }
       break;
     case 'unfold-all':
       if (mapIsShown()) {
@@ -18708,7 +18733,6 @@ function render() {
   activeJsonEditorViews = {};
 
   useDiagramHost(diagramHostOf(currentPerspective)); // before anything is drawn: the tree of the Map reads the scene of the Map
-  widenElementsScopeToSelection(); // the page Environments does not list an application element: the selection of one is the page Elements
   settleLinkSelection(); // a link is selected only while the diagram it was made on is on screen
   if (currentPerspective !== 'library' || (viewEditNotice && viewEditNotice.view !== selectedViewId)) viewEditNotice = null;
   const landing = landingScreenConfig();
@@ -18743,7 +18767,7 @@ function render() {
     const el = document.getElementById(id);
     if (el) scrollBefore[id] = { top: el.scrollTop, left: el.scrollLeft };
   }
-  const viewKey = currentPageId() + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '') + '|' + (AppState.selection.focal || '') +
+  const viewKey = currentPerspective + '|' + AppState.selection.kind + '|' + AppState.selection.key + '|' + AppState.selection.mode + '|' + (AppState.selection.layer || '') + '|' + (AppState.selection.focal || '') +
     (currentPerspective === 'library' && libraryTab === 'views' ? '|' + selectedViewId : ''); // another view opens at the top of its panel
   const sameView = viewKey === lastRenderedViewKey;
   lastRenderedViewKey = viewKey;

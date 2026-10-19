@@ -40,7 +40,7 @@ import lombok.val;
 
 /**
  * Creates the {@link Viewpoint} of a view by asking the {@link ViewpointKernel}, for any of its viewpoints (overview,
- * detailed, deep). All that is left to do here is translating: the element index becomes the kernel's graph, and the
+ * detailed, deep, and the map of a layer). All that is left to do here is translating: the element index becomes the kernel's graph, and the
  * kernel's items and links become {@link Item}s and {@link Link}s the renderers know.
  * <p>
  * Input of the kernel: {@code viewpoint}, {@code layer}, {@code focal} (the reference of the view's element),
@@ -55,6 +55,9 @@ public class KernelViewpointFactory implements ViewpointFactory {
 
     /** The graph of an index, serialized once: a workspace generates one view per element. */
     private static final Map<ElementIndex, ArrayNode> GRAPHS = new WeakHashMap<>();
+
+    /** The viewpoint with no focal element: the whole layer, folded, with what is pinned, hidden and open. */
+    public static final String MAP = "map";
 
     @NonNull
     String viewpoint;
@@ -76,7 +79,7 @@ public class KernelViewpointFactory implements ViewpointFactory {
     /**
      * The views of a comparison.
      *
-     * @param viewpoint {@code overview}, {@code detailed} or {@code deep}
+     * @param viewpoint {@code overview}, {@code detailed}, {@code deep} or {@code map}
      * @param objectMapper to speak JSON with the kernel
      * @param comparison what the kernel said of two plateaus, or null for the views of the workspace
      * @param onlyChanges draw only what changed, with the context it needs
@@ -158,6 +161,34 @@ public class KernelViewpointFactory implements ViewpointFactory {
         return kept;
     }
 
+    /**
+     * The elements the map is about ({@code pinned}), the ones it leaves out ({@code hidden}) and the boxes that are open
+     * ({@code opened}), from the properties of the view, which the editor writes as it draws them. A workspace of a facet
+     * may have lost an element the view names: the entry is then dropped (a facet removes an element without a word, and so
+     * does the editor); in any other workspace the kernel refuses the one it cannot find, and the view is named in the error.
+     */
+    private void mapLists(ObjectNode input, View view, Workspace workspace, ElementIndex mainIndex) {
+        // a map with nothing pinned, hidden or open has no properties at all
+        val properties = Optional.<JsonNode>ofNullable(view.getProperties()).orElseGet(objectMapper::createObjectNode);
+        for (val list : List.of("opened", "pinned", "hidden")) {
+            val kept = input.putArray(list);
+            for (val entry : properties.path(list)) {
+                if (!entry.isTextual()) {
+                    throw new ArchiCodeException(
+                        "the view %s: `%s` is a list of references, and %s is not one",
+                        view.getId(),
+                        list,
+                        entry
+                    );
+                }
+                if (workspace.isFaceted() && mainIndex.searchElement(entry.asText()).isEmpty()) {
+                    continue;
+                }
+                kept.add(entry.asText());
+            }
+        }
+    }
+
     private static List<String> strings(JsonNode list) {
         val out = new ArrayList<String>();
         list.forEach(item -> out.add(item.asText()));
@@ -169,8 +200,10 @@ public class KernelViewpointFactory implements ViewpointFactory {
     public Viewpoint create(@NonNull Workspace workspace, @NonNull View view) {
         log.debug("create the {} viewpoint of {}", viewpoint, view);
 
-        val focal = Objects.requireNonNull(view.getProperties()).path("element").asText("");
-        if (focal.isBlank()) {
+        val map = viewpoint.equals(MAP);
+        // the map has no focal element: every element of the layer is in play, `pinned`, `hidden` and `opened` say which
+        val focal = map ? "" : Objects.requireNonNull(view.getProperties()).path("element").asText("");
+        if (!map && focal.isBlank()) {
             throw new ArchiCodeException("the view %s has no element", view.getId());
         }
 
@@ -197,7 +230,10 @@ public class KernelViewpointFactory implements ViewpointFactory {
         if (onlyChanges) {
             input.put("only_changes", true);
         }
-        if (technology) {
+        if (map) {
+            mapLists(input, view, workspace, mainIndex);
+        }
+        if (technology && !map) {
             input.set(
                 "app_elements",
                 comparison == null
@@ -215,7 +251,8 @@ public class KernelViewpointFactory implements ViewpointFactory {
             ViewpointKernel.getInstance().compute(objectMapper.writeValueAsString(input))
         );
         if (output.has("error")) {
-            throw new ArchiCodeException("%s", output.get("error").asText());
+            val message = output.get("error").asText();
+            throw new ArchiCodeException("%s", map ? "the view " + view.getId() + ": " + message : message);
         }
         if (output.path("version").asInt() != ViewpointKernel.CONTRACT_VERSION) {
             throw new ArchiCodeException(

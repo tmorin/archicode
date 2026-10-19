@@ -1141,10 +1141,10 @@ test('the Library has a Stories side and a Views side that lead to one another, 
 
   // the routes: "#/stories" opens the Stories side and "#/stories/views" the Views side; the former "#/library" and "#/library/views" still do (run 0081 pins them all)
   ev(sandbox, "location.hash = '#/stories?story=tour'");
-  assert.equal(sandbox.perspectiveIdFromHash(), 'library');
+  assert.equal(sandbox.pageIdFromHash(), 'library');
   assert.equal(sandbox.libraryTabFromHash(), 'stories');
   ev(sandbox, "location.hash = '#/library/views?view=" + viewId + "'");
-  assert.equal(sandbox.perspectiveIdFromHash(), 'library');
+  assert.equal(sandbox.pageIdFromHash(), 'library');
   assert.equal(sandbox.libraryTabFromHash(), 'views');
   sandbox.applyDiagramParamsFromHash();
   assert.equal(ev(sandbox, 'selectedViewId'), viewId);

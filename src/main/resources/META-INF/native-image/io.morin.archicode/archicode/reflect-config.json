@@ -1746,6 +1746,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.viewpoint.map.MapViewpointService",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.viewpoint.overview.OverviewViewProperties",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,

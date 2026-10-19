@@ -224,7 +224,7 @@ test('a Map view lists its pinned, hidden and opened elements; adding and removi
   assert.match(right, /data-action="view-list-remove" data-list="pinned" data-ref="shop\.web"/);
   assert.match(right, /data-action="view-list-remove" data-list="pinned" data-ref="customer"/);
   assert.doesNotMatch(right, /id="view-edit-element"/, 'a map has pins, not an element');
-  assert.doesNotMatch(right, /id="view-edit-layer"/);
+  assert.match(right, /<select id="view-edit-layer"[^>]*>.*<option value="application" selected>Application<\/option>/s, 'a map draws a layer: the one of the page Applications here');
   const mapIds = () => {
     const input = page.sandbox.buildKernelInput('map', '', { opened: [], pinned: plain(run(page.sandbox, 'libraryDiagramRecipe(findSavedView("map_view")).mapState.pinned')) }).input;
     input.hidden = plain(run(page.sandbox, 'libraryDiagramRecipe(findSavedView("map_view")).mapState.hidden'));
@@ -721,14 +721,17 @@ test('the form is wired: a change listener on the page, a handler for each contr
   assert.match(hide, /editSavedView\(\(entry\) => setViewHideUnlinked\(entry, !recipe\.hideUnlinked\)\)/);
 });
 
-test('a technology element gives no pin when its view becomes a map; taking a pin out gives the focus to the field to add one', async () => {
+test('a technology element is the pin of the Map of the technology layer when its view becomes a map; taking a pin out gives the focus to the field to add one', async () => {
   const page = await startMem({ 'manifests/view.tech.yaml': VIEW_FILE.replace('api_view', 'tech').replace('layer: application', 'layer: technology').replace('shop.web.api', 'prod.cluster').replace('overview', 'deep') });
   const view = viewOf(page, 'tech');
   await openView(page, view);
   await pickViewpoint(page, 'map');
-  assert.equal(view.layer, 'application');
-  assert.equal('pinned' in view.properties, false, 'the Map draws the application layer: the whole map');
+  assert.equal(view.layer, 'technology', 'the Map is the one of the layer of the view (the page Environments)');
+  assert.deepEqual(plain(view.properties.pinned), ['prod.cluster'], 'the element is the pinned element');
   assert.equal('element' in view.properties, false);
+  await pickViewpoint(page, 'overview');
+  assert.equal(view.layer, 'technology');
+  assert.equal(view.properties.element, 'prod.cluster', 'and back from the Map the first pin is the element again');
 
   await openView(page, viewOf(page, 'map_view'));
   const asked = [];
