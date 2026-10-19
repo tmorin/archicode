@@ -610,12 +610,12 @@ test('the top bar: the perspectives are a button group, the pressed one is the c
   const ids = Array.from(tabs.matchAll(/data-perspective="([a-z]+)" aria-pressed="(true|false)"/g));
   assert.ok(ids.length >= 2, 'one button per perspective');
   assert.equal(ids.filter((m) => m[2] === 'true').length, 1, 'exactly one is pressed');
-  assert.equal(ids.find((m) => m[2] === 'true')[1], 'timeline', 'the Map is the page called Applications, below Timeline: its button is the pressed one');
+  assert.equal(ids.find((m) => m[2] === 'true')[1], 'map', 'the Map is the page called Applications, below Timeline: the button Timeline is the pressed one, and it opens that page');
   assert.doesNotMatch(bar, /perspective-tab"|class="[^"]*\bactive\b/, 'no more pills with an "active" class');
 
   run(sandbox, "currentPerspective = 'settings'");
   assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="settings" aria-pressed="true"/);
-  assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="timeline" aria-pressed="false"/);
+  assert.match(sandbox.renderPerspectiveTabsHtml(), /data-perspective="map" aria-pressed="false"/);
 
   const at = (needle) => { const i = bar.indexOf(needle); assert.ok(i >= 0, needle); return i; };
   assert.ok(at('class="perspective-tabs') < at('class="top-actions"'));

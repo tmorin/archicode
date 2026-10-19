@@ -198,7 +198,7 @@
   .page-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; padding: 0.2rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel-bg); min-width: 0; max-width: 100%; box-sizing: border-box; }
   .page-tabs button { height: 2rem; padding: 0 0.8rem !important; font-size: 0.85rem; line-height: 1.25; white-space: nowrap; }
   .page-tabs .button-group { flex-wrap: wrap; max-width: 100%; row-gap: 0.25rem; }
-  /* The Timeline page: the plateaus as a list, each indented by its depth in the tree; it wraps and never holds a width of its own. */
+  /* The Plateaus page: the plateaus as a list, each indented by its depth in the tree; it wraps and never holds a width of its own. */
   .timeline-view { padding-bottom: 1.25rem; min-width: 0; }
   .timeline-body { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
   .timeline-note, .timeline-status { margin: 0; font-size: 0.875rem; color: var(--muted); overflow-wrap: anywhere; }
@@ -4853,17 +4853,55 @@ function syncLayers() {
   AppState.layerUndrawable = model.undrawable;
 }
 
-/** Draw the plateau of a node of the band. The folder is not read again and nothing is lost: the manifests stay what they are, the model drawn is another resolution of them. */
-function drawPlateau(id) {
+/**
+ * Draw the plateau of a node of the band. The folder is not read again and nothing is lost: the manifests stay what they are, the model drawn is another resolution of them.
+ * `options.compare` (wave 015, run 0096, W-8, #91) is the comparison an address names, as `layerCompareChoice` writes it (`past`, `future:<id>`, `other:<id>`, empty for none):
+ * it is set with the plateau, in one drawing. `options.fromAddress` says the change comes from the address (typed, or Back): the address already says it, so no entry
+ * is added to the history and the page is not drawn here, the caller does it (`syncPerspectiveFromHash`). Returns whether anything changed.
+ */
+function drawPlateau(id, options) {
   const layers = AppState.layers;
-  if (!layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.nodes.has(id) || layers.blocked || layers.current === id) return;
+  const compare = options && typeof options.compare === 'string' ? options.compare : null;
+  if (!layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.nodes.has(id) || layers.blocked) return false;
+  const before = layers.current + '|' + layerCompareChoice();
   layers.current = id;
+  if (compare !== null) layers.compare = layerCompareFromChoice(compare);
+  layers.compare = normalizedLayerCompare(layers);
+  if (layers.current + '|' + layerCompareChoice() === before) return false;
   rememberLayerChoice();
-  settleAfterLayerChange();
+  if (options && options.fromAddress) settleAfterLayerChange(false);
+  else settleAfterLayerChange();
+  return true;
 }
 
-/** After another plateau is drawn or another comparison is chosen: the page is drawn again from the new models, and what it held that is not in them is let go. */
-function settleAfterLayerChange() {
+/**
+ * Wave 015 (run 0096, W-8, #91): an address typed while the editor is open (or reached by Back and Forward) draws the plateau and the comparison it names, as the band
+ * does, through `drawPlateau`: nothing is read from the disk and nothing is lost. The address is the whole say of the plateau: one that names none is the root (that is
+ * what the page writes for it, so Back to such an address draws it), one that names a plateau that does not exist leaves the plateau drawn (the page writes its own
+ * address back). `compare=` is read when the address has it (the page writes it with a removed element; a typed or kept link may carry it): empty is no comparison.
+ * A write in flight, or a dialog that is open (a form of a plateau, the question of a write that other plateaus inherit), keeps the plateau it was opened in: the address is
+ * not followed and the page writes back the address of what is drawn. Returns whether anything was drawn again.
+ */
+function drawLayersNamedByAddress() {
+  const layers = AppState.layers;
+  const tree = AppState.plateauTree;
+  if (!layers || !AppState.workspace || !tree || !tree.layered || layers.blocked || saveInFlight || appDialog) return false;
+  const named = plateauFromHash();
+  const id = named === null ? BASELINE_PLATEAU : named;
+  if (!tree.nodes.has(id)) return false;
+  const compare = compareFromHash();
+  return drawPlateau(id, { compare: compare === null ? undefined : compare, fromAddress: true });
+}
+
+/** Whether the next address the page writes is a new entry of the history: a plateau or a comparison the author chose is, a rewrite of what the address means is not. */
+let layerChangeIsAnEntry = false;
+
+/**
+ * After another plateau is drawn or another comparison is chosen: the page is drawn again from the new models, and what it held that is not in them is let go.
+ * `draw` false: the caller draws (an address; see `drawPlateau`). Otherwise the change is a step of the author: the address it makes is an entry of the history, so that Back returns to the plateau before.
+ */
+function settleAfterLayerChange(draw = true) {
+  layerChangeIsAnEntry = draw;
   syncLayers();
   const selection = AppState.selection;
   if (selection.kind === 'element') {
@@ -4883,7 +4921,13 @@ function settleAfterLayerChange() {
   if (activeStory && !findStory(activeStory.id)) activeStory = null;
   mapSelectionCheck = true;
   diagramCache = null;
-  render();
+  if (draw) {
+    try {
+      render();
+    } finally {
+      layerChangeIsAnEntry = false; // a render that showed no shell (or failed) did not write the address: the next one is not this change
+    }
+  }
 }
 
 /** The Past toggle: compare the plateau drawn with the plateau it overrides, or stop. Nothing for `baseline`, which overrides nothing. */
@@ -5048,7 +5092,7 @@ function scheduleBandCounts() {
         button.insertAdjacentHTML('beforeend', '<span class="band-counts" data-counts="' + escapeHtml(id) + '">' + escapeHtml(bandCountsText(counts)) + '</span>');
         button.setAttribute('title', bandNodeTitle(id));
       }
-      // the Timeline page, when it is on screen, has the same counts in its entries
+      // the Plateaus page, when it is on screen, has the same counts in its entries
       for (const holder of Array.from(document.querySelectorAll('.timeline-item .timeline-changes'))) {
         const item = holder.closest('.timeline-item');
         const id = item ? item.getAttribute('data-plateau') : null;
@@ -5162,6 +5206,14 @@ function renderPlateauBandHtml() {
  * layers); the buttons make a plateau that overrides it, and rename it, give it a horizon or another parent.
  */
 function bandWritingHtml() {
+  return plateauWritingHtml('band-writing');
+}
+
+/**
+ * The same controls for the page Plateaus (wave 015, run 0096, W-8, #99): the editing of the plateaus is that page's. The band still has them until the run that makes it
+ * read-only (W-9) takes them away, so nothing is lost between the two. `domId` is the id of the element (the band's is `band-writing`; the page has none: one id per document).
+ */
+function plateauWritingHtml(domId) {
   const layers = AppState.layers;
   const tree = AppState.plateauTree;
   if (!layers || !tree || layers.blocked) return '';
@@ -5169,7 +5221,7 @@ function bandWritingHtml() {
   const title = plateauTitle(layerPlateauModel(id));
   const writing = writingPlateau();
   const busy = saveInFlight ? ' disabled' : '';
-  return '<span class="band-writing" id="band-writing">' +
+  return '<span class="band-writing"' + (domId ? ' id="' + domId + '"' : '') + '>' +
     (writing !== null ? '<span class="band-writing-label" role="status">writing in: <strong>' + escapeHtml(title) + '</strong>' + (title !== id ? ' <code>' + escapeHtml(id) + '</code>' : '') + '</span>' : '') +
     '<button type="button" data-action="plateau-create" data-plateau="' + escapeHtml(id) + '"' + busy + ' title="Create a plateau that overrides ' + escapeHtml(title) + '">New plateau</button>' +
     (tree.layered ? '<button type="button" data-action="plateau-edit" data-plateau="' + escapeHtml(id) + '"' + busy + ' title="Rename ' + escapeHtml(title) + ', give it a horizon or another parent">Edit plateau</button>' : '') +
@@ -7218,13 +7270,14 @@ let treeExpandedEnvironments = true;
 // =====================================================================
 /**
  * The pages of the editor, by id, and where each lives: the group of the top bar it belongs to (`group`) and the route that names it in the address (`route`).
- * Wave 014 (run 0081, W-7): the perspectives are Timeline (the page of the band, and below it Applications, Environments and Elements), Stories, Files and
- * Settings. The ids `map`, `elements` and `library` are the former perspectives and stay the names the code uses: `map` is the page called Applications,
+ * Wave 014 (run 0081, W-7): the perspectives are Timeline (the pages Plateaus, Applications, Environments and Elements), Stories, Files and
+ * Settings. Wave 015 (run 0096, W-8): the page that lists and edits the plateaus is called Plateaus (`plateaus`, "#/timeline/plateaus"; it was the page Timeline) and
+ * the button Timeline of the top bar opens Applications, the first page of the perspective that draws something. The ids `map`, `elements` and `library` are the former perspectives and stay the names the code uses: `map` is the page called Applications,
  * `library` the one called Stories. `environments` is not a perspective of its own in the code: it is Elements with `elementsScope` set to the technology layer
  * (see `currentPageId`), because the pages of an element are the same and only the tree on the left differs.
  */
 const PERSPECTIVES = {
-  timeline: { label: 'Timeline', group: 'timeline', route: 'timeline' },
+  plateaus: { label: 'Plateaus', group: 'timeline', route: 'timeline/plateaus' },
   map: { label: 'Applications', group: 'timeline', route: 'timeline/applications' },
   environments: { label: 'Environments', group: 'timeline', route: 'timeline/environments' },
   elements: { label: 'Elements', group: 'timeline', route: 'timeline/elements' },
@@ -7234,12 +7287,12 @@ const PERSPECTIVES = {
 };
 /** The buttons of the top bar: each is a group of pages, and opens the first page of its group. */
 const PERSPECTIVE_GROUPS = [
-  { id: 'timeline', page: 'timeline', label: 'Timeline' },
+  { id: 'timeline', page: 'map', label: 'Timeline' },
   { id: 'library', page: 'library', label: 'Stories' },
   { id: 'files', page: 'files', label: 'Files' },
   { id: 'settings', page: 'settings', label: 'Settings' }
 ];
-/** The pages below Timeline, in the order of the second bar. */
+/** The pages of Timeline other than Plateaus, in the order of the second bar (which begins with Plateaus). */
 const TIMELINE_PAGES = ['map', 'environments', 'elements'];
 const DEFAULT_PERSPECTIVE = 'map';
 let currentPerspective = DEFAULT_PERSPECTIVE;
@@ -7253,13 +7306,14 @@ function currentPageId() {
 
 /**
  * The page an address names, by the id of `PERSPECTIVES`: "#/timeline/applications", and the former routes, which still open (an old link keeps working):
- * "#/map" (Applications), "#/elements" (Elements), "#/library" and "#/stories" (Stories), "#/diagram" (Elements, see `applyDiagramParamsFromHash`).
+ * "#/timeline" (it named the list of the plateaus; it now opens Applications, and "#/timeline/plateaus" or "#/plateaus" opens the list), "#/map" (Applications), "#/elements" (Elements), "#/library" and "#/stories" (Stories), "#/diagram" (Elements, see `applyDiagramParamsFromHash`).
  * An empty or unrecognised address is the default page.
  */
 function pageIdFromHash() {
   const parts = location.hash.split('?')[0].replace(/^#\/?/, '').split('/');
   const id = parts[0];
-  if (id === 'timeline') return parts[1] === 'applications' ? 'map' : parts[1] === 'environments' ? 'environments' : parts[1] === 'elements' ? 'elements' : 'timeline';
+  // "#/timeline" names the perspective, which opens on Applications (the page then rewrites the address), as does a part that names no page
+  if (id === 'timeline') return parts[1] === 'plateaus' ? 'plateaus' : parts[1] === 'environments' ? 'environments' : parts[1] === 'elements' ? 'elements' : 'map';
   // the Diagram perspective is gone: its links open the Elements perspective on the matching tab (see applyDiagramParamsFromHash)
   if (id === 'diagram') return 'elements';
   if (id === 'stories') return 'library'; // the page was the Library, then the Stories perspective: both names open it
@@ -7437,7 +7491,10 @@ function syncPerspectiveFromHash() {
   currentPerspective = perspectiveIdFromHash();
   elementsScope = page === 'environments' ? 'technology' : 'all';
   useDiagramHost(diagramHostOf(currentPerspective)); // the framing an address carries (`frame=fit`) is that of the diagram it will draw
-  if (AppState.workspace) applySelectionFromHashRef();
+  if (AppState.workspace) {
+    drawLayersNamedByAddress(); // before the selection: an element may exist in the plateau the address names only
+    applySelectionFromHashRef();
+  }
 }
 
 /**
@@ -7535,13 +7592,18 @@ function currentRouteHash() {
 /**
  * Keep the URL in sync with whatever just rendered, without spamming
  * browser history or re-triggering 'hashchange' (replaceState does
- * neither) — called at the end of every render() that shows the shell.
+ * neither; pushState adds an entry and fires none) — called at the end of every render() that shows the shell.
  * A plain `location.hash = ...` per click would instead push a new
  * history entry and fire 'hashchange' asynchronously, double-rendering.
  */
 function syncHashFromState() {
   const hash = '#' + currentRouteHash();
-  if (location.hash !== hash) history.replaceState(null, '', hash);
+  const entry = layerChangeIsAnEntry;
+  layerChangeIsAnEntry = false;
+  if (location.hash === hash) return;
+  // a plateau or a comparison the author chose (not one an address named) is a place of its own: Back returns to the one before (#91)
+  if (entry && history.pushState) history.pushState(null, '', hash);
+  else history.replaceState(null, '', hash);
 }
 
 /**
@@ -9673,7 +9735,7 @@ function renderSaveStatusHtml() {
 
 /**
  * The perspective switch (header, left of the folder actions): a button group, the perspective of the page on screen is the pressed one. Timeline, Stories, Files and
- * Settings; a click opens the first page of the perspective (the Timeline page, the Stories page...). The pages below Timeline are in the bar under the band
+ * Settings; a click opens the first page of the perspective (Applications for Timeline, the Stories page...). The pages of Timeline are in the bar under the band
  * (`renderPageTabsHtml`).
  */
 function renderPerspectiveTabsHtml() {
@@ -9689,14 +9751,13 @@ function renderPerspectiveTabsHtml() {
 }
 
 /**
- * The pages below Timeline (Applications, Environments, Elements), in a bar of their own under the band, with the Timeline page itself as the first button so that the
- * way back to it is there too. Only while a page of the Timeline perspective is on screen.
+ * The pages of the Timeline perspective (Plateaus, Applications, Environments, Elements), in a bar of their own under the band. Only while one of them is on screen.
  */
 function renderPageTabsHtml() {
   const page = currentPageId();
   if (PERSPECTIVES[page].group !== 'timeline') return '';
   let html = '<nav class="page-tabs col-span-3" id="page-tabs" aria-label="Pages of the Timeline"><span class="button-group" role="group" aria-label="Pages">';
-  for (const id of ['timeline'].concat(TIMELINE_PAGES)) {
+  for (const id of ['plateaus'].concat(TIMELINE_PAGES)) {
     html += '<button type="button" data-action="set-page" data-perspective="' + id + '" aria-pressed="' + (id === page) + '"' + (id === page ? ' aria-current="page"' : '') + '>' + escapeHtml(PERSPECTIVES[id].label) + '</button>';
   }
   return html + '</span></nav>';
@@ -10414,7 +10475,7 @@ function renderFacetsEditorHtml(customs) {
  * structural, so it keeps its own button — but applies the rest of the
  * form first (see readSettingsDraft), so nothing typed is lost.
  */
-/** The Manifests section of Settings: the folders of the manifests, to edit. The plateaus are not here: they are layers, made on the band and in the Timeline. */
+/** The Manifests section of Settings: the folders of the manifests, to edit. The plateaus are not here: they are layers, made on the Plateaus page and on the band. */
 function renderManifestsSettingsHtml(settings) {
   return '<div class="edition-section"><h3>Manifests</h3>' +
     '<div class="field-row"><label class="field-label" for="settings-manifests-paths-input">Paths</label><span class="field-value">' +
@@ -12154,7 +12215,7 @@ function rightPanelStamp() {
 /** A comparison is on and can be listed (or is being read): the Map and Elements keep a right-hand panel for it. */
 function comparisonPanelOn() {
   const state = comparisonState();
-  return !!state && !state.problems && (currentPerspective === 'map' || currentPerspective === 'elements' || currentPerspective === 'timeline');
+  return !!state && !state.problems && (currentPerspective === 'map' || currentPerspective === 'elements' || currentPerspective === 'plateaus');
 }
 
 /**
@@ -12179,7 +12240,7 @@ function refreshRightPanel() {
   if (currentPerspective === 'library') return;
   const panel = document.getElementById('panel-right');
   if (!panel) return;
-  const html = currentPerspective === 'timeline' ? withChangesPanel(null) : renderInspectionHtml(mapIsShown());
+  const html = currentPerspective === 'plateaus' ? withChangesPanel(null) : renderInspectionHtml(mapIsShown());
   if (html !== null) panel.innerHTML = html;
 }
 
@@ -12206,7 +12267,7 @@ function openOnMap(reference) {
  * `row`: `{ thing, change, layer, ref, to }` (the attributes of the button).
  */
 function selectChange(row) {
-  if (currentPerspective === 'timeline') { // the Timeline page lists the changes and shows no element: the row opens it in Elements
+  if (currentPerspective === 'plateaus') { // the Plateaus page lists the changes and shows no element: the row opens it in Elements
     history.pushState(null, '', location.href); // the page that was left is an entry of the history: the next address rewrites this one
     currentPerspective = 'elements';
     elementsScope = 'all';
@@ -12469,7 +12530,7 @@ function renderElementsPerspectiveHtml() {
   };
 }
 
-// ---- Timeline: the page of the band (wave 014, run 0081, W-7) ----
+// ---- Plateaus: the page of the band (wave 014, run 0081, W-7, then called Timeline; renamed by wave 015, run 0096, W-8) ----
 // The band under the top bar is always there; this page is where the plateaus are read as a list: what each is called, what it overrides, where it is written, how
 // many patches and files it has, and what it changes over the plateau it overrides (the counts of `archicode diff`). W-8 writes plateaus from here.
 
@@ -12483,19 +12544,19 @@ function filePlateauOf(mf) {
   return plateauOfManifest(mf);
 }
 
-/** The Timeline page mounts no diagram, so nothing else asks for the kernel that its Changes panel waits for (`rightPanelPending`): it is loaded, and the panel is written again. */
-function settleTimelinePanel() {
-  if (currentPerspective !== 'timeline' || !rightPanelPending) return;
+/** The Plateaus page mounts no diagram, so nothing else asks for the kernel that its Changes panel waits for (`rightPanelPending`): it is loaded, and the panel is written again. */
+function settlePlateausPanel() {
+  if (currentPerspective !== 'plateaus' || !rightPanelPending) return;
   loadViewpointKernel().then(() => {
-    if (currentPerspective === 'timeline') refreshRightPanel();
+    if (currentPerspective === 'plateaus') refreshRightPanel();
   }).catch((e) => console.error('ArchiCode: the viewpoint kernel could not be loaded, the changes are not listed', e));
 }
 
 /** The Timeline perspective's regions: the list of the plateaus in the center, and — with a comparison on — the Changes panel on the right. */
-function renderTimelinePerspectiveHtml() {
+function renderPlateausPerspectiveHtml() {
   return {
     left: null,
-    center: renderTimelinePageHtml(),
+    center: renderPlateausPageHtml(),
     right: comparisonPanelOn() ? withChangesPanel(null) : null,
     rightLabel: 'Changes',
     bottom: null
@@ -12560,24 +12621,26 @@ function timelineListHtml() {
   return '<ol class="timeline-list" aria-label="Plateaus">' + rows.join('') + '</ol>';
 }
 
-function renderTimelinePageHtml() {
-  const header = renderElementHeaderHtml('<h2>Timeline</h2>', '');
+function renderPlateausPageHtml() {
+  const header = renderElementHeaderHtml('<h2>Plateaus</h2>', '');
   const layers = AppState.layers;
   const tree = AppState.plateauTree;
   let body = '';
   if (layers && tree) {
+    const writing = plateauWritingHtml(null);
     const drawn = layerPlateauModel(layers.current);
     const other = layerCompareOther();
     const status = other ? plateauTitle(drawn) + ' is compared with ' + plateauTitle(other) + (comparisonPanelOn() ? ': the Changes panel on the right lists what differs.' : ', but the two cannot be compared: the band says what is wrong.')
       : tree.layered ? plateauTitle(drawn) + ' is drawn. “Changes” draws a plateau and lists what it changes over the plateau it overrides.' : '';
     body = (tree.layered ? '' : '<p class="timeline-note">This workspace has one plateau, <code>baseline</code>. A plateau is a layer over another one: the manifests that say <code>plateau: &lt;id&gt;</code> in their header belong to it, ' +
         'and a manifest of kind <code>archicode.morin.io/plateau</code> gives it a name, a horizon, the plateau it overrides and its patches (see the manual).</p>') +
-      (layers.blocked || status ? '<p class="timeline-status" role="status">' + escapeHtml(layers.blocked ? layers.blocked : status) + '</p>' : '') + timelineListHtml();
+      (layers.blocked || status ? '<p class="timeline-status" role="status">' + escapeHtml(layers.blocked ? layers.blocked : status) + '</p>' : '') +
+      (writing ? '<div class="timeline-writing" aria-label="Edit the plateaus">' + writing + '</div>' : '') + timelineListHtml();
   }
   return '<div class="timeline-view">' + header + '<div class="timeline-body">' + body + '</div></div>';
 }
 
-/** The Changes button of the Timeline page: draw the plateau and compare it with the plateau it overrides, in one step. */
+/** The Changes button of the Plateaus page: draw the plateau and compare it with the plateau it overrides, in one step. */
 function showPlateauChanges(id) {
   const layers = AppState.layers;
   if (!layers || !AppState.workspace || !AppState.plateauTree || !AppState.plateauTree.nodes.has(id) || layers.blocked) return;
@@ -17258,7 +17321,7 @@ function renderLibraryPanelHtml(view) {
 
 /** Dispatch to the active perspective's region content. */
 function renderActivePerspectiveHtml() {
-  if (currentPerspective === 'timeline') return renderTimelinePerspectiveHtml();
+  if (currentPerspective === 'plateaus') return renderPlateausPerspectiveHtml();
   if (currentPerspective === 'map') return renderMapPerspectiveHtml();
   if (currentPerspective === 'library') return renderLibraryPerspectiveHtml();
   if (currentPerspective === 'files') return renderFilesPerspectiveHtml();
@@ -17280,7 +17343,7 @@ function renderActivePerspectiveHtml() {
 function renderShellHtml() {
   // wave 014 (run 0080): the band of plateaus sits under the top bar, for every open workspace
   const band = AppState.workspace && !AppState.fatalError && AppState.layers ? renderPlateauBandHtml() : '';
-  // wave 014 (run 0081): under the band, the pages of the Timeline perspective
+  // wave 014 (run 0081): under the band, the pages of the Timeline perspective (Plateaus, Applications, Environments, Elements)
   const pages = AppState.workspace && !AppState.fatalError ? renderPageTabsHtml() : '';
   const rows = 1 + (band ? 1 : 0) + (pages ? 1 : 0);
   let html = '<div class="app-shell grid grid-cols-[auto_auto_minmax(0,1fr)] ' + (rows === 3 ? 'grid-rows-[auto_auto_auto_minmax(0,1fr)]' : rows === 2 ? 'grid-rows-[auto_auto_minmax(0,1fr)]' : 'grid-rows-[auto_minmax(0,1fr)]') + '">';
@@ -17439,7 +17502,7 @@ function handleAppClick(e) {
       render();
       break;
     }
-    case 'timeline-draw': // wave 014 (run 0081): the Timeline page
+    case 'timeline-draw': // wave 014 (run 0081): the Plateaus page
       drawPlateau(target.getAttribute('data-plateau'));
       break;
     case 'timeline-changes':
@@ -18653,7 +18716,7 @@ function render() {
   mountFileEditorIfNeeded();
   mountJsonEditorsIfNeeded();
   mountDiagramIfNeeded();
-  settleTimelinePanel();
+  settlePlateausPanel();
   markTreeThroughFacet();
   markElementTabs();
   for (const id of Object.keys(scrollBefore)) {

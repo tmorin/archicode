@@ -279,12 +279,22 @@ function createApp(options = {}) {
   const windowListeners = {};
   const documentListeners = {};
   const rootAttributes = {}; // the attributes of the root element (data-theme), as the page sets them
+  // the history of the page: the address of each entry, and where the window is in it (see `history.back`)
+  const recordedEntries = [''];
+  let recordedAt = 0;
+  const go = (step) => {
+    const to = recordedAt + step;
+    if (to < 0 || to >= recordedEntries.length) return;
+    recordedAt = to;
+    hash = recordedEntries[to];
+    for (const fn of windowListeners.hashchange || []) fn();
+  };
   const sandbox = {
     console: { log() {}, info() {}, debug() {}, warn: console.warn, error: console.error }, // the editor logs its state
     window: { addEventListener(type, fn) { (windowListeners[type] = windowListeners[type] || []).push(fn); } },
     location: {
       get hash() { return hash; },
-      set hash(v) { hash = v.startsWith('#') ? v : '#' + v; },
+      set hash(v) { hash = v.startsWith('#') ? v : '#' + v; recordedEntries.splice(recordedAt + 1, Infinity, hash); recordedAt = recordedEntries.length - 1; }, // an address typed or assigned is a new entry, like a browser's
       get search() { return search; },
       get pathname() { return pathname; }
     },
@@ -293,11 +303,22 @@ function createApp(options = {}) {
       replaceState(state, title, url) {
         const i = url.indexOf('#');
         hash = i === -1 ? '' : url.slice(i);
+        recordedEntries[recordedAt] = hash;
         const before = i === -1 ? url : url.slice(0, i);
         const q = before.indexOf('?');
         search = q === -1 ? '' : before.slice(q);
       },
-      pushState() {}
+      // adds an entry, and, like a browser, fires no hashchange
+      pushState(state, title, url) {
+        const address = url == null ? '#' + hash.replace(/^#/, '') : String(url); // the page may push the address it is on (`location.href`, which this location does not have)
+        const i = address.indexOf('#');
+        hash = i === -1 ? '' : address.slice(i);
+        recordedEntries.splice(recordedAt + 1, Infinity, hash);
+        recordedAt = recordedEntries.length - 1;
+      },
+      // Back and Forward: the address of the entry is put back and hashchange fires, as the browser does
+      back() { go(-1); },
+      forward() { go(1); }
     },
     document: {
       documentElement: {
@@ -329,6 +350,7 @@ function createApp(options = {}) {
   sandbox.window.indexedDB = sandbox.indexedDB;
   sandbox.globalThis = sandbox;
   sandbox.__windowListeners = windowListeners; // what the page registered, to fire by hand
+  sandbox.__history = { entries: recordedEntries, get at() { return recordedAt; } }; // the entries of the history and the one the window is on
   sandbox.__documentListeners = documentListeners;
   vm.createContext(sandbox);
   vm.runInContext(script[1], sandbox, { filename: 'standalone.html-script.js' });

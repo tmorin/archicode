@@ -742,7 +742,7 @@ test('the band says where a write goes, and has the controls of a plateau', asyn
   assert.match(band, /<span class="band-writing-label" role="status">writing in: <strong>Buy the commerce platform<\/strong> <code>saas<\/code><\/span>/);
   assert.match(band, /data-action="plateau-create" data-plateau="saas"/);
   assert.match(band, /data-action="plateau-edit" data-plateau="saas"/);
-  const timeline = sandbox.renderTimelinePageHtml();
+  const timeline = sandbox.renderPlateausPageHtml();
   assert.match(timeline, /data-action="plateau-create" data-plateau="baseline"[^>]*>New plateau after this</);
   assert.match(timeline, /data-action="plateau-edit" data-plateau="marketplace"[^>]*>Edit</);
   // a workspace with no plateau offers to make the first one, and does not say where it writes: it has one plateau

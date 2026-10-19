@@ -1,6 +1,6 @@
 'use strict';
-// The structure of the editor (wave 014, run 0081, W-7): the perspectives are Timeline (with the pages Applications, Environments and Elements), Stories, Files and
-// Settings; every page has its own route and the former routes (#/map, #/elements, #/library, #/stories) still open; the Timeline page lists the plateaus with what each
+// The structure of the editor (wave 014, run 0081, W-7): the perspectives are Timeline (with the pages Plateaus, Applications, Environments and Elements), Stories, Files and
+// Settings; every page has its own route and the former routes (#/map, #/elements, #/library, #/stories) still open; the Plateaus page lists the plateaus with what each
 // changes over the one it overrides; Stories and Files show what belongs to the plateau of the band, and Files says the plateau of each manifest. The layered Brightcart
 // (src/test/resources/brightcart/layered/) is the workspace for the counts, read from expected/comparisons.json as in editor-reads-layers.test.js; the other workspaces are
 // small files written here (a ferry company).
@@ -74,22 +74,22 @@ test('the top bar has four perspectives, Timeline, Stories, Files and Settings, 
   const { sandbox } = await openLayered();
   const bar = sandbox.renderPerspectiveTabsHtml();
   const buttons = Array.from(bar.matchAll(/data-perspective="([a-z]+)" aria-pressed="(true|false)">([^<]+)</g), (m) => [m[1], m[2], m[3]]);
-  assert.deepEqual(buttons, [['timeline', 'true', 'Timeline'], ['library', 'false', 'Stories'], ['files', 'false', 'Files'], ['settings', 'false', 'Settings']]);
+  assert.deepEqual(buttons, [['map', 'true', 'Timeline'], ['library', 'false', 'Stories'], ['files', 'false', 'Files'], ['settings', 'false', 'Settings']]);
   assert.doesNotMatch(bar, /Library|>Map</, 'the former names are gone from the bar');
-  for (const [page, pressed] of [['timeline', 'timeline'], ['map', 'timeline'], ['environments', 'timeline'], ['elements', 'timeline'], ['library', 'library'], ['files', 'files'], ['settings', 'settings']]) {
+  for (const [page, pressed] of [['plateaus', 'map'], ['map', 'map'], ['environments', 'map'], ['elements', 'map'], ['library', 'library'], ['files', 'files'], ['settings', 'settings']]) {
     sandbox.setPerspective(page);
     const now = Array.from(sandbox.renderPerspectiveTabsHtml().matchAll(/data-perspective="([a-z]+)" aria-pressed="true"/g), (m) => m[1]);
     assert.deepEqual(now, [pressed], page + ': one button is pressed, the one of its perspective');
   }
 });
 
-test('the pages below Timeline are in a bar under the band: Timeline, Applications, Environments, Elements, and only while one of them is on screen', async () => {
+test('the pages of Timeline are in a bar under the band: Plateaus, Applications, Environments, Elements, and only while one of them is on screen', async () => {
   const { sandbox } = await openLayered();
   sandbox.setPerspective('map');
   const bar = sandbox.renderPageTabsHtml();
   assert.match(bar, /^<nav class="page-tabs col-span-3" id="page-tabs" aria-label="Pages of the Timeline">/);
   const buttons = Array.from(bar.matchAll(/data-action="set-page" data-perspective="([a-z]+)" aria-pressed="(true|false)"[^>]*>([^<]+)</g), (m) => [m[1], m[2], m[3]]);
-  assert.deepEqual(buttons, [['timeline', 'false', 'Timeline'], ['map', 'true', 'Applications'], ['environments', 'false', 'Environments'], ['elements', 'false', 'Elements']]);
+  assert.deepEqual(buttons, [['plateaus', 'false', 'Plateaus'], ['map', 'true', 'Applications'], ['environments', 'false', 'Environments'], ['elements', 'false', 'Elements']]);
   assert.match(bar, /aria-current="page"/);
   // under the top bar and the band, in the shell, in that order
   const shell = sandbox.renderShellHtml();
@@ -113,8 +113,13 @@ test('a click on a page of the bar opens it, with its own address', async () => 
   assert.deepEqual(at(), ['/timeline/elements', 'elements', 'all']);
   click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'map' });
   assert.deepEqual(at(), ['/timeline/applications', 'map', 'all']);
-  click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': 'timeline' });
-  assert.deepEqual(at(), ['/timeline', 'timeline', 'all']);
+  click(sandbox, { 'data-action': 'set-page', 'data-perspective': 'plateaus' });
+  assert.deepEqual(at(), ['/timeline/plateaus', 'plateaus', 'all']);
+  // the button Timeline of the top bar opens the first page that draws something, Applications, whichever page of the perspective is on screen
+  const top = Array.from(sandbox.renderPerspectiveTabsHtml().matchAll(/data-action="set-perspective" data-perspective="([a-z]+)"[^>]*>([^<]+)</g), (m) => [m[1], m[2]]);
+  assert.deepEqual(top[0], ['map', 'Timeline'], 'the button Timeline opens Applications');
+  click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': top[0][0] });
+  assert.deepEqual(at(), ['/timeline/applications', 'map', 'all']);
   click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': 'library' });
   assert.equal(sandbox.currentRouteHash(), '/stories');
   click(sandbox, { 'data-action': 'set-perspective', 'data-perspective': 'files' });
@@ -135,7 +140,7 @@ function opens(sandbox, hash) {
 test('each page has one address, and that address opens it', async () => {
   const { sandbox } = await openLayered();
   const routes = [
-    ['#/timeline', 'timeline', 'timeline', 'all'],
+    ['#/timeline/plateaus', 'plateaus', 'plateaus', 'all'],
     ['#/timeline/applications', 'map', 'map', 'all'],
     ['#/timeline/environments', 'environments', 'elements', 'technology'],
     ['#/timeline/elements', 'elements', 'elements', 'all'],
@@ -153,7 +158,7 @@ test('each page has one address, and that address opens it', async () => {
   // an address that names a page by a part only, an unknown one, or nothing: the default page, Applications
   for (const hash of ['', '#', '#/', '#/nowhere', '#/timeline/nowhere?x=1']) {
     const got = opens(sandbox, hash);
-    assert.equal(got.page, hash.startsWith('#/timeline') ? 'timeline' : 'map', JSON.stringify(hash));
+    assert.equal(got.page, 'map', JSON.stringify(hash));
   }
 });
 
@@ -170,6 +175,9 @@ const FORMER_ROUTES = [
   ['#/stories', 'library', '/stories'],
   ['#/stories?story=tour', 'library', '/stories?story=tour'],
   ['#/applications', 'map', '/timeline/applications'],
+  ['#/timeline', 'map', '/timeline/applications'], // it named the list of the plateaus, which is now #/timeline/plateaus
+  ['#/timeline?plateau=fast', 'map', '/timeline/applications?plateau=fast'],
+  ['#/plateaus', 'plateaus', '/timeline/plateaus'], // the short address of the page Plateaus keeps working
   ['#/environments', 'environments', '/timeline/environments']
 ];
 for (const [former, page, address] of FORMER_ROUTES) {
@@ -186,7 +194,7 @@ for (const [former, page, address] of FORMER_ROUTES) {
 }
 
 test('an address opens the page when the workspace is loaded, as a bookmark does', async () => {
-  for (const [former, page] of [['#/map', 'map'], ['#/elements', 'elements'], ['#/library', 'library'], ['#/stories', 'library'], ['#/timeline/environments', 'environments'], ['#/timeline', 'timeline']]) {
+  for (const [former, page] of [['#/map', 'map'], ['#/elements', 'elements'], ['#/library', 'library'], ['#/stories', 'library'], ['#/timeline/environments', 'environments'], ['#/timeline', 'map'], ['#/timeline/plateaus', 'plateaus'], ['#/plateaus', 'plateaus']]) {
     const sandbox = createApp({});
     run(sandbox, 'location.hash = ' + JSON.stringify(former));
     sandbox.syncPerspectiveFromHash(); // what the page does as it starts
@@ -202,7 +210,7 @@ test('an address opens the page when the workspace is loaded, as a bookmark does
 test('the plateau of the band stays in the address of every page', async () => {
   const { sandbox } = await openFiles(FERRY);
   sandbox.drawPlateau('fast');
-  for (const [page, route] of [['timeline', '/timeline'], ['map', '/timeline/applications'], ['environments', '/timeline/environments'], ['elements', '/timeline/elements'], ['library', '/stories'], ['files', '/files'], ['settings', '/settings']]) {
+  for (const [page, route] of [['plateaus', '/timeline/plateaus'], ['map', '/timeline/applications'], ['environments', '/timeline/environments'], ['elements', '/timeline/elements'], ['library', '/stories'], ['files', '/files'], ['settings', '/settings']]) {
     sandbox.setPerspective(page);
     assert.equal(sandbox.currentRouteHash(), route + '?plateau=fast', page);
   }
@@ -267,13 +275,13 @@ test('Environments keeps the diagram tabs of an environment and writes them in i
   assert.equal(sandbox.currentRouteHash(), '/timeline/environments?ref=harbour&tab=overview');
 });
 
-// ---- the Timeline page ----
+// ---- the Plateaus page ----
 
 const TIMELINE_PAIRS = [['inhouse', 'baseline'], ['marketplace', 'inhouse'], ['saas', 'baseline']];
 
-test('the Timeline page lists the plateaus of the layered Brightcart in the order of the band, each with what it changes over the plateau it overrides', async () => {
+test('the Plateaus page lists the plateaus of the layered Brightcart in the order of the band, each with what it changes over the plateau it overrides', async () => {
   const { sandbox, state } = await openLayered();
-  sandbox.setPerspective('timeline');
+  sandbox.setPerspective('plateaus');
   // what the band computes one plateau per turn after a drawing; the page shows the counts that are there and says it is counting for the others
   assert.match(sandbox.renderActivePerspectiveHtml().center, /<span class="muted">Counting…<\/span>/);
   assert.equal(sandbox.cachedNodeCounts('saas'), undefined, 'the page computed nothing: a big tree must not hold its first drawing');
@@ -301,26 +309,26 @@ test('the Timeline page lists the plateaus of the layered Brightcart in the orde
   assert.match(page.center, /The root: it overrides nothing\./);
 });
 
-test('the Timeline page says where each plateau is written, how many patches and files it has', async () => {
+test('the Plateaus page says where each plateau is written, how many patches and files it has', async () => {
   const { sandbox } = await openLayered();
-  const text = stripTags(sandbox.renderTimelinePageHtml());
+  const text = stripTags(sandbox.renderPlateausPageHtml());
   assert.match(text, /Build commerce services inhouse 2026-Q4 overrides baseline · described in inhouse\/plateau\.yaml · 26 patches · 11 files/);
   assert.match(text, /Marketplace and personalisation marketplace 2027-Q4 overrides inhouse · described in marketplace\/plateau\.yaml/);
   const { sandbox: headers } = await openFiles({ 'baseline/app.fleet.yaml': SYSTEM('fleet'), 'later/app.jet.yaml': SYSTEM('jet', 'later') });
-  const later = stripTags(headers.renderTimelinePageHtml());
+  const later = stripTags(headers.renderPlateausPageHtml());
   assert.match(later, /overrides baseline · exists only through the plateau key of a header · 0 patches · 1 file/, 'a plateau that exists through a header has no manifest');
 });
 
-test('the drawn plateau is marked on the Timeline page, and Draw and Changes use the band', async () => {
+test('the drawn plateau is marked on the Plateaus page, and Draw and Changes use the band', async () => {
   const { sandbox, state } = await openLayered();
-  let page = sandbox.renderTimelinePageHtml();
+  let page = sandbox.renderPlateausPageHtml();
   assert.match(page, /class="timeline-item timeline-drawn" data-plateau="baseline"/);
   assert.match(page, /data-action="timeline-draw" data-plateau="saas" aria-pressed="false"/);
   assert.doesNotMatch(page, /data-action="timeline-changes" data-plateau="baseline"/, 'the root overrides nothing: nothing to list');
   click(sandbox, { 'data-action': 'timeline-draw', 'data-plateau': 'saas' });
   assert.equal(state.layers.current, 'saas');
   assert.equal(state.layers.compare, null, 'Draw compares nothing');
-  page = sandbox.renderTimelinePageHtml();
+  page = sandbox.renderPlateausPageHtml();
   assert.match(page, /class="timeline-item timeline-drawn" data-plateau="saas"/);
   click(sandbox, { 'data-action': 'timeline-changes', 'data-plateau': 'marketplace' });
   assert.equal(state.layers.current, 'marketplace');
@@ -331,9 +339,9 @@ test('the drawn plateau is marked on the Timeline page, and Draw and Changes use
   assert.equal(state2.base.id, 'inhouse');
 });
 
-test('with a comparison the Timeline page has the Changes panel on the right, with the counts of archicode diff, and a row opens its element in Elements', async () => {
+test('with a comparison the Plateaus page has the Changes panel on the right, with the counts of archicode diff, and a row opens its element in Elements', async () => {
   const { sandbox, state } = await openLayered();
-  sandbox.setPerspective('timeline');
+  sandbox.setPerspective('plateaus');
   assert.equal(sandbox.renderActivePerspectiveHtml().right, null, 'nothing compared, nothing to list');
   click(sandbox, { 'data-action': 'timeline-changes', 'data-plateau': 'saas' });
   const page = sandbox.renderActivePerspectiveHtml();
@@ -348,13 +356,13 @@ test('with a comparison the Timeline page has the Changes panel on the right, wi
   const attrs = Object.fromEntries(Array.from(tag[0].matchAll(/(data-[a-z-]+)="([^"]*)"/g), (m) => [m[1], m[2]]));
   const ref = attrs['data-ref'];
   click(sandbox, attrs);
-  assert.equal(run(sandbox, 'currentPageId()'), 'elements', 'the Timeline page shows no element: the row opens it in Elements');
+  assert.equal(run(sandbox, 'currentPageId()'), 'elements', 'the Plateaus page shows no element: the row opens it in Elements');
   assert.equal(state.selection.key, ref);
 });
 
-test('a workspace with no other plateau has the Timeline page too: baseline alone, and what a plateau is', async () => {
+test('a workspace with no other plateau has the Plateaus page too: baseline alone, and what a plateau is', async () => {
   const { sandbox } = await openFiles({ 'manifests/app.fleet.yaml': SYSTEM('fleet') });
-  sandbox.setPerspective('timeline');
+  sandbox.setPerspective('plateaus');
   const page = sandbox.renderActivePerspectiveHtml();
   assert.equal((page.center.match(/class="timeline-item/g) || []).length, 1);
   assert.match(stripTags(page.center), /This workspace has one plateau, baseline \. A plateau is a layer over another one/);
@@ -364,7 +372,7 @@ test('a workspace with no other plateau has the Timeline page too: baseline alon
   assert.doesNotMatch(page.center, /data-action="timeline-changes"/);
 });
 
-test('a workspace with settings.plateaus opens no page: it is refused with the one sentence, so there is no Timeline to show and no selector', async () => {
+test('a workspace with settings.plateaus opens no page: it is refused with the one sentence, so there is no list of plateaus to show and no selector', async () => {
   const mem = memFolder({ 'workspace.yaml': 'settings:\n  plateaus: []\n' });
   const sandbox = createApp({});
   const state = sandbox.__state();
@@ -561,7 +569,7 @@ test('Settings has no plateau section for a layered or a plateau-less workspace'
 
 // ---- the layout ----
 
-test('the bar of the pages and the Timeline page hold the width: they wrap, and the helper for the third row of the shell exists', async () => {
+test('the bar of the pages and the Plateaus page hold the width: they wrap, and the helper for the third row of the shell exists', async () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
   assert.match(html, /\.page-tabs \{[^}]*flex-wrap: wrap;[^}]*min-width: 0;[^}]*max-width: 100%;/);
   assert.match(html, /\.timeline-item \{[^}]*min-width: 0;[^}]*margin-left: calc\(var\(--depth, 0\) \* 1rem\);/);
@@ -641,12 +649,12 @@ test('a view or story of workspace.yaml whose id a manifest of another plateau h
   assert.deepEqual(ids(sandbox.storiesList()), ['only_old', 'speed', 'tour']);
 });
 
-test('the Timeline page loads the kernel its Changes panel waits for, and writes the panel again', async () => {
+test('the Plateaus page loads the kernel its Changes panel waits for, and writes the panel again', async () => {
   const { sandbox } = await openFiles(FERRY);
   run(sandbox, "globalThis.__loads = 0; globalThis.__refreshes = 0; loadViewpointKernel = async () => { __loads++; }; refreshRightPanel = () => { __refreshes++; };");
   const tick = () => new Promise((resolve) => setImmediate(resolve));
-  for (const [perspective, pending, loads] of [['timeline', true, 1], ['timeline', false, 1], ['map', true, 1]]) {
-    run(sandbox, "currentPerspective = " + JSON.stringify(perspective) + "; rightPanelPending = " + pending + "; settleTimelinePanel();");
+  for (const [perspective, pending, loads] of [['plateaus', true, 1], ['plateaus', false, 1], ['map', true, 1]]) {
+    run(sandbox, "currentPerspective = " + JSON.stringify(perspective) + "; rightPanelPending = " + pending + "; settlePlateausPanel();");
     await tick();
     assert.equal(run(sandbox, '__loads'), loads, perspective + ' / pending ' + pending);
   }
@@ -654,12 +662,12 @@ test('the Timeline page loads the kernel its Changes panel waits for, and writes
   // and every drawing asks (the harness does not draw the page: the call is read in the function that does)
   const html = fs.readFileSync(path.resolve(__dirname, '../../../main/resources/editor-webapp/standalone.html'), 'utf8');
   const render = html.slice(html.indexOf('\nfunction render() {'));
-  assert.ok(render.indexOf('mountDiagramIfNeeded();\n  settleTimelinePanel();') > 0 && render.indexOf('mountDiagramIfNeeded();\n  settleTimelinePanel();') < render.indexOf('\n}\n'), 'render() settles the panel of the Timeline page after it mounts the diagrams');
+  assert.ok(render.indexOf('mountDiagramIfNeeded();\n  settlePlateausPanel();') > 0 && render.indexOf('mountDiagramIfNeeded();\n  settlePlateausPanel();') < render.indexOf('\n}\n'), 'render() settles the panel of the Plateaus page after it mounts the diagrams');
 });
 
-test('a row of the Changes panel on the Timeline page leaves an entry of the history for the page it leaves', async () => {
+test('a row of the Changes panel on the Plateaus page leaves an entry of the history for the page it leaves', async () => {
   const { sandbox } = await openLayered();
-  sandbox.setPerspective('timeline');
+  sandbox.setPerspective('plateaus');
   click(sandbox, { 'data-action': 'timeline-changes', 'data-plateau': 'saas' });
   sandbox.syncHashFromState(); // the end of the drawing
   const entries = [];
@@ -668,18 +676,18 @@ test('a row of the Changes panel on the Timeline page leaves an entry of the his
   const tag = sandbox.renderActivePerspectiveHtml().right.match(/<button[^>]*data-action="select-change" data-thing="element" data-change="new"[^>]*>/)[0];
   click(sandbox, Object.fromEntries(Array.from(tag.matchAll(/(data-[a-z-]+)="([^"]*)"/g), (m) => [m[1], m[2]])));
   assert.equal(entries.length, 1);
-  assert.match(entries[0], /#\/timeline\?plateau=saas$/, 'the Timeline page is what Back returns to');
+  assert.match(entries[0], /#\/timeline\/plateaus\?plateau=saas$/, 'the Plateaus page is what Back returns to');
   sandbox.syncHashFromState(); // the end of the drawing
   assert.match(sandbox.location.hash, /^#\/timeline\/elements\?ref=/);
 });
 
-test('the status of the Timeline page does not promise a panel that is not there', async () => {
+test('the status of the Plateaus page does not promise a panel that is not there', async () => {
   const { sandbox, state } = await openLayered();
   sandbox.drawPlateau('saas');
   sandbox.toggleCompareWithPast();
-  assert.match(stripTags(sandbox.renderTimelinePageHtml()), /Buy the commerce platform is compared with Monolith: the Changes panel on the right lists what differs\./);
+  assert.match(stripTags(sandbox.renderPlateausPageHtml()), /Buy the commerce platform is compared with Monolith: the Changes panel on the right lists what differs\./);
   // a plateau the comparison cannot be made on
   run(sandbox, "comparisonState = () => ({ problems: ['x'] })");
-  assert.match(stripTags(sandbox.renderTimelinePageHtml()), /compared with Monolith, but the two cannot be compared: the band says what is wrong\./);
+  assert.match(stripTags(sandbox.renderPlateausPageHtml()), /compared with Monolith, but the two cannot be compared: the band says what is wrong\./);
   assert.ok(state.layers.compare);
 });
