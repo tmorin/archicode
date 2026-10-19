@@ -295,7 +295,7 @@ wave_manifest:
       slug: move-to-another-file-or-the-top
       phase: P1
       depends_on: [W-3]
-      run: null
+      run: 0104
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
