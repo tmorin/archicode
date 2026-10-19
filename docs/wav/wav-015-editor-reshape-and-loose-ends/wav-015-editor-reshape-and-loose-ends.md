@@ -177,7 +177,7 @@ wave_manifest:
       slug: compare-says-contains-changes
       phase: P0
       depends_on: []
-      run: null
+      run: 0094
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
