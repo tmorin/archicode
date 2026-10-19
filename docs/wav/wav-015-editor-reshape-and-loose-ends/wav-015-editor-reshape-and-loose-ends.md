@@ -203,7 +203,7 @@ wave_manifest:
       slug: plateaus-page-and-addresses
       phase: P1
       depends_on: []
-      run: null
+      run: 0096
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
