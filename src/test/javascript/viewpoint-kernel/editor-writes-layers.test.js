@@ -479,7 +479,7 @@ test('an element the plateau declares moves as before (its header.parent changes
   const { sandbox, state } = opened;
   assert.equal(state.index.application.get('commerce.cart').declaredIn, 'inhouse');
   const asked = sandbox.commitMoveElement('commerce.cart', 'application', 'payments', {});
-  assert.deepEqual(plain(asked), { ok: true, pending: true, reference: 'commerce.cart', replaces: 0 }, 'marketplace stands on inhouse: the author is asked first');
+  assert.deepEqual(plain(asked), { ok: true, pending: true, reference: 'commerce.cart' }, 'marketplace stands on inhouse: the author is asked first');
   assert.deepEqual(dirtyFiles(state), []);
   sandbox.submitAppDialog({});
   assert.equal(state.index.application.has('payments.cart'), true);

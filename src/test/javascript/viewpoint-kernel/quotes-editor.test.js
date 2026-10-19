@@ -104,9 +104,7 @@ const disk = (text) => inPlateau('target', text);
 
 /** The workspace opened as the editor opens a folder, as layers (see layered-folders.js: siblings over an empty baseline), the target drawn and compared with the base. */
 async function open(files, baseFiles) {
-  const page = await openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, Object.assign({}, dir('10_base', baseFiles || files), dir('20_target', files))), { drawn: 'target', compared: 'base' });
-  page.sandbox.replacesAncestorProblem = () => null; // the base is a sibling here: set aside the rule of #95 (see openOffering in move-editor.test.js) to pin what the move writes once replaces is offered
-  return page;
+  return openLayered(createApp, memFolder, layeredFiles(PLATEAU_LIST, Object.assign({}, dir('10_base', baseFiles || files), dir('20_target', files))), { drawn: 'target', compared: 'base' });
 }
 const saved = (mem, file) => mem.files.get(path(file)).text;
 /** The names of the target files whose text is not the original. */
@@ -120,19 +118,18 @@ for (const style of ['double', 'single']) {
   const q = STYLES[style];
   const name = style + ' quotes';
 
-  test('move and write replaces, a file with ' + name + ': the new parent, the added lists and the references are written with them, and nothing else differs', async () => {
+  test('move, a file with ' + name + ': the new parent and the references are written with them, no replaces is written, and nothing else differs', async () => {
     const files = manifests(style);
     const { sandbox, state, mem } = await open(files, before(style));
-    const result = sandbox.commitMoveElement('depot.stock', 'application', 'hall', { writeReplaces: true });
-    assert.deepEqual(plain(result), { ok: true, reference: 'hall.stock', replaces: 2 });
+    const result = sandbox.commitMoveElement('depot.stock', 'application', 'hall');
+    assert.deepEqual(plain(result), { ok: true, reference: 'hall.stock' });
     await sandbox.saveAllChanges();
     assert.deepEqual(changed(mem, files), ['app.depot.stock.yaml', 'app.hall.picker.yaml']);
     assert.deepEqual(lineDiff(disk(files['app.depot.stock.yaml']), saved(mem, 'app.depot.stock.yaml')), {
       removed: ['  parent: ' + q('depot')],
-      added: ['  parent: ' + q('hall'), '      replaces:', '        - ' + q('depot.stock.counts'), '  replaces:', '    - ' + q('depot.stock')]
-    }, 'the parent is the value that changed, the two lists are the lines more');
-    // the element inside the file says it too, in its own list
-    assert.ok(saved(mem, 'app.depot.stock.yaml').includes('      replaces:\n        - ' + q('depot.stock.counts') + '\n'), 'the component inside the file');
+      added: ['  parent: ' + q('hall')]
+    }, 'the parent is the value that changed, and the only one');
+    assert.ok(!saved(mem, 'app.depot.stock.yaml').includes('replaces'), 'a move says nothing of replaces');
     assert.deepEqual(lineDiff(disk(files['app.hall.picker.yaml']), saved(mem, 'app.hall.picker.yaml')), {
       removed: ['    - destination: ' + q('depot.stock'), '    - destination: ' + q('depot.stock.counts')],
       added: ['    - destination: ' + q('hall.stock'), '    - destination: ' + q('hall.stock.counts')]
@@ -140,13 +137,13 @@ for (const style of ['double', 'single']) {
     // nothing else of the file is touched: the comments, the blank line and the final line break are the original's
     for (const file of ['app.depot.stock.yaml', 'app.hall.picker.yaml']) {
       assert.ok(saved(mem, file).startsWith('# the manifest of ') && saved(mem, file).endsWith('\n# end of ' + (file.includes('stock') ? 'stock' : 'picker') + '\n'), file);
-      assert.equal(saved(mem, file).split('\n').length - disk(files[file]).split('\n').length, file.includes('stock') ? 4 : 0, 'the lines added, no other');
+      assert.equal(saved(mem, file).split('\n').length - disk(files[file]).split('\n').length, 0, 'no line added, no other');
     }
     // the file is read the same way by the editor
     const again = createApp({});
     await again.loadWorkspace(mem.handle);
     again.drawPlateau('target');
-    assert.ok(again.__state().index.application.has('hall.stock.counts') && again.__state().index.application.get('hall.stock').replaces.includes('depot.stock'));
+    assert.ok(again.__state().index.application.has('hall.stock.counts') && !again.__state().index.application.get('hall.stock').replaces.includes('depot.stock'));
     assert.equal(state.relationshipStats.dangling, 0);
   });
 
@@ -174,13 +171,13 @@ for (const style of ['double', 'single']) {
   });
 }
 
-test('a file with strings that are not quoted stays that way: the moved parent, the references and the added lists are written plain', async () => {
+test('a file with strings that are not quoted stays that way: the moved parent and the references are written plain', async () => {
   const files = manifests('plain');
   const { sandbox, mem } = await open(files, before('plain'));
-  assert.equal(sandbox.commitMoveElement('depot.stock', 'application', 'hall', { writeReplaces: true }).ok, true);
+  assert.equal(sandbox.commitMoveElement('depot.stock', 'application', 'hall').ok, true);
   await sandbox.saveAllChanges();
   assert.deepEqual(changed(mem, files), ['app.depot.stock.yaml', 'app.hall.picker.yaml']);
-  assert.deepEqual(lineDiff(disk(files['app.depot.stock.yaml']), saved(mem, 'app.depot.stock.yaml')), { removed: ['  parent: depot'], added: ['  parent: hall', '      replaces:', '        - depot.stock.counts', '  replaces:', '    - depot.stock'] });
+  assert.deepEqual(lineDiff(disk(files['app.depot.stock.yaml']), saved(mem, 'app.depot.stock.yaml')), { removed: ['  parent: depot'], added: ['  parent: hall'] });
   assert.deepEqual(lineDiff(disk(files['app.hall.picker.yaml']), saved(mem, 'app.hall.picker.yaml')), {
     removed: ['    - destination: depot.stock', '    - destination: depot.stock.counts'],
     added: ['    - destination: hall.stock', '    - destination: hall.stock.counts']
@@ -194,7 +191,7 @@ test('a file that mixes the two: a line that is rewritten keeps its own style, a
   files['app.hall.picker.yaml'] = files['app.hall.picker.yaml'].replace('    - destination: "depot.stock.counts"', '    - destination: depot.stock.counts');
   files['app.depot.shelves.yaml'] = files['app.depot.shelves.yaml'].replace('# end of shelves', "  replaces:\n    - 'depot.crates'\n# end of shelves");
   const { sandbox, mem } = await open(files, before('double'));
-  assert.equal(sandbox.commitMoveElement('depot.stock', 'application', 'hall', { writeReplaces: false }).ok, true);
+  assert.equal(sandbox.commitMoveElement('depot.stock', 'application', 'hall').ok, true);
   await sandbox.saveAllChanges();
   assert.deepEqual(lineDiff(disk(files['app.hall.picker.yaml']), saved(mem, 'app.hall.picker.yaml')), {
     removed: ['    - destination: "depot.stock"', '    - destination: depot.stock.counts'],
