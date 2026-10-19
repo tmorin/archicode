@@ -59,6 +59,14 @@ function said(sandbox, state, compared) {
   if (state.plateauTree && state.plateauTree.redeclared && state.plateauTree.redeclared.length) out.redeclared = state.plateauTree.redeclared; // a reference declared in a plateau and again in its ancestor
   if (state.plateauTree && state.plateauTree.warnings && state.plateauTree.warnings.length) out.treeWarnings = state.plateauTree.warnings; // what the command line warns of when it reads the manifests
   if (state.layerProblems) out.layerProblems = state.layerProblems;
+  const entries = state.workspace ? sandbox.entryProblemsOf(state.workspace.settings) : []; // a view or a story that names an element no plateau has (run 0100): not a mistake of the plateau drawn
+  if (entries.length) out.entryProblems = entries;
+  const viewProblems = {}; // a saved view the plateau drawn cannot draw (it lacks what the view names): the page says so in the view
+  for (const view of state.workspace ? sandbox.savedViews() : []) {
+    const problem = sandbox.viewProblem(view);
+    if (problem) viewProblems[view.id] = problem;
+  }
+  if (Object.keys(viewProblems).length) out.viewProblems = viewProblems;
   if (state.baseline && state.baseline.problem) out.baselineProblem = state.baseline.problem;
   const errors = state.manifestFiles.filter((f) => f.error);
   if (errors.length) out.manifestErrors = Object.fromEntries(errors.map((f) => [f.relPath, f.error]));
@@ -107,7 +115,7 @@ test('the editor sentences are the command line sentences, up to the capital, th
     const bare = new Set(lines.map((line) => normal(line.replace(FILE, '')))); // without the file: the editor's badge on a file says the sentence of the file alone
     for (const step of c.editor) {
       for (const [key, value] of Object.entries(step.expect)) {
-        if (typeof value === 'number') continue; // a count, told by a badge and not by a sentence
+        if (typeof value === 'number' || key === 'viewProblems') continue; // a count, told by a badge and not by a sentence; what the page says in a view it cannot draw here
         const texts = typeof value === 'string' ? [value] : Array.isArray(value) ? value : Object.values(value);
         const known = key === 'manifestErrors' || key === 'fatalError' ? bare : whole; // the banner for workspace.yaml names the file in its heading
         for (const text of texts) assert.ok(known.has(normal(text)), c.id + ': the editor says (' + key + ') "' + text + '" and the command line does not say it');

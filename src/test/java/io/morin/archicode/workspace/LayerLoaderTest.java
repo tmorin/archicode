@@ -332,15 +332,16 @@ class LayerLoaderTest {
     }
 
     @Test
-    void aViewAndAStoryPlacedInALayerAreCheckedAfterThatLayer() {
+    void aViewAndAStoryBelongToNoPlateauAndAreCheckedOnceAgainstEveryPlateau() {
         val files = LayeredFixtures.files();
+        // `commerce.cart` is declared by inhouse only (the Brightcart fixture): a view that names it is the workspace's, and
+        // it is no mistake in baseline, which does not have the element: it exists in a plateau
         files.put(
-            "plateaus/inhouse/view.cart.yaml",
+            "plateaus/view.cart.yaml",
             """
             header:
               kind: "archicode.morin.io/view"
               version: "1"
-              plateau: inhouse
             content:
               id: "cart_overview"
               viewpoint: "overview"
@@ -348,26 +349,31 @@ class LayerLoaderTest {
                 element: "commerce.cart"
             """
         );
-        assertNotNull(load(files, "inhouse"), "the element is there once inhouse is built");
-        assertEquals(1, load(files, "marketplace").getViews().size());
-        // a view that names an element the graph does not have once inhouse is built is told with inhouse
+        for (val plateau : List.of("baseline", "inhouse", "marketplace", "saas")) {
+            assertEquals(
+                1,
+                load(files, plateau).getViews().size(),
+                "the view is there whatever plateau is loaded: " + plateau
+            );
+        }
+        // a name that no plateau declares is told once, with the file, whatever plateau is asked for
         files.put(
-            "plateaus/inhouse/view.cart.yaml",
-            files.get("plateaus/inhouse/view.cart.yaml").replace("commerce.cart", "commerce.cartt")
+            "plateaus/view.cart.yaml",
+            files.get("plateaus/view.cart.yaml").replace("commerce.cart", "commerce.cartt")
         );
-        assertEquals(
-            "in the plateau `inhouse`, the view `cart_overview` (`plateaus/inhouse/view.cart.yaml`) names `commerce.cartt`, which does not exist",
-            errorOf(files, "inhouse")
-        );
-        assertNotNull(load(files, "baseline"), "a view of a layer above is not looked at");
-        files.remove("plateaus/inhouse/view.cart.yaml");
+        for (val plateau : List.of("baseline", "inhouse")) {
+            assertEquals(
+                "the view `cart_overview` (`plateaus/view.cart.yaml`) names `commerce.cartt`, which exists in no plateau",
+                errorOf(files, plateau)
+            );
+        }
+        files.remove("plateaus/view.cart.yaml");
         files.put(
-            "plateaus/marketplace/story.tour.yaml",
+            "plateaus/story.tour.yaml",
             """
             header:
               kind: "archicode.morin.io/story"
               version: "1"
-              plateau: marketplace
             content:
               id: "tour"
               steps:
@@ -379,8 +385,8 @@ class LayerLoaderTest {
             """
         );
         assertEquals(
-            "in the plateau `marketplace`, the story `tour` (`plateaus/marketplace/story.tour.yaml`) names `ghost`, which does not exist",
-            errorOf(files, "marketplace")
+            "the story `tour` (`plateaus/story.tour.yaml`) names `ghost`, which exists in no plateau",
+            errorOf(files, "baseline")
         );
     }
 

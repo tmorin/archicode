@@ -3956,10 +3956,24 @@ function headerPlateau(header) {
   return String(header.plateau);
 }
 
-/** The plateau a manifest belongs to: the one its header names, else `baseline`. */
+/** Whether a manifest of this kind belongs to no plateau: a view and a story are the workspace's whatever plateau is drawn (wave 015, run 0100, issue #100); only elements, patches and plateaus are layers. */
+function isPlateauFreeManifest(mf) {
+  const kind = mf && mf.header ? manifestKindName(mf.header.kind) : null;
+  return kind === 'view' || kind === 'story';
+}
+
+/** The plateau a manifest belongs to: the one its header names, else `baseline`. Null for a view and a story, which belong to none (their `plateau:` is ignored, see `ignoredPlateauWarning`). */
 function plateauOfManifest(mf) {
+  if (isPlateauFreeManifest(mf)) return null;
   const written = headerPlateau(mf.header);
   return written === null ? BASELINE_PLATEAU : written;
+}
+
+/**
+ * The sentence for a view or a story that says `plateau:` in its header, which is ignored (`ManifestParser.ignoredPlateauWarning`): keep them alike.
+ */
+function ignoredPlateauWarning(source, noun, plateau) {
+  return '`' + source + '` is a ' + noun + ' and says `plateau: ' + plateau + '` in its header, which is ignored: a ' + noun + ' exists whatever plateau is drawn';
 }
 
 /**
@@ -3996,6 +4010,19 @@ function plateauCycles(parents) {
  * without being wrong. A manifest with an error is left out: the file says why.
  */
 function buildPlateauTree(manifestFiles) {
+  const model = buildPlateauTreeOf(manifestFiles);
+  // a view and a story that say `plateau:` are told once the tree is right (the command line reads the tree first, and stops at its mistakes)
+  if (!model.problems.length) {
+    for (const mf of manifestFiles) {
+      if (mf.error || !mf.header || !mf.content || !isPlateauFreeManifest(mf)) continue;
+      const written = headerPlateau(mf.header);
+      if (written !== null) model.warnings.push(ignoredPlateauWarning(mf.relPath, manifestKindName(mf.header.kind), written));
+    }
+  }
+  return model;
+}
+
+function buildPlateauTreeOf(manifestFiles) {
   const declaredBy = new Map(); // id -> [{ content, source }]
   const headers = new Map(); // id -> [relPath]
   let layered = false; // a manifest of kind plateau, or a header that says `plateau:`
@@ -4008,6 +4035,7 @@ function buildPlateauTree(manifestFiles) {
       layered = true;
       continue;
     }
+    if (isPlateauFreeManifest(mf)) continue; // a view and a story name no plateau
     const written = headerPlateau(mf.header);
     if (written === null) continue;
     if (!headers.has(written)) headers.set(written, []);
@@ -4137,8 +4165,8 @@ function plateauChain(model, id) {
 }
 
 /**
- * A reference, a view or a story declared in a plateau and again in one of its ancestors is a mistake (`PlateauTree.redeclared`): two plateaus
- * that do not stack may each declare it. `declarations`: Map plateau id -> { application, technology, view, story } (Map reference -> files).
+ * A reference declared in a plateau and again in one of its ancestors is a mistake (`PlateauTree.redeclared`): two plateaus that do not stack may each declare it. A view and a
+ * story belong to no plateau (wave 015, run 0100): they are not concerned. `declarations`: Map plateau id -> { application, technology } (Map reference -> files).
  * Adds the sentences to `model.redeclared` (the command line tells them after the references declared twice in a plateau).
  */
 function checkPlateauRedeclarations(model, declarations) {
@@ -4151,14 +4179,13 @@ function checkPlateauRedeclarations(model, declarations) {
     for (const ancestor of chain.slice(0, -1)) {
       const above = declarations.get(ancestor.id);
       if (!above) continue;
-      for (const namespace of ['application', 'technology', 'view', 'story']) {
+      for (const namespace of ['application', 'technology']) {
         for (const [reference, sources] of own[namespace]) {
           const ancestorSources = above[namespace].get(reference);
           if (!ancestorSources) continue;
-          const noun = namespace === 'view' || namespace === 'story' ? namespace : 'reference';
           const names = (files) => plateauNames(Array.from(new Set(files)).sort(compareUnits));
           if (!messages.has(reference)) messages.set(reference, new Set());
-          messages.get(reference).add('the ' + noun + ' `' + reference + '` is declared in the plateau `' + id + '` (' + names(sources) + ') and again in its ancestor `' + ancestor.id + '` (' + names(ancestorSources) + ')');
+          messages.get(reference).add('the reference `' + reference + '` is declared in the plateau `' + id + '` (' + names(sources) + ') and again in its ancestor `' + ancestor.id + '` (' + names(ancestorSources) + ')');
         }
       }
     }
@@ -4172,7 +4199,7 @@ function checkPlateauRedeclarations(model, declarations) {
 // =====================================================================
 // The layers (wave 014, run 0080). A plateau is drawn as its chain: for each plateau from `baseline` down to it, the elements whose manifests say
 // `plateau: <layer>` are added to the graph of the plateau above, then the ordered patches of the layer change that graph (the kernel's `apply_patches`),
-// then the layer is checked: what the graph points at must be there, and what the views and stories placed in the layer name too. A mistake names the
+// then the layer is checked: what the graph points at must be there (what the views and stories name is not a layer's mistake: `entryProblemsOf`). A mistake names the
 // layer, in the sentences of the command line (`LayerLoader.java`: keep them alike). The first layer that is wrong ends the chain.
 //
 // The result of a layer is a *state* (the JSON graph, who declared each root, which patch set which field, the REMOVE patches with their cascade) and is
@@ -4278,19 +4305,16 @@ function layerKernelPatch(raw) {
   return patch;
 }
 
-/** What the manifests of each plateau declare: Map plateau id -> `{ elements, views, stories }` (the manifests, in the order of the files); a file with an error declares nothing. */
+/** What the manifests of each plateau declare: Map plateau id -> `{ elements }` (the manifests, in the order of the files); a file with an error declares nothing. A view and a story belong to no plateau. */
 function layerManifestsByPlateau(manifestFiles) {
   const out = new Map();
   for (const mf of manifestFiles) {
     if (mf.error || !mf.header || !mf.header.kind || !mf.content || mf.content.id === undefined) continue;
     const bare = stripArchicodeKindPrefix(mf.header.kind);
-    if (bare === 'plateau') continue;
+    if (bare === 'plateau' || isPlateauFreeManifest(mf)) continue;
     const plateau = plateauOfManifest(mf);
-    if (!out.has(plateau)) out.set(plateau, { elements: [], views: [], stories: [] });
-    const own = out.get(plateau);
-    if (bare === 'view') own.views.push(mf);
-    else if (bare === 'story') own.stories.push(mf);
-    else if (ARCHICODE_KIND_MAP[bare]) own.elements.push(mf);
+    if (!out.has(plateau)) out.set(plateau, { elements: [] });
+    if (ARCHICODE_KIND_MAP[bare]) out.get(plateau).elements.push(mf);
   }
   return out;
 }
@@ -4347,10 +4371,10 @@ function namedByProperties(properties) {
 }
 
 /**
- * What a layer is checked for (`LayerLoader.problems`, `viewProblems`, `storyProblems`): a relationship, an entry of `uses` and an application hosted on a node
- * must name an element of the graph, and so must what the views and the stories placed in the layer name. Sorted by element, then by what it points at.
+ * What a layer is checked for (`LayerLoader.problems`): a relationship, an entry of `uses` and an application hosted on a node must name an element of the graph.
+ * Sorted by element, then by what it points at. What the views and the stories name is not a mistake of a layer: see `entryProblemsOf`.
  */
-function layerProblemsOf(plateau, graph, own) {
+function layerProblemsOf(plateau, graph) {
   const refs = graphReferencesOf(graph);
   const found = [];
   const in_ = 'in the plateau `' + plateau + '`, ';
@@ -4385,21 +4409,62 @@ function layerProblemsOf(plateau, graph, own) {
     const others = new Set(group.map((p) => p.element)).size - 1;
     out.add(group[0].sentence + (others === 0 ? '' : ' (' + others + (others === 1 ? ' more element of the plateau points at it)' : ' more elements of the plateau point at it)')));
   }
-  const layerOf = (value) => (String(value === undefined || value === null ? '' : value).toLowerCase() === 'technology' ? 'technology' : 'application');
-  for (const mf of own.views) {
-    for (const name of namedByProperties(mf.content.properties)) {
-      if (!refs[layerOf(mf.content.layer)].has(name)) out.add(in_ + 'the view `' + mf.content.id + '` (`' + mf.relPath + '`) names `' + name + '`, which does not exist');
-    }
-  }
-  for (const mf of own.stories) {
-    for (const step of Array.isArray(mf.content.steps) ? mf.content.steps : []) {
-      if (!step || typeof step !== 'object') continue;
-      for (const name of namedByProperties(step.properties)) {
-        if (!refs[layerOf(step.layer)].has(name)) out.add(in_ + 'the story `' + mf.content.id + '` (`' + mf.relPath + '`) names `' + name + '`, which does not exist');
-      }
-    }
-  }
   return Array.from(out);
+}
+
+/** The layer a view, or a step of a story, is about: `technology` or else `application` (the command line reads the layer in any case). */
+function entryLayerOf(value) {
+  return String(value === undefined || value === null ? '' : value).toLowerCase() === 'technology' ? 'technology' : 'application';
+}
+
+/** The references that the manifests declare, whatever the plateau, by layer: each root (under its `header.parent`) and every element nested in it (`ManifestParser.declaredReferences`). */
+function declaredReferencesOf(manifestFiles) {
+  const declared = { application: new Set(), technology: new Set() };
+  for (const mf of manifestFiles) {
+    const category = manifestLayer(mf);
+    if (!category || !mf.content || mf.content.id === undefined || mf.content.id === null) continue;
+    walkContentNodes(mf, (node, reference) => { declared[category].add(reference); });
+  }
+  return declared;
+}
+
+/** `declaredReferencesOf` for the manifests as they are, kept with the layer cache (it is dropped when a manifest changes). */
+function declaredAnywhereCached() {
+  const cache = ensureLayerCache(AppState.workspace.settings);
+  if (!cache.declared) cache.declared = declaredReferencesOf(AppState.manifestFiles);
+  return cache.declared;
+}
+
+/**
+ * The plateau-free check (wave 015, run 0100, issue #100): what a view and a story name must exist in at least one plateau. Not a mistake of a plateau: the page tells it
+ * once, whatever plateau is drawn. "Exists in a plateau" is decided from what the manifests declare, as `LayerLoader.entryProblems` does (a patch never creates an
+ * element). Only a workspace that has plateaus is checked, as the command line does; the views first, then the stories, in the order of the files, those of workspace.yaml
+ * after those of the manifests.
+ */
+function entryProblemsOf(settings) {
+  if (!AppState.plateauTree || !AppState.plateauTree.layered) return [];
+  const cache = ensureLayerCache(settings);
+  if (cache.entryProblems !== undefined) return cache.entryProblems;
+  const out = [];
+  const declared = declaredAnywhereCached();
+  const told = (noun, id, source, recipe) => {
+    for (const name of namedByProperties(recipe.properties)) {
+      if (!declared[entryLayerOf(recipe.layer)].has(name)) out.push('the ' + noun + ' `' + id + '` (`' + source + '`) names `' + name + '`, which exists in no plateau');
+    }
+  };
+  const files = (kind) => AppState.manifestFiles.filter((mf) => !mf.error && mf.header && mf.content && isPlainObject(mf.content) && manifestKindName(mf.header.kind) === kind);
+  // the views and stories of workspace.yaml (an older place for them) come after those of the manifests, unless a manifest has the id: it shadows them (`entriesOf`)
+  const legacy = (key, kind) => { const own = new Set(files(kind).map((mf) => String(mf.content.id))); return legacyEntries(key).filter((entry) => !own.has(entry.id)); };
+  for (const mf of files('view')) told('view', mf.content.id, mf.relPath, mf.content);
+  for (const view of legacy('views', 'view')) told('view', view.id, 'workspace.yaml', view);
+  for (const mf of files('story')) {
+    for (const step of Array.isArray(mf.content.steps) ? mf.content.steps : []) if (isPlainObject(step)) told('story', mf.content.id, mf.relPath, step);
+  }
+  for (const story of legacy('stories', 'story')) {
+    for (const step of Array.isArray(story.steps) ? story.steps : []) if (isPlainObject(step)) told('story', story.id, 'workspace.yaml', step);
+  }
+  cache.entryProblems = Array.from(new Set(out));
+  return cache.entryProblems;
 }
 
 /**
@@ -4433,7 +4498,7 @@ function nestingProblem(item, held) {
  */
 function resolveLayerStep(parent, node, context) {
   const state = parent ? cloneLayerState(parent) : emptyLayerState();
-  const own = context.byPlateau.get(node.id) || { elements: [], views: [], stories: [] };
+  const own = context.byPlateau.get(node.id) || { elements: [] };
   const refs = graphReferencesOf(state.graph);
   const register = (category, json, reference) => {
     const walk = (item, ref) => {
@@ -4534,7 +4599,7 @@ function resolveLayerStep(parent, node, context) {
   }
 
   // the checks of the layer; told alone when a parent is missing, as the command line tells that first (and stops)
-  if (!mine.length) mine = layerProblemsOf(node.id, state.graph, own);
+  if (!mine.length) mine = layerProblemsOf(node.id, state.graph);
   if (!state.problems && mine.length) state.problems = { plateau: node.id, sentences: mine };
   return { state };
 }
@@ -4737,7 +4802,7 @@ function layersBlockedReason() {
   const tree = AppState.plateauTree;
   if (!tree || !tree.layered) return null;
   if (tree.problems.length) return tree.problems.length === 1 ? 'The plateaus have a mistake (see the note in Elements or Files), so only baseline is drawn.' : 'The plateaus have ' + tree.problems.length + ' mistakes (see the note in Elements or Files), so only baseline is drawn.';
-  if ((tree.redeclared || []).length) return 'A reference, a view or a story is declared again in a plateau that overrides the one that declares it (see the note in Elements or Files), so only baseline is drawn.';
+  if ((tree.redeclared || []).length) return 'A reference is declared again in a plateau that overrides the one that declares it (see the note in Elements or Files), so only baseline is drawn.';
   if (elementDuplicates().length) return 'A reference is declared twice (see the note in Elements or Files), so only baseline is drawn.';
   return null;
 }
@@ -4894,10 +4959,6 @@ function settleAfterLayerChange(draw = true) {
   removedPick = null;
   changesTabPick = null;
   candidateMessage = null;
-  // the stories and views of the pages are those of the plateau drawn: one that the new plateau does not have is no longer open
-  if (selectedStoryId && !findStory(selectedStoryId)) selectedStoryId = null;
-  if (selectedViewId && !findSavedView(selectedViewId)) selectedViewId = null;
-  if (activeStory && !findStory(activeStory.id)) activeStory = null;
   mapSelectionCheck = true;
   diagramCache = null;
   if (draw) {
@@ -5163,6 +5224,9 @@ function bandMistakes() {
     const name = plateauTitle(AppState.baseline.plateau);
     sections.push({ heading: AppState.baseline.undrawable ? name + ', which the drawing is compared with, cannot be drawn.' : name + ', which the drawing is compared with, is refused by the command line:', lines: AppState.baseline.problem.split('\n') });
   }
+  // not a mistake of a plateau: a view or a story names an element that no plateau has (wave 015, run 0100); told whatever plateau is drawn
+  const entries = entryProblemsOf(AppState.workspace.settings);
+  if (entries.length) sections.push({ heading: 'The views and the stories name elements that no plateau has:', lines: entries });
   return { sections, count: sections.reduce((n, section) => n + section.lines.length, 0), note: readOnlyPlateauMessage() };
 }
 
@@ -5267,7 +5331,7 @@ function openPlateauDialog(mode, id) {
 // ---- Writing in a layer (wave 014, run 0082, W-8) ----
 //
 // A write goes to the plateau drawn ("writing in: <plateau>" on the page Plateaus), in the file of that plateau and nowhere else:
-//   - a new element, view or story is a manifest whose header says `plateau: <the plateau>` (none for baseline, the default);
+//   - a new element is a manifest whose header says `plateau: <the plateau>` (none for baseline, the default); a new view or story belongs to no plateau and says none (run 0100);
 //   - a field of an element the plateau declares is edited in the manifest that declares it, as before;
 //   - a field of an element the plateau inherits is a patch of the plateau (`SET`, `ADD` or `MERGE`, see `patchFor`), found again by (target, field) so that a second
 //     edit of the same field changes that patch and does not add another;
@@ -5276,9 +5340,6 @@ function openPlateauDialog(mode, id) {
 // Every one of these runs under `guardedLayerWrite`: the plateaus are resolved again, and the write is kept only if the plateau written gives back the value that was edited,
 // no plateau that resolved before is refused now, and, when other plateaus inherit what was written, the author said yes (a plateau with descendants asks first and lists them).
 // A workspace that is not layered (`writingPlateau()` is null) does not go through any of it and saves exactly as before.
-
-/** The clicks that write and are not available in a plateau other than baseline: the sentence is `layerActionRefusal`'s. */
-const LAYER_UNSUPPORTED_ACTIONS = new Set(['legacy-move']);
 
 /** The plateau a write goes to: the plateau drawn, when the workspace is layered and its plateaus are drawn. Null otherwise (the old rules apply and nothing here runs). */
 function writingPlateau() {
@@ -5295,47 +5356,14 @@ function readOnlyPlateauMessage() {
   return 'The plateau `' + plateau + '` cannot be drawn, so nothing is written in it: repair its patches in Files first.';
 }
 
-/** Why a click that writes is not done, or null: the plateau cannot be drawn, or the action is not available outside baseline. */
-function layerActionRefusal(action) {
-  const plateau = writingPlateau();
-  if (plateau === null) return null;
-  const undrawable = readOnlyPlateauMessage();
-  if (undrawable) return undrawable;
-  if (plateau !== BASELINE_PLATEAU && LAYER_UNSUPPORTED_ACTIONS.has(action)) {
-    return 'Move to manifests writes the views and stories of workspace.yaml as manifests of baseline: draw baseline to do it.';
-  }
-  return null;
+/** Why a click that writes an element is not done, or null: the plateau cannot be drawn. A view and a story belong to no plateau, so nothing here concerns them. */
+function layerActionRefusal() {
+  return readOnlyPlateauMessage();
 }
 
-/** A view or a story is written in the plateau that declares it: the sentence when it is not the plateau drawn (a patch cannot change a view or a story), else null. */
-function entryWriteRefusal(entry) {
-  const plateau = writingPlateau();
-  if (plateau === null || !entry) return null;
-  const owner = entryOwners.get(entry);
-  const declared = owner ? filePlateauOf(owner) : BASELINE_PLATEAU; // an entry of workspace.yaml belongs to baseline
-  if (declared === plateau) return null;
-  const noun = owner && stripArchicodeKindPrefix(String(owner.header.kind)) === 'story' ? 'story' : 'view';
-  return 'The ' + noun + ' `' + entry.id + '` is declared in the plateau `' + declared + '`, and a patch cannot change a view or a story: draw `' + declared + '` to change it.';
-}
-
-/** For a handler of a field (an input, a change): when nothing can be written (the plateau cannot be drawn, or the view or story is another plateau's), say it in the top bar, draw the page again (the typed text goes) and tell the caller to stop. */
-function writesRefused(entry) {
-  const message = readOnlyPlateauMessage() || entryWriteRefusal(entry);
-  if (!message) return false;
-  saveStatus = { state: 'denied', message };
-  render();
-  return true;
-}
-
-/** Throws the sentence of `readOnlyPlateauMessage` when the plateau drawn cannot be written. Every writer of an element, a view or a story starts with it. */
+/** Throws the sentence of `readOnlyPlateauMessage` when the plateau drawn cannot be written. Every writer of an element starts with it. */
 function requireWritablePlateau() {
   const message = readOnlyPlateauMessage();
-  if (message) throw new Error(message);
-}
-
-/** Throws the sentence of `entryWriteRefusal` for a view or a story of another plateau. */
-function requireWritableEntry(entry) {
-  const message = entryWriteRefusal(entry);
   if (message) throw new Error(message);
 }
 
@@ -5350,14 +5378,6 @@ function writeScopeHas(mf) {
   if (!mf || !mf.header) return false;
   const owner = manifestKindName(mf.header.kind) === 'plateau' && mf.content ? String(mf.content.id) : plateauOfManifest(mf);
   return owner === plateau || layerIsBelow(owner, plateau);
-}
-
-/** `writeScopeHas` for a view or a story (an entry of workspace.yaml belongs to baseline). */
-function writeScopeHasEntry(entry) {
-  const owner = entryOwners.get(entry);
-  if (owner) return writeScopeHas(owner);
-  const plateau = writingPlateau();
-  return plateau === null || plateau === BASELINE_PLATEAU;
 }
 
 /** A sentence on one line (the kernel's and the tree's sentences may be told with a line break). */
@@ -5441,7 +5461,8 @@ function layerDigest() {
   const tree = AppState.plateauTree;
   const settings = AppState.workspace.settings;
   const digest = {
-    sentences: tree.problems.map(String).concat((tree.redeclared || []).map(String), elementDuplicates().map((d) => 'the reference `' + d.reference + '` is declared twice (' + d.sources.join(', ') + ')')),
+    // what a view or a story names is looked at too (run 0100): a delete that leaves a view naming an element that no plateau has now is refused, as it was when the view belonged to a plateau
+    sentences: tree.problems.map(String).concat((tree.redeclared || []).map(String), elementDuplicates().map((d) => 'the reference `' + d.reference + '` is declared twice (' + d.sources.join(', ') + ')'), entryProblemsOf(settings)),
     byPlateau: new Map()
   };
   if (tree.problems.length || layersBlockedReason()) return digest;
@@ -6067,9 +6088,11 @@ function buildIndex(manifestFiles, settings) {
   // loaded as layers (run 0077), the index holds the manifests of `baseline` alone; the others are read, checked, and not drawn
   const declarationsByPlateau = new Map();
   const declarationsOf = (plateau) => {
-    if (!declarationsByPlateau.has(plateau)) declarationsByPlateau.set(plateau, { application: new Map(), technology: new Map(), view: new Map(), story: new Map() });
+    if (!declarationsByPlateau.has(plateau)) declarationsByPlateau.set(plateau, { application: new Map(), technology: new Map() });
     return declarationsByPlateau.get(plateau);
   };
+  // a view and a story belong to no plateau (wave 015, run 0100): each is declared once in the whole workspace
+  const untied = { view: new Map(), story: new Map() };
 
   for (const mf of manifestFiles) {
     if (mf.error) continue;
@@ -6079,14 +6102,14 @@ function buildIndex(manifestFiles, settings) {
     }
     const bareKind = stripArchicodeKindPrefix(mf.header.kind);
     if (bareKind === 'plateau') continue; // a manifest, not an element: the tree of plateaus is built below
-    const plateau = plateauOfManifest(mf);
-    const declarations = declarationsOf(plateau);
     if (bareKind === 'view' || bareKind === 'story') { // manifests, but not elements: see "Stories"
       const id = String(mf.content.id);
-      if (!declarations[bareKind].has(id)) declarations[bareKind].set(id, []);
-      declarations[bareKind].get(id).push(mf.relPath);
+      if (!untied[bareKind].has(id)) untied[bareKind].set(id, []);
+      untied[bareKind].get(id).push(mf.relPath);
       continue;
     }
+    const plateau = plateauOfManifest(mf);
+    const declarations = declarationsOf(plateau);
     const mapping = ARCHICODE_KIND_MAP[bareKind];
     if (!mapping) {
       mf.error = unrecognizedKindProblem(mf.header.kind);
@@ -6120,7 +6143,7 @@ function buildIndex(manifestFiles, settings) {
 
   const plateauTree = buildPlateauTree(manifestFiles);
   checkPlateauRedeclarations(plateauTree, declarationsByPlateau);
-  return { index, rootsByCategory, duplicates: findDuplicateReferences(Array.from(declarationsByPlateau.values())), plateauTree };
+  return { index, rootsByCategory, duplicates: findDuplicateReferences(Array.from(declarationsByPlateau.values()).concat([Object.assign({ application: new Map(), technology: new Map() }, untied)])), plateauTree };
 }
 
 /**
@@ -6150,7 +6173,7 @@ function findDuplicateReferences(declarationsOfPlateaus) {
   for (const declarations of declarationsOfPlateaus) {
     for (const layer of ['application', 'technology', 'view', 'story']) {
       const noun = layer === 'view' || layer === 'story' ? layer : 'reference'; // a view and a story have an id of their own
-      for (const [reference, sources] of declarations[layer]) {
+      for (const [reference, sources] of declarations[layer] || []) {
         if (sources.length > 1) found.push({ layer, reference, sources: sources.slice(), message: duplicateReferenceMessage(reference, sources, noun) });
       }
     }
@@ -9113,9 +9136,8 @@ function scanMoveReferences(oldRef, layer) {
   }
   // the saved views and the steps of stories: rewritten on a copy to count them
   const copy = (entry) => JSON.parse(JSON.stringify(entry));
-  for (const view of allSavedViews()) if (writeScopeHasEntry(view) && rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
-  for (const story of allStories()) {
-    if (!writeScopeHasEntry(story)) continue; // as `rewriteSavedViewReferences` does: the views and stories of a plateau the move does not write are not counted
+  for (const view of savedViews()) if (rewriteRecipeReferences(copy(view), oldRef, oldRef + '.__moved__', layer)) result.views++;
+  for (const story of storiesList()) {
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
       if (isPlainObject(step) && !step.view && rewriteRecipeReferences(copy(step), oldRef, oldRef + '.__moved__', layer)) result.views++;
     }
@@ -10088,7 +10110,9 @@ function duplicatesCountText(duplicates) {
  */
 function renderPlateauTreeHtml() {
   const model = AppState.plateauTree;
-  if (!model || !model.layered) return '';
+  if (!model) return '';
+  // a view and a story that say `plateau:` are told even when nothing else uses plateaus: the key names none, and the command line warns of it
+  if (!model.layered) return model.warnings.length ? '<div class="nav-facet-note nav-plateau-warnings" role="status"><ul>' + model.warnings.map((w) => '<li>' + duplicateMessageHtml(w) + '</li>').join('') + '</ul></div>' : '';
   let html = '';
   const problems = model.problems.concat(model.redeclared);
   if (problems.length) {
@@ -10128,7 +10152,7 @@ function renderUnreadManifestsHtml(list) {
 /**
  * The Files page lists every file of the workspace, always (wave 015, run 0098, #101; there is no scope to choose). With layers the files are grouped by plateau, and a group
  * folds and unfolds. The folded groups are kept for as long as the editor is open on the same folder, and are never written in the workspace. A group has a key: `plateau:<id>`,
- * or `none` for the files that belong to no plateau (those the editor could not read; the stories and the views join them once they are not tied to a plateau).
+ * or `none` for the files that belong to no plateau (those the editor could not read, and the views and the stories, which belong to no plateau since wave 015, run 0100).
  */
 let filesFolded = new Set();
 let filesFoldsOwner = null; // the folder handle the folds belong to: a reload of the same folder keeps them, another folder starts again
@@ -16007,33 +16031,23 @@ function workspaceTopLevel() {
 const entryOwners = new WeakMap();
 
 /**
- * The plateaus whose views and stories the pages show: the chain of the plateau drawn, from `baseline` down (a plateau adds its views and stories to those of the plateau it
- * overrides, as the command line loads them). Null when the pages show every one: a workspace without layers, or one whose plateaus are blocked.
+ * The views or stories that are manifests: the `content` of each file of that kind. They belong to no plateau (wave 015, run 0100, issue #100): the same ones are listed
+ * whatever plateau is drawn.
  */
-function layerChainSet() {
-  const layers = AppState.layers;
-  const tree = AppState.plateauTree;
-  if (!layers || !tree || !tree.layered || layers.blocked || !tree.nodes.has(layers.current)) return null;
-  return new Set(plateauChain(tree, layers.current).map((node) => node.id));
-}
-
-/** The views or stories that are manifests: the `content` of each file of that kind, of the plateaus of the chain of the plateau drawn (`all`: of every plateau). */
-function manifestEntries(kind, all) {
+function manifestEntries(kind) {
   const out = [];
-  const chain = all ? null : layerChainSet();
   for (const mf of AppState.manifestFiles || []) {
     if (mf.error || !mf.header || !mf.content || stripArchicodeKindPrefix(String(mf.header.kind)) !== kind) continue;
     if (!isPlainObject(mf.content) || typeof mf.content.id !== 'string' || !mf.content.id) continue;
-    if (chain && !chain.has(filePlateauOf(mf))) continue;
     entryOwners.set(mf.content, mf);
     out.push(mf.content);
   }
   return out;
 }
 
-/** The ids a new view or story must not take: those of every plateau, since a reference declared in a plateau and again in one it overrides is a mistake. */
+/** The ids a new view or story must not take: a view (a story) is declared once in the workspace. */
 function takenEntryIds(kind, key) {
-  return new Set(manifestEntries(kind, true).concat(legacyEntries(key)).map((entry) => entry.id));
+  return new Set(manifestEntries(kind).concat(legacyEntries(key)).map((entry) => entry.id));
 }
 
 /** The entries of `views:` / `stories:` of workspace.yaml (an older place for them). Nothing is created by reading. */
@@ -16044,13 +16058,10 @@ function legacyEntries(key) {
   return out;
 }
 
-/**
- * Manifests first; an entry of workspace.yaml with the same id is shadowed by the manifest, as the file of an element would. `all`: the entries of every plateau, not
- * only those of the chain of the plateau drawn (what a rename or a delete must reach, and what an id must not be taken from).
- */
-function entriesOf(kind, key, all) {
-  const own = manifestEntries(kind, all);
-  const ids = new Set((all ? own : manifestEntries(kind, true)).map((entry) => entry.id)); // a manifest of a plateau that is not drawn shadows the entry of workspace.yaml too
+/** Manifests first; an entry of workspace.yaml with the same id is shadowed by the manifest, as the file of an element would. */
+function entriesOf(kind, key) {
+  const own = manifestEntries(kind);
+  const ids = new Set(own.map((entry) => entry.id));
   return own.concat(legacyEntries(key).filter((entry) => !ids.has(entry.id)));
 }
 
@@ -16074,9 +16085,6 @@ function markEntryChanged(entry) {
 
 function savedViews() { return entriesOf('view', 'views'); }
 function storiesList() { return entriesOf('story', 'stories'); }
-/** Every view and every story of the workspace, of whatever plateau: what a rename of an element rewrites and what a delete counts, since a plateau that is not drawn keeps its own. */
-function allSavedViews() { return entriesOf('view', 'views', true); }
-function allStories() { return entriesOf('story', 'stories', true); }
 function findSavedView(id) { return savedViews().find((view) => view.id === id) || null; }
 function findStory(id) { return storiesList().find((story) => story.id === id) || null; }
 
@@ -16184,15 +16192,30 @@ function viewProblem(view) {
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
     const layer = view.layer === 'technology' ? 'technology' : 'application';
-    return pinned.length && !pinned.some((reference) => AppState.index[layer].has(reference)) ? 'None of the elements it was pinned on exists any more.' : null;
+    if (!pinned.length || pinned.some((reference) => AppState.index[layer].has(reference))) return null;
+    return viewLacksInPlateau(pinned, layer) || 'None of the elements it was pinned on exists any more.';
   }
   if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint)) return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
   const layer = view.layer === 'technology' ? 'technology' : 'application';
   if (typeof properties.element !== 'string' || !properties.element) return 'This view has no element.';
   if (!AppState.index[layer].has(properties.element)) {
-    return 'The element “' + properties.element + '” does not exist any more.';
+    return viewLacksInPlateau([properties.element], layer) || 'The element “' + properties.element + '” does not exist any more.';
   }
   return null;
+}
+
+/**
+ * A view belongs to no plateau (wave 015, run 0100, issue #100), and the plateau drawn may lack what it names: the view then cannot be drawn *in this plateau*, which is no
+ * mistake of the view (an entry of a map that the plateau lacks is simply left out). The sentence when the workspace has plateaus and a plateau declares what the view names,
+ * else null (the element is gone altogether, or the workspace has one plateau). `references` are the names the plateau drawn lacks.
+ */
+function viewLacksInPlateau(references, layer) {
+  const plateau = writingPlateau();
+  if (plateau === null) return null;
+  const declared = declaredAnywhereCached()[layer];
+  const there = references.filter((reference) => declared.has(reference));
+  if (!there.length) return null;
+  return (references.length === 1 ? 'The element “' + references[0] + '”' : 'The elements it was pinned on') + ' ' + (references.length === 1 ? 'is' : 'are') + ' not in the plateau “' + plateau + '”.';
 }
 
 /** Puts the editor where the view was saved. Returns why it cannot, or null once it is done (the caller redraws). */
@@ -16230,13 +16253,13 @@ function applySavedView(view) {
 
 // ---- Editing the lists (everything is in memory until "Save all changes") ----
 
-/** A new manifest of the editor's own kinds, in the first manifests folder, as the manifest of a new element is. */
+/**
+ * A new manifest of the editor's own kinds (a view, a story), in the first manifests folder, as a manifest with no `plateau:` is. A view and a story belong to no plateau
+ * (wave 015, run 0100, issue #100): the plateau drawn decides neither the folder nor the header.
+ */
 function createManifestEntry(kind, content) {
-  requireWritablePlateau();
-  const plateau = writingPlateau();
   const header = { kind: ARCHICODE_KIND_PREFIX + kind, version: '1' };
-  if (plateau !== null && plateau !== BASELINE_PLATEAU) header.plateau = plateau; // wave 014 (run 0082): a new view or story belongs to the plateau drawn
-  const manifestsDir = plateau !== null ? plateauFolderFor(plateau) : firstManifestsDir();
+  const manifestsDir = firstManifestsDir();
   const relPath = allocateManifestRelPath(manifestsDir === undefined ? 'manifests' : manifestsDir, kind + '.', content.id);
   const mf = { relPath, header, content, error: null, rawText: serializeManifestFile(header, content), dirty: true, existedOnDisk: false, lastKnownDiskModified: null };
   adoptRemovedFile(mf);
@@ -16249,8 +16272,6 @@ function createManifestEntry(kind, content) {
 
 /** The manifest of an entry leaves the model; its file goes with the next save (nothing to do for one that was never written). */
 function removeEntry(entry, key) {
-  requireWritablePlateau();
-  requireWritableEntry(entry);
   const owner = entryOwners.get(entry);
   if (owner) {
     if (owner.existedOnDisk && !AppState.pendingFileRemovals.includes(owner.relPath)) {
@@ -16295,9 +16316,9 @@ function writableSteps(story) {
   return story.steps;
 }
 
-/** How many steps of the stories show that view, in every plateau: a story of a plateau that overrides can show a view of the plateau below. */
+/** How many steps of the stories show that view. */
 function storiesUsingView(viewId) {
-  return allStories().reduce((count, story) => count + storySteps(story).filter((step) => step.view === viewId).length, 0);
+  return storiesList().reduce((count, story) => count + storySteps(story).filter((step) => step.view === viewId).length, 0);
 }
 
 /** A recipe (a view, or a step that carries one) follows a renamed element. True when it changed. */
@@ -16326,11 +16347,10 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
  */
 function rewriteSavedViewReferences(oldRef, newRef, layer) {
   let changed = false;
-  for (const view of allSavedViews()) {
-    if (writeScopeHasEntry(view) && rewriteRecipeReferences(view, oldRef, newRef, layer)) { markEntryChanged(view); changed = true; }
+  for (const view of savedViews()) {
+    if (rewriteRecipeReferences(view, oldRef, newRef, layer)) { markEntryChanged(view); changed = true; }
   }
-  for (const story of allStories()) {
-    if (!writeScopeHasEntry(story)) continue;
+  for (const story of storiesList()) {
     let storyChanged = false;
     for (const step of Array.isArray(story.steps) ? story.steps : []) {
       if (isPlainObject(step) && !step.view && rewriteRecipeReferences(step, oldRef, newRef, layer)) storyChanged = true;
@@ -16363,10 +16383,8 @@ function refuseViewEdit(view, field, text, typed) {
  * `refuseViewEdit`): then the view is not marked and the page is only redrawn to say the refusal. `later`: redraw a moment later. Returns whether the view changed.
  */
 function editSavedView(change, later) {
-  if (writesRefused()) return false;
   const view = libraryPageView();
   if (!view) return false;
-  if (writesRefused(view)) return false;
   if (!isPlainObject(view.properties)) view.properties = {};
   viewEditNotice = null;
   const changed = change(view, view.properties) !== false;
@@ -16591,10 +16609,8 @@ function handleAppChange(e) {
 
 /** A text field of a story, typed in: the model follows at once (there is no form to apply), and "Save all changes" lights up. */
 function updateStoryField(field) {
-  if (writesRefused()) return;
   const story = findStory(field.getAttribute('data-story'));
   if (!story) return;
-  if (writesRefused(story)) return;
   const name = field.getAttribute('data-story-field');
   const value = field.value;
   let target = story;
@@ -16847,7 +16863,6 @@ function addCurrentViewToStoryChoice(choice) {
     story = storiesList().find((entry) => storyLabel(entry).trim().toLowerCase() === wanted) || createStory(choice.newName.trim());
   }
   if (!definition || !story) { render(); return; }
-  if (writesRefused(story)) return;
   // a view that was named is pointed at; any other diagram goes in the step itself: no file for each diagram of a story
   const named = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
   const step = named ? { view: named.id } : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
@@ -16896,7 +16911,6 @@ function newStory() {
 
 function deleteStory(id) {
   const story = findStory(id);
-  if (story && writesRefused(story)) return;
   if (!story || !confirm('Delete the story “' + storyLabel(story) + '”? Its views stay saved.')) return;
   removeEntry(story, 'stories');
   if (selectedStoryId === id) selectedStoryId = null;
@@ -16910,7 +16924,6 @@ function moveStoryStep(storyId, index, delta) {
   const steps = story && Array.isArray(story.steps) ? story.steps : null;
   const to = index + delta;
   if (!steps || index < 0 || index >= steps.length || to < 0 || to >= steps.length) return;
-  if (writesRefused(story)) return;
   [steps[index], steps[to]] = [steps[to], steps[index]];
   if (activeStory && activeStory.id === storyId) {
     if (activeStory.step === index) activeStory.step = to; else if (activeStory.step === to) activeStory.step = index;
@@ -16927,7 +16940,6 @@ function moveStoryStep(storyId, index, delta) {
 function removeStoryStep(storyId, index) {
   const story = findStory(storyId);
   if (!story || !Array.isArray(story.steps) || index < 0 || index >= story.steps.length) return;
-  if (writesRefused(story)) return;
   removedStep = { storyId, index, step: story.steps[index] };
   story.steps.splice(index, 1);
   if (activeStory && activeStory.id === storyId) {
@@ -16947,7 +16959,6 @@ function undoRemoveStoryStep() {
   const story = removed ? findStory(removed.storyId) : null;
   removedStep = null;
   if (!story) { render(); return; }
-  if (writesRefused(story)) return;
   const steps = writableSteps(story);
   const at = Math.min(removed.index, steps.length);
   steps.splice(at, 0, removed.step);
@@ -16960,7 +16971,6 @@ function undoRemoveStoryStep() {
 function addStoryStep(storyId, viewId) {
   const story = findStory(storyId);
   if (!story || !findSavedView(viewId)) return;
-  if (writesRefused(story)) return;
   writableSteps(story).push({ view: viewId });
   pendingFocusSelector = '#story-add-view';
   markEntryChanged(story);
@@ -16969,11 +16979,9 @@ function addStoryStep(storyId, viewId) {
 
 /** A step whose view is gone points at another one. */
 function repairStoryStep(storyId, index, viewId) {
-  if (writesRefused()) return;
   const story = findStory(storyId);
   const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
   if (!isPlainObject(step) || !findSavedView(viewId)) return;
-  if (writesRefused(story)) return;
   step.view = viewId;
   markEntryChanged(story);
   render();
@@ -16984,7 +16992,6 @@ function keepStepAsNamedView(storyId, index) {
   const story = findStory(storyId);
   const step = story && Array.isArray(story.steps) ? story.steps[index] : null;
   if (!isPlainObject(step) || step.view || !step.viewpoint) return;
-  if (writesRefused(story)) return;
   openTextDialog('Keep as a named view', 'It is kept in a file of its own; the step then points at it.', describeViewDefinition(step), 'Save view', (name) => {
     const target = findStory(storyId);
     const current = target && Array.isArray(target.steps) ? target.steps[index] : null;
@@ -17050,7 +17057,6 @@ function openSavedView(viewId) {
 function renameSavedView(viewId) {
   const view = findSavedView(viewId);
   if (!view) return;
-  if (writesRefused(view)) return;
   openTextDialog('Rename the view', 'Name of the view', viewLabel(view), 'Rename', (name) => {
     const target = findSavedView(viewId);
     if (target) { target.name = name; markEntryChanged(target); }
@@ -17061,7 +17067,6 @@ function renameSavedView(viewId) {
 function deleteSavedView(viewId) {
   const view = findSavedView(viewId);
   if (!view) return;
-  if (writesRefused(view)) return;
   const used = storiesUsingView(viewId);
   if (!confirm('Delete the view “' + viewLabel(view) + '”?' + (used ? '\n\n' + used + ' step' + (used === 1 ? '' : 's') + ' of stories show it; they will say the view is missing.' : ''))) return;
   removeEntry(view, 'views');
@@ -17071,7 +17076,7 @@ function deleteSavedView(viewId) {
 /** The views and the stories that are still in workspace.yaml (and not shadowed by a manifest): what "Move to manifests" takes out. */
 function legacyEntriesToMove() {
   const movable = (key, kind) => {
-    const taken = new Set(manifestEntries(kind, true).map((entry) => entry.id));
+    const taken = new Set(manifestEntries(kind).map((entry) => entry.id));
     return legacyEntries(key).filter((entry) => !taken.has(entry.id));
   };
   return { views: movable('views', 'view'), stories: movable('stories', 'story') };
@@ -17333,22 +17338,6 @@ function renderLegacyEntriesNoticeHtml() {
     '<button type="button" data-action="legacy-move" title="Write a manifest file for each, and take them out of workspace.yaml">Move to manifests</button></div>';
 }
 
-/**
- * With layers, the stories and views of the pages are those of the plateau drawn and of the plateaus it overrides (the command line loads them the same way): the page says
- * so, and how many belong to other plateaus. Nothing without layers, which has one plateau.
- */
-function renderLayerEntriesNoticeHtml() {
-  const chain = layerChainSet();
-  if (!chain) return '';
-  const kind = libraryTab === 'views' ? 'view' : 'story';
-  const noun = kind === 'view' ? 'views' : 'stories';
-  const hidden = manifestEntries(kind, true).length - manifestEntries(kind).length;
-  const drawn = plateauTitle(layerPlateauModel(AppState.layers.current));
-  const past = Array.from(chain).filter((id) => id !== AppState.layers.current);
-  return '<div class="story-legacy layer-entries-note" role="status"><span>The ' + noun + ' of ' + (past.length ? escapeHtml(drawn) + ' and of the plateaus it overrides (' + past.map((id) => '<code>' + escapeHtml(id) + '</code>').join(', ') + ')' : escapeHtml(drawn)) + '.' +
-    (hidden > 0 ? ' ' + hidden + (hidden === 1 ? ' belongs' : ' belong') + ' to other plateaus. Draw one to see ' + (hidden === 1 ? 'it' : 'them') + '.' : '') + '</span></div>';
-}
-
 /** The two sides of the Library, as one group of joined buttons. */
 function renderLibraryTabsHtml() {
   const tab = (id, label, title) => '<button type="button" data-action="library-tab" data-tab="' + id + '" aria-pressed="' + (id === libraryTab) + '" title="' + title + '">' + label + '</button>';
@@ -17399,7 +17388,7 @@ function renderLibraryPerspectiveHtml() {
       : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. To start, open a diagram in Applications or in Elements and press “Add to story…”, or create an empty story with “New story…”.</p>';
   }
   const header = renderElementHeaderHtml('<h2>Stories</h2>' + renderLibraryTabsHtml() + subject, actions);
-  const notices = (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') + renderLayerEntriesNoticeHtml() + renderLegacyEntriesNoticeHtml();
+  const notices = (storyNotice ? '<div class="error-panel" role="status">' + escapeHtml(storyNotice) + '</div>' : '') + renderLegacyEntriesNoticeHtml();
   // a view that can be drawn is drawn: the diagram of the Map under the header, and the panel on the right says what the view is and
   // what is selected in it; Maximize gives the diagram the room of both, as on the Map. One that cannot be drawn keeps its message and its facts.
   const recipe = onViews && selectedViewId ? libraryDiagramRecipe(findSavedView(selectedViewId)) : null;
@@ -17519,13 +17508,11 @@ const ACTIONS_LEAVING_THE_FORM = new Set([
   'library-tab', 'select-view', 'library-go-story', 'library-go-view', 'library-open-element', 'select-change'
 ]);
 
-/** The clicks that write, or open a form that writes, an element, a view or a story. Each is allowed in the plateau drawn (wave 014, run 0082); `layerActionRefusal` says which are not, and why. */
+/** The clicks that write, or open a form that writes, an element. Each is allowed in the plateau drawn (wave 014, run 0082) unless it cannot be drawn (`layerActionRefusal`). A view and a story belong to no plateau (wave 015, run 0100): their clicks are not here. */
 const WRITE_ACTIONS = new Set([
   'toggle-element-edit', 'add-qualifier', 'remove-qualifier', 'add-application', 'remove-application', 'add-replaces', 'remove-replaces', 'add-use', 'remove-use',
   'add-tag', 'remove-tag', 'add-relationship', 'remove-relationship', 'open-create-child-form', 'open-create-top-level-form', 'submit-create-child',
-  'submit-create-top-level', 'request-delete-element', 'confirm-delete-element', 'open-move-dialog', 'move-confirm', 'fix-dangling', 'legacy-move',
-  'name-view', 'add-to-story', 'story-new', 'story-delete', 'story-edit', 'story-bar-edit', 'story-step-up', 'story-step-down', 'story-step-remove',
-  'story-add-step', 'story-step-name', 'story-undo', 'saved-view-rename', 'saved-view-delete', 'view-list-remove'
+  'submit-create-top-level', 'request-delete-element', 'confirm-delete-element', 'open-move-dialog', 'move-confirm', 'fix-dangling'
 ]);
 
 /** Asks before throwing away what was typed in a form and not applied. True when the user accepts (the draft is then gone). */
@@ -17561,9 +17548,9 @@ function handleAppClick(e) {
   if (action !== 'dialog-submit') storyBarNotice = null;
   if (removedStep && action !== 'story-undo' && action !== 'story-step-remove') removedStep = null;
   if (draftTyped && ACTIONS_LEAVING_THE_FORM.has(action) && !confirmDiscardingDraft()) return;
-  // wave 014 (runs 0080 and 0082): a plateau that cannot be drawn is not written, and a few clicks are not available outside baseline (see `layerActionRefusal`)
+  // wave 014 (runs 0080 and 0082): a plateau that cannot be drawn is not written (see `layerActionRefusal`)
   if (WRITE_ACTIONS.has(action)) {
-    const refusal = layerActionRefusal(action);
+    const refusal = layerActionRefusal();
     if (refusal !== null) {
       saveStatus = { state: 'denied', message: refusal };
       render();

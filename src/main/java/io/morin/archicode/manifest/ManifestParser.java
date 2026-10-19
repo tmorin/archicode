@@ -73,11 +73,13 @@ public class ManifestParser {
         val map = new HashMap<Class<?>, Set<Candidate>>();
         val views = new ArrayList<Placed<View>>();
         val stories = new ArrayList<Placed<Story>>();
-        // where each reference is declared, by plateau and by layer ("application", "technology"), and each view and story
-        // ("view", "story"): one declared twice in a plateau is an error, whichever way it is declared (a manifest of its
-        // own, an element nested in another, a manifest placed under a parent); one declared again in an ancestor of its
-        // plateau is an error too (see PlateauTree.redeclared)
+        // where each reference is declared, by plateau and by layer ("application", "technology"): one declared twice in a
+        // plateau is an error, whichever way it is declared (a manifest of its own, an element nested in another, a manifest
+        // placed under a parent); one declared again in an ancestor of its plateau is an error too (see
+        // PlateauTree.redeclared). The views and the stories belong to no plateau (wave 015, run 0100): they are declared once
+        // in the whole workspace, under the key UNTIED
         val declarations = new HashMap<String, Map<String, Map<String, List<String>>>>();
+        val ignored = new ArrayList<String>();
         // the plateaus: the manifests of kind plateau, the ids that headers name, and the first manifest that uses layers
         val plateauManifests = new ArrayList<PlateauTree.Declared>();
         val plateauHeaders = new TreeMap<String, List<String>>();
@@ -119,7 +121,10 @@ public class ManifestParser {
             // the plateau of the manifest: the one its header names, else baseline (a manifest of kind plateau names its own)
             val written = resource.getHeader().getPlateau();
             val plateau = written == null ? Plateau.BASELINE : written;
-            if (written != null && !(item instanceof Plateau)) {
+            if (written != null && (item instanceof View || item instanceof Story)) {
+                // a view and a story exist whatever plateau is drawn: the key says nothing, and names no plateau
+                ignored.add(ignoredPlateauWarning(source, item instanceof View ? "view" : "story", written));
+            } else if (written != null && !(item instanceof Plateau)) {
                 plateauHeaders.computeIfAbsent(written, id -> new ArrayList<>()).add(source);
                 if (layeredBy == null) {
                     layeredBy = "`" + source + "` says `plateau: " + written + "` in its header";
@@ -155,16 +160,16 @@ public class ManifestParser {
                 map.putIfAbsent(resource.getKind().getCategory(), new HashSet<>());
                 map.get(resource.getKind().getCategory()).add(candidate);
             } else if (item instanceof View view) {
-                views.add(new Placed<>(plateau, source, view));
+                views.add(new Placed<>(source, view));
                 declarations
-                    .computeIfAbsent(plateau, p -> new HashMap<>())
+                    .computeIfAbsent(UNTIED, p -> new HashMap<>())
                     .computeIfAbsent("view", c -> new HashMap<>())
                     .computeIfAbsent(view.getId(), r -> new ArrayList<>())
                     .add(source);
             } else if (item instanceof Story story) {
-                stories.add(new Placed<>(plateau, source, story));
+                stories.add(new Placed<>(source, story));
                 declarations
-                    .computeIfAbsent(plateau, p -> new HashMap<>())
+                    .computeIfAbsent(UNTIED, p -> new HashMap<>())
                     .computeIfAbsent("story", c -> new HashMap<>())
                     .computeIfAbsent(story.getId(), r -> new ArrayList<>())
                     .add(source);
@@ -190,7 +195,44 @@ public class ManifestParser {
         if (!problems.isEmpty()) {
             throw new ArchiCodeException("%s", String.join("\n", problems));
         }
-        return new Parsed(map, views, stories, tree);
+        return new Parsed(map, views, stories, tree, ignored, declaredReferences(declarations));
+    }
+
+    /**
+     * The key under which the views and the stories are declared: they belong to no plateau. It is not the id of a plateau
+     * (an id is made of {@code [a-z0-9_-]}), so no plateau of the tree is ever asked for it.
+     */
+    private static final String UNTIED = "*";
+
+    /**
+     * The sentence for a view or a story that says {@code plateau:} in its header, which is ignored (wave 015, run 0100,
+     * issue #100). The editor says the same ({@code ignoredPlateauWarning} in {@code standalone.html}): keep them alike.
+     */
+    static String ignoredPlateauWarning(String source, String noun, String plateau) {
+        return String.format(
+            "`%s` is a %s and says `plateau: %s` in its header, which is ignored: a %s exists whatever plateau is drawn",
+            source,
+            noun,
+            plateau,
+            noun
+        );
+    }
+
+    /** The references the manifests declare, by layer ({@code application}, {@code technology}), in any plateau. */
+    private static Map<String, Set<String>> declaredReferences(
+        Map<String, Map<String, Map<String, List<String>>>> declarations
+    ) {
+        val declared = new HashMap<String, Set<String>>();
+        declared.put("application", new TreeSet<>());
+        declared.put("technology", new TreeSet<>());
+        declarations.forEach((plateau, namespaces) ->
+            namespaces.forEach((namespace, references) -> {
+                if (declared.containsKey(namespace)) {
+                    declared.get(namespace).addAll(references.keySet());
+                }
+            })
+        );
+        return declared;
     }
 
     /**
@@ -374,18 +416,24 @@ public class ManifestParser {
      * What the manifests hold.
      *
      * @param elements the elements, by category (application, technology), each with the plateau it belongs to
-     * @param placedViews   the views that are manifests of their own, each with its plateau
-     * @param placedStories the stories, each with its plateau
+     * @param placedViews   the views that are manifests of their own, with the file of each (a view belongs to no plateau)
+     * @param placedStories the stories, with the file of each (a story belongs to no plateau)
      * @param plateaus the plateaus of the workspace and how they stack (see {@link PlateauTree}); {@code baseline} alone for a
      *                 workspace that uses none
+     * @param warnings the warnings of the reading itself, to be told when the command ends: a view or a story that says
+     *                 {@code plateau:} in its header
+     * @param declared the references that the manifests declare, whatever the plateau, by layer ({@code application},
+     *                 {@code technology}): what "exists in at least one plateau" means (see {@code LayerLoader})
      */
     public record Parsed(
         Map<Class<?>, Set<Candidate>> elements,
         List<Placed<View>> placedViews,
         List<Placed<Story>> placedStories,
-        PlateauTree plateaus
+        PlateauTree plateaus,
+        List<String> warnings,
+        Map<String, Set<String>> declared
     ) {
-        /** The views of every plateau. */
+        /** The views. */
         public Set<View> views() {
             return placedViews
                 .stream()
@@ -393,7 +441,7 @@ public class ManifestParser {
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         }
 
-        /** The stories of every plateau. */
+        /** The stories. */
         public Set<Story> stories() {
             return placedStories
                 .stream()
@@ -403,10 +451,11 @@ public class ManifestParser {
 
         /**
          * What one plateau declares on its own: not what it inherits from its ancestors, not what overrides it. The loader
-         * adds it to the graph of the parent, then applies the patches of the plateau ({@link PlateauTree#chain}).
+         * adds it to the graph of the parent, then applies the patches of the plateau ({@link PlateauTree#chain}). The views
+         * and the stories are not part of it: they belong to no plateau.
          *
          * @param id the id of the plateau
-         * @return the elements, views and stories whose manifests say {@code plateau: <id>} (the same tree of plateaus)
+         * @return the elements whose manifests say {@code plateau: <id>} (the same tree of plateaus), and no view or story
          */
         public Parsed ofPlateau(String id) {
             val own = new HashMap<Class<?>, Set<Candidate>>();
@@ -420,30 +469,18 @@ public class ManifestParser {
                     own.put(category, some);
                 }
             });
-            return new Parsed(
-                own,
-                placedViews
-                    .stream()
-                    .filter(v -> v.plateau().equals(id))
-                    .toList(),
-                placedStories
-                    .stream()
-                    .filter(v -> v.plateau().equals(id))
-                    .toList(),
-                plateaus
-            );
+            return new Parsed(own, List.of(), List.of(), plateaus, List.of(), declared);
         }
     }
 
     /**
-     * A view or a story, with the plateau it belongs to and the file it is in.
+     * A view or a story, with the file it is in.
      *
-     * @param plateau the plateau its header names, else {@code baseline}
      * @param source  the file, from the folder of the workspace
      * @param item    the view or the story
      * @param <T>     the type of {@code item}
      */
-    public record Placed<T>(String plateau, String source, T item) {}
+    public record Placed<T>(String source, T item) {}
 
     @Value
     @Builder

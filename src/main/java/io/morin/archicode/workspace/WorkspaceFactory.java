@@ -155,6 +155,7 @@ public class WorkspaceFactory {
         }
         val parsed = manifestParser.parse(source.wksDir(), manifestsDirs, path, viewsPaths);
         warnings.warnAll(parsed.plateaus().warnings());
+        warnings.warnAll(parsed.warnings());
         return parsed;
     }
 

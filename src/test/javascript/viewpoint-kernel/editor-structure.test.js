@@ -50,7 +50,10 @@ const STORY = (id, plateau) => 'header:\n  kind: "archicode.morin.io/story"\n  v
 const VIEW = (id, element, plateau) => 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\n' + (plateau ? '  plateau: "' + plateau + '"\n' : '') +
   'content:\n  id: "' + id + '"\n  viewpoint: overview\n  layer: application\n  properties:\n    element: "' + element + '"\n';
 
-/** A ferry company with a root and two sibling plateaus, `fast` and `green`, each with a story and a view of its own, and a story and a view in the root. */
+/**
+ * A ferry company with a root and two sibling plateaus, `fast` and `green`, each with a story and a view of its own, and a story and a view in the root. A story and a
+ * view belong to no plateau (run 0100): the folders only say where the author keeps them.
+ */
 const FERRY = {
   'baseline/app.fleet.yaml': SYSTEM('fleet'),
   'baseline/env.harbour.yaml': ENVIRONMENT('harbour'),
@@ -58,11 +61,11 @@ const FERRY = {
   'baseline/view.fleet_view.yaml': VIEW('fleet_view', 'fleet'),
   'fast/plateau.yaml': PLATEAU('fast', 'Faster crossings'),
   'fast/app.jet.yaml': SYSTEM('jet', 'fast'),
-  'fast/story.speed.yaml': STORY('speed', 'fast'),
-  'fast/view.jet_view.yaml': VIEW('jet_view', 'jet', 'fast'),
+  'fast/story.speed.yaml': STORY('speed'),
+  'fast/view.jet_view.yaml': VIEW('jet_view', 'jet'),
   'green/plateau.yaml': PLATEAU('green', 'Greener crossings'),
   'green/app.sail.yaml': SYSTEM('sail', 'green'),
-  'green/story.wind.yaml': STORY('wind', 'green')
+  'green/story.wind.yaml': STORY('wind')
 };
 
 const ids = (list) => Array.from(list, (entry) => entry.id).sort();
@@ -407,62 +410,110 @@ test('Stories is the name of the page that was the Library, with its Stories and
   assert.equal(sandbox.currentRouteHash().split('?')[0], '/stories/views');
 });
 
-test('the stories and views of a page are those of the plateau drawn and of the plateaus it overrides', async () => {
+test('the page Stories lists the same stories and views whatever plateau is drawn', async () => {
   const { sandbox, state } = await openFiles(FERRY);
-  assert.deepEqual(ids(sandbox.storiesList()), ['tour'], 'baseline: its own');
-  assert.deepEqual(ids(sandbox.savedViews()), ['fleet_view']);
-  sandbox.drawPlateau('fast');
-  assert.deepEqual(ids(sandbox.storiesList()), ['speed', 'tour'], 'fast: its own and baseline\'s, not those of its sibling green');
-  assert.deepEqual(ids(sandbox.savedViews()), ['fleet_view', 'jet_view']);
-  sandbox.drawPlateau('green');
-  assert.deepEqual(ids(sandbox.storiesList()), ['tour', 'wind']);
-  assert.deepEqual(ids(sandbox.savedViews()), ['fleet_view']);
-  assert.equal(state.layers.current, 'green');
+  for (const drawn of ['baseline', 'fast', 'green']) {
+    sandbox.drawPlateau(drawn);
+    assert.equal(state.layers.current, drawn);
+    assert.deepEqual(ids(sandbox.storiesList()), ['speed', 'tour', 'wind'], drawn + ': every story');
+    assert.deepEqual(ids(sandbox.savedViews()), ['fleet_view', 'jet_view'], drawn + ': every view');
+  }
+  assert.equal(run(sandbox, 'typeof layerChainSet'), 'undefined', 'the pages no longer ask which plateaus a story belongs to');
 });
 
-test('the Stories page says whose stories it lists and how many belong to other plateaus', async () => {
-  const { sandbox } = await openFiles(FERRY);
-  sandbox.setPerspective('library');
-  sandbox.drawPlateau('fast');
-  let note = stripTags(sandbox.renderLayerEntriesNoticeHtml());
-  assert.match(note, /The stories of Faster crossings and of the plateaus it overrides \( baseline \)\. 1 belongs to other plateaus\. Draw one to see it\./);
-  run(sandbox, "libraryTab = 'views'");
-  note = stripTags(sandbox.renderLayerEntriesNoticeHtml());
-  assert.match(note, /The views of Faster crossings and of the plateaus it overrides \( baseline \)\. *$/, 'green has no view: nothing is left out');
+/** The files of the layered Brightcart, as a folder in memory, with the files of `extra` added. */
+function layeredBrightcartFiles(extra) {
+  const files = {};
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else files[path.relative(LAYERED, full).split(path.sep).join('/')] = fs.readFileSync(full, 'utf8');
+    }
+  };
+  walk(LAYERED);
+  return Object.assign(files, extra);
+}
+
+test('the layered Brightcart with two stories and a view: the four plateaus list the same ones, and a story that names an element of one plateau only is no mistake', async () => {
+  // `commerce.cart` is declared by `inhouse` only and `seller` by `marketplace` only: the stories are told on each plateau, and exist in all of them
+  const story = (id, element) => 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + id + '"\n  steps:\n    - viewpoint: overview\n      layer: application\n      properties:\n        element: "' + element + '"\n      text: "Look."\n';
+  const files = layeredBrightcartFiles({
+    'stories/story.cart.yaml': story('cart_story', 'commerce.cart'),
+    'stories/story.seller.yaml': story('seller_story', 'seller'),
+    'stories/view.cart.yaml': VIEW('cart_view', 'commerce.cart')
+  });
+  const mem = memFolder(files);
+  const sandbox = createApp({});
+  const state = sandbox.__state();
+  state.folder = { handle: mem.handle, name: 'layered' };
+  state.permissionState = 'granted';
+  await sandbox.loadWorkspace(mem.handle);
+  await sandbox.loadViewpointKernel();
+  assert.equal(state.fatalError, null);
+  assert.deepEqual(Array.from(state.plateauTree.ids), ['baseline', 'inhouse', 'marketplace', 'saas']);
+  for (const drawn of state.plateauTree.ids) {
+    sandbox.drawPlateau(drawn);
+    assert.equal(state.layers.current, drawn);
+    assert.deepEqual(ids(sandbox.storiesList()), ['cart_story', 'seller_story'], drawn + ': both stories');
+    assert.deepEqual(ids(sandbox.savedViews()), ['cart_view'], drawn + ': the view');
+    assert.deepEqual(Array.from(sandbox.entryProblemsOf(state.workspace.settings)), [], drawn + ': what they name exists in a plateau');
+  }
+  // in a plateau that lacks what a view names the view cannot be drawn there: it says which plateau lacks the element, and nothing is a mistake of the view
   sandbox.drawPlateau('baseline');
-  note = stripTags(sandbox.renderLayerEntriesNoticeHtml());
-  assert.match(note, /^ ?The views of Monolith|^ ?The views of baseline/);
-  assert.match(note, /1 belongs to other plateaus/);
-  // the page itself carries the note
-  assert.match(sandbox.renderActivePerspectiveHtml().center, /layer-entries-note/);
+  assert.equal(sandbox.viewProblem(sandbox.findSavedView('cart_view')), 'The element “commerce.cart” is not in the plateau “baseline”.');
+  sandbox.drawPlateau('inhouse');
+  assert.equal(sandbox.viewProblem(sandbox.findSavedView('cart_view')), null);
+  assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 0);
 });
 
-test('a workspace with no layer lists every story and view, and says nothing about plateaus', async () => {
+test('a workspace with no layer lists every story and view', async () => {
   const { sandbox } = await openFiles({ 'manifests/app.fleet.yaml': SYSTEM('fleet'), 'manifests/story.tour.yaml': STORY('tour'), 'manifests/view.v.yaml': VIEW('v', 'fleet') });
   assert.deepEqual(ids(sandbox.storiesList()), ['tour']);
   assert.deepEqual(ids(sandbox.savedViews()), ['v']);
-  assert.equal(sandbox.renderLayerEntriesNoticeHtml(), '');
-  assert.equal(run(sandbox, 'layerChainSet()'), null);
+  assert.deepEqual(Array.from(sandbox.entryProblemsOf(sandbox.__state().workspace.settings)), [], 'a workspace without plateaus is not checked: what a view names is looked at when it is drawn');
 });
 
-test('drawing another plateau lets go of a story or a view it does not have', async () => {
+test('drawing another plateau does not let go of a story or a view', async () => {
   const { sandbox } = await openFiles(FERRY);
   sandbox.drawPlateau('fast');
   run(sandbox, "selectedStoryId = 'speed'; selectedViewId = 'jet_view'; activeStory = { id: 'speed', step: 0 }");
   sandbox.drawPlateau('green');
-  assert.equal(run(sandbox, 'selectedStoryId'), null);
-  assert.equal(run(sandbox, 'selectedViewId'), null);
-  assert.equal(run(sandbox, 'activeStory'), null);
-  run(sandbox, "selectedStoryId = 'tour'");
-  sandbox.drawPlateau('fast');
-  assert.equal(run(sandbox, 'selectedStoryId'), 'tour', 'one that the new plateau has too stays open');
+  assert.equal(run(sandbox, 'selectedStoryId'), 'speed');
+  assert.equal(run(sandbox, 'selectedViewId'), 'jet_view');
+  assert.deepEqual(plain(run(sandbox, 'activeStory')), { id: 'speed', step: 0 });
 });
 
-test('a new story or view takes an id that no plateau uses, so that it cannot be declared again in a plateau that overrides', async () => {
-  const { sandbox } = await openFiles(FERRY);
-  const story = sandbox.createStory('speed'); // drawn: baseline, which does not list the story `speed` of fast
-  assert.notEqual(story.id, 'speed');
+test('a new story or view is a manifest of no plateau, in the first manifests folder, whatever plateau is drawn', async () => {
+  const { sandbox, state } = await openFiles(FERRY);
+  sandbox.drawPlateau('fast');
+  const story = sandbox.createStory('speed'); // `speed` is taken: a story is declared once in the workspace
   assert.equal(story.id, 'speed_2');
+  const created = state.manifestFiles.find((f) => f.content === story);
+  assert.equal(created.relPath, 'story.speed_2.yaml', 'the first folder of manifests.paths, not the folder of the plateau drawn');
+  assert.equal(created.header.plateau, undefined, 'no plateau: in the header');
+  assert.doesNotMatch(created.rawText, /plateau/);
+  sandbox.drawPlateau('green');
+  const view = sandbox.createManifestEntry('view', { id: 'wide', viewpoint: 'overview', layer: 'application', properties: { element: 'fleet' } });
+  const file = state.manifestFiles.find((f) => f.content === view);
+  assert.equal(file.relPath, 'view.wide.yaml');
+  assert.doesNotMatch(file.rawText, /plateau/);
+  assert.deepEqual(ids(sandbox.storiesList()), ['speed', 'speed_2', 'tour', 'wind']);
+});
+
+test('a story that still says plateau: in its header is read, listed in every plateau and told as ignored', async () => {
+  const old = 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\n  plateau: "fast"\ncontent:\n  id: "old"\n  name: "Old"\n  steps: []\n';
+  const { sandbox, state } = await openFiles(Object.assign({}, FERRY, { 'fast/story.old.yaml': old }));
+  assert.ok(Array.from(state.plateauTree.warnings).includes('`fast/story.old.yaml` is a story and says `plateau: fast` in its header, which is ignored: a story exists whatever plateau is drawn'));
+  for (const drawn of ['baseline', 'green']) {
+    sandbox.drawPlateau(drawn);
+    assert.ok(ids(sandbox.storiesList()).includes('old'), drawn);
+  }
+  assert.equal(sandbox.filePlateauOf(state.manifestFiles.find((f) => f.relPath === 'fast/story.old.yaml')), null, 'the file belongs to no plateau');
+  // the key names no plateau: a plateau that only a story names is no plateau
+  const only = await openFiles({ 'manifests/app.fleet.yaml': SYSTEM('fleet'), 'manifests/story.old.yaml': old.replace('"fast"', '"nowhere"') });
+  assert.equal(only.state.plateauTree.layered, false);
+  assert.deepEqual(Array.from(only.state.plateauTree.ids), ['baseline']);
 });
 
 // ---- Files ----
@@ -490,21 +541,23 @@ test('Files lists every file, in a group per plateau, whatever plateau is drawn;
   sandbox.setPerspective('files');
   const everything = Object.keys(FERRY).sort();
   const listed = () => filesGroupsOf(sandbox).flatMap((g) => g.files).sort();
-  const of = (plateau) => everything.filter((f) => f.startsWith(plateau + '/'));
+  const isEntry = (f) => /\/(story|view)\./.test(f); // a story and a view belong to no plateau, whatever the folder they are in
+  const of = (plateau) => everything.filter((f) => f.startsWith(plateau + '/') && !isEntry(f));
   for (const drawn of ['baseline', 'fast', 'green']) {
     sandbox.drawPlateau(drawn);
     assert.deepEqual(listed(), everything, drawn + ' is drawn: all the files are listed');
   }
   const groups = filesGroupsOf(sandbox);
-  assert.deepEqual(groups.map((g) => g.key), ['plateau:baseline', 'plateau:fast', 'plateau:green'], 'the root first, then the plateaus in the order of the tree');
+  assert.deepEqual(groups.map((g) => g.key), ['plateau:baseline', 'plateau:fast', 'plateau:green', 'none'], 'the root first, then the plateaus in the order of the tree, then the files of no plateau');
+  assert.deepEqual(filesOfGroup(groups, 'none'), everything.filter(isEntry), 'the stories and the views are in the group of no plateau, wherever they are written');
   assert.deepEqual(filesOfGroup(groups, 'plateau:baseline'), of('baseline'));
   assert.deepEqual(filesOfGroup(groups, 'plateau:fast'), of('fast'));
   assert.deepEqual(filesOfGroup(groups, 'plateau:green'), of('green'), 'drawing fast, a file of the sibling green is listed');
-  assert.equal(groups[1].count, '4 files');
+  assert.equal(groups[1].count, '2 files');
   const nav = sandbox.renderFilesNavHtml();
-  assert.match(stripTags(nav), /fast Faster crossings 4 files/, 'a group says its plateau, its name and how many files');
+  assert.match(stripTags(nav), /fast Faster crossings 2 files/, 'a group says its plateau, its name and how many files');
   assert.doesNotMatch(nav, /not listed|This plateau|With its past|All files|plateau-badge/, 'there is no scope to choose and no badge on a row: the group says the plateau');
-  assert.equal(sandbox.filePlateauOf(sandbox.__state().manifestFiles.find((f) => f.relPath === 'fast/view.jet_view.yaml')), 'fast');
+  for (const entry of ['fast/view.jet_view.yaml', 'baseline/story.tour.yaml']) assert.equal(sandbox.filePlateauOf(sandbox.__state().manifestFiles.find((f) => f.relPath === entry)), null, entry + ' belongs to no plateau');
   assert.equal(sandbox.filePlateauOf(sandbox.__state().manifestFiles.find((f) => f.relPath === 'fast/plateau.yaml')), 'fast', 'a manifest of kind Plateau is the plateau it declares');
 });
 
@@ -514,8 +567,8 @@ test('a group of Files folds and unfolds, as the author wishes, and the folds ar
   assert.ok(filesGroupsOf(sandbox).every((g) => !g.folded && g.files.length > 0), 'all unfolded to begin with');
   click(sandbox, { 'data-action': 'toggle-files-group', 'data-group': 'plateau:fast' });
   let groups = filesGroupsOf(sandbox);
-  assert.deepEqual(groups.map((g) => [g.key, g.folded, g.files.length > 0]), [['plateau:baseline', false, true], ['plateau:fast', true, false], ['plateau:green', false, true]]);
-  assert.equal(groups[1].count, '4 files', 'a folded group still says how many files it holds');
+  assert.deepEqual(groups.map((g) => [g.key, g.folded, g.files.length > 0]), [['plateau:baseline', false, true], ['plateau:fast', true, false], ['plateau:green', false, true], ['none', false, true]]);
+  assert.equal(groups[1].count, '2 files', 'a folded group still says how many files it holds');
   assert.match(sandbox.renderFilesNavHtml(), /data-action="toggle-files-group"[^>]*><span class="tree-branch-title" role="button" tabindex="0" aria-expanded="false"/);
   sandbox.drawPlateau('green');
   sandbox.setPerspective('settings');
@@ -542,7 +595,7 @@ test('opening a file unfolds its group, and the open file stays in the list', as
   click(sandbox, { 'data-action': 'files-fold-all' });
   state.selection = { kind: 'file', key: 'green/app.sail.yaml', mode: 'view' }; // however it is opened: an address, a link, a row
   let groups = filesGroupsOf(sandbox);
-  assert.deepEqual(groups.map((g) => g.folded), [true, true, false], 'the group of the open file is unfolded, the others stay folded');
+  assert.deepEqual(groups.map((g) => g.folded), [true, true, false, true], 'the group of the open file is unfolded, the others stay folded');
   assert.ok(filesOfGroup(groups, 'plateau:green').includes('green/app.sail.yaml'));
   assert.match(sandbox.renderFilesNavHtml(), /file-row active[^"]*" role="button" tabindex="0" aria-current="true" data-action="select-file" data-relpath="green\/app\.sail\.yaml"/);
   // the author folds the group of the open file: the fold is kept, until another file is opened there
@@ -550,7 +603,7 @@ test('opening a file unfolds its group, and the open file stays in the list', as
   assert.equal(filesGroupsOf(sandbox)[2].folded, true);
   click(sandbox, { 'data-action': 'select-file', 'data-relpath': 'fast/app.jet.yaml' });
   groups = filesGroupsOf(sandbox);
-  assert.deepEqual(groups.map((g) => g.folded), [true, false, true], 'selecting a row unfolds its group');
+  assert.deepEqual(groups.map((g) => g.folded), [true, false, true, true], 'selecting a row unfolds its group');
 });
 
 test('opening the same file again, after the page has been left, unfolds its group again', async () => {
@@ -590,15 +643,16 @@ test('the folds belong to one folder: another folder starts unfolded', async () 
   assert.ok(filesGroupsOf(sandbox).every((g) => !g.folded));
 });
 
-test('the files that belong to no plateau are a group of their own, last, whoever they are; the open one is not lost', async () => {
+test('the files that belong to no plateau (a file the editor cannot read, a story, a view) are a group of their own, last, whoever they are; the open one is not lost', async () => {
   const { sandbox, state } = await openFiles(Object.assign({ 'baseline/broken.yaml': 'header: [unclosed\n' }, FERRY));
   sandbox.setPerspective('files');
   sandbox.drawPlateau('green');
   let groups = filesGroupsOf(sandbox);
   assert.deepEqual(groups.map((g) => g.key), ['plateau:baseline', 'plateau:fast', 'plateau:green', 'none'], 'the group of the files with no plateau comes last');
-  assert.deepEqual(filesOfGroup(groups, 'none'), ['baseline/broken.yaml'], 'a file with an error belongs to no plateau');
+  const entries = ['baseline/story.tour.yaml', 'baseline/view.fleet_view.yaml', 'fast/story.speed.yaml', 'fast/view.jet_view.yaml', 'green/story.wind.yaml'];
+  assert.deepEqual(filesOfGroup(groups, 'none'), ['baseline/broken.yaml'].concat(entries), 'a file with an error, the stories and the views belong to no plateau');
   assert.ok(!filesOfGroup(groups, 'plateau:baseline').includes('baseline/broken.yaml'));
-  assert.match(stripTags(sandbox.renderFilesNavHtml()), /No plateau 1 file/);
+  assert.match(stripTags(sandbox.renderFilesNavHtml()), /No plateau 6 files/);
   assert.match(sandbox.renderFilesNavHtml(), /data-relpath="baseline\/broken\.yaml">\s*<span class="file-relpath">[^<]*<\/span><span class="error-badge"/);
   // the group is generic: it holds what filePlateauOf says is null, it is not made for one file
   assert.equal(sandbox.filePlateauOf(state.manifestFiles.find((f) => f.relPath === 'baseline/broken.yaml')), null);
@@ -607,7 +661,7 @@ test('the files that belong to no plateau are a group of their own, last, whoeve
   click(sandbox, { 'data-action': 'select-file', 'data-relpath': 'baseline/broken.yaml' });
   groups = filesGroupsOf(sandbox);
   assert.equal(groups[3].folded, false);
-  assert.deepEqual(groups[3].files, ['baseline/broken.yaml']);
+  assert.deepEqual(groups[3].files, ['baseline/broken.yaml'].concat(entries));
 });
 
 test('a plateau the tree refuses still has its group: the files are listed whatever the mistake', async () => {
@@ -720,35 +774,35 @@ test('a link from Environments to an element of the other layer selects it where
   assert.equal(run(sandbox, 'currentPerspective'), 'environments');
 });
 
-test('renaming an element reaches the views and stories of every plateau, and deleting a view counts the steps of every plateau', async () => {
+test('renaming an element reaches every view and story, whatever plateau is drawn, and deleting a view counts the steps of every story', async () => {
   const files = Object.assign({}, FERRY, {
-    'fast/view.fleet_fast.yaml': VIEW('fleet_fast', 'fleet', 'fast'),
-    'fast/story.uses_view.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\n  plateau: "fast"\ncontent:\n  id: "uses_view"\n  name: "Uses a view"\n  steps:\n    - view: "fleet_view"\n      text: "the fleet"\n    - viewpoint: overview\n      layer: application\n      properties:\n        element: "fleet"\n      text: "its own"\n'
+    'fast/view.fleet_fast.yaml': VIEW('fleet_fast', 'fleet'),
+    'fast/story.uses_view.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "uses_view"\n  name: "Uses a view"\n  steps:\n    - view: "fleet_view"\n      text: "the fleet"\n    - viewpoint: overview\n      layer: application\n      properties:\n        element: "fleet"\n      text: "its own"\n'
   });
   const { sandbox, state } = await openFiles(files);
-  assert.deepEqual(ids(sandbox.savedViews()), ['fleet_view'], 'baseline is drawn: the view of fast is not listed');
-  assert.equal(sandbox.storiesUsingView('fleet_view'), 1, 'but the step of the story of fast that shows the baseline view is counted: deleting the view says so');
+  assert.deepEqual(ids(sandbox.savedViews()), ['fleet_fast', 'fleet_view', 'jet_view'], 'baseline is drawn: the views of fast are listed');
+  assert.equal(sandbox.storiesUsingView('fleet_view'), 1, 'the step of the story that shows the view is counted: deleting the view says so');
   sandbox.rewriteInboundReferences('fleet', 'armada', 'application');
   const file = (relPath) => state.manifestFiles.find((f) => f.relPath === relPath);
-  assert.equal(file('fast/view.fleet_fast.yaml').content.properties.element, 'armada', 'the view of a plateau that is not drawn follows the rename');
+  assert.equal(file('fast/view.fleet_fast.yaml').content.properties.element, 'armada');
   assert.equal(file('baseline/view.fleet_view.yaml').content.properties.element, 'armada');
   assert.equal(file('fast/story.uses_view.yaml').content.steps[1].properties.element, 'armada', 'and so does the step that carries its own view');
   assert.ok(file('fast/view.fleet_fast.yaml').dirty && file('fast/story.uses_view.yaml').dirty, 'the files are written with the rest');
 });
 
-test('the count of a move reaches the views and stories of every plateau, as the move does', async () => {
-  const files = Object.assign({}, FERRY, { 'fast/view.fleet_fast.yaml': VIEW('fleet_fast', 'fleet', 'fast') });
+test('the count of a move reaches every view and story, as the move does', async () => {
+  const files = Object.assign({}, FERRY, { 'fast/view.fleet_fast.yaml': VIEW('fleet_fast', 'fleet') });
   const { sandbox } = await openFiles(files);
   assert.equal(sandbox.scanMoveReferences('fleet', 'application').views, 2, 'the view of baseline and the view of fast');
 });
 
-test('a view or story of workspace.yaml whose id a manifest of another plateau has is not moved, and does not show twice', async () => {
+test('a view or story of workspace.yaml whose id a manifest has is not moved, and does not show twice', async () => {
   const settings = 'settings:\n  manifests:\n    paths: ["./**"]\nstories:\n  - id: speed\n    name: Old speed\n    steps: []\n  - id: only_old\n    name: Only old\n    steps: []\n';
   const { sandbox } = await openFiles(FERRY, settings);
-  assert.deepEqual(ids(sandbox.legacyEntriesToMove().stories), ['only_old'], 'speed is declared by a manifest of fast: moving it would declare it twice');
-  assert.deepEqual(ids(sandbox.storiesList()), ['only_old', 'tour'], 'baseline is drawn: the entry that a manifest of fast shadows is not shown');
+  assert.deepEqual(ids(sandbox.legacyEntriesToMove().stories), ['only_old'], 'speed is declared by a manifest: moving it would declare it twice');
+  assert.deepEqual(ids(sandbox.storiesList()), ['only_old', 'speed', 'tour', 'wind'], 'the entry that a manifest shadows is not shown twice');
   sandbox.drawPlateau('fast');
-  assert.deepEqual(ids(sandbox.storiesList()), ['only_old', 'speed', 'tour']);
+  assert.deepEqual(ids(sandbox.storiesList()), ['only_old', 'speed', 'tour', 'wind'], 'and the plateau drawn changes nothing');
 });
 
 test('the Plateaus page loads the kernel its Changes panel waits for, and writes the panel again', async () => {

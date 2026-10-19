@@ -1,5 +1,5 @@
 {
-  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of workspace.yaml:`, `Could not read/parse workspace.yaml: `), and the position `(line L, column C)` of a file is not told: the page reads a file into a tree that has no positions, and the column the command line gives is where its reader stopped, so a copy of it would be a guess (decided in wave 015, run 0092; brightcart-negative.test.js pins that no sentence of the page carries one). A null where a list or an object is expected is absent in both tools (N59 to N63, M65 to M73), a number is no kind and no value of an enum (N64, N66, N67), a list is no element (N65), the facets are told in kebab-case (N72 to N75, the camel-case spelling is read too, N76), and `0x1F` for an `int` is a known difference (N77, issue #103). One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type.",
+  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of workspace.yaml:`, `Could not read/parse workspace.yaml: `), and the position `(line L, column C)` of a file is not told: the page reads a file into a tree that has no positions, and the column the command line gives is where its reader stopped, so a copy of it would be a guess (decided in wave 015, run 0092; brightcart-negative.test.js pins that no sentence of the page carries one). A null where a list or an object is expected is absent in both tools (N59 to N63, M65 to M73), a number is no kind and no value of an enum (N64, N66, N67), a list is no element (N65), the facets are told in kebab-case (N72 to N75, the camel-case spelling is read too, N76), and `0x1F` for an `int` is a known difference (N77, issue #103). One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type. Run 0100 (wave 015, W-12, issues #100 and #86) adds N79 to N82: a view and a story belong to no plateau, `plateau:` in their header is ignored with a warning (N79), what they name must exist in at least one plateau (N80, `entryProblems` of the page), and a name that another plateau has but the plateau drawn lacks is left out of a map and makes any other view undrawable in this plateau, which the command line skips with a warning and the page says in the view (N81, N82: `viewProblems` of the page, the sentence of the page alone).",
   "cases": [
     {
       "id": "N7",
@@ -2735,6 +2735,228 @@
               "baseline/application/probe.yaml": "Missing header.kind"
             }
           }
+        }
+      ]
+    },
+    {
+      "id": "N79",
+      "variant": "-",
+      "title": "#100: a story that says `plateau:` in its header is read, and the key is ignored with one warning (a story belongs to no plateau)",
+      "ops": [
+        {
+          "op": "write",
+          "file": "catalog/story.tour.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\n  plateau: \"inhouse\"\ncontent:\n  id: \"tour\"\n  name: \"Tour\"\n  steps: []\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "inhouse"
+          ],
+          "exit": 0,
+          "stderr": [
+            "warning: `catalog/story.tour.yaml` is a story and says `plateau: inhouse` in its header, which is ignored: a story exists whatever plateau is drawn"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {
+            "treeWarnings": [
+              "`catalog/story.tour.yaml` is a story and says `plateau: inhouse` in its header, which is ignored: a story exists whatever plateau is drawn"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "N80",
+      "variant": "-",
+      "title": "#100: a view that names an element that exists in no plateau is told once, with its file, whatever plateau is drawn",
+      "ops": [
+        {
+          "op": "write",
+          "file": "catalog/view.cart.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"cart_view\"\n  viewpoint: \"overview\"\n  layer: \"application\"\n  properties:\n    element: \"commerce.cartt\"\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "views",
+            "generate",
+            "--plateau",
+            "baseline"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: the view `cart_view` (`catalog/view.cart.yaml`) names `commerce.cartt`, which exists in no plateau"
+          ]
+        },
+        {
+          "args": [
+            "views",
+            "generate",
+            "--plateau",
+            "inhouse"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: the view `cart_view` (`catalog/view.cart.yaml`) names `commerce.cartt`, which exists in no plateau"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "baseline",
+          "compareTo": null,
+          "expect": {
+            "entryProblems": [
+              "the view `cart_view` (`catalog/view.cart.yaml`) names `commerce.cartt`, which exists in no plateau"
+            ],
+            "viewProblems": {
+              "cart_view": "The element “commerce.cartt” does not exist any more."
+            }
+          }
+        },
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {
+            "entryProblems": [
+              "the view `cart_view` (`catalog/view.cart.yaml`) names `commerce.cartt`, which exists in no plateau"
+            ],
+            "viewProblems": {
+              "cart_view": "The element “commerce.cartt” does not exist any more."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N81",
+      "variant": "-",
+      "title": "#86: a view whose element only another plateau has cannot be drawn in this plateau: the command line skips it with a warning, the page says so in the view, and nothing is a mistake",
+      "ops": [
+        {
+          "op": "write",
+          "file": "catalog/view.cart.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"catalog_view\"\n  viewpoint: \"overview\"\n  layer: \"application\"\n  properties:\n    element: \"commerce.catalog\"\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "views",
+            "generate",
+            "--plateau",
+            "baseline",
+            "-i",
+            "catalog_view"
+          ],
+          "exit": 0,
+          "stderr": [
+            "warning: skip `catalog_view`: it names `commerce.catalog`, which the plateau `baseline` does not have"
+          ]
+        },
+        {
+          "args": [
+            "views",
+            "generate",
+            "--plateau",
+            "inhouse",
+            "-i",
+            "catalog_view"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "baseline",
+          "compareTo": null,
+          "expect": {
+            "viewProblems": {
+              "catalog_view": "The element “commerce.catalog” is not in the plateau “baseline”."
+            }
+          }
+        },
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N82",
+      "variant": "-",
+      "title": "#86: an entry of a map that the plateau drawn lacks is left out, with a warning on the command line (it was a `dangling reference` error), and a map none of whose pinned elements is there is skipped",
+      "ops": [
+        {
+          "op": "write",
+          "file": "catalog/view.shop_map.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"shop_map\"\n  viewpoint: \"map\"\n  layer: \"application\"\n  properties:\n    pinned: [\"shop\", \"commerce.catalog\"]\n    opened: [\"shop\"]\n"
+        },
+        {
+          "op": "write",
+          "file": "catalog/view.catalog_map.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"catalog_map\"\n  viewpoint: \"map\"\n  layer: \"application\"\n  properties:\n    pinned: [\"commerce.catalog\", \"commerce.checkout\"]\n    opened: [\"commerce.pricing\"]\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "views",
+            "generate",
+            "--plateau",
+            "baseline",
+            "-i",
+            "shop_map",
+            "-i",
+            "catalog_map"
+          ],
+          "exit": 0,
+          "stderr": [
+            "warning: skip `catalog_map`: it is pinned on `commerce.catalog`, `commerce.checkout`, which the plateau `baseline` does not have",
+            "warning: the view `shop_map` is drawn without `commerce.catalog`, which the plateau `baseline` does not have"
+          ]
+        },
+        {
+          "args": [
+            "views",
+            "generate",
+            "--plateau",
+            "inhouse",
+            "-i",
+            "shop_map",
+            "-i",
+            "catalog_map"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "baseline",
+          "compareTo": null,
+          "expect": {
+            "viewProblems": {
+              "catalog_map": "The elements it was pinned on are not in the plateau “baseline”."
+            }
+          }
+        },
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {}
         }
       ]
     }

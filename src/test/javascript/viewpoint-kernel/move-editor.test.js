@@ -149,7 +149,9 @@ async function open(options = {}) {
     const files = Object.assign({ 'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' }, Object.fromEntries(Object.entries(manifests).map(([name, body]) => ['manifests/' + name, body])));
     return openLayered(createApp, memFolder, files, {});
   }
-  const files = layeredFiles(PLATEAU_LIST, Object.assign({}, folder('10_base', options.base || manifests), folder('20_target', manifests)));
+  // a view belongs to no plateau (run 0100): it is declared once, in the target's folder, not once in each
+  const withoutViews = (all) => Object.fromEntries(Object.entries(all).filter(([name]) => !name.startsWith('view.')));
+  const files = layeredFiles(PLATEAU_LIST, Object.assign({}, folder('10_base', withoutViews(options.base || manifests)), folder('20_target', manifests)));
   const page = await openLayered(createApp, memFolder, files, { drawn: 'target', compared: options.compare === false ? undefined : 'base' });
   if (options.offering) page.sandbox.replacesAncestorProblem = () => null; // see openOffering
   return page;

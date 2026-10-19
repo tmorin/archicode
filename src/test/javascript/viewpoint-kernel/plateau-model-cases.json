@@ -1,9 +1,9 @@
 {
-  "comment": "The cases of the plateau model (run 0077, wave 014, W-3): the header key `plateau`, the manifest of kind `plateau` with its patches, the tree of the plateaus, and the references declared once in a chain. PlateauModelTest.java (command line) and plateau-model.test.js (editor) read this file; add a case here and both run it. `settings`: the text of workspace.yaml (`settings: {}` when absent; `manifests/` is read). `files`: a path from the folder of workspace.yaml -> the text of the file. `expect.loaded`: the references of the application layer that are drawn (nothing but the plateau baseline is drawn until the plateaus are loaded as layers, W-4); `expect.warnings`: the warnings, without `warning: ` (checked when the workspace loads: a load that stops says its mistakes and no warning); `expect.errors`: the mistakes of the tree and of the references (the command line prints one `error:` line for each; the editor lists them in the model of the plateaus); `expect.fileError`: a manifest the reader refuses (`file`, the `sentence`, and the `where` the command line adds when it reads the file itself: ` (line L, column C)`); `expect.removedKey`: the sentence of the key that no longer exists (the command line prints it as the one `error:` line; the editor's banner is `expect.editorSays`: `Could not read/parse workspace.yaml: ` and the same sentence); `expect.noPlateau`: the sentence the command line prints for `settings.current` (M54) or `--plateau` (`plateau`, M55) in a workspace that has no plateau, and `expect.editorSays` the editor's banner for the first (`Could not read the plateaus of workspace.yaml:` and the sentence); the editor has no `--plateau`, so M55 gives `expect.editorDraws`: what the page draws when the address names (`?plateau=`) a plateau the workspace does not have. Run 0092 (wave 015, W-4) adds M65 to M80: a null where a list or an object is expected, an empty workspace.yaml (`settings` is the empty text: the file has nothing in it), and the YAML 1.1 words (`yes`, `On`, `TRUE`) in `header.parent` and `header.plateau` (the text as written) and in `content.id` (the boolean, which both tools say as `true`). Run 0093 (wave 015, W-5) adds M81 to M83: an id with a dot (#104), which is two levels of a reference; the checks of a layer are in layer-checks-cases.json.",
+  "comment": "The cases of the plateau model (run 0077, wave 014, W-3): the header key `plateau`, the manifest of kind `plateau` with its patches, the tree of the plateaus, and the references declared once in a chain. PlateauModelTest.java (command line) and plateau-model.test.js (editor) read this file; add a case here and both run it. `settings`: the text of workspace.yaml (`settings: {}` when absent; `manifests/` is read). `files`: a path from the folder of workspace.yaml -> the text of the file. `expect.loaded`: the references of the application layer that are drawn (nothing but the plateau baseline is drawn until the plateaus are loaded as layers, W-4); `expect.warnings`: the warnings, without `warning: ` (checked when the workspace loads: a load that stops says its mistakes and no warning); `expect.errors`: the mistakes of the tree and of the references (the command line prints one `error:` line for each; the editor lists them in the model of the plateaus); `expect.fileError`: a manifest the reader refuses (`file`, the `sentence`, and the `where` the command line adds when it reads the file itself: ` (line L, column C)`); `expect.removedKey`: the sentence of the key that no longer exists (the command line prints it as the one `error:` line; the editor's banner is `expect.editorSays`: `Could not read/parse workspace.yaml: ` and the same sentence); `expect.noPlateau`: the sentence the command line prints for `settings.current` (M54) or `--plateau` (`plateau`, M55) in a workspace that has no plateau, and `expect.editorSays` the editor's banner for the first (`Could not read the plateaus of workspace.yaml:` and the sentence); the editor has no `--plateau`, so M55 gives `expect.editorDraws`: what the page draws when the address names (`?plateau=`) a plateau the workspace does not have. Run 0092 (wave 015, W-4) adds M65 to M80: a null where a list or an object is expected, an empty workspace.yaml (`settings` is the empty text: the file has nothing in it), and the YAML 1.1 words (`yes`, `On`, `TRUE`) in `header.parent` and `header.plateau` (the text as written) and in `content.id` (the boolean, which both tools say as `true`). Run 0093 (wave 015, W-5) adds M81 to M83: an id with a dot (#104), which is two levels of a reference; the checks of a layer are in layer-checks-cases.json. Run 0100 (wave 015, W-12, issues #100 and #86) revises M01 and M42 and adds M84 to M86: a view and a story belong to no plateau, `plateau:` in their header is ignored with one warning (the same sentence in both tools, told after the warnings of the tree), and a view or a story declared twice anywhere is declared twice.",
   "cases": [
     {
       "id": "M01",
-      "what": "a manifest of any kind accepts plateau: in its header (an element of each layer, a view, a story); the plateau exists through the header, and only the manifests of baseline are drawn until the layers are loaded",
+      "what": "a manifest of any kind accepts plateau: in its header (an element of each layer, a view, a story); the plateau exists through the header of an element, a view and a story belong to no plateau and the key is ignored with a warning, and only the manifests of baseline are drawn until the layers are loaded",
       "files": {
         "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
         "manifests/later-system.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"mail\"\n  name: \"Mail\"\n",
@@ -17,7 +17,10 @@
         "loaded": [
           "shop"
         ],
-        "warnings": []
+        "warnings": [
+          "`manifests/later-story.yaml` is a story and says `plateau: later` in its header, which is ignored: a story exists whatever plateau is drawn",
+          "`manifests/later-view.yaml` is a view and says `plateau: later` in its header, which is ignored: a view exists whatever plateau is drawn"
+        ]
       }
     },
     {
@@ -596,7 +599,7 @@
     },
     {
       "id": "M42",
-      "what": "a view declared again in an ancestor",
+      "what": "a view declared in two plateaus is declared twice: a view belongs to no plateau (run 0100, issue #100)",
       "files": {
         "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
         "manifests/v1.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"overview\"\n  viewpoint: \"overview\"\n",
@@ -604,7 +607,7 @@
       },
       "expect": {
         "errors": [
-          "the view `overview` is declared in the plateau `later` (`manifests/v2.yaml`) and again in its ancestor `baseline` (`manifests/v1.yaml`)"
+          "the view `overview` is declared twice: in `manifests/v1.yaml` and `manifests/v2.yaml`"
         ]
       }
     },
@@ -1195,6 +1198,55 @@
           "sentence": "the id `1.5` contains a dot, which separates the levels of a reference, at `content.id`",
           "where": ""
         }
+      }
+    },
+    {
+      "id": "M84",
+      "what": "a story that says plateau: is read, the key is ignored with one warning, and the key names no plateau: the workspace has none (run 0100, issue #100)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/tour.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"tour\"\n  name: \"Tour\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "`manifests/tour.yaml` is a story and says `plateau: later` in its header, which is ignored: a story exists whatever plateau is drawn"
+        ]
+      }
+    },
+    {
+      "id": "M85",
+      "what": "the key is ignored when it says baseline too",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later-overview.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\n  plateau: baseline\ncontent:\n  id: \"overview\"\n  viewpoint: \"overview\"\n",
+        "manifests/later-plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": [
+          "`manifests/later-overview.yaml` is a view and says `plateau: baseline` in its header, which is ignored: a view exists whatever plateau is drawn"
+        ]
+      }
+    },
+    {
+      "id": "M86",
+      "what": "a story declared in two plateaus is declared twice, whichever way the plateaus stack",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n",
+        "manifests/b.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"b\"\n",
+        "manifests/tour-a.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\n  plateau: a\ncontent:\n  id: \"tour\"\n",
+        "manifests/tour-b.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\n  plateau: b\ncontent:\n  id: \"tour\"\n"
+      },
+      "expect": {
+        "errors": [
+          "the story `tour` is declared twice: in `manifests/tour-a.yaml` and `manifests/tour-b.yaml`"
+        ]
       }
     }
   ]

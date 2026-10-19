@@ -365,22 +365,24 @@ test('a child of an element the plateau inherits is a manifest of the plateau wi
   assert.equal(state.index.application.get('shop.wishlist').declaredIn, 'saas');
 });
 
-test('a new story and a new view say `plateau:` in their header', async () => {
+test('a new story and a new view belong to no plateau: no `plateau:` in their header, and they are not written in the folder of the plateau drawn', async () => {
   const opened = await openLayeredCopy('saas');
   const { sandbox, state } = opened;
   sandbox.createManifestEntry('story', { id: 'tour', name: 'Tour', steps: [] });
   sandbox.createManifestEntry('view', { id: 'web_view', name: 'Web', viewpoint: 'overview', layer: 'application', properties: { element: 'shop.web' } });
   const out = await saved(opened);
   const files = Object.keys(out.files).sort();
-  assert.equal(files.length, 2);
-  for (const file of files) assert.match(out.files[file].after, /^header:\n  kind: archicode\.morin\.io\/(story|view)\n  version: "1"\n  plateau: saas\ncontent:\n/);
-  // drawn in baseline, they are not there
+  assert.deepEqual(files, ['story.tour.yaml', 'view.web_view.yaml'], 'the first folder of the manifests, not saas/');
+  for (const file of files) assert.match(out.files[file].after, /^header:\n  kind: archicode\.morin\.io\/(story|view)\n  version: "1"\ncontent:\n/);
+  // drawn in baseline, they are there too
   sandbox.drawPlateau('baseline');
-  assert.equal(sandbox.findStory('tour'), null);
-  // and a story created in baseline says no plateau
+  assert.notEqual(sandbox.findStory('tour'), null);
+  assert.notEqual(sandbox.findSavedView('web_view'), null);
+  // and one created in baseline is the same
   sandbox.createManifestEntry('story', { id: 'base_tour', name: 'Base tour', steps: [] });
   const file = state.manifestFiles.find((f) => f.header && f.content && f.content.id === 'base_tour');
   assert.equal('plateau' in file.header, false);
+  assert.equal(file.relPath, 'story.base_tour.yaml');
 });
 
 // ---- asking first ----
@@ -630,34 +632,48 @@ test('an edit is kept only if the resolution gives back the value that was edite
   assert.equal(patchesOf(state, 'saas').length, count, 'no patch was added');
 });
 
-test('the clicks that write are allowed in the plateau drawn, and Move to manifests is not available outside baseline', async () => {
+test('the clicks that write are allowed in the plateau drawn, and so is Move to manifests: it writes views and stories, which belong to no plateau', async () => {
   const opened = await openLayeredCopy('saas');
   const { sandbox, state } = opened;
   const click = (action) => sandbox.handleAppClick({ target: { closest: () => ({ getAttribute: (name) => (name === 'data-action' ? action : null) }), classList: { contains: () => false } } });
   click('toggle-element-edit');
   assert.notEqual(run(sandbox, 'saveStatus.state'), 'denied');
   click('legacy-move');
-  assert.equal(run(sandbox, 'saveStatus.state'), 'denied');
-  assert.equal(run(sandbox, 'saveStatus.message'), 'Move to manifests writes the views and stories of workspace.yaml as manifests of baseline: draw baseline to do it.');
-  assert.deepEqual(dirtyFiles(state), []);
+  assert.notEqual(run(sandbox, 'saveStatus.state'), 'denied');
+  assert.deepEqual(dirtyFiles(state), [], 'nothing to move in this workspace: nothing is written');
 });
 
-test('a story or a view another plateau declares is not edited from here: one sentence', async () => {
+test('a story or a view is edited and deleted from any plateau: it belongs to none', async () => {
   const files = {
     'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n',
     'story.tour.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "tour"\n  name: "Tour"\n  steps: []\n',
     'later/plateau.yaml': 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "later"\n',
-    'later/story.speed.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\n  plateau: later\ncontent:\n  id: "speed"\n  name: "Speed"\n  steps: []\n'
+    'later/story.speed.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "speed"\n  name: "Speed"\n  steps: []\n'
   };
   const { sandbox, state } = await openIn(files);
+  for (const drawn of ['later', 'baseline']) {
+    sandbox.drawPlateau(drawn);
+    assert.deepEqual(plain(Array.from(sandbox.storiesList(), (story) => story.id).sort()), ['speed', 'tour'], drawn);
+  }
   sandbox.drawPlateau('later');
-  assert.throws(() => sandbox.removeEntry(sandbox.findStory('tour'), 'stories'), (e) => e.message === 'The story `tour` is declared in the plateau `baseline`, and a patch cannot change a view or a story: draw `baseline` to change it.');
-  sandbox.deleteStory('tour');
-  assert.equal(run(sandbox, 'saveStatus.state'), 'denied');
-  assert.deepEqual(dirtyFiles(state), []);
-  // its own story is edited as any story
+  sandbox.removeEntry(sandbox.findStory('tour'), 'stories');
+  assert.equal(state.manifestFiles.some((f) => f.relPath === 'story.tour.yaml'), false, 'the story of baseline is deleted from later');
+  sandbox.drawPlateau('baseline');
   sandbox.removeEntry(sandbox.findStory('speed'), 'stories');
-  assert.equal(state.manifestFiles.some((f) => f.relPath === 'later/story.speed.yaml'), false);
+  assert.equal(state.manifestFiles.some((f) => f.relPath === 'later/story.speed.yaml'), false, 'and the one kept in the folder of later from baseline');
+});
+
+test('a delete that leaves a view naming an element that no plateau has is refused, as the command line would refuse the workspace', async () => {
+  const files = {
+    'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n',
+    'later/plateau.yaml': 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "later"\n',
+    'view.ferry.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  viewpoint: "overview"\n  layer: "application"\n  properties:\n    element: "ferry"\n'
+  };
+  const { sandbox, state } = await openIn(files);
+  assert.throws(() => sandbox.commitDeleteElement('ferry', 'application', [], { confirmed: true }),
+    (e) => e.message === 'Not written: the view `v` (`view.ferry.yaml`) names `ferry`, which exists in no plateau. Nothing was changed.');
+  assert.deepEqual(dirtyFiles(state), []);
+  assert.ok(state.index.application.has('ferry'), 'the element is still there');
 });
 
 // ---- plateaus ----

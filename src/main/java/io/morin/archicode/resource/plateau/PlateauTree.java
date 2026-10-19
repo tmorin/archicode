@@ -19,7 +19,7 @@ import lombok.val;
  * The plateaus of a workspace and how they stack: a tree whose root is {@code baseline}, each other plateau being a layer
  * over the one it overrides.
  * <p>
- * A plateau exists because an element, a view or a story says {@code plateau: <id>} in its header, or because a manifest of
+ * A plateau exists because an element says {@code plateau: <id>} in its header (a view and a story belong to no plateau), or because a manifest of
  * kind {@code plateau} declares it; the manifest is optional (a plateau that only headers name has no name, no horizon and
  * overrides {@code baseline}). {@code baseline} is the implicit root: it exists without anything naming it, and a manifest
  * without a {@code plateau} belongs to it.
@@ -33,7 +33,7 @@ import lombok.val;
  * <p>
  * Loading a plateau is {@link #chain(String) its chain}: for each plateau from the root, the manifests that say {@code
  * plateau: <layer>} are added to the graph, then the patches of the layer are applied (the work of the loader). The tree
- * holds no element, no view and no story: what the manifests declare is checked against it with {@link
+ * holds no element: what the manifests declare is checked against it with {@link
  * #redeclared(Map)}.
  */
 public final class PlateauTree {
@@ -659,13 +659,13 @@ public final class PlateauTree {
     }
 
     /**
-     * Check that what the manifests declare is declared once in a chain of plateaus: a reference (a view, a story) declared in
-     * a plateau and again in one of its ancestors is an error, since the plateau would have two answers for it. Two plateaus
-     * that do not stack (two alternatives) may each declare the same reference. A reference declared twice in one plateau is
-     * not told here (the parser does).
+     * Check that what the manifests declare is declared once in a chain of plateaus: a reference declared in a plateau and
+     * again in one of its ancestors is an error, since the plateau would have two answers for it. Two plateaus that do not
+     * stack (two alternatives) may each declare the same reference. A reference declared twice in one plateau is not told
+     * here (the parser does). A view and a story are not concerned: they belong to no plateau (wave 015, run 0100).
      *
-     * @param declarations where each thing is declared: by plateau, by the kind of thing ({@code application}, {@code
-     *                     technology}, {@code view}, {@code story}), by reference (by id for a view and a story), the files
+     * @param declarations where each thing is declared: by plateau, by layer ({@code application}, {@code technology}), by
+     *                     reference, the files; an entry of a key that is no plateau of the tree is not looked at
      * @return the redeclarations, one sentence each, by reference; empty when there is none
      */
     public List<String> redeclared(Map<String, Map<String, Map<String, List<String>>>> declarations) {
@@ -680,13 +680,10 @@ public final class PlateauTree {
                         if (ancestorSources == null) {
                             return;
                         }
-                        val noun = namespace.equals("view") || namespace.equals("story") ? namespace : "reference";
                         messages
                             .computeIfAbsent(reference, r -> new TreeSet<>())
                             .add(
-                                "the " +
-                                    noun +
-                                    " `" +
+                                "the reference `" +
                                     reference +
                                     "` is declared in the plateau `" +
                                     node.id() +

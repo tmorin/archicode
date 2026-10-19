@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,10 +44,12 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
 /**
- * Loads a layered plateau as its chain: for each plateau from {@code baseline} down to the one that is drawn, the elements,
- * views and stories whose manifests say {@code plateau: <layer>} are added to the graph of the plateau above, then the
- * ordered patches of the layer change that graph (the kernel's {@code apply_patches}), then the layer is checked: what the
- * graph points at must be there, and so must what the views and stories placed in the layer name. A mistake names the layer.
+ * Loads a layered plateau as its chain: for each plateau from {@code baseline} down to the one that is drawn, the elements
+ * whose manifests say {@code plateau: <layer>} are added to the graph of the plateau above, then the ordered patches of the
+ * layer change that graph (the kernel's {@code apply_patches}), then the layer is checked: what the graph points at must be
+ * there. A mistake names the layer. The views and the stories belong to no plateau (wave 015, run 0100, issue #100): they are
+ * the workspace's whatever plateau is drawn, and are checked once, after the layers, by a rule that is not about a plateau
+ * (every element they name exists in at least one plateau, see {@link #entryProblems}).
  *
  * <p>The patches of a layer see the elements the layer has just added, since they are in the graph before the patches run.
  * The first mistake ends the load: the layers below it are not looked at, so that nothing is told twice. A layer without
@@ -69,8 +70,7 @@ public class LayerLoader {
     /**
      * What the chain gives.
      *
-     * @param resources the workspace, with every element of the chain in its two layers, and the views and stories of every
-     *                  plateau of the chain
+     * @param resources the workspace, with every element of the chain in its two layers, and the views and stories
      * @param removals  the {@code REMOVE} patches of the chain, in the order they were applied
      */
     public record Loaded(Workspace resources, List<Removal> removals) {}
@@ -91,6 +91,7 @@ public class LayerLoader {
         val removals = new ArrayList<Removal>();
         // one mapper for the load (built by the first layer that has patches), not one for each of them
         ObjectMapper json = null;
+        Indexes drawn = null;
         for (val node : chain) {
             log.info("load the plateau {}", node.id());
             val own = parsed.ofPlateau(node.id());
@@ -102,16 +103,13 @@ public class LayerLoader {
                 resources = applyPatches(json, node, resources, removals);
                 indexes = index(resources, Map.of());
             }
-            val problems = new LinkedHashSet<String>(problems(node.id(), indexes));
-            for (val view : own.placedViews()) {
-                problems.addAll(viewProblems(node.id(), view, indexes));
-            }
-            for (val story : own.placedStories()) {
-                problems.addAll(storyProblems(node.id(), story, indexes));
-            }
-            tell(problems);
-            resources = resources.toBuilder().views(own.views()).stories(own.stories()).build();
+            tell(problems(node.id(), indexes));
+            drawn = indexes;
         }
+        // the views and the stories belong to no plateau: checked once, against the plateau that is drawn and then, for what it
+        // lacks, against what any plateau declares
+        tell(entryProblems(parsed, drawn, start));
+        resources = resources.toBuilder().views(parsed.views()).stories(parsed.stories()).build();
         return new Loaded(resources, removals);
     }
 
@@ -437,50 +435,127 @@ public class LayerLoader {
         return set == null ? List.of() : set.stream().sorted(Comparator.comparing(key)).toList();
     }
 
-    /** The elements a view names must be in the layer of the view, once the layer that places it is built. */
-    private static List<String> viewProblems(String plateau, ManifestParser.Placed<View> placed, Indexes indexes) {
-        val view = placed.item();
+    /**
+     * What the views and the stories name must exist in at least one plateau (the plateau-free check of issue #100): a name
+     * the plateau drawn has is fine, and so is one that another plateau has and this one does not (the view then cannot be
+     * drawn in this plateau, which is not a mistake of the view). "Another plateau has it" is decided from what the manifests
+     * and {@code workspace.yaml} declare, whatever the plateau: a patch never creates an element, so the patches need not be
+     * resolved for a plateau that is not drawn (the editor does the same, {@code entryProblemsOf}). The views come first, then
+     * the stories, each in the order of the files; one sentence for each name.
+     */
+    private static List<String> entryProblems(ManifestParser.Parsed parsed, Indexes drawn, Workspace start) {
         val out = new ArrayList<String>();
-        for (val reference : named(view.getProperties())) {
-            if (indexes.of(view.getLayer()).searchElement(reference).isEmpty()) {
-                out.add(
-                    "in the plateau `" +
-                        plateau +
-                        "`, the view `" +
-                        view.getId() +
-                        "` (`" +
-                        placed.source() +
-                        "`) names `" +
-                        reference +
-                        "`, which does not exist"
-                );
+        val declared = new Declared(parsed, start);
+        // the views of workspace.yaml (an older place for them) are looked at after those of the manifests, unless a manifest
+        // has the id (it shadows them, as it does in the editor)
+        val manifestViews = new java.util.HashSet<String>();
+        val views = new ArrayList<Entry<View>>();
+        for (val placed : parsed.placedViews()) {
+            manifestViews.add(placed.item().getId());
+            views.add(new Entry<>(placed.source(), placed.item()));
+        }
+        start
+            .getViews()
+            .stream()
+            .filter(view -> !manifestViews.contains(view.getId()))
+            .forEach(view -> views.add(new Entry<>(LEGACY_SOURCE, view)));
+        for (val entry : views) {
+            checkNames("view", entry, entry.item().getLayer(), entry.item().getProperties(), drawn, declared, out);
+        }
+        val manifestStories = new java.util.HashSet<String>();
+        val stories = new ArrayList<Entry<Story>>();
+        for (val placed : parsed.placedStories()) {
+            manifestStories.add(placed.item().getId());
+            stories.add(new Entry<>(placed.source(), placed.item()));
+        }
+        start
+            .getStories()
+            .stream()
+            .filter(story -> !manifestStories.contains(story.getId()))
+            .forEach(story -> stories.add(new Entry<>(LEGACY_SOURCE, story)));
+        for (val entry : stories) {
+            for (val step : entry.item().getSteps()) {
+                checkNames("story", entry, step.getLayer(), step.getProperties(), drawn, declared, out);
             }
         }
-        return out;
+        return out.stream().distinct().toList();
     }
 
-    /** The elements a step of a story that carries its own view names must be in the layer of that view. */
-    private static List<String> storyProblems(String plateau, ManifestParser.Placed<Story> placed, Indexes indexes) {
-        val out = new ArrayList<String>();
-        val story = placed.item();
-        for (val step : story.getSteps()) {
-            for (val reference : named(step.getProperties())) {
-                if (indexes.of(step.getLayer()).searchElement(reference).isEmpty()) {
-                    out.add(
-                        "in the plateau `" +
-                            plateau +
-                            "`, the story `" +
-                            story.getId() +
-                            "` (`" +
-                            placed.source() +
-                            "`) names `" +
-                            reference +
-                            "`, which does not exist"
-                    );
-                }
+    /** Where the views and the stories that an older workspace keeps in its workspace file are said to be. */
+    private static final String LEGACY_SOURCE = "workspace.yaml";
+
+    private record Entry<T>(String source, T item) {}
+
+    /** What the manifests and the workspace file declare, in any plateau, by layer; worked out the first time a name is missing from the plateau drawn. */
+    private static final class Declared {
+
+        private final ManifestParser.Parsed parsed;
+        private final Workspace start;
+        private Map<String, Set<String>> declared;
+
+        Declared(ManifestParser.Parsed parsed, Workspace start) {
+            this.parsed = parsed;
+            this.start = start;
+        }
+
+        boolean has(View.Layer layer, String reference) {
+            declared = declared == null ? declaredAnywhere(parsed, start) : declared;
+            return declared.get(layerName(layer)).contains(reference);
+        }
+    }
+
+    private static void checkNames(
+        String noun,
+        Entry<?> entry,
+        View.Layer layer,
+        JsonNode properties,
+        Indexes drawn,
+        Declared declared,
+        List<String> out
+    ) {
+        val id = entry.item() instanceof View view ? view.getId() : ((Story) entry.item()).getId();
+        for (val reference : named(properties)) {
+            if (drawn.of(layer).searchElement(reference).isEmpty() && !declared.has(layer, reference)) {
+                out.add(existsInNoPlateau(noun, id, entry.source(), reference));
             }
         }
-        return out;
+    }
+
+    /** The sentence of the plateau-free check; the editor says the same ({@code entryProblemsOf}): keep them alike. */
+    private static String existsInNoPlateau(String noun, String id, String source, String reference) {
+        return "the " + noun + " `" + id + "` (`" + source + "`) names `" + reference + "`, which exists in no plateau";
+    }
+
+    private static String layerName(View.Layer layer) {
+        return layer == View.Layer.TECHNOLOGY ? "technology" : "application";
+    }
+
+    /** The references the manifests declare in any plateau, and those of {@code workspace.yaml}, by layer. */
+    private static Map<String, Set<String>> declaredAnywhere(ManifestParser.Parsed parsed, Workspace start) {
+        val declared = new LinkedHashMap<String, Set<String>>();
+        declared.put("application", new TreeSet<>(parsed.declared().getOrDefault("application", Set.of())));
+        declared.put("technology", new TreeSet<>(parsed.declared().getOrDefault("technology", Set.of())));
+        declared
+            .get("application")
+            .addAll(
+                ElementIndexFactory.builder()
+                    .root(start.getApplication())
+                    .candidates(Set.of())
+                    .build()
+                    .create()
+                    .elementByReferenceIndex.keySet()
+            );
+        declared
+            .get("technology")
+            .addAll(
+                ElementIndexFactory.builder()
+                    .root(start.getTechnology())
+                    .candidates(Set.of())
+                    .build()
+                    .create()
+                    .elementByReferenceIndex.keySet()
+            );
+        return declared;
     }
 
     /** The references the properties of a view name: {@code element}, and the entries of {@code pinned}, {@code opened} and {@code hidden}. */

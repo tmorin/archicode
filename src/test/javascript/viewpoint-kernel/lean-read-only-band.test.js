@@ -86,7 +86,7 @@ test('the plateau drawn and the comparison survive a visit to Stories, Files and
     assert.equal(state.index, index, page + ' draws the same model');
     assert.equal(state.baseline, baseline, page + ' keeps the plateau compared with');
     if (page === 'files') assert.match(shell, /saas\/application\/commerce-saas\.yaml/, 'Files lists the files of the plateau drawn');
-    if (page === 'library') assert.match(shell, /The stories of Buy the commerce platform and of the plateaus it overrides/, 'Stories reads the chain of the plateau drawn');
+    if (page === 'library') assert.doesNotMatch(shell, /plateaus it overrides|belong to other plateaus/, 'Stories says nothing of the plateau drawn: a story belongs to none');
     assert.equal(run(sandbox, 'recalledPlateauId()'), 'saas', 'and the choice is still the one kept for the folder');
   }
   sandbox.setPerspective('map');

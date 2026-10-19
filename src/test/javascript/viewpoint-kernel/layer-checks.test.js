@@ -39,11 +39,14 @@ for (const c of DOCUMENT.cases) {
     // the sentences of the first layer of the chain that is wrong, or none
     assert.deepEqual(plain(model.problems), expect.problems, 'the sentences');
     assert.equal(model.failedAt, expect.failedAt, 'the plateau that is wrong');
+    // what a view and a story name is not a mistake of a layer: the page tells it apart, whatever plateau is drawn (run 0100, issue #100)
+    assert.deepEqual(plain(sandbox.entryProblemsOf(state.workspace.settings)), expect.entryProblems || [], 'what the views and the stories name');
     // the editor draws the plateau all the same
     assert.equal(model.undrawable, false);
     assert.deepEqual({ application: referencesOf(model.index.application), technology: referencesOf(model.index.technology) }, expect.drawn, 'what is drawn');
-    // and the command line tells the same sentences when it stops (the cases of the command line are the same sentences, in the same order)
-    if (c.cli.error !== undefined) assert.deepEqual(plain(model.problems), c.cli.error, 'the command line says what the page says');
+    // and the command line tells the same sentences when it stops (the cases of the command line are the same sentences, in the same order): those of the first layer that is
+    // wrong, else those of the views and stories, which it checks once the layers are loaded
+    if (c.cli.error !== undefined) assert.deepEqual(plain(model.problems || sandbox.entryProblemsOf(state.workspace.settings)), c.cli.error, 'the command line says what the page says');
     else assert.deepEqual(expect.drawn, c.cli.loaded, 'a plateau that is fine is drawn by both');
   });
 }

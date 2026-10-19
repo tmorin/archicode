@@ -13,6 +13,7 @@ import io.morin.archicode.rendering.gap.GapReport;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.viewpoint.kernel.Comparison;
+import io.morin.archicode.viewpoint.kernel.KernelViewpointFactory;
 import io.morin.archicode.viewpoint.kernel.PlateauComparer;
 import io.morin.archicode.workspace.ElementIndex;
 import io.morin.archicode.workspace.Removal;
@@ -197,14 +198,16 @@ public class GenerateViewsCommand implements Runnable {
     /** The global views if enabled, then those of each custom facet; the views of a comparison when it is given. */
     private void renderWorkspaces(Workspace workspace, Comparison comparison) {
         if (workspace.getSettings().getFacets().isGlobalEnabled()) {
-            renderWorkspace(workspace, comparison);
+            renderWorkspace(workspace, workspace, comparison);
         }
 
         workspace
             .getSettings()
             .getFacets()
             .getCustoms()
-            .forEach(facet -> renderWorkspace(workspaceFactory.create(workspace, facet, comparison), comparison));
+            .forEach(facet ->
+                renderWorkspace(workspaceFactory.create(workspace, facet, comparison), workspace, comparison)
+            );
     }
 
     private Path outputDirectory(Workspace workspace) {
@@ -230,11 +233,20 @@ public class GenerateViewsCommand implements Runnable {
      *                   workspace that compares nothing
      */
     public void renderWorkspace(Workspace workspace, Comparison comparison) {
+        renderWorkspace(workspace, workspace, comparison);
+    }
+
+    /**
+     * @param plateauWorkspace the workspace of the plateau {@code workspace} is drawn from: itself, or the one a facet was
+     *                         applied to (a view cannot be drawn in a plateau that lacks what it names, whatever the facet)
+     */
+    private void renderWorkspace(Workspace workspace, Workspace plateauWorkspace, Comparison comparison) {
         log.info("render workspace in {}", workspace.getSettings().getViews().getPath());
 
         val outputDirPath = outputDirectory(workspace);
 
-        for (String viewId : viewIds) {
+        // in the order of the ids, so that the warnings of a run come out in the same order whatever the hash sequence
+        for (String viewId : new java.util.TreeSet<>(viewIds)) {
             workspace.viewIndex.searchView(viewId).ifPresent(view -> {
                 if (!viewpointServiceRepository.has(view.getViewpoint())) {
                     warnings.warn(
@@ -242,6 +254,9 @@ public class GenerateViewsCommand implements Runnable {
                         viewId,
                         view.getViewpoint()
                     );
+                    return;
+                }
+                if (!canBeDrawnInPlateau(plateauWorkspace, view)) {
                     return;
                 }
                 log.info("render {}", viewId);
@@ -255,6 +270,88 @@ public class GenerateViewsCommand implements Runnable {
 
         renderBuiltinViews(workspace, workspace.appIndex, View.Layer.APPLICATION, outputDirPath, viewIds, comparison);
         renderBuiltinViews(workspace, workspace.techIndex, View.Layer.TECHNOLOGY, outputDirPath, viewIds, comparison);
+    }
+
+    /**
+     * A view belongs to no plateau (issue #100), and a plateau may not have an element it names. The load has checked that the
+     * element exists in at least one plateau, so here it is not a mistake of the view: an entry of a map ({@code pinned},
+     * {@code opened}, {@code hidden}) that the plateau drawn lacks is left out, with a warning; a map none of whose pinned
+     * elements is there, and a view whose element is not there, cannot be drawn in this plateau and are skipped, with a
+     * warning. The editor does the same and says so in the view. A workspace without plateaus is not concerned: a name that
+     * is not there is then a mistake of the view. The workspace of a facet is asked about the plateau it was made from: what
+     * the facet removes is the facet's (it is dropped from a map without a word, and a view of an element it removes fails
+     * as it always did).
+     *
+     * @return whether the view is to be drawn
+     */
+    private boolean canBeDrawnInPlateau(Workspace workspace, View view) {
+        if (workspace.getPlateau() == null) {
+            return true;
+        }
+        val plateau = workspace.getPlateau().getId();
+        val index = workspace.resolveMainIndexForView(view);
+        val properties = view.getProperties();
+        if (!KernelViewpointFactory.MAP.equals(view.getViewpoint())) {
+            val element = properties == null ? "" : properties.path("element").asText("");
+            if (!element.isBlank() && index.searchElement(element).isEmpty()) {
+                warnings.warn(
+                    "skip `%s`: it names `%s`, which the plateau `%s` does not have",
+                    view.getId(),
+                    element,
+                    plateau
+                );
+                return false;
+            }
+            return true;
+        }
+        val missing = new java.util.TreeSet<String>();
+        val pinned = new java.util.ArrayList<String>();
+        for (val list : List.of("pinned", "opened", "hidden")) {
+            if (properties != null) {
+                properties.path(list).forEach(entry -> {
+                    if (entry.isTextual()) {
+                        if (list.equals("pinned")) {
+                            pinned.add(entry.asText());
+                        }
+                        if (index.searchElement(entry.asText()).isEmpty()) {
+                            missing.add(entry.asText());
+                        }
+                    }
+                });
+            }
+        }
+        if (missing.isEmpty()) {
+            return true;
+        }
+        val names = String.join(
+            ", ",
+            missing
+                .stream()
+                .map(name -> "`" + name + "`")
+                .toList()
+        );
+        if (!pinned.isEmpty() && missing.containsAll(pinned)) {
+            warnings.warn(
+                "skip `%s`: it is pinned on %s, which the plateau `%s` does not have",
+                view.getId(),
+                String.join(
+                    ", ",
+                    new java.util.TreeSet<>(pinned)
+                        .stream()
+                        .map(name -> "`" + name + "`")
+                        .toList()
+                ),
+                plateau
+            );
+            return false;
+        }
+        warnings.warn(
+            "the view `%s` is drawn without %s, which the plateau `%s` does not have",
+            view.getId(),
+            names,
+            plateau
+        );
+        return true;
     }
 
     @SneakyThrows

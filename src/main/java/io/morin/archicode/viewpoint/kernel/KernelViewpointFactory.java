@@ -165,7 +165,9 @@ public class KernelViewpointFactory implements ViewpointFactory {
      * The elements the map is about ({@code pinned}), the ones it leaves out ({@code hidden}) and the boxes that are open
      * ({@code opened}), from the properties of the view, which the editor writes as it draws them. A workspace of a facet
      * may have lost an element the view names: the entry is then dropped (a facet removes an element without a word, and so
-     * does the editor); in any other workspace the kernel refuses the one it cannot find, and the view is named in the error.
+     * does the editor). So is an entry the plateau drawn does not have: a view belongs to no plateau, and a name that another
+     * plateau has is left out of this one (issue #100; the command line says so, see {@code GenerateViewsCommand}). In any
+     * other workspace the kernel refuses the one it cannot find, and the view is named in the error.
      */
     private void mapLists(ObjectNode input, View view, Workspace workspace, ElementIndex mainIndex) {
         // a map with nothing pinned, hidden or open has no properties at all
@@ -181,7 +183,10 @@ public class KernelViewpointFactory implements ViewpointFactory {
                         entry
                     );
                 }
-                if (workspace.isFaceted() && mainIndex.searchElement(entry.asText()).isEmpty()) {
+                if (
+                    (workspace.isFaceted() || workspace.getPlateau() != null) &&
+                    mainIndex.searchElement(entry.asText()).isEmpty()
+                ) {
                     continue;
                 }
                 kept.add(entry.asText());

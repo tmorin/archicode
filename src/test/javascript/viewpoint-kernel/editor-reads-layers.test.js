@@ -572,7 +572,7 @@ test('the cascade of a REMOVE takes the link to the removed element, so the plat
   assert.deepEqual(plain(comparison.cascade.map(rowText)), ['later|dropped|application|ferry|relationships: dock (uses)']);
 });
 
-test('an element declared under a parent that does not exist, and a view that names an element the plateau does not have, name the plateau', async () => {
+test('an element declared under a parent that does not exist names the plateau, and a view or a story that names an element no plateau has is told apart from the plateaus', async () => {
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry'),
     'later/plateau.yaml': PLATEAU('later'),
@@ -589,13 +589,51 @@ test('an element declared under a parent that does not exist, and a view that na
     'later/plateau.yaml': PLATEAU('later')
   };
   const second = await openFiles(files);
-  assert.deepEqual(plain(second.sandbox.layerModelOf('baseline', second.state.workspace.settings).problems), ['in the plateau `baseline`, the view `v` (`view.yaml`) names `ghost`, which does not exist']);
-  second.sandbox.drawPlateau('later');
-  assert.deepEqual(plain(second.state.layerProblems), ['in the plateau `baseline`, the view `v` (`view.yaml`) names `ghost`, which does not exist'], 'the layer of the view is the first that is wrong');
-  // the story of the layer names an element of the technology layer that the layer does not have
-  const third = await openFiles(Object.assign({}, files, { 'view.yaml': files['view.yaml'].replace('pinned: ["ghost"]', 'pinned: ["ferry"]') }));
-  third.sandbox.drawPlateau('later');
-  assert.deepEqual(plain(third.state.layerProblems), ['in the plateau `later`, the story `s` (`story.yaml`) names `vm`, which does not exist']);
+  // what a view and a story name is not a mistake of a plateau (run 0100, issue #100): no layer is wrong, and the page tells the entries once, whatever plateau is drawn
+  assert.equal(second.sandbox.layerModelOf('baseline', second.state.workspace.settings).problems, null);
+  const told = [
+    'the view `v` (`view.yaml`) names `ghost`, which exists in no plateau',
+    'the story `s` (`story.yaml`) names `vm`, which exists in no plateau'
+  ];
+  assert.deepEqual(plain(second.sandbox.entryProblemsOf(second.state.workspace.settings)), told);
+  for (const drawn of ['baseline', 'later']) {
+    second.sandbox.drawPlateau(drawn);
+    assert.equal(second.state.layerProblems, null, drawn + ': the layers are fine');
+    assert.deepEqual(plain(second.sandbox.bandMistakes().sections), [{ heading: 'The views and the stories name elements that no plateau has:', lines: told }], drawn);
+    assert.equal(second.sandbox.bandMistakes().count, 2);
+  }
+  // a name that another plateau has is no mistake: the story names `vm`, which `later` declares
+  const third = await openFiles(Object.assign({}, files, {
+    'view.yaml': files['view.yaml'].replace('pinned: ["ghost"]', 'pinned: ["ferry"]'),
+    'later/env.vm.yaml': 'header:\n  kind: "archicode.morin.io/environment"\n  plateau: later\n  version: "1"\ncontent:\n  id: "vm"\n'
+  }));
+  assert.deepEqual(plain(third.sandbox.entryProblemsOf(third.state.workspace.settings)), []);
+  assert.equal(third.sandbox.bandMistakes().count, 0);
+  third.sandbox.drawPlateau('baseline');
+  assert.equal(third.sandbox.viewProblem(third.sandbox.findSavedView('v')), null);
+});
+
+test('the views and the stories that workspace.yaml keeps are looked at too, after those of the manifests, unless a manifest has the id', async () => {
+  const settings = 'settings:\n  manifests:\n    paths: ["./**"]\nviews:\n  - id: old\n    viewpoint: overview\n    layer: Technology\n    properties:\n      element: ghost\n  - id: shadowed\n    viewpoint: overview\n    properties:\n      element: nowhere\nstories:\n  - id: tale\n    steps:\n      - viewpoint: overview\n        properties:\n          element: gone\n';
+  const { sandbox, state } = await openFiles({
+    'app.ferry.yaml': SYSTEM('ferry'),
+    'later/plateau.yaml': PLATEAU('later'),
+    'view.shadowed.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "shadowed"\n  viewpoint: "overview"\n  properties:\n    element: "ferry"\n'
+  }, settings);
+  assert.deepEqual(plain(sandbox.entryProblemsOf(state.workspace.settings)), [
+    'the view `old` (`workspace.yaml`) names `ghost`, which exists in no plateau',
+    'the story `tale` (`workspace.yaml`) names `gone`, which exists in no plateau'
+  ]);
+});
+
+test('a view or a story that says `plateau:` is told even when the workspace has no plateau: the key names none', async () => {
+  const { sandbox, state } = await openFiles({
+    'app.ferry.yaml': SYSTEM('ferry'),
+    'story.tour.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  plateau: later\n  version: "1"\ncontent:\n  id: "tour"\n  steps: []\n'
+  });
+  assert.equal(state.plateauTree.layered, false);
+  assert.match(sandbox.renderPlateauTreeHtml(), /`story.tour.yaml`|<code>story\.tour\.yaml<\/code>|story\.tour\.yaml/);
+  assert.match(sandbox.renderPlateauTreeHtml(), /is ignored: a story exists whatever plateau is drawn/);
 });
 
 test('a mistake in the tree leaves baseline drawn and the other nodes out, with the reason', async () => {
@@ -833,7 +871,7 @@ test('a selection that was a form to create something does not outlive the plate
   assert.equal(state.selection.kind, 'none');
 });
 
-test('the fields of a view and of a story are not written while a plateau other than baseline is drawn either', async () => {
+test('the fields of a view and of a story are written whatever plateau is drawn: they belong to none', async () => {
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry'),
     'view.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  name: "First"\n  viewpoint: "overview"\n  properties:\n    element: "ferry"\n',
@@ -841,17 +879,15 @@ test('the fields of a view and of a story are not written while a plateau other 
     'later/plateau.yaml': PLATEAU('later')
   });
   run(sandbox, "currentPerspective = 'library'; libraryTab = 'views'; selectedViewId = 'v';");
-  sandbox.drawPlateau('later');
-  assert.equal(sandbox.editSavedView((view) => { view.name = 'Second'; }, false), false);
-  assert.equal(run(sandbox, "savedViews()[0].name"), 'First', 'the view is as it was');
-  sandbox.updateStoryField({ getAttribute: (name) => ({ 'data-story': 's', 'data-story-field': 'name' }[name]), value: 'Other' });
-  assert.equal(run(sandbox, "storiesList()[0].name"), 'Tale');
-  assert.ok(state.manifestFiles.every((f) => !f.dirty), 'nothing was marked as modified');
-  assert.equal(run(sandbox, 'saveStatus.state'), 'denied');
-  // baseline: as before
-  sandbox.drawPlateau('baseline');
-  run(sandbox, "currentPerspective = 'library'; libraryTab = 'views'; selectedViewId = 'v';");
-  assert.equal(sandbox.editSavedView((view) => { view.name = 'Second'; }, false), true);
-  assert.equal(run(sandbox, "savedViews()[0].name"), 'Second');
-  assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 1);
+  for (const drawn of ['later', 'baseline']) {
+    sandbox.drawPlateau(drawn);
+    run(sandbox, "currentPerspective = 'library'; libraryTab = 'views'; selectedViewId = 'v';");
+    const name = drawn === 'later' ? 'Second' : 'Third';
+    assert.equal(sandbox.editSavedView((view) => { view.name = name; }, false), true, drawn);
+    assert.equal(run(sandbox, "savedViews()[0].name"), name);
+    sandbox.updateStoryField({ getAttribute: (attribute) => ({ 'data-story': 's', 'data-story-field': 'name' }[attribute]), value: 'Other ' + name });
+    assert.equal(run(sandbox, "storiesList()[0].name"), 'Other ' + name);
+    assert.notEqual(run(sandbox, 'saveStatus.state'), 'denied', drawn);
+  }
+  assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 2, 'the view and the story are the two files written');
 });

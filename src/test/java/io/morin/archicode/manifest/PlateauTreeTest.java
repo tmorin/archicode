@@ -61,7 +61,7 @@ class PlateauTreeTest {
             List.of("baseline"),
             parsed.plateaus().chain("baseline").stream().map(PlateauTree.Node::id).toList()
         );
-        assertEquals(parsed.views(), parsed.ofPlateau("baseline").views());
+        assertEquals(Set.of(), parsed.ofPlateau("baseline").views());
     }
 
     @Test
@@ -114,30 +114,46 @@ class PlateauTreeTest {
         write("manifests/story.yaml", manifest("story", "", "  id: \"tour\"\n"));
         val parsed = parse();
 
+        // a view and a story belong to no plateau: the key of the view names none, and is told as ignored
         assertTrue(parsed.plateaus().isLayered());
-        // the first manifest in the order of the files: `later-view.yaml` comes before `later.yaml` ("-" before ".")
-        assertEquals("`manifests/later-view.yaml` says `plateau: later` in its header", parsed.plateaus().layeredBy());
+        assertEquals(
+            "`manifests/later.yaml` is a manifest of kind `archicode.morin.io/plateau`",
+            parsed.plateaus().layeredBy()
+        );
+        assertEquals(
+            List.of(
+                "`manifests/later-view.yaml` is a view and says `plateau: later` in its header, which is ignored: a view exists whatever plateau is drawn"
+            ),
+            parsed.warnings()
+        );
 
         val baseline = parsed.ofPlateau("baseline");
         assertEquals(Set.of("shop"), references(baseline));
-        assertEquals(Set.of(), baseline.views());
-        assertEquals(1, baseline.stories().size());
         assertEquals("baseline", baseline.elements().get(Application.class).iterator().next().getPlateau());
 
         val later = parsed.ofPlateau("later");
         assertEquals(Set.of("mail"), references(later));
         assertEquals("later", later.elements().get(Application.class).iterator().next().getPlateau());
+        // the views and the stories are the workspace's, not a plateau's
+        assertEquals(Set.of(), later.views());
+        assertEquals(Set.of(), later.stories());
         assertEquals(
             List.of("v"),
-            later
+            parsed
                 .views()
                 .stream()
                 .map(v -> v.getId())
                 .toList()
         );
-        assertEquals("later", later.placedViews().get(0).plateau());
-        assertEquals("manifests/later-view.yaml", later.placedViews().get(0).source());
-        assertEquals(Set.of(), later.stories());
+        assertEquals(
+            List.of("tour"),
+            parsed
+                .stories()
+                .stream()
+                .map(v -> v.getId())
+                .toList()
+        );
+        assertEquals("manifests/later-view.yaml", parsed.placedViews().get(0).source());
         // the whole workspace is still there
         assertEquals(Set.of("shop", "mail"), references(parsed));
     }
