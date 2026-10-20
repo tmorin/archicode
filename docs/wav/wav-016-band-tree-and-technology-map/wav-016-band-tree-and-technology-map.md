@@ -224,7 +224,7 @@ wave_manifest:
       slug: performance-budget
       phase: P2
       depends_on: [W-8]
-      run: null
+      run: 0117
       delegation: standard
       likely_paths:
         - 'src/test/javascript/viewpoint-kernel/**'
