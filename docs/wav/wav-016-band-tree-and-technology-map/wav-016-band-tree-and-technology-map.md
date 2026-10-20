@@ -164,7 +164,7 @@ wave_manifest:
       slug: next-previous-shortcut
       phase: P1
       depends_on: []
-      run: null
+      run: 0112
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
