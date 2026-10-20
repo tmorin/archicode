@@ -726,6 +726,9 @@
      the name): the group is one line high and clips the badges that do not fit as a whole, so the name keeps its room at every state */
   .element-header-badges { display: flex; flex-wrap: wrap; gap: 0.25rem; align-content: flex-start; min-width: 0; max-height: 1.1rem; overflow: hidden; flex: 0 100 auto; margin-left: -0.5rem; }
   .element-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+  /* The four buttons of the form of an element (Delete, Move, Add child, Back to view) are 345 px wide: in a centre narrower than that they go to a second line instead of past
+     the edge (wave 017, run 0124, #82: x 373 at 360 px). Only that header: the other headers have their own states (below), and in a wide centre the row fits, so nothing moves. */
+  .element-edition-form .element-header-actions { flex-wrap: wrap; flex-shrink: 1; min-width: 0; max-width: 100%; }
 
   /* ---- The header of the centre panel holds together at any width of the panel ----
      The width the header gets is not the window's: the user resizes the left panel. So the panel itself is the container
@@ -924,6 +927,14 @@
     .settings-view .field-label { width: 100%; }
     .settings-view .field-value { flex-basis: 100%; }
     .settings-view input[type="text"], .settings-view select, .settings-view textarea { max-width: 100%; min-width: 0; box-sizing: border-box; }
+    /* The forms of the centre (wave 017, run 0124, #82, measured at 360 px on the layered Brightcart and on a workspace with no plateau): the row that adds a tag (two text
+       fields and a button, 262 px of fields alone) ended at x 492 and the list of saved views under *Story* (as wide as its longest name) at x 412, inside the scroll of
+       the centre (the four buttons of the header of an element, x 373, wrap by the rule of `.element-edition-form`, above). The row wraps, and a field is never wider than its row. */
+    .edition-add-row { flex-wrap: wrap; }
+    .edition-add-row input[type="text"], .edition-add-row select, .story-add select { max-width: 100%; min-width: 0; box-sizing: border-box; }
+    /* The references and the paths that *Confirm delete* lists are one word each: the longest went to x 541 (a reference of four segments, the path of its manifest). They break
+       where they must. */
+    .delete-confirmation li { overflow-wrap: anywhere; }
   }
 </style>
 </head>
