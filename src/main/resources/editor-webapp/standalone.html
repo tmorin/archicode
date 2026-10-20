@@ -3951,6 +3951,23 @@ function isPresent(item) {
 }
 
 /**
+ * The list without its `n`th item that has a value, the items with no value left where they are: `withoutNthPresent([null, 'a', null, 'b'], 1)` is `[null, 'a', null]`. The forms of an
+ * element draw the pills of `qualifiers`, `applications` and `uses` without the items with no value and address a pill by its place among those drawn (`data-index`), while the list
+ * the edit is made on may still hold them (the manifest does, the resolution of a plateau may not): counting the items with a value reaches the same item in either (issue #120; a
+ * relationship is addressed by its place in the file, `fileIndex`, #105).
+ */
+function withoutNthPresent(list, n) {
+  const copy = Array.isArray(list) ? list.slice() : [];
+  let seen = -1;
+  for (let place = 0; place < copy.length; place++) {
+    if (!isPresent(copy[place])) continue;
+    seen++;
+    if (seen === n) { copy.splice(place, 1); break; }
+  }
+  return copy;
+}
+
+/**
  * Recursively index one element node (manifest-root or nested) and its
  * descendants (content.elements, at any depth) into `index[category]`.
  * Returns the ElementRecord (CTR-1 shape) for this node.
@@ -19440,9 +19457,7 @@ function handleAppClick(e) {
       const reference = target.getAttribute('data-ref');
       const index = parseInt(target.getAttribute('data-index'), 10);
       commitElementWithDraft(reference, (node) => {
-        const qualifiers = Array.isArray(node.qualifiers) ? node.qualifiers.slice() : [];
-        qualifiers.splice(index, 1);
-        node.qualifiers = qualifiers;
+        node.qualifiers = withoutNthPresent(node.qualifiers, index); // the place among the pills drawn, not in the list: an item with no value is not drawn (#120)
       });
       break;
     }
@@ -19466,9 +19481,7 @@ function handleAppClick(e) {
       const reference = target.getAttribute('data-ref');
       const index = parseInt(target.getAttribute('data-index'), 10);
       commitElementWithDraft(reference, (node) => {
-        const applications = Array.isArray(node.applications) ? node.applications.slice() : [];
-        applications.splice(index, 1);
-        node.applications = applications;
+        node.applications = withoutNthPresent(node.applications, index);
       });
       break;
     }
@@ -19517,8 +19530,7 @@ function handleAppClick(e) {
       const reference = target.getAttribute('data-ref');
       const index = parseInt(target.getAttribute('data-index'), 10);
       commitElementWithDraft(reference, (node) => {
-        const uses = Array.isArray(node.uses) ? node.uses.slice() : [];
-        uses.splice(index, 1);
+        const uses = withoutNthPresent(node.uses, index);
         if (uses.length > 0) node.uses = uses; else delete node.uses;
       });
       break;
