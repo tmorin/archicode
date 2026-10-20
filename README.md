@@ -31,7 +31,7 @@ in their header, and a manifest of kind `archicode.morin.io/plateau` that lists 
 `diff` tells what is new, changed and removed in a plateau, compared with the plateau it overrides, and what moved,
 was split or merged when an element says what it `replaces`; `--against` names another plateau to compare with, and
 `views generate` draws the comparison next to the views, and `diff --fail-on removed,moved` exits with the code 3 when
-the comparison holds a change of one of the listed states, to fail a build. See "States of an architecture (plateaus)" in the manual.
+the comparison holds a change of one of the listed states, to fail a build; `diff --width 100` wraps the text table to 100 columns. See "States of an architecture (plateaus)" in the manual.
 
 ```shell
 docker run \
