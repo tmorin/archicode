@@ -53,7 +53,12 @@ public class GapReport {
 
     private static final int SHORT = 60;
 
+    /** The value of {@code width} that wraps nothing: the text is written as it always was. */
+    public static final int NO_WIDTH = 0;
+
     /**
+     * The report, the text not wrapped (see {@link #render(Comparison, GapFormat, boolean, List, int)}).
+     *
      * @param comparison what changed
      * @param format the format
      * @param hideWording leave the wording-only changes out of the listing (and say how many)
@@ -68,8 +73,29 @@ public class GapReport {
         boolean hideWording,
         @NonNull List<Removal.Effect> cascade
     ) {
+        return render(comparison, format, hideWording, cascade, NO_WIDTH);
+    }
+
+    /**
+     * @param comparison what changed
+     * @param format the format
+     * @param hideWording leave the wording-only changes out of the listing (and say how many)
+     * @param cascade what the {@code REMOVE} patches of the target took besides the elements they name (see {@link
+     *                Removal#cascade}); written after the table, and not at all when there is none, so that a comparison of
+     *                plateaus that are not layers, or of layers that remove nothing, is written as it always was
+     * @param width the number of columns the text is wrapped to (see {@link TextWrap}), or {@link #NO_WIDTH}; only the
+     *              {@code TEXT} format is wrapped, Markdown and JSON are written as they are whatever the width
+     * @return the report, ending with a line end
+     */
+    public String render(
+        @NonNull Comparison comparison,
+        @NonNull GapFormat format,
+        boolean hideWording,
+        @NonNull List<Removal.Effect> cascade,
+        int width
+    ) {
         return switch (format) {
-            case TEXT -> text(comparison, hideWording, cascade);
+            case TEXT -> text(comparison, hideWording, cascade, width);
             case MARKDOWN -> markdown(comparison, hideWording, cascade);
             case JSON -> json(comparison, hideWording, cascade);
         };
@@ -162,57 +188,67 @@ public class GapReport {
 
     // ---- text ----
 
-    private static String text(Comparison comparison, boolean hideWording, List<Removal.Effect> cascade) {
+    private static String text(Comparison comparison, boolean hideWording, List<Removal.Effect> cascade, int width) {
         val out = new StringBuilder();
         val c = comparison.getCounts();
-        out.append("comparing ")
-            .append(label(comparison.getTarget(), "the plateau"))
-            .append(" with ")
-            .append(label(comparison.getBase(), "its baseline"))
-            .append('\n');
+        TextWrap.prose(
+            out,
+            "comparing " +
+                label(comparison.getTarget(), "the plateau") +
+                " with " +
+                label(comparison.getBase(), "its baseline"),
+            width
+        );
         out.append(counts("elements", c.elements().added(), c.elements().changed(), c.elements().removed())).append(
             '\n'
         );
         if (replacing(c.elements()) != null) {
-            out.append(String.format(Locale.ROOT, "%-13s %s", "replacing", replacing(c.elements()))).append('\n');
+            TextWrap.labelled(out, "replacing", replacing(c.elements()), width);
         }
         out.append(
             counts("relationships", c.relationships().added(), c.relationships().changed(), c.relationships().removed())
         ).append('\n');
         val inSplits = countOfSplit(comparison);
         if (inSplits > 0) {
-            out.append(
+            TextWrap.labelled(
+                out,
+                "of a split",
                 String.format(
                     Locale.ROOT,
-                    "%-13s %d of the %d new relationships belong to split elements (not compared with the baseline)",
-                    "of a split",
+                    "%d of the %d new relationships belong to split elements (not compared with the baseline)",
                     inSplits,
                     c.relationships().added()
-                )
-            ).append('\n');
+                ),
+                width
+            );
         }
-        out.append(
+        TextWrap.labelled(
+            out,
+            "wording only",
             String.format(
                 Locale.ROOT,
-                "%-13s %d of the %d changed elements",
-                "wording only",
+                "%d of the %d changed elements",
                 c.elements().wordingOnly(),
                 c.elements().changed()
-            )
-        ).append('\n');
+            ),
+            width
+        );
         val hidden = hidden(comparison, hideWording);
         if (hideWording) {
-            out.append(hidden)
-                .append(hidden == 1 ? " wording-only change hidden" : " wording-only changes hidden")
-                .append(" (--no-wording)")
-                .append('\n');
+            TextWrap.prose(
+                out,
+                hidden +
+                    (hidden == 1 ? " wording-only change hidden" : " wording-only changes hidden") +
+                    " (--no-wording)",
+                width
+            );
         }
         val rows = listed(comparison, hideWording);
         if (rows.isEmpty()) {
             out.append('\n')
                 .append(comparison.getChanges().isEmpty() ? "no difference" : "nothing to list")
                 .append('\n');
-            textCascade(out, cascade);
+            textCascade(out, cascade, width);
             return out.toString();
         }
         val splits = splitElements(comparison);
@@ -230,32 +266,22 @@ public class GapReport {
                 )
             )
         );
-        val widths = new int[5];
-        table.forEach(cells -> {
-            for (int i = 0; i < widths.length; i++) {
-                widths[i] = Math.max(widths[i], cells.get(i).length());
-            }
-        });
         out.append('\n');
-        for (val cells : table) {
-            val line = new StringBuilder();
-            for (int i = 0; i < widths.length; i++) {
-                line.append(String.format(Locale.ROOT, "%-" + widths[i] + "s  ", cells.get(i)));
-            }
-            line.append(cells.get(5));
-            out.append(line.toString().stripTrailing()).append('\n');
-        }
-        textCandidates(out, comparison);
-        textCascade(out, cascade);
+        TextWrap.table(out, table, width);
+        textCandidates(out, comparison, width);
+        textCascade(out, cascade, width);
         return out.toString();
     }
 
-    private static void textCascade(StringBuilder out, List<Removal.Effect> cascade) {
+    private static void textCascade(StringBuilder out, List<Removal.Effect> cascade, int width) {
         if (cascade.isEmpty()) {
             return;
         }
-        out.append(
-            "\ncascade of the removals (what a REMOVE took besides the elements it selects, in the plateaus the target adds to the one it is compared with)\n"
+        out.append('\n');
+        TextWrap.prose(
+            out,
+            "cascade of the removals (what a REMOVE took besides the elements it selects, in the plateaus the target adds to the one it is compared with)",
+            width
         );
         val table = new ArrayList<List<String>>();
         table.add(List.of("PLATEAU", "PATCH", "EFFECT", "LAYER", "ELEMENT", "DETAIL"));
@@ -271,28 +297,18 @@ public class GapReport {
                 )
             )
         );
-        val widths = new int[5];
-        table.forEach(cells -> {
-            for (int i = 0; i < widths.length; i++) {
-                widths[i] = Math.max(widths[i], cells.get(i).length());
-            }
-        });
-        for (val cells : table) {
-            val line = new StringBuilder();
-            for (int i = 0; i < widths.length; i++) {
-                line.append(String.format(Locale.ROOT, "%-" + widths[i] + "s  ", cells.get(i)));
-            }
-            line.append(cells.get(5));
-            out.append(line.toString().stripTrailing()).append('\n');
-        }
+        TextWrap.table(out, table, width);
     }
 
-    private static void textCandidates(StringBuilder out, Comparison comparison) {
+    private static void textCandidates(StringBuilder out, Comparison comparison, int width) {
         if (!listsCandidates(comparison)) {
             return;
         }
-        out.append(
-            "\ncandidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)\n"
+        out.append('\n');
+        TextWrap.prose(
+            out,
+            "candidates, not applied (each pair looks like one thing said twice; to accept one, write `replaces: [FROM]` on the element TO)",
+            width
         );
         val table = new ArrayList<List<String>>();
         table.add(List.of("LAYER", "FROM", "TO", "REASONS"));
@@ -303,20 +319,7 @@ public class GapReport {
                     List.of(candidate.layer(), candidate.from(), candidate.to(), String.join(", ", candidate.reasons()))
                 )
             );
-        val widths = new int[3];
-        table.forEach(cells -> {
-            for (int i = 0; i < widths.length; i++) {
-                widths[i] = Math.max(widths[i], cells.get(i).length());
-            }
-        });
-        for (val cells : table) {
-            val line = new StringBuilder();
-            for (int i = 0; i < widths.length; i++) {
-                line.append(String.format(Locale.ROOT, "%-" + widths[i] + "s  ", cells.get(i)));
-            }
-            line.append(cells.get(3));
-            out.append(line.toString().stripTrailing()).append('\n');
-        }
+        TextWrap.table(out, table, width);
     }
 
     // ---- markdown ----

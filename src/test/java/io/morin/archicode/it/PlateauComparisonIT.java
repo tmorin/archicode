@@ -72,6 +72,33 @@ class PlateauComparisonIT {
     }
 
     @Test
+    void diffWidthWrapsTheTextTableAndKeepsTheLinesWithinIt(QuarkusMainLauncher launcher) {
+        val folder = Shipped.copy(BOOKSHOP, dir, "bookshop");
+        val whole = succeeded(launcher.launch("-w", workspace(folder), "diff", "--plateau", "to-be"));
+        val wrapped = succeeded(
+            launcher.launch("-w", workspace(folder), "diff", "--plateau", "to-be", "--width", "50")
+        );
+        val longest = Shipped.payload(whole).lines().mapToInt(String::length).max().orElse(0);
+        assertTrue(longest > 50, () -> "the table is " + longest + " columns wide, nothing to wrap\n" + said(whole));
+        assertTrue(
+            Shipped.payload(wrapped)
+                .lines()
+                .allMatch(line -> line.length() <= 50),
+            () -> "a line is wider than 50 columns\n" + said(wrapped)
+        );
+        hasLine("^comparing ", wrapped.getOutput(), wrapped);
+        hasLine("^CHANGE  *THING  *LAYER  *REFERENCE", wrapped.getOutput(), wrapped);
+    }
+
+    @Test
+    void diffWidthRefusesAWidthThatIsNotAboveZeroWithOneErrorLine(QuarkusMainLauncher launcher) {
+        val result = launcher.launch("-w", workspace(plateaus()), "diff", "--width", "0");
+        assertEquals(1, result.exitCode(), () -> said(result));
+        hasLine("^error: `--width` must be a whole number", result.getErrorOutput(), result);
+        assertTrue(!result.getErrorOutput().contains("\tat "), () -> "a stack trace\n" + said(result));
+    }
+
+    @Test
     void diffFailOnRefusesAnUnknownStateWithOneErrorLine(QuarkusMainLauncher launcher) {
         val result = launcher.launch("-w", workspace(plateaus()), "diff", "--fail-on", "nothing");
         assertEquals(1, result.exitCode(), () -> said(result));
