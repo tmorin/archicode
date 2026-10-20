@@ -58,7 +58,7 @@ public class WorkspaceFactory {
         Map<Class<?>, Set<ManifestParser.Candidate>> manifests
     ) {
         log.debug("index the elements of the application layer and of the technology layer");
-        val indexes = ElementIndexFactory.indexLayers(resources, manifests);
+        val indexes = ElementIndexFactory.indexLayers(resources, manifests, false);
         val appIndex = indexes.application();
         val depIndex = indexes.technology();
 

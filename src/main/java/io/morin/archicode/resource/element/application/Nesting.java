@@ -43,4 +43,35 @@ public class Nesting {
             ? List.of()
             : Arrays.stream(annotation.value()).map(JsonSubTypes.Type::name).sorted().toList();
     }
+
+    /**
+     * Whether a layer holds an element at its top, with no parent (issue #106): {@code Application} holds the kinds of
+     * {@code ApplicationElement}, {@code Technology} those of {@code TechnologyElement}. A container, a component and a node are
+     * held by an element, never by a layer.
+     *
+     * @param layer the application layer or the technology layer
+     * @param child the element
+     * @return true when {@code child} can be declared with no {@code header.parent}
+     */
+    public boolean holdsAtTheTop(Parent<?> layer, Element child) {
+        return layer.elementType().isInstance(child);
+    }
+
+    /**
+     * The kinds a layer holds at its top, in alphabetical order. A group is not one of them: it is an element nested in another,
+     * never a manifest of its own.
+     *
+     * @param layer the application layer or the technology layer
+     * @return the names of the kinds, as a manifest writes them
+     */
+    public List<String> kindsHeldAtTheTop(Parent<?> layer) {
+        val annotation = layer.elementType().getAnnotation(JsonSubTypes.class);
+        return annotation == null
+            ? List.of()
+            : Arrays.stream(annotation.value())
+                  .map(JsonSubTypes.Type::name)
+                  .filter(name -> !name.equals("group"))
+                  .sorted()
+                  .toList();
+    }
 }

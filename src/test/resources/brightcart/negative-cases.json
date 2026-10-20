@@ -1,5 +1,5 @@
 {
-  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of workspace.yaml:`, `Could not read/parse workspace.yaml: `), and the position `(line L, column C)` of a file is not told: the page reads a file into a tree that has no positions, and the column the command line gives is where its reader stopped, so a copy of it would be a guess (decided in wave 015, run 0092; brightcart-negative.test.js pins that no sentence of the page carries one). A null where a list or an object is expected is absent in both tools (N59 to N63, M65 to M73), a number is no kind and no value of an enum (N64, N66, N67), a list is no element (N65), the facets are told in kebab-case (N72 to N75, the camel-case spelling is read too, N76), and `0x1F` for an `int` is a known difference (N77, issue #103). One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type. Run 0100 (wave 015, W-12, issues #100 and #86) adds N79 to N82: a view and a story belong to no plateau, `plateau:` in their header means nothing and is not told (N79; it was a warning in wave 015, silent since wave 016, run 0107), what they name must exist in at least one plateau (N80, `entryProblems` of the page), and a name that another plateau has but the plateau drawn lacks is left out of a map and makes any other view undrawable in this plateau, which the command line skips with a warning and the page says in the view (N81, N82: `viewProblems` of the page, the sentence of the page alone). Run 0101 (wave 015, W-13, issue #24) adds N83 to N85: a step of a story may say `at` (the plateau it is told at) and `against` (the plateau it is compared with); each must be a plateau and the two cannot be one plateau (N83, N85: `entryProblems` of the page, the sentence of both tools), and a name that the plateau of the step lacks is no mistake (N84: the command line does not draw stories and says nothing, the page says it in the step, `stepProblems`: story -> step number -> the sentence of the page alone). A workspace that has no plateau refuses such a step too: the cases here are all layered, so `StepPlateausTest.java` and `story-steps-plateaus.test.js` say it.",
+  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of workspace.yaml:`, `Could not read/parse workspace.yaml: `), and the position `(line L, column C)` of a file is not told: the page reads a file into a tree that has no positions, and the column the command line gives is where its reader stopped, so a copy of it would be a guess (decided in wave 015, run 0092; brightcart-negative.test.js pins that no sentence of the page carries one). A null where a list or an object is expected is absent in both tools (N59 to N63, M65 to M73), a number is no kind and no value of an enum (N64, N66, N67), a list is no element (N65), the facets are told in kebab-case (N72 to N75, the camel-case spelling is read too, N76), and `0x1F` for an `int` is a known difference (N77, issue #103). One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type. Run 0100 (wave 015, W-12, issues #100 and #86) adds N79 to N82: a view and a story belong to no plateau, `plateau:` in their header means nothing and is not told (N79; it was a warning in wave 015, silent since wave 016, run 0107), what they name must exist in at least one plateau (N80, `entryProblems` of the page), and a name that another plateau has but the plateau drawn lacks is left out of a map and makes any other view undrawable in this plateau, which the command line skips with a warning and the page says in the view (N81, N82: `viewProblems` of the page, the sentence of the page alone). Run 0101 (wave 015, W-13, issue #24) adds N83 to N85: a step of a story may say `at` (the plateau it is told at) and `against` (the plateau it is compared with); each must be a plateau and the two cannot be one plateau (N83, N85: `entryProblems` of the page, the sentence of both tools), and a name that the plateau of the step lacks is no mistake (N84: the command line does not draw stories and says nothing, the page says it in the step, `stepProblems`: story -> step number -> the sentence of the page alone). A workspace that has no plateau refuses such a step too: the cases here are all layered, so `StepPlateausTest.java` and `story-steps-plateaus.test.js` say it. Run 0108 (wave 016, W-2) adds N86 to N88: the layer of a saved view is read in any case by both tools (N86, #108: `Technology` and `TECHNOLOGY` are the technology layer, the command line skips or warns as it does for `technology` and the page says the same in the view), an item with no value in `relationships` is no relationship in both (N87, #105: the page counted it as dangling), and a container, a component or a node with no `header.parent` in a workspace that has plateaus is one sentence with the file and the kind, told with the other mistakes of the layer (N88, #106; the same sentence and a workspace with no plateau, which is untouched, are in layer-checks-cases.json, K43 to K49).",
   "cases": [
     {
       "id": "N7",
@@ -3092,6 +3092,177 @@
                 "1": "A plateau is never compared with itself: “saas” is both where the step is told and what it is compared with."
               }
             }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N86",
+      "variant": "-",
+      "title": "#108: the layer of a saved view is read in any case by both tools (`Technology` and `TECHNOLOGY` are the technology layer): a view of an environment, a view of an element only `inhouse` declares and a map of both are drawn on the technology layer, or said to lack what the plateau lacks, as for `technology`",
+      "ops": [
+        {
+          "op": "write",
+          "file": "catalog/view.tech_prod.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"tech_prod\"\n  viewpoint: \"overview\"\n  layer: \"Technology\"\n  properties:\n    element: \"prod\"\n"
+        },
+        {
+          "op": "write",
+          "file": "catalog/view.tech_cloud.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"tech_cloud\"\n  viewpoint: \"overview\"\n  layer: \"TECHNOLOGY\"\n  properties:\n    element: \"prod.cloud\"\n"
+        },
+        {
+          "op": "write",
+          "file": "catalog/view.tech_map.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: \"tech_map\"\n  viewpoint: \"map\"\n  layer: \"Technology\"\n  properties:\n    pinned: [\"prod\", \"prod.cloud\"]\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "views",
+            "generate",
+            "--plateau",
+            "baseline",
+            "-i",
+            "tech_prod",
+            "-i",
+            "tech_cloud",
+            "-i",
+            "tech_map"
+          ],
+          "exit": 0,
+          "stderr": [
+            "warning: skip `tech_cloud`: it names `prod.cloud`, which the plateau `baseline` does not have",
+            "warning: the view `tech_map` is drawn without `prod.cloud`, which the plateau `baseline` does not have"
+          ]
+        },
+        {
+          "args": [
+            "views",
+            "generate",
+            "--plateau",
+            "inhouse",
+            "-i",
+            "tech_prod",
+            "-i",
+            "tech_cloud",
+            "-i",
+            "tech_map"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "baseline",
+          "compareTo": null,
+          "expect": {
+            "viewProblems": {
+              "tech_cloud": "The element “prod.cloud” is not in the plateau “baseline”."
+            }
+          }
+        },
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N87",
+      "variant": "-",
+      "title": "#105: an item with no value in `relationships` is no relationship: the command line reads none and the page draws none (it drew a relationship with no destination, counted as dangling)",
+      "ops": [
+        {
+          "op": "write",
+          "file": "baseline/application/probe.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"probe\"\n  name: \"Probe\"\n  relationships:\n    -\n    - null\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 0,
+          "stderr": []
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
+    },
+    {
+      "id": "N88",
+      "variant": "-",
+      "title": "#106: a container with no header.parent and a node with no header.parent, in a workspace that has plateaus, are one sentence each with the file and the kind (no layer holds them: a patch could not select them), told together, the application layer first",
+      "ops": [
+        {
+          "op": "write",
+          "file": "baseline/application/web.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\ncontent:\n  id: \"web\"\n  name: \"WEB\"\n"
+        },
+        {
+          "op": "write",
+          "file": "baseline/technology/vm.yaml",
+          "text": "header:\n  kind: \"archicode.morin.io/node\"\n  version: \"1\"\ncontent:\n  id: \"vm\"\n  name: \"VM\"\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "views",
+            "generate",
+            "--plateau",
+            "baseline"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/web.yaml` is not valid: unknown kind `container` with no `header.parent` (known: person, solution, system) at `header.kind`",
+            "error: `baseline/technology/vm.yaml` is not valid: unknown kind `node` with no `header.parent` (known: environment) at `header.kind`"
+          ]
+        },
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/web.yaml` is not valid: unknown kind `container` with no `header.parent` (known: person, solution, system) at `header.kind`",
+            "error: `baseline/technology/vm.yaml` is not valid: unknown kind `node` with no `header.parent` (known: environment) at `header.kind`"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "baseline",
+          "compareTo": null,
+          "expect": {
+            "layerProblems": [
+              "`baseline/application/web.yaml` is not valid: unknown kind `container` with no `header.parent` (known: person, solution, system) at `header.kind`",
+              "`baseline/technology/vm.yaml` is not valid: unknown kind `node` with no `header.parent` (known: environment) at `header.kind`"
+            ]
+          }
+        },
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "layerProblems": [
+              "`baseline/application/web.yaml` is not valid: unknown kind `container` with no `header.parent` (known: person, solution, system) at `header.kind`",
+              "`baseline/technology/vm.yaml` is not valid: unknown kind `node` with no `header.parent` (known: environment) at `header.kind`"
+            ]
           }
         }
       ]
