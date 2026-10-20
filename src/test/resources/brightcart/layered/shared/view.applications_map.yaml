@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "applications_map"
+  name: "The shopper, the payment provider and the shop"
+  description: "The shopper, the payment provider and the shop."
+  viewpoint: "map"
+  layer: "application"
+  properties:
+    pinned: ["customer", "psp"]
+    opened: ["shop"]

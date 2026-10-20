@@ -51,6 +51,16 @@ async function open(dir) {
   return { sandbox, state };
 }
 
+// The views and the stories the fixture ships (run 0110, #115: expected/entries.json). Whether each can be drawn in the plateau on screen is a fact of the fixture, whichever alteration a
+// case makes, and brightcart-views-and-stories.test.js pins it for the four plateaus; the cases here are about the alterations, so what the page says in a shipped view or step is left
+// out of `viewProblems` and `stepProblems`, and so is a sentence of `entryProblems` that names a file of the shipped folder (a manifest that an alteration makes the page refuse
+// declares nothing, so a shipped view that names what it declared "exists in no plateau": the command line stops at the manifest before it looks at the views). A view or a story
+// that a case writes is told as it was.
+const SHIPPED = JSON.parse(fs.readFileSync(path.join(ROOT, 'expected', 'entries.json'), 'utf8'));
+const SHIPPED_VIEWS = new Set(SHIPPED.views.map((view) => view.id));
+const SHIPPED_STORIES = new Set(SHIPPED.stories.map((story) => story.id));
+const SHIPPED_FILE = '(`' + SHIPPED.folder + '/';
+
 /** What the page says about the plateau it has drawn, as the fields of a case's `expect`; only what is not empty. */
 function said(sandbox, state, compared) {
   const out = {};
@@ -59,16 +69,18 @@ function said(sandbox, state, compared) {
   if (state.plateauTree && state.plateauTree.redeclared && state.plateauTree.redeclared.length) out.redeclared = state.plateauTree.redeclared; // a reference declared in a plateau and again in its ancestor
   if (state.plateauTree && state.plateauTree.warnings && state.plateauTree.warnings.length) out.treeWarnings = state.plateauTree.warnings; // what the command line warns of when it reads the manifests
   if (state.layerProblems) out.layerProblems = state.layerProblems;
-  const entries = state.workspace ? sandbox.entryProblemsOf(state.workspace.settings) : []; // a view or a story that names an element no plateau has (run 0100): not a mistake of the plateau drawn
+  const entries = (state.workspace ? sandbox.entryProblemsOf(state.workspace.settings) : []).filter((text) => !text.includes(SHIPPED_FILE)); // a view or a story that names an element no plateau has (run 0100): not a mistake of the plateau drawn
   if (entries.length) out.entryProblems = entries;
   const viewProblems = {}; // a saved view the plateau drawn cannot draw (it lacks what the view names): the page says so in the view
   for (const view of state.workspace ? sandbox.savedViews() : []) {
+    if (SHIPPED_VIEWS.has(view.id)) continue;
     const problem = sandbox.viewProblem(view);
     if (problem) viewProblems[view.id] = problem;
   }
   if (Object.keys(viewProblems).length) out.viewProblems = viewProblems;
   const stepProblems = {}; // a step of a story that the plateau drawn cannot draw, or whose own plateau lacks what it names (run 0101): story -> step number -> the sentence of the page
   for (const story of state.workspace ? sandbox.storiesList() : []) {
+    if (SHIPPED_STORIES.has(story.id)) continue;
     sandbox.storySteps(story).forEach((step, i) => {
       const problem = sandbox.stepProblem(step);
       if (problem) (stepProblems[story.id] = stepProblems[story.id] || {})[i + 1] = problem;

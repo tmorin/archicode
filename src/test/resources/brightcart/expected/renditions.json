@@ -1,10 +1,12 @@
 {
   "layered": {
-    "files": 50,
-    "lines": 1251,
-    "bytes": 34446,
+    "files": 60,
+    "lines": 1415,
+    "bytes": 39186,
     "manifests": 46,
     "plateauFiles": 4,
+    "views": 7,
+    "stories": 3,
     "patches": 68
   }
 }

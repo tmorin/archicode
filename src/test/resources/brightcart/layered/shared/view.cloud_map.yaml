@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "cloud_map"
+  name: "The cloud region"
+  description: "The cloud region, the Kubernetes cluster pinned."
+  viewpoint: "map"
+  layer: "technology"
+  properties:
+    pinned: ["prod.cloud.k8s"]
+    opened: ["prod", "prod.cloud"]

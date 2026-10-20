@@ -7,6 +7,7 @@
 //   layered/    the layered rendition, the source of truth: a folder per plateau, a `Kind: Plateau` manifest in each (`name`, `horizon`, `override` when the parent is not the
 //               root, and the `patches`), a `plateau: <id>` header on every manifest of a plateau other than `baseline`, and a workspace.yaml with
 //               `settings.manifests.paths: ["./**"]`. The layered engine reads it (`archicode diff --plateau <id>`, `views generate --plateau <id>`, the editor draws `baseline`).
+//               The folder `shared/` holds the views and the stories (ENTRIES of the description): they belong to no plateau, so they have no `plateau:` header and no folder of a plateau.
 //   variants/   V1 to V14 (negative variants) and M1 to M3 (merge scenarios) as descriptions with the expected class of message, and `status`: what a tool does with it
 //               today (the `runToday` field of the description). V1 to V11 are run by the tools (negative-cases.json, which is written by hand and not here, and
 //               plateau-model-cases.json); V12 to V14 and M1 to M3 wait for `plateau merge`. V1 to V8 also carry what the throwaway model reported, checked here against
@@ -14,20 +15,23 @@
 //   the document  docs/fixtures/brightcart-spec.md, when it is found at its place in the repository (`docs/fixtures/`, four folders above this one; a copy of the generator elsewhere does not touch it): the last cell of each row V1 to V14 of its table of negative
 //               variants is the `runToday` of the description (the only part of the table written here), so that the document and `variants/` say the same.
 //   expected/   the sizes, the two renditions in files, lines and bytes, the comparisons P1 to P6 (with the command of each and the flag that says whether
-//               a tool verifies them or only the model does), the table of changes of each comparison and the notable cases N1 to N17.
+//               a tool verifies them or only the model does), the table of changes of each comparison, the notable cases N1 to N17 and, for the views and the stories of
+//               `shared/`, where each can be drawn (entries.json: the plateaus that have what it names, the warnings of the command line, the steps of the stories).
 //
 // What the generator checks before it finishes (it exits 1 on the first difference, after printing it):
 //   1. the description resolves to the sizes and the counts of the document (50, 42, 66, 82 elements; P1 to P6);
 //   2. the notable cases N1 to N17 hold in the model's comparisons;
 //   3. the resolver reads the layered rendition back from the files it has just written, resolves each plateau and finds exactly what the model resolved (the "same plateaus" test);
-//   4. the negative variants V1 to V8 fail in the model with the words expected.
+//   4. the negative variants V1 to V8 fail in the model with the words expected;
+//   5. the views and the stories name only what some plateau declares, every view a step names is declared once, and the fixture holds what issue #115 asks for (a view that names an
+//      element one plateau alone declares, a technology map, a story whose steps are told at the plateaus of the fork, a story whose steps name no plateau); the files read back are the description.
 // The command line checks the other side (README.md): `archicode diff` on layered/ gives the counts of P1, P2, P3 and P5.
 //
 // Everything is invented; nothing comes from a real workspace.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { build, ORDER, VIEWS, E, Plateau, WORKSPACE_SETTINGS, WORKSPACE_STYLES, COMPARISONS, NOTABLE, VARIANTS, MERGES, DOCUMENT } from './description.mjs';
+import { build, ORDER, VIEWS, ENTRIES, ENTRY_FOLDER, E, Plateau, WORKSPACE_SETTINGS, WORKSPACE_STYLES, COMPARISONS, NOTABLE, VARIANTS, MERGES, DOCUMENT } from './description.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -430,6 +434,175 @@ function plateauText(pl) {
   return [...head, ...body].join('\n') + '\n';
 }
 
+// ----- the views and the stories (ENTRIES): manifests that belong to no plateau, written in the folder ENTRY_FOLDER with no `plateau:` header
+const entryFile = (e) => `${ENTRY_FOLDER}/${e.kind}.${e.id}.yaml`;
+
+/** The content of an entry with its keys in the order the emitter writes them (the description may order them otherwise); `kind` is the manifest's, not the content's. */
+function entryContent(e) {
+  const props = (p) => {
+    const out = {};
+    for (const k of ['element', 'pinned', 'opened', 'hidden']) if (p[k] !== undefined) out[k] = p[k];
+    return out;
+  };
+  const view = (v) => {
+    const out = {};
+    for (const k of ['viewpoint', 'layer']) if (v[k] !== undefined) out[k] = v[k];
+    out.properties = props(v.properties);
+    return out;
+  };
+  if (e.kind === 'view') {
+    const c = { id: e.id, name: e.name, description: e.description, ...view(e) };
+    return c;
+  }
+  const steps = e.steps.map((st) => {
+    const out = st.view !== undefined ? { view: st.view } : view(st);
+    out.text = st.text;
+    if (st.at !== undefined) out.at = st.at;
+    if (st.against !== undefined) out.against = st.against;
+    return out;
+  });
+  return { id: e.id, name: e.name, description: e.description, steps };
+}
+
+function entryText(e) {
+  const c = entryContent(e);
+  const lines = ['header:', `  kind: "archicode.morin.io/${e.kind}"`, '  version: "1"', 'content:'];
+  const properties = (p, pad) => {
+    lines.push(pad + 'properties:');
+    for (const [k, v] of Object.entries(p)) lines.push(pad + '  ' + k + ': ' + (Array.isArray(v) ? flow(v) : q(v)));
+  };
+  lines.push('  id: ' + q(c.id), '  name: ' + q(c.name), '  description: ' + q(c.description));
+  if (e.kind === 'view') {
+    lines.push('  viewpoint: ' + q(c.viewpoint), '  layer: ' + q(c.layer));
+    properties(c.properties, '  ');
+  } else {
+    lines.push('  steps:');
+    for (const st of c.steps) {
+      const own = st.view === undefined;
+      lines.push(own ? '    - viewpoint: ' + q(st.viewpoint) : '    - view: ' + q(st.view));
+      if (own) {
+        lines.push('      layer: ' + q(st.layer));
+        properties(st.properties, '      ');
+      }
+      lines.push('      text: ' + q(st.text));
+      if (st.at !== undefined) lines.push('      at: ' + q(st.at));
+      if (st.against !== undefined) lines.push('      against: ' + q(st.against));
+    }
+  }
+  return lines.join('\n') + '\n';
+}
+
+/**
+ * Where each view of ENTRIES can be drawn, by the rules of the command line (`GenerateViewsCommand.canBeDrawnInPlateau`, which the editor's `viewProblem` follows): a view of an
+ * element is drawn in a plateau that has the element; an entry of a map that the plateau lacks is left out, with a warning, and a map none of whose `pinned` elements is there is
+ * skipped, with a warning. The sentences are those of the command line, which the Java test compares byte for byte with its error output.
+ */
+function viewIn(v, S, pid) {
+  const layer = v.layer;
+  const has = (ref) => S[pid].has(layer, ref);
+  const sortedUnique = (xs) => [...new Set(xs)].sort();
+  const names = (list) => list.map((n) => '`' + n + '`').join(', ');
+  const file = `plantuml/${layer}/${v.id}.puml`;
+  if (v.viewpoint !== 'map') {
+    const element = v.properties.element;
+    if (has(element)) return { drawn: true, file, warnings: [], leftOut: [] };
+    return { drawn: false, file: null, warnings: [`skip \`${v.id}\`: it names \`${element}\`, which the plateau \`${pid}\` does not have`], leftOut: [] };
+  }
+  const pinned = v.properties.pinned || [];
+  const missing = sortedUnique(['pinned', 'opened', 'hidden'].flatMap((k) => (v.properties[k] || []).filter((r) => !has(r))));
+  if (!missing.length) return { drawn: true, file, warnings: [], leftOut: [] };
+  if (pinned.length && pinned.every((r) => missing.includes(r))) {
+    return { drawn: false, file: null, warnings: [`skip \`${v.id}\`: it is pinned on ${names(sortedUnique(pinned))}, which the plateau \`${pid}\` does not have`], leftOut: [] };
+  }
+  return { drawn: true, file, warnings: [`the view \`${v.id}\` is drawn without ${names(missing)}, which the plateau \`${pid}\` does not have`], leftOut: missing };
+}
+
+/** The references a view names, with their layer. */
+function viewNames(v) {
+  return ['element', 'pinned', 'opened', 'hidden'].flatMap((k) => (Array.isArray(v.properties[k]) ? v.properties[k] : v.properties[k] === undefined ? [] : [v.properties[k]]));
+}
+
+/**
+ * What the views and the stories say about the plateaus, worked out from the model (expected/entries.json), and the checks the fixture must pass (see the header, item 5).
+ * Returns { facts, problems }.
+ */
+function entryFacts(P, S) {
+  const problems = [];
+  const views = ENTRIES.filter((e) => e.kind === 'view');
+  const stories = ENTRIES.filter((e) => e.kind === 'story');
+  const declaredAnywhere = (layer, ref) => ORDER.some((pid) => P[pid].manifests.some((m) => m.layer === layer && m.ref === ref));
+  const ids = new Set();
+  for (const e of ENTRIES) {
+    if (ids.has(e.kind + e.id)) problems.push(`the ${e.kind} ${e.id} is declared twice`);
+    ids.add(e.kind + e.id);
+  }
+  const viewById = new Map(views.map((v) => [v.id, v]));
+  const viewFacts = views.map((v) => {
+    for (const n of viewNames(v)) if (!declaredAnywhere(v.layer, n)) problems.push(`the view ${v.id} names ${n}, which no plateau declares`);
+    const plateaus = {};
+    for (const pid of ORDER) plateaus[pid] = viewIn(v, S, pid);
+    return { id: v.id, file: entryFile(v), viewpoint: v.viewpoint, layer: v.layer, names: viewNames(v), pinned: v.properties.pinned || [], plateaus };
+  });
+  const storyFacts = stories.map((st) => ({
+    id: st.id,
+    file: entryFile(st),
+    steps: st.steps.map((step, i) => {
+      const where = `the story ${st.id} step ${i + 1}`;
+      let view = step;
+      if (step.view !== undefined) {
+        view = viewById.get(step.view);
+        if (!view) problems.push(`${where} names the view ${step.view}, which is not declared`);
+      }
+      for (const key of ['at', 'against']) if (step[key] !== undefined && !ORDER.includes(step[key])) problems.push(`${where} says ${key}: ${step[key]}, which is not a plateau`);
+      if (step.at !== undefined && step.at === step.against) problems.push(`${where} compares a plateau with itself`);
+      if (view) for (const n of viewNames(view)) if (!declaredAnywhere(view.layer, n)) problems.push(`${where} names ${n}, which no plateau declares`);
+      // a step is told at the plateau it says, else at the plateau drawn: for each plateau that can be drawn, can the step be drawn?
+      const drawableAt = (pid) => (view ? viewIn(view, S, pid).drawn : false);
+      const told = {};
+      for (const pid of ORDER) told[pid] = drawableAt(step.at ?? pid);
+      return {
+        number: i + 1,
+        view: step.view ?? null,
+        names: view ? viewNames(view) : [],
+        at: step.at ?? null,
+        against: step.against ?? null,
+        // `diff --plateau <at> --against <against>` is the comparison; with no `at` it is the plateau drawn, so the command depends on the reader
+        comparison: step.against === undefined ? null : step.at === undefined ? `diff --plateau <the plateau drawn> --against ${step.against}` : `diff --plateau ${step.at} --against ${step.against}`,
+        drawnWhenPlateauDrawnIs: told
+      };
+    })
+  }));
+  // what issue #115 asks the fixture to hold
+  const some = (cond, what) => {
+    if (!cond) problems.push(`the fixture does not hold ${what}`);
+  };
+  const declarers = (v) => ORDER.filter((pid) => viewIn(v, S, pid).drawn);
+  some(views.some((v) => declarers(v).length === ORDER.length), 'a view that every plateau can draw');
+  some(views.some((v) => v.viewpoint !== 'map' && declarers(v).length === 1), 'a view that names an element one plateau alone declares');
+  some(views.some((v) => v.viewpoint !== 'map' && declarers(v).length > 0 && declarers(v).length < ORDER.length), 'a view that some plateau cannot draw');
+  some(views.some((v) => v.viewpoint === 'map' && v.layer === 'technology'), 'a saved map of the technology layer');
+  some(views.some((v) => v.viewpoint === 'map' && v.layer === 'application'), 'a saved map of the application layer');
+  some(views.some((v) => v.viewpoint === 'map' && ORDER.some((pid) => viewIn(v, S, pid).drawn && viewIn(v, S, pid).leftOut.length)), 'a map that leaves out an entry the plateau lacks');
+  some(views.some((v) => v.viewpoint === 'map' && ORDER.some((pid) => !viewIn(v, S, pid).drawn)), 'a map that a plateau cannot draw');
+  some(stories.some((st) => st.steps.some((x) => (x.at === 'saas' && x.against === 'baseline') || (x.at === 'inhouse' && x.against === 'saas'))), 'a story with a step told at a plateau of the fork');
+  some(stories.some((st) => st.steps.some((x) => x.at === 'inhouse' && x.against === 'saas')), 'a step that compares the two plateaus of the fork (they do not stack)');
+  some(stories.some((st) => st.steps.some((x) => x.at === 'marketplace' && x.against === 'baseline')), 'a step compared with a plateau further up the chain');
+  some(stories.some((st) => st.steps.some((x) => x.at === undefined && x.against !== undefined)), 'a step with `against` and no `at`');
+  some(stories.some((st) => st.steps.every((x) => x.at === undefined && x.against === undefined)), 'a story whose steps name no plateau');
+  // a story whose steps name no plateau can be drawn in every plateau: it is the same story whatever plateau is drawn
+  for (const st of storyFacts) {
+    const own = st.steps.every((x) => x.at === null && x.against === null);
+    for (const x of st.steps) {
+      if (own) {
+        for (const pid of ORDER) if (!x.drawnWhenPlateauDrawnIs[pid]) problems.push(`the story ${st.id}, which names no plateau, cannot draw step ${x.number} when ${pid} is drawn`);
+      } else if (x.at !== null && !x.drawnWhenPlateauDrawnIs[x.at]) {
+        problems.push(`the story ${st.id} step ${x.number} is told at ${x.at}, which cannot draw what it names`);
+      }
+    }
+  }
+  return { facts: { folder: ENTRY_FOLDER, plateaus: ORDER, views: viewFacts, stories: storyFacts }, problems };
+}
+
 // ----- layered rendition: the manifests of each plateau grouped by file, nested by parent, a `parent` header when the parent is in another file, and a `plateau`
 // header on every manifest of a plateau other than `baseline` (the plateau of a manifest is its header, whatever its folder; without one it is `baseline`)
 function layeredTree(pl, file) {
@@ -457,6 +630,7 @@ function writeLayered(P) {
       files.set(file, manifestText(t, extra));
     }
   }
+  for (const e of ENTRIES) files.set(entryFile(e), entryText(e));
   return files;
 }
 
@@ -627,7 +801,7 @@ function listFiles(dir) {
 
 /**
  * The layered rendition read from the disk: the plateaus with their manifests and their patches, each manifest in the plateau its header names (L0), `baseline`
- * when it names none. Like the tools, the generator does not look at the folder to decide; it only checks that the folder of a plateau holds the manifests that
+ * when it names none; and, apart, the views and the stories (`entries`), which belong to no plateau. Like the tools, the generator does not look at the folder to decide; it only checks that the folder of a plateau holds the manifests that
  * name it, which is how the generator wrote them.
  */
 function readLayered(dir) {
@@ -641,16 +815,24 @@ function readLayered(dir) {
     pl.folder = f.split('/')[0];
     plateaus[c.id] = pl;
   }
+  const entries = [];
   for (const f of listFiles(dir)) {
     if (f === 'workspace.yaml' || f.endsWith('/plateau.yaml')) continue;
     const doc = parseYaml(fs.readFileSync(path.join(dir, f), 'utf8'));
+    const kind = doc.header.kind.split('/').at(-1);
+    if (kind === 'view' || kind === 'story') {
+      // a view and a story belong to no plateau: no `plateau:` header, and the folder is the one no plateau owns
+      if (doc.header.plateau !== undefined) throw new Error(`${f}: a ${kind} belongs to no plateau and says ${doc.header.plateau}`);
+      entries.push({ file: f, kind, content: doc.content });
+      continue;
+    }
     const folder = f.split('/')[0];
     const owner = plateaus[doc.header.plateau || 'baseline'];
     if (!owner) throw new Error(`${f}: names the plateau ${doc.header.plateau}, which has no plateau.yaml`);
     if (owner.folder !== folder) throw new Error(`${f}: names the plateau ${owner.id}, which is the folder ${owner.folder}`);
     for (const e of flatten(doc, dir.split('/').at(-1) + '/' + f)) owner.manifests.push(e);
   }
-  return plateaus;
+  return { plateaus, entries };
 }
 
 /** The comparable face of an element: what compare reads plus its replaces. Lists keep their order: the generator writes them in a fixed one. */
@@ -810,15 +992,20 @@ function main() {
   // ---- renditions
   const layered = writeLayered(P);
   const layeredSize = measure(layered);
-  layeredSize.manifests = layeredSize.files - ORDER.length; // plateau.yaml files are not manifests
+  const entryCount = (kind) => ENTRIES.filter((e) => e.kind === kind).length;
+  // the manifests of elements: not the plateau.yaml files, not the views and the stories
+  layeredSize.manifests = layeredSize.files - ORDER.length - ENTRIES.length;
   layeredSize.plateauFiles = ORDER.length;
+  layeredSize.views = entryCount('view');
+  layeredSize.stories = entryCount('story');
   layeredSize.patches = ORDER.reduce((n, id) => n + P[id].patches.length, 0);
   const renditions = { layered: layeredSize };
 
   writeTree(path.join(here, 'layered'), layered);
 
   // ---- the resolver: the layered rendition read back from the committed files and resolved, against what the model resolved
-  const fromDisk = readLayered(path.join(here, 'layered'));
+  const read = readLayered(path.join(here, 'layered'));
+  const fromDisk = read.plateaus;
   const resolvedSizes = {};
   const stateOf = {};
   for (const pid of ORDER) {
@@ -838,6 +1025,17 @@ function main() {
     for (const p of diffPlateau(pid, stateOf[pid], S[pid])) fail('resolver: ' + p);
     if (resolvedSizes[pid] !== DOCUMENT.sizes[pid].elements) fail(`resolver: ${pid} resolves to ${resolvedSizes[pid]} elements, the document says ${DOCUMENT.sizes[pid].elements}`);
   }
+
+  // ---- the views and the stories: what they name exists, the fixture holds what issue #115 asks for, and the files read back are the description
+  const entries = entryFacts(P, S);
+  for (const p of entries.problems) fail('views and stories: ' + p);
+  const written = new Map(read.entries.map((x) => [x.file, x]));
+  for (const e of ENTRIES) {
+    const x = written.get(entryFile(e));
+    if (!x) fail(`views and stories: ${entryFile(e)} was not read back`);
+    else if (x.kind !== e.kind || JSON.stringify(x.content) !== JSON.stringify(entryContent(e))) fail(`views and stories: ${entryFile(e)} read back from the disk is not the description\n    files  ${JSON.stringify(x.content)}\n    model  ${JSON.stringify(entryContent(e))}`);
+  }
+  if (read.entries.length !== ENTRIES.length) fail(`views and stories: ${read.entries.length} read back, ${ENTRIES.length} described`);
 
   // ---- the variants: described, and for V1 to V8 also run in the model
   const variants = new Map();
@@ -867,8 +1065,9 @@ function main() {
   expected.set('renditions.json', json(renditions));
   expected.set('comparisons.json', json(comparisons));
   expected.set('changes.json', json(changes));
+  expected.set('entries.json', json(entries.facts));
   expected.set('notable-cases.json', json(NOTABLE.map((n) => ({ id: n.id, case: n.case, where: n.where, state: n.state, why: n.why, checks: n.checks }))));
-  expected.set('README.md', 'Computed by `generate.mjs` from the description (the model of the specification). `comparisons.json` says, for each of P1 to P6, whether `archicode diff` verifies the counts or only the model does.\n`changes.json` is the table of changes of each comparison as the model computes it (elements and relationships whose state is not `none`).\n');
+  expected.set('README.md', 'Computed by `generate.mjs` from the description (the model of the specification). `comparisons.json` says, for each of P1 to P6, whether `archicode diff` verifies the counts or only the model does.\n`changes.json` is the table of changes of each comparison as the model computes it (elements and relationships whose state is not `none`).\n`entries.json` says, for each view and each step of each story of `layered/shared/`, in which plateaus it can be drawn and what the command line says when it cannot.\n');
   writeTree(path.join(here, 'variants'), variants);
   writeTree(path.join(here, 'expected'), expected);
   const specRows = writeRunToday(VARIANTS);
@@ -880,7 +1079,9 @@ function main() {
     console.log(`${pid.padEnd(12)} ${String(s.application).padStart(11)} ${String(s.technology).padStart(10)} ${String(s.elements).padStart(8)} ${String(s.relationships).padStart(13)} ${String(s.files).padStart(5)} ${String(s.declared).padStart(8)} ${String(s.patches).padStart(7)}`);
   }
   console.log('resolver     ' + ORDER.map((pid) => `${pid} ${resolvedSizes[pid]}`).join(', ') + ' elements (the layered rendition resolved from the files, compared with the model)');
-  console.log(`layered      ${layeredSize.files} files (${layeredSize.manifests} manifests, ${layeredSize.plateauFiles} plateau.yaml, ${layeredSize.patches} patches), ${layeredSize.lines} lines, ${layeredSize.bytes} bytes`);
+  console.log(`layered      ${layeredSize.files} files (${layeredSize.manifests} manifests of elements, ${layeredSize.plateauFiles} plateau.yaml, ${layeredSize.views} views, ${layeredSize.stories} stories; ${layeredSize.patches} patches), ${layeredSize.lines} lines, ${layeredSize.bytes} bytes`);
+  for (const v of entries.facts.views) console.log(`view         ${v.id.padEnd(24)} drawn in ${ORDER.filter((pid) => v.plateaus[pid].drawn).join(', ') || '-'}`);
+  for (const st of entries.facts.stories) console.log(`story        ${st.id.padEnd(24)} ${st.steps.length} steps`);
   for (const c of comparisons) {
     const e = c.elements;
     const r = c.relationships;

@@ -319,8 +319,75 @@ export function build() {
 
 export const ORDER = ['baseline', 'saas', 'inhouse', 'marketplace'];
 
-// The number of PlantUML files `views generate` writes for each plateau (default views, no manifest views yet), as the current command line gives it.
+// The number of PlantUML files `views generate` writes for each plateau, as the current command line gives it: the built-in views of the elements. A view saved in a
+// manifest (ENTRIES below) is drawn only when it is named (`views generate -i <id>`), so none of them is counted here.
 export const VIEWS = { baseline: 109, saas: 93, inhouse: 147, marketplace: 181 };
+
+// The views and the stories of the fixture (wave 016, run 0110, issue #115). They are manifests of kind `view` and `story` and they belong to no plateau (wave 015, run 0100):
+// each is declared once for the whole workspace, in the folder `shared/` (a folder no plateau owns; it must not begin with `views`, which is the folder of the generated
+// views), and what they name must be declared by some plateau. generate.mjs writes them, works out from the model where each can be drawn (expected/entries.json) and reads
+// them back from the disk. A view is { id, name, description, viewpoint, layer, properties }; a story is { id, name, description, steps }, a step either names a view
+// (`view`) or carries one (`viewpoint`, `layer`, `properties`), and may say `at` (the plateau it is told at) and `against` (the plateau it is compared with).
+export const ENTRY_FOLDER = 'shared';
+const overview = (id, name, element, description) => ({ kind: 'view', id, name, description, viewpoint: 'overview', layer: 'application', properties: { element } });
+const ownOverview = (element, text, o = {}) => ({ viewpoint: 'overview', layer: 'application', properties: { element }, text, ...o });
+export const ENTRIES = [
+  // The description of a view is the title of its diagram, so it says what is drawn and nothing about the plateaus: where each view can be drawn is in expected/entries.json.
+  // `customer` is an element every plateau has: drawn everywhere.
+  overview('customer_overview', 'The shopper', 'customer', 'Who buys, and what the shopper talks to.'),
+  // `shop` is renamed `storefront` in `marketplace`: the view cannot be drawn there (the command line skips it with a warning, the page says the element is not in the plateau).
+  overview('shop_overview', 'The shop', 'shop', 'The shop and what is around it.'),
+  // Elements that some plateaus declare and others do not (the others cannot draw these views). `commerce-saas`, which `saas` alone declares, is not the subject of a saved view: it is tagged
+  // external, the facet `no-externals` removes it, and a view of an element that a facet removes fails the command (it does so since the facets exist); a step of a story carries its own view.
+  overview('commerce_overview', 'The commerce services we would build', 'commerce', 'The commerce services and what they talk to.'),
+  overview('marketplace_overview', 'The marketplace', 'marketplace', 'The marketplace: sellers, listings and settlement.'),
+  // The Map, saved. The technology layer: production opened, the sandboxes and staging hidden (drawn in the four plateaus); pinned on the cluster of the cloud region, which only
+  // `inhouse` and `marketplace` have (skipped in the others, since nothing it is pinned on is there). The application layer: two elements every plateau has pinned, and the shop
+  // opened, which `marketplace` has not (the entry is left out, with a warning).
+  { kind: 'view', id: 'environments_map', name: 'The environments, production opened', description: 'The environments, production opened.', viewpoint: 'map', layer: 'technology', properties: { opened: ['prod'], hidden: ['sandbox', 'staging'] } },
+  { kind: 'view', id: 'cloud_map', name: 'The cloud region', description: 'The cloud region, the Kubernetes cluster pinned.', viewpoint: 'map', layer: 'technology', properties: { pinned: ['prod.cloud.k8s'], opened: ['prod', 'prod.cloud'] } },
+  { kind: 'view', id: 'applications_map', name: 'The shopper, the payment provider and the shop', description: 'The shopper, the payment provider and the shop.', viewpoint: 'map', layer: 'application', properties: { pinned: ['customer', 'psp'], opened: ['shop'] } },
+  // Stories. One whose steps name no plateau: it is told in the plateau that is drawn.
+  {
+    kind: 'story',
+    id: 'order_journey',
+    name: 'An order, from the shopper to the servers',
+    description: 'Told in whatever plateau is drawn: no step names one.',
+    steps: [
+      { view: 'customer_overview', text: 'A shopper browses and buys.' },
+      ownOverview('psp', 'The payment provider takes the money.'),
+      { view: 'environments_map', text: 'And all of it runs in these environments.' }
+    ]
+  },
+  // One that goes across the fork: `saas` and `inhouse` both override `baseline` and do not stack.
+  {
+    kind: 'story',
+    id: 'fork_tour',
+    name: 'Two ways out of the monolith',
+    description: 'Buy the commerce platform, or build the services; then the marketplace on top of the second.',
+    steps: [
+      { view: 'shop_overview', text: 'Today one system does it all.', at: 'baseline' },
+      ownOverview('commerce-saas', 'Buy: the platform takes the catalog, the cart and the checkout.', { at: 'saas', against: 'baseline' }),
+      { view: 'commerce_overview', text: 'Build: commerce services of our own.', at: 'inhouse', against: 'baseline' },
+      ownOverview('shop', 'The two ways side by side: what the shop becomes in `inhouse` compared with `saas`, which does not stack on it.', { at: 'inhouse', against: 'saas' }),
+      { view: 'marketplace_overview', text: 'On top of the second way, sellers.', at: 'marketplace', against: 'inhouse' },
+      ownOverview('discovery', 'All the way from where we are: the search moved twice.', { at: 'marketplace', against: 'baseline' }),
+      ownOverview('customer', 'The shopper, in the plateau that is drawn, compared with the bought platform (there is nothing to compare when `saas` is the one drawn).', { against: 'saas' })
+    ]
+  },
+  // One that is told in a single plateau, from steps that say so.
+  {
+    kind: 'story',
+    id: 'seller_journey',
+    name: 'A seller joins',
+    description: 'Every step is told in `marketplace`, whatever plateau is drawn.',
+    steps: [
+      { view: 'marketplace_overview', text: 'A seller signs up and lists products.', at: 'marketplace' },
+      { view: 'cloud_map', text: 'The listings run in the cloud region.', at: 'marketplace' },
+      ownOverview('platform', 'And the platform carries the events between sellers and shoppers.', { at: 'marketplace', against: 'inhouse' })
+    ]
+  }
+];
 
 // What workspace.yaml holds in both renditions (section 4 of the specification). Facets are evaluated by the kernel, as standard JSONPath (RFC 9535).
 export const WORKSPACE_SETTINGS = `  name: "Brightcart"

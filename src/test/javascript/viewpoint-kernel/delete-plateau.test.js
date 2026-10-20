@@ -27,7 +27,9 @@ function walk(dir, base, out) {
   return out;
 }
 
-const BRIGHTCART = walk(LAYERED, LAYERED, {});
+// The layered Brightcart as the plateaus are deleted from it: without the views and the stories it ships in `shared/` (run 0110, #115), which name `saas` and `marketplace` and refuse
+// this very delete. That they do is tested on the shipped files in brightcart-views-and-stories.test.js; here the delete is the subject, so it starts from the elements and the plateaus.
+const BRIGHTCART = Object.fromEntries(Object.entries(walk(LAYERED, LAYERED, {})).filter(([file]) => !file.startsWith('shared/')));
 const SAAS_FILES = ['saas/application/commerce-saas.yaml', 'saas/plateau.yaml', 'saas/technology/partners.commerce-live.yaml', 'saas/technology/sandbox.commerce-sandbox.yaml'];
 
 async function open(files, options) {
