@@ -5,12 +5,15 @@ import static io.morin.archicode.it.Shipped.notEmpty;
 import static io.morin.archicode.it.Shipped.said;
 import static io.morin.archicode.it.Shipped.succeeded;
 import static io.morin.archicode.it.Shipped.workspace;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainIntegrationTest;
 import io.quarkus.test.junit.main.QuarkusMainLauncher;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -72,5 +75,49 @@ class ViewsAndQueriesIT {
             () -> said(result)
         );
         assertTrue(!result.getErrorOutput().contains("\tat "), () -> "a stack trace\n" + said(result));
+    }
+
+    /** A view named with {@code -i} whose element a facet removes: one line that says the view and the facet, nothing written (#121). */
+    @Test
+    @SneakyThrows
+    void aViewWhoseElementAFacetRemovesIsOneErrorLineAndWritesNothing(QuarkusMainLauncher launcher) {
+        val folder = Shipped.copy(Shipped.BRIGHTCART, dir, "brightcart");
+        Files.writeString(
+            folder.resolve("shared/view.saas_probe.yaml"),
+            String.join(
+                "\n",
+                "header:",
+                "  kind: \"archicode.morin.io/view\"",
+                "  version: \"1\"",
+                "content:",
+                "  id: \"saas_probe\"",
+                "  viewpoint: \"overview\"",
+                "  layer: \"application\"",
+                "  properties:",
+                "    element: \"commerce-saas\"",
+                ""
+            )
+        );
+        val result = launcher.launch(
+            "-w",
+            workspace(folder),
+            "views",
+            "generate",
+            "--plateau",
+            "saas",
+            "-i",
+            "saas_probe"
+        );
+        assertEquals(1, result.exitCode(), () -> said(result));
+        assertEquals(
+            "error: the view `saas_probe` cannot be drawn: it names `commerce-saas`, which the facet `no-externals` removes",
+            result.getErrorOutput().strip(),
+            () -> said(result)
+        );
+        try (val folders = Files.list(folder)) {
+            assertTrue(folders.noneMatch(path -> path.getFileName().toString().startsWith("views")), () ->
+                said(result)
+            );
+        }
     }
 }
