@@ -9910,14 +9910,26 @@ function submitMoveDialog(values) {
   if (!chosen) return fail('Choose the new parent.');
   const check = validateMove(dialog.reference, dialog.layer, chosen);
   if (!check.valid) return fail(check.error);
+  const move = () => {
+    const result = commitMoveElement(dialog.reference, dialog.layer, chosen);
+    if (!result.ok) {
+      saveStatus = { state: 'error', failedFile: dialog.reference, message: result.message };
+      render();
+    }
+    return result;
+  };
+  // wave 017 (run 0122, #122): a move changes the reference as a rename does, and the views and the stories follow it in every plateau. When a plateau beside the one drawn still has
+  // the old reference, the author is told first (the question of a rename, `renameSiblingImpact`); the Move dialog waits behind it with its choices, and "Back to Move" gives it back.
+  const impact = renameSiblingImpact(dialog.reference, check.plan.newReference, dialog.layer);
+  if (impact) {
+    dialog.chosen = chosen;
+    dialog.error = null;
+    openAppDialog({ kind: 'rename-siblings', reference: dialog.reference, impact, plateau: impact.plateau, moving: true, back: dialog, returnFocus: dialog.returnFocus, onConfirm: move });
+    return null;
+  }
   appDialog = null;
   pendingFocusSelector = dialog.returnFocus;
-  const result = commitMoveElement(dialog.reference, dialog.layer, chosen);
-  if (!result.ok) {
-    saveStatus = { state: 'error', failedFile: dialog.reference, message: result.message };
-    render();
-  }
-  return result;
+  return move();
 }
 
 // =====================================================================
@@ -17471,9 +17483,15 @@ function renameSiblingImpact(oldRef, newRef, layer) {
   return { from: oldRef, to: newRef, plateau: drawn, plateaus, views, steps };
 }
 
-/** The Rename dialog of a layered workspace when plateaus beside the one drawn keep the old reference (`renameSiblingImpact`): its title, body and buttons. */
+/**
+ * The Rename dialog of a layered workspace when plateaus beside the one drawn keep the old reference (`renameSiblingImpact`): its title, body and buttons. The Move dialog asks
+ * the same question once a parent is chosen (wave 017, run 0122, #122: `dialog.moving`, the reference changes the same way and the views and stories follow it everywhere): the
+ * words say move, and Cancel gives the Move dialog back as it was (`dialog.back`) instead of leaving.
+ */
 function renderRenameSiblingsDialogHtml(dialog) {
   const impact = dialog.impact;
+  const moving = !!dialog.moving;
+  const noun = moving ? 'move' : 'rename';
   const code = (text) => '<code>' + escapeHtml(text) + '</code>';
   const list = (items) => '<ul class="layer-confirm-list">' + items.join('') + '</ul>';
   const where = (ids) => ' <span class="muted">in ' + ids.map(code).join(', ') + '</span>';
@@ -17483,15 +17501,19 @@ function renderRenameSiblingsDialogHtml(dialog) {
   const keepers = impact.plateaus.map((plateau) => '<li>' + code(plateau.id) + (plateau.name ? ' ' + escapeHtml(plateau.name) : '') +
     (plateau.declaredIn && plateau.declaredIn !== plateau.id ? ' <span class="muted">(inherits it from ' + code(plateau.declaredIn) + ')</span>' : '') + '</li>');
   let body = '<p class="app-dialog-subject">' + code(impact.from) + ' becomes ' + code(impact.to) + ' in the plateau ' + code(impact.plateau) + ', and in the plateaus that stand on it.</p>' +
-    '<p>' + (impact.plateaus.length === 1 ? 'This plateau does' : 'These ' + impact.plateaus.length + ' plateaus do') + ' not stand on ' + code(impact.plateau) + ' and still ' + (impact.plateaus.length === 1 ? 'has' : 'have') + ' ' + code(impact.from) + ' (the rename does not reach ' + (impact.plateaus.length === 1 ? 'it' : 'them') + '):</p>' + list(keepers) +
-    '<p>Views and stories belong to no plateau: they follow the rename everywhere, so ' + (impact.views.length + impact.steps.length === 1 ? 'this one cannot' : 'these ' + (impact.views.length + impact.steps.length) + ' cannot') + ' be drawn any more in the plateaus that keep the old reference:</p>' +
+    '<p>' + (impact.plateaus.length === 1 ? 'This plateau does' : 'These ' + impact.plateaus.length + ' plateaus do') + ' not stand on ' + code(impact.plateau) + ' and still ' + (impact.plateaus.length === 1 ? 'has' : 'have') + ' ' + code(impact.from) + ' (the ' + noun + ' does not reach ' + (impact.plateaus.length === 1 ? 'it' : 'them') + '):</p>' + list(keepers) +
+    '<p>Views and stories belong to no plateau: they follow the ' + noun + ' everywhere, so ' + (impact.views.length + impact.steps.length === 1 ? 'this one cannot' : 'these ' + (impact.views.length + impact.steps.length) + ' cannot') + ' be drawn any more in the plateaus that keep the old reference:</p>' +
     list(impact.views.map((view) => '<li>the view ' + escapeHtml(view.label) + ' ' + code(view.id) + where(view.plateaus) + '</li>')
       .concat(impact.steps.map((step) => '<li>the story ' + escapeHtml(step.label) + ' ' + code(step.story) + ', step ' + step.number + where(step.plateaus) + '</li>'))) +
-    '<p class="muted">To keep them whole, cancel, draw ' + (impact.plateaus.length === 1 ? 'that plateau' : 'each of these plateaus') + ' and give the element the same new id there: once every plateau that has it uses ' + code(impact.to) + ', the views are drawn in all of them. Or rename here and repair the views in ' + (impact.plateaus.length === 1 ? 'that plateau' : 'those plateaus') + ' afterwards.</p>';
+    (moving
+      ? '<p class="muted">To keep them whole, go back, draw ' + (impact.plateaus.length === 1 ? 'that plateau' : 'each of these plateaus') + ' and move the element to the same place there: once every plateau that has it uses ' + code(impact.to) + ', the views are drawn in all of them. Or move here and repair the views in ' + (impact.plateaus.length === 1 ? 'that plateau' : 'those plateaus') + ' afterwards.</p>'
+      : '<p class="muted">To keep them whole, cancel, draw ' + (impact.plateaus.length === 1 ? 'that plateau' : 'each of these plateaus') + ' and give the element the same new id there: once every plateau that has it uses ' + code(impact.to) + ', the views are drawn in all of them. Or rename here and repair the views in ' + (impact.plateaus.length === 1 ? 'that plateau' : 'those plateaus') + ' afterwards.</p>');
   return {
-    title: 'Rename “' + label + '”: ' + plural(impact.plateaus.length, 'plateau keeps', 'plateaus keep') + ' the old reference',
+    title: (moving ? 'Move' : 'Rename') + ' “' + label + '”: ' + plural(impact.plateaus.length, 'plateau keeps', 'plateaus keep') + ' the old reference',
     body,
-    actions: '<button type="button" data-action="dialog-cancel" data-dialog-autofocus>Cancel</button><button type="button" class="btn-primary" data-action="dialog-submit">Rename anyway</button>'
+    actions: moving
+      ? '<button type="button" data-action="dialog-cancel" data-dialog-autofocus>Back to Move</button><button type="button" class="btn-primary" data-action="dialog-submit">Move anyway</button>'
+      : '<button type="button" data-action="dialog-cancel" data-dialog-autofocus>Cancel</button><button type="button" class="btn-primary" data-action="dialog-submit">Rename anyway</button>'
   };
 }
 
@@ -17880,6 +17902,14 @@ function restoreElementForm() {
 }
 
 function closeAppDialog() {
+  if (appDialog && appDialog.back) { // the question a Move asks (`renameSiblingImpact`): "Back to Move" gives the Move dialog as it was, with the parent chosen and what was typed in its search
+    const back = appDialog.back;
+    keptElementForm = null; // the form behind was applied before the Move dialog opened
+    appDialog = back;
+    pendingFocusSelector = null;
+    render();
+    return;
+  }
   pendingFocusSelector = appDialog ? appDialog.returnFocus : null;
   appDialog = null;
   render();
