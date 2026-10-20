@@ -129,10 +129,12 @@ test('the band holds two lists and nothing else, whatever the number of plateaus
   const drawn = bandOf(sandbox);
   assert.equal(drawn.drawn, 'step8', 'the plateau drawn is selected, however far down the chain it is');
   assert.match(drawn.html, /<option value="step8" selected> {6}Step 8 /, 'indented by its depth, up to six steps, so that a long chain does not push its names out of the list');
-  // the past is the plateau before, the future is none, and every other plateau is offered
+  // nothing, the past that follows the plateau drawn, then the whole tree, in which the plateau drawn is greyed
   assert.deepEqual(plain(drawn.compare.slice(0, 2).map((o) => o.value)), ['', 'past']);
-  assert.match(drawn.compare[1].label, /^Past: Step 7 /);
-  assert.equal(drawn.compare.length, 2 + 7, 'nothing, the past, and the seven others');
+  assert.equal(drawn.compare.length, 2 + 9, 'nothing, the past, and the nine plateaus');
+  assert.deepEqual(plain(drawn.compare.slice(2).map((o) => o.value)), ['baseline'].concat(Array.from({ length: 8 }, (_, i) => 'step' + (i + 1))).map((id) => 'plateau:' + id));
+  assert.deepEqual(plain(drawn.compare.filter((o) => o.disabled).map((o) => o.value)), ['plateau:step8']);
+  assert.match(drawn.html, /<option value="plateau:step8" disabled>\u2003{6}Step 8 /, 'indented like the other list');
   chooseOnBand(sandbox, 'compare', 'plateau:step2');
   assert.deepEqual(plain(state.layers.compare), { mode: 'other', other: 'step2', chosen: true });
 });
@@ -197,12 +199,12 @@ test('a list of the band that cannot be obeyed is put back: a form typed in and 
 test('a list that is disabled while a write is in flight still says what is drawn and what is compared', async () => {
   const { sandbox, state } = await openLayered();
   chooseOnBand(sandbox, 'plateau', 'inhouse');
-  chooseOnBand(sandbox, 'compare', 'future');
-  assert.equal(bandOf(sandbox).compared, 'future');
+  chooseOnBand(sandbox, 'compare', 'plateau:marketplace');
+  assert.equal(bandOf(sandbox).compared, 'plateau:marketplace');
   run(sandbox, 'saveInFlight = true');
   const band = bandOf(sandbox);
-  assert.deepEqual([band.disabled, band.drawn, band.compared], [true, 'inhouse', 'future'], 'disabled is not "Nothing"');
-  assert.match(band.compare.find((o) => o.selected).label, /^Future: /);
+  assert.deepEqual([band.disabled, band.drawn, band.compared], [true, 'inhouse', 'plateau:marketplace'], 'disabled is not "Nothing"');
+  assert.match(band.compare.find((o) => o.selected).label, /Marketplace/);
   run(sandbox, 'saveInFlight = false');
   assert.equal(state.layers.compare.mode, 'future');
 });

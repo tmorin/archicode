@@ -113,7 +113,7 @@ test('a workspace with no plateau has the band, with baseline alone, drawn, and 
   assert.match(html, /<nav class="plateau-band col-span-3" id="plateau-band" aria-label="Plateaus">/);
   const band = bandOf(sandbox);
   assert.deepEqual(plain(band.plateaus.map((o) => [o.value, o.selected])), [['baseline', true]], 'baseline alone, drawn');
-  assert.deepEqual(plain(band.compare.map((o) => [o.value, o.selected])), [['', true]], 'nothing to compare baseline with: no past, no future, no other plateau');
+  assert.deepEqual(plain(band.compare.map((o) => [o.value, o.selected, o.disabled])), [['', true, false], ['plateau:baseline', false, true]], 'nothing to compare baseline with: no past, and the only plateau, the one drawn, is greyed');
   assert.equal(band.mistakes, null);
   assert.match(sandbox.renderShellHtml(), /grid-rows-\[auto_auto_auto_minmax\(0,1fr\)\]/, 'the shell has a row for it, and one for the pages below Timeline');
   // a click on it changes nothing
@@ -125,7 +125,7 @@ test('a workspace with no plateau has the band, with baseline alone, drawn, and 
   assert.equal(state.index.application.size, 1);
 });
 
-test('the band of the layered Brightcart lists the four plateaus in the order of the tree, baseline drawn, and offers each of the other three to compare with', async () => {
+test('the band of the layered Brightcart lists the four plateaus in the order of the tree, baseline drawn, and shows the same tree to compare with, the plateau drawn greyed in it', async () => {
   const { sandbox, state } = await openLayered();
   const band = bandOf(sandbox);
   assert.deepEqual(plain(band.plateaus.map((o) => o.value)), ['baseline', 'inhouse', 'marketplace', 'saas'], 'the order of the tree');
@@ -133,10 +133,12 @@ test('the band of the layered Brightcart lists the four plateaus in the order of
   assert.match(band.plateaus.find((o) => o.value === 'saas').label, /Buy the commerce platform/, 'an entry says the name of its plateau');
   assert.match(band.plateaus.find((o) => o.value === 'saas').label, /2026-Q4/, 'and its horizon');
   assert.match(band.html, /<option value="marketplace">\u2003\u2003/, 'a plateau is indented by its depth: marketplace overrides inhouse');
-  // baseline overrides nothing (no past), two plateaus override it (each is a future of its own), and the one further down is another plateau
-  assert.deepEqual(plain(band.compare.map((o) => o.value)), ['', 'plateau:inhouse', 'plateau:saas', 'plateau:marketplace']);
-  assert.deepEqual(plain(band.compare.slice(1, 3).map((o) => o.label.split(':')[0])), ['Future', 'Future']);
-  assert.match(band.html, /<optgroup label="Other plateaus"><option value="plateau:marketplace"/);
+  // baseline overrides nothing (no past); the tree is the one of the list Plateau, in the same order, and baseline, which is drawn, is greyed in its place
+  assert.deepEqual(plain(band.compare.map((o) => o.value)), ['', 'plateau:baseline', 'plateau:inhouse', 'plateau:marketplace', 'plateau:saas']);
+  assert.deepEqual(plain(band.compare.filter((o) => o.disabled).map((o) => o.value)), ['plateau:baseline']);
+  assert.deepEqual(plain(band.compare.slice(1).map((o) => o.label)), plain(band.plateaus.map((o) => o.label)), 'the same labels');
+  assert.match(band.html, /<select id="band-compare"[\s\S]*<option value="plateau:marketplace">\u2003\u2003/, 'and the same indentation: marketplace overrides inhouse');
+  assert.ok(!band.html.includes('optgroup'));
   assert.equal(band.compared, '');
   assert.equal(state.layers.blocked, null);
   assert.ok(!/<(ul|li)\b|data-action="(draw|compare)-/.test(band.html), 'no tree and no button that chooses');
@@ -151,7 +153,7 @@ test('a choice in the lists of the band is what the buttons were: draw a plateau
   assert.deepEqual(plain(state.layers.compare), { mode: 'past', other: 'inhouse', chosen: false });
   let band = bandOf(sandbox);
   assert.equal(band.compared, 'past');
-  assert.match(band.compare.find((o) => o.value === 'past').label, /^Past: Build commerce services/);
+  assert.equal(band.compare.find((o) => o.value === 'past').label, 'Past (follows the plateau drawn)');
   chooseOnBand(sandbox, 'compare', 'plateau:saas');
   assert.deepEqual(plain(state.layers.compare), { mode: 'other', other: 'saas', chosen: true }, 'a plateau that is neither the past nor a future of the one drawn');
   assert.equal(bandOf(sandbox).compared, 'plateau:saas');
@@ -161,10 +163,10 @@ test('a choice in the lists of the band is what the buttons were: draw a plateau
   // inhouse is overridden by marketplace alone: the future is one entry
   chooseOnBand(sandbox, 'plateau', 'inhouse');
   band = bandOf(sandbox);
-  assert.deepEqual(plain(band.compare.map((o) => o.value)), ['', 'past', 'future', 'plateau:saas']);
-  chooseOnBand(sandbox, 'compare', 'future');
-  assert.deepEqual(plain(state.layers.compare), { mode: 'future', other: 'marketplace', chosen: false });
-  assert.equal(bandOf(sandbox).compared, 'future');
+  assert.deepEqual(plain(band.compare.map((o) => o.value)), ['', 'past', 'plateau:baseline', 'plateau:inhouse', 'plateau:marketplace', 'plateau:saas']);
+  chooseOnBand(sandbox, 'compare', 'plateau:marketplace');
+  assert.deepEqual(plain(state.layers.compare), { mode: 'future', other: 'marketplace', chosen: true });
+  assert.equal(bandOf(sandbox).compared, 'plateau:marketplace');
   // a list put back on what it was when nothing can be done: the plateaus are blocked (a mistake in the tree), a write is in flight
   state.layers.blocked = 'blocked for the test';
   chooseOnBand(sandbox, 'plateau', 'saas');
@@ -342,9 +344,8 @@ test('the future gives the same numbers: the plateau drawn is the base, the plat
   assert.deepEqual(plain(state.layers.compare), { mode: 'future', other: null, chosen: false });
   assert.equal(sandbox.comparisonState(), null, 'nothing is compared until the target is chosen');
   const asking = bandOf(sandbox);
-  assert.deepEqual(plain(asking.compare.slice(0, 4).map((o) => [o.value, o.selected, o.disabled])), [['', false, false], ['future', true, true], ['plateau:inhouse', false, false], ['plateau:saas', false, false]], 'the list says the choice is still to make, and offers what overrides it directly');
-  assert.match(asking.compare[1].label, /Future: choose one/);
-  assert.ok(!asking.compare.slice(0, 4).some((o) => o.value === 'plateau:marketplace'), 'marketplace is not one of the plateaus on top of baseline, it is in the other plateaus');
+  assert.deepEqual(plain(asking.compare.map((o) => [o.value, o.selected, o.disabled])), [['', false, false], ['future', true, true], ['plateau:baseline', false, true], ['plateau:inhouse', false, false], ['plateau:marketplace', false, false], ['plateau:saas', false, false]], 'the list says the choice is still to make, and the tree under it has nothing selected');
+  assert.match(asking.compare[1].label, /Choose a future plateau/);
   sandbox.compareWithPlateau('saas');
   comparison = sandbox.comparisonState();
   assert.equal(comparison.base.id, 'baseline');
