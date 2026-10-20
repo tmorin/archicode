@@ -153,7 +153,7 @@ wave_manifest:
       slug: add-to-story-and-current-plateau
       phase: P1
       depends_on: [W-4]
-      run: null
+      run: 0111
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
