@@ -20,6 +20,7 @@
     --fg: #1a1a1a;
     --muted: #666666;
     --border: #d0d0d0;
+    --control-border: #8a8a8a;
     --accent: #2b6cb0;
     --danger: #b00020;
     --panel-bg: #f7f7f8;
@@ -46,6 +47,7 @@
       --fg: #e8e8e8;
       --muted: #999999;
       --border: #3a3a3a;
+      --control-border: #767676;
       --accent: #6cb0f0;
       --danger: #ff6b6b;
       --panel-bg: #262626;
@@ -69,6 +71,7 @@
     --fg: #e8e8e8;
     --muted: #999999;
     --border: #3a3a3a;
+    --control-border: #767676;
     --accent: #6cb0f0;
     --danger: #ff6b6b;
     --panel-bg: #262626;
@@ -90,7 +93,7 @@
   button:hover { border-color: var(--accent) !important; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   button:disabled:hover { border-color: var(--border) !important; }
-  input[type="text"], textarea, select { font: inherit; padding: 0.3rem 0.5rem !important; border: 1px solid var(--border) !important; border-radius: 4px !important; background: var(--bg) !important; color: var(--fg); }
+  input[type="text"], textarea, select { font: inherit; padding: 0.3rem 0.5rem !important; border: 1px solid var(--control-border) !important; border-radius: 4px !important; background: var(--bg) !important; color: var(--fg); }
   /* A stacked field's own input/select spans its field-value column, matching the
      full-width textarea below it (form UX review follow-up) — scoped to a direct
      child so it never widens the inline relationship/add-row inputs elsewhere. */
@@ -10850,7 +10853,8 @@ const DOC_LINKS = {
   workspace: '#workspace',
   viewpoints: '#viewpoints',
   settings: '#technical-configuration',
-  facetsConcept: '#facets'
+  facetsConcept: '#facets',
+  currentPlateau: '#editor-current-plateau'
 };
 
 function docUrl(key) {
@@ -10863,7 +10867,8 @@ const SETTINGS_HELP_DOCS = {
   manifestsPaths: 'settings',
   defaultLabel: 'settings',
   viewsPath: 'settings',
-  facetsIntro: 'facetsConcept'
+  facetsIntro: 'facetsConcept',
+  current: 'currentPlateau'
 };
 
 /** The release this page is (or "dev" when it is the file of the repository). */
