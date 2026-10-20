@@ -112,7 +112,7 @@ wave_manifest:
       slug: both-tools-read-the-same-016
       phase: P0
       depends_on: []
-      run: null
+      run: 0108
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/workspace/**'
