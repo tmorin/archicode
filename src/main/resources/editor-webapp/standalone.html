@@ -578,6 +578,8 @@
   .app-dialog-choice { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0; }
   .app-dialog-choice small { color: var(--muted); }
   .app-dialog-new { margin: 0.2rem 0 0 1.5rem; width: calc(100% - 1.5rem) !important; }
+  .app-dialog-plateaus { margin-top: 0.6rem; }
+  .app-dialog-plateaus-note { margin: 0 0 0 1.5rem; }
   .app-dialog-error { min-height: 1.2rem; margin-top: 0.4rem; color: var(--danger); font-size: 0.85rem; }
   .app-dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
   .story-legacy { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.75rem 0; padding: 0.5rem 0.75rem; border: 1px solid var(--modified); border-radius: 6px; }
@@ -10810,6 +10812,7 @@ const SETTINGS_HELP = {
   name: 'The name of the workspace. The editor shows it in place of the name of the folder, which then becomes a tooltip. Leave empty to show the folder name.',
   manifestsPaths: 'Folders scanned for manifest files, relative to the folder containing `workspace.yaml` and below it (no `..`, not absolute). One per line. Default: `manifests`. A path that ends in `/**` (`manifests/**`) is read with the folders below it, in order of path, leaving out the folders and files whose name begins with a dot, the links to folders and the folders of the generated views; `./**` is the folder of `workspace.yaml`. `**` means nothing elsewhere in a path.',
   defaultLabel: 'Label for a relationship that declares none, and for a link merged from several relationships. Default: `uses`.',
+  current: 'The plateau the command line draws when `--plateau` is not given, and the one the editor opens the folder on when nothing else tells (the address, or the plateau this browser drew last). None: the command line draws the last plateau when the plateaus are one line, and asks for `--plateau` otherwise. Changing it does not redraw what is on screen.',
   viewsPath: 'Folder where generated views are written, relative to `workspace.yaml`. Facets write to sibling folders (see Facets). Default: `views`.',
   viewsLabels: 'Title of the generated view for each viewpoint. Leave empty to use the default shown in the field.',
   viewsProperties: 'Extra properties merged into every view of that viewpoint, as a JSON object. Free-form: keys are passed through as-is and not validated here.',
@@ -11070,6 +11073,78 @@ function renderManifestsSettingsHtml(settings) {
   '</div>';
 }
 
+const CURRENT_PLATEAU_BROKEN = 'The plateaus have mistakes (see the Plateaus page): put them right first.';
+
+/**
+ * The field *Current plateau* of Settings (wave 016, run 0111, issue #111): `settings.current`, the plateau both tools draw by default. A list of the plateaus (in the order of
+ * the band) and *none*. Shown when the workspace has plateaus to choose among: at least two (with one, the command line draws it and there is nothing to choose), or a
+ * `current` the file already has (so that it can be taken out), or mistakes in the plateaus (the plateaus are then not offered, the field says why, and *None* still works).
+ */
+function renderCurrentPlateauSettingsHtml(settings) {
+  const tree = AppState.plateauTree;
+  if (!tree || !tree.layered) return '';
+  const broken = tree.problems.length > 0;
+  if (!broken && tree.ids.length < 2 && settings.current === '') return '';
+  const ids = bandOrderOf(tree);
+  if (settings.current !== '' && !ids.includes(settings.current)) ids.push(settings.current); // what the file says is shown, whatever the tree
+  // while the plateaus have mistakes only what the file says and *None* can be chosen: the other ids are not trusted, but a `current` can still be taken out
+  const options = '<option value=""' + (settings.current === '' ? ' selected' : '') + '>None</option>' +
+    ids.map((id) => '<option value="' + escapeHtml(id) + '"' + (id === settings.current ? ' selected' : (broken ? ' disabled' : '')) + '>' + escapeHtml(plateauTitle(layerPlateauModel(id))) + (plateauTitle(layerPlateauModel(id)) !== id ? ' (' + escapeHtml(id) + ')' : '') + '</option>').join('');
+  return '<div class="field-row"><label class="field-label" for="settings-current-select">Current plateau</label><span class="field-value">' +
+    '<select id="settings-current-select" data-settings-current' + describedBy('current') + '>' + options + '</select>' +
+    (broken ? '<span class="inline-error">' + CURRENT_PLATEAU_BROKEN + '</span>' : '') +
+    renderHelpHtml('current') +
+  '</span></div>';
+}
+
+/**
+ * Writes `settings.current` (run 0111, #111): the plateau `value`, or the empty text for none (the key leaves the file). Through `commitSettingsEdit`, as the other fields of
+ * Settings; `draft` is what the form held (`readSettingsDraft`), applied in the same step so that nothing typed is lost. Not under `guardedLayerWrite`: no plateau is resolved
+ * from this key, so no plateau can change or be refused by it; the one thing that can be wrong is the name, refused with the sentence both tools say of a `current` that names no plateau
+ * (`layersOfSettingsCurrentProblem`). The key is edited in the raw `settings` of workspace.yaml (`serializeSettingsToRaw` keeps what it does not manage as the file has it) and
+ * a file that has no `settings` yet gets one with this key alone, so a save writes that line and not the defaults. The plateau drawn is not changed: what the reader chose
+ * on the band is not undone by a setting for the next time. Returns whether anything changed.
+ */
+function commitCurrentPlateau(value, draft) {
+  if (!AppState.workspace || !AppState.plateauTree) throw new Error('No workspace is open.');
+  if (saveInFlight) throw new Error('The folder is being saved: choose the plateau once the save has ended.');
+  const id = typeof value === 'string' ? value.trim() : '';
+  const settings = AppState.workspace.settings;
+  if (id !== '') {
+    if (AppState.plateauTree.problems.length) throw new Error(CURRENT_PLATEAU_BROKEN); // the plateaus cannot be listed, and the sentence would name none
+    const sentence = layersOfSettingsCurrentProblem(id, AppState.plateauTree);
+    if (sentence !== null) throw new Error(sentence);
+  }
+  if (id === settings.current && !draft) return false;
+  commitSettingsEdit((live) => {
+    if (draft) draft.apply(live);
+    const top = workspaceTopLevel();
+    if (id === '') {
+      if (isPlainObject(top.settings)) delete top.settings.current; // the line of the key goes, nothing else
+    } else {
+      if (!isPlainObject(top.settings)) top.settings = {};
+      top.settings.current = id;
+    }
+    live.current = id;
+  });
+  return true;
+}
+
+/** The list *Current plateau* was changed: the form's own typing is kept, a refusal is told in the top bar and the list shows what the file says again. */
+function chooseCurrentPlateau(select) {
+  const draft = draftTyped ? readSettingsDraft() : null;
+  const restore = () => { select.value = AppState.workspace.settings.current; };
+  if (draft && !draft.valid) { restore(); return; }
+  try {
+    commitCurrentPlateau(select.value, draft);
+  } catch (e) {
+    if (draft) commitSettingsEdit(draft.apply); // what was typed in the form is kept: the redraw gives the form afresh from the model
+    saveStatus = { state: 'error', failedFile: 'workspace.yaml', message: e && e.message ? e.message : String(e) };
+    restore();
+    render();
+  }
+}
+
 function renderSettingsViewHtml() {
   const settings = AppState.workspace && AppState.workspace.settings;
   if (!settings) return '<div class="center-placeholder">No settings available.</div>';
@@ -11082,6 +11157,7 @@ function renderSettingsViewHtml() {
           '<input type="text" id="settings-name-input" value="' + escapeHtml(settings.name || '') + '" placeholder="' + escapeHtml(AppState.folder ? AppState.folder.name : '') + '"' + describedBy('name') + '>' +
           renderHelpHtml('name') +
         '</span></div>' +
+        renderCurrentPlateauSettingsHtml(settings) +
       '</div>' +
       renderManifestsSettingsHtml(settings) +
       '<div class="edition-section"><h3>Relationships</h3>' +
@@ -11621,6 +11697,7 @@ function autosizeAllTextareas() {
 
 /** Delegated `input` listener (DEC — mirrors the existing click/pointerdown/dblclick delegation on #app): resizes as the user types. */
 function handleAppInput(e) {
+  if (e.target.matches && e.target.matches('[data-settings-current]')) return; // the list of Settings writes on `change`; choosing in it is no typed draft (run 0111, #111)
   if (e.target.matches && e.target.matches('input[name="theme-choice"]')) { // a preference of the browser, not a change of the workspace
     setThemeChoice(e.target.value);
     return;
@@ -17413,6 +17490,7 @@ document.addEventListener('pointercancel', notePointer, true);
 
 /** Delegated `change` listener: the form of a view on its page. */
 function handleAppChange(e) {
+  if (e.target && e.target.matches && e.target.matches('[data-settings-current]')) { chooseCurrentPlateau(e.target); return; }
   const control = e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list]') : null;
   if (control) handleViewFieldChange(control);
 }
@@ -17535,7 +17613,7 @@ function renderAppDialogHtml() {
       }).join('') +
       '<label class="app-dialog-choice"><input type="radio" name="story-choice" value="' + NEW_STORY_CHOICE + '"' + (preferred ? '' : ' checked') + '><span>New story</span></label>' +
       '<input type="text" class="app-dialog-new" data-dialog-new' + (preferred ? '' : ' data-dialog-autofocus') + ' aria-label="Name of the new story" placeholder="Name of the new story">' +
-      '</fieldset>';
+      '</fieldset>' + storyPlateauChoiceHtml();
   } else {
     body = '<label class="app-dialog-field" for="app-dialog-text">' + escapeHtml(appDialog.label) + '</label>' +
       '<input type="text" id="app-dialog-text" data-dialog-text data-dialog-autofocus value="' + escapeHtml(appDialog.value || '') + '">';
@@ -17555,7 +17633,8 @@ function readAppDialogValues() {
   const newName = document.querySelector('[data-dialog-new]');
   const fields = {}; // the form of a plateau (wave 014, run 0082)
   for (const field of Array.from(document.querySelectorAll('[data-dialog-field]'))) fields[field.getAttribute('data-dialog-field')] = field.value;
-  return { text: text ? text.value : '', choice: choice ? choice.value : '', newName: newName ? newName.value : '', fields };
+  const plateaus = document.querySelector('[data-dialog-plateaus]'); // the box of the story picker (wave 016, run 0111, #110)
+  return { text: text ? text.value : '', choice: choice ? choice.value : '', newName: newName ? newName.value : '', fields, withPlateaus: !!(plateaus && plateaus.checked) };
 }
 
 /** Does what the dialog asked for, with the values typed in it (read from the page unless they are given). */
@@ -17609,7 +17688,7 @@ function submitAppDialog(values) {
     if (v.choice === NEW_STORY_CHOICE && !name) { fail('Name the new story.'); return; }
     appDialog = null;
     pendingFocusSelector = dialog.returnFocus;
-    addCurrentViewToStoryChoice(v.choice === NEW_STORY_CHOICE ? { newName: name } : { storyId: v.choice });
+    addCurrentViewToStoryChoice(v.choice === NEW_STORY_CHOICE ? { newName: name, withPlateaus: !!v.withPlateaus } : { storyId: v.choice, withPlateaus: !!v.withPlateaus });
     return;
   }
   const text = String(v.text || '').trim();
@@ -17681,8 +17760,53 @@ function addCurrentViewToStory() {
 }
 
 /**
+ * What *Add to story...* can write of the plateaus (wave 016, run 0111, issue #110, the author's decision of 2026-10-20): the keys `at` (the plateau drawn) and `against` (the
+ * plateau compared with) of run 0101, which name plateaus by id, not modes. Null when the workspace has no plateau (it writes no key and shows no box). Otherwise
+ * `{ blocked }` (the plateaus cannot be drawn: the sentence, no box), or `{ at, against, note, problem, checked }`: `against` is null when the page cannot name a comparison
+ * (none on screen, the future still to choose, a plateau that is gone, the plateau drawn itself), `note` says why when a comparison was asked for and cannot be named,
+ * `problem` is what `stepPlateauProblem` says of the two keys (the box is then off and cannot be ticked), and `checked` is the default of the box: a comparison is on screen.
+ * A comparison that follows the plateau drawn (the past, the future) is written as the plateau it is now.
+ */
+function storyStepPlateaus() {
+  const layers = AppState.layers;
+  const tree = AppState.plateauTree;
+  if (!layers || !tree || !tree.layered) return null;
+  if (layers.blocked) return { blocked: oneLine(layers.blocked) };
+  const other = layerCompareOther();
+  const against = other ? other.id : null;
+  let note = null;
+  const asked = layers.compare;
+  if (asked && against === null) {
+    if (asked.mode === 'future' && !asked.other) note = 'The comparison with the future waits for a plateau to be chosen, so no plateau is named for it.';
+    else if (asked.other && asked.other === layers.current) note = 'The plateau compared with is the plateau drawn: nothing is compared, so no plateau is named for it.';
+    else if (asked.other && !tree.nodes.has(asked.other)) note = 'The plateau compared with is not a plateau of this workspace any more, so no plateau is named for it.';
+  }
+  // the plateau drawn first: if it cannot be told, nothing is written; if only the plateau compared with cannot, the step is told at the plateau drawn and `against` is left out, with the reason
+  const foundAt = stepPlateauProblem({ at: layers.current });
+  let named = against;
+  if (!foundAt && named !== null) {
+    const foundAgainst = stepPlateauProblem({ at: layers.current, against: named });
+    if (foundAgainst) { named = null; note = foundAgainst.problem + ' No plateau is named for the comparison.'; }
+  }
+  return { at: layers.current, against: named, note, problem: foundAt ? foundAt.problem : null, checked: !foundAt && named !== null };
+}
+
+/** The box of the story picker: keep the plateau drawn, and the plateau compared with, in the step. Empty when the workspace has no plateau. */
+function storyPlateauChoiceHtml() {
+  const offer = storyStepPlateaus();
+  if (!offer) return '';
+  if (offer.blocked) return '<p class="settings-help app-dialog-plateaus-note">The plateaus cannot be drawn (' + escapeHtml(offer.blocked) + '), so the step is added without a plateau.</p>';
+  const code = (id) => '<code>' + escapeHtml(id) + '</code>';
+  const label = offer.against === null ? 'Tell the step at the plateau drawn, ' + code(offer.at) : 'Tell the step at ' + code(offer.at) + ', compared with ' + code(offer.against);
+  return '<label class="app-dialog-choice app-dialog-plateaus"><input type="checkbox" data-dialog-plateaus' + (offer.checked ? ' checked' : '') + (offer.problem ? ' disabled' : '') + '><span>' + label + '</span></label>' +
+    '<p class="settings-help app-dialog-plateaus-note">' + (offer.problem ? escapeHtml(offer.problem) + ' ' : '') + (offer.note ? escapeHtml(offer.note) + ' ' : '') +
+    'The step names plateaus by id: a comparison that follows the plateau drawn (the past, the future) is written as the plateau it is now.</p>';
+}
+
+/**
  * Puts the diagram on screen in a story (an existing one, or a new one, found by its name before it is created), after
- * the step being told, else at the end. Says where it went, and opens the words of the step to type.
+ * the step being told, else at the end. Says where it went, and opens the words of the step to type. With `choice.withPlateaus` (the box of the picker, offered when the workspace
+ * has plateaus) the step is told at the plateau drawn and compared with the plateau compared with, as `at` and `against` (run 0111, #110).
  */
 function addCurrentViewToStoryChoice(choice) {
   const definition = currentViewDefinition();
@@ -17695,13 +17819,19 @@ function addCurrentViewToStoryChoice(choice) {
   // a view that was named is pointed at; any other diagram goes in the step itself: no file for each diagram of a story
   const named = savedViews().find((view) => JSON.stringify(canonicalViewDefinition(view)) === JSON.stringify(definition));
   const step = named ? { view: named.id } : { viewpoint: definition.viewpoint, layer: definition.layer, properties: definition.properties };
+  const plateaus = choice.withPlateaus ? storyStepPlateaus() : null;
+  const keeps = !!plateaus && !plateaus.blocked && !plateaus.problem;
+  if (keeps) {
+    step.at = plateaus.at;
+    if (plateaus.against !== null) step.against = plateaus.against;
+  }
   const steps = writableSteps(story);
   const at = activeStory && activeStory.id === story.id ? Math.min(activeStory.step + 1, steps.length) : steps.length;
   steps.splice(at, 0, step);
   activeStory = { id: story.id, step: at };
   selectedStoryId = story.id;
   storyBarEditing = true;
-  storyBarNotice = 'Added as step ' + (at + 1) + ' of “' + storyLabel(story) + '”.';
+  storyBarNotice = 'Added as step ' + (at + 1) + ' of “' + storyLabel(story) + '”' + (keeps ? ', told at ' + plateaus.at + (plateaus.against !== null ? ', compared with ' + plateaus.against : '') : '') + '.';
   pendingFocusSelector = '.story-bar-text';
   markEntryChanged(story);
   render();
