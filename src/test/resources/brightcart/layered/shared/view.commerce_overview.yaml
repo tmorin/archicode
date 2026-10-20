@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "commerce_overview"
+  name: "The commerce services we would build"
+  description: "The commerce services and what they talk to."
+  viewpoint: "overview"
+  layer: "application"
+  properties:
+    element: "commerce"

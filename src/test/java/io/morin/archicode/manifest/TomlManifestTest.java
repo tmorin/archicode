@@ -214,27 +214,30 @@ class TomlManifestTest {
     }
 
     /**
-     * The kinds no manifest of the repository uses: a view is written in the manual (README.adoc, "Stories") and the examples
-     * keep it in their workspace file, so it has a sample of its own below. A shipped file that starts to use one fails this
-     * test: the sample is then taken from the files (the story went that way in wave 015, run 0101: the example of the
-     * plateaus has one).
+     * The kinds no manifest of the repository uses, each with a sample of its own. None today: a shipped file that starts to use
+     * a kind fails this test while it has a sample, and the sample is then taken from the files (the story went that way in wave
+     * 015, run 0101: the example of the plateaus has one; the view went that way in wave 016, run 0110: the layered Brightcart
+     * ships views).
      */
-    private static final Map<ManifestKind, String> SAMPLES = Map.of(
-        ManifestKind.VIEW,
-        """
-        header:
-          kind: archicode.morin.io/view
-          version: "1"
-        content:
-          id: shop_overview
-          name: Shop - Overview
-          viewpoint: overview
-          layer: application
-          properties:
-            element: shop
-            wrap: true
-        """
-    );
+    private static final Map<ManifestKind, String> SAMPLES = Map.of();
+
+    /**
+     * A view of a workspace that has no plateau, written as the manual does (README.adoc, "Stories"), for
+     * {@link #shouldGiveTheSameModelFromTheTomlTwinOfAViewAndAStory}: the shipped views name elements of a layered workspace.
+     */
+    private static final String VIEW_SAMPLE = """
+    header:
+      kind: archicode.morin.io/view
+      version: "1"
+    content:
+      id: shop_overview
+      name: Shop - Overview
+      viewpoint: overview
+      layer: application
+      properties:
+        element: shop
+        wrap: true
+    """;
 
     /**
      * A story of a workspace that has no plateau (so no step is told at one). The shipped files have stories now, so the sample
@@ -324,7 +327,7 @@ class TomlManifestTest {
                 format.equals("yaml") ? SHOP_YAML : tomlOfText(SHOP_YAML)
             );
             for (val kind : List.of(ManifestKind.VIEW, ManifestKind.STORY)) {
-                val text = kind == ManifestKind.VIEW ? SAMPLES.get(kind) : STORY_SAMPLE;
+                val text = kind == ManifestKind.VIEW ? VIEW_SAMPLE : STORY_SAMPLE;
                 Files.writeString(
                     folder.resolve("manifests/" + kind.name().toLowerCase() + "." + format),
                     format.equals("yaml") ? text : tomlOfText(text)

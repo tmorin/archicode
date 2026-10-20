@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "customer_overview"
+  name: "The shopper"
+  description: "Who buys, and what the shopper talks to."
+  viewpoint: "overview"
+  layer: "application"
+  properties:
+    element: "customer"

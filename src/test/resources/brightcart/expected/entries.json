@@ -1,0 +1,526 @@
+{
+  "folder": "shared",
+  "plateaus": [
+    "baseline",
+    "saas",
+    "inhouse",
+    "marketplace"
+  ],
+  "views": [
+    {
+      "id": "customer_overview",
+      "file": "shared/view.customer_overview.yaml",
+      "viewpoint": "overview",
+      "layer": "application",
+      "names": [
+        "customer"
+      ],
+      "pinned": [],
+      "plateaus": {
+        "baseline": {
+          "drawn": true,
+          "file": "plantuml/application/customer_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "saas": {
+          "drawn": true,
+          "file": "plantuml/application/customer_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "inhouse": {
+          "drawn": true,
+          "file": "plantuml/application/customer_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "marketplace": {
+          "drawn": true,
+          "file": "plantuml/application/customer_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        }
+      }
+    },
+    {
+      "id": "shop_overview",
+      "file": "shared/view.shop_overview.yaml",
+      "viewpoint": "overview",
+      "layer": "application",
+      "names": [
+        "shop"
+      ],
+      "pinned": [],
+      "plateaus": {
+        "baseline": {
+          "drawn": true,
+          "file": "plantuml/application/shop_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "saas": {
+          "drawn": true,
+          "file": "plantuml/application/shop_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "inhouse": {
+          "drawn": true,
+          "file": "plantuml/application/shop_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "marketplace": {
+          "drawn": false,
+          "file": null,
+          "warnings": [
+            "skip `shop_overview`: it names `shop`, which the plateau `marketplace` does not have"
+          ],
+          "leftOut": []
+        }
+      }
+    },
+    {
+      "id": "commerce_overview",
+      "file": "shared/view.commerce_overview.yaml",
+      "viewpoint": "overview",
+      "layer": "application",
+      "names": [
+        "commerce"
+      ],
+      "pinned": [],
+      "plateaus": {
+        "baseline": {
+          "drawn": false,
+          "file": null,
+          "warnings": [
+            "skip `commerce_overview`: it names `commerce`, which the plateau `baseline` does not have"
+          ],
+          "leftOut": []
+        },
+        "saas": {
+          "drawn": false,
+          "file": null,
+          "warnings": [
+            "skip `commerce_overview`: it names `commerce`, which the plateau `saas` does not have"
+          ],
+          "leftOut": []
+        },
+        "inhouse": {
+          "drawn": true,
+          "file": "plantuml/application/commerce_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "marketplace": {
+          "drawn": true,
+          "file": "plantuml/application/commerce_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        }
+      }
+    },
+    {
+      "id": "marketplace_overview",
+      "file": "shared/view.marketplace_overview.yaml",
+      "viewpoint": "overview",
+      "layer": "application",
+      "names": [
+        "marketplace"
+      ],
+      "pinned": [],
+      "plateaus": {
+        "baseline": {
+          "drawn": false,
+          "file": null,
+          "warnings": [
+            "skip `marketplace_overview`: it names `marketplace`, which the plateau `baseline` does not have"
+          ],
+          "leftOut": []
+        },
+        "saas": {
+          "drawn": false,
+          "file": null,
+          "warnings": [
+            "skip `marketplace_overview`: it names `marketplace`, which the plateau `saas` does not have"
+          ],
+          "leftOut": []
+        },
+        "inhouse": {
+          "drawn": false,
+          "file": null,
+          "warnings": [
+            "skip `marketplace_overview`: it names `marketplace`, which the plateau `inhouse` does not have"
+          ],
+          "leftOut": []
+        },
+        "marketplace": {
+          "drawn": true,
+          "file": "plantuml/application/marketplace_overview.puml",
+          "warnings": [],
+          "leftOut": []
+        }
+      }
+    },
+    {
+      "id": "environments_map",
+      "file": "shared/view.environments_map.yaml",
+      "viewpoint": "map",
+      "layer": "technology",
+      "names": [
+        "prod",
+        "sandbox",
+        "staging"
+      ],
+      "pinned": [],
+      "plateaus": {
+        "baseline": {
+          "drawn": true,
+          "file": "plantuml/technology/environments_map.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "saas": {
+          "drawn": true,
+          "file": "plantuml/technology/environments_map.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "inhouse": {
+          "drawn": true,
+          "file": "plantuml/technology/environments_map.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "marketplace": {
+          "drawn": true,
+          "file": "plantuml/technology/environments_map.puml",
+          "warnings": [],
+          "leftOut": []
+        }
+      }
+    },
+    {
+      "id": "cloud_map",
+      "file": "shared/view.cloud_map.yaml",
+      "viewpoint": "map",
+      "layer": "technology",
+      "names": [
+        "prod.cloud.k8s",
+        "prod",
+        "prod.cloud"
+      ],
+      "pinned": [
+        "prod.cloud.k8s"
+      ],
+      "plateaus": {
+        "baseline": {
+          "drawn": false,
+          "file": null,
+          "warnings": [
+            "skip `cloud_map`: it is pinned on `prod.cloud.k8s`, which the plateau `baseline` does not have"
+          ],
+          "leftOut": []
+        },
+        "saas": {
+          "drawn": false,
+          "file": null,
+          "warnings": [
+            "skip `cloud_map`: it is pinned on `prod.cloud.k8s`, which the plateau `saas` does not have"
+          ],
+          "leftOut": []
+        },
+        "inhouse": {
+          "drawn": true,
+          "file": "plantuml/technology/cloud_map.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "marketplace": {
+          "drawn": true,
+          "file": "plantuml/technology/cloud_map.puml",
+          "warnings": [],
+          "leftOut": []
+        }
+      }
+    },
+    {
+      "id": "applications_map",
+      "file": "shared/view.applications_map.yaml",
+      "viewpoint": "map",
+      "layer": "application",
+      "names": [
+        "customer",
+        "psp",
+        "shop"
+      ],
+      "pinned": [
+        "customer",
+        "psp"
+      ],
+      "plateaus": {
+        "baseline": {
+          "drawn": true,
+          "file": "plantuml/application/applications_map.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "saas": {
+          "drawn": true,
+          "file": "plantuml/application/applications_map.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "inhouse": {
+          "drawn": true,
+          "file": "plantuml/application/applications_map.puml",
+          "warnings": [],
+          "leftOut": []
+        },
+        "marketplace": {
+          "drawn": true,
+          "file": "plantuml/application/applications_map.puml",
+          "warnings": [
+            "the view `applications_map` is drawn without `shop`, which the plateau `marketplace` does not have"
+          ],
+          "leftOut": [
+            "shop"
+          ]
+        }
+      }
+    }
+  ],
+  "stories": [
+    {
+      "id": "order_journey",
+      "file": "shared/story.order_journey.yaml",
+      "steps": [
+        {
+          "number": 1,
+          "view": "customer_overview",
+          "names": [
+            "customer"
+          ],
+          "at": null,
+          "against": null,
+          "comparison": null,
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 2,
+          "view": null,
+          "names": [
+            "psp"
+          ],
+          "at": null,
+          "against": null,
+          "comparison": null,
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 3,
+          "view": "environments_map",
+          "names": [
+            "prod",
+            "sandbox",
+            "staging"
+          ],
+          "at": null,
+          "against": null,
+          "comparison": null,
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "fork_tour",
+      "file": "shared/story.fork_tour.yaml",
+      "steps": [
+        {
+          "number": 1,
+          "view": "shop_overview",
+          "names": [
+            "shop"
+          ],
+          "at": "baseline",
+          "against": null,
+          "comparison": null,
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 2,
+          "view": null,
+          "names": [
+            "commerce-saas"
+          ],
+          "at": "saas",
+          "against": "baseline",
+          "comparison": "diff --plateau saas --against baseline",
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 3,
+          "view": "commerce_overview",
+          "names": [
+            "commerce"
+          ],
+          "at": "inhouse",
+          "against": "baseline",
+          "comparison": "diff --plateau inhouse --against baseline",
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 4,
+          "view": null,
+          "names": [
+            "shop"
+          ],
+          "at": "inhouse",
+          "against": "saas",
+          "comparison": "diff --plateau inhouse --against saas",
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 5,
+          "view": "marketplace_overview",
+          "names": [
+            "marketplace"
+          ],
+          "at": "marketplace",
+          "against": "inhouse",
+          "comparison": "diff --plateau marketplace --against inhouse",
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 6,
+          "view": null,
+          "names": [
+            "discovery"
+          ],
+          "at": "marketplace",
+          "against": "baseline",
+          "comparison": "diff --plateau marketplace --against baseline",
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 7,
+          "view": null,
+          "names": [
+            "customer"
+          ],
+          "at": null,
+          "against": "saas",
+          "comparison": "diff --plateau <the plateau drawn> --against saas",
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "seller_journey",
+      "file": "shared/story.seller_journey.yaml",
+      "steps": [
+        {
+          "number": 1,
+          "view": "marketplace_overview",
+          "names": [
+            "marketplace"
+          ],
+          "at": "marketplace",
+          "against": null,
+          "comparison": null,
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 2,
+          "view": "cloud_map",
+          "names": [
+            "prod.cloud.k8s",
+            "prod",
+            "prod.cloud"
+          ],
+          "at": "marketplace",
+          "against": null,
+          "comparison": null,
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        },
+        {
+          "number": 3,
+          "view": null,
+          "names": [
+            "platform"
+          ],
+          "at": "marketplace",
+          "against": "inhouse",
+          "comparison": "diff --plateau marketplace --against inhouse",
+          "drawnWhenPlateauDrawnIs": {
+            "baseline": true,
+            "saas": true,
+            "inhouse": true,
+            "marketplace": true
+          }
+        }
+      ]
+    }
+  ]
+}

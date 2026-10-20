@@ -1,0 +1,21 @@
+header:
+  kind: "archicode.morin.io/story"
+  version: "1"
+content:
+  id: "seller_journey"
+  name: "A seller joins"
+  description: "Every step is told in `marketplace`, whatever plateau is drawn."
+  steps:
+    - view: "marketplace_overview"
+      text: "A seller signs up and lists products."
+      at: "marketplace"
+    - view: "cloud_map"
+      text: "The listings run in the cloud region."
+      at: "marketplace"
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "platform"
+      text: "And the platform carries the events between sellers and shoppers."
+      at: "marketplace"
+      against: "inhouse"

@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "environments_map"
+  name: "The environments, production opened"
+  description: "The environments, production opened."
+  viewpoint: "map"
+  layer: "technology"
+  properties:
+    opened: ["prod"]
+    hidden: ["sandbox", "staging"]

@@ -435,8 +435,10 @@ function layeredBrightcartFiles(extra) {
   return Object.assign(files, extra);
 }
 
-test('the layered Brightcart with two stories and a view: the four plateaus list the same ones, and a story that names an element of one plateau only is no mistake', async () => {
-  // `commerce.cart` is declared by `inhouse` only and `seller` by `marketplace` only: the stories are told on each plateau, and exist in all of them
+test('the layered Brightcart with two stories and a view added to the ones it ships: the four plateaus list the same ones, and a story that names an element of one plateau only is no mistake', async () => {
+  // `commerce.cart` is declared by `inhouse` only and `seller` by `marketplace` only: the stories are told on each plateau, and exist in all of them. The fixture ships its own (run 0110,
+  // expected/entries.json; brightcart-views-and-stories.test.js looks at those): they are listed too, and the two stories and the view added here come with them
+  const shipped = JSON.parse(fs.readFileSync(path.join(LAYERED, '..', 'expected', 'entries.json'), 'utf8'));
   const story = (id, element) => 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + id + '"\n  steps:\n    - viewpoint: overview\n      layer: application\n      properties:\n        element: "' + element + '"\n      text: "Look."\n';
   const files = layeredBrightcartFiles({
     'stories/story.cart.yaml': story('cart_story', 'commerce.cart'),
@@ -455,8 +457,8 @@ test('the layered Brightcart with two stories and a view: the four plateaus list
   for (const drawn of state.plateauTree.ids) {
     sandbox.drawPlateau(drawn);
     assert.equal(state.layers.current, drawn);
-    assert.deepEqual(ids(sandbox.storiesList()), ['cart_story', 'seller_story'], drawn + ': both stories');
-    assert.deepEqual(ids(sandbox.savedViews()), ['cart_view'], drawn + ': the view');
+    assert.deepEqual(ids(sandbox.storiesList()), shipped.stories.map((story) => story.id).concat(['cart_story', 'seller_story']).sort(), drawn + ': every story');
+    assert.deepEqual(ids(sandbox.savedViews()), shipped.views.map((view) => view.id).concat(['cart_view']).sort(), drawn + ': every view');
     assert.deepEqual(Array.from(sandbox.entryProblemsOf(state.workspace.settings)), [], drawn + ': what they name exists in a plateau');
   }
   // in a plateau that lacks what a view names the view cannot be drawn there: it says which plateau lacks the element, and nothing is a mistake of the view

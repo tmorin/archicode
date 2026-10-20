@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "marketplace_overview"
+  name: "The marketplace"
+  description: "The marketplace: sellers, listings and settlement."
+  viewpoint: "overview"
+  layer: "application"
+  properties:
+    element: "marketplace"

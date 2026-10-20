@@ -3,7 +3,7 @@
 // src/test/resources/brightcart/layered/ (the plateaus are layers). Three things, each against the answers the generator wrote in expected/ and not against numbers typed here:
 //   - the editor draws each of the four plateaus and finds the sizes of the document;
 //   - the Changes panel of each comparison that a tool can say today (P1, P2, P3, P5) shows the counts `archicode diff` prints (BrightcartLayeredDiffTest.java reads the same file);
-//   - the save keeps what an edit does not touch (the line-preserving save of run 0055 and wave 011): every manifest of `layered/` (50 files) is
+//   - the save keeps what an edit does not touch (the line-preserving save of run 0055 and wave 011): every file of `layered/` (60 files, the views and the stories among them) is
 //     saved as it was when nothing changed, an edit of its name changes its name line and no other, an addition keeps every line it had; and the editor itself
 //     writes a rename in the manifests a plateau declares and writes it back to the bytes of the file on the disk.
 // brightcart-layered.test.js opens the same folder and says what the editor reads of it.
@@ -146,9 +146,13 @@ test('the rendition is the files the document counts', () => {
     assert.equal(texts.reduce((n, t) => n + t.split('\n').length - 1, 0), RENDITIONS[name].lines, name + ' lines');
     assert.equal(texts.reduce((n, t) => n + Buffer.byteLength(t), 0), RENDITIONS[name].bytes, name + ' bytes');
   }
-  // the layered rendition: a Plateau manifest per plateau, and the rest are manifests; the patches are counted in the Plateau manifests
+  // the layered rendition: a Plateau manifest per plateau, the views and the stories (run 0110, in the folder `shared/`, which no plateau owns), and the rest are manifests of elements;
+  // the patches are counted in the Plateau manifests
   assert.equal(LAYERED_FILES.filter((f) => f.endsWith('/plateau.yaml')).length, RENDITIONS.layered.plateauFiles);
-  assert.equal(LAYERED_FILES.length - RENDITIONS.layered.plateauFiles, RENDITIONS.layered.manifests);
+  assert.equal(LAYERED_FILES.filter((f) => /^shared\/view\./.test(f)).length, RENDITIONS.layered.views);
+  assert.equal(LAYERED_FILES.filter((f) => /^shared\/story\./.test(f)).length, RENDITIONS.layered.stories);
+  assert.equal(LAYERED_FILES.filter((f) => f.startsWith('shared/')).length, RENDITIONS.layered.views + RENDITIONS.layered.stories, 'the folder `shared/` holds the views and the stories and nothing else');
+  assert.equal(LAYERED_FILES.length - RENDITIONS.layered.plateauFiles - RENDITIONS.layered.views - RENDITIONS.layered.stories, RENDITIONS.layered.manifests);
   const patches = LAYERED_FILES.filter((f) => f.endsWith('/plateau.yaml')).reduce((n, f) => n + (parse(fs.readFileSync(path.join(LAYERED, f), 'utf8')).content.patches || []).length, 0);
   assert.equal(patches, RENDITIONS.layered.patches);
 });
@@ -218,8 +222,8 @@ for (const id of Object.keys(SIZES)) {
     const { sandbox, state } = await openLayered({ handle: mem.handle });
     sandbox.drawPlateau(id);
     assert.equal(state.layers.current, id);
-    // the elements the plateau declares: the manifests that say `plateau: <id>` (the root's say none), a plateau's own manifest and the views and stories excepted
-    const declared = state.manifestFiles.filter((mf) => (mf.header.plateau || 'baseline') === id && !/plateau$/.test(mf.header.kind));
+    // the elements the plateau declares: the manifests that say `plateau: <id>` (the root's say none), a plateau's own manifest and the views and stories excepted (which say none either)
+    const declared = state.manifestFiles.filter((mf) => (mf.header.plateau || 'baseline') === id && !/(plateau|view|story)$/.test(mf.header.kind));
     const manifests = plain(declared.map((mf) => mf.relPath));
     assert.ok(manifests.length >= 3, id + ' declares its manifests');
     const edit = (suffix) => {

@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "shop_overview"
+  name: "The shop"
+  description: "The shop and what is around it."
+  viewpoint: "overview"
+  layer: "application"
+  properties:
+    element: "shop"

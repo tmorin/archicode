@@ -61,10 +61,16 @@ async function openIn(files, settings) {
   return { sandbox, state, mem, original: Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files) };
 }
 
-/** A copy of the layered Brightcart in memory, with the plateau `draw` drawn. */
-async function openLayeredCopy(draw) {
-  const opened = await openIn(Object.assign({}, LAYERED_FILES));
-  opened.original = Object.assign({}, LAYERED_FILES);
+/**
+ * The layered Brightcart without the views and the stories it ships in `shared/` (run 0110, #115). They name `commerce-saas`, `shop` and `marketplace`, so they refuse to
+ * delete these (that they do is tested on the shipped files in brightcart-views-and-stories.test.js); the tests that delete an element start from the elements and the plateaus.
+ */
+const LAYERED_ELEMENTS = Object.fromEntries(Object.entries(LAYERED_FILES).filter(([file]) => !file.startsWith('shared/')));
+
+/** A copy of the layered Brightcart in memory, with the plateau `draw` drawn; `files` are the files of the copy (the whole fixture by default). */
+async function openLayeredCopy(draw, files) {
+  const opened = await openIn(Object.assign({}, files || LAYERED_FILES));
+  opened.original = Object.assign({}, files || LAYERED_FILES);
   if (draw) opened.sandbox.drawPlateau(draw);
   return opened;
 }
@@ -288,7 +294,7 @@ test('a technology element is removed with its layer in the patch', async () => 
 });
 
 test('an element the plateau declares is deleted from its manifests, and the patches of the plateau that name it go with it', async () => {
-  const opened = await openLayeredCopy('saas');
+  const opened = await openLayeredCopy('saas', LAYERED_ELEMENTS);
   const { sandbox, state } = opened;
   assert.equal(state.index.application.get('commerce-saas').declaredIn, 'saas');
   const impact = sandbox.computeDeleteImpact('commerce-saas', 'application');
@@ -925,7 +931,7 @@ test('after the author says yes to a create, the new element is the selection, a
 });
 
 test('a write that fails the guard after it changed the manifests puts back everything: text, content, marks, removals', async () => {
-  const opened = await openLayeredCopy();
+  const opened = await openLayeredCopy(undefined, LAYERED_ELEMENTS);
   const { sandbox, state } = opened;
   const everything = () => plain({
     files: state.manifestFiles.map((f) => [f.relPath, f.rawText, f.dirty, f.header, f.content]),

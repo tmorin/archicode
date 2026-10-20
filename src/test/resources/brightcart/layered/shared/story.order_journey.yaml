@@ -1,0 +1,17 @@
+header:
+  kind: "archicode.morin.io/story"
+  version: "1"
+content:
+  id: "order_journey"
+  name: "An order, from the shopper to the servers"
+  description: "Told in whatever plateau is drawn: no step names one."
+  steps:
+    - view: "customer_overview"
+      text: "A shopper browses and buys."
+    - viewpoint: "overview"
+      layer: "application"
+      properties:
+        element: "psp"
+      text: "The payment provider takes the money."
+    - view: "environments_map"
+      text: "And all of it runs in these environments."
