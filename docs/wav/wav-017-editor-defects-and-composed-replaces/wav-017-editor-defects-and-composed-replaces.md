@@ -98,7 +98,7 @@ wave_manifest:
       slug: remove-buttons-address-the-file
       phase: P0
       depends_on: []
-      run: null
+      run: 0120
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
