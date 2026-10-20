@@ -214,7 +214,7 @@ wave_manifest:
       slug: css-variables-audit
       phase: P2
       depends_on: [W-3, W-5, W-6, W-8]
-      run: null
+      run: 0116
       delegation: standard
       likely_paths:
         - 'src/test/javascript/viewpoint-kernel/**'
