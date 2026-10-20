@@ -202,7 +202,7 @@ wave_manifest:
       slug: wrapped-diff-table
       phase: P1
       depends_on: []
-      run: null
+      run: 0115
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/**'
