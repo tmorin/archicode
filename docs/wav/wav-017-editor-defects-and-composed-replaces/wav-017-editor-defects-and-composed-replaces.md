@@ -85,7 +85,7 @@ wave_manifest:
       slug: view-element-removed-by-a-facet
       phase: P0
       depends_on: []
-      run: null
+      run: 0119
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/**'

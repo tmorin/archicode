@@ -11,6 +11,7 @@ import io.morin.archicode.rendering.Renderer;
 import io.morin.archicode.rendering.gap.GapFormat;
 import io.morin.archicode.rendering.gap.GapReport;
 import io.morin.archicode.resource.view.View;
+import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.KernelViewpointFactory;
@@ -25,7 +26,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
@@ -160,25 +163,101 @@ public class GenerateViewsCommand implements Runnable {
             );
         }
 
+        // a view named with `-i` that a facet leaves without its element is a mistake of the command: it is told before the
+        // first folder is written, which means the facets (and the comparison) are made before the first view is drawn
+        val named = !viewIds.isEmpty();
+        val facets = named ? facetWorkspaces(workspace, null) : null;
+        Workspace base = null;
+        Comparison comparison = null;
+        Workspace union = null;
+        Map<Settings.Facets.Facet, Workspace> unionFacets = null;
+        if (named && againstId != null) {
+            base = workspaceFactory.create(workspacePath, viewsDirPath, againstId);
+            comparison = new PlateauComparer(mapperFactory.createLazy(MapperFormat.JSON)).compare(base, workspace);
+            union = unionOf(workspace, base, comparison, againstId);
+            unionFacets = facetWorkspaces(union, comparison);
+        }
+        if (named) {
+            requireViewsKeepTheirElement(workspace, facets);
+            if (union != null) {
+                requireViewsKeepTheirElement(union, unionFacets);
+            }
+        }
+
         // the views of the workspace, or of the plateau drawn
-        renderWorkspaces(workspace, null);
+        renderWorkspaces(workspace, null, facets);
 
         if (againstId == null) {
             // a state written by hand on a plateau that is not compared
             warnings.warnAll(StateTags.warnings(workspace, null));
             return;
         }
-        val base = workspaceFactory.create(workspacePath, viewsDirPath, againstId);
-        val comparison = new PlateauComparer(mapperFactory.createLazy(MapperFormat.JSON)).compare(base, workspace);
-        // from the plateau already loaded: a comparison loads each of its two plateaus once
-        val union = workspaceFactory.withViewsPath(
-            workspaceFactory.createUnion(workspace, base, comparison),
-            workspace.getSettings().getViews().getPath() + "-vs-" + againstId
-        );
+        if (base == null) {
+            base = workspaceFactory.create(workspacePath, viewsDirPath, againstId);
+            comparison = new PlateauComparer(mapperFactory.createLazy(MapperFormat.JSON)).compare(base, workspace);
+            // from the plateau already loaded: a comparison loads each of its two plateaus once
+            union = unionOf(workspace, base, comparison, againstId);
+        }
         warnings.warnAll(comparison.getWarnings());
         warnings.warnAll(StateTags.warnings(union, comparison));
         writeGap(union, comparison, Removal.cascade(workspace.getRemovals(), base));
-        renderWorkspaces(union, comparison);
+        renderWorkspaces(union, comparison, unionFacets);
+    }
+
+    private Workspace unionOf(Workspace workspace, Workspace base, Comparison comparison, String againstId) {
+        return workspaceFactory.withViewsPath(
+            workspaceFactory.createUnion(workspace, base, comparison),
+            workspace.getSettings().getViews().getPath() + "-vs-" + againstId
+        );
+    }
+
+    /** The workspace each custom facet makes of the one it is applied to, in the order of the file. */
+    private Map<Settings.Facets.Facet, Workspace> facetWorkspaces(Workspace workspace, Comparison comparison) {
+        val made = new LinkedHashMap<Settings.Facets.Facet, Workspace>();
+        workspace
+            .getSettings()
+            .getFacets()
+            .getCustoms()
+            .forEach(facet -> made.put(facet, workspaceFactory.create(workspace, facet, comparison)));
+        return made;
+    }
+
+    /**
+     * A view the command is asked for by its id ({@code -i}) is drawn once for each facet. When a facet removes the element
+     * the view is about, the kernel can only say {@code dangling reference: x}, after the folders before it are written and
+     * not the ones after it. The author asked for that view by name, so it is not skipped: the command fails, in one line that
+     * names the view, the element and the facet, and nothing is written. An element the plateau drawn lacks is not this
+     * mistake (the view is skipped with a warning then, see {@code canBeDrawnInPlateau}), and an entry of a map that a facet
+     * removes is dropped without a word (issue #68).
+     *
+     * @param workspace the workspace the facets were applied to
+     * @param facets    the workspaces of its facets
+     */
+    private void requireViewsKeepTheirElement(Workspace workspace, Map<Settings.Facets.Facet, Workspace> facets) {
+        for (val viewId : new java.util.TreeSet<>(viewIds)) {
+            val found = workspace.viewIndex.searchView(viewId);
+            if (found.isEmpty() || !viewpointServiceRepository.has(found.get().getViewpoint())) {
+                continue;
+            }
+            val view = found.get();
+            if (KernelViewpointFactory.MAP.equals(view.getViewpoint()) || view.getProperties() == null) {
+                continue;
+            }
+            val element = view.getProperties().path("element").asText("");
+            if (element.isBlank() || workspace.resolveMainIndexForView(view).searchElement(element).isEmpty()) {
+                continue;
+            }
+            for (val faceted : facets.entrySet()) {
+                if (faceted.getValue().resolveMainIndexForView(view).searchElement(element).isEmpty()) {
+                    throw new ArchiCodeException(
+                        "the view `%s` cannot be drawn: it names `%s`, which the facet `%s` removes",
+                        viewId,
+                        element,
+                        faceted.getKey().getName()
+                    );
+                }
+            }
+        }
     }
 
     /** The table of changes next to the views of the comparison, for a reviewer who reads text. */
@@ -195,12 +274,24 @@ public class GenerateViewsCommand implements Runnable {
         }
     }
 
-    /** The global views if enabled, then those of each custom facet; the views of a comparison when it is given. */
-    private void renderWorkspaces(Workspace workspace, Comparison comparison) {
+    /**
+     * The global views if enabled, then those of each custom facet; the views of a comparison when it is given.
+     *
+     * @param facets the workspaces of the facets when they are already made, else null
+     */
+    private void renderWorkspaces(
+        Workspace workspace,
+        Comparison comparison,
+        Map<Settings.Facets.Facet, Workspace> facets
+    ) {
         if (workspace.getSettings().getFacets().isGlobalEnabled()) {
             renderWorkspace(workspace, workspace, comparison);
         }
 
+        if (facets != null) {
+            facets.values().forEach(faceted -> renderWorkspace(faceted, workspace, comparison));
+            return;
+        }
         workspace
             .getSettings()
             .getFacets()
@@ -279,8 +370,8 @@ public class GenerateViewsCommand implements Runnable {
      * elements is there, and a view whose element is not there, cannot be drawn in this plateau and are skipped, with a
      * warning. The editor does the same and says so in the view. A workspace without plateaus is not concerned: a name that
      * is not there is then a mistake of the view. The workspace of a facet is asked about the plateau it was made from: what
-     * the facet removes is the facet's (it is dropped from a map without a word, and a view of an element it removes fails
-     * as it always did).
+     * the facet removes is the facet's (it is dropped from a map without a word, and a view of an element it removes is a mistake
+     * told before anything is written, see {@code requireViewsKeepTheirElement}).
      *
      * @return whether the view is to be drawn
      */
