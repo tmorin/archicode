@@ -626,14 +626,16 @@ test('the views and the stories that workspace.yaml keeps are looked at too, aft
   ]);
 });
 
-test('a view or a story that says `plateau:` is told even when the workspace has no plateau: the key names none', async () => {
+test('a view or a story that says `plateau:` is not told, with or without plateaus in the workspace: the key names none and means nothing', async () => {
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry'),
     'story.tour.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  plateau: later\n  version: "1"\ncontent:\n  id: "tour"\n  steps: []\n'
   });
   assert.equal(state.plateauTree.layered, false);
-  assert.match(sandbox.renderPlateauTreeHtml(), /`story.tour.yaml`|<code>story\.tour\.yaml<\/code>|story\.tour\.yaml/);
-  assert.match(sandbox.renderPlateauTreeHtml(), /is ignored: a story exists whatever plateau is drawn/);
+  assert.deepEqual(Array.from(state.plateauTree.warnings), []);
+  assert.deepEqual(Array.from(state.plateauTree.problems), []);
+  assert.deepEqual(Array.from(state.plateauTree.ids), ['baseline']);
+  assert.doesNotMatch(sandbox.renderPlateauTreeHtml(), /story\.tour\.yaml|ignored/);
 });
 
 test('a mistake in the tree leaves baseline drawn and the other nodes out, with the reason', async () => {

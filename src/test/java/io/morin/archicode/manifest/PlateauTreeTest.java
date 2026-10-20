@@ -114,18 +114,14 @@ class PlateauTreeTest {
         write("manifests/story.yaml", manifest("story", "", "  id: \"tour\"\n"));
         val parsed = parse();
 
-        // a view and a story belong to no plateau: the key of the view names none, and is told as ignored
+        // a view and a story belong to no plateau: the key of the view names none, and is not told (wave 016, run 0107)
         assertTrue(parsed.plateaus().isLayered());
         assertEquals(
             "`manifests/later.yaml` is a manifest of kind `archicode.morin.io/plateau`",
             parsed.plateaus().layeredBy()
         );
-        assertEquals(
-            List.of(
-                "`manifests/later-view.yaml` is a view and says `plateau: later` in its header, which is ignored: a view exists whatever plateau is drawn"
-            ),
-            parsed.warnings()
-        );
+        assertEquals(List.of(), parsed.plateaus().warnings());
+        assertEquals(List.of("baseline", "later"), parsed.plateaus().ids());
 
         val baseline = parsed.ofPlateau("baseline");
         assertEquals(Set.of("shop"), references(baseline));

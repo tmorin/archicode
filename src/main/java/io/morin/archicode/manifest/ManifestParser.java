@@ -79,7 +79,6 @@ public class ManifestParser {
         // PlateauTree.redeclared). The views and the stories belong to no plateau (wave 015, run 0100): they are declared once
         // in the whole workspace, under the key UNTIED
         val declarations = new HashMap<String, Map<String, Map<String, List<String>>>>();
-        val ignored = new ArrayList<String>();
         // the plateaus: the manifests of kind plateau, the ids that headers name, and the first manifest that uses layers
         val plateauManifests = new ArrayList<PlateauTree.Declared>();
         val plateauHeaders = new TreeMap<String, List<String>>();
@@ -122,8 +121,8 @@ public class ManifestParser {
             val written = resource.getHeader().getPlateau();
             val plateau = written == null ? Plateau.BASELINE : written;
             if (written != null && (item instanceof View || item instanceof Story)) {
-                // a view and a story exist whatever plateau is drawn: the key says nothing, and names no plateau
-                ignored.add(ignoredPlateauWarning(source, item instanceof View ? "view" : "story", written));
+                // a view and a story exist whatever plateau is drawn: the key is accepted, means nothing and is not told (wave 016,
+                // run 0107, decision of the author on issue #29), and it names no plateau: a plateau that only a story names is none
             } else if (written != null && !(item instanceof Plateau)) {
                 plateauHeaders.computeIfAbsent(written, id -> new ArrayList<>()).add(source);
                 if (layeredBy == null) {
@@ -195,7 +194,7 @@ public class ManifestParser {
         if (!problems.isEmpty()) {
             throw new ArchiCodeException("%s", String.join("\n", problems));
         }
-        return new Parsed(map, views, stories, tree, ignored, declaredReferences(declarations));
+        return new Parsed(map, views, stories, tree, declaredReferences(declarations));
     }
 
     /**
@@ -203,20 +202,6 @@ public class ManifestParser {
      * (an id is made of {@code [a-z0-9_-]}), so no plateau of the tree is ever asked for it.
      */
     private static final String UNTIED = "*";
-
-    /**
-     * The sentence for a view or a story that says {@code plateau:} in its header, which is ignored (wave 015, run 0100,
-     * issue #100). The editor says the same ({@code ignoredPlateauWarning} in {@code standalone.html}): keep them alike.
-     */
-    static String ignoredPlateauWarning(String source, String noun, String plateau) {
-        return String.format(
-            "`%s` is a %s and says `plateau: %s` in its header, which is ignored: a %s exists whatever plateau is drawn",
-            source,
-            noun,
-            plateau,
-            noun
-        );
-    }
 
     /** The references the manifests declare, by layer ({@code application}, {@code technology}), in any plateau. */
     private static Map<String, Set<String>> declaredReferences(
@@ -420,8 +405,6 @@ public class ManifestParser {
      * @param placedStories the stories, with the file of each (a story belongs to no plateau)
      * @param plateaus the plateaus of the workspace and how they stack (see {@link PlateauTree}); {@code baseline} alone for a
      *                 workspace that uses none
-     * @param warnings the warnings of the reading itself, to be told when the command ends: a view or a story that says
-     *                 {@code plateau:} in its header
      * @param declared the references that the manifests declare, whatever the plateau, by layer ({@code application},
      *                 {@code technology}): what "exists in at least one plateau" means (see {@code LayerLoader})
      */
@@ -430,7 +413,6 @@ public class ManifestParser {
         List<Placed<View>> placedViews,
         List<Placed<Story>> placedStories,
         PlateauTree plateaus,
-        List<String> warnings,
         Map<String, Set<String>> declared
     ) {
         /** The views. */
@@ -469,7 +451,7 @@ public class ManifestParser {
                     own.put(category, some);
                 }
             });
-            return new Parsed(own, List.of(), List.of(), plateaus, List.of(), declared);
+            return new Parsed(own, List.of(), List.of(), plateaus, declared);
         }
     }
 

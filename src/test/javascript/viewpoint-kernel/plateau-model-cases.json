@@ -3,7 +3,7 @@
   "cases": [
     {
       "id": "M01",
-      "what": "a manifest of any kind accepts plateau: in its header (an element of each layer, a view, a story); the plateau exists through the header of an element, a view and a story belong to no plateau and the key is ignored with a warning, and only the manifests of baseline are drawn until the layers are loaded",
+      "what": "a manifest of any kind accepts plateau: in its header (an element of each layer, a view, a story); the plateau exists through the header of an element, a view and a story belong to no plateau and the key means nothing for them: it loads with no warning and no error (wave 016, run 0107), and only the manifests of baseline are drawn until the layers are loaded",
       "files": {
         "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
         "manifests/later-system.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"mail\"\n  name: \"Mail\"\n",
@@ -17,10 +17,7 @@
         "loaded": [
           "shop"
         ],
-        "warnings": [
-          "`manifests/later-story.yaml` is a story and says `plateau: later` in its header, which is ignored: a story exists whatever plateau is drawn",
-          "`manifests/later-view.yaml` is a view and says `plateau: later` in its header, which is ignored: a view exists whatever plateau is drawn"
-        ]
+        "warnings": []
       }
     },
     {
@@ -1202,7 +1199,7 @@
     },
     {
       "id": "M84",
-      "what": "a story that says plateau: is read, the key is ignored with one warning, and the key names no plateau: the workspace has none (run 0100, issue #100)",
+      "what": "a story that says plateau: is read, the key means nothing, with no warning and no error, and the key names no plateau: the workspace has none (run 0100, issue #100; silent since run 0107)",
       "files": {
         "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
         "manifests/tour.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\n  plateau: later\ncontent:\n  id: \"tour\"\n  name: \"Tour\"\n"
@@ -1211,14 +1208,12 @@
         "loaded": [
           "shop"
         ],
-        "warnings": [
-          "`manifests/tour.yaml` is a story and says `plateau: later` in its header, which is ignored: a story exists whatever plateau is drawn"
-        ]
+        "warnings": []
       }
     },
     {
       "id": "M85",
-      "what": "the key is ignored when it says baseline too",
+      "what": "the key means nothing when it says baseline too: no message",
       "files": {
         "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
         "manifests/later-overview.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\n  plateau: baseline\ncontent:\n  id: \"overview\"\n  viewpoint: \"overview\"\n",
@@ -1228,9 +1223,7 @@
         "loaded": [
           "shop"
         ],
-        "warnings": [
-          "`manifests/later-overview.yaml` is a view and says `plateau: baseline` in its header, which is ignored: a view exists whatever plateau is drawn"
-        ]
+        "warnings": []
       }
     },
     {
@@ -1247,6 +1240,22 @@
         "errors": [
           "the story `tour` is declared twice: in `manifests/tour-a.yaml` and `manifests/tour-b.yaml`"
         ]
+      }
+    },
+    {
+      "id": "M87",
+      "what": "a story and a view that say plateau: with an id that is no plateau, and not even a valid id, load with no warning and no error: the key names no plateau and the tree has none but its own (wave 016, run 0107, decision T1)",
+      "files": {
+        "manifests/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n",
+        "manifests/later.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"later\"\n",
+        "manifests/tour.yaml": "header:\n  kind: \"archicode.morin.io/story\"\n  version: \"1\"\n  plateau: \"Not A Plateau!\"\ncontent:\n  id: \"tour\"\n  name: \"Tour\"\n",
+        "manifests/overview.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\n  plateau: ghost\ncontent:\n  id: \"overview\"\n  viewpoint: \"overview\"\n"
+      },
+      "expect": {
+        "loaded": [
+          "shop"
+        ],
+        "warnings": []
       }
     }
   ]
