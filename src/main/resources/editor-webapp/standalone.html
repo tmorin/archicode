@@ -11834,8 +11834,10 @@ function readElementDraft(reference, layer) {
 
   const name = normalizeOptionalText(nameInput ? nameInput.value : '');
   const description = normalizeOptionalText(descriptionInput ? descriptionInput.value : '');
+  const current = findElementRecord(reference, category);
   return {
     valid: true,
+    renamed: current && String(current.id) !== idResult.newId ? { from: reference, to: idResult.newReference } : null, // what `commitElementWithDraft` asks about before it writes (run 0113)
     apply(node) {
       const oldId = node.id;
       if (String(oldId) !== idResult.newId) node.id = idResult.newId;
@@ -11863,6 +11865,18 @@ function commitElementWithDraft(reference, structuralFn) {
   const layer = layerOfReference(reference) || undefined;
   const draft = readElementDraft(reference, layer);
   if (!draft.valid) return false;
+  // wave 016 (run 0113, #116): a rename rewrites the views and the stories everywhere, and a plateau beside the one drawn may still declare the old reference. The author is told
+  // first, in a dialog, which plateaus and which views and steps; the write waits for the answer, and is the same write as without the dialog.
+  const impact = draft.renamed ? renameSiblingImpact(draft.renamed.from, draft.renamed.to, layerOfReference(reference) || 'application') : null;
+  if (impact) {
+    openAppDialog({ kind: 'rename-siblings', reference, impact, plateau: impact.plateau, onConfirm: () => { writeElementDraft(reference, layer, draft, structuralFn); } });
+    return false; // "Save all changes" waits, as for the dialog of the plateaus a write changes
+  }
+  return writeElementDraft(reference, layer, draft, structuralFn);
+}
+
+/** The write of `commitElementWithDraft`, once the draft is read and the author has said yes to whatever was asked. Returns false when it did not write (a refusal, or a dialog is open). */
+function writeElementDraft(reference, layer, draft, structuralFn) {
   try {
     // a rename rewrites the references to the element, in the model and in the UI state, inside the commit (DEC-8)
     const written = commitElementEdit(reference, (node) => {
@@ -17304,6 +17318,86 @@ function rewriteSavedViewReferences(oldRef, newRef, layer) {
   return changed;
 }
 
+/** The references a recipe (a view, or a step that carries one) names in `layer`: the ones `rewriteRecipeReferences` rewrites. Keep the two in step. */
+function recipeNamedReferences(recipe, layer) {
+  const properties = recipe.properties;
+  if (!isPlainObject(properties) || viewLayerOf(recipe) !== layer) return [];
+  if (recipe.viewpoint === 'map') return ['pinned', 'hidden', 'opened'].reduce((all, key) => all.concat(Array.isArray(properties[key]) ? properties[key] : []), []).filter((reference) => typeof reference === 'string');
+  return typeof properties.element === 'string' ? [properties.element] : [];
+}
+
+/**
+ * What a rename of `oldRef` to `newRef` (in `layer`, in the plateau drawn) leaves behind (wave 016, run 0113, #116). A rename rewrites the files of the plateau drawn and of the
+ * plateaus that stand on it (`writeScopeHas`), and the views and the stories of the whole workspace, which belong to no plateau (run 0100). A plateau that is neither (a plateau
+ * beside it, or one that stands on such a plateau) is not rewritten, and keeps the old reference in its own model: a view that names the element is then rewritten to a name that
+ * plateau lacks, and cannot be drawn there (`viewLacksInPlateau`). Which plateaus keep it is read from the model each plateau resolves (`layerModelOf`), so a plateau that only
+ * inherits the element from another plateau counts as much as one that declares it (`declaredIn` says which). Returns null when nothing would break (no plateau is layered, the
+ * plateau drawn is baseline, which every plateau stands on, the element is not declared in the plateau drawn, so the write refuses it with its own sentence, no plateau keeps the
+ * reference, or no view and no step names it where it stays), else `{ from, to, plateau, plateaus: [{ id, name, declaredIn, references }], views: [{ id, label, plateaus }],
+ * steps: [{ story, label, number, plateaus }] }`. Reads; writes nothing.
+ */
+function renameSiblingImpact(oldRef, newRef, layer) {
+  const drawn = writingPlateau();
+  if (drawn === null || drawn === BASELINE_PLATEAU) return null;
+  const own = AppState.index[layer] ? AppState.index[layer].get(oldRef) : null;
+  if (!own || own.declaredIn !== drawn) return null;
+  const settings = AppState.workspace.settings;
+  const below = (reference) => reference === oldRef || reference.indexOf(oldRef + '.') === 0;
+  const plateaus = [];
+  for (const id of AppState.plateauTree.ids) {
+    if (id === drawn || layerIsBelow(id, drawn)) continue; // the plateau drawn, and the plateaus that stand on it, are rewritten
+    const model = layerModelOf(id, settings);
+    const references = Array.from(model.index[layer].keys()).filter(below);
+    if (!references.length) continue;
+    const record = model.index[layer].get(oldRef);
+    plateaus.push({ id, name: layerPlateauModel(id).name, declaredIn: record ? record.declaredIn : null, references });
+  }
+  if (!plateaus.length) return null;
+  const lost = (recipe) => { // the plateaus where the recipe names an element that the rename takes the name of
+    const named = recipeNamedReferences(recipe, layer).filter((reference) => rewriteReferenceValue(reference, oldRef, newRef) !== reference);
+    return plateaus.filter((plateau) => named.some((reference) => plateau.references.includes(reference))).map((plateau) => plateau.id);
+  };
+  const views = [];
+  for (const view of savedViews()) {
+    const where = lost(view);
+    if (where.length) views.push({ id: view.id, label: viewLabel(view), plateaus: where });
+  }
+  const steps = [];
+  for (const story of storiesList()) {
+    (Array.isArray(story.steps) ? story.steps : []).forEach((step, i) => {
+      if (!isPlainObject(step) || step.view) return;
+      const where = lost(step);
+      if (where.length) steps.push({ story: story.id, label: storyLabel(story), number: i + 1, plateaus: where });
+    });
+  }
+  if (!views.length && !steps.length) return null;
+  return { from: oldRef, to: newRef, plateau: drawn, plateaus, views, steps };
+}
+
+/** The Rename dialog of a layered workspace when plateaus beside the one drawn keep the old reference (`renameSiblingImpact`): its title, body and buttons. */
+function renderRenameSiblingsDialogHtml(dialog) {
+  const impact = dialog.impact;
+  const code = (text) => '<code>' + escapeHtml(text) + '</code>';
+  const list = (items) => '<ul class="layer-confirm-list">' + items.join('') + '</ul>';
+  const where = (ids) => ' <span class="muted">in ' + ids.map(code).join(', ') + '</span>';
+  const record = findElementRecord(dialog.reference, layerOfReference(dialog.reference) || 'application');
+  const label = record ? (record.name || record.id) : dialog.reference;
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+  const keepers = impact.plateaus.map((plateau) => '<li>' + code(plateau.id) + (plateau.name ? ' ' + escapeHtml(plateau.name) : '') +
+    (plateau.declaredIn && plateau.declaredIn !== plateau.id ? ' <span class="muted">(inherits it from ' + code(plateau.declaredIn) + ')</span>' : '') + '</li>');
+  let body = '<p class="app-dialog-subject">' + code(impact.from) + ' becomes ' + code(impact.to) + ' in the plateau ' + code(impact.plateau) + ', and in the plateaus that stand on it.</p>' +
+    '<p>' + (impact.plateaus.length === 1 ? 'This plateau does' : 'These ' + impact.plateaus.length + ' plateaus do') + ' not stand on ' + code(impact.plateau) + ' and still ' + (impact.plateaus.length === 1 ? 'has' : 'have') + ' ' + code(impact.from) + ' (the rename does not reach ' + (impact.plateaus.length === 1 ? 'it' : 'them') + '):</p>' + list(keepers) +
+    '<p>Views and stories belong to no plateau: they follow the rename everywhere, so ' + (impact.views.length + impact.steps.length === 1 ? 'this one cannot' : 'these ' + (impact.views.length + impact.steps.length) + ' cannot') + ' be drawn any more in the plateaus that keep the old reference:</p>' +
+    list(impact.views.map((view) => '<li>the view ' + escapeHtml(view.label) + ' ' + code(view.id) + where(view.plateaus) + '</li>')
+      .concat(impact.steps.map((step) => '<li>the story ' + escapeHtml(step.label) + ' ' + code(step.story) + ', step ' + step.number + where(step.plateaus) + '</li>'))) +
+    '<p class="muted">To keep them whole, cancel, draw ' + (impact.plateaus.length === 1 ? 'that plateau' : 'each of these plateaus') + ' and give the element the same new id there: once every plateau that has it uses ' + code(impact.to) + ', the views are drawn in all of them. Or rename here and repair the views in ' + (impact.plateaus.length === 1 ? 'that plateau' : 'those plateaus') + ' afterwards.</p>';
+  return {
+    title: 'Rename “' + label + '”: ' + plural(impact.plateaus.length, 'plateau keeps', 'plateaus keep') + ' the old reference',
+    body,
+    actions: '<button type="button" data-action="dialog-cancel" data-dialog-autofocus>Cancel</button><button type="button" class="btn-primary" data-action="dialog-submit">Rename anyway</button>'
+  };
+}
+
 // ---- Editing a view from its page in the Library ----
 // The attributes of a view are controls on its page (run 0029, TDD-0029). An edit changes the entry of the view in memory: it is marked
 // changed like any entry (its manifest is re-serialised, "modified" shows, "Save all changes" writes it, "Cancel" gives it up), the
@@ -17639,6 +17733,11 @@ function renderAppDialogHtml() {
     body = '<p class="app-dialog-subject">' + escapeHtml(appDialog.summary) + '</p>' +
       '<p>' + (appDialog.changed.length === 1 ? 'The plateau that inherits it changes too:' : 'The ' + appDialog.changed.length + ' plateaus that inherit it change too:') + '</p>' +
       '<ul class="layer-confirm-list">' + appDialog.changed.map((id) => '<li><code>' + escapeHtml(id) + '</code>' + (layerPlateauModel(id).name ? ' ' + escapeHtml(layerPlateauModel(id).name) : '') + '</li>').join('') + '</ul>';
+  } else if (appDialog.kind === 'rename-siblings') {
+    const renaming = renderRenameSiblingsDialogHtml(appDialog);
+    title = renaming.title;
+    body = renaming.body;
+    actions = renaming.actions;
   } else if (appDialog.kind === 'plateau-delete') {
     const deletion = renderPlateauDeleteDialogHtml(appDialog);
     title = deletion.title;
@@ -17679,7 +17778,7 @@ function renderAppDialogHtml() {
     body = '<label class="app-dialog-field" for="app-dialog-text">' + escapeHtml(appDialog.label) + '</label>' +
       '<input type="text" id="app-dialog-text" data-dialog-text data-dialog-autofocus value="' + escapeHtml(appDialog.value || '') + '">';
   }
-  return '<div class="app-dialog-backdrop"><div class="app-dialog' + (appDialog.kind === 'move' || appDialog.kind === 'layer-confirm' || appDialog.kind === 'mistakes' || appDialog.kind === 'plateau-delete' ? ' app-dialog-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
+  return '<div class="app-dialog-backdrop"><div class="app-dialog' + (appDialog.kind === 'move' || appDialog.kind === 'layer-confirm' || appDialog.kind === 'rename-siblings' || appDialog.kind === 'mistakes' || appDialog.kind === 'plateau-delete' ? ' app-dialog-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">' +
     '<h2 id="app-dialog-title">' + escapeHtml(title) + '</h2>' + body +
     '<div class="app-dialog-error" id="app-dialog-error" role="alert">' + (appDialog.error ? escapeHtml(appDialog.error) : '') + '</div>' +
     '<div class="app-dialog-actions">' + (actions !== null ? actions :
@@ -17708,7 +17807,7 @@ function submitAppDialog(values) {
     const line = document.getElementById('app-dialog-error');
     if (line) line.textContent = message;
   };
-  if (dialog.kind === 'layer-confirm') { // the author says yes to the plateaus a write changes (see `guardedLayerWrite`)
+  if (dialog.kind === 'layer-confirm' || dialog.kind === 'rename-siblings') { // the author says yes to the plateaus a write changes (see `guardedLayerWrite`), or to the views a rename leaves behind (`renameSiblingImpact`)
     appDialog = null;
     pendingFocusSelector = dialog.returnFocus;
     confirmLayerWrite(dialog);
