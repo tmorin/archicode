@@ -186,7 +186,7 @@ wave_manifest:
       slug: technology-map-apps-and-relations
       phase: P1
       depends_on: [W-4]
-      run: null
+      run: 0114
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'
