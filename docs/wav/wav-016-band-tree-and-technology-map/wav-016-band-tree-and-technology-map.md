@@ -235,7 +235,7 @@ wave_manifest:
       slug: manual-and-tutorial-016
       phase: P2
       depends_on: [W-1, W-2, W-3, W-4, W-5, W-6, W-7, W-8, W-9, W-10, W-11]
-      run: null
+      run: 0118
       delegation: standard
       likely_paths:
         - 'src/doc/**'
