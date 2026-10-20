@@ -293,6 +293,7 @@
   .changes-shown { margin: 0; font-size: 0.82rem; font-weight: 600; }
   .changes-walk { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
   .changes-position { font-size: 0.8rem; color: var(--muted); }
+  .changes-detail { padding: 0.4rem 0; }
   .what-changed { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
   .what-changed .inspection-subhead { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
   .change-natures { margin: 0; }
@@ -12716,7 +12717,7 @@ function goToChange(row, focus) {
 }
 
 /** Next change / Previous change: the walk stops at the ends of the list (the button there is disabled), it does not wrap. Returns whether the reader moved. */
-function walkChange(direction) {
+function walkChange(direction, options) {
   const state = comparisonState();
   if (!state || !state.changes) return false;
   const filter = changesFilterFor(state);
@@ -12725,9 +12726,51 @@ function walkChange(direction) {
   const row = neighbourChange(rows, filter, current, direction);
   if (!row) return false;
   const further = neighbourChange(rows, filter, row, direction);
-  goToChange(row, '[data-action="change-' + (further ? direction === 'previous' ? 'previous' : 'next' : direction === 'previous' ? 'next' : 'previous') + '"]'); // at the end the other button keeps the focus
+  goToChange(row, options && options.keepFocus ? null : '[data-action="change-' + (further ? direction === 'previous' ? 'previous' : 'next' : direction === 'previous' ? 'next' : 'previous') + '"]'); // at the end the other button keeps the focus; the shortcut moves the focus to no control
   return true;
 }
+
+/**
+ * Does the page have a Changes list a reader can walk: a comparison that can be listed (not loading, not refused), a page that has the list, and the right panel not hidden by a maximized
+ * diagram. The list may be one tab away (the Selected or View tab is showing): the walk brings the Changes tab back, as a button of the list would have been used.
+ */
+function changesListIsOnPage() {
+  const state = comparisonState();
+  if (!state || state.problems || state.pending || !state.changes) return false;
+  if (currentPerspective === 'plateaus') return true;
+  if (diagramMaximized) return false;
+  if (currentPerspective === 'library') return libraryChangesState() !== null;
+  return comparisonPanelOn();
+}
+
+/** Is this element where the reader types: an input, a textarea, a select, a contenteditable, or a code editor of the page (CodeMirror: Files, the YAML and JSON editors of the forms)? */
+function isTypingTarget(el) {
+  if (!el) return false;
+  const tag = String(el.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable) return true;
+  return !!(el.closest && el.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="searchbox"], [role="combobox"], .cm-editor'));
+}
+
+/** The keys of the walk, one letter each: J goes to the next change, K to the previous one (the pair of the web's lists; no bracket, which an AZERTY keyboard types with AltGr). */
+const CHANGES_WALK_KEYS = { j: 'next', k: 'previous' };
+
+/**
+ * The keyboard shortcut of *Next change* and *Previous change* (wave 016, run 0112, #113): `walkChange`, the walk of the buttons, in the same order with the same filters and the same
+ * stops. It leaves the key alone, so that the browser's and the page's other shortcuts are free, when a modifier is held (Shift included), when the reader types (an input, a textarea,
+ * a select, a contenteditable, a code editor: the event target and the focused element are both looked at), when a dialog, the help or the menu of the header is open, when a rejected
+ * YAML text is waiting for its author, and when no Changes list is on screen. It writes nothing in the address by itself. The control that had the focus keeps it when the redraw keeps it (a diagram box, a tree row, a control of the header); no control of the panel takes it unless the focus was on the panel.
+ */
+function handleChangesKeydown(e) {
+  const direction = CHANGES_WALK_KEYS[String(e.key || '').toLowerCase()];
+  if (!direction || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.defaultPrevented || e.isComposing) return;
+  const focused = typeof document.activeElement === 'undefined' ? null : document.activeElement;
+  if (isTypingTarget(e.target) || isTypingTarget(focused)) return;
+  if (appDialog || helpOpen || headerMenuOpen || rawYamlEditDraft || !changesListIsOnPage()) return; // a rejected YAML text is kept by the page: a selection made by a key would drop it
+  const inPanel = !!(focused && focused.closest && focused.closest('[data-changes-panel]'));
+  if (e.preventDefault) e.preventDefault();
+  walkChange(direction, { keepFocus: !inPanel });
+}
+document.addEventListener('keydown', handleChangesKeydown);
 
 /** Choose a state or a layer in the filters ('all' for none). The change the reader is at, if the filter leaves it out, moves to the nearest change that is shown. Returns whether it was a valid choice. */
 function setChangesFilter(kind, value) {
@@ -12760,6 +12803,24 @@ function clearChangesFilter() {
   render();
 }
 
+/**
+ * The detail of the change the reader is at, under the walk buttons (wave 016, run 0112, #113): the "What changed" block of the inspection for an element (`renderWhatChangedHtml`,
+ * the one function that writes it), and for a relationship one section with its state and its line (`renderChangedRelationshipHtml`, the line the inspection of an element lists). So the
+ * pages that show no selection (Plateaus, a story with no view drawn) show what a change is where *Next change* only moved a mark, and a page that shows a selection needs no switch
+ * to the Selected tab to read it. '' when no change is current or the current one is left out by the filters. View state: it reads the comparison and nothing else.
+ */
+function renderCurrentChangeDetailHtml(state, current, shown) {
+  if (!current || !shown.some((row) => changeRowKey(row) === changeRowKey(current))) return '';
+  let block = '';
+  if (current.thing === 'element') block = renderWhatChangedHtml(current.layer, current.reference, false);
+  else {
+    const rel = { from: current.reference, destination: current.destination, label: current.label, change: current.change };
+    block = '<section class="what-changed" aria-label="What changed" data-state="' + current.change + '"><h4 class="inspection-subhead">What changed ' + changeChipHtml(current.change) + '</h4>' +
+      '<ul class="change-rels">' + renderChangedRelationshipHtml(state, current.layer, rel, true) + '</ul></section>';
+  }
+  return block ? '<div class="changes-detail" data-changes-detail="' + escapeHtml(changeRowKey(current).replace(/\u0000/g, '|')) + '">' + block + '</div>' : '';
+}
+
 /** The two filters, the line that says how many of how many are shown, and the buttons that walk the list. `rows`: every row; `shown`: the ones the filters keep; `current`: the change the reader is at. */
 function renderChangesReadingHtml(rows, filter, shown, current) {
   if (!rows.length) return '';
@@ -12782,8 +12843,8 @@ function renderChangesReadingHtml(rows, filter, shown, current) {
     '<p class="changes-shown" data-changes-shown="' + shown.length + '" data-changes-total="' + rows.length + '" role="status">' +
       (filtered ? shown.length + ' of ' + rows.length + ' changes' : rows.length + (rows.length === 1 ? ' change' : ' changes')) + '</p>' +
     '<div class="changes-walk"><span class="button-group" role="group" aria-label="Walk the changes">' +
-      '<button type="button" data-action="change-previous"' + (before ? '' : ' disabled') + ' title="The change before this one in the list">Previous change</button>' +
-      '<button type="button" data-action="change-next"' + (after ? '' : ' disabled') + ' title="The change after this one in the list">Next change</button></span>' +
+      '<button type="button" data-action="change-previous"' + (before ? '' : ' disabled') + ' aria-keyshortcuts="k" title="The change before this one in the list (shortcut: K)">Previous change</button>' +
+      '<button type="button" data-action="change-next"' + (after ? '' : ' disabled') + ' aria-keyshortcuts="j" title="The change after this one in the list (shortcut: J)">Next change</button></span>' +
       (at >= 0 ? '<span class="changes-position" data-changes-position="' + (at + 1) + '">' + (at + 1) + ' of ' + shown.length + '</span>' : '') +
       (filtered ? '<button type="button" data-action="change-filters-clear" title="Show every change again">Show all</button>' : '') +
     '</div></div>';
@@ -12826,7 +12887,7 @@ function renderChangesPanelHtml(state) {
     (candidateMessage ? '<p class="changes-message" role="alert">' + escapeHtml(candidateMessage) + '</p>' : '') +
     renderCandidatesHtml(state) + renderWarningsHtml(state) + renderStateWordsHtml(state) + renderCascadeHtml(state) +
     (rows.length ? '' : '<p class="inspection-note">Nothing differs between the two plateaus.</p>') +
-    renderChangesReadingHtml(ordered, filter, shown, currentChangeOf(ordered, pick)) +
+    renderChangesReadingHtml(ordered, filter, shown, currentChangeOf(ordered, pick)) + renderCurrentChangeDetailHtml(state, currentChangeOf(ordered, pick), shown) +
     group('element', 'Elements') + group('relationship', 'Relationships') + '</div>';
 }
 
