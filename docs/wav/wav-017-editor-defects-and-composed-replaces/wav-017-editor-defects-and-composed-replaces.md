@@ -142,7 +142,7 @@ wave_manifest:
       slug: editor-at-360-px
       phase: P1
       depends_on: []
-      run: null
+      run: 0124
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
