@@ -1,0 +1,12 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "to-be"
+  parent: "shop"
+content:
+  id: "billing"
+  name: "Billing"
+  description: "Writes the invoice and sends the receipt."
+  replaces:
+    - "shop.invoices" # the invoices and the receipts are merged
+    - "shop.receipts"

@@ -1,0 +1,9 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "to-be"
+  parent: "shop"
+content:
+  id: "ratings"
+  name: "Ratings"
+  description: "Readers rate the books they have bought."

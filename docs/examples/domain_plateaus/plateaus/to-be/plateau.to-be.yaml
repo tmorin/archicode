@@ -1,0 +1,45 @@
+header:
+  kind: "archicode.morin.io/plateau"
+  version: "1"
+content:
+  id: "to-be"
+  name: "To be"
+  horizon: "2027-Q1"
+  override: "baseline"
+  patches:
+    # what the new containers replace, and what is no longer done
+    - operator: REMOVE
+      target: "shop.mailer"
+    - operator: REMOVE
+      target: "shop.orders"
+    - operator: REMOVE
+      target: "shop.invoices"
+    - operator: REMOVE
+      target: "shop.receipts"
+    - operator: REMOVE
+      target: "shop.reviews"
+    - operator: REMOVE
+      target: "shop.inventory" # it moved to the warehouse: `inventory.yaml` says so
+    # the web site
+    - operator: SET
+      target: "shop.web"
+      field: qualifiers
+      value: ["React"]
+    - operator: SET
+      target: "shop.web"
+      field: relationships
+      where: {destination: "shop.catalog", label: "reads"} # the one relationship that has this destination and this label
+      value: {label: "browses"}
+    - operator: ADD
+      target: "shop.web"
+      field: relationships
+      value: {destination: "shop.payments", label: "pays with"}
+    - operator: SET
+      target: "shop.catalog"
+      field: description
+      value: "The books that are on sale."
+    # what pointed at the inventory follows it
+    - operator: ADD
+      target: "warehouse.picking"
+      field: relationships
+      value: {destination: "warehouse.inventory", label: "counts with"}

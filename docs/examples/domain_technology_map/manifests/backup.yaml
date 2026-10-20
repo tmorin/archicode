@@ -1,0 +1,10 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "backup"
+  name: "Backup site"
+  elements:
+    - kind: "node"
+      id: "vault"
+      name: "Vault"

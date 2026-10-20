@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "to-be"
+  parent: "shop"
+content:
+  id: "checkout"
+  name: "Checkout"
+  description: "Turns a basket into an order."
+  replaces:
+    - "shop.orders"

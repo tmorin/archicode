@@ -1,0 +1,39 @@
+header:
+  kind: "archicode.morin.io/environment"
+  version: "1"
+content:
+  id: "datacentre"
+  name: "Datacentre"
+  elements:
+    - kind: "node"
+      id: "edge"
+      name: "Edge"
+      elements:
+        - kind: "node"
+          id: "firewall"
+          name: "Firewall"
+          relationships:
+            - destination: "datacentre.edge.balancer"
+              label: "lets through"
+        - kind: "node"
+          id: "balancer"
+          name: "Balancer"
+          relationships:
+            - destination: "datacentre.rack.web"
+              label: "routes to"
+    - kind: "node"
+      id: "rack"
+      name: "Rack"
+      elements:
+        - kind: "node"
+          id: "web"
+          name: "Web server"
+          relationships:
+            - destination: "datacentre.rack.db"
+              label: "queries"
+        - kind: "node"
+          id: "db"
+          name: "Database server"
+          relationships:
+            - destination: "backup.vault"
+              label: "ships snapshots to"

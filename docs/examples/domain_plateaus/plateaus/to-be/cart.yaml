@@ -1,0 +1,11 @@
+header:
+  kind: "archicode.morin.io/container"
+  version: "1"
+  plateau: "to-be"
+  parent: "shop"
+content:
+  id: "cart"
+  name: "Cart"
+  description: "Keeps the basket of a customer."
+  replaces:
+    - "shop.orders" # the orders are split in two

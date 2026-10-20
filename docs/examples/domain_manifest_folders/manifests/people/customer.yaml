@@ -6,4 +6,4 @@ content:
   name: "Customer"
   relationships:
     - destination: "shop.web"
-      label: "orders on"
+      label: "buys books on"

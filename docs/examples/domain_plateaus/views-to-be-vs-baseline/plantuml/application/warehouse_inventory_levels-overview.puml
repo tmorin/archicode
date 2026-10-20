@@ -27,9 +27,9 @@ legend right
 |= Mark |= Box |= Link |
 | **+** | new: thick solid outline | new: thick solid line |
 | **<U+007E>** | changed: dotted outline | changed: dotted line |
-| **<U+2212>** | removed: dashed grey outline, struck title | removed: dashed grey line |
+| **<U+2212>** | removed: long dashes, narrow gaps, grey outline, struck title | removed: dashed grey line |
 | **<U+00B1>** | something inside changed: thin dashed outline | |
-| **<U+2192>** | moved or renamed, replaces one element: long dashes | |
+| **<U+2192>** | moved or renamed, replaces one element: long dashes, wide gaps | |
 endlegend
 <style>
 .contains-changes {

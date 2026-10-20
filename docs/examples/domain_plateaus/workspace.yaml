@@ -1,12 +1,7 @@
+# the plateaus are layers. The manifests in `plateaus/baseline` say no `plateau:`: they are the root, `baseline`, the architecture as it
+# is. The manifests in `plateaus/to-be` say `plateau: "to-be"`: they are the layer that builds on it, with the patches of its
+# `plateau.to-be.yaml`. The folders are only a habit; the tools read the `plateau:` of the header, not the folder.
 settings:
   name: "Bookshop"
-  # the states of the architecture, in the order of their life; the last one is drawn unless `current` names another
-  plateaus:
-    - id: "as-is"
-      name: "As is"
-      horizon: "2026-Q3"
-      path: "plateaus/10_as-is"
-    - id: "to-be"
-      name: "To be"
-      horizon: "2027-Q1"
-      path: "plateaus/20_to-be"
+  manifests:
+    paths: ["plateaus/**"]
