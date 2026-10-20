@@ -5,10 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.morin.archicode.resource.view.View;
 import io.morin.archicode.viewpoint.Item;
 import io.morin.archicode.viewpoint.Link;
 import io.morin.archicode.viewpoint.Viewpoint;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
+import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -57,7 +60,7 @@ class TechnologyMapTest {
     private static List<String> boxes(Iterable<Item> items) {
         val out = new ArrayList<String>();
         for (val item : items) {
-            out.add(item.getReference());
+            out.add(item.getItemId());
             out.addAll(boxes(item.getChildren()));
         }
         return out.stream().sorted().toList();
@@ -77,28 +80,59 @@ class TechnologyMapTest {
         }
     }
 
+    /** The boxes and the links of a view drawn with the properties it names put over its own. */
+    private void assertDrawn(Workspace workspace, View view, JsonNode properties, JsonNode expected, String name) {
+        val merged =
+            view.getProperties() == null
+                ? new ObjectMapper().createObjectNode()
+                : (ObjectNode) view.getProperties().deepCopy();
+        if (properties != null) {
+            merged.setAll((ObjectNode) properties);
+        }
+        val drawn = viewpoints
+            .get("map")
+            .createViewpointFactory()
+            .create(workspace, view.toBuilder().properties(merged).build());
+        assertEquals(strings(expected.path("boxes")), boxes(drawn.getItems()), name + ": boxes");
+        val links = drawn
+            .getLinks()
+            .stream()
+            .map(link -> link.getFrom().getItemId() + " -> " + link.getTo().getItemId())
+            .sorted()
+            .toList();
+        assertEquals(strings(expected.path("links")), links, name + ": links");
+    }
+
     @Test
     @SneakyThrows
-    void shouldDrawTheBoxesAndTheLinksTheEditorDrawsForTheViewsOfTheExample() {
+    void shouldDrawTheBoxesAndTheLinksTheEditorDrawsForTheSavedMapsOfTheExampleAndOfTheBrightcart() {
         val contract = new ObjectMapper().readTree(CONTRACT.toFile());
-        val workspace = workspaceFactory.create(Path.of(contract.path("workspace").asText(), "workspace.yaml"));
         var checked = 0;
-        for (val entry : contract.path("views").properties()) {
-            val view = workspace.viewIndex.searchView(entry.getKey()).orElseThrow();
-            assertEquals("map", view.getViewpoint());
-            assertEquals("TECHNOLOGY", view.getLayer().name());
-            val drawn = viewpoints.get("map").createViewpointFactory().create(workspace, view);
-            assertEquals(strings(entry.getValue().path("boxes")), boxes(drawn.getItems()), entry.getKey());
-            val links = drawn
-                .getLinks()
-                .stream()
-                .map(link -> link.getFrom().getReference() + " -> " + link.getTo().getReference())
-                .sorted()
-                .toList();
-            assertEquals(strings(entry.getValue().path("links")), links, entry.getKey());
-            checked++;
+        var variants = 0;
+        for (val entry : contract.path("workspaces")) {
+            val path = Path.of(entry.path("workspace").asText(), "workspace.yaml");
+            for (val view : entry.path("views").properties()) {
+                val plateau = view.getValue().path("plateau").asText(null);
+                val workspace = workspaceFactory.create(path, null, plateau);
+                val saved = workspace.viewIndex.searchView(view.getKey()).orElseThrow();
+                assertEquals("map", saved.getViewpoint());
+                assertEquals("TECHNOLOGY", saved.getLayer().name());
+                assertDrawn(workspace, saved, null, view.getValue(), view.getKey());
+                checked++;
+                for (val variant : view.getValue().path("variants").properties()) {
+                    assertDrawn(
+                        workspace,
+                        saved,
+                        variant.getValue().path("properties"),
+                        variant.getValue(),
+                        view.getKey() + " " + variant.getKey()
+                    );
+                    variants++;
+                }
+            }
         }
-        assertEquals(3, checked);
+        assertEquals(5, checked);
+        assertEquals(9, variants);
     }
 
     private static List<String> strings(JsonNode list) {
@@ -131,6 +165,65 @@ class TechnologyMapTest {
         assertTrue(open.contains("datacentre.rack.db --> backup : ships snapshots to"), open);
         val database = Files.readString(folder.resolve("datacentre-map-database.puml"));
         assertTrue(!database.contains("datacentre.edge"), "the edge is hidden: " + database);
+    }
+
+    /** A saved map of the technology layer of the layered Brightcart, opened down to the batch node and to the nodes of the partners it reaches. */
+    @SneakyThrows
+    private void writeOpenMap(String id, String parts) {
+        Files.writeString(
+            dir.resolve("baseline/view." + id + ".yaml"),
+            """
+            header:
+              kind: "archicode.morin.io/view"
+              version: "1"
+            content:
+              id: "%s"
+              viewpoint: "map"
+              layer: "technology"
+              properties:
+                opened: ["prod", "prod.dc", "prod.dc.batch-vm", "partners", "partners.carrier-live"]
+            %s
+            """.formatted(id, parts)
+        );
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldDrawTheApplicationsAndTheDependenciesOfTheTechnologyMapAndLeaveThemOutOnRequest() {
+        copy(LAYERED, dir);
+        writeOpenMap("tm_both", "");
+        writeOpenMap("tm_nodes", "    applications: false");
+        writeOpenMap("tm_unlinked", "    relationships: false");
+        writeOpenMap("tm_neither", "    applications: false\n    relationships: false");
+        val result = run(
+            "-w",
+            dir.resolve("workspace.yaml").toString(),
+            "views",
+            "generate",
+            "--plateau",
+            "baseline",
+            "-i",
+            "tm_both",
+            "-i",
+            "tm_nodes",
+            "-i",
+            "tm_unlinked",
+            "-i",
+            "tm_neither"
+        );
+        assertEquals(0, result.exit(), result.err());
+        val folder = dir.resolve("views-baseline/plantuml/technology");
+        val both = Files.readString(folder.resolve("tm_both.puml"));
+        assertTrue(both.contains("rectangle batch_vm_fulfilment_sync"), both);
+        assertTrue(both.contains("batch_vm_fulfilment_sync --> carrier_live_carrier"), both);
+        val nodes = Files.readString(folder.resolve("tm_nodes.puml"));
+        assertTrue(!nodes.contains("fulfilment_sync"), nodes);
+        assertTrue(nodes.contains("prod.dc.batch_vm --> partners.carrier_live"), nodes);
+        val unlinked = Files.readString(folder.resolve("tm_unlinked.puml"));
+        assertTrue(unlinked.contains("rectangle batch_vm_fulfilment_sync"), unlinked);
+        assertTrue(!unlinked.contains("-->"), unlinked);
+        val neither = Files.readString(folder.resolve("tm_neither.puml"));
+        assertTrue(!neither.contains("fulfilment_sync") && !neither.contains("-->"), neither);
     }
 
     @Test
