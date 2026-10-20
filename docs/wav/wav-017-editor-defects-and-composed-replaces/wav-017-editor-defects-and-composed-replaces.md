@@ -120,7 +120,7 @@ wave_manifest:
       slug: move-names-the-sibling-plateaus
       phase: P0
       depends_on: []
-      run: null
+      run: 0122
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'

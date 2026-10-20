@@ -475,8 +475,11 @@ test('confirming moves the element: the dialog closes, the panel follows the ele
   const page = await open();
   edit(page, 'bakery.oven');
   click(page.sandbox, { 'data-action': 'open-move-dialog', 'data-ref': 'bakery.oven' });
-  const result = page.sandbox.submitMoveDialog({ parent: 'bakery.tools' });
-  assert.deepEqual(plain(result), { ok: true, reference: 'bakery.tools.oven' });
+  // `base` and `target` do not stack: `base` keeps `bakery.oven` and the view `ovens` names it, so the move is asked about first (wave 017, run 0122, #122; move-sibling-plateaus.test.js)
+  assert.equal(page.sandbox.submitMoveDialog({ parent: 'bakery.tools' }), null);
+  assert.equal(run(page.sandbox, 'appDialog').kind, 'rename-siblings');
+  assert.equal(page.state.index.application.has('bakery.oven'), true, 'nothing is written while the question stands');
+  page.sandbox.submitAppDialog({});
   assert.equal(run(page.sandbox, 'appDialog'), null);
   assert.equal(page.state.selection.key, 'bakery.tools.oven');
   assert.equal(page.state.selection.mode, 'edit');
