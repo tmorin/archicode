@@ -5320,7 +5320,7 @@ function schedulePlateauCounts() {
 // ---- The band ----
 //
 // Wave 015 (run 0097, W-9, #98): the band chooses the plateau drawn and the plateau compared with, on the pages of the perspective Timeline, and does nothing else.
-// Two lists, one row: "Plateau" (every plateau of the tree, indented by its depth) and "Compare with" (nothing, the past, the future, any other plateau), then, only when
+// Two lists, one row: "Plateau" (every plateau of the tree, indented by its depth) and "Compare with" (nothing, the past that follows the plateau drawn, then the same tree, the plateau drawn greyed in it; wave 016, run 0109), then, only when
 // there is one, a button that opens the mistakes of the plateaus. What the tree of buttons held moved to where it belongs: the tree and the counts of each plateau are on the
 // page Plateaus, the sentence that said what is compared is the Changes panel's (and the list says it), Everything / Changes only is among the tools of the diagram, and the
 // mistakes are behind the button. The state is `AppState.layers`, not the band's: the band is not drawn on Stories, Files and Settings, and nothing is reset there.
@@ -5342,6 +5342,9 @@ function bandPlateauLabel(id) {
   return (layerModelBroken(id) ? '! ' : '') + plateauTitle(layerPlateauModel(id)) + (node && node.horizon ? ' · ' + node.horizon : '');
 }
 
+/** One step of indentation in the lists of the band: an em space (U+2003), which an `<option>` keeps (only ASCII white space at the start of an option's text is collapsed). */
+const BAND_INDENT = '\u2003';
+
 function bandOptionHtml(value, label, selected, extra) {
   return '<option value="' + escapeHtml(value) + '"' + (selected ? ' selected' : '') + (extra || '') + '>' + escapeHtml(label) + '</option>';
 }
@@ -5351,7 +5354,7 @@ function bandPlateauSelectHtml(root, disabled) {
   const layers = AppState.layers;
   const options = [];
   const walk = (item, depth) => {
-    options.push(bandOptionHtml(item.id, ' '.repeat(Math.min(depth, 6)) + bandPlateauLabel(item.id), item.id === layers.current));
+    options.push(bandOptionHtml(item.id, BAND_INDENT.repeat(Math.min(depth, 6)) + bandPlateauLabel(item.id), item.id === layers.current));
     item.children.forEach((child) => walk(child, depth + 1));
   };
   walk(root, 0);
@@ -5361,8 +5364,11 @@ function bandPlateauSelectHtml(root, disabled) {
 }
 
 /**
- * The list "Compare with": nothing; the past (the plateau the drawn one overrides); the future (the plateau that overrides it: one entry for each when several do);
- * any other plateau, as `archicode diff --plateau <drawn> --against <id>`. A future the address asked for with several plateaus on top of it is told as a choice still to make.
+ * The list "Compare with" (wave 016, run 0109, W-3, #72): nothing; the past, which follows the plateau drawn (the plateau it overrides, whichever that is); then the tree of the
+ * plateaus, the same as the list "Plateau" (every plateau in the order of the tree, indented by its depth, the same labels), where the plateau drawn is greyed (disabled) in its
+ * place, so that the hierarchy can be read in both lists. A plateau of the tree is a fixed comparison, as `archicode diff --plateau <drawn> --against <id>`. A future the address
+ * asked for with several plateaus on top of the drawn one is told as a choice still to make (a first entry, disabled and selected, with the tree under it and nothing selected in it);
+ * with one plateau on top of it, the entry of that plateau is the one selected.
  */
 function bandCompareSelectHtml(root, disabled) {
   const layers = AppState.layers;
@@ -5370,24 +5376,23 @@ function bandCompareSelectHtml(root, disabled) {
   const node = tree.nodes.get(layers.current);
   const parent = node && node.parent !== null ? node.parent : null;
   const listing = !layers.blocked; // a write in flight disables the list, it does not change what it says; blocked plateaus have nothing to choose from
-  const children = listing ? layerChildrenOf(layers.current) : [];
   const compare = layers.compare;
   const other = layerCompareOther();
   let selected = '';
-  if (compare && compare.mode === 'past') selected = 'past';
-  else if (compare && !other) selected = 'future'; // waiting for the choice of the future
-  else if (other) selected = children.length === 1 && other.id === children[0] ? 'future' : 'plateau:' + other.id;
-  const listed = new Set([layers.current]);
+  if (compare && !other && compare.mode === 'future') selected = 'future'; // waiting for the choice of the future
+  else if (other) selected = compare.mode === 'past' && !compare.chosen ? 'past' : 'plateau:' + other.id;
   let html = bandOptionHtml('', 'Nothing', selected === '');
-  if (compare && !other && compare.mode === 'future') html += bandOptionHtml('future', 'Future: choose one', true, ' disabled');
-  if (parent !== null) { html += bandOptionHtml('past', 'Past: ' + bandPlateauLabel(parent), selected === 'past'); listed.add(parent); }
-  if (children.length === 1) html += bandOptionHtml('future', 'Future: ' + bandPlateauLabel(children[0]), selected === 'future');
-  else for (const child of children) html += bandOptionHtml('plateau:' + child, 'Future: ' + bandPlateauLabel(child), selected === 'plateau:' + child);
-  children.forEach((child) => listed.add(child));
-  const rest = listing ? bandOrderOf(tree).filter((id) => !listed.has(id)) : [];
-  if (rest.length) html += '<optgroup label="Other plateaus">' + rest.map((id) => bandOptionHtml('plateau:' + id, bandPlateauLabel(id), selected === 'plateau:' + id)).join('') + '</optgroup>';
+  if (selected === 'future') html += bandOptionHtml('future', 'Choose a future plateau', true, ' disabled');
+  if (parent !== null && listing) html += bandOptionHtml('past', 'Past (follows the plateau drawn)', selected === 'past');
+  if (listing) {
+    const walk = (item, depth) => {
+      html += bandOptionHtml('plateau:' + item.id, BAND_INDENT.repeat(Math.min(depth, 6)) + bandPlateauLabel(item.id), selected === 'plateau:' + item.id, item.id === layers.current ? ' disabled' : '');
+      item.children.forEach((child) => walk(child, depth + 1));
+    };
+    walk(root, 0);
+  }
   return '<label class="band-field"><span class="plateau-label" id="band-compare-label">Compare with</span>' +
-    '<select id="band-compare" data-band-select="compare" aria-labelledby="band-compare-label"' + (disabled ? ' disabled' : '') + ' title="What the plateau drawn is compared with: the Changes panel lists what differs">' + html + '</select></label>';
+    '<select id="band-compare" data-band-select="compare" aria-labelledby="band-compare-label"' + (disabled ? ' disabled' : '') + ' title="What the plateau drawn is compared with: the Changes panel lists what differs. The plateau drawn is greyed in the tree.">' + html + '</select></label>';
 }
 
 /**
@@ -5492,10 +5497,13 @@ function chooseOnBand(select) {
     }
   } else if (value === 'past') {
     if (!compare || compare.mode !== 'past') toggleCompareWithPast();
-  } else if (value === 'future') {
+  } else if (value === 'future') { // not an entry a person can choose since run 0109 (the one entry of that value is disabled); kept for a script and for the tests
     if (!compare || compare.mode !== 'future') toggleCompareWithFuture();
   } else if (value.indexOf('plateau:') === 0) {
-    compareWithPlateau(value.slice('plateau:'.length));
+    const id = value.slice('plateau:'.length);
+    // a list chooses, it does not toggle: the plateau the drawing is compared with already (the past that follows the plateau drawn is one) is not pressed twice
+    if (id === layers.current || (compare && compare.other === id)) changed = false;
+    else compareWithPlateau(id);
   }
   if (!changed) restoreBandLists();
 }
