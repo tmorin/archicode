@@ -133,7 +133,7 @@ const contrast = (a, b) => { const x = luminance(a); const y = luminance(b); ret
 const NOT_READ_ON_A_GROUND = new Map([
   ['--bg', 'the ground'],
   ['--panel-bg', 'the second ground'],
-  ['--border', 'a hairline between two areas and the outline of a control (1.5:1 on white, under the 3:1 that WCAG 1.4.11 asks of a control\'s boundary: a known choice of the page since its first version, not this audit\'s to change; the label and the state of a control are told by text, never by the outline alone)']
+  ['--border', 'a hairline between two areas, decorative: the outline of a text field is --control-border, which has its 3:1']
 ]);
 /** Variables that carry text: 4.5:1 on both grounds, in both themes. The others (lines, tints, badges) carry 3:1. */
 const TEXT_VARIABLES = new Set(['--fg', '--muted', '--danger', '--accent', '--chg-removed-text']); // --accent is the colour of links and brand text as well as of the lit buttons
@@ -505,4 +505,19 @@ test('the holes a review of this audit found are closed: each of these copies of
   // a variable that only the script is said to set, and a rule that stops using it
   says(mutated('fill: var(--ov-text);', 'fill: var(--ov-texte);'), /`\.dg-over-fill \.dg-title, \.dg-over-fill \.dg-sub` uses `var\(--ov-texte\)`/);
   says(mutated('fill: var(--ov-text);', 'fill: var(--fg);'), /the list of variables set by the script has an entry that no rule uses any more: `--ov-text`/);
+});
+
+test('a text field is outlined with --control-border, which reads 3:1 on the ground in both themes (WCAG 1.4.11), while --border stays the hairline', () => {
+  const css = styleOf(HTML);
+  const rules = rulesOf(css);
+  const field = rules.find((r) => r.selector.startsWith('input[type="text"]') && r.selector.includes('select'));
+  assert.ok(field, 'the rule of the text fields');
+  assert.match(field.body, /border: 1px solid var\(--control-border\)/);
+  for (const selector of [SELECTOR_LIGHT, SELECTOR_DARK_MEDIA, SELECTOR_DARK_FORCED]) {
+    const rule = rules.find((r) => r.selector === selector && (selector === SELECTOR_DARK_MEDIA ? r.at.join() === MEDIA_DARK : r.at.length === 0));
+    const vars = customProperties(rule.body);
+    assert.ok(vars.has('--control-border'), selector + ' defines --control-border');
+    const ratio = contrast(vars.get('--control-border').trim(), (vars.get('--bg') || customProperties(rules.find((r) => r.selector === SELECTOR_LIGHT).body).get('--bg')).trim());
+    assert.ok(ratio >= 3, selector + ': --control-border is ' + ratio.toFixed(2) + ':1 on --bg');
+  }
 });
