@@ -5748,6 +5748,7 @@ function guardedLayerWrite(spec) {
   }
   const before = layerDigest();
   const snapshot = snapshotWriteState();
+  const typedForm = keepElementForm(); // the write is tried, then put back with a redraw when the dialog is to be asked: the form as typed is kept before it (run 0121, #123)
   let result;
   let verdict;
   try {
@@ -5763,7 +5764,7 @@ function guardedLayerWrite(spec) {
     restoreWriteState(snapshot);
     rebuildIndexAndRender();
     if (verdict.broken) throw new Error('Not written: ' + verdict.broken.replace(/\.$/, '') + '. Nothing was changed.');
-    openAppDialog({ kind: 'layer-confirm', plateau: spec.plateau, summary: spec.summary, changed: verdict.changed.slice(), onConfirm: spec.again, afterConfirm: spec.afterConfirm });
+    openAppDialog({ kind: 'layer-confirm', plateau: spec.plateau, summary: spec.summary, changed: verdict.changed.slice(), onConfirm: spec.again, afterConfirm: spec.afterConfirm, typedForm });
     return { pending: true, changed: verdict.changed.slice() };
   }
   return result;
@@ -7593,6 +7594,7 @@ function resetUiState() {
   elementTab = 'details';
   setDiagramShow(null);
   appDialog = null;
+  keptElementForm = null;
   storyBarEditing = false;
   storyBarNotice = null;
   removedStep = null;
@@ -17809,8 +17811,72 @@ function actionSelectorOf(el) {
 }
 
 function openAppDialog(dialog) {
+  if (dialog.kind === 'layer-confirm' || dialog.kind === 'rename-siblings') { // the form of the element, as typed (wave 017, run 0121, #123)
+    // a write that was tried and put back has already drawn the form afresh (`guardedLayerWrite`), so it hands over the copy it took before it wrote
+    keptElementForm = dialog.typedForm !== undefined ? dialog.typedForm : keepElementForm();
+    dialog = Object.assign({}, dialog);
+    delete dialog.typedForm;
+  }
   appDialog = Object.assign({ returnFocus: actionSelectorOf(typeof document !== 'undefined' ? document.activeElement : null) }, dialog);
   render();
+}
+
+/**
+ * What the author typed in the form of an element while a dialog that waits for an answer stands in front of it (wave 017, run 0121, #123: `layer-confirm`, the plateaus a write
+ * changes, and `rename-siblings`, the views a rename leaves behind). Saving the form opens the dialog and `render()` gives the form afresh from the model, behind the dialog,
+ * so Cancel (and Escape, and a click beside the dialog) used to leave every field as the model has it. It is view state: the fields as typed, nothing of the model, and no
+ * `modelsChanged()`. `render()` puts them back each time it draws the form of the same element while the dialog is open, and once more when the dialog is gone; a yes
+ * clears it before the write, so what is written is never reread from it.
+ */
+let keptElementForm = null;
+
+/** The fields of the form of the element on screen, in the order the page draws them. */
+function elementFormFields() {
+  const form = typeof document !== 'undefined' && document.querySelector ? document.querySelector('.element-edition-form') : null;
+  return form && form.querySelectorAll ? Array.from(form.querySelectorAll('input, textarea, select')) : [];
+}
+
+/** What tells a field from the next one when the form is drawn again from the same model: its id, its class, the row of a relationship and its placeholder. */
+function elementFormFieldSignature(field) {
+  const attribute = (name) => (field.getAttribute ? field.getAttribute(name) : null) || '';
+  const row = field.closest ? field.closest('[data-index]') : null;
+  return [field.id || '', field.className || '', row && row.getAttribute ? row.getAttribute('data-index') || '' : '', attribute('placeholder')].join('|');
+}
+
+function elementFormFieldValue(field) {
+  return field.type === 'checkbox' || field.type === 'radio' ? !!field.checked : String(field.value === undefined || field.value === null ? '' : field.value);
+}
+
+/** The values of the form of the element in edition on screen, or null when there is none. */
+function keepElementForm() {
+  const selection = AppState.selection;
+  if (!selection || selection.kind !== 'element' || selection.mode !== 'edit') return null;
+  const fields = elementFormFields();
+  if (fields.length === 0) return null;
+  return { reference: selection.key, layer: selection.layer || null, fields: fields.map((field) => ({ signature: elementFormFieldSignature(field), value: elementFormFieldValue(field) })) };
+}
+
+/** Puts the kept values back in the form just drawn, when it is the form of the same element and has the same fields; lights Save when one of them differs from the model. */
+function restoreElementForm() {
+  const kept = keptElementForm;
+  if (!kept) return;
+  if (!appDialog) keptElementForm = null; // the dialog is gone: this is the last time
+  const selection = AppState.selection;
+  if (!selection || selection.kind !== 'element' || selection.mode !== 'edit' || selection.key !== kept.reference || (selection.layer || null) !== kept.layer) return;
+  const fields = elementFormFields();
+  if (fields.length !== kept.fields.length) return;
+  let typed = false;
+  fields.forEach((field, i) => {
+    if (elementFormFieldSignature(field) !== kept.fields[i].signature) return;
+    const value = kept.fields[i].value;
+    if (elementFormFieldValue(field) === value) return;
+    if (typeof value === 'boolean') field.checked = value; else field.value = value;
+    typed = true;
+  });
+  if (typed) {
+    draftTyped = true;
+    if (typeof refreshSaveAllButton === 'function') refreshSaveAllButton();
+  }
 }
 
 function closeAppDialog() {
@@ -17919,6 +17985,7 @@ function submitAppDialog(values) {
     if (line) line.textContent = message;
   };
   if (dialog.kind === 'layer-confirm' || dialog.kind === 'rename-siblings') { // the author says yes to the plateaus a write changes (see `guardedLayerWrite`), or to the views a rename leaves behind (`renameSiblingImpact`)
+    keptElementForm = null; // the write is the draft's own, read before the dialog opened
     appDialog = null;
     pendingFocusSelector = dialog.returnFocus;
     confirmLayerWrite(dialog);
@@ -20212,6 +20279,7 @@ function render() {
   app.addEventListener('focusout', handleDiagramFocus);
   app.addEventListener('wheel', handleAppWheel, { passive: false });
   app.addEventListener('scroll', keepDiagramCanvasStill, true);
+  restoreElementForm(); // the form of an element, typed in and not written, while a dialog waits for an answer (#123)
   autosizeAllTextareas();
   mountFileEditorIfNeeded();
   mountJsonEditorsIfNeeded();
