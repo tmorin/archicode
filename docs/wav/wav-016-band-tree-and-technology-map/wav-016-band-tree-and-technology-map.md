@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 016
-status: proposed
+status: completed
 date: 2026-10-20
 related:
   - docs/wav/wav-016-band-tree-and-technology-map/wbc-016-band-tree-and-technology-map.md
@@ -65,7 +65,7 @@ Not the author's yet: the plan chooses so that an unattended wave can run. They 
 wave_manifest:
   wave: 016
   slug: band-tree-and-technology-map
-  status: proposed
+  status: completed
   sources: []
   phases:
     - id: P0
@@ -270,7 +270,7 @@ wave_manifest:
 | W-6 | — | `next-previous-shortcut` | — | a keyboard shortcut for *Next change* and *Previous change*, and the detail of the current change inside the Changes tab (#113) | one key for each walk that does not fire while the reader types in an input, a select, a text area or a code editor, and does not change the address; the detail of the current change is shown inside the Changes tab on the page Stories and on the page Plateaus (what #113 asks, read it again before writing); the shortcut is listed where the page lists its tools | the shortcut walks the list as the buttons do, and does nothing when the focus is in a field (tests); the detail follows the walk; nothing about the diagram changes; closes #113 |
 | W-7 | — | `rename-names-the-sibling-plateaus` | — | a rename says which plateaus still declare the old reference before it rewrites the views and the stories that name it (#116) | when two plateaus that do not stack both declare the reference, the rename dialog lists them and the views and the steps that name the old reference in each, and the author confirms; a rename in a workspace with no fork asks nothing more than today; the rewrite itself is unchanged | on the layered Brightcart (a fork) a rename of an element that `saas` and `inhouse` both declare lists both and the views that would break; a rename with no sibling opens the dialog as before (tests, byte-identical writes); closes #116 |
 | W-8 | — | `technology-map-apps-and-relations` | W-4 | the page Environments shows the application elements and the relationships, and each can be hidden or shown from the toolbar (#107, as the author rewrote it) | the author's sentence (2026-10-20): the Map of the technology layer must show the application elements and the relationships; both can be hidden and shown from the toolbar. Read #107 and `domain_technology_map` first and decide, in the run, the exact set (the applications hosted by the nodes and the environments; the relationships technology elements declare, the ones derived from `uses` between environments and the ones between the applications shown): both shown by default; the toggles are properties of the map view (so that a saved view and the command line draw the same boxes and lines), named in the run and in `expected-boxes.json`; the kernel (Rust, the wasm re-embedded, the contract of the kernel said in its README) or the adapter does it, whichever is smaller; the Map of the application layer is untouched | `src/test/resources/technology-map/expected-boxes.json` says the boxes and the lines both tools draw on `domain_technology_map` and on the technology map of W-4, with the two toggles on and off (a shared test); the toolbar has the two toggles and they are kept by a saved view; the views of every example that has no technology map are byte-identical to `archicode-0.14.0`; `embed.sh --check` ok; closes #107 |
-| W-9 | — | `wrapped-diff-table` | — | the text table of `archicode diff` can be wrapped to a width, so that a reference of 447 characters no longer makes it unreadable (#26) | an option `--width <columns>` on `diff` and `views generate` that wraps a long reference and a long cell of the text table (a rule for a reference with no space: cut at the dots and the slashes, then hard); no option: the output is as today, byte for byte; `markdown` and `json` are untouched | a test on the invented pair with long references shows the wrapped table and that without `--width` the output is byte-identical to `archicode-0.14.0`; an unknown or non-positive width is one `error:` line; closes #26 |
+| W-9 | — | `wrapped-diff-table` | — | the text table of `archicode diff` can be wrapped to a width, so that a reference of 447 characters no longer makes it unreadable (#26) | an option `--width <columns>` on `diff` only (`views generate` writes no text table; run 0115 revised the plan) that wraps a long reference and a long cell of the text table (a rule for a reference with no space: cut at the dots and the slashes, then hard); no option: the output is as today, byte for byte; `markdown` and `json` are untouched | a test on the invented pair with long references shows the wrapped table and that without `--width` the output is byte-identical to `archicode-0.14.0`; an unknown or non-positive width is one `error:` line; closes #26 |
 
 **Gate:**
 

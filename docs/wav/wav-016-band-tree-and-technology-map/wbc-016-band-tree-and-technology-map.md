@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 016
-status: proposed
+status: completed
 date: 2026-10-20
 related:
   - docs/wav/wav-015-editor-reshape-and-loose-ends/wav-015-editor-reshape-and-loose-ends.md
