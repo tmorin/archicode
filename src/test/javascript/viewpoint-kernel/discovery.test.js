@@ -148,7 +148,7 @@ test('a served folder says which folders are links, and the editor does not foll
     return; // no symbolic links on this system
   }
   const TOKEN = 't';
-  const answer = (status, body) => ({ ok: status >= 200 && status < 300, status, headers: { get: () => null }, async text() { return body; }, async json() { return body; } });
+  const answer = (status, body) => ({ ok: status >= 200 && status < 300, status, headers: { get: () => null }, async text() { return body; }, async arrayBuffer() { const bytes = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)); return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength); }, async json() { return body; } });
   const fetch = async (url) => {
     const [route, query] = url.replace('/api/fs/', '').split('?');
     const rel = new URLSearchParams(query || '').get('path') || '';

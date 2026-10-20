@@ -819,6 +819,7 @@ function readOnlyServer() {
     ok: status >= 200 && status < 300, status,
     headers: { get: (name) => (extra && extra[name]) || null },
     async text() { return typeof body === 'string' ? body : JSON.stringify(body); },
+    async arrayBuffer() { const bytes = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)); return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength); },
     async json() { return body; }
   });
   return async (url) => {
