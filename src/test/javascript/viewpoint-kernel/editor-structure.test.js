@@ -264,7 +264,7 @@ test('an application element selected on Environments stays selected, and the pa
   click(sandbox, { 'data-action': 'select-element', 'data-ref': 'fleet', 'data-layer': 'application' });
   sandbox.setPerspective('environments');
   assert.equal(state.selection.key, 'fleet', 'nothing lets the selection go');
-  assert.match(sandbox.renderActivePerspectiveHtml().right, /This map draws the technology layer only\./);
+  assert.match(sandbox.renderActivePerspectiveHtml().right, /This map draws the technology layer, and the applications deployed on its nodes\./);
   assert.equal(sandbox.currentRouteHash(), '/timeline/environments?ref=fleet');
   sandbox.setPerspective('elements');
   click(sandbox, { 'data-action': 'select-element', 'data-ref': 'harbour', 'data-layer': 'technology' });

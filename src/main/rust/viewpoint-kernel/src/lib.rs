@@ -105,6 +105,17 @@
 //!     `compute` removes them from its input, so they are no free-form field for a facet.
 //! `compute`, `apply_facet` and `apply_patches` take what they took; their answers say the version, 5, and an item of a comparison gained `contains_changes`.
 //!
+//! The map of the technology layer draws the applications and the dependencies they give (wave 016, run 0114, issue #107; additive, the number stays 5). Given the application
+//! layer (`app_elements`, which the map did not take before), the map of the technology layer draws, as the viewpoints of an element do, the applications deployed on the
+//! nodes (`applications` of a node): a box for each, inside its node, when that node is open (`opened`, or encloses a pinned element) and visible, and the dependencies
+//! between environments (`derived_dependencies`: an application of an environment that has a relationship towards an application the environment does not host, deployed in an
+//! environment or a node it `uses`). A dependency is a link between the boxes of the two applications when both are drawn, else between the boxes the nodes that host them land
+//! on (the first closed box, as for any relationship of the map); it is natural when its ends are the applications or the nodes themselves, grouped when an end was brought up to a
+//! closed box above. The dependencies inside one environment stay out, as they do in the viewpoints of an element (they are "secondary" there). The id of the box of an application is
+//! the one the deep viewpoint gives (`node_app`, or the path of the node when that is ambiguous or is the reference of an element), settled over the whole layer so that opening
+//! or hiding a box does not rename another. A node that hosts applications is `expandable` while it is closed. Two optional booleans choose what is drawn, absent or null being
+//! true: `applications` (false: the nodes only; the dependencies are then between the nodes) and `relationships` (false: no link at all, declared or derived). Both mean nothing in
+//! the map of the application layer, and `applications` and the dependencies nothing without `app_elements`: an input of the technology map that did not give it is drawn as it was.
 //! A sixth entry point says which elements have nothing to draw, `quiet` (issue #81, wave 015; additive, the number stays 5; see `quiet_json`):
 //!   input : the input of `compute` without `focal`, and `focals: [{reference, viewpoint?}]`
 //!   output: { version, quiet: [reference] } | { error }
@@ -388,6 +399,14 @@ struct Input {
     /// map: references of the elements left out, with what is inside them
     #[serde(default, deserialize_with = "null_as_default")]
     hidden: Vec<String>,
+    /// map of the technology layer, with `app_elements`: draw the applications deployed on the nodes that are open, as boxes inside them (absent or null: true; false:
+    /// the nodes only). Without `app_elements`, or in the map of the application layer, it changes nothing.
+    #[serde(default)]
+    applications: Option<bool>,
+    /// map: draw the links (absent or null: true; false: none, the boxes only). In the technology layer the links are the relationships the elements declare and the
+    /// dependencies between environments the deployed applications give (see `derived_dependencies`), the second ones when `app_elements` is given.
+    #[serde(default)]
+    relationships: Option<bool>,
     /// show only what changed: the items and links whose `change` is new, changed or removed, the ends of those links and the
     /// focal item, and what encloses them (those kept for no change of their own are `context`). Without any `change` in
     /// the input, nothing changed: only the focal item and what encloses it stay.
@@ -843,6 +862,11 @@ fn overview(input: &Input, known: &Known, focal: &str) -> Result<Content, String
 /// The map: no focal element, every element of the layer is in play. An element is open when `opened` lists it (or it
 /// encloses a pinned element); a relationship ends on the first closed element met going down from the root, so
 /// opening an element splits the links that reached it among its children.
+///
+/// The map of the technology layer given the application layer (`app_elements`) draws, like the viewpoints of an element, the applications deployed on the nodes
+/// (a box inside its node, drawn when the node is open: `applications`) and the dependencies the applications of an environment have on those of the environments it
+/// `uses` (`derived_dependencies`, the ones the overview, the detailed and the deep viewpoints draw; the dependencies inside one environment stay out, as they are
+/// "secondary" there), as links between the deployed applications when both boxes are drawn, else between the boxes they land on (`relationships`).
 fn map(input: &Input, known: &Known) -> Result<Content, String> {
     for reference in input.pinned.iter().chain(input.opened.iter()).chain(input.hidden.iter()) {
         require(known, reference)?;
@@ -867,35 +891,87 @@ fn map(input: &Input, known: &Known) -> Result<Content, String> {
         }
         cur
     };
+    let draw_links = input.relationships.unwrap_or(true) || input.layer != "technology"; // the key means nothing in the map of the application layer
+    let app_known: Known = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+
+    // the applications deployed on the nodes that are open (and, when the map is pinned, inside what it is pinned on), by (node, application)
+    let mut deployed_items: Vec<(String, String, String)> = Vec::new();
+    if applies_applications(input) {
+        for (node, app, id) in deployed_ids(input) {
+            if visible(&node) && open(&node) && (input.pinned.is_empty() || in_pinned(&node)) {
+                if !app_known.contains_key(app.as_str()) {
+                    return Err(format!("dangling application reference: {app}"));
+                }
+                deployed_items.push((node, app, id));
+            }
+        }
+    }
+    let deployed_id: HashMap<(&str, &str), &str> = deployed_items.iter().map(|(node, app, id)| ((node.as_str(), app.as_str()), id.as_str())).collect();
 
     let mut by_key: BTreeMap<String, Groomed> = BTreeMap::new();
-    for e in &input.elements {
-        for r in e.relationships.iter().collect::<BTreeSet<_>>() {
-            if is_hidden(&e.reference) || is_hidden(&r.destination) {
-                continue;
+    if draw_links {
+        for e in &input.elements {
+            for r in e.relationships.iter().collect::<BTreeSet<_>>() {
+                if is_hidden(&e.reference) || is_hidden(&r.destination) {
+                    continue;
+                }
+                if !input.pinned.is_empty() && !(in_pinned(&e.reference) || in_pinned(&r.destination)) {
+                    continue;
+                }
+                require(known, &r.destination)?;
+                let (from, to) = (project(&e.reference), project(&r.destination));
+                if from == to {
+                    continue; // inside a closed element
+                }
+                let grouped = from != e.reference || to != r.destination;
+                let g = by_key.entry(format!("{} -> {}", from, to)).or_insert_with(|| Groomed { from: from.clone(), to: to.clone(), ..Default::default() });
+                if grouped {
+                    g.synthetic.insert(r.clone());
+                    g.synthetic_src.insert(OutRel::of(&e.reference, r));
+                } else {
+                    g.natural.insert(r.clone());
+                    g.natural_src.insert(OutRel::of(&e.reference, r));
+                }
             }
-            if !input.pinned.is_empty() && !(in_pinned(&e.reference) || in_pinned(&r.destination)) {
-                continue;
-            }
-            require(known, &r.destination)?;
-            let (from, to) = (project(&e.reference), project(&r.destination));
-            if from == to {
-                continue; // inside a closed element
-            }
-            let grouped = from != e.reference || to != r.destination;
-            let g = by_key.entry(format!("{} -> {}", from, to)).or_insert_with(|| Groomed { from: from.clone(), to: to.clone(), ..Default::default() });
-            if grouped {
-                g.synthetic.insert(r.clone());
-                g.synthetic_src.insert(OutRel::of(&e.reference, r));
-            } else {
-                g.natural.insert(r.clone());
-                g.natural_src.insert(OutRel::of(&e.reference, r));
+        }
+        if input.layer == "technology" {
+            for d in derived_dependencies(input, &app_known) {
+                let destination = d.rel.destination.as_str();
+                if is_hidden(d.from_node) || is_hidden(d.to_node) {
+                    continue;
+                }
+                if !input.pinned.is_empty() && !(in_pinned(d.from_node) || in_pinned(d.to_node)) {
+                    continue;
+                }
+                // an end is the box of the application when it is drawn, else the first closed box met going down to its node
+                let end = |node: &str, app: &str| -> (String, bool) {
+                    match deployed_id.get(&(node, app)) {
+                        Some(id) => (id.to_string(), true),
+                        None => (project(node), false),
+                    }
+                };
+                let ((from, from_app_box), (to, to_app_box)) = (end(d.from_node, d.from_app), end(d.to_node, destination));
+                if from == to {
+                    continue;
+                }
+                let grouped = (!from_app_box && from != d.from_node) || (!to_app_box && to != d.to_node);
+                let g = by_key.entry(format!("{} -> {}", from, to)).or_insert_with(|| Groomed { from: from.clone(), to: to.clone(), ..Default::default() });
+                if grouped {
+                    g.synthetic.insert(d.rel.clone());
+                    g.synthetic_src.insert(OutRel::of_application(d.from_app, d.rel));
+                } else {
+                    g.natural.insert(d.rel.clone());
+                    g.natural_src.insert(OutRel::of_application(d.from_app, d.rel));
+                }
             }
         }
     }
     let groomed: Vec<Groomed> = by_key.into_values().collect();
     let mut refs: Vec<String> = Vec::new();
     let links = emit_links(&groomed, &input.default_synthetic_label, &mut refs);
+    // the ends of a link that are boxes of an application are not elements of the layer: they are added as items below
+    let app_ids: HashSet<&str> = deployed_items.iter().map(|(_, _, id)| id.as_str()).collect();
+    refs.retain(|r| !app_ids.contains(r.as_str()));
     if input.pinned.is_empty() {
         refs.extend(input.elements.iter().filter(|e| visible(&e.reference)).map(|e| e.reference.clone()));
     } else {
@@ -907,7 +983,49 @@ fn map(input: &Input, known: &Known) -> Result<Content, String> {
     for r in &item_refs {
         require(known, r)?;
     }
-    Ok((to_items(&item_refs), links))
+    let mut items = to_items(&item_refs);
+    for (node, app, id) in &deployed_items {
+        items.insert(OutItem::new(id, app, Some(node.clone())));
+    }
+    Ok((items, links))
+}
+
+/// The map of the technology layer draws the applications deployed on its nodes: it was given the application layer, and `applications` is not false.
+fn applies_applications(input: &Input) -> bool {
+    input.viewpoint == "map" && input.layer == "technology" && !input.app_elements.is_empty() && input.applications.unwrap_or(true)
+}
+
+/// The id of the box of each application deployed on each node, in the map of the technology layer: (node, application, id). The id is the last segment of the node and the
+/// application, as the deep viewpoint names them, unless that reads the same for several of them or is the reference of an element: they are then named after the whole path of
+/// their node. It is settled over every deployed application of the layer, not over the ones drawn, so that opening or hiding a box does not rename another.
+fn deployed_ids(input: &Input) -> Vec<(String, String, String)> {
+    let mut pairs: Vec<(&str, &str)> = Vec::new();
+    for node in &input.elements {
+        for app in node.applications.iter().collect::<BTreeSet<_>>() {
+            pairs.push((node.reference.as_str(), app.as_str()));
+        }
+    }
+    let short = |node: &str, app: &str| format!("{}_{}", parts(node).last().copied().unwrap_or(""), app.replace('.', "_"));
+    let mut uses: HashMap<String, usize> = HashMap::new();
+    for (node, app) in &pairs {
+        *uses.entry(short(node, app)).or_default() += 1;
+    }
+    let mut taken: HashSet<String> = input.elements.iter().map(|e| e.reference.clone()).collect();
+    let mut out = Vec::new();
+    for (node, app) in &pairs {
+        let mut id = short(node, app);
+        if uses[&id] > 1 || taken.contains(&id) {
+            id = format!("{}_{}", node.replace('.', "_"), app.replace('.', "_"));
+        }
+        let base = id.clone();
+        let mut n = 1;
+        while !taken.insert(id.clone()) {
+            n += 1;
+            id = format!("{base}_{n}");
+        }
+        out.push((node.to_string(), app.to_string(), id));
+    }
+    out
 }
 
 /// DetailedViewpointFactory: the union of the overview of every direct child of the focal parent.
@@ -1380,9 +1498,15 @@ fn mark_expandable(items: &mut [OutItem], links: &[OutLink], input: &mut Input) 
     let with_children: HashSet<String> = input.elements.iter().filter(|e| e.reference.contains('.')).map(|e| down_reference(&e.reference)).collect();
     let shown_parents: HashSet<String> = items.iter().filter_map(|i| i.parent.clone()).collect();
     let map = input.viewpoint == "map";
+    // the map of the technology layer: a node that hosts applications has children to show too
+    let hosts: HashSet<String> = if applies_applications(input) {
+        input.elements.iter().filter(|e| !e.applications.is_empty()).map(|e| e.reference.clone()).collect()
+    } else {
+        HashSet::new()
+    };
     let shown: Vec<OutItem> = items.to_vec();
     for item in items.iter_mut() {
-        if item.collapsed || item.id != item.reference || !with_children.contains(&item.id) || shown_parents.contains(&item.id) {
+        if item.collapsed || item.id != item.reference || !(with_children.contains(&item.id) || hosts.contains(&item.id)) || shown_parents.contains(&item.id) {
             continue;
         }
         let opened = if map { &mut input.opened } else { &mut input.expanded };
@@ -2895,5 +3019,234 @@ mod tests {
         }));
         assert_eq!(stereotypes(&out, "a"), json!(["q", "external", "changed"]));
         assert!(out["links"].as_array().unwrap().is_empty());
+    }
+
+    // ---- the map of the technology layer draws the deployed applications and the dependencies they give (wave 016, run 0114, issue #107) ----
+
+    /// Two environments: `dev` hosts `shop.api` (calls `shop.db` on the same node and `ext.registry`, in `int`), and uses `int`; `int` hosts `ext.registry` on two nodes and
+    /// declares a relationship of its own between nodes. `prd` is not used.
+    fn technology_map(extra: Value) -> Value {
+        let mut input = json!({
+            "viewpoint": "map", "layer": "technology",
+            "elements": [
+                { "reference": "dev", "parent": true, "uses": ["int"] },
+                { "reference": "dev.app", "applications": ["shop.api", "shop.db"] },
+                { "reference": "int", "parent": true },
+                { "reference": "int.a", "applications": ["ext.registry"], "relationships": [{ "destination": "int.b", "label": "replicates to" }] },
+                { "reference": "int.b", "applications": ["ext.registry"] },
+                { "reference": "prd", "parent": true },
+                { "reference": "prd.a", "applications": ["ext.registry"] }
+            ],
+            "app_elements": [
+                { "reference": "shop", "parent": true },
+                { "reference": "shop.api", "relationships": [{ "destination": "shop.db", "label": "reads" }, { "destination": "ext.registry", "label": "looks up" }] },
+                { "reference": "shop.db" },
+                { "reference": "ext", "parent": true },
+                { "reference": "ext.registry" }
+            ]
+        });
+        for (key, value) in extra.as_object().cloned().unwrap_or_default() {
+            input[key] = value;
+        }
+        compute(input)
+    }
+
+    fn link_ids(out: &Value) -> Vec<String> {
+        let mut links: Vec<String> = out["links"].as_array().unwrap().iter().map(|l| format!("{} -> {}", l["from"].as_str().unwrap(), l["to"].as_str().unwrap())).collect();
+        links.sort();
+        links
+    }
+
+    #[test]
+    fn the_technology_map_draws_the_applications_inside_the_nodes_that_are_open_and_the_dependencies_they_give() {
+        // everything folded: the dependency of an application of `dev` on one of `int` is a link between the environments, and the nodes that host applications can be opened
+        let out = technology_map(json!({}));
+        assert_eq!(ids(&out), ["dev", "int", "prd"]);
+        assert_eq!(link_ids(&out), ["dev -> int"]);
+        let dependency = link(&out, "dev", "int").unwrap();
+        assert!(dependency["synthetic"].as_bool().unwrap(), "the ends are the first closed boxes, not the applications: it is grouped");
+        assert_eq!(dependency["relationships"][0]["from"], "shop.api");
+        assert!(dependency["relationships"][0]["application"].as_bool().unwrap());
+        // opened down to the nodes: the nodes only, then the applications once a node is open
+        let out = technology_map(json!({ "opened": ["dev", "int"] }));
+        assert_eq!(ids(&out), ["dev", "dev.app", "int", "int.a", "int.b", "prd"]);
+        assert!(item(&out, "dev.app")["expandable"].as_bool().unwrap(), "a node that hosts applications can be opened");
+        assert!(item(&out, "prd")["expandable"].as_bool().unwrap(), "prd has a node to open");
+        assert_eq!(link_ids(&out), ["dev.app -> int.a", "dev.app -> int.b", "int.a -> int.b"]);
+        let out = technology_map(json!({ "opened": ["dev", "int", "dev.app", "int.a"] }));
+        assert_eq!(ids(&out), ["app_shop_api", "app_shop_db", "dev", "dev.app", "int", "int.a", "int.b", "int_a_ext_registry", "prd"]);
+        assert_eq!(item(&out, "app_shop_api")["parent"], "dev.app");
+        assert_eq!(item(&out, "app_shop_api")["reference"], "shop.api");
+        assert_eq!(item(&out, "int_a_ext_registry")["parent"], "int.a");
+        assert!(!item(&out, "app_shop_api")["expandable"].as_bool().unwrap(), "an application box has nothing to open");
+        // an application box is the end of the dependency when it is drawn, the node when it is not (int.b is open: its application is not drawn, the node is open and folded of it)
+        let links = link_ids(&out);
+        assert!(links.contains(&"app_shop_api -> int_a_ext_registry".to_string()), "{links:?}");
+        assert!(!links.contains(&"app_shop_api -> app_shop_db".to_string()), "inside an environment the dependencies stay out: {links:?}");
+        assert!(links.contains(&"app_shop_api -> int.b".to_string()), "int.b is a node whose application is not drawn: {links:?}");
+        assert_eq!(link(&out, "app_shop_api", "int_a_ext_registry").unwrap()["label"], "looks up");
+        assert!(!link(&out, "app_shop_api", "int_a_ext_registry").unwrap()["synthetic"].as_bool().unwrap(), "both ends are the boxes of the applications");
+        assert!(!link(&out, "app_shop_api", "int.b").unwrap()["synthetic"].as_bool().unwrap(), "a node is the real end of the dependency when its application is not drawn");
+        assert!(link(&out, "int.a", "int.b").is_some(), "what a node declares is still drawn");
+    }
+
+    #[test]
+    fn the_technology_map_hides_the_applications_or_the_relationships_on_request() {
+        let all = json!({ "opened": ["dev", "int", "dev.app", "int.a"] });
+        let without_applications = technology_map(json!({ "opened": ["dev", "int", "dev.app", "int.a"], "applications": false }));
+        assert_eq!(ids(&without_applications), ["dev", "dev.app", "int", "int.a", "int.b", "prd"]);
+        assert_eq!(link_ids(&without_applications), ["dev.app -> int.a", "dev.app -> int.b", "int.a -> int.b"], "the dependencies stay, between the nodes that host the applications");
+        assert!(!item(&without_applications, "dev.app")["expandable"].as_bool().unwrap(), "an open node with no application to show has nothing to open");
+        let mut without_relationships = all.clone();
+        without_relationships["relationships"] = json!(false);
+        let out = technology_map(without_relationships);
+        assert!(out["links"].as_array().unwrap().is_empty(), "neither the declared relationships nor the dependencies");
+        assert_eq!(ids(&out).len(), 9, "the boxes are the same with the links or without");
+        let mut neither = all.clone();
+        neither["relationships"] = json!(false);
+        neither["applications"] = json!(false);
+        let out = technology_map(neither);
+        assert!(out["links"].as_array().unwrap().is_empty());
+        assert_eq!(ids(&out), ["dev", "dev.app", "int", "int.a", "int.b", "prd"]);
+        // null is "not given": both are drawn
+        let drawn = technology_map(json!({ "opened": ["dev", "dev.app"], "applications": null, "relationships": null }));
+        assert!(has_item(&drawn, "app_shop_api"));
+    }
+
+    #[test]
+    fn the_technology_map_only_derives_what_the_environment_uses() {
+        // `prd` is not used by `dev`: nothing leads to it, and `int` is reached through `uses` only
+        let out = technology_map(json!({ "opened": ["dev", "int", "prd", "dev.app"] }));
+        assert!(link_ids(&out).iter().all(|l| !l.contains("prd.")), "{:?}", link_ids(&out));
+        // an environment that uses nothing reaches nothing
+        let mut input = json!({ "opened": ["dev", "int", "dev.app"] });
+        input["elements"] = json!([
+            { "reference": "dev", "parent": true },
+            { "reference": "dev.app", "applications": ["shop.api"] },
+            { "reference": "int", "parent": true },
+            { "reference": "int.a", "applications": ["ext.registry"] }
+        ]);
+        let out = technology_map(input);
+        assert!(out["links"].as_array().unwrap().is_empty(), "uses is a scope, never a link: {:?}", link_ids(&out));
+    }
+
+    #[test]
+    fn the_technology_map_changes_nothing_without_the_application_layer_or_in_the_application_layer() {
+        // no `app_elements`: the nodes are drawn as they were, with the relationships they declare
+        let bare = compute(json!({
+            "viewpoint": "map", "layer": "technology", "opened": ["dev", "int", "dev.app"],
+            "elements": [
+                { "reference": "dev", "parent": true, "uses": ["int"] },
+                { "reference": "dev.app", "applications": ["shop.api"] },
+                { "reference": "int", "parent": true },
+                { "reference": "int.a", "applications": ["ext.registry"], "relationships": [{ "destination": "int.b" }] },
+                { "reference": "int.b" }
+            ]
+        }));
+        assert_eq!(ids(&bare), ["dev", "dev.app", "int", "int.a", "int.b"]);
+        assert_eq!(link_ids(&bare), ["int.a -> int.b"]);
+        assert!(!item(&bare, "dev.app")["expandable"].as_bool().unwrap());
+        // the application layer is a map of its own: the two keys mean nothing there
+        let a = map_of(&["sys"], &[], &[]);
+        let mut with_keys = json!({
+            "viewpoint": "map", "layer": "application", "opened": ["sys"], "applications": false, "relationships": true,
+            "elements": [
+                { "reference": "sys", "parent": true },
+                { "reference": "sys.a", "relationships": [{ "destination": "other.b.c", "label": "calls" }, { "destination": "sys.b", "label": "feeds" }] },
+                { "reference": "sys.b", "relationships": [{ "destination": "other.b.c", "label": "calls" }] },
+                { "reference": "other", "parent": true },
+                { "reference": "other.b", "parent": true },
+                { "reference": "other.b.c" },
+                { "reference": "ext", "relationships": [{ "destination": "sys.b", "label": "pushes" }] }
+            ]
+        });
+        with_keys["app_elements"] = json!([{ "reference": "z" }]);
+        assert_eq!(compute(with_keys.clone()), a);
+        with_keys["relationships"] = json!(false);
+        assert_eq!(compute(with_keys), a, "`relationships: false` means nothing in the map of the application layer either");
+    }
+
+    #[test]
+    fn the_technology_map_hides_and_pins_the_nodes_the_applications_are_on() {
+        let out = technology_map(json!({ "opened": ["dev", "int", "dev.app", "int.a"], "hidden": ["int.a"] }));
+        assert!(!has_item(&out, "int_a_ext_registry") && !has_item(&out, "int.a"), "what is inside a hidden node goes with it");
+        assert!(link_ids(&out).iter().all(|l| !l.contains("int.a")), "{:?}", link_ids(&out));
+        assert!(link_between(&out, "app_shop_api", "int.b"));
+        // pinned on a node: the applications on it, the links that touch it, the boxes at their other end folded
+        let out = technology_map(json!({ "pinned": ["dev.app"], "opened": ["dev.app"] }));
+        assert_eq!(ids(&out), ["app_shop_api", "app_shop_db", "dev", "dev.app", "int"]);
+        assert_eq!(link_ids(&out), ["app_shop_api -> int"]);
+        // an ancestor of what is pinned is open, its other nodes are not drawn, and neither are their applications
+        let out = technology_map(json!({ "pinned": ["int.a"] }));
+        assert!(!has_item(&out, "int_a_ext_registry"), "int.a is pinned, not open");
+        assert_eq!(ids(&out), ["dev", "int", "int.a", "int.b"], "int.b is the other end of what int.a declares");
+    }
+
+    #[test]
+    fn a_deployed_application_box_of_the_map_is_named_after_its_node_and_never_takes_another_id() {
+        let out = technology_map(json!({ "opened": ["dev", "int", "dev.app", "int.a", "int.b"] }));
+        let apps: Vec<(String, String)> = out["items"].as_array().unwrap().iter().filter(|i| i["id"] != i["reference"]).map(|i| (i["id"].as_str().unwrap().to_string(), i["parent"].as_str().unwrap().to_string())).collect();
+        // `ext.registry` is on `int.a` and `prd.a`: the same short id, so both carry the path of their node, drawn or not; the one on `int.b` is alone of its name
+        assert!(apps.contains(&("int_a_ext_registry".to_string(), "int.a".to_string())), "{apps:?}");
+        assert!(apps.contains(&("b_ext_registry".to_string(), "int.b".to_string())), "{apps:?}");
+        assert!(apps.contains(&("app_shop_api".to_string(), "dev.app".to_string())), "{apps:?}");
+        // the id of a box does not depend on what is open
+        let some = technology_map(json!({ "opened": ["dev", "int", "int.a"] }));
+        assert!(has_item(&some, "int_a_ext_registry") && !has_item(&some, "b_ext_registry"));
+        // and it never takes the reference of an element
+        let clash = compute(json!({
+            "viewpoint": "map", "layer": "technology", "opened": ["prod", "prod.pod"],
+            "elements": [{ "reference": "prod", "parent": true }, { "reference": "prod.pod", "applications": ["shop.api"] }, { "reference": "pod_shop_api" }],
+            "app_elements": [{ "reference": "shop", "parent": true }, { "reference": "shop.api" }]
+        }));
+        assert_eq!(item(&clash, "prod_pod_shop_api")["reference"], "shop.api");
+        // an application the layer does not have is an error, as in the deep viewpoint
+        let dangling = compute(json!({
+            "viewpoint": "map", "layer": "technology", "opened": ["prod", "prod.pod"],
+            "elements": [{ "reference": "prod", "parent": true }, { "reference": "prod.pod", "applications": ["ghost"] }],
+            "app_elements": [{ "reference": "shop" }]
+        }));
+        assert_eq!(dangling["error"], "dangling application reference: ghost");
+    }
+
+    #[test]
+    fn the_technology_map_tells_what_changed_on_the_applications_and_the_links_between_them() {
+        let out = technology_map(json!({
+            "opened": ["dev", "int", "dev.app", "int.a"],
+            "elements": [
+                { "reference": "dev", "parent": true, "uses": ["int"], "change": "none" },
+                { "reference": "dev.app", "applications": ["shop.api"], "change": "none" },
+                { "reference": "int", "parent": true, "change": "none" },
+                { "reference": "int.a", "applications": ["ext.registry"], "change": "none" }
+            ],
+            "app_elements": [
+                { "reference": "shop", "parent": true, "change": "none" },
+                { "reference": "shop.api", "change": "new", "relationships": [{ "destination": "ext.registry", "label": "looks up", "change": "new" }] },
+                { "reference": "ext", "parent": true, "change": "none" },
+                { "reference": "ext.registry", "change": "none" }
+            ]
+        }));
+        assert_eq!(item(&out, "app_shop_api")["change"], "new");
+        assert_eq!(item(&out, "a_ext_registry")["change"], "none");
+        assert_eq!(link(&out, "app_shop_api", "a_ext_registry").unwrap()["change"], "new");
+        assert!(item(&out, "app_shop_api")["stereotypes"].as_array().unwrap().iter().any(|s| s == "new"));
+        // only what changed, with the boxes around it
+        let only = technology_map(json!({
+            "opened": ["dev", "int", "dev.app", "int.a"], "only_changes": true,
+            "elements": [
+                { "reference": "dev", "parent": true, "uses": ["int"], "change": "none" },
+                { "reference": "dev.app", "applications": ["shop.api"], "change": "none" },
+                { "reference": "int", "parent": true, "change": "none" },
+                { "reference": "int.a", "applications": ["ext.registry"], "change": "none" }
+            ],
+            "app_elements": [
+                { "reference": "shop", "parent": true, "change": "none" },
+                { "reference": "shop.api", "change": "new", "relationships": [{ "destination": "ext.registry", "change": "new" }] },
+                { "reference": "ext", "parent": true, "change": "none" },
+                { "reference": "ext.registry", "change": "none" }
+            ]
+        }));
+        assert_eq!(ids(&only), ["a_ext_registry", "app_shop_api", "dev", "dev.app", "int", "int.a"]);
+        assert!(item(&only, "a_ext_registry")["context"].as_bool().unwrap());
     }
 }

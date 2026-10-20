@@ -46,8 +46,8 @@ import lombok.val;
  * Input of the kernel: {@code viewpoint}, {@code layer}, {@code focal} (the reference of the view's element),
  * {@code default_synthetic_label} and {@code elements}, one entry per element of the layer with its {@code reference},
  * whether it is a {@code parent}, the {@code applications} it hosts (technology nodes), the environments it
- * {@code uses} (technology environments) and its egress {@code relationships}, and its {@code qualifiers} and {@code tags}, from which the kernel tells the {@code stereotypes} of an item. The deep viewpoint of the technology layer also needs the application layer
- * ({@code app_elements}), and {@code application_links} and {@code hide_unlinked} for the workspace of a facet. See {@code src/main/rust/viewpoint-kernel/src/lib.rs} for the whole contract.
+ * {@code uses} (technology environments) and its egress {@code relationships}, and its {@code qualifiers} and {@code tags}, from which the kernel tells the {@code stereotypes} of an item. The viewpoints of the technology layer also need the application layer
+ * ({@code app_elements}: the deployed applications, which the map draws too, and the dependencies they give, unless the view says {@code applications: false} or {@code relationships: false}), and {@code application_links} and {@code hide_unlinked} for the workspace of a facet. See {@code src/main/rust/viewpoint-kernel/src/lib.rs} for the whole contract.
  */
 @Slf4j
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
@@ -194,6 +194,19 @@ public class KernelViewpointFactory implements ViewpointFactory {
         }
     }
 
+    /**
+     * What the map of the technology layer draws besides its elements: the applications deployed on the nodes ({@code applications}) and the links ({@code relationships}).
+     * Both are drawn unless the properties of the view say {@code false} (a value that is not the boolean {@code false} is no choice, as in the editor).
+     */
+    private void mapParts(ObjectNode input, View view) {
+        val properties = Optional.<JsonNode>ofNullable(view.getProperties()).orElseGet(objectMapper::createObjectNode);
+        for (val part : List.of("applications", "relationships")) {
+            if (properties.path(part).isBoolean() && !properties.path(part).asBoolean()) {
+                input.put(part, false);
+            }
+        }
+    }
+
     private static List<String> strings(JsonNode list) {
         val out = new ArrayList<String>();
         list.forEach(item -> out.add(item.asText()));
@@ -238,13 +251,20 @@ public class KernelViewpointFactory implements ViewpointFactory {
         if (map) {
             mapLists(input, view, workspace, mainIndex);
         }
-        if (technology && !map) {
+        if (technology) {
+            // the application layer: the applications deployed on the nodes, which the viewpoints of an element draw inside them and derive links from, and which the map
+            // of the technology layer draws too (issue #107), unless its properties say `applications: false` or `relationships: false`
             input.set(
                 "app_elements",
                 comparison == null
                     ? graphOf(workspace.appIndex, objectMapper)
                     : unionOf(comparison, workspace, View.Layer.APPLICATION, objectMapper)
             );
+            if (map) {
+                mapParts(input, view);
+            }
+        }
+        if (technology && !map) {
             // the facets are applied to the workspace before the views are asked for: the kernel is told a view is about a flow
             if (workspace.isFaceted()) {
                 input.put("application_links", true);

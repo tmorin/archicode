@@ -42,12 +42,13 @@ test('draw: the page Environments draws the technology layer, folded, with the b
   assert.match(page.html(), /data-map="true"/);
   assert.match(page.html(), /aria-label="Map of the technology layer\./, 'a screen reader is told which Map it is on');
   assert.match(page.scene().viewKey, /^map\|.*\|technology$/, 'a drawing of the Map, of its layer: another Map is another drawing');
-  assert.match(page.scene().status, /^Map of the technology layer — 4 items, 0 links/);
-  // the kernel input is the one of the layer, with no other layer in it
+  assert.match(page.scene().status, /^Map of the technology layer — 4 items, 2 links/, 'prod uses the partners and staging the sandbox: since #107 the dependencies of the deployed applications are links');
+  // the kernel input is the one of the layer, plus the application layer the deployed applications are told by (issue #107); the elements of the map are the layer's own
   const { input } = run(page.sandbox, 'buildKernelInput("map", "", { layer: "technology", opened: [], pinned: [] })');
   assert.equal(input.layer, 'technology');
-  assert.deepEqual(plain(input.app_elements), [], 'a map draws one layer');
+  assert.equal(input.app_elements.length, run(page.sandbox, 'AppState.index.application.size'));
   assert.equal(input.elements.length, run(page.sandbox, 'AppState.index.technology.size'));
+  assert.equal('applications' in input || 'relationships' in input, false, 'both are drawn: the kernel is told nothing');
   // the page Applications is the application layer, as it was
   await page.go('map');
   assert.ok(boxes(page).includes('shop') && !boxes(page).includes('prod'));
@@ -131,7 +132,7 @@ test('pin: the pins of the two Maps are kept apart, and each page draws its own'
   await page.drawn();
   await page.go('environments');
   assert.deepEqual(plain(run(page.sandbox, 'technologyMapState.pinned')), ['staging'], 'and back on Environments the pin is still there');
-  assert.deepEqual(boxes(page), ['staging']);
+  assert.deepEqual(boxes(page).sort(), ['sandbox', 'staging'], 'what touches staging: the sandbox it uses, folded');
 });
 
 test('pin: Show on map from an environment draws the Map of the technology layer, pinned on it', async () => {
@@ -297,6 +298,7 @@ test('facet: the Map of the technology layer is drawn through a facet that remov
   await page.drawn();
   assert.doesNotMatch(page.scene().html, /dangling reference/);
   assert.deepEqual(boxes(page).sort(), ['partners', 'prod', 'sandbox', 'staging']);
+  assert.match(page.scene().status, /^Map of the technology layer through facet “journey” — 4 items/);
   // a facet of the technology layer: a pin and a hidden element it removes are left out of the lists the kernel is given, and the lists of the page are kept
   const removing = { name: 'no-sandbox', actions: [{ operator: 'REMOVE', jsonPath: "$.technology.elements[?(@.id == 'sandbox')]" }], hideUnlinked: false };
   run(page.sandbox, 'AppState.workspace.settings.facets.customs.push(' + JSON.stringify(removing) + ')');
@@ -306,7 +308,7 @@ test('facet: the Map of the technology layer is drawn through a facet that remov
   page.sandbox.handleAppInput({ target: { id: 'diagram-facet-select', value: 'no-sandbox', matches: () => false } });
   const canvas = await page.drawn();
   assert.doesNotMatch(canvas.innerHTML, /dangling reference/);
-  assert.deepEqual(boxes(page), ['prod']);
+  assert.deepEqual(boxes(page).sort(), ['partners', 'prod'], 'pinned on prod: the partners it uses are linked to it');
   assert.deepEqual(plain(run(page.sandbox, 'technologyMapState.hidden')), ['sandbox'], 'without the facet the choice of the user is back');
   assert.ok(facetNamed('no-sandbox'));
 });

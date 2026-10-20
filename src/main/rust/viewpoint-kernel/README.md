@@ -10,6 +10,12 @@ that reached it among its children. `pinned` keeps the relationships that touch 
 elements out. Pinned on one element with nothing open it draws that element's overview, which the tests check against
 the views the CLI generates.
 
+The map of the **technology** layer also draws the applications and the dependencies between environments (wave 016, run 0114, issue #107; additive, the contract stays 5). Given the
+application layer (`app_elements`), a node that hosts applications can be opened, and the applications deployed on it are boxes inside it, as the viewpoints of an element draw them
+(same ids); the dependencies of the applications of an environment on those of the environments it `uses` are links, between the boxes of the applications when both are drawn and
+else between the boxes the nodes land on (the dependencies inside one environment stay out, as they are "secondary" in the viewpoints of an element). `applications: false` draws the
+nodes only, `relationships: false` draws no link at all (both absent or null: drawn). The application layer's map, and a technology map given no `app_elements`, are as they were.
+
 A second, a third, a fourth, a fifth and a sixth entry point sit next to `compute`: `apply_facet` (the facets, see below), `compare`, which says what
 changed between two plateaus of an architecture (see "Comparing two plateaus"), `apply_patches`, which changes the graph of a
 plateau by the ordered patches of its layer (see "Applying the patches of a plateau"), and `states`, which says the seven state words of a

@@ -1,32 +1,289 @@
 {
-  "comment": "The boxes and the links that the command line and the editor draw for the views of layer `technology` and viewpoint `map` of the example src/doc/examples/domain_technology_map (wave 015, run 0099, issue #92). One file, read by TechnologyMapTest.java (the viewpoint of the command line) and technology-map-shared.test.js (the page of a view in the editor, over the embedded kernel): either side drifting fails a test. A box is the reference of its element, a link is `from -> to` between two boxes. Both lists are sorted.",
-  "workspace": "src/doc/examples/domain_technology_map",
-  "views": {
-    "datacentre-map": {
-      "boxes": ["backup", "datacentre"],
-      "links": ["datacentre -> backup"]
+  "comment": "The boxes and the links that the command line and the editor draw for the saved views of layer `technology` and viewpoint `map` (wave 015, run 0099, issue #92; wave 016, run 0114, issue #107). One file, read by TechnologyMapTest.java (the viewpoint of the command line) and technology-map-shared.test.js (the page of a view and the page Environments, over the embedded kernel): either side drifting fails a test. A box is the id of its item (the reference of its element, or for an application deployed on a node `<node>_<application>`), a link is `from -> to` between two boxes. Both lists are sorted. A view without `plateau` is read in the only plateau of its workspace. A variant draws the same view with the `properties` it names put over those of the view: `applications` and `relationships` (both drawn when absent; false leaves out the applications deployed on the nodes, or every link) and `opened`.",
+  "workspaces": [
+    {
+      "workspace": "src/doc/examples/domain_technology_map",
+      "views": {
+        "datacentre-map": {
+          "boxes": ["backup", "datacentre"],
+          "links": ["datacentre -> backup"],
+          "variants": {
+            "without-relationships": {
+              "properties": {
+                "relationships": false
+              },
+              "boxes": ["backup", "datacentre"],
+              "links": []
+            }
+          }
+        },
+        "datacentre-map-open": {
+          "boxes": [
+            "backup",
+            "datacentre",
+            "datacentre.edge",
+            "datacentre.edge.balancer",
+            "datacentre.edge.firewall",
+            "datacentre.rack",
+            "datacentre.rack.db",
+            "datacentre.rack.web"
+          ],
+          "links": [
+            "datacentre.edge.balancer -> datacentre.rack.web",
+            "datacentre.edge.firewall -> datacentre.edge.balancer",
+            "datacentre.rack.db -> backup",
+            "datacentre.rack.web -> datacentre.rack.db"
+          ],
+          "variants": {
+            "without-relationships": {
+              "properties": {
+                "relationships": false
+              },
+              "boxes": [
+                "backup",
+                "datacentre",
+                "datacentre.edge",
+                "datacentre.edge.balancer",
+                "datacentre.edge.firewall",
+                "datacentre.rack",
+                "datacentre.rack.db",
+                "datacentre.rack.web"
+              ],
+              "links": []
+            },
+            "without-applications": {
+              "properties": {
+                "applications": false
+              },
+              "boxes": [
+                "backup",
+                "datacentre",
+                "datacentre.edge",
+                "datacentre.edge.balancer",
+                "datacentre.edge.firewall",
+                "datacentre.rack",
+                "datacentre.rack.db",
+                "datacentre.rack.web"
+              ],
+              "links": [
+                "datacentre.edge.balancer -> datacentre.rack.web",
+                "datacentre.edge.firewall -> datacentre.edge.balancer",
+                "datacentre.rack.db -> backup",
+                "datacentre.rack.web -> datacentre.rack.db"
+              ]
+            }
+          }
+        },
+        "datacentre-map-database": {
+          "boxes": [
+            "backup",
+            "datacentre",
+            "datacentre.rack",
+            "datacentre.rack.db",
+            "datacentre.rack.web"
+          ],
+          "links": [
+            "datacentre.rack.db -> backup",
+            "datacentre.rack.web -> datacentre.rack.db"
+          ]
+        }
+      }
     },
-    "datacentre-map-open": {
-      "boxes": [
-        "backup",
-        "datacentre",
-        "datacentre.edge",
-        "datacentre.edge.balancer",
-        "datacentre.edge.firewall",
-        "datacentre.rack",
-        "datacentre.rack.db",
-        "datacentre.rack.web"
-      ],
-      "links": [
-        "datacentre.edge.balancer -> datacentre.rack.web",
-        "datacentre.edge.firewall -> datacentre.edge.balancer",
-        "datacentre.rack.db -> backup",
-        "datacentre.rack.web -> datacentre.rack.db"
-      ]
-    },
-    "datacentre-map-database": {
-      "boxes": ["backup", "datacentre", "datacentre.rack", "datacentre.rack.db", "datacentre.rack.web"],
-      "links": ["datacentre.rack.db -> backup", "datacentre.rack.web -> datacentre.rack.db"]
+    {
+      "workspace": "src/test/resources/brightcart/layered",
+      "views": {
+        "environments_map": {
+          "plateau": "baseline",
+          "boxes": ["partners", "prod", "prod.dc"],
+          "links": ["prod.dc -> partners"],
+          "variants": {
+            "opened-to-the-applications": {
+              "properties": {
+                "opened": [
+                  "partners",
+                  "partners.carrier-live",
+                  "partners.erp-live",
+                  "prod",
+                  "prod.dc",
+                  "prod.dc.app-vm",
+                  "prod.dc.batch-vm"
+                ]
+              },
+              "boxes": [
+                "app-vm_shop_app",
+                "batch-vm_fulfilment_sync",
+                "carrier-live_carrier",
+                "erp-live_erp",
+                "partners",
+                "partners.carrier-live",
+                "partners.erp-live",
+                "partners.mail-live",
+                "partners.psp-live",
+                "partners.tax-live",
+                "prod",
+                "prod.dc",
+                "prod.dc.admin-vm",
+                "prod.dc.app-vm",
+                "prod.dc.batch-vm",
+                "prod.dc.cache-vm",
+                "prod.dc.db-vm",
+                "prod.dc.web-vm"
+              ],
+              "links": [
+                "batch-vm_fulfilment_sync -> carrier-live_carrier",
+                "batch-vm_fulfilment_sync -> erp-live_erp"
+              ]
+            },
+            "opened-without-applications": {
+              "properties": {
+                "opened": [
+                  "partners",
+                  "partners.carrier-live",
+                  "partners.erp-live",
+                  "prod",
+                  "prod.dc",
+                  "prod.dc.app-vm",
+                  "prod.dc.batch-vm"
+                ],
+                "applications": false
+              },
+              "boxes": [
+                "partners",
+                "partners.carrier-live",
+                "partners.erp-live",
+                "partners.mail-live",
+                "partners.psp-live",
+                "partners.tax-live",
+                "prod",
+                "prod.dc",
+                "prod.dc.admin-vm",
+                "prod.dc.app-vm",
+                "prod.dc.batch-vm",
+                "prod.dc.cache-vm",
+                "prod.dc.db-vm",
+                "prod.dc.web-vm"
+              ],
+              "links": [
+                "prod.dc.batch-vm -> partners.carrier-live",
+                "prod.dc.batch-vm -> partners.erp-live"
+              ]
+            },
+            "opened-without-relationships": {
+              "properties": {
+                "opened": [
+                  "partners",
+                  "partners.carrier-live",
+                  "partners.erp-live",
+                  "prod",
+                  "prod.dc",
+                  "prod.dc.app-vm",
+                  "prod.dc.batch-vm"
+                ],
+                "relationships": false
+              },
+              "boxes": [
+                "app-vm_shop_app",
+                "batch-vm_fulfilment_sync",
+                "carrier-live_carrier",
+                "erp-live_erp",
+                "partners",
+                "partners.carrier-live",
+                "partners.erp-live",
+                "partners.mail-live",
+                "partners.psp-live",
+                "partners.tax-live",
+                "prod",
+                "prod.dc",
+                "prod.dc.admin-vm",
+                "prod.dc.app-vm",
+                "prod.dc.batch-vm",
+                "prod.dc.cache-vm",
+                "prod.dc.db-vm",
+                "prod.dc.web-vm"
+              ],
+              "links": []
+            },
+            "opened-with-neither": {
+              "properties": {
+                "opened": [
+                  "partners",
+                  "partners.carrier-live",
+                  "partners.erp-live",
+                  "prod",
+                  "prod.dc",
+                  "prod.dc.app-vm",
+                  "prod.dc.batch-vm"
+                ],
+                "applications": false,
+                "relationships": false
+              },
+              "boxes": [
+                "partners",
+                "partners.carrier-live",
+                "partners.erp-live",
+                "partners.mail-live",
+                "partners.psp-live",
+                "partners.tax-live",
+                "prod",
+                "prod.dc",
+                "prod.dc.admin-vm",
+                "prod.dc.app-vm",
+                "prod.dc.batch-vm",
+                "prod.dc.cache-vm",
+                "prod.dc.db-vm",
+                "prod.dc.web-vm"
+              ],
+              "links": []
+            }
+          }
+        },
+        "cloud_map": {
+          "plateau": "inhouse",
+          "boxes": ["partners", "prod", "prod.cloud", "prod.cloud.k8s"],
+          "links": ["prod.cloud.k8s -> partners"],
+          "variants": {
+            "without-relationships": {
+              "properties": {
+                "relationships": false
+              },
+              "boxes": ["prod", "prod.cloud", "prod.cloud.k8s"],
+              "links": []
+            },
+            "opened-to-the-applications": {
+              "properties": {
+                "opened": [
+                  "prod",
+                  "prod.cloud",
+                  "prod.cloud.k8s",
+                  "prod.cloud.k8s.commerce",
+                  "prod.cloud.k8s.payments"
+                ]
+              },
+              "boxes": [
+                "commerce_commerce_cart",
+                "commerce_commerce_catalog",
+                "commerce_commerce_checkout",
+                "commerce_commerce_gateway",
+                "commerce_commerce_pricing",
+                "commerce_commerce_search",
+                "partners",
+                "payments_payments_orchestrator",
+                "prod",
+                "prod.cloud",
+                "prod.cloud.k8s",
+                "prod.cloud.k8s.accounts",
+                "prod.cloud.k8s.commerce",
+                "prod.cloud.k8s.orders",
+                "prod.cloud.k8s.payments"
+              ],
+              "links": [
+                "commerce_commerce_checkout -> partners",
+                "payments_payments_orchestrator -> partners"
+              ]
+            }
+          }
+        }
+      }
     }
-  }
+  ]
 }
