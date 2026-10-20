@@ -26,7 +26,8 @@ import picocli.CommandLine;
         "Compare a plateau with another one: the elements and the relationships that are new, changed or removed, and what changed in each, as a table.",
         "The plateau is the one --plateau names (default: settings.current, else the last one when the plateaus form one line); it is compared with the --against plateau, any plateau of the workspace, siblings included (default: the plateau it overrides). A difference is not an error: the exit code is 0, unless --fail-on asks otherwise.",
         "--fail-on makes the command a check for a build: it exits with code 3 (1 is an error, 2 a usage error) when the comparison holds a change of one of the states listed, and the table is printed as it is without it.",
-        "The cascade of the REMOVE patches the plateau adds is listed after the table."
+        "The cascade of the REMOVE patches the plateau adds is listed after the table.",
+        "--width wraps the text table to a number of columns."
     }
 )
 public class DiffCommand implements Runnable, CommandLine.IExitCodeGenerator {
@@ -72,6 +73,13 @@ public class DiffCommand implements Runnable, CommandLine.IExitCodeGenerator {
     )
     List<String> failOn;
 
+    @CommandLine.Option(
+        names = { "--width" },
+        paramLabel = "COLUMNS",
+        description = "Wrap the text table to this many columns, so that a long reference or a long cell does not make it unreadable: a cell wraps at the spaces, a reference without any is cut after a dot or a slash, then where the line ends. Without it the table is as wide as its longest cell. The markdown and json formats are not wrapped."
+    )
+    String width;
+
     private int exitCode;
 
     @Override
@@ -84,6 +92,7 @@ public class DiffCommand implements Runnable, CommandLine.IExitCodeGenerator {
         exitCode = 0;
         // the words are checked before anything is loaded: a typo is told at once, and not after the load of two plateaus
         val failOnStates = FailOn.parse(failOn);
+        val columns = Width.parse(width);
         val path = archiCode.workspaceFilePath.toAbsolutePath();
 
         val target = workspaceFactory.create(path, null, plateauOption.plateauId);
@@ -111,7 +120,7 @@ public class DiffCommand implements Runnable, CommandLine.IExitCodeGenerator {
         warnings.warnAll(StateTags.warnings(target, comparison));
 
         // printed to System.out: application.properties sets quarkus.log.level=ERROR
-        System.out.print(GapReport.render(comparison, format, noWording, cascade));
+        System.out.print(GapReport.render(comparison, format, noWording, cascade, columns));
 
         if (FailOn.holds(comparison, failOnStates, noWording)) {
             exitCode = ErrorOutput.CHANGES_FOUND;
