@@ -501,10 +501,10 @@ test('a new story or view is a manifest of no plateau, in the first manifests fo
   assert.deepEqual(ids(sandbox.storiesList()), ['speed', 'speed_2', 'tour', 'wind']);
 });
 
-test('a story that still says plateau: in its header is read, listed in every plateau and told as ignored', async () => {
+test('a story that still says plateau: in its header is read, listed in every plateau and told by nothing', async () => {
   const old = 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\n  plateau: "fast"\ncontent:\n  id: "old"\n  name: "Old"\n  steps: []\n';
   const { sandbox, state } = await openFiles(Object.assign({}, FERRY, { 'fast/story.old.yaml': old }));
-  assert.ok(Array.from(state.plateauTree.warnings).includes('`fast/story.old.yaml` is a story and says `plateau: fast` in its header, which is ignored: a story exists whatever plateau is drawn'));
+  assert.deepEqual(Array.from(state.plateauTree.warnings), [], 'no message: the key means nothing for a story');
   for (const drawn of ['baseline', 'green']) {
     sandbox.drawPlateau(drawn);
     assert.ok(ids(sandbox.storiesList()).includes('old'), drawn);

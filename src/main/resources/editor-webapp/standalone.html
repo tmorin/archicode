@@ -4097,18 +4097,11 @@ function isPlateauFreeManifest(mf) {
   return kind === 'view' || kind === 'story';
 }
 
-/** The plateau a manifest belongs to: the one its header names, else `baseline`. Null for a view and a story, which belong to none (their `plateau:` is ignored, see `ignoredPlateauWarning`). */
+/** The plateau a manifest belongs to: the one its header names, else `baseline`. Null for a view and a story, which belong to none (their `plateau:` is accepted and means nothing: no message, no plateau). */
 function plateauOfManifest(mf) {
   if (isPlateauFreeManifest(mf)) return null;
   const written = headerPlateau(mf.header);
   return written === null ? BASELINE_PLATEAU : written;
-}
-
-/**
- * The sentence for a view or a story that says `plateau:` in its header, which is ignored (`ManifestParser.ignoredPlateauWarning`): keep them alike.
- */
-function ignoredPlateauWarning(source, noun, plateau) {
-  return '`' + source + '` is a ' + noun + ' and says `plateau: ' + plateau + '` in its header, which is ignored: a ' + noun + ' exists whatever plateau is drawn';
 }
 
 /**
@@ -4145,19 +4138,6 @@ function plateauCycles(parents) {
  * without being wrong. A manifest with an error is left out: the file says why.
  */
 function buildPlateauTree(manifestFiles) {
-  const model = buildPlateauTreeOf(manifestFiles);
-  // a view and a story that say `plateau:` are told once the tree is right (the command line reads the tree first, and stops at its mistakes)
-  if (!model.problems.length) {
-    for (const mf of manifestFiles) {
-      if (mf.error || !mf.header || !mf.content || !isPlateauFreeManifest(mf)) continue;
-      const written = headerPlateau(mf.header);
-      if (written !== null) model.warnings.push(ignoredPlateauWarning(mf.relPath, manifestKindName(mf.header.kind), written));
-    }
-  }
-  return model;
-}
-
-function buildPlateauTreeOf(manifestFiles) {
   const declaredBy = new Map(); // id -> [{ content, source }]
   const headers = new Map(); // id -> [relPath]
   let layered = false; // a manifest of kind plateau, or a header that says `plateau:`
@@ -6319,7 +6299,7 @@ function plateauDeletion(id) {
   const named = new RegExp('(^|[^a-z0-9_-])' + id.replace(/[-]/g, '\\-') + '($|[^a-z0-9_-])', 'm');
   plan.unread = (AppState.unreadManifestFiles || []).concat(AppState.manifestFiles.filter((mf) => mf.error && named.test(String(mf.rawText || ''))).map((mf) => mf.relPath)).sort(compareCodePoints);
   const stays = AppState.manifestFiles.filter((mf) => !goes.has(mf.relPath));
-  const after = buildPlateauTreeOf(stays);
+  const after = buildPlateauTree(stays);
   const settings = AppState.workspace.settings;
   const now = entryProblemsOf(settings).map(comparableSentence);
   plan.blocking = entryProblemsIn(stays, after, null).filter((sentence) => !now.includes(comparableSentence(sentence))); // a step that was wrong already is not the delete's
