@@ -128,7 +128,7 @@ wave_manifest:
       slug: band-compare-shows-the-tree
       phase: P1
       depends_on: []
-      run: null
+      run: 0109
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
