@@ -589,7 +589,7 @@ test('the layouts of a file: a parent with no elements yet, the last child leavi
   assert.deepEqual(plain(timer.tags), { kind: 'round' });
 });
 
-test('the comments on lines of their own inside the block go with it; the ones after its last line are the next element\'s', async () => {
+test('the comments on lines of their own inside the block go with it, and so does the one after its last line when it is indented as the keys of the block (#119)', async () => {
   const commented = BAKERY
     .replace('        - kind: component\n          id: "timer"', '        # the timer, which counts\n        - kind: component\n          id: "timer"')
     .replace('          name: "Timer"\n', '          name: "Timer"\n        # after the oven\n');
@@ -600,7 +600,8 @@ test('the comments on lines of their own inside the block go with it; the ones a
   assert.ok(saved.includes('            # the timer, which counts\n            - kind: component\n              id: "timer"\n              name: "Timer"\n'), 'the comment between two children went with them, one level deeper');
   assert.ok(saved.includes('        - destination: "bakery.tools.oven.gauge"\n          label: "checks"\n'));
   assert.equal((saved.match(/# after the oven/g) || []).length, 1, 'the comment after the last line is not lost');
-  assert.ok(saved.indexOf('# after the oven') < saved.indexOf('# the mixer is on its own'), 'it stays where it was, with what follows it');
+  assert.ok(saved.includes('              name: "Timer"\n            # after the oven\n'), 'it goes with the block (one level deeper, like the block), after its last line');
+  assert.ok(saved.indexOf('# the mixer is on its own') < saved.indexOf('# after the oven'), 'it left the place it was in: the comment of the next element stays on that element');
 });
 
 test('a block with a text over several lines, an end-of-line comment and a blank line moves whole', async () => {

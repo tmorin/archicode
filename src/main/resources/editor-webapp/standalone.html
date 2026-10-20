@@ -2049,6 +2049,8 @@ function serializeManifestFile(header, content) {
  * they were written, a line it changes keeps its anchor and its tag, and an alias stays as long as the line still says what it points at.
  */
 function patchYamlText(oldText, newValue) {
+  // a text that starts with a byte-order mark is patched without it and keeps it (the page holds the text of a file without the mark, see `readTextAndMark`; #119)
+  if (oldText.charCodeAt(0) === 0xfeff) return '\ufeff' + patchYamlText(oldText.slice(1), newValue);
   const opened = openYamlDecorations(oldText);
   if (opened === null) return patchYamlTextPlain(oldText, newValue);
   const emitted = serializeYamlValue(newValue, 0);
@@ -2933,6 +2935,39 @@ function emittedBlockOf(value, path) {
 }
 
 /**
+ * The last line of `original` that goes with a block whose last line is `last` and whose list item (the `- ` line) is at column `itemIndent` (#119): the comments that follow it.
+ * A comment is read as the block's own when it is indented deeper than the item (as the block's keys), and when it sits at the column of the item and no sibling follows it
+ * (the next line that is not a comment or blank is shallower than the item, or there is none): nothing is then introduced by it. A comment at the column of the item above a
+ * sibling is that sibling's introduction, and one shallower than the item is the next thing's: both stay, and so does every line from the first of them on. The blank lines between
+ * the block and a comment that goes with it go with it; the blank lines after the last of those stay. Returns `last` when no comment goes with the block. The rule is indentation
+ * alone: a comment about the block written at the column of an item that has a sibling after it, or a comment about the next element indented as the keys of the block, is
+ * attributed the other way (the model is never affected).
+ */
+function lastLineOfBlockWithComments(original, last, itemIndent) {
+  const isComment = (line) => line.trim().startsWith('#');
+  let stop = last + 1;
+  while (stop < original.length && (original[stop].trim() === '' || isComment(original[stop]))) stop++;
+  const lastOfItsList = stop >= original.length || yamlIndentOf(original[stop]) < itemIndent;
+  let end = last;
+  for (let i = last + 1; i < stop; i++) {
+    if (original[i].trim() === '') continue;
+    const indent = yamlIndentOf(original[i]);
+    if (indent > itemIndent || (indent === itemIndent && lastOfItsList)) end = i;
+    else break;
+  }
+  return end;
+}
+
+/**
+ * Whether a comment just above a block is the comment that follows the block before it (#119, the other side of `lastLineOfBlockWithComments`): the block has a sibling before it,
+ * and the comment is indented deeper than the item (`itemLine`, the `- ` line of the block in the file), as the keys of that sibling are. `before` is `emittedBlockOf` of the block.
+ */
+function deeperThanItemAfterSibling(commentLine, before, itemLine) {
+  const siblingBefore = before.start > 0 && yamlIndentOf(before.lines[before.start - 1]) > yamlIndentOf(before.lines[before.start]);
+  return siblingBefore && yamlIndentOf(commentLine) > yamlIndentOf(itemLine);
+}
+
+/**
  * The text of a manifest after an element was put under another parent of the same file, with the block of the element carried over as it was written: its comments,
  * its quotes and its blank lines, re-indented, and the comments just above it with it. `oldValue`/`newValue` are `{ header, content }` before and after the move
  * (nothing else changed between them), `oldPath`/`newPath` where the element was and is (see `pathOfElementNode`). The other lines are the author's. `null` when the
@@ -2940,6 +2975,10 @@ function emittedBlockOf(value, path) {
  * ordinary patch, which writes the moved lines as the emitter does.
  */
 function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
+  if (oldText.charCodeAt(0) === 0xfeff) { // a byte-order mark stays where it is (#119)
+    const moved = moveBlockInText(oldText.slice(1), oldValue, oldPath, newValue, newPath);
+    return moved === null ? null : '\ufeff' + moved;
+  }
   try {
     if (openYamlDecorations(oldText) !== null) return null; // an anchor, an alias or a tag: the ordinary patch follows them
     if (!oldPath || !newPath || !oldPath.length || !newPath.length) return null;
@@ -2975,11 +3014,11 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
     if (located === null) return null;
     const { place, spans } = located;
     const first = place[before.start];
-    const last = place[before.end - 1] + spans[before.end - 1];
+    const last = lastLineOfBlockWithComments(original, place[before.end - 1] + spans[before.end - 1], yamlIndentOf(original[first])); // and the comments that follow it (#119)
     // the comments just above the element are its own; the lines before them are not
     const floor = place[before.start - 1] + spans[before.start - 1];
     let carryFrom = first;
-    while (carryFrom - 1 > floor && original[carryFrom - 1].trim().startsWith('#')) carryFrom--;
+    while (carryFrom - 1 > floor && original[carryFrom - 1].trim().startsWith('#') && !deeperThanItemAfterSibling(original[carryFrom - 1], before, original[first])) carryFrom--;
     const delta = yamlIndentOf(after.lines[after.start]) - yamlIndentOf(before.lines[before.start]);
     const carried = original.slice(carryFrom, last + 1).map((line) => shiftYamlLine(line, delta));
     const removeFrom = cutFrom < before.start ? place[cutFrom] : carryFrom;
@@ -3007,6 +3046,10 @@ function moveBlockInText(oldText, oldValue, oldPath, newValue, newPath) {
  * the caller then keeps the ordinary patch, which writes the file as the emitter does (the block is gone, with its comments).
  */
 function cutBlockFromText(oldText, oldValue, oldPath) {
+  if (oldText.charCodeAt(0) === 0xfeff) { // a byte-order mark stays where it is (#119)
+    const out = cutBlockFromText(oldText.slice(1), oldValue, oldPath);
+    return out === null ? null : Object.assign({}, out, { text: '\ufeff' + out.text });
+  }
   try {
     if (openYamlDecorations(oldText) !== null) return null; // an anchor, an alias or a tag: the ordinary patch follows them
     if (!oldPath || !oldPath.length) return null;
@@ -3034,10 +3077,10 @@ function cutBlockFromText(oldText, oldValue, oldPath) {
     if (located === null) return null;
     const { place, spans } = located;
     const first = place[before.start];
-    const last = place[before.end - 1] + spans[before.end - 1];
+    const last = lastLineOfBlockWithComments(original, place[before.end - 1] + spans[before.end - 1], yamlIndentOf(original[first])); // and the comments that follow it (#119)
     const floor = place[before.start - 1] + spans[before.start - 1]; // the comments just above the element are its own; the lines before them are not
     let carryFrom = first;
-    while (carryFrom - 1 > floor && original[carryFrom - 1].trim().startsWith('#')) carryFrom--;
+    while (carryFrom - 1 > floor && original[carryFrom - 1].trim().startsWith('#') && !deeperThanItemAfterSibling(original[carryFrom - 1], before, original[first])) carryFrom--;
     const removeFrom = cutFrom < before.start ? place[cutFrom] : carryFrom;
     let carried = original.slice(carryFrom, last + 1);
     const out = original.filter((line, i) => i < removeFrom || i > last);
@@ -3057,6 +3100,10 @@ function cutBlockFromText(oldText, oldValue, oldPath) {
  * of the file is not one this can follow or the result does not read as `newValue`: the caller then keeps the ordinary patch, which writes the block as the emitter does.
  */
 function pasteBlockInText(oldText, oldValue, newValue, newPath, carried, indent) {
+  if (oldText.charCodeAt(0) === 0xfeff) { // a byte-order mark stays where it is (#119)
+    const pasted = pasteBlockInText(oldText.slice(1), oldValue, newValue, newPath, carried, indent);
+    return pasted === null ? null : '\ufeff' + pasted;
+  }
   try {
     if (openYamlDecorations(oldText) !== null) return null;
     if (!newPath || !newPath.length) return null;
@@ -7086,10 +7133,11 @@ async function readManifestFolder(rootHandle, relDir, options) {
       let content = null;
       let error = null;
       let lastKnownDiskModified = null; // TDD-0010 DEC-8
+      let bom = false;
       try {
         const file = await entryHandle.getFile();
         lastKnownDiskModified = file.lastModified;
-        rawText = await file.text();
+        ({ text: rawText, bom } = await readTextAndMark(file));
         ({ header, content, error } = parseManifestText(rawText));
       } catch (e) {
         error = e && e.message ? e.message : String(e);
@@ -7097,6 +7145,7 @@ async function readManifestFolder(rootHandle, relDir, options) {
       result.files.push({
         relPath, rawText, header, content, error,
         dirty: false, existedOnDisk: true, lastKnownDiskModified,
+        bom, // the file starts with a UTF-8 byte-order mark: `rawText` never does, the write puts it back (`withByteOrderMark`, #119)
         savedRawText: rawText // what the file holds on disk, as far as this editor knows: an edit that restores it is no change
       });
     }
@@ -7134,12 +7183,15 @@ async function loadWorkspace(dirHandle) {
   let workspaceRaw;
   let workspaceLastKnownDiskModified = null; // TDD-0010 DEC-8
   let workspaceText = ''; // the file as it is: the next Save keeps of it what the edit did not touch
+  let workspaceBom = false; // it starts with a UTF-8 byte-order mark (`workspaceText` does not, #119)
   try {
     const fileHandle = await dirHandle.getFileHandle(WORKSPACE_FILE_NAME);
     const file = await fileHandle.getFile();
     workspaceLastKnownDiskModified = file.lastModified;
-    const text = await file.text();
+    const read = await readTextAndMark(file);
+    const text = read.text;
     workspaceText = text;
+    workspaceBom = read.bom;
     workspaceRaw = parseYaml(text) || {};
     // a workspace.yaml that is not a mapping is not one the editor can write back without losing it
     if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw)) throw new Error(readWrongShape(workspaceRaw, '')); // the sentence of the command line
@@ -7230,7 +7282,8 @@ async function loadWorkspace(dirHandle) {
     topLevel: workspaceRaw,
     settingsDirty: false, // TDD-0010 DEC-8
     settingsLastKnownDiskModified: workspaceLastKnownDiskModified,
-    rawText: workspaceText
+    rawText: workspaceText,
+    bom: workspaceBom
   };
   await openLayers(settings, plateauTree);
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
@@ -7280,6 +7333,33 @@ function stripServerTokenFromUrl() {
 /** Whether the editor can get hold of a folder here: from the server that serves it, or by picking one. */
 function isFolderAccessAvailable() {
   return isServedByArchiCode() || isFileSystemAccessSupported();
+}
+
+/**
+ * The text of a file the folder gives, and whether the file starts with a UTF-8 byte-order mark (#119). A browser never hands the mark to the page (`File.text()` and the decoder
+ * of a response both drop it), so the bytes tell: the first three of the file. The text is returned as the browser gives it, without the mark; a reader that does give it (no
+ * `slice` to ask the bytes) has it taken off and noted, so that `rawText` of a file never starts with one and the write (`withByteOrderMark`) is the only place that puts it back.
+ */
+async function readTextAndMark(file) {
+  let text = await file.text();
+  let bom = false;
+  if (file && typeof file.slice === 'function') {
+    try {
+      const head = new Uint8Array(await file.slice(0, 3).arrayBuffer());
+      bom = head.length === 3 && head[0] === 0xef && head[1] === 0xbb && head[2] === 0xbf;
+    } catch (e) {
+      bom = false; // the bytes cannot be asked: the file is written as the page holds it
+    }
+  } else if (text.charCodeAt(0) === 0xfeff) {
+    bom = true;
+    text = text.slice(1);
+  }
+  return { text, bom };
+}
+
+/** The text to write for a file that started with a byte-order mark (`bom`): the mark first, once. */
+function withByteOrderMark(bom, text) {
+  return bom && text.charCodeAt(0) !== 0xfeff ? '\ufeff' + text : text;
 }
 
 async function serverFetch(method, route, params, body) {
@@ -7350,7 +7430,8 @@ function serverFileHandle(path, name) {
       if (!response.ok) throw await serverFailure(response, path);
       // the editor tells that a file changed on disk since it read it by this time
       const modified = Number(response.headers && response.headers.get ? response.headers.get('X-ArchiCode-Modified') : NaN);
-      return new File([await response.text()], name, Number.isFinite(modified) ? { type: 'text/plain', lastModified: modified } : { type: 'text/plain' });
+      // the bytes, not `response.text()`: that decoder drops a byte-order mark, and the page then could not put it back when it saves (#119); `File.text()` drops it the same way
+      return new File([await response.arrayBuffer()], name, Number.isFinite(modified) ? { type: 'text/plain', lastModified: modified } : { type: 'text/plain' });
     },
     async createWritable() {
       const parts = [];
@@ -8822,7 +8903,7 @@ async function writeManifestFile(mf, text) {
   const dir = await getDirectoryHandleByRelativePath(AppState.folder.handle, segments.join('/'), { create: !mf.existedOnDisk });
   const fileHandle = await dir.getFileHandle(name, { create: !mf.existedOnDisk });
   const writable = await fileHandle.createWritable();
-  await writable.write(text === undefined ? mf.rawText : text);
+  await writable.write(withByteOrderMark(mf.bom, text === undefined ? mf.rawText : text));
   await writable.close();
 }
 
@@ -8969,7 +9050,7 @@ async function writeWorkspaceYaml() {
   const text = typeof ws.rawText === 'string' && ws.rawText !== '' ? patchYamlText(ws.rawText, raw) : serializeYamlValue(raw, 0);
   const fileHandle = await AppState.folder.handle.getFileHandle('workspace.yaml');
   const writable = await fileHandle.createWritable();
-  await writable.write(text);
+  await writable.write(withByteOrderMark(ws.bom, text));
   await writable.close();
   ws.rawText = text;
 }
@@ -9203,6 +9284,7 @@ async function reloadManifestFile(relPath) {
   if (!mf || !mf.existedOnDisk) return;
 
   let rawText;
+  let bom;
   let lastModified;
   try {
     const segments = String(relPath).split('/').filter(Boolean);
@@ -9210,7 +9292,7 @@ async function reloadManifestFile(relPath) {
     const dir = await getDirectoryHandleByRelativePath(AppState.folder.handle, segments.join('/'));
     const file = await (await dir.getFileHandle(name)).getFile();
     lastModified = file.lastModified;
-    rawText = await file.text();
+    ({ text: rawText, bom } = await readTextAndMark(file));
   } catch (e) {
     saveStatus = { state: 'reload-error', failedFile: relPath, message: e && e.message ? e.message : String(e) };
     render();
@@ -9221,7 +9303,7 @@ async function reloadManifestFile(relPath) {
   clearDirtyReferencesForFile(relPath); // before the index is rebuilt: it still knows this file's current elements
   AppState.manifestFiles = AppState.manifestFiles.map((f) =>
     f.relPath === relPath
-      ? { relPath, rawText, header, content, error, dirty: false, existedOnDisk: true, lastKnownDiskModified: lastModified, savedRawText: rawText }
+      ? { relPath, rawText, header, content, error, dirty: false, existedOnDisk: true, lastKnownDiskModified: lastModified, bom, savedRawText: rawText }
       : f
   );
   if (rawYamlEditDraft && rawYamlEditDraft.relPath === relPath) rawYamlEditDraft = null;

@@ -340,7 +340,7 @@ function createApp(options = {}) {
     },
     localStorage: options.localStorage, // absent: the page runs as if the browser refused its storage
     fetch: options.fetch,
-    File: options.serverToken ? class { constructor(parts, name, options = {}) { this.parts = parts; this.name = name; this.lastModified = options.lastModified; } async text() { return this.parts.join(''); } } : undefined,
+    File: options.serverToken ? File : undefined, // the host's File, which drops a byte-order mark in text() as a browser does
     Blob,
     // the remembered folders: an in-memory IndexedDB of its own per page, unless the test gives one (to share it, or seed it)
     indexedDB: options.indexedDB === undefined ? fakeIndexedDB() : options.indexedDB,

@@ -21,6 +21,7 @@ function fakeServer() {
     status,
     headers: { get: (name) => (extra && extra[name]) || null },
     async text() { return typeof body === 'string' ? body : JSON.stringify(body); },
+    async arrayBuffer() { const bytes = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)); return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength); },
     async json() { return body; }
   });
   const fetch = async (url, init) => {

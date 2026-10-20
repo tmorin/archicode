@@ -38,6 +38,8 @@ function memFolder(initial, options) {
       if (mem.failGetFile) throw new Error(mem.failGetFile);
       const f = files.get(p);
       if (!f) throw notFound(p);
+      // a file that starts with a byte-order mark is a real File, as a browser gives it: `text()` drops the mark and the bytes still have it (#119)
+      if (f.text.charCodeAt(0) === 0xfeff) return new File([Buffer.from(f.text, 'utf8')], p.split('/').pop(), { lastModified: f.mtime });
       return { lastModified: f.mtime, async text() { return f.text; } };
     },
     async createWritable() {

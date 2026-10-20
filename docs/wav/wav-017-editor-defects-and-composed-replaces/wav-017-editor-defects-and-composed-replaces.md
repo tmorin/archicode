@@ -131,7 +131,7 @@ wave_manifest:
       slug: save-keeps-bom-and-trailing-comment
       phase: P0
       depends_on: []
-      run: null
+      run: 0123
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
