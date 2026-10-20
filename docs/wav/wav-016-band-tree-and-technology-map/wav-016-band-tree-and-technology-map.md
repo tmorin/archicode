@@ -140,7 +140,7 @@ wave_manifest:
       slug: brightcart-views-and-stories
       phase: P1
       depends_on: []
-      run: null
+      run: 0110
       delegation: standard
       likely_paths:
         - 'src/test/resources/brightcart/**'
