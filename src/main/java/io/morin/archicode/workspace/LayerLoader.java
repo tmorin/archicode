@@ -129,7 +129,7 @@ public class LayerLoader {
 
     /** Index the graph, adding the elements the manifests of a layer declare to it (the model is changed by this). */
     private static Indexes index(Workspace resources, Map<Class<?>, Set<ManifestParser.Candidate>> candidates) {
-        val layers = ElementIndexFactory.indexLayers(resources, candidates);
+        val layers = ElementIndexFactory.indexLayers(resources, candidates, true);
         return new Indexes(layers.application(), layers.technology());
     }
 

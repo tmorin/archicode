@@ -105,3 +105,32 @@ for (const layer of [APPLICATION, TECHNOLOGY]) {
     }
   }
 }
+
+// ---- the kinds a layer holds at its top (issue #106, wave 016 run 0108)
+
+const TOP = DOCUMENT.nesting.top;
+const PLATEAU = manifest('plateau', 'p1');
+
+test('the page derives the kinds a layer holds at its top from READ_SCHEMA, and they are the table of the cases', () => {
+  const sandbox = createApp({});
+  assert.deepEqual(plain(sandbox.topLevelKindsOf('application')), TOP.application);
+  assert.deepEqual(plain(sandbox.topLevelKindsOf('technology')), TOP.technology);
+});
+
+for (const layered of [true, false]) {
+  for (const [layer, kinds] of [['application', APPLICATION], ['technology', TECHNOLOGY]]) {
+    for (const kind of kinds) {
+      const held = TOP[layer].includes(kind);
+      test('a ' + kind + ' with no header.parent is ' + (layered && !held ? 'told' : 'accepted') + ' in a workspace with' + (layered ? '' : 'out') + ' plateaus', async () => {
+        const { sandbox, state } = await open(Object.assign({ 'manifests/r.yaml': manifest(kind, 'r') }, layered ? { 'manifests/p1/plateau.yaml': PLATEAU } : {}));
+        const model = sandbox.layerModelOf('baseline', state.workspace.settings);
+        if (layered && !held) {
+          assert.deepEqual(plain(model.problems), ['`manifests/r.yaml` is not valid: unknown kind `' + kind + '` with no `header.parent` (known: ' + TOP[layer].join(', ') + ') at `header.kind`']);
+        } else {
+          assert.equal(model.problems, null);
+        }
+        assert.ok(model.index[layer].get('r'), 'it is drawn where its manifest puts it, so that it can be repaired');
+      });
+    }
+  }
+}

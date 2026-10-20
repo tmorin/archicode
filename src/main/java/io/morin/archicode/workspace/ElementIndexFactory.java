@@ -14,6 +14,7 @@ import io.morin.archicode.resource.workspace.Workspace;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +40,13 @@ public class ElementIndexFactory {
     @NonNull
     Set<ManifestParser.Candidate> candidates;
 
+    /**
+     * Whether the workspace has plateaus. In a layered workspace a layer holds only the kinds its model class holds at its top
+     * (issue #106): an element with no {@code header.parent} of another kind would be indexed but held by no layer, so a patch
+     * could not select it. A workspace with no plateau is not looked at: it is indexed and drawn as it always was.
+     */
+    boolean layered;
+
     private void reindexAncestors(String reference) {
         Workspace.Utilities.findParentReference(reference).ifPresent(parentReference -> {
             val removedElement = index.elementByReferenceIndex.remove(parentReference);
@@ -62,10 +70,16 @@ public class ElementIndexFactory {
      *
      * @param resources  the workspace; its trees are changed (the candidates are added to their parents)
      * @param candidates the elements the manifests declare, by layer ({@code Application.class}, {@code Technology.class})
+     * @param layered    whether the workspace has plateaus (see {@link #layered})
      * @return the two indexes
-     * @throws ArchiCodeException with one line for each element declared under a parent that cannot hold its kind
+     * @throws ArchiCodeException with one line for each element declared under a parent that cannot hold its kind, and, in a
+     *                            layered workspace, for each element with no parent that its layer does not hold at its top
      */
-    public static Layers indexLayers(Workspace resources, Map<Class<?>, Set<ManifestParser.Candidate>> candidates) {
+    public static Layers indexLayers(
+        Workspace resources,
+        Map<Class<?>, Set<ManifestParser.Candidate>> candidates,
+        boolean layered
+    ) {
         val mistakes = new ArrayList<String>();
         ElementIndex application = null;
         ElementIndex technology = null;
@@ -73,6 +87,7 @@ public class ElementIndexFactory {
             application = ElementIndexFactory.builder()
                 .root(resources.getApplication())
                 .candidates(candidates.getOrDefault(Application.class, Set.of()))
+                .layered(layered)
                 .build()
                 .create();
         } catch (ArchiCodeException e) {
@@ -82,6 +97,7 @@ public class ElementIndexFactory {
             technology = ElementIndexFactory.builder()
                 .root(resources.getTechnology())
                 .candidates(candidates.getOrDefault(Technology.class, Set.of()))
+                .layered(layered)
                 .build()
                 .create();
         } catch (ArchiCodeException e) {
@@ -97,23 +113,45 @@ public class ElementIndexFactory {
         return Nesting.holds(parent, candidate.getElement());
     }
 
+    /** The name of the kind of a candidate, as a manifest writes it ({@code container}, {@code node}). */
+    private static String kindOf(ManifestParser.Candidate candidate) {
+        return Arrays.stream(ManifestKind.values())
+            .filter(k -> k.getType() == candidate.getElement().getClass())
+            .findFirst()
+            .map(ManifestKind::getSubTypeName)
+            .orElse(candidate.getElement().getClass().getSimpleName().toLowerCase(Locale.ROOT));
+    }
+
+    private static String known(List<String> kinds) {
+        return kinds.isEmpty() ? "none" : String.join(", ", kinds);
+    }
+
     /**
      * The sentence for an element declared under a parent that cannot hold its kind: the one the reader of the files says for
      * a nested element of a kind its parent does not hold ({@code unknown kind `x` (known: ...) at `path`}), with the file, the
      * parent and the place of the fault in the manifest.
      */
     private static String refusal(ManifestParser.Candidate candidate, Element parent) {
-        val kinds = Nesting.kindsHeldBy(parent);
         return String.format(
             "`%s` is not valid: unknown kind `%s` under `%s` (known: %s) at `header.kind`",
             candidate.getSource(),
-            Arrays.stream(ManifestKind.values())
-                .filter(k -> k.getType() == candidate.getElement().getClass())
-                .findFirst()
-                .map(ManifestKind::getSubTypeName)
-                .orElse(candidate.getElement().getClass().getSimpleName().toLowerCase(Locale.ROOT)),
+            kindOf(candidate),
             candidate.getParent(),
-            kinds.isEmpty() ? "none" : String.join(", ", kinds)
+            known(Nesting.kindsHeldBy(parent))
+        );
+    }
+
+    /**
+     * The sentence for an element with no {@code header.parent} of a kind its layer does not hold at its top (issue #106), in the
+     * words of {@link #refusal}: the cause, no parent, takes the place of the parent. The page says the same
+     * ({@code rootProblem} in {@code standalone.html}): keep them alike.
+     */
+    private static String rootRefusal(ManifestParser.Candidate candidate, Parent<?> layer) {
+        return String.format(
+            "`%s` is not valid: unknown kind `%s` with no `header.parent` (known: %s) at `header.kind`",
+            candidate.getSource(),
+            kindOf(candidate),
+            known(Nesting.kindsHeldAtTheTop(layer))
         );
     }
 
@@ -150,7 +188,16 @@ public class ElementIndexFactory {
         val refused = new TreeMap<String, String>();
         indexedCandidates.forEach(appCandidate -> {
             val parentCandidate = index.elementByReferenceIndex.get(appCandidate.getParent());
-            if (parentCandidate != null && appCandidate.getSource() != null && !holds(parentCandidate, appCandidate)) {
+            if (
+                layered &&
+                appCandidate.getParent() == null &&
+                appCandidate.getSource() != null &&
+                !Nesting.holdsAtTheTop(root, appCandidate.getElement())
+            ) {
+                refused.put(appCandidate.getReference(), rootRefusal(appCandidate, root));
+            } else if (
+                parentCandidate != null && appCandidate.getSource() != null && !holds(parentCandidate, appCandidate)
+            ) {
                 refused.put(appCandidate.getReference(), refusal(appCandidate, parentCandidate));
             } else if (parentCandidate instanceof Parent parent) {
                 parent.getElements().add(appCandidate.getElement());

@@ -281,13 +281,48 @@ test('an item with no value is no qualifier, no application and no use (#80)', a
   assert.deepEqual(JSON.parse(JSON.stringify(state.index.technology.get('e.n').applications)), ['s']);
 });
 
-test('KNOWN DIFFERENCE (issue #105): an item with no value in relationships is a relationship with no destination for the page, none for the command line', async () => {
-  const mem = memFolder({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: [m]\n', 'm/a.yaml': manifest('  id: s\n  relationships: [null]\n') });
+test('an item with no value in relationships is no relationship, and the forms go on addressing the others by their place in the file (#105, case N87)', async () => {
+  const mem = memFolder({
+    'workspace.yaml': 'settings:\n  manifests:\n    paths: [m]\n',
+    'm/a.yaml': manifest('  id: s\n  relationships:\n    -\n    - destination: s\n      label: a\n    - null\n    - destination: s\n      label: b\n')
+  });
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
   assert.equal(state.manifestFiles[0].error, null, 'it is read, not refused, as it is by the command line');
-  assert.equal(state.index.application.get('s').relationships.length, 1, 'the page keeps the place of the item (the form of a relationship addresses the file by position)');
+  const record = state.index.application.get('s');
+  assert.deepEqual(JSON.parse(JSON.stringify(record.relationships.map((rel) => [rel.fileIndex, rel.rawLabel]))), [[1, 'a'], [3, 'b']], 'two relationships, each with its place in the file');
+  assert.equal(state.relationshipStats.dangling, 0, 'an item with no value is not a relationship with no destination');
+  // the form: one row for each relationship, addressed by the place in the file (the Remove button too)
+  const html = sandbox.renderElementEditionFormHtml('s');
+  assert.deepEqual(Array.from(html.matchAll(/class="relationship-edit-row" data-index="(\d+)"/g), (m) => m[1]), ['1', '3']);
+  assert.deepEqual(Array.from(html.matchAll(/data-action="remove-relationship"[^>]*data-index="(\d+)"/g), (m) => m[1]), ['1', '3']);
+  // a label typed in the second row is written on the second relationship of the file, and nothing else moves (`fakeForm` of model-ops.test.js, with the places of the form)
+  const input = (value, initial) => ({ value, getAttribute: (n) => (n === 'data-initial' ? initial : null) });
+  const rows = record.relationships.map((rel, shown) => {
+    const inputs = {
+      '.rel-destination-input': input(String(rel.destination)),
+      '.rel-label-input': input(shown === 1 ? 'c' : String(rel.rawLabel)),
+      '.rel-qualifiers-input': input('', ''),
+      '.rel-tags-input': input('', '')
+    };
+    return { getAttribute: (n) => (n === 'data-index' ? String(rel.fileIndex) : null), querySelector: (selector) => inputs[selector] || null };
+  });
+  const doc = sandbox.document;
+  const original = { getElementById: doc.getElementById, querySelectorAll: doc.querySelectorAll };
+  const byId = { 'edit-id-input': { value: 's' }, 'edit-name-input': { value: '' }, 'edit-description-input': { value: '' } };
+  doc.getElementById = (id) => byId[id] || original.getElementById.call(doc, id);
+  doc.querySelectorAll = (selector) => (selector.includes('relationship-edit-row') ? rows : original.querySelectorAll.call(doc, selector));
+  try {
+    assert.equal(sandbox.commitElementWithDraft('s', null), true);
+    const written = () => JSON.parse(JSON.stringify(sandbox.locateContentNode('s').node.relationships));
+    assert.deepEqual(written(), [null, { destination: 's', label: 'a' }, null, { destination: 's', label: 'c' }]);
+    // and a Remove removes the relationship it stands on
+    assert.equal(sandbox.commitElementWithDraft('s', (node) => { node.relationships.splice(1, 1); }), true);
+    assert.deepEqual(written(), [null, null, { destination: 's', label: 'c' }]);
+  } finally {
+    Object.assign(doc, original);
+  }
 });

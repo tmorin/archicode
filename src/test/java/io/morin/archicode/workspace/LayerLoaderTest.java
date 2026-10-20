@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.LayeredFixtures;
 import io.morin.archicode.resource.element.Element;
+import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.Component;
 import io.morin.archicode.resource.element.application.Container;
 import io.morin.archicode.resource.element.application.ContainerGroup;
@@ -23,6 +24,7 @@ import io.morin.archicode.resource.element.application.SolutionGroup;
 import io.morin.archicode.resource.element.application.SystemGroup;
 import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
+import io.morin.archicode.resource.element.technology.Technology;
 import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.PlateauComparer;
@@ -870,6 +872,56 @@ class LayerLoaderTest {
                     ") at `header.kind`",
                 error.getMessage()
             );
+        }
+    }
+
+    // ---- the kinds a layer holds at its top (issue #106, wave 016 run 0108) ----
+
+    @Test
+    void theLayersSayWhichKindsTheyHoldAtTheTop() {
+        val top = caseDocument().get("nesting").get("top");
+        assertEquals(textsOf(top.get("application")), Nesting.kindsHeldAtTheTop(Application.builder().build()));
+        assertEquals(textsOf(top.get("technology")), Nesting.kindsHeldAtTheTop(Technology.builder().build()));
+    }
+
+    /** Every kind as a manifest with no {@code header.parent}, in a workspace that has plateaus and in one that has none. */
+    static Stream<Arguments> roots() {
+        val out = new ArrayList<Arguments>();
+        for (val layered : List.of(true, false)) {
+            for (val kind : Stream.concat(APPLICATION.stream(), TECHNOLOGY.stream()).toList()) {
+                out.add(Arguments.of(layered, kind));
+            }
+        }
+        return out.stream();
+    }
+
+    @ParameterizedTest(name = "a {1} with no header.parent, plateaus: {0}")
+    @MethodSource("roots")
+    void shouldTellTheRootsNoLayerHoldsOnlyInAWorkspaceThatHasPlateaus(boolean layered, String kind) {
+        val files = new java.util.LinkedHashMap<String, String>();
+        files.put("manifests/r.yaml", manifest(kind, "r", null, ""));
+        if (layered) {
+            files.put("manifests/p1/plateau.yaml", manifest("plateau", "p1", null, ""));
+        }
+        val workspace = writeCase(files);
+        val layer = APPLICATION.contains(kind) ? "application" : "technology";
+        val top = textsOf(caseDocument().get("nesting").get("top").get(layer));
+        if (layered && !top.contains(kind)) {
+            val error = assertThrows(ArchiCodeException.class, () ->
+                workspaceFactory.create(workspace, null, "baseline")
+            );
+            assertEquals(
+                "`manifests/r.yaml` is not valid: unknown kind `" +
+                    kind +
+                    "` with no `header.parent` (known: " +
+                    String.join(", ", top) +
+                    ") at `header.kind`",
+                error.getMessage()
+            );
+        } else {
+            val loaded = workspaceFactory.create(workspace, null, layered ? "baseline" : null);
+            val index = APPLICATION.contains(kind) ? loaded.appIndex : loaded.techIndex;
+            assertTrue(index.searchElement("r").isPresent(), "it is indexed and drawn");
         }
     }
 

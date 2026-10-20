@@ -3959,9 +3959,12 @@ function isPresent(item) {
  */
 function indexElementRecursive(node, kind, reference, sourceFile, category, index, settings, level, declarations, attachedRoots) {
   const rawRelationships = Array.isArray(node.relationships) ? node.relationships : [];
-  const relationships = rawRelationships.map((r) => {
+  // an item with no value is no relationship (the command line reads none, issue #105): it is left out, and each relationship keeps its place in the list it was read from
+  // (`fileIndex`: the list of the manifest; in a plateau that patches the element, the list the plateau resolves), which the forms of an element address it by (`data-index`)
+  const relationships = rawRelationships.map((r, fileIndex) => ({ r, fileIndex })).filter(({ r }) => isPresent(r)).map(({ r, fileIndex }) => {
     const rel = r && typeof r === 'object' ? r : {};
     return {
+      fileIndex,
       // Jackson reads a number or a boolean into a String field: a destination `8080` names the element "8080"
       destination: (typeof rel.destination === 'number' || typeof rel.destination === 'boolean') ? String(rel.destination) : rel.destination,
       label: (rel.label !== undefined && rel.label !== null) ? rel.label : settings.relationships.defaultSyntheticLabel,
@@ -4657,6 +4660,14 @@ function nestingProblem(item, held) {
 }
 
 /**
+ * The sentence for a manifest with no `header.parent` of a kind its layer does not hold at its top (issue #106, wave 016 run 0108), in the words of `nestingProblem`: the
+ * cause, no parent, takes the place of the parent (`ElementIndexFactory.rootRefusal`): keep them alike. Told in a workspace that has plateaus only.
+ */
+function rootProblem(item, held) {
+  return '`' + item.mf.relPath + '` is not valid: unknown kind `' + item.rootKind + '` with no `header.parent` (known: ' + held.join(', ') + ') at `header.kind`';
+}
+
+/**
  * One layer: the state of the plateau above (null for the root) with the elements of the manifests of `node` added, then its patches applied by the kernel, then
  * the checks. Returns `{ state }` (`state.problems` holds the sentences of the first layer of the chain that is wrong, told by the command line, which stops there; the
  * graph is built all the same), or `{ fatal, plateau }` when the kernel refuses the patches of the layer: there is no graph then.
@@ -4684,6 +4695,12 @@ function resolveLayerStep(parent, node, context) {
     json.kind = rootKind;
     const item = { mf, category, rootKind, level, parentReference, reference, json };
     if (parentReference === null) {
+      // in a workspace that has plateaus a layer holds only the kinds of its model class at its top: a container, a component or a node with no parent is held by no layer, so
+      // a patch could not select it (issue #106). It is drawn where its manifest puts it, so that it can be repaired
+      if (context.layered) {
+        const held = topLevelKindsOf(category);
+        if (held.indexOf(rootKind) === -1) nesting[category].set(reference, rootProblem(item, held));
+      }
       state.graph[category].elements.push(json);
       register(category, json, reference);
       state.roots.set(category + '|' + reference, { kind: rootKind, level, file: mf.relPath, plateau: node.id });
@@ -4815,7 +4832,7 @@ function layerStateOf(id, settings) {
     result = above;
   } else {
     cache.counters.steps++;
-    result = resolveLayerStep(above ? above.state : null, node, { byPlateau: cache.byPlateau, kernel: loadedKernel });
+    result = resolveLayerStep(above ? above.state : null, node, { byPlateau: cache.byPlateau, kernel: loadedKernel, layered: !!cache.tree.layered });
   }
   cache.states.set(id, result);
   return result;
@@ -5801,7 +5818,8 @@ function fieldBaseWithout(plateau, patch, category, reference, field) {
   const node = AppState.plateauTree.nodes.get(plateau);
   const above = node.parent === null ? null : layerStateOf(node.parent, settings);
   if (above && above.fatal) return { known: false };
-  const result = resolveLayerStep(above ? above.state : null, Object.assign({}, node, { patches: node.patches.filter((p) => p !== patch) }), { byPlateau: ensureLayerCache(settings).byPlateau, kernel: loadedKernel });
+  const cache = ensureLayerCache(settings);
+  const result = resolveLayerStep(above ? above.state : null, Object.assign({}, node, { patches: node.patches.filter((p) => p !== patch) }), { byPlateau: cache.byPlateau, kernel: loadedKernel, layered: !!cache.tree.layered });
   if (result.fatal) return { known: false };
   const found = graphReferencesOf(result.state.graph)[category].get(reference);
   return found ? { known: true, value: copyJson(found[field]) } : { known: false };
@@ -9444,7 +9462,7 @@ function currentParentOf(reference, located) {
 /** The value of the choice "Top level" in the Move dialog, and the parent `commitMoveElement` takes for a move to the top level: not a reference (it starts with a space). */
 const MOVE_TOP_LEVEL = ' top level';
 
-/** The kinds a layer holds at its top level, as the model says it (`Application` holds person, solution and system, `Technology` an environment; a group is no root, see #106). */
+/** The kinds a layer holds at its top level, as the model says it (`Application` holds person, solution and system, `Technology` an environment; a group is no root; in a workspace that has plateaus the same list is what `resolveLayerStep` accepts with no `header.parent`, #106). */
 function topLevelKindsOf(layer) {
   const spec = READ_SCHEMA.types[layer === 'technology' ? 'Technology' : 'Application'].fields.elements; // '[*ApplicationElement]'
   return Object.keys(READ_SCHEMA.kinds[spec.slice(2, -1)] || {}).filter((kind) => kind !== 'group').sort();
@@ -11919,8 +11937,8 @@ function renderElementEditionFormHtml(reference) {
   // relationships
   html += '<div class="edition-section"><h3>Relationships</h3>';
   if (record.relationships && record.relationships.length) {
-    for (let i = 0; i < record.relationships.length; i++) {
-      html += renderRelationshipEditRowHtml(reference, record.relationships[i], i);
+    for (const rel of record.relationships) {
+      html += renderRelationshipEditRowHtml(reference, rel, rel.fileIndex); // the place in the file, not in the list drawn: an item with no value is not in the record (#105)
     }
   }
   html += renderRelationshipEditRowHtml(reference, null, null);
@@ -16303,7 +16321,7 @@ function libraryDiagramRecipe(view) {
   if (!view || viewProblem(view)) return null;
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const isMap = view.viewpoint === 'map';
-  const layer = view.layer === 'technology' ? 'technology' : 'application';
+  const layer = viewLayerOf(view);
   const facet = typeof properties.facet === 'string' ? AppState.workspace.settings.facets.customs.find((candidate) => candidate.name === properties.facet) || null : null;
   const shows = shownTextsOf(view);
   const recipe = {
@@ -16908,7 +16926,7 @@ function canonicalViewDefinition(view) {
   // a text drawn as the default of that diagram says is not a choice: it is not remembered
   const defaults = DIAGRAM_SHOW_DEFAULTS[viewpoint === 'map' ? 'map' : 'elements'];
   for (const name of DIAGRAM_SHOW_NAMES) if (properties[name] === defaults[name]) delete properties[name];
-  return { viewpoint, layer: view.layer === 'technology' ? 'technology' : 'application', properties };
+  return { viewpoint, layer: viewLayerOf(view), properties };
 }
 
 /** What the diagram on screen is, as a view; null when no diagram is on screen (a page, a form). */
@@ -16970,12 +16988,12 @@ function viewProblem(view, plateau) {
   const index = indexOfPlateau(plateau);
   if (view.viewpoint === 'map') {
     const pinned = stringList(properties.pinned);
-    const layer = view.layer === 'technology' ? 'technology' : 'application';
+    const layer = viewLayerOf(view);
     if (!pinned.length || pinned.some((reference) => index[layer].has(reference))) return null;
     return viewLacksInPlateau(pinned, layer, plateau) || 'None of the elements it was pinned on exists any more.';
   }
   if (!STORY_DIAGRAM_VIEWPOINTS.includes(view.viewpoint)) return 'The editor does not draw the viewpoint “' + view.viewpoint + '”.';
-  const layer = view.layer === 'technology' ? 'technology' : 'application';
+  const layer = viewLayerOf(view);
   if (typeof properties.element !== 'string' || !properties.element) return 'This view has no element.';
   if (!index[layer].has(properties.element)) {
     return viewLacksInPlateau([properties.element], layer, plateau) || 'The element “' + properties.element + '” does not exist any more.';
@@ -17007,7 +17025,7 @@ function applySavedView(view) {
   setDiagramShow(properties);
   diagramHideUnlinked = properties['hide-unlinked'] === true;
   if (view.viewpoint === 'map') {
-    const layer = view.layer === 'technology' ? 'technology' : 'application'; // the page Environments draws the technology layer, the page Applications the application layer
+    const layer = viewLayerOf(view); // the page Environments draws the technology layer, the page Applications the application layer
     const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
     const map = mapStateOf(layer);
     map.pinned = known(properties.pinned);
@@ -17018,7 +17036,7 @@ function applySavedView(view) {
     currentPerspective = layer === 'technology' ? 'environments' : 'map';
     useDiagramHost('main');
   } else {
-    const layer = view.layer === 'technology' ? 'technology' : 'application';
+    const layer = viewLayerOf(view);
     AppState.selection = { kind: 'element', key: properties.element, layer, mode: 'view' };
     elementTab = view.viewpoint;
     expandAncestorsOf(properties.element, layer);
@@ -17106,7 +17124,7 @@ function rewriteRecipeReferences(recipe, oldRef, newRef, layer) {
   const properties = recipe.properties;
   if (!isPlainObject(properties)) return false;
   let changed = false;
-  const viewLayer = recipe.layer === 'technology' ? 'technology' : 'application';
+  const viewLayer = viewLayerOf(recipe);
   if (recipe.viewpoint !== 'map' && viewLayer === layer && typeof properties.element === 'string') {
     const element = rewriteReferenceValue(properties.element, oldRef, newRef);
     if (element !== properties.element) { properties.element = element; changed = true; }
@@ -17184,9 +17202,13 @@ function viewKindOf(view) {
   return view.viewpoint === 'map' ? 'map' : 'elements';
 }
 
-/** The layer an element viewpoint of the view draws. */
+/**
+ * The layer a view draws, or a step that carries its own recipe, or a view definition: `technology` or else `application`, and the `layer` is read in any case, as the command
+ * line reads it (`layer: Technology` is the technology layer, wave 016 run 0108, issue #108). The one place the page reads the `layer` of a view; what is written is never changed
+ * by it (a view is not rewritten because of the case of its layer).
+ */
 function viewLayerOf(view) {
-  return view.layer === 'technology' ? 'technology' : 'application';
+  return entryLayerOf(view ? view.layer : undefined);
 }
 
 /** The texts a view draws: what it says, else the defaults of its kind of diagram. */
