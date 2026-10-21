@@ -81,6 +81,13 @@ Two things worth knowing before touching the code:
   environment the links between deployed applications stay "secondary" (the CLI does not draw them). The overview and
   detailed viewpoints of the technology layer see the same dependencies as relationships of the nodes that host the
   applications, so they group like the declared ones: an environment is linked to the environments it uses.
+  The relationships of what is inside a deployed application count too (wave 018, run 0133, issue #124, decision D7): a relationship of
+  `shop.app.payments` towards a deployed application is a dependency of the node that hosts `shop.app`, and the relationship of the
+  link says who declares it (`from: shop.app.payments`). A relationship that ends inside the deployed application itself is internal
+  and gives nothing; the destination must still be a deployed application (not something inside one). Relationships with the same
+  caption, qualifiers and tags fold into one link, as any others do. No key and no shape moves, so the contract stays 5; the output of
+  `compute` changes for a workspace that deploys an application with descendants that declare relationships. The "secondary" links
+  inside an environment (`application_links`) still read the relationships of the deployed application itself.
 - Inside an environment the relationships between deployed applications are "secondary" (not drawn), unless the view is
   about a flow: a `facet` in the input, or `application_links: true` (what the CLI says for the workspace of a facet),
   draws them with their label and qualifiers, and the overview and detailed viewpoints lift them to the nodes of the

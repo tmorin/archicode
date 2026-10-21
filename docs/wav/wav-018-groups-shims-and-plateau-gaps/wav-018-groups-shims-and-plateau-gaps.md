@@ -188,7 +188,7 @@ wave_manifest:
       slug: yaml-numbers-read-alike
       phase: P2
       depends_on: []
-      run: null
+      run: 0134
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/manifest/**'

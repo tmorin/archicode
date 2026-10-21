@@ -51,7 +51,7 @@ test('Applications: the boxes of the applications deployed on the nodes that are
   const page = await opened();
   const before = boxes(page);
   assert.ok(before.includes('batch-vm_fulfilment_sync') && before.includes('app-vm_shop_app') && before.includes('carrier-live_carrier'), before.join(', '));
-  assert.deepEqual(links(page), ['batch-vm_fulfilment_sync -> carrier-live_carrier', 'batch-vm_fulfilment_sync -> erp-live_erp']);
+  assert.deepEqual(links(page), ['app-vm_shop_app -> partners.mail-live', 'app-vm_shop_app -> partners.psp-live', 'app-vm_shop_app -> partners.tax-live', 'batch-vm_fulfilment_sync -> carrier-live_carrier', 'batch-vm_fulfilment_sync -> erp-live_erp']);
   const version = run(page.sandbox, 'modelVersion');
   click(page.sandbox, { 'data-action': 'toggle-map-part', 'data-part': 'applications' });
   await page.drawn();
@@ -59,13 +59,13 @@ test('Applications: the boxes of the applications deployed on the nodes that are
   assert.equal(tool(page.html(), 'relationships')[1], 'true');
   const applicationBoxes = ['app-vm_shop_app', 'batch-vm_fulfilment_sync', 'carrier-live_carrier', 'erp-live_erp'];
   assert.deepEqual(boxes(page), before.filter((id) => !applicationBoxes.includes(id)), 'the nodes stay, the four applications go');
-  assert.deepEqual(links(page), ['prod.dc.batch-vm -> partners.carrier-live', 'prod.dc.batch-vm -> partners.erp-live'], 'the dependencies stay, between the nodes that host the applications');
+  assert.deepEqual(links(page), ['prod.dc.app-vm -> partners.mail-live', 'prod.dc.app-vm -> partners.psp-live', 'prod.dc.app-vm -> partners.tax-live', 'prod.dc.batch-vm -> partners.carrier-live', 'prod.dc.batch-vm -> partners.erp-live'], 'the dependencies stay, between the nodes that host the applications (shop.app through its components, #124)');
   assert.equal(run(page.sandbox, 'modelVersion'), version, 'it is view state: no model changed');
   click(page.sandbox, { 'data-action': 'toggle-map-part', 'data-part': 'applications' });
   await page.drawn();
   assert.equal(tool(page.html(), 'applications')[1], 'true');
   assert.ok(boxes(page).includes('batch-vm_fulfilment_sync'));
-  assert.deepEqual(links(page), ['batch-vm_fulfilment_sync -> carrier-live_carrier', 'batch-vm_fulfilment_sync -> erp-live_erp']);
+  assert.deepEqual(links(page), ['app-vm_shop_app -> partners.mail-live', 'app-vm_shop_app -> partners.psp-live', 'app-vm_shop_app -> partners.tax-live', 'batch-vm_fulfilment_sync -> carrier-live_carrier', 'batch-vm_fulfilment_sync -> erp-live_erp']);
 });
 
 test('Relationships: every link goes, the boxes stay, and the status line says so', async () => {
@@ -146,7 +146,7 @@ test('the pins and the hidden elements apply to the applications: hiding a node 
   click(page.sandbox, { 'data-action': 'map-hide', 'data-ref': 'prod.dc.batch-vm' });
   await page.drawn();
   assert.ok(!boxes(page).includes('batch-vm_fulfilment_sync') && !boxes(page).includes('prod.dc.batch-vm'));
-  assert.deepEqual(links(page), []);
+  assert.deepEqual(links(page), ['app-vm_shop_app -> partners.mail-live', 'app-vm_shop_app -> partners.psp-live', 'app-vm_shop_app -> partners.tax-live'], 'the links of the hidden node go; the ones the components of shop.app give (#124) stay');
   click(page.sandbox, { 'data-action': 'map-unhide', 'data-ref': 'prod.dc.batch-vm' });
   click(page.sandbox, { 'data-action': 'map-pin', 'data-ref': 'prod.dc.batch-vm' });
   await page.drawn();
@@ -212,13 +212,13 @@ test('the page of a saved view: the tools edit the view, the form has the two bo
   const view = addView(page, { id: 'tm', viewpoint: 'map', layer: 'technology', properties: { opened: ['prod', 'prod.dc', 'prod.dc.batch-vm', 'partners', 'partners.carrier-live'], hidden: ['staging', 'sandbox'] } });
   await openView(page, view);
   assert.ok(boxes(page).includes('batch-vm_fulfilment_sync'));
-  assert.deepEqual(links(page), ['batch-vm_fulfilment_sync -> carrier-live_carrier', 'batch-vm_fulfilment_sync -> partners.erp-live']);
+  assert.deepEqual(links(page), ['batch-vm_fulfilment_sync -> carrier-live_carrier', 'batch-vm_fulfilment_sync -> partners.erp-live', 'prod.dc.app-vm -> partners.mail-live', 'prod.dc.app-vm -> partners.psp-live', 'prod.dc.app-vm -> partners.tax-live']);
   click(page.sandbox, { 'data-action': 'toggle-map-part', 'data-part': 'applications' });
   await page.drawn();
   assert.equal(view.properties.applications, false, 'the view is edited');
   assert.deepEqual(Object.keys(view.properties), ['opened', 'hidden', 'applications'], 'in the order the editor writes');
   assert.ok(!boxes(page).includes('batch-vm_fulfilment_sync'));
-  assert.deepEqual(links(page), ['prod.dc.batch-vm -> partners.carrier-live', 'prod.dc.batch-vm -> partners.erp-live']);
+  assert.deepEqual(links(page), ['prod.dc.app-vm -> partners.mail-live', 'prod.dc.app-vm -> partners.psp-live', 'prod.dc.app-vm -> partners.tax-live', 'prod.dc.batch-vm -> partners.carrier-live', 'prod.dc.batch-vm -> partners.erp-live']);
   assert.match(page.right(), /id="view-edit-part-applications" data-view-field="part:applications"/);
   assert.doesNotMatch(page.right(), /id="view-edit-part-applications"[^>]* checked/);
   assert.match(page.right(), /id="view-edit-part-relationships" data-view-field="part:relationships" checked/);

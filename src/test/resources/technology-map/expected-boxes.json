@@ -130,6 +130,9 @@
                 "prod.dc.web-vm"
               ],
               "links": [
+                "app-vm_shop_app -> partners.mail-live",
+                "app-vm_shop_app -> partners.psp-live",
+                "app-vm_shop_app -> partners.tax-live",
                 "batch-vm_fulfilment_sync -> carrier-live_carrier",
                 "batch-vm_fulfilment_sync -> erp-live_erp"
               ]
@@ -164,6 +167,9 @@
                 "prod.dc.web-vm"
               ],
               "links": [
+                "prod.dc.app-vm -> partners.mail-live",
+                "prod.dc.app-vm -> partners.psp-live",
+                "prod.dc.app-vm -> partners.tax-live",
                 "prod.dc.batch-vm -> partners.carrier-live",
                 "prod.dc.batch-vm -> partners.erp-live"
               ]
