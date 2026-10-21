@@ -13078,11 +13078,13 @@ function renderCandidatesHtml(state) {
     html += '<p class="changes-note">Each pair looks like one thing said twice. Nothing is applied: “Write replaces” writes <code>replaces</code> on the new element (saved with the rest), “Not related” sets the pair aside.</p>' +
       '<ul class="change-candidates">' + open.map((candidate) => {
         const attributes = ' data-layer="' + escapeHtml(candidate.layer) + '" data-from="' + escapeHtml(candidate.from) + '" data-to="' + escapeHtml(candidate.to) + '"';
+        const why = replacesLayerProblem(candidate.layer || 'application', candidate.from, state); // #130: off, with the reason, when the layer cannot hold the entry
         const reasons = (candidate.reasons || []).map((reason) => CANDIDATE_REASON_WORDS[reason] || reason).join(', ');
         return '<li class="change-candidate"' + attributes + '><div class="change-candidate-pair">' +
           candidateSideHtml('Removed', state, candidate.layer, candidate.from) + candidateSideHtml('New', state, candidate.layer, candidate.to) + '</div>' +
           (reasons ? '<div class="change-candidate-reasons">' + escapeHtml(reasons) + '</div>' : '') +
-          '<div class="change-candidate-actions"><button type="button" data-action="accept-candidate"' + attributes + '>Write replaces</button>' +
+          (why ? '<div class="change-candidate-why muted" role="note">' + escapeHtml(why) + '</div>' : '') +
+          '<div class="change-candidate-actions"><button type="button" data-action="accept-candidate"' + attributes + (why ? ' disabled title="' + escapeHtml(why) + '"' : '') + '>Write replaces</button>' +
           '<button type="button" data-action="dismiss-candidate"' + attributes + '>Not related</button></div></li>';
       }).join('') + '</ul>';
   }
@@ -13235,6 +13237,8 @@ function acceptLayeredCandidate(candidate, state, refuse) {
     return refuse('“' + candidate.to + '” is declared in the plateau “' + record.declaredIn + '”, not in “' + plateauTitle(target) + '”: replaces is written in the manifest that declares the element, which would change “' +
       record.declaredIn + '” and the plateaus that override it. Compare “' + record.declaredIn + '” with “' + plateauTitle(base) + '” to write it there; nothing was written.');
   }
+  const layerProblem = replacesLayerProblem(layer, candidate.from, state);
+  if (layerProblem) return refuse(layerProblem);
   const located = locateContentNode(candidate.to, layer, record);
   if (!located) return refuse('“' + candidate.to + '” cannot be found in the manifests of “' + plateauTitle(target) + '”; nothing was written.');
   if (located.node.replaces !== undefined && located.node.replaces !== null && !Array.isArray(located.node.replaces)) {
@@ -13249,6 +13253,27 @@ function acceptLayeredCandidate(candidate, state, refuse) {
     return { ok: false, message: candidateMessage };
   }
   return { ok: true };
+}
+
+/**
+ * Whether the layer the entry would be written in can hold it (wave 018, run 0131, issue #130, decision D4): `replaces` is read against the plateau the manifest builds on, the
+ * one the plateau of the target overrides, so, when the comparison is several layers apart (`replacesChainBetween`: the kernel composes the layers in between, and reads the target's entries against the plateau just below it), `from` must be an element of that plateau. An intermediate layer that removed `from` makes the entry a mistake of the layer it is
+ * written in: the comparison composes it through `chain` (#89), the manifest cannot say it. Returns the sentence, or null when the layer can hold it (also when there is
+ * nothing it builds on: the root, a workspace without plateaus, or a plateau that cannot be drawn, which `guardedLayerWrite` reports). Every pair is looked at alone, so a split
+ * or a merge, written one pair at a time, has each of its `from` checked. The command line has no such rule: it writes no `replaces`.
+ */
+function replacesLayerProblem(layer, from, state) {
+  const tree = AppState.plateauTree;
+  if (!tree || !state || !state.target) return null;
+  const node = tree.nodes.get(state.target.id);
+  if (!node || node.parent === null || !tree.nodes.has(node.parent)) return null;
+  if (!replacesChainBetween(state.base.id, state.target.id)) return null; // the plateau compared with is the one the kernel reads the entry against (one layer apart, or siblings one layer above what they share): wave 017, as written
+  const below = layerModelOf(node.parent, AppState.workspace.settings);
+  if (below.undrawable || !below.index[layer] || below.index[layer].has(from)) return null;
+  const titleOf = (plateau) => (typeof plateau.name === 'string' && plateau.name.trim() !== '' ? plateau.name : plateau.id);
+  const parentTitle = titleOf(tree.nodes.get(node.parent)), targetTitle = titleOf(state.target);
+  return '\u201c' + from + '\u201d is not an element of \u201c' + parentTitle + '\u201d, the plateau \u201c' + targetTitle + '\u201d builds on (a layer in between removed it): replaces is read against that plateau, so the entry would name nothing there. ' +
+    'Compare \u201c' + targetTitle + '\u201d with \u201c' + parentTitle + '\u201d, or write the entry in the layer that still has \u201c' + from + '\u201d (a plateau that overrides one that holds it); nothing was written.';
 }
 
 /** The list `replaces` becomes when `reference` is added to it: appended, and not twice. */
