@@ -1,0 +1,336 @@
+{
+ "comment": "A patch can take a field out (wave 017, run 0126, issue #94): `REMOVE` with a `field`. FieldRemovalCasesTest.java (command line) and field-removal.test.js (editor) read this file, so that the two tools give the same model and the same table. `files`: a path from the folder of the workspace -> the text of the file (the manifests are below `manifests/`; `lean` and its siblings override baseline, a plateau with `override` stands on that one). `resolved`: the value a field of an element has in a plateau (`null`: the element has no such field). `comparisons`: `diff --plateau <plateau> --against <against>` in the command line, the plateau drawn and compared with the other one in the editor; `rows`: the rows of the table that are elements, as `layer|reference|change|natures` (the natures sorted, joined with a comma).",
+ "cases": [
+  {
+   "id": "F01",
+   "what": "a plateau takes an inherited description out; the plateau over it does not have it either, and the plateau below keeps it",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
+    "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
+    "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
+    "manifests/lean/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"lean\"\n  patches:\n    - operator: REMOVE\n      target: shop\n      field: description\n",
+    "manifests/leaner/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"leaner\"\n  override: \"lean\"\n"
+   },
+   "resolved": [
+    {
+     "plateau": "baseline",
+     "layer": "application",
+     "reference": "shop",
+     "field": "description",
+     "value": "Sells things."
+    },
+    {
+     "plateau": "lean",
+     "layer": "application",
+     "reference": "shop",
+     "field": "description",
+     "value": null
+    },
+    {
+     "plateau": "leaner",
+     "layer": "application",
+     "reference": "shop",
+     "field": "description",
+     "value": null
+    },
+    {
+     "plateau": "lean",
+     "layer": "application",
+     "reference": "shop",
+     "field": "name",
+     "value": "Shop"
+    },
+    {
+     "plateau": "lean",
+     "layer": "application",
+     "reference": "shop.web",
+     "field": "description",
+     "value": "The storefront."
+    }
+   ],
+   "comparisons": [
+    {
+     "plateau": "lean",
+     "against": "baseline",
+     "rows": [
+      "application|shop|changed|description"
+     ]
+    },
+    {
+     "plateau": "leaner",
+     "against": "baseline",
+     "rows": [
+      "application|shop|changed|description"
+     ]
+    },
+    {
+     "plateau": "leaner",
+     "against": "lean",
+     "rows": []
+    },
+    {
+     "plateau": "baseline",
+     "against": "lean",
+     "rows": [
+      "application|shop|changed|description"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F02",
+   "what": "a later plateau that sets the field again gets it back; the plateau between stays without it",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
+    "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
+    "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
+    "manifests/lean/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"lean\"\n  patches:\n    - operator: REMOVE\n      target: shop\n      field: description\n",
+    "manifests/back/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"back\"\n  override: \"lean\"\n  patches:\n    - operator: SET\n      target: shop\n      field: description\n      value: \"Sells again.\"\n"
+   },
+   "resolved": [
+    {
+     "plateau": "lean",
+     "layer": "application",
+     "reference": "shop",
+     "field": "description",
+     "value": null
+    },
+    {
+     "plateau": "back",
+     "layer": "application",
+     "reference": "shop",
+     "field": "description",
+     "value": "Sells again."
+    }
+   ],
+   "comparisons": [
+    {
+     "plateau": "back",
+     "against": "lean",
+     "rows": [
+      "application|shop|changed|description"
+     ]
+    },
+    {
+     "plateau": "back",
+     "against": "baseline",
+     "rows": [
+      "application|shop|changed|description"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F03",
+   "what": "in one plateau the last patch wins: a SET then a REMOVE leaves it out, a REMOVE then a SET sets it",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
+    "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
+    "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
+    "manifests/set-then-remove/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"set-then-remove\"\n  patches:\n    - operator: SET\n      target: shop\n      field: description\n      value: \"Sold here.\"\n    - operator: REMOVE\n      target: shop\n      field: description\n",
+    "manifests/remove-then-set/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"remove-then-set\"\n  patches:\n    - operator: REMOVE\n      target: shop\n      field: description\n    - operator: SET\n      target: shop\n      field: description\n      value: \"Sold here.\"\n"
+   },
+   "resolved": [
+    {
+     "plateau": "set-then-remove",
+     "layer": "application",
+     "reference": "shop",
+     "field": "description",
+     "value": null
+    },
+    {
+     "plateau": "remove-then-set",
+     "layer": "application",
+     "reference": "shop",
+     "field": "description",
+     "value": "Sold here."
+    }
+   ],
+   "comparisons": [
+    {
+     "plateau": "set-then-remove",
+     "against": "baseline",
+     "rows": [
+      "application|shop|changed|description"
+     ]
+    },
+    {
+     "plateau": "remove-then-set",
+     "against": "baseline",
+     "rows": [
+      "application|shop|changed|description"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F04",
+   "what": "a REMOVE of a field over a json-path takes it out of every element it selects, and misses none that never had it",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
+    "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
+    "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
+    "manifests/bare/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"bare\"\n  patches:\n    - operator: REMOVE\n      json-path: \"$.application..elements[?(@.kind == 'container' || @.kind == 'system')]\"\n      expect: 4\n      field: description\n"
+   },
+   "resolved": [
+    {
+     "plateau": "bare",
+     "layer": "application",
+     "reference": "shop",
+     "field": "description",
+     "value": null
+    },
+    {
+     "plateau": "bare",
+     "layer": "application",
+     "reference": "shop.web",
+     "field": "description",
+     "value": null
+    },
+    {
+     "plateau": "bare",
+     "layer": "application",
+     "reference": "shop.api",
+     "field": "description",
+     "value": null
+    },
+    {
+     "plateau": "bare",
+     "layer": "application",
+     "reference": "tax",
+     "field": "description",
+     "value": null
+    },
+    {
+     "plateau": "bare",
+     "layer": "application",
+     "reference": "shop.api",
+     "field": "tags",
+     "value": {
+      "tier": "gold"
+     }
+    }
+   ],
+   "comparisons": [
+    {
+     "plateau": "bare",
+     "against": "baseline",
+     "rows": [
+      "application|shop|changed|description",
+      "application|shop.api|changed|description",
+      "application|shop.web|changed|description",
+      "application|tax|changed|description"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F05",
+   "what": "a name can be taken out, and a field of the technology layer; a field the element does not have is already gone",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
+    "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
+    "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
+    "manifests/anon/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"anon\"\n  patches:\n    - operator: REMOVE\n      target: shop.web\n      field: name\n    - operator: REMOVE\n      target: prod.vm\n      layer: technology\n      field: description\n    - operator: REMOVE\n      target: tax\n      field: qualifiers\n"
+   },
+   "resolved": [
+    {
+     "plateau": "anon",
+     "layer": "application",
+     "reference": "shop.web",
+     "field": "name",
+     "value": null
+    },
+    {
+     "plateau": "anon",
+     "layer": "application",
+     "reference": "shop.web",
+     "field": "description",
+     "value": "The storefront."
+    },
+    {
+     "plateau": "anon",
+     "layer": "technology",
+     "reference": "prod.vm",
+     "field": "description",
+     "value": null
+    },
+    {
+     "plateau": "anon",
+     "layer": "technology",
+     "reference": "prod.vm",
+     "field": "name",
+     "value": "VM"
+    },
+    {
+     "plateau": "anon",
+     "layer": "application",
+     "reference": "tax",
+     "field": "name",
+     "value": "Tax"
+    }
+   ],
+   "comparisons": [
+    {
+     "plateau": "anon",
+     "against": "baseline",
+     "rows": [
+      "application|shop.web|changed|name",
+      "technology|prod.vm|changed|description"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F06",
+   "what": "a sibling plateau does not see it; a REMOVE that is not about a field still removes the element",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
+    "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
+    "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
+    "manifests/lean/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"lean\"\n  patches:\n    - operator: REMOVE\n      target: shop\n      field: description\n",
+    "manifests/other/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"other\"\n  patches:\n    - operator: REMOVE\n      target: tax\n"
+   },
+   "resolved": [
+    {
+     "plateau": "other",
+     "layer": "application",
+     "reference": "shop",
+     "field": "description",
+     "value": "Sells things."
+    },
+    {
+     "plateau": "lean",
+     "layer": "application",
+     "reference": "tax",
+     "field": "description",
+     "value": "Computes the tax."
+    }
+   ],
+   "comparisons": [
+    {
+     "plateau": "lean",
+     "against": "other",
+     "rows": [
+      "application|shop|changed|description",
+      "application|tax|new|"
+     ]
+    },
+    {
+     "plateau": "other",
+     "against": "lean",
+     "rows": [
+      "application|shop|changed|description",
+      "application|tax|removed|"
+     ]
+    }
+   ]
+  }
+ ]
+}

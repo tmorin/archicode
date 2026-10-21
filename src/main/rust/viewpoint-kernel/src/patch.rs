@@ -25,7 +25,13 @@
 //!
 //! **Operators.** `REMOVE` takes the selected nodes out; when an element goes, what points at it goes in the same step (a
 //! relationship towards it or what is inside it, its entries in `uses` and `applications`), and not the node that hosted it
-//! (`facet.rs` is the one code of that cascade). `SET` replaces a field (a list is replaced, an object is replaced); with `where`
+//! (`facet.rs` is the one code of that cascade). `REMOVE` with a `field` takes that field out of the selected elements instead
+//! (an inherited description is gone: the element stays, the key does not; additive, a `REMOVE` without `field` is what it
+//! was): any field but `id`, `parent`, `elements` and `kind`; a field the element does not have is already gone, which is no
+//! error (a bulk `REMOVE` of a field over a `json-path` is not a miss for the elements that never had it, and a plateau that
+//! says "gone" over a layer below that already took it out still resolves); a selected node that is not an object has no field
+//! to take out, as for `SET`; `where` and `value` are refused. A field taken out is no cascade: nothing leaves the graph, so the
+//! report has `matched` and `touched` and no `removed` or `dropped`. `SET` replaces a field (a list is replaced, an object is replaced); with `where`
 //! (a relationship is found by `(destination, label)`, an absent label being none) the keys of `value` replace the fields of that
 //! one relationship. `ADD` appends to a list (each item if `value` is a list; a missing list is created). `MERGE` sets the keys
 //! of `value` in an object, one level deep, and keeps the others (a missing object is created). With a `target`, `field` says which
@@ -33,7 +39,8 @@
 //! appended to or merged into.
 //!
 //! A patch never changes an `id` or a `parent`: the fields `id`, `parent` and `elements` are refused, a `REMOVE` cannot select an
-//! `id`, and after every patch other than `REMOVE` the references of both layers must be the ones they were.
+//! `id`, and after every patch other than `REMOVE` the references of both layers must be the ones they were. An element is
+//! always of a kind: `kind` cannot be taken out either.
 //!
 //! **Reporting.** `touched` lists the elements the patch selected (the element a selected node is, or lies in), sorted by (layer,
 //! reference). For `REMOVE`, `removed` lists every element that left the graph (the subtree included) and `dropped` the entries
@@ -229,10 +236,14 @@ fn check(patch: &Patch) -> Result<(Op, Selector<'_>), String> {
         }
     }
     if op == Op::Remove {
-        for (name, given) in [("field", patch.field.is_some()), ("where", patch.condition.is_some()), ("value", patch.value.is_some())] {
+        let what = if patch.field.is_some() { "takes a field out of what the selector selects" } else { "removes what the selector selects" };
+        for (name, given) in [("where", patch.condition.is_some()), ("value", patch.value.is_some())] {
             if given {
-                return Err(format!("REMOVE takes no `{name}`: it removes what the selector selects"));
+                return Err(format!("REMOVE takes no `{name}`: it {what}"));
             }
+        }
+        if patch.field.as_deref() == Some("kind") {
+            return Err("`kind` cannot be taken out: an element always has a kind".into());
         }
         return Ok((op, selector));
     }
@@ -423,6 +434,20 @@ fn apply_one(doc: &mut Value, patch: &Patch) -> Result<Map<String, Value>, Strin
     let mut report = Map::new();
     report.insert("matched".into(), json!(found.len()));
     report.insert("touched".into(), Value::Array(touched.iter().map(|(l, r)| reference_json(l, r)).collect()));
+    if let (Op::Remove, Some(field)) = (op, &patch.field) {
+        // a field taken out of the elements selected: nothing leaves the graph, so no cascade and no `removed` or `dropped`
+        for steps in found.iter().rev() {
+            let (layer, reference) = element_of(doc, steps).expect("checked: every selected node is in an element");
+            let owner = shown(layer, &reference);
+            let node = node_at_mut(doc, steps).ok_or_else(|| format!("{owner} changed under the patch"))?;
+            let kind_of_node = kind(node);
+            let Value::Object(object) = node else {
+                return Err(format!("a selected node of {owner} is {kind_of_node}, it has no field `{field}`"));
+            };
+            object.shift_remove(field);
+        }
+        return Ok(report);
+    }
     if op == Op::Remove {
         if let Some(steps) = found.iter().find(|steps| matches!(steps.last(), Some(Step::Name(name)) if name == "id")) {
             return Err(format!("would remove an `id`: a patch never changes an id or a parent ({})", path_text(steps)));

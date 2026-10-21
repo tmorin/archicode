@@ -533,15 +533,20 @@ test('an inherited element is not renamed: a patch never changes an id', async (
   assert.deepEqual(dirtyFiles(state), []);
 });
 
-test('a text an inherited element has cannot be taken out by a patch: one sentence', async () => {
+test('a text an inherited element has is taken out by a REMOVE patch of the plateau, one patch for the field (wave 017, run 0126, #94)', async () => {
   const opened = await openLayeredCopy('saas');
   const { sandbox, state } = opened;
   assert.throws(() => edit(sandbox, 'tax', (n) => { delete n.description; }) , () => true); // tax is removed in saas, so it is not there
   const reference = 'psp';
   assert.ok(state.index.application.get(reference).description);
-  assert.throws(() => edit(sandbox, reference, (n) => { delete n.description; }),
-    (e) => e.message === 'Not written: `description` of `psp` comes from another plateau, and a patch can set a value but not take it out. Write a new text, or draw `baseline` to clear it. Nothing was changed.');
-  assert.deepEqual(dirtyFiles(state), []);
+  const before = patchesOf(state, 'saas').length;
+  assert.equal(edit(sandbox, reference, (n) => { delete n.description; }), undefined);
+  assert.equal(state.index.application.get(reference).description, null, 'the plateau resolves without the description');
+  assert.equal(sandbox.originText(sandbox.fieldOriginOf(state.index.application.get(reference), 'description')), 'taken out by patch ' + (before + 1) + ' of saas (REMOVE target psp)');
+  const out = await saved(opened);
+  assert.deepEqual(Object.keys(out.files), ['saas/plateau.yaml'], 'the plateau written is the one drawn');
+  assert.deepEqual(out.files['saas/plateau.yaml'].diff, { removed: [], added: ['    - operator: REMOVE', '      target: "psp"', '      field: description'] });
+  assert.equal(out.files['saas/plateau.yaml'].after, out.files['saas/plateau.yaml'].before + '    - operator: REMOVE\n      target: "psp"\n      field: description\n', 'the three lines are the end of the file; every other byte is the author\'s');
 });
 
 test('two patches on the same field of an element: none is rewritten, the last one takes an edit of its kind', async () => {
@@ -859,7 +864,6 @@ test('a refused write leaves the text of every file, and its mark, as it was; th
   const draws = plain([...state.index.application.keys()]);
   for (const refused of [
     () => edit(sandbox, 'shop.web', (n) => { n.id = 'front'; return { renamedTo: { from: 'shop.web', to: 'shop.front' } }; }),
-    () => edit(sandbox, 'psp', (n) => { delete n.description; }),
     () => sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'system', id: 'shop', name: 'again', description: '' }),
     () => sandbox.commitPlateauCreate({ id: 'saas', parent: 'baseline' }),
     () => sandbox.commitPlateauEdit({ id: 'saas', parent: 'saas' })

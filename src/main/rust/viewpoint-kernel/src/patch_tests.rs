@@ -151,3 +151,26 @@ fn a_reference_that_led_nowhere_before_is_not_touched_by_a_removal() {
     assert_eq!(out["workspace"]["application"]["elements"][0]["elements"][2]["relationships"], json!([{ "destination": "nowhere" }]));
     assert_eq!(out["patches"][0]["dropped"].as_array().unwrap().len(), 3, "only what pointed at tax");
 }
+
+#[test]
+fn a_field_taken_out_leaves_the_other_keys_of_the_element_in_their_order() {
+    let request = json!({ "workspace": workspace(), "patches": [{ "operator": "REMOVE", "target": "shop", "field": "name" }]});
+    let out = apply_patches_json(&request.to_string());
+    let shop = &out[out.find("\"id\":\"shop\"").unwrap()..];
+    // `shop` is {id, kind, name, description, elements}: taking `name` out keeps id, kind, description, elements in that order
+    let (kind, description, elements) = (shop.find("\"kind\"").unwrap(), shop.find("\"description\"").unwrap(), shop.find("\"elements\"").unwrap());
+    assert!(kind < description && description < elements, "{out}");
+    assert!(!out[out.find("\"id\":\"shop\"").unwrap()..out.find("\"id\":\"web\"").unwrap()].contains("\"name\""), "{out}");
+}
+
+#[test]
+fn a_field_taken_out_is_not_a_removal_and_leaves_no_cascade() {
+    let request = json!({ "workspace": workspace(), "patches": [{ "operator": "REMOVE", "target": "prod.vm", "layer": "technology", "field": "applications" }]});
+    let out: Value = serde_json::from_str(&apply_patches_json(&request.to_string())).unwrap();
+    let report = &out["patches"][0];
+    assert!(report.get("removed").is_none() && report.get("dropped").is_none(), "{report}");
+    assert_eq!(report["matched"], 1);
+    // the same element, without the key, and every other element as it was
+    assert!(out["workspace"]["technology"]["elements"][0]["elements"][0].get("applications").is_none());
+    assert_eq!(out["workspace"]["application"], workspace()["application"]);
+}
