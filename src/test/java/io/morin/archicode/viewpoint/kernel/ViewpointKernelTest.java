@@ -74,16 +74,28 @@ class ViewpointKernelTest {
 
     @Test
     @SneakyThrows
-    void shouldWarnAboutThePathsOfTheEarlierDialectAndRefuseWhatItCannotRead() {
-        val warned = objectMapper.readTree(
-            ViewpointKernel.getInstance().applyFacet(
-                """
-                {"workspace":{"application":{"elements":[]}},
-                 "actions":[{"operator":"REMOVE","json_path":"$..relationships[?(@.qualifiers anyof ['a'])]"}]}
-                """
+    void shouldRefuseThePathsOfTheEarlierDialectAndWhatItCannotRead() {
+        // the cases are shared with the kernel's own tests and the editor's (facet-dialect-cases.json)
+        val cases = objectMapper.readTree(
+            java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/test/javascript/viewpoint-kernel/facet-dialect-cases.json")
             )
         );
-        Assertions.assertEquals(1, warned.get("warnings").size());
+        for (val c : cases.get("refused")) {
+            val request = objectMapper.createObjectNode();
+            request.putObject("workspace").putObject("application").putArray("elements");
+            request.putArray("actions").addObject().put("operator", "REMOVE").put("json_path", c.get("path").asText());
+            val refused = objectMapper.readTree(ViewpointKernel.getInstance().applyFacet(request.toString()));
+            Assertions.assertEquals(c.get("error").asText(), refused.get("error").asText(), c.get("id").asText());
+        }
+        for (val path : cases.get("accepted")) {
+            val request = objectMapper.createObjectNode();
+            request.putObject("workspace").putObject("application").putArray("elements");
+            request.putArray("actions").addObject().put("operator", "REMOVE").put("json_path", path.asText());
+            val out = objectMapper.readTree(ViewpointKernel.getInstance().applyFacet(request.toString()));
+            Assertions.assertFalse(out.has("error"), path.asText());
+            Assertions.assertEquals(0, out.get("warnings").size(), path.asText());
+        }
         val refused = objectMapper.readTree(
             ViewpointKernel.getInstance().applyFacet(
                 "{\"workspace\":{},\"actions\":[{\"operator\":\"REMOVE\",\"json_path\":\"$..x[?(@.a == \"}]}"

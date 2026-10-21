@@ -1,6 +1,6 @@
 'use strict';
 // The page Plateaus and the addresses (wave 015, run 0096, W-8; issues #99 and #91). The page that lists and edits the plateaus is called Plateaus (it was Timeline) and
-// lives at "#/timeline/plateaus" ("#/plateaus" keeps opening it); the perspective Timeline opens on Applications; and an address typed while the editor is open (or
+// lives at "#/timeline/plateaus" ("#/plateaus" is no route any more); the perspective Timeline opens on Applications; and an address typed while the editor is open (or
 // reached by Back and Forward) draws the plateau and the comparison it names, through `drawPlateau`, reading nothing from the disk and losing nothing, with one entry of
 // the history per plateau the author chooses. The layered Brightcart (src/test/resources/brightcart/layered/) is copied into an in-memory folder; the history is the one of
 // the harness (`sandbox.history.back()` puts the old address back and fires hashchange, as a browser does).
@@ -57,12 +57,12 @@ const where = (sandbox, state) => ({ plateau: state.layers.current, compare: run
 
 // ---- the page Plateaus (#99) ----
 
-test('the page is called Plateaus, at #/timeline/plateaus, and #/plateaus opens it too', async () => {
+test('the page is called Plateaus, at #/timeline/plateaus, and #/plateaus is no route any more', async () => {
   const { sandbox } = await openLayered();
   assert.equal(run(sandbox, 'PERSPECTIVES.plateaus.label'), 'Plateaus');
   assert.equal(run(sandbox, 'PERSPECTIVES.plateaus.route'), 'timeline/plateaus');
   assert.equal(run(sandbox, "Object.prototype.hasOwnProperty.call(PERSPECTIVES, 'timeline')"), false, 'no page is called Timeline: Timeline is the perspective');
-  for (const hash of ['#/timeline/plateaus', '#/plateaus', '#/timeline/plateaus?plateau=saas']) {
+  for (const hash of ['#/timeline/plateaus', '#/timeline/plateaus?plateau=saas']) {
     run(sandbox, 'location.hash = ' + JSON.stringify(hash));
     sandbox.syncPerspectiveFromHash();
     assert.equal(run(sandbox, 'currentPerspective'), 'plateaus', hash);
@@ -72,12 +72,12 @@ test('the page is called Plateaus, at #/timeline/plateaus, and #/plateaus opens 
   assert.doesNotMatch(center, /<h2>Timeline<\/h2>/);
 });
 
-test('#/timeline opens Applications, whatever follows it, and the page then writes #/timeline/applications', async () => {
+test('#/timeline alone is no route, it opens the default page, Applications, whatever follows it, and the page then writes #/timeline/applications', async () => {
   const { sandbox, state } = await openLayered();
   for (const [typed, written] of [['#/timeline', '#/timeline/applications'], ['#/timeline?x=1', '#/timeline/applications'], ['#/timeline/nowhere', '#/timeline/applications']]) {
     typeAddress(sandbox, typed);
     assert.equal(run(sandbox, 'currentPerspective'), 'map', typed);
-    assert.equal(sandbox.location.hash, written, typed + ' is rewritten as #/map is');
+    assert.equal(sandbox.location.hash, written, typed + ' is no route: the default page is written');
   }
   assert.equal(state.layers.current, 'baseline');
 });

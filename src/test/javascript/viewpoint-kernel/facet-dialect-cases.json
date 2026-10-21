@@ -1,0 +1,42 @@
+{
+  "comment": "The Jayway dialect of a facet path (anyof, noneof, == null, != null) is no longer read (0.17, issue #128): the kernel refuses it with one sentence that names the standard form (RFC 9535). Read by the kernel's own tests (lib.rs), ViewpointKernelTest and conformance.test.js; the command line says it as `error: facet <name>: <error>`. `accepted` are paths that look alike and are standard.",
+  "refused": [
+    {
+      "id": "F1",
+      "path": "$.application..relationships[?(@.qualifiers anyof ['REST', 'x'])]",
+      "error": "the facet path `$.application..relationships[?(@.qualifiers anyof ['REST', 'x'])]` uses `@.qualifiers anyof ['REST', 'x']`, which is not JSONPath (RFC 9535) and is no longer read: write `@.qualifiers[?(@ == 'REST' || @ == 'x')]`"
+    },
+    {
+      "id": "F2",
+      "path": "$..relationships[?(@.qualifiers noneof ['REST'])]",
+      "error": "the facet path `$..relationships[?(@.qualifiers noneof ['REST'])]` uses `@.qualifiers noneof ['REST']`, which is not JSONPath (RFC 9535) and is no longer read: write `(@.qualifiers && !@.qualifiers[?(@ == 'REST')])`"
+    },
+    {
+      "id": "F3",
+      "path": "$..relationships[?(@.qualifiers == null)]",
+      "error": "the facet path `$..relationships[?(@.qualifiers == null)]` uses `@.qualifiers == null`, which is not JSONPath (RFC 9535) and is no longer read: write `!@.qualifiers`"
+    },
+    {
+      "id": "F4",
+      "path": "$..relationships[?(@.label != null)]",
+      "error": "the facet path `$..relationships[?(@.label != null)]` uses `@.label != null`, which is not JSONPath (RFC 9535) and is no longer read: write `@.label`"
+    },
+    {
+      "id": "F5",
+      "path": "$..relationships[?(@.label == 'x' && @.qualifiers == null && @.tags != null)]",
+      "error": "the facet path `$..relationships[?(@.label == 'x' && @.qualifiers == null && @.tags != null)]` uses `@.qualifiers == null`, which is not JSONPath (RFC 9535) and is no longer read: write `!@.qualifiers`"
+    },
+    {
+      "id": "F6",
+      "path": "$..relationships[?(@.qualifiers anyof ['a]b', \"c,d\"] && @.label == 'x')]",
+      "error": "the facet path `$..relationships[?(@.qualifiers anyof ['a]b', \"c,d\"] && @.label == 'x')]` uses `@.qualifiers anyof ['a]b', \"c,d\"]`, which is not JSONPath (RFC 9535) and is no longer read: write `@.qualifiers[?(@ == 'a]b' || @ == \"c,d\")]`"
+    }
+  ],
+  "accepted": [
+    "$..relationships[?(@.tags['k'] == 'v')]",
+    "$..relationships[?(@.label == 'null')]",
+    "$..relationships[?(@.label == 'anyof [x]')]",
+    "$.application..relationships[?(@.qualifiers[?(@ == 'REST' || @ == 'x')])]",
+    "$.application..relationships[?(!@.qualifiers)]"
+  ]
+}

@@ -22,7 +22,7 @@ import picocli.CommandLine;
 @QuarkusTest
 class WarningsChannelTest {
 
-    private static final Path OLD_DIALECT = Path.of("src/test/resources/viewpoint-kernel/workspace");
+    private static final Path KERNEL_WORKSPACE = Path.of("src/test/resources/viewpoint-kernel/workspace");
 
     private static final String STORY_WORKSPACE = """
     application:
@@ -83,21 +83,27 @@ class WarningsChannelTest {
 
     @Test
     @SneakyThrows
-    void aFacetInTheOldDialectIsToldOnTheErrorOutputOfViewsGenerate() {
-        copy(OLD_DIALECT, dir);
-        val result = run("-w", dir.resolve("workspace.yaml").toString(), "views", "generate");
-        assertEquals(0, result.exit(), result.err());
-        // one line per rewritten filter, each once although the facet is applied to more than one workspace
-        val lines = result.err().lines().toList();
-        assertEquals(5, lines.size(), result.err());
-        assertTrue(lines.stream().allMatch(line -> line.startsWith("warning: facet ")), result.err());
-        assertTrue(
-            lines.contains(
-                "warning: facet no-smtp: deprecated facet syntax `@.qualifiers anyof ['SMTP']`: write `@.qualifiers[?(@ == 'SMTP')]`"
-            ),
-            result.err()
+    void aFacetInTheOldDialectIsRefusedAndTheStandardFormSaysNothing() {
+        copy(KERNEL_WORKSPACE, dir);
+        val workspace = dir.resolve("workspace.yaml");
+        // the standard JSONPath says nothing: no warning of a deprecated syntax any more
+        val standard = run("-w", workspace.toString(), "views", "generate");
+        assertEquals(0, standard.exit(), standard.err());
+        assertEquals("", standard.err());
+        assertEquals("", standard.out());
+        // the Jayway dialect is one error line that says the form to write (0.17, #128)
+        Files.writeString(
+            workspace,
+            Files.readString(workspace).replace("@.qualifiers[?(@ == 'SMTP')]", "@.qualifiers anyof ['SMTP']")
         );
-        assertEquals("", result.out());
+        val old = run("-w", workspace.toString(), "views", "generate");
+        assertEquals(1, old.exit(), old.err());
+        assertEquals(
+            List.of(
+                "error: facet no-smtp: the facet path `$.application..relationships[?(@.qualifiers anyof ['SMTP'])]` uses `@.qualifiers anyof ['SMTP']`, which is not JSONPath (RFC 9535) and is no longer read: write `@.qualifiers[?(@ == 'SMTP')]`"
+            ),
+            old.err().lines().toList()
+        );
     }
 
     @Test

@@ -195,15 +195,19 @@ test('a facet that cannot be evaluated is reported, not ignored', async () => {
   assert.match(compute([{ operator: 'KEEP', jsonPath: "$..relationships[?(@.label == 'x')]" }]).error, /unsupported facet action: KEEP/);
 });
 
-test('a facet written for the earlier engine still works, and says it is going away', async () => {
+test('a facet written for the earlier engine (Jayway) is refused with the standard form to write, and the standard form says nothing (#128)', async () => {
   const { sandbox, kernel } = await openFixture();
   const compute = (jsonPath) => kernel.compute(sandbox.buildKernelInput('deep', 'shop.web.api', { facet: { name: 'f', actions: [{ operator: 'REMOVE', jsonPath }] } }).input);
-  const old = compute("$.application..relationships[?(@.qualifiers noneof ['REST'])]");
+  const cases = JSON.parse(fs.readFileSync(path.join(__dirname, 'facet-dialect-cases.json'), 'utf8'));
+  for (const c of cases.refused) {
+    const out = compute(c.path);
+    assert.equal(out.error, c.error, c.id);
+    assert.equal(out.items, undefined, c.id + ': nothing is drawn');
+  }
+  for (const accepted of cases.accepted) assert.equal(compute(accepted).error, undefined, accepted);
   const standard = compute("$.application..relationships[?(@.qualifiers && !@.qualifiers[?(@ == 'REST')])]");
-  assert.equal(old.warnings.length, 1);
   assert.equal(standard.warnings, undefined);
-  assert.deepEqual(old.links, standard.links);
-  assert.ok(old.links.length > 0 && old.links.length < compute("$..relationships[?(@.label == 'none')]").links.length);
+  assert.ok(standard.links.length > 0 && standard.links.length < compute("$..relationships[?(@.label == 'none')]").links.length);
 });
 
 test('the facets that filter on tags, qualifiers and labels keep what a plain reading of the manifests says', async () => {

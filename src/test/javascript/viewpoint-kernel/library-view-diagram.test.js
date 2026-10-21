@@ -1,5 +1,5 @@
 'use strict';
-// The page of a view in the Library draws that view (run 0027, TDD-0027): the centre of `#/library/views` holds the canvas of the
+// The page of a view in the Library draws that view (run 0027, TDD-0027): the centre of `#/stories/views` holds the canvas of the
 // Map and Elements, drawn from the view's own recipe, and visiting it changes nothing that the Map and Elements show. The
 // harness has no DOM and no layout engine: the page is the real `render()` over the real kernel, a fake layout engine and a fake
 // canvas built from the markup the page produced. The look, the real layout engine and the real folder are checked in a browser.
@@ -582,7 +582,7 @@ test('an address with frame=fit typed while on the page is the Map\'s framing, n
   const view = addView(page, { id: 'fit', name: 'Fit', viewpoint: 'deep', properties: { element: 'shop' } });
   await openView(page, view);
   run(page.sandbox, "diagramScale = 1.25;"); // the page's own zoom
-  page.sandbox.location.hash = '#/map?pin=shop&frame=fit';
+  page.sandbox.location.hash = '#/timeline/applications?pin=shop&frame=fit';
   page.sandbox.syncPerspectiveFromHash();
   assert.equal(run(page.sandbox, 'diagramScale'), 'fit', 'the Map is framed as the address says');
   await page.show();

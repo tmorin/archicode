@@ -39,7 +39,7 @@
 //! it); `hidden` leaves out an element, what is inside it, and every relationship that reaches it. All three are
 //! optional lists of references, added to version 1.
 //! A `facet` is applied to the elements first, as the CLI does before it generates the views of a facet. Its paths are
-//! standard JSONPath (RFC 9535), see `facet.rs`; the earlier dialect still works and is reported in `warnings`.
+//! standard JSONPath (RFC 9535), see `facet.rs`; the earlier dialect (Jayway: `anyof`, `noneof`, `== null`) is refused with one sentence that names the standard form (0.17).
 //!
 //! In the deep viewpoint of the technology layer, the applications deployed on the nodes of the view are drawn inside
 //! them. Inside an environment, a relationship between two deployed applications is a "secondary" link (the CLI does not
@@ -1928,15 +1928,15 @@ mod tests {
 
     #[test]
     fn a_facet_removes_the_relationships_its_filter_matches() {
-        let out = with_facet("deep", "a", "application", remove("$.application..relationships[?(@.qualifiers anyof ['REST', 'x'])]"));
+        let out = with_facet("deep", "a", "application", remove("$.application..relationships[?(@.qualifiers[?(@ == 'REST' || @ == 'x')])]"));
         assert_eq!(labels(&out), [None, Some("writes".to_string())]);
     }
 
     #[test]
-    fn noneof_spares_a_relationship_without_qualifiers_and_null_removes_it() {
-        let out = with_facet("deep", "a", "application", remove("$.application..relationships[?(@.qualifiers noneof ['REST'])]"));
+    fn the_standard_forms_of_noneof_and_null_spare_a_relationship_without_qualifiers_and_remove_it() {
+        let out = with_facet("deep", "a", "application", remove("$.application..relationships[?(@.qualifiers && !@.qualifiers[?(@ == 'REST')])]"));
         assert_eq!(labels(&out), [None, Some("reads".to_string())]);
-        let out = with_facet("deep", "a", "application", remove("$.application..relationships[?(@.qualifiers == null)]"));
+        let out = with_facet("deep", "a", "application", remove("$.application..relationships[?(!@.qualifiers)]"));
         assert_eq!(labels(&out), [Some("reads".to_string()), Some("writes".to_string())]);
     }
 
@@ -2853,31 +2853,30 @@ mod tests {
         assert_eq!(out["error"], "dangling reference: nowhere");
     }
 
-    // ---- the earlier dialect ----
+    // ---- the earlier dialect (Jayway): refused since 0.17, the cases are shared with the Java and the node tests ----
+
+    const DIALECT_CASES: &str = include_str!("../../../../test/javascript/viewpoint-kernel/facet-dialect-cases.json");
 
     #[test]
-    fn the_earlier_dialect_is_rewritten_and_reported() {
-        let cases = [
-            ("$.application..relationships[?(@.qualifiers anyof ['REST', 'x'])]", "$.application..relationships[?(@.qualifiers[?(@ == 'REST' || @ == 'x')])]"),
-            ("$..relationships[?(@.qualifiers noneof ['REST'])]", "$..relationships[?((@.qualifiers && !@.qualifiers[?(@ == 'REST')]))]"),
-            ("$..relationships[?(@.qualifiers == null)]", "$..relationships[?(!@.qualifiers)]"),
-            ("$..relationships[?(@.label != null)]", "$..relationships[?(@.label)]"),
-            ("$..relationships[?(@.qualifiers == null && @.label == 'a anyof [x]')]", "$..relationships[?(!@.qualifiers && @.label == 'a anyof [x]')]"),
-        ];
-        for (old, new) in cases {
-            let (path, warnings) = facet::translate_legacy(old);
-            assert_eq!(path, new, "{old}");
-            assert_eq!(warnings.len(), 1, "{old}");
+    fn the_earlier_dialect_is_refused_with_the_standard_form() {
+        let cases: Value = serde_json::from_str(DIALECT_CASES).unwrap();
+        for case in cases["refused"].as_array().unwrap() {
+            let (id, path, sentence) = (case["id"].as_str().unwrap(), case["path"].as_str().unwrap(), case["error"].as_str().unwrap());
+            assert_eq!(facet::refuse_legacy(path), Err(sentence.to_string()), "{id}");
+            // by compute (the editor's way in) and by apply_facet (the CLI's), the same sentence, and nothing is drawn
+            let out = with_facet("deep", "a", "application", remove(path));
+            assert_eq!(error(&out), sentence, "{id}: {out}");
+            let request = json!({ "workspace": { "application": { "elements": [] } }, "actions": remove(path) });
+            let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
+            assert_eq!(error(&out), sentence, "{id}: {out}");
         }
-        for standard in ["$..relationships[?(@.tags['k'] == 'v')]", "$..relationships[?(@.label == 'null')]", "$..relationships[?(@.label == 'anyof [x]')]"] {
-            assert_eq!(facet::translate_legacy(standard), (standard.to_string(), vec![]), "standard syntax is left alone");
+        for path in cases["accepted"].as_array().unwrap() {
+            assert_eq!(facet::refuse_legacy(path.as_str().unwrap()), Ok(()), "{path}");
         }
     }
 
     #[test]
-    fn a_facet_in_the_earlier_dialect_warns() {
-        let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.qualifiers anyof ['REST'])]"));
-        assert_eq!(out["warnings"].as_array().unwrap().len(), 1, "{out}");
+    fn a_standard_facet_says_no_warning() {
         let out = with_facet("deep", "a", "application", remove("$..relationships[?(@.qualifiers[?(@ == 'REST')])]"));
         assert!(out.get("warnings").is_none(), "{out}");
     }
@@ -2923,15 +2922,6 @@ mod tests {
         let request = json!({ "workspace": workspace, "actions": remove("$..elements[?(@.id == 'b' || @.id == 'z' || @.relationships)]") });
         let out: Value = serde_json::from_str(&apply_facet_json(&request.to_string())).unwrap();
         assert_eq!(out["workspace"]["application"]["elements"], json!([{ "id": "c" }]));
-    }
-
-    #[test]
-    fn a_legacy_list_may_hold_a_bracket_or_a_comma_inside_its_literals() {
-        let (path, warnings) = facet::translate_legacy("$..relationships[?(@.qualifiers anyof ['a]b', \"c,d\"] && @.label == 'x')]");
-        assert_eq!(path, "$..relationships[?(@.qualifiers[?(@ == 'a]b' || @ == \"c,d\")] && @.label == 'x')]");
-        assert_eq!(warnings.len(), 1);
-        let (path, _) = facet::translate_legacy("$..relationships[?(@.qualifiers anyof ['it\"s'])]");
-        assert_eq!(path, "$..relationships[?(@.qualifiers[?(@ == 'it\"s')])]", "the other quote may be inside a literal");
     }
 
     #[test]

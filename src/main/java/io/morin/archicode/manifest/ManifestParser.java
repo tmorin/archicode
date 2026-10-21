@@ -318,9 +318,9 @@ public class ManifestParser {
 
     /**
      * A key as the manual writes it: {@code jsonPath} is {@code json-path}. Lombok names the key by the field, the file says it
-     * in kebab-case (the camel-case spelling is the older one, still read).
+     * in kebab-case (the camel-case spelling was the older one, no longer read: `ArchiCodeException` says what to write instead).
      */
-    static String documented(String field) {
+    public static String documented(String field) {
         return field.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase(Locale.ROOT);
     }
 

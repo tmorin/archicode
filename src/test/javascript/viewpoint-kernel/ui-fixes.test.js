@@ -158,7 +158,7 @@ test('a change of the address that the page made itself is not applied again: th
   assert.equal(state.selection.mode, 'edit', 'still in edit mode');
 
   // Back/Forward, or a hand-edited address, is something else
-  sandbox.location.hash = '#/elements?ref=shop.catalog';
+  sandbox.location.hash = '#/timeline/elements?ref=shop.catalog';
   listener();
   assert.equal(renders.n, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(state.selection)), { kind: 'element', key: 'shop.catalog', mode: 'view' });
@@ -230,7 +230,7 @@ test('the greying of the tree through a facet is for the elements, not for the m
 test('closing a folder forgets what the page held about it, and a reload of the same one does not', async () => {
   const { sandbox, state } = await openFixture();
   countRenders(sandbox);
-  sandbox.location.hash = '#/map?pin=shop.web&facet=rest-only';
+  sandbox.location.hash = '#/timeline/applications?pin=shop.web&facet=rest-only';
   run(sandbox, `
     saveStatus = { state: 'success' }; mapPinned = ['shop.web']; mapHidden = ['mailer']; mapOpened = new Set(['shop']);
     diagramMaximized = true; diagramHideUnlinked = true; elementTab = 'deep'; diagramFacet = 'rest-only';
@@ -495,7 +495,7 @@ test('revealing an element unfolds the branches above it in its own layer', asyn
   assert.deepEqual(Array.from(state.expanded).sort(), ['technology:shop', 'technology:shop.web']);
   state.expanded.clear();
   // a link to the environment says so (`layer=`), and so does the view it opens
-  sandbox.location.hash = '#/elements?ref=shop.web&layer=technology';
+  sandbox.location.hash = '#/timeline/elements?ref=shop.web&layer=technology';
   sandbox.applySelectionFromHashRef();
   assert.deepEqual(Array.from(state.expanded).sort(), ['technology:shop', 'technology:shop.web']);
   state.expanded.clear();

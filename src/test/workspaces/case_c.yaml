@@ -32,15 +32,15 @@ settings:
       - name: main
         actions:
           - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers anyof ['oidc'])]"
+            json-path: "$.application..relationships[?(@.qualifiers[?(@ == 'oidc')])]"
           - operator: "REMOVE"
             json-path: "$.application..relationships[?(@.tags.observability == 'true')]"
       - name: oidc
         actions:
           - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers noneof ['oidc'])]"
+            json-path: "$.application..relationships[?((@.qualifiers && !@.qualifiers[?(@ == 'oidc')]))]"
           - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers == null)]"
+            json-path: "$.application..relationships[?(!@.qualifiers)]"
       - name: observability
         actions:
           - operator: "REMOVE"

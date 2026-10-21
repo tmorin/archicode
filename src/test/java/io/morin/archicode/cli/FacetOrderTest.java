@@ -1,6 +1,7 @@
 package io.morin.archicode.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
@@ -38,18 +39,24 @@ class FacetOrderTest {
     Path dir;
 
     private static String facet(String name) {
-        return (
-            "      - name: \"%s\"\n        actions:\n          - operator: REMOVE\n" +
-            "            json-path: \"$.application..relationships[?(@.qualifiers anyof ['%s'])]\"\n"
-        ).formatted(name, name);
+        return facet(name, "@.qualifiers[?(@ == '%s')]".formatted(name));
     }
 
-    /** A workspace with one system and the facets in the old dialect, which each tell one warning, in that order. */
+    private static String facet(String name, String filter) {
+        return (
+            "      - name: \"%s\"\n        actions:\n          - operator: REMOVE\n" +
+            "            json-path: \"$.application..relationships[?(%s)]\"\n"
+        ).formatted(name, filter);
+    }
+
+    /** A workspace with one system and the facets, the ones named in {@code old} in the Jayway dialect, which is refused. */
     @SneakyThrows
-    private Path workspace(String folder, List<String> names) {
+    private Path workspace(String folder, List<String> names, List<String> old) {
         val root = Files.createDirectories(dir.resolve(folder));
         val facets = new StringBuilder();
-        names.forEach(name -> facets.append(facet(name)));
+        names.forEach(name ->
+            facets.append(old.contains(name) ? facet(name, "@.qualifiers anyof ['%s']".formatted(name)) : facet(name))
+        );
         Files.writeString(
             root.resolve("workspace.yaml"),
             "settings:\n  facets:\n    customs:\n" + facets + "  manifests:\n    paths: [\"manifests\"]\n"
@@ -62,26 +69,32 @@ class FacetOrderTest {
         return root.resolve("workspace.yaml");
     }
 
-    private List<String> warnedFacets(Path workspace) {
+    private String refusedFacet(Path workspace) {
         val result = CliHarness.run(factory, errorOutput, "-w", workspace.toString(), "views", "generate");
-        assertEquals(0, result.exit(), result.err());
-        val facets = new ArrayList<String>();
-        result
+        assertEquals(1, result.exit(), result.err());
+        val line = result
             .err()
             .lines()
-            .filter(line -> line.startsWith("warning: facet "))
-            .forEach(line -> facets.add(line.split(" ")[2].replace(":", "")));
-        return facets;
+            .filter(l -> l.startsWith("error: facet "))
+            .findFirst()
+            .orElseThrow();
+        assertTrue(line.contains("no longer read: write `@.qualifiers[?(@ == '"), line);
+        return line.split(" ")[2].replace(":", "");
     }
 
     @Test
-    void theWarningsOfTheFacetsComeOutInTheOrderOfTheFileWhateverThatOrderIs() {
+    void theFacetsAreAppliedInTheOrderOfTheFileSoTheFirstOneInTheOldDialectIsTheOneRefused() {
         val names = List.of("zulu", "alpha", "mike", "bravo", "x-ray", "delta");
-        assertEquals(names, warnedFacets(workspace("one", names)));
+        val old = List.of("bravo", "delta");
+        assertEquals("bravo", refusedFacet(workspace("one", names, old)));
 
         val other = List.of("delta", "x-ray", "bravo", "mike", "alpha", "zulu");
-        assertEquals(other, warnedFacets(workspace("other", other)), "listed in another order, told in that order");
-        assertEquals(other, warnedFacets(workspace("again", other)), "and the same when the command runs again");
+        assertEquals(
+            "delta",
+            refusedFacet(workspace("other", other, old)),
+            "listed in another order, told in that order"
+        );
+        assertEquals("delta", refusedFacet(workspace("again", other, old)), "and the same when the command runs again");
     }
 
     @Test

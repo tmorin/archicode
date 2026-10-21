@@ -91,14 +91,21 @@ class ReadingNullsTest {
 
     @SneakyThrows
     @Test
-    void shouldReadBothSpellingsOfAKeyOfTheFacets() {
-        for (val text : List.of(
-            "globalEnabled: false\ndirectoryNameTemplate: x\n",
-            "global-enabled: false\ndirectory-name-template: x\n"
-        )) {
-            val facets = YAML.readValue(text, Settings.Facets.class);
-            assertEquals(false, facets.isGlobalEnabled());
-            assertEquals("x", facets.getDirectoryNameTemplate());
+    void shouldReadOnlyTheKebabCaseSpellingOfAKeyOfTheFacets() {
+        val facets = YAML.readValue("global-enabled: false\ndirectory-name-template: x\n", Settings.Facets.class);
+        assertEquals(false, facets.isGlobalEnabled());
+        assertEquals("x", facets.getDirectoryNameTemplate());
+        // the camel-case spelling was removed in 0.17: the sentence says what to write (shared cases N76, N91 to N93)
+        for (val key : List.of("globalEnabled", "directoryNameTemplate")) {
+            val e = org.junit.jupiter.api.Assertions.assertThrows(
+                com.fasterxml.jackson.core.JsonProcessingException.class,
+                () -> YAML.readValue(key + ": x\n", Settings.Facets.class)
+            );
+            val sentence = io.morin.archicode.ArchiCodeException.unreadable("workspace.yaml", e, false).getMessage();
+            assertTrue(
+                sentence.contains("unknown key `" + key + "`, write `" + ManifestParser.documented(key) + "` (known: "),
+                sentence
+            );
         }
         val written = YAML.writeValueAsString(YAML.readValue("customs: []\n", Settings.Facets.class));
         assertTrue(written.contains("global-enabled"), written);

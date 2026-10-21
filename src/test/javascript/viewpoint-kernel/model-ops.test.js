@@ -276,14 +276,14 @@ test('the route carries the layer only when both layers have the reference, and 
   state.selection = { kind: 'element', key: 'hub.core', mode: 'view' };
   assert.doesNotMatch(sandbox.currentRouteHash(), /layer=/);
 
-  sandbox.location.hash = '#/elements?ref=hub&layer=technology';
+  sandbox.location.hash = '#/timeline/elements?ref=hub&layer=technology';
   sandbox.applySelectionFromHashRef();
   assert.equal(state.selection.layer, 'technology');
-  sandbox.location.hash = '#/elements?ref=hub';
+  sandbox.location.hash = '#/timeline/elements?ref=hub';
   sandbox.applySelectionFromHashRef();
   assert.equal(state.selection.key, 'hub');
   assert.equal(sandbox.findElementRecord(state.selection.key, state.selection.layer).layer, 'application');
-  sandbox.location.hash = '#/elements?ref=hub&layer=nonsense';
+  sandbox.location.hash = '#/timeline/elements?ref=hub&layer=nonsense';
   sandbox.applySelectionFromHashRef();
   assert.equal(sandbox.findElementRecord('hub', state.selection.layer).layer, 'application');
 });
@@ -955,7 +955,7 @@ test('walking a story puts the editor back where each view was saved, and the UR
   ev(sandbox, 'activeStory = null');
   sandbox.applyDiagramParamsFromHash();
   same(ev(sandbox, 'activeStory'), { id: storyId, step: 0 });
-  ev(sandbox, "location.hash = '#/elements?ref=shop.web.api&tab=overview&story=nope&step=0'");
+  ev(sandbox, "location.hash = '#/timeline/elements?ref=shop.web.api&tab=overview&story=nope&step=0'");
   sandbox.applyDiagramParamsFromHash();
   assert.equal(ev(sandbox, 'activeStory'), null, 'a story that does not exist is no story');
 
@@ -1139,11 +1139,11 @@ test('the Library has a Stories side and a Views side that lead to one another, 
   assert.equal(sandbox.currentRouteHash().split('?')[0], '/stories/views');
   assert.match(sandbox.currentRouteHash(), new RegExp('view=' + viewId));
 
-  // the routes: "#/stories" opens the Stories side and "#/stories/views" the Views side; the former "#/library" and "#/library/views" still do (run 0081 pins them all)
+  // the routes: "#/stories" opens the Stories side and "#/stories/views" the Views side; "#/library" is no route any more (editor-structure.test.js pins the dropped ones)
   ev(sandbox, "location.hash = '#/stories?story=tour'");
   assert.equal(sandbox.pageIdFromHash(), 'library');
   assert.equal(sandbox.libraryTabFromHash(), 'stories');
-  ev(sandbox, "location.hash = '#/library/views?view=" + viewId + "'");
+  ev(sandbox, "location.hash = '#/stories/views?view=" + viewId + "'");
   assert.equal(sandbox.pageIdFromHash(), 'library');
   assert.equal(sandbox.libraryTabFromHash(), 'views');
   sandbox.applyDiagramParamsFromHash();

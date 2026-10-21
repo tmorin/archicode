@@ -206,7 +206,7 @@ test('a click on a link, or on its caption, moves the stop to that link even whe
   // an address names a link: the selected link, not where the focus was, is the stop then
   sandbox.currentPerspective = 'map';
   run(sandbox, "currentPerspective = 'map';");
-  sandbox.location.hash = '#/map?link-from=customer&link-to=shop';
+  sandbox.location.hash = '#/timeline/applications?link-from=customer&link-to=shop';
   sandbox.applySelectionFromHashRef();
   assert.equal(run(sandbox, 'diagramLinkStop'), null);
 });

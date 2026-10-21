@@ -137,7 +137,7 @@ wave_manifest:
       slug: legend-folded-and-form-kept
       phase: P1
       depends_on: []
-      run: null
+      run: 0130
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
