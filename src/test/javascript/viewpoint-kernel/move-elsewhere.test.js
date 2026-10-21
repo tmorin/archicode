@@ -247,9 +247,9 @@ test('the block is re-indented to its new depth, and takes the line breaks of th
   assert.ok(fileOf(deeper, 'app.market.till.yaml').includes('    - kind: component\r\n      id: "vat"\r\n') && fileOf(deeper, 'app.market.till.yaml').includes('    - kind: component\r\n      id: "screw"\r\n'));
 });
 
-test('a parent with no elements yet gets the key that opens the list, and a group can go to another file as well', async () => {
-  const withGroup = Object.assign({}, MANIFESTS, { 'app.orchard.yaml': ORCHARD.replace('# end of the orchard', '    - kind: group\n      id: "tools"\n      name: "Tools"\n# end of the orchard') });
-  const page = await openPlain(withGroup);
+test('a parent with no elements yet gets the key that opens the list, and a container with no children can go to another file as well', async () => {
+  const withTools = Object.assign({}, MANIFESTS, { 'app.orchard.yaml': ORCHARD.replace('# end of the orchard', '    - kind: container\n      id: "tools"\n      name: "Tools"\n# end of the orchard') });
+  const page = await openPlain(withTools);
   const first = move(page, 'orchard.tools', 'market');
   assert.deepEqual(plain(first), { ok: true, reference: 'market.tools' });
   const second = move(page, 'orchard.press.vat', 'market.stall');
@@ -257,7 +257,7 @@ test('a parent with no elements yet gets the key that opens the list, and a grou
   await page.sandbox.saveAllChanges();
   assert.deepEqual(lineDiff(MARKET, fileOf(page, 'app.market.yaml')), {
     removed: [],
-    added: ['      elements:', '        # the vat, which holds', '        - kind: component', '          id: "vat"', "          name: 'Vat'", '    - kind: group', '      id: "tools"', '      name: "Tools"']
+    added: ['      elements:', '        # the vat, which holds', '        - kind: component', '          id: "vat"', "          name: 'Vat'", '    - kind: container', '      id: "tools"', '      name: "Tools"']
   });
   const again = await reread(page);
   assert.ok(again.__state().index.application.has('market.stall.vat') && again.__state().index.application.has('market.tools'));
@@ -418,12 +418,12 @@ test('each reason is the sentence of its rule: the element itself, what it conta
   assert.equal(press['orchard.press'], '“orchard.press” is the element itself: an element cannot be moved into itself.');
   assert.equal(press['orchard.press.screw'], '“orchard.press.screw” is inside “orchard.press”: an element cannot be moved into what it contains.');
   assert.equal(press.orchard, '“orchard.press” is already under “orchard”.');
-  assert.equal(press['orchard.cellar'], 'A container cannot be put under “orchard.cellar”, which holds component and group only.');
+  assert.equal(press['orchard.cellar'], 'A container cannot be put under “orchard.cellar”, which holds component only.');
   assert.equal(press['orchard.press.vat'], '“orchard.press.vat” is inside “orchard.press”: an element cannot be moved into what it contains.');
   const vat = reasons('orchard.press.vat');
   assert.equal(vat['guild.kiosk.counter'], undefined, 'a container can hold the component: it is offered');
   assert.equal(vat['orchard.press.screw'], 'A component cannot be put under “orchard.press.screw”, a component that holds nothing.');
-  assert.equal(vat['orchard'], 'A component cannot be put under “orchard”, which holds container and group only.');
+  assert.equal(vat['orchard'], 'A component cannot be put under “orchard”, which holds container only.');
   // an id the new parent already holds
   const same = await openPlain(Object.assign({}, MANIFESTS, { 'app.market.yaml': MARKET.replace('      name: "Stall"\n', '      name: "Stall"\n      elements:\n        - kind: component\n          id: "vat"\n          name: "A vat of the stall"\n') }));
   assert.equal(plain(same.sandbox.moveParentCandidates('orchard.press.vat', 'application').excluded.find((e) => e.reference === 'market.stall').reason), '“market.stall” already holds an element with the id “vat” (“market.stall.vat”); rename one of the two first.');
@@ -447,20 +447,12 @@ test('each reason is the sentence of its rule: the element itself, what it conta
   assert.equal((narrowed.match(/<li data-search="[^"]*"( hidden)?>/g) || []).filter((tag) => !tag.endsWith('hidden>')).length, 1, 'only the sentence about the screw shows');
 });
 
-test('a group has no manifest of its own: it is not put under a parent of another plateau, and the sentence says so', async () => {
-  // `later` overrides `early`; the group is declared by `later`, the system it could go under by `early`
+test('a container goes under a parent of another plateau as a manifest of its own, which has a kind of its own to say', async () => {
+  // `later` overrides `early`; the container is declared by `later`, the system it could go under by `early`
   const plateaus = [{ id: 'early', name: 'Early', path: 'plateaus/10_early' }, { id: 'later', name: 'Later', path: 'plateaus/20_later', override: 'early' }];
-  const files = layeredFiles(plateaus, {
-    'plateaus/10_early/app.market.yaml': MARKET,
-    'plateaus/20_later/app.orchard.yaml': ORCHARD.replace('# end of the orchard', '    - kind: group\n      id: "tools"\n      name: "Tools"\n# end of the orchard')
-  });
+  const files = layeredFiles(plateaus, { 'plateaus/10_early/app.market.yaml': MARKET, 'plateaus/20_later/app.orchard.yaml': ORCHARD });
   const page = await openLayered(createApp, memFolder, files, { drawn: 'later' });
   assert.equal(page.state.layerProblems, null);
-  const { parents, routes, excluded } = page.sandbox.moveParentCandidates('orchard.tools', 'application');
-  assert.deepEqual(plain(parents.map((p) => p.reference)), []);
-  assert.equal(plain(excluded.find((e) => e.reference === 'market').reason), '“market” is declared in the plateau `early`, whose files the plateau drawn does not write, and a group has no manifest of its own to put under it.');
-  assert.deepEqual(plain(routes), {});
-  // a container is offered the same parent, with a manifest of its own
   const press = page.sandbox.moveParentCandidates('orchard.press', 'application');
   assert.deepEqual(plain(press.routes.market), { route: 'extract', plateau: 'early' });
 });
@@ -502,16 +494,15 @@ test('a move that cannot be written says so at the top of the dialog and refuses
 // ---- 5. A workspace without plateaus saves the moves that already worked byte for byte as before ----
 
 test('the moves that already worked write the same bytes as before: inside one file, and a header.parent (the files are those the page wrote before run 0104)', async () => {
-  const withGroup = Object.assign({}, MANIFESTS, { 'app.orchard.yaml': ORCHARD.replace('# end of the orchard', '    - kind: group\n      id: "tools"\n      name: "Tools"\n# end of the orchard') });
-  const page = await openPlain(withGroup);
-  assert.deepEqual(plain(move(page, 'orchard.press', 'orchard.tools')), { ok: true, reference: 'orchard.tools.press' });
+  const page = await openPlain(MANIFESTS);
+  assert.deepEqual(plain(move(page, 'orchard.press.screw', 'orchard.cellar')), { ok: true, reference: 'orchard.cellar.screw' });
   assert.deepEqual(plain(move(page, 'market.till', 'orchard')), { ok: true, reference: 'orchard.till' });
   await page.sandbox.saveAllChanges();
   assert.deepEqual(changedFiles(page).sort(), Object.keys(GOLDEN).sort());
   for (const [name, expected] of Object.entries(GOLDEN)) assert.equal(fileOf(page, name), expected, name);
 });
 
-/** The files as the page before run 0104 wrote them after the two moves of the test (captured from the page at the commit before this run), `\n` or `\r\n` as the file has it. */
+/** The files as the page before run 0104 wrote them after the two moves of the test (captured from the page at the commit before this run; since #114 the first move is a component into a container, a group being gone: the page of 0.16.0 writes the same bytes), `\n` or `\r\n` as the file has it. */
 const GOLDEN = {
   'app.orchard.yaml': [
     '# the orchard: everything that grows',
@@ -523,51 +514,32 @@ const GOLDEN = {
     '  id: "orchard"',
     '  name: "Orchard"',
     '  elements:',
+    '    # the press comes first',
+    '    - kind: container',
+    '      id: "press"',
+    '      name: "Press"',
+    '      description: "Presses \\"the\\" apples: 12 bars, no more."   # why',
+    '      qualifiers: [Steel, "Oak"]',
+    '      elements:',
+    '        # the vat, which holds',
+    '        - kind: component',
+    '          id: "vat"',
+    '          name: \'Vat\'',
     '    # the cellar is on its own',
     '    - kind: container',
     '      id: "cellar"',
     '      name: "Cellar"',
     '      relationships:',
-    '        - destination: "orchard.tools.press.screw"',
+    '        - destination: "orchard.cellar.screw"',
     '          label: "checks"',
-    '    - kind: group',
-    '      id: "tools"',
-    '      name: "Tools"',
     '      elements:',
-    '        # the press comes first',
-    '        - kind: container',
-    '          id: "press"',
-    '          name: "Press"',
-    '          description: "Presses \\"the\\" apples: 12 bars, no more."   # why',
-    '          qualifiers: [Steel, "Oak"]',
-    '          elements:',
-    '            - kind: component',
-    '              id: "screw"',
-    '              name: "Screw"',
-    '              relationships:',
-    '                - destination: "orchard.cellar"',
-    '                  label: "feeds: the cellar"',
-    '            # the vat, which holds',
-    '            - kind: component',
-    '              id: "vat"',
-    '              name: \'Vat\'',
+    '        - kind: component',
+    '          id: "screw"',
+    '          name: "Screw"',
+    '          relationships:',
+    '            - destination: "orchard.cellar"',
+    '              label: "feeds: the cellar"',
     '# end of the orchard',
-    ''
-  ].join('\n'),
-  'app.orchard.press.gasket.yaml': [
-    '# the manifest of gasket',
-    'header:',
-    '  kind: "archicode.morin.io/component"',
-    '  parent: "orchard.tools.press"',
-    '  version: "1"',
-    '',
-    'content:',
-    '  id: "gasket"',
-    '  name: "Gasket"',
-    '  relationships:',
-    '    - destination: "orchard.cellar"',
-    '      label: "seals"',
-    '# end of gasket',
     ''
   ].join('\n'),
   'app.market.till.yaml': [
@@ -593,30 +565,11 @@ const GOLDEN = {
     '  id: "shipping"',
     '  name: "Shipping"',
     '  relationships:',
-    '    - destination: "orchard.tools.press.screw"',
+    '    - destination: "orchard.cellar.screw"',
     '      label: "carries"',
-    '    - destination: orchard.tools.press',
+    '    - destination: orchard.press',
     '      label: "loads"',
     '# end of shipping',
-    ''
-  ].join('\n'),
-  'env.barn.yaml': [
-    '# the barn',
-    'header:',
-    '  kind: "archicode.morin.io/environment"',
-    '  version: "1"',
-    '',
-    'content:',
-    '  id: "barn"',
-    '  name: "Barn"',
-    '  elements:',
-    '    - kind: node',
-    '      id: "shelf"',
-    '      name: "Shelf"',
-    '      applications:',
-    '        - orchard.tools.press',
-    '        - orchard.tools.press.vat',
-    '# end of the barn',
     ''
   ].join('\n')
 };

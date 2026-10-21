@@ -19,11 +19,11 @@ content:
             - "REST"
           tags:
             audited: "no"
-    - kind: "group"
+    - kind: "container"
       id: "edge"
       name: "Edge"
       elements:
-        - kind: "container"
+        - kind: "component"
           id: "gateway"
           name: "Gateway"
           qualifiers:

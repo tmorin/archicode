@@ -33,9 +33,9 @@ class WorkspaceTest {
                     .elements(Set.of(Solution.builder().id("solution-a").name("Solution #A").build()))
                     .elements(
                         Set.of(
-                            ApplicationGroup.builder()
-                                .id("group")
-                                .name("Group #A")
+                            Solution.builder()
+                                .id("solution-b")
+                                .name("Solution #B")
                                 .elements(
                                     Set.of(
                                         System.builder()
@@ -74,7 +74,7 @@ class WorkspaceTest {
                                                                     .destination("./database")
                                                                     .build(),
                                                                 Relationship.builder()
-                                                                    .destination("/solution-a/group/system-a/backend")
+                                                                    .destination("/solution-b/system-a/backend")
                                                                     .build()
                                                             )
                                                         )

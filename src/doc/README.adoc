@@ -177,7 +177,7 @@ error: `manifests/grp.yaml` is not valid: unrecognized `header.kind` "archicode.
 *What a parent holds.* A solution holds systems and groups; a system holds containers and groups; a container holds components and groups; an environment and a node hold nodes; a group holds what the element it sits in holds; a person and a component hold nothing. An element declared under a parent that cannot hold its kind (`header.parent`: a system under a container) is an error in both tools, with or without plateaus, that names the file and says what the parent holds:
 
 ----
-error: `manifests/grp.yaml` is not valid: unknown kind `system` under `ArchiCode.CommandLineInterface` (known: component, group) at `header.kind`
+error: `manifests/grp.yaml` is not valid: unknown kind `system` under `ArchiCode.CommandLineInterface` (known: component) at `header.kind`
 ----
 
 An `id` is a name without a dot, since the dot separates the levels of a reference: `a.b` is refused by both tools.
@@ -1982,8 +1982,8 @@ error: the workspace file `/work/workspace.yaml` does not exist (`-w` names anot
 
 ----
 unknown key `nme` (known: description, id, name, qualifiers, relationships, replaces, tags) at `nme`
-unknown kind `containr` (known: container, group) at `elements[0]`
-missing `kind` (known: container, group) at `elements[0]`
+unknown kind `containr` (known: container) at `elements[0]`
+missing `kind` (known: container) at `elements[0]`
 unrecognized `header.kind` "archicode.morin.io/persn" (known: archicode.morin.io/component, ...)
 the value has the wrong shape (found a string) at `settings.views.labels`
 Missing content.elements[0].id

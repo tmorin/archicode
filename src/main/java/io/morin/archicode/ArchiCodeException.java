@@ -33,6 +33,10 @@ public class ArchiCodeException extends RuntimeException {
         "^Cannot (?:deserialize value of type|construct instance of) .*? from ([A-Za-z-]+)(?: value| \")"
     );
 
+    /** What is said of a group, which is gone (issue #114): what to write instead. The editor says the same words. */
+    private static final String GROUP_IS_GONE =
+        "a group is no kind any more: write its children in the `elements` of its parent";
+
     private static final Pattern ACCEPTED_VALUES = Pattern.compile("accepted for Enum class: \\[([^\\]]*)\\]");
 
     /**
@@ -101,7 +105,10 @@ public class ArchiCodeException extends RuntimeException {
             return (
                 (unknownKind.getTypeId() == null
                     ? "missing `kind`"
-                    : "unknown kind `" + unknownKind.getTypeId() + "`") +
+                    : "unknown kind `" +
+                      unknownKind.getTypeId() +
+                      "`" +
+                      ("group".equals(unknownKind.getTypeId()) ? ", " + GROUP_IS_GONE : "")) +
                 (kinds.isEmpty() ? "" : " (known: " + kinds + ")")
             );
         }
@@ -154,7 +161,19 @@ public class ArchiCodeException extends RuntimeException {
                 "` \"" +
                 written +
                 "\"" +
+                (isGroupKind(path(mismatched), String.valueOf(written)) ? ", " + GROUP_IS_GONE : "") +
                 (values.isEmpty() ? "" : " (known: " + values + ")")
+        );
+    }
+
+    /** Whether the value is a group written as the kind of a manifest: {@code group}, or the old {@code container-group}... */
+    private static boolean isGroupKind(String path, String written) {
+        return (
+            path.equals("header.kind") &&
+            written
+                .trim()
+                .toLowerCase(Locale.ROOT)
+                .matches("archicode\\.morin\\.io/((container|solution|system)-)?group")
         );
     }
 

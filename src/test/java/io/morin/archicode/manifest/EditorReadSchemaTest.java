@@ -14,19 +14,15 @@ import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.ApplicationElement;
-import io.morin.archicode.resource.element.application.ApplicationGroup;
 import io.morin.archicode.resource.element.application.Component;
 import io.morin.archicode.resource.element.application.Container;
 import io.morin.archicode.resource.element.application.ContainerElement;
-import io.morin.archicode.resource.element.application.ContainerGroup;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.application.Person;
 import io.morin.archicode.resource.element.application.Relationship;
 import io.morin.archicode.resource.element.application.Solution;
 import io.morin.archicode.resource.element.application.SolutionElement;
-import io.morin.archicode.resource.element.application.SolutionGroup;
 import io.morin.archicode.resource.element.application.SystemElement;
-import io.morin.archicode.resource.element.application.SystemGroup;
 import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.EnvironmentElement;
 import io.morin.archicode.resource.element.technology.Node;
@@ -74,12 +70,8 @@ class EditorReadSchemaTest {
             Person.class,
             Component.class,
             Container.class,
-            ContainerGroup.class,
             io.morin.archicode.resource.element.application.System.class,
-            SystemGroup.class,
             Solution.class,
-            SolutionGroup.class,
-            ApplicationGroup.class,
             Environment.class,
             Node.class,
             Plateau.class,

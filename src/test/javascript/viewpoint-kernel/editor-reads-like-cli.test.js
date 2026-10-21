@@ -54,14 +54,14 @@ test('the checks come in the order the command line meets them: the file from th
   assert.equal(errorOf(manifest('  foo: 1\n')), 'unknown key `foo` (known: description, elements, id, name, qualifiers, relationships, replaces, tags) at `foo`', 'an unknown key comes before the id that is missing');
   assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: container\n      name: a\n    - kind: zzz\n')), 'Missing content.elements[0].id');
   assert.equal(errorOf(manifest('  id: s\n  elements:\n    - foo: 1\n      kind: container\n      id: a\n')), 'unknown key `foo` (known: description, elements, id, name, qualifiers, relationships, replaces, tags) at `elements[0].foo`');
-  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - foo: 1\n      id: a\n')), 'missing `kind` (known: container, group) at `elements[0]`', 'the kind of an element is met before its keys, wherever it is written');
+  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - foo: 1\n      id: a\n')), 'missing `kind` (known: container) at `elements[0]`', 'the kind of an element is met before its keys, wherever it is written');
 });
 
 test('a nested element says its kind is missing, not that it is unknown (#77)', () => {
-  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - id: c\n')), 'missing `kind` (known: container, group) at `elements[0]`');
-  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: [a]\n      id: c\n')), 'missing `kind` (known: container, group) at `elements[0]`');
-  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: component\n      id: c\n')), 'unknown kind `component` (known: container, group) at `elements[0]`', 'the kinds depend on the parent');
-  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: Container\n      id: c\n')), 'unknown kind `Container` (known: container, group) at `elements[0]`', 'a nested kind is case sensitive');
+  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - id: c\n')), 'missing `kind` (known: container) at `elements[0]`');
+  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: [a]\n      id: c\n')), 'missing `kind` (known: container) at `elements[0]`');
+  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: component\n      id: c\n')), 'unknown kind `component` (known: container) at `elements[0]`', 'the kinds depend on the parent');
+  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: Container\n      id: c\n')), 'unknown kind `Container` (known: container) at `elements[0]`', 'a nested kind is case sensitive');
 });
 
 test('the keys each kind takes are the keys of its class: a person takes no elements, an environment takes uses, a node takes applications', () => {
@@ -86,10 +86,12 @@ test('what the command line accepts, the editor accepts', () => {
   assert.equal(errorOf(manifest('  id: 5\n  name: 12\n  description: true\n  qualifiers: [a, 1, true]\n  tags:\n    a: 1\n    b: true\n    c:\n')), null);
   assert.equal(errorOf(manifest('  id: s\n  replaces: x\n')), null, 'what replaces holds is read by the comparison, not by the reader');
   assert.equal(errorOf(manifest('  id: s\n  kind: container\n')), null, 'the kind of the root is the one of the header');
-  // a group is an element nested in another, not a kind: container-group, solution-group and system-group give the one sentence of an unknown kind, as on the command line (#79; N56 to N58 of negative-cases.json)
-  for (const group of ['container-group', 'solution-group', 'system-group']) {
-    assert.equal(errorOf(manifest('  id: g\n', 'header:\n  kind: "archicode.morin.io/' + group + '"\n  version: "1"\n')), 'unrecognized `header.kind` "archicode.morin.io/' + group + '" (known: ' + KNOWN_KINDS + ')');
+  // a group is no kind any more (#114): group, container-group, solution-group and system-group give the one sentence of an unknown kind, with what to write instead, as on the command line (N56 to N58 and N90 of negative-cases.json)
+  for (const group of ['group', 'container-group', 'solution-group', 'system-group']) {
+    assert.equal(errorOf(manifest('  id: g\n', 'header:\n  kind: "archicode.morin.io/' + group + '"\n  version: "1"\n')), 'unrecognized `header.kind` "archicode.morin.io/' + group + '", a group is no kind any more: write its children in the `elements` of its parent (known: ' + KNOWN_KINDS + ')');
   }
+  // and as a nested element (N89)
+  assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: group\n      id: g\n')), 'unknown kind `group`, a group is no kind any more: write its children in the `elements` of its parent (known: container) at `elements[0]`');
 });
 
 test('workspace.yaml: the keys and the shapes of the settings, the styles and the formatters are the command line\'s', () => {
@@ -184,7 +186,7 @@ test('a null where the command line reads an absent value is absent here too (#8
 test('an item of a list of elements that is a list is the wrong shape, as it is for the command line (#80)', () => {
   assert.equal(errorOf(manifest('  id: s\n  elements: [[1]]\n')), 'the value has the wrong shape (found an array) at `elements[0]`');
   assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: container\n      id: c\n      elements:\n        - [a]\n')), 'the value has the wrong shape (found an array) at `elements[0].elements[0]`');
-  assert.equal(errorOf(manifest('  id: s\n  elements: [5]\n')), 'missing `kind` (known: container, group) at `elements[0]`', 'a scalar is an element with no kind');
+  assert.equal(errorOf(manifest('  id: s\n  elements: [5]\n')), 'missing `kind` (known: container) at `elements[0]`', 'a scalar is an element with no kind');
 });
 
 test('the sentences name the keys of the facets as the manual writes them, and the other spelling is still read (#80)', () => {

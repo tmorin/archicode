@@ -747,33 +747,6 @@
     "allPublicFields": true
   },
   {
-    "name": "io.morin.archicode.resource.element.application.ApplicationGroup",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.ApplicationGroup$ApplicationGroupBuilder",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.ApplicationGroup$ApplicationGroupBuilderImpl",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
     "name": "io.morin.archicode.resource.element.application.Component",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -829,33 +802,6 @@
   },
   {
     "name": "io.morin.archicode.resource.element.application.ContainerElement",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.ContainerGroup",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.ContainerGroup$ContainerGroupBuilder",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.ContainerGroup$ContainerGroupBuilderImpl",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,
@@ -963,33 +909,6 @@
     "allPublicFields": true
   },
   {
-    "name": "io.morin.archicode.resource.element.application.SolutionGroup",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.SolutionGroup$SolutionGroupBuilder",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.SolutionGroup$SolutionGroupBuilderImpl",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
     "name": "io.morin.archicode.resource.element.application.System",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -1018,33 +937,6 @@
   },
   {
     "name": "io.morin.archicode.resource.element.application.SystemElement",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.SystemGroup",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.SystemGroup$SystemGroupBuilder",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true,
-    "allDeclaredMethods": true,
-    "allPublicMethods": true,
-    "allDeclaredFields": true,
-    "allPublicFields": true
-  },
-  {
-    "name": "io.morin.archicode.resource.element.application.SystemGroup$SystemGroupBuilderImpl",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,

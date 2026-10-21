@@ -58,8 +58,7 @@ public class Nesting {
     }
 
     /**
-     * The kinds a layer holds at its top, in alphabetical order. A group is not one of them: it is an element nested in another,
-     * never a manifest of its own.
+     * The kinds a layer holds at its top, in alphabetical order.
      *
      * @param layer the application layer or the technology layer
      * @return the names of the kinds, as a manifest writes them
@@ -68,10 +67,6 @@ public class Nesting {
         val annotation = layer.elementType().getAnnotation(JsonSubTypes.class);
         return annotation == null
             ? List.of()
-            : Arrays.stream(annotation.value())
-                  .map(JsonSubTypes.Type::name)
-                  .filter(name -> !name.equals("group"))
-                  .sorted()
-                  .toList();
+            : Arrays.stream(annotation.value()).map(JsonSubTypes.Type::name).sorted().toList();
     }
 }

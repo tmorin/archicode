@@ -27,10 +27,10 @@ Sends the e-mails.
 ]
 rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
 rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
-rectangle shop.web.edge as "**Edge**\n""[group]""" <<composite>> {
-rectangle shop.web.edge.gateway <<Envoy>> <<container>> <<atomic>> [
+rectangle shop.web.edge as "**Edge**\n""[container]""" <<composite>> {
+rectangle shop.web.edge.gateway <<Envoy>> <<component>> <<atomic>> [
 **Gateway**
-""[container: Envoy]""
+""[component: Envoy]""
 ]
 }
 rectangle shop.web.frontend <<Angular>> <<container>> <<atomic>> [

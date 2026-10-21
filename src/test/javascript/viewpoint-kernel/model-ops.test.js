@@ -311,7 +311,7 @@ test('a container-group manifest is no kind: the editor refuses it with the sent
   const { state } = await openMem(Object.assign({}, TWO_LAYERS, { 'manifests/app.hub.core.grp.yaml': group }));
   assert.ok(!state.index.application.has('hub.core.grp'));
   const file = state.manifestFiles.find((f) => f.relPath === 'manifests/app.hub.core.grp.yaml');
-  assert.match(file.error, /^unrecognized `header.kind` "archicode.morin.io\/container-group" \(known: /);
+  assert.match(file.error, /^unrecognized `header.kind` "archicode.morin.io\/container-group", a group is no kind any more: write its children in the `elements` of its parent \(known: /);
 });
 
 // ---- 6. ids ----
@@ -785,7 +785,7 @@ test('an element without any relationship has no Overview to open, while Detaile
 test('the navigation sorts its rows by kind (solution, system, container, component...) then by name, wherever the manifests put them', async () => {
   const { sandbox } = await openMem({
     'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
-    'manifests/sol.yaml': SOLUTION('zeta', '  elements:\n    - kind: "system"\n      id: "b"\n      name: "Beta"\n    - kind: "group"\n      id: "p"\n      name: "Pat"\n    - kind: "system"\n      id: "a"\n      name: "alpha"\n    - kind: "system"\n      id: "c"\n'),
+    'manifests/sol.yaml': SOLUTION('zeta', '  elements:\n    - kind: "system"\n      id: "b"\n      name: "Beta"\n    - kind: "system"\n      id: "p"\n      name: "Pat"\n    - kind: "system"\n      id: "a"\n      name: "alpha"\n    - kind: "system"\n      id: "c"\n'),
     'manifests/sol2.yaml': SOLUTION('alpha'),
     'manifests/env.yaml': ENVIRONMENT('e2', '  elements:\n    - kind: "node"\n      id: "n2"\n    - kind: "node"\n      id: "n1"\n')
   });
@@ -796,7 +796,7 @@ test('the navigation sorts its rows by kind (solution, system, container, compon
   ev(sandbox, "AppState.expanded.add('application:zeta'); AppState.expanded.add('technology:e2');");
   const nav = sandbox.renderElementsNavHtml(true);
   assert.deepEqual(rows(nav), ['application:alpha', 'application:zeta', 'application:zeta.a', 'application:zeta.b', 'application:zeta.c', 'application:zeta.p', 'technology:e2', 'technology:e2.n1', 'technology:e2.n2']);
-  assert.equal(kinds('zeta.p'), 'group');
+  assert.equal(kinds('zeta.p'), 'system');
 });
 
 test('a facet that hides the elements with no link is read, given to the kernel, and written back only when it is on', async () => {

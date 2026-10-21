@@ -1,5 +1,5 @@
 @startuml shop_web_edge-deep
-title Group - Edge - Deep View
+title Container - Edge - Deep View
 skinparam defaultTextAlignment center
 skinparam defaultTextAlignment<<atomic>> center
 skinparam wrapWidth 200
@@ -21,10 +21,10 @@ Someone who buys things.
 ]
 rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
 rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
-rectangle shop.web.edge as "**Edge**\n""[group]""" <<composite>> {
-rectangle shop.web.edge.gateway <<Envoy>> <<container>> <<atomic>> [
+rectangle shop.web.edge as "**Edge**\n""[container]""" <<composite>> {
+rectangle shop.web.edge.gateway <<Envoy>> <<component>> <<atomic>> [
 **Gateway**
-""[container: Envoy]""
+""[component: Envoy]""
 ]
 }
 }

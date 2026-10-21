@@ -280,7 +280,7 @@ test('a result that does not read back as the emitter\'s text is not accepted, w
 const GARDEN = [
   '# the garden: where things grow',
   'header:',
-  '  kind: "archicode.morin.io/system"',
+  '  kind: "archicode.morin.io/environment"',
   '  version: "1"',
   '',
   'content:',
@@ -289,7 +289,7 @@ const GARDEN = [
   '  tags: {zone: north, tier: "gold"}   # where it is',
   '  elements:',
   '    # the greenhouse comes first',
-  '    - kind: container',
+  '    - kind: node',
   '      id: "greenhouse"',
   '      name: "Greenhouse"',
   '      replaces: [garden.old-greenhouse]  # the old one',
@@ -304,16 +304,16 @@ const GARDEN = [
   '            "Key",',
   '          ]',
   '      elements:',
-  '        - kind: component',
+  '        - kind: node',
   '          id: "vent"',
   '          name: "Vent"',
   '          tags: {open: "yes"}',
   '    # the well is on its own',
-  '    - kind: container',
+  '    - kind: node',
   '      id: "well"',
   '      name: "Well"',
   "      replaces: ['garden.old-well', 'garden.older-well']",
-  '    - kind: group',
+  '    - kind: node',
   '      id: "tools"',
   '      name: "Tools"',
   '# end of the garden',
@@ -340,7 +340,7 @@ async function open(manifest, compare) {
 
 test('moving an element in a file that holds flow collections carries its block over as written: the collections inside it too, one level deeper, and the comment of the next element stays on it', async () => {
   const { sandbox, file } = await open(GARDEN);
-  assert.equal(sandbox.commitMoveElement('garden.greenhouse', 'application', 'garden.tools', {}).ok, true);
+  assert.equal(sandbox.commitMoveElement('garden.greenhouse', 'technology', 'garden.tools', {}).ok, true);
   await sandbox.saveAllChanges();
   const lines = GARDEN.split('\n');
   const block = lines.slice(10, 30).map((line) => '    ' + line); // the comment above the greenhouse goes with it, one level deeper
@@ -350,13 +350,13 @@ test('moving an element in a file that holds flow collections carries its block 
   for (const kept of ['          replaces: [garden.old-greenhouse]  # the old one', '          tags: {heat: on}', '              qualifiers: [Pipe, "Pump"]   # how', '              qualifiers: [', '                "Door",', '              tags: {open: "yes"}', "      replaces: ['garden.old-well', 'garden.older-well']", '  tags: {zone: north, tier: "gold"}   # where it is']) {
     assert.ok(file().split('\n').includes(kept), kept);
   }
-  assert.ok(file().includes('    # the well is on its own\n    - kind: container\n      id: "well"\n'), 'the comment of the well stays above the well');
-  assert.ok(file().includes('        # the greenhouse comes first\n        - kind: container\n          id: "greenhouse"\n'), 'the comment of the greenhouse goes with it');
+  assert.ok(file().includes('    # the well is on its own\n    - kind: node\n      id: "well"\n'), 'the comment of the well stays above the well');
+  assert.ok(file().includes('        # the greenhouse comes first\n        - kind: node\n          id: "greenhouse"\n'), 'the comment of the greenhouse goes with it');
 });
 
 test('a move writes no replaces: the lists the elements already have, and the other collections, stay as they were written', async () => {
   const { sandbox, file } = await open(GARDEN, true);
-  assert.deepEqual(plain(sandbox.commitMoveElement('garden.greenhouse', 'application', 'garden.tools')), { ok: true, reference: 'garden.tools.greenhouse' });
+  assert.deepEqual(plain(sandbox.commitMoveElement('garden.greenhouse', 'technology', 'garden.tools')), { ok: true, reference: 'garden.tools.greenhouse' });
   await sandbox.saveAllChanges();
   const saved = file();
   // the list written on one line (plain), its comment and the lists of the relationships are the original's, shifted
@@ -364,24 +364,24 @@ test('a move writes no replaces: the lists the elements already have, and the ot
     assert.ok(saved.split('\n').includes(kept), kept);
   }
   assert.ok(!saved.includes('- garden.greenhouse') && !saved.includes('"garden.greenhouse.vent"\n'), 'the new references are not told as replaces');
-  assert.ok(saved.includes('    # the well is on its own\n    - kind: container\n      id: "well"\n'));
+  assert.ok(saved.includes('    # the well is on its own\n    - kind: node\n      id: "well"\n'));
   assert.ok(saved.endsWith('# end of the garden\n') && saved.startsWith('# the garden: where things grow\n'));
   const again = createApp({});
   await again.loadWorkspace(sandbox.__state().folder.handle);
   again.drawPlateau('target');
-  assert.ok(again.__state().index.application.has('garden.tools.greenhouse.vent'));
+  assert.ok(again.__state().index.technology.has('garden.tools.greenhouse.vent'));
 });
 
 test('a move whose collections cannot be put back as they were is saved as the emitter writes it, as before, and the file still reads as the model says', async () => {
   const { sandbox, file, state } = await open(GARDEN);
   sandbox.closeFlowLists = () => 'content: [broken';
-  assert.equal(sandbox.commitMoveElement('garden.greenhouse', 'application', 'garden.tools', {}).ok, true);
+  assert.equal(sandbox.commitMoveElement('garden.greenhouse', 'technology', 'garden.tools', {}).ok, true);
   await sandbox.saveAllChanges();
   assert.equal(file().includes('broken'), false);
   assert.equal(file(), sandbox.serializeYamlValue(plain(sandbox.parseYaml(file())), 0), 'the emitter\'s text, nothing of the original layout');
   const again = createApp({});
   await again.loadWorkspace(state.folder.handle);
-  assert.ok(again.__state().index.application.has('garden.tools.greenhouse.vent'));
+  assert.ok(again.__state().index.technology.has('garden.tools.greenhouse.vent'));
   assert.equal(again.__state().relationshipStats.dangling, 0);
 });
 
@@ -389,18 +389,18 @@ test('a move whose collections cannot be put back as they were is saved as the e
 
 const TWINS = [
   'header:',
-  '  kind: "archicode.morin.io/system"',
+  '  kind: "archicode.morin.io/environment"',
   '  version: "1"',
   '',
   'content:',
   '  id: "bakery"',
   '  name: "Bakery"',
   '  elements:',
-  '    - kind: container',
+  '    - kind: node',
   '      id: "mixer"',
   '      name: "Mixer"',
   '      tags: {zone: north}',
-  '    - kind: group',
+  '    - kind: node',
   '      id: "oven"',
   '      name: "Oven"',
   '      tags: { zone:  north }',
@@ -424,7 +424,7 @@ test('removing the collection of one of two that read the same leaves the other 
 
 test('moving one of two elements whose collections read the same: each keeps the spelling it had', async () => {
   const { sandbox, file } = await open(TWINS);
-  assert.equal(sandbox.commitMoveElement('bakery.mixer', 'application', 'bakery.oven', {}).ok, true);
+  assert.equal(sandbox.commitMoveElement('bakery.mixer', 'technology', 'bakery.oven', {}).ok, true);
   await sandbox.saveAllChanges();
   assert.ok(file().includes('        tags: {zone: north}\n'), file()); // the mixer, one level deeper
   assert.ok(file().includes('      tags: { zone:  north }\n'), file()); // the oven

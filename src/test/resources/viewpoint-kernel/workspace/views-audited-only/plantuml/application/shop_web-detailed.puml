@@ -25,9 +25,9 @@ rectangle shop.web.api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]
-rectangle shop.web.edge <<group>> <<atomic>> [
+rectangle shop.web.edge <<container>> <<atomic>> [
 **Edge**
-""[group]""
+""[container]""
 ]
 rectangle shop.web.frontend <<Angular>> <<container>> <<atomic>> [
 **Frontend**

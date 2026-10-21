@@ -438,7 +438,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `inhouse/application/commerce.yaml` is not valid: unknown kind `containr` (known: container, group) at `elements[0]`"
+            "error: `inhouse/application/commerce.yaml` is not valid: unknown kind `containr` (known: container) at `elements[0]`"
           ]
         }
       ],
@@ -448,10 +448,10 @@
           "compareTo": null,
           "expect": {
             "layerProblems": [
-              "`inhouse/application/commerce.yaml` is not valid: unknown kind `containr` (known: container, group) at `elements[0]`"
+              "`inhouse/application/commerce.yaml` is not valid: unknown kind `containr` (known: container) at `elements[0]`"
             ],
             "manifestErrors": {
-              "inhouse/application/commerce.yaml": "unknown kind `containr` (known: container, group) at `elements[0]`"
+              "inhouse/application/commerce.yaml": "unknown kind `containr` (known: container) at `elements[0]`"
             },
             "danglingRelationships": 3
           }
@@ -720,7 +720,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `inhouse/application/commerce.yaml` is not valid: missing `kind` (known: container, group) at `elements[0]`"
+            "error: `inhouse/application/commerce.yaml` is not valid: missing `kind` (known: container) at `elements[0]`"
           ]
         }
       ],
@@ -730,10 +730,10 @@
           "compareTo": null,
           "expect": {
             "layerProblems": [
-              "`inhouse/application/commerce.yaml` is not valid: missing `kind` (known: container, group) at `elements[0]`"
+              "`inhouse/application/commerce.yaml` is not valid: missing `kind` (known: container) at `elements[0]`"
             ],
             "manifestErrors": {
-              "inhouse/application/commerce.yaml": "missing `kind` (known: container, group) at `elements[0]`"
+              "inhouse/application/commerce.yaml": "missing `kind` (known: container) at `elements[0]`"
             },
             "danglingRelationships": 3
           }
@@ -1940,7 +1940,7 @@
     {
       "id": "N56",
       "variant": "-",
-      "title": "a manifest whose header.kind is `container-group`, which is no kind: a group is an element nested in another (#79)",
+      "title": "a manifest whose header.kind is `container-group`, which is no kind, and a group is gone (#79, #114)",
       "ops": [
         {
           "op": "replace",
@@ -1958,7 +1958,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/container-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
+            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/container-group\", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
           ]
         }
       ],
@@ -1968,7 +1968,7 @@
           "compareTo": null,
           "expect": {
             "manifestErrors": {
-              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/container-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
+              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/container-group\", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
             }
           }
         }
@@ -1977,7 +1977,7 @@
     {
       "id": "N57",
       "variant": "-",
-      "title": "a manifest whose header.kind is `solution-group`, which is no kind: a group is an element nested in another (#79)",
+      "title": "a manifest whose header.kind is `solution-group`, which is no kind, and a group is gone (#79, #114)",
       "ops": [
         {
           "op": "replace",
@@ -1995,7 +1995,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/solution-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
+            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/solution-group\", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
           ]
         }
       ],
@@ -2005,7 +2005,7 @@
           "compareTo": null,
           "expect": {
             "manifestErrors": {
-              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/solution-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
+              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/solution-group\", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
             }
           }
         }
@@ -2014,7 +2014,7 @@
     {
       "id": "N58",
       "variant": "-",
-      "title": "a manifest whose header.kind is `system-group`, which is no kind: a group is an element nested in another (#79)",
+      "title": "a manifest whose header.kind is `system-group`, which is no kind, and a group is gone (#79, #114)",
       "ops": [
         {
           "op": "replace",
@@ -2032,7 +2032,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/system-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
+            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/system-group\", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
           ]
         }
       ],
@@ -2042,7 +2042,7 @@
           "compareTo": null,
           "expect": {
             "manifestErrors": {
-              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/system-group\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
+              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/system-group\", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
             }
           }
         }
@@ -3263,6 +3263,84 @@
               "`baseline/application/web.yaml` is not valid: unknown kind `container` with no `header.parent` (known: person, solution, system) at `header.kind`",
               "`baseline/technology/vm.yaml` is not valid: unknown kind `node` with no `header.parent` (known: environment) at `header.kind`"
             ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "N89",
+      "variant": "-",
+      "title": "#114: an element nested in a manifest says `kind: group`, which is gone: one sentence that says what to write instead",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "inhouse/application/commerce.yaml",
+          "from": "    - kind: \"container\"\n      id: \"cart-store\"",
+          "to": "    - kind: \"group\"\n      id: \"cart-store\""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "inhouse"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `inhouse/application/commerce.yaml` is not valid: unknown kind `group`, a group is no kind any more: write its children in the `elements` of its parent (known: container) at `elements[0]`"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "inhouse",
+          "compareTo": null,
+          "expect": {
+            "layerProblems": [
+              "`inhouse/application/commerce.yaml` is not valid: unknown kind `group`, a group is no kind any more: write its children in the `elements` of its parent (known: container) at `elements[0]`"
+            ],
+            "manifestErrors": {
+              "inhouse/application/commerce.yaml": "unknown kind `group`, a group is no kind any more: write its children in the `elements` of its parent (known: container) at `elements[0]`"
+            },
+            "danglingRelationships": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "N90",
+      "variant": "-",
+      "title": "#114: a manifest whose header.kind is `group`, which is gone: one sentence that says what to write instead",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "baseline/application/agent.yaml",
+          "from": "kind: \"archicode.morin.io/person\"",
+          "to": "kind: \"archicode.morin.io/group\""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `baseline/application/agent.yaml` is not valid: unrecognized `header.kind` \"archicode.morin.io/group\", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "manifestErrors": {
+              "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/group\", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
+            }
           }
         }
       ]

@@ -1,5 +1,5 @@
 @startuml shop_web_edge-deep
-title Group - Edge - Deep View
+title Container - Edge - Deep View
 skinparam defaultTextAlignment center
 skinparam defaultTextAlignment<<atomic>> center
 skinparam wrapWidth 200
@@ -15,9 +15,9 @@ FontStyle: normal
 </style>
 rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
 rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
-rectangle shop.web.edge <<group>> <<atomic>> [
+rectangle shop.web.edge <<container>> <<atomic>> [
 **Edge**
-""[group]""
+""[container]""
 ]
 }
 }
