@@ -237,3 +237,44 @@ test('a dialog of another kind, or a form that is not in edition, keeps nothing'
   assert.equal(kept(sandbox), null, 'the form is not on screen in view mode');
   sandbox.closeAppDialog();
 });
+
+// ---- a refused write and an error of the write, which open no dialog (wave 018, run 0130, issue #129) ----
+// Both redrew the form from the model, so the author read the sentence next to a form that no longer held the edit. `writeElementDraft` keeps the fields as typed before it writes and
+// `render()` puts them back (and drops the copy: no dialog is open). They fail on the page of run 0129, where the three fields are the model's.
+
+test('a refused write keeps the id, the name and the description as typed, next to the sentence', async () => {
+  const { sandbox, state } = await open(FORK_ON_COMMERCE, 'saas');
+  const screen = giveForm(sandbox, 'shop.web');
+  typeAll(screen, { 'edit-id-input': 'front', 'edit-name-input': 'Typed name', 'edit-description-input': 'Typed description' });
+  const typed = screen.values();
+  assert.equal(sandbox.commitElementWithDraft('shop.web', null), false);
+  assert.equal(dialogOf(sandbox), null, 'no dialog is open');
+  assert.match(state.saveStatus ? state.saveStatus.message : run(sandbox, 'saveStatus').message, /^Not written: `shop\.web` is declared in the plateau `baseline`, and a patch never changes an id/);
+  assert.deepEqual(screen.values(), typed, 'the form holds what was typed');
+  assert.equal(draftTyped(sandbox), true, 'and Save all changes is lit for it');
+  assert.equal(kept(sandbox), null, 'the copy is gone once the form is back');
+  assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 0, 'nothing was written');
+});
+
+test('an error of the write keeps the fields as typed', async () => {
+  const { sandbox } = await open(BRIGHTCART, 'baseline');
+  const screen = giveForm(sandbox, 'mailer');
+  typeAll(screen, { 'edit-id-input': 'mailer', 'edit-name-input': 'Typed name', 'edit-description-input': 'Typed description' });
+  const typed = screen.values();
+  run(sandbox, 'commitElementEdit = function commitElementEdit() { throw new Error("disk full"); }');
+  assert.equal(sandbox.commitElementWithDraft('mailer', null), false);
+  assert.equal(run(sandbox, 'saveStatus').message, 'disk full');
+  assert.deepEqual(screen.values(), typed);
+  assert.equal(kept(sandbox), null);
+});
+
+test('the typed values are not kept once the write succeeds', async () => {
+  const { sandbox } = await open(BRIGHTCART, 'baseline');
+  const screen = giveForm(sandbox, 'mailer');
+  typeAll(screen, { 'edit-name-input': 'Typed name' });
+  sandbox.commitElementWithDraft('mailer', null);
+  sandbox.submitAppDialog({});
+  assert.equal(kept(sandbox), null);
+  assert.equal(sandbox.findElementRecord('mailer', 'application').name, 'Typed name');
+  assert.equal(screen.value('edit-name-input'), 'Typed name');
+});

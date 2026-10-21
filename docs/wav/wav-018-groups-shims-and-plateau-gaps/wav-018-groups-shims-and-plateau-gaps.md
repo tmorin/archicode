@@ -148,7 +148,7 @@ wave_manifest:
       slug: write-replaces-refuses-a-bad-entry
       phase: P1
       depends_on: []
-      run: null
+      run: 0131
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
