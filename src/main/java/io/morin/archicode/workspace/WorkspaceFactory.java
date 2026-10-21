@@ -114,6 +114,7 @@ public class WorkspaceFactory {
             .plateau(loaded.plateau())
             .plateauTree(loaded.tree())
             .removals(loaded.removals())
+            .steps(loaded.steps())
             .build();
     }
 
@@ -190,6 +191,7 @@ public class WorkspaceFactory {
             .plateau(target.getPlateau())
             .plateauTree(target.getPlateauTree())
             .removals(target.getRemovals())
+            .steps(target.getSteps())
             .baseline(base.getPlateau())
             .build();
     }
@@ -330,13 +332,15 @@ public class WorkspaceFactory {
      * @param plateau   the plateau that was read, or null for a workspace without plateaus
      * @param tree      the tree of the plateaus of a workspace that has some, else null
      * @param removals  the {@code REMOVE} patches applied to build a plateau
+     * @param steps     the plateaus of the chain a layered plateau is built from, the root first
      */
     private record Loaded(
         Workspace resources,
         Map<Class<?>, Set<ManifestParser.Candidate>> elements,
         Settings.Plateau plateau,
         PlateauTree tree,
-        List<Removal> removals
+        List<Removal> removals,
+        List<PlateauStep> steps
     ) {}
 
     /** What the workspace file says, before any manifest is read. */
@@ -411,6 +415,7 @@ public class WorkspaceFactory {
             parsed.elements(),
             null,
             null,
+            List.of(),
             List.of()
         );
     }
@@ -511,7 +516,7 @@ public class WorkspaceFactory {
             parsed,
             id
         );
-        return new Loaded(loaded.resources(), Map.of(), plateau, tree, loaded.removals());
+        return new Loaded(loaded.resources(), Map.of(), plateau, tree, loaded.removals(), loaded.steps());
     }
 
     /**

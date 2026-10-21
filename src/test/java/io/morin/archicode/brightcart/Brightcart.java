@@ -74,7 +74,7 @@ final class Brightcart {
         return out;
     }
 
-    /** The ids of the verified comparisons (P1, P2, P3 and P5), for a parameterized test. */
+    /** The ids of the verified comparisons (P1 to P5), for a parameterized test. */
     static Stream<String> verifiedIds() {
         return verifiedComparisons()
             .stream()

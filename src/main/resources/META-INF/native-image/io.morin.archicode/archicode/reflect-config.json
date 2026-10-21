@@ -1728,6 +1728,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.viewpoint.kernel.ViewpointKernelModuleMachineIndirect_6_0",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.viewpoint.kernel.ViewpointKernelModuleMachineMachineCall",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
@@ -2935,6 +2944,15 @@
   },
   {
     "name": "io.morin.archicode.workspace.LayerLoader$Loaded",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.morin.archicode.workspace.PlateauStep",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
     "allDeclaredMethods": true,

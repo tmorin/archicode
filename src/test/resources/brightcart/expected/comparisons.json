@@ -23,7 +23,6 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau saas",
-    "gives": null,
     "ignoredReplaces": 0,
     "note": null
   },
@@ -51,7 +50,6 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau inhouse",
-    "gives": null,
     "ignoredReplaces": 0,
     "note": null
   },
@@ -79,7 +77,6 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau marketplace",
-    "gives": null,
     "ignoredReplaces": 0,
     "note": null
   },
@@ -106,21 +103,10 @@
       "changed": 1,
       "removed": 9
     },
-    "verified": "model only",
+    "verified": "archicode diff",
     "command": "archicode diff --plateau marketplace --against baseline",
-    "gives": [
-      39,
-      3,
-      7,
-      10,
-      2,
-      1,
-      35,
-      1,
-      9
-    ],
-    "ignoredReplaces": 1,
-    "note": "Needs the composition of `replaces` (L9). The tool does not compose them: it gives one move less (see `gives`)."
+    "ignoredReplaces": 0,
+    "note": null
   },
   {
     "id": "P5",
@@ -146,7 +132,6 @@
     },
     "verified": "archicode diff",
     "command": "archicode diff --plateau inhouse --against saas",
-    "gives": null,
     "ignoredReplaces": 7,
     "note": null
   },
@@ -174,7 +159,6 @@
     },
     "verified": "model only",
     "command": null,
-    "gives": null,
     "ignoredReplaces": null,
     "note": "What a tool that reads only the last step's `replaces` prints (the tool of waves 008 to 013, whose option for it no longer exists)."
   }

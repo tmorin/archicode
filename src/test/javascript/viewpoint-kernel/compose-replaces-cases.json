@@ -1,0 +1,360 @@
+{
+  "comment": "The `replaces` of the layers between two plateaus are composed (wave 017, run 0125, issue #89). ComposeReplacesCasesTest.java (command line) and compose-replaces.test.js (editor) read this file: add a case here and both run it, so that the two tools give the same table. `files`: a path from the folder of the workspace -> the text of the file (the manifests are below `manifests/`; the plateaus are layers: `p1` overrides `baseline`, `p2` overrides `p1`, and so on; a `REMOVE` patch takes out the element the layer replaced). `comparisons`: `diff --plateau <plateau> --against <against>` in the command line, the plateau drawn and compared with the other one in the editor (the later plateau is the one drawn, the other the base: an ancestor or a sibling); `rows`: the rows of the table that are elements, as `layer|reference|change|replaces` (the replaces are the composed ones, joined with a comma, sorted); `warnings`: the sentences about a `replaces` that was ignored. A comparison with the plateau a plateau overrides (one step) is as it was before the composition: it is in the cases to show it.",
+  "cases": [
+    {
+      "id": "R01",
+      "what": "a move made in two steps is a move from the first plateau; each step alone is the move it was",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"b\"\n",
+        "manifests/base/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/p1/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b\"\n  name: \"B\"\n  replaces: [\"a\"]\n",
+        "manifests/p2/c.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"c\"\n  name: \"C\"\n  replaces: [\"b\"]\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "application|c|moved|a"
+          ],
+          "warnings": []
+        },
+        {
+          "plateau": "p2",
+          "against": "p1",
+          "rows": [
+            "application|c|moved|b"
+          ],
+          "warnings": []
+        },
+        {
+          "plateau": "p1",
+          "against": "baseline",
+          "rows": [
+            "application|b|moved|a"
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "id": "R02",
+      "what": "three steps compose all of them",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"b\"\n",
+        "manifests/p3/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p3\"\n  override: \"p2\"\n  patches:\n    - operator: REMOVE\n      target: \"c\"\n",
+        "manifests/base/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/p1/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b\"\n  name: \"B\"\n  replaces: [\"a\"]\n",
+        "manifests/p2/c.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"c\"\n  name: \"C\"\n  replaces: [\"b\"]\n",
+        "manifests/p3/d.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p3\ncontent:\n  id: \"d\"\n  name: \"D\"\n  replaces: [\"c\"]\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p3",
+          "against": "baseline",
+          "rows": [
+            "application|d|moved|a"
+          ],
+          "warnings": []
+        },
+        {
+          "plateau": "p3",
+          "against": "p1",
+          "rows": [
+            "application|d|moved|b"
+          ],
+          "warnings": []
+        },
+        {
+          "plateau": "p3",
+          "against": "p2",
+          "rows": [
+            "application|d|moved|c"
+          ],
+          "warnings": []
+        },
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "application|c|moved|a"
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "id": "R03",
+      "what": "a move then a split is a split of the first plateau's element",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"b\"\n",
+        "manifests/base/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/p1/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b\"\n  name: \"B\"\n  replaces: [\"a\"]\n",
+        "manifests/p2/c1.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"c1\"\n  name: \"C1\"\n  replaces: [\"b\"]\n",
+        "manifests/p2/c2.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"c2\"\n  name: \"C2\"\n  replaces: [\"b\"]\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "application|c1|split|a",
+            "application|c2|split|a"
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "id": "R04",
+      "what": "a split then a move of one half is still a split of the first plateau's element",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"b1\"\n",
+        "manifests/base/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/p1/b1.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b1\"\n  name: \"B1\"\n  replaces: [\"a\"]\n",
+        "manifests/p1/b2.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b2\"\n  name: \"B2\"\n  replaces: [\"a\"]\n",
+        "manifests/p2/c.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"c\"\n  name: \"C\"\n  replaces: [\"b1\"]\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "application|b2|split|a",
+            "application|c|split|a"
+          ],
+          "warnings": []
+        },
+        {
+          "plateau": "p2",
+          "against": "p1",
+          "rows": [
+            "application|c|moved|b1"
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "id": "R05",
+      "what": "a move then a merge is a merge of the first plateau's elements",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"a1\"\n    - operator: REMOVE\n      target: \"a2\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"b1\"\n    - operator: REMOVE\n      target: \"b2\"\n",
+        "manifests/base/a1.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a1\"\n  name: \"A1\"\n",
+        "manifests/base/a2.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a2\"\n  name: \"A2\"\n",
+        "manifests/p1/b1.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b1\"\n  name: \"B1\"\n  replaces: [\"a1\"]\n",
+        "manifests/p1/b2.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b2\"\n  name: \"B2\"\n  replaces: [\"a2\"]\n",
+        "manifests/p2/m.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"m\"\n  name: \"M\"\n  replaces: [\"b1\", \"b2\"]\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "application|m|merged|a1,a2"
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "id": "R06",
+      "what": "an element created in a layer in between and moved by the next one is new against the first plateau, and the entry is no mistake",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"y\"\n",
+        "manifests/base/k.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"k\"\n  name: \"K\"\n",
+        "manifests/p1/y.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"y\"\n  name: \"Y\"\n",
+        "manifests/p2/z.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"z\"\n  name: \"Z\"\n  replaces: [\"y\"]\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "application|z|new|"
+          ],
+          "warnings": []
+        },
+        {
+          "plateau": "p2",
+          "against": "p1",
+          "rows": [
+            "application|z|moved|y"
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "id": "R07",
+      "what": "an element a layer in between removed ends its chain: the element of the first plateau is removed",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"b\"\n",
+        "manifests/base/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/base/k.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"k\"\n  name: \"K\"\n",
+        "manifests/p1/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b\"\n  name: \"B\"\n  replaces: [\"a\"]\n",
+        "manifests/p2/n.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"n\"\n  name: \"N\"\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "application|a|removed|",
+            "application|n|new|"
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "id": "R08",
+      "what": "an entry the last layer cannot explain is ignored with its warning, as for a plateau one step up",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n",
+        "manifests/base/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/p1/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b\"\n  name: \"B\"\n  replaces: [\"a\"]\n",
+        "manifests/p2/z.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"z\"\n  name: \"Z\"\n  replaces: [\"gone\"]\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "application|b|moved|a",
+            "application|z|new|"
+          ],
+          "warnings": [
+            "replaces of z (application layer): gone is not an element of the base plateau, ignored"
+          ]
+        },
+        {
+          "plateau": "p2",
+          "against": "p1",
+          "rows": [
+            "application|z|new|"
+          ],
+          "warnings": [
+            "replaces of z (application layer): gone is not an element of the base plateau, ignored"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "R09",
+      "what": "an element a layer in between declared keeps its word through the layers that inherit it",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"x\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n",
+        "manifests/base/x.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"x\"\n  name: \"X\"\n",
+        "manifests/p1/y.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"y\"\n  name: \"Y\"\n  replaces: [\"x\"]\n",
+        "manifests/p2/e.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"e\"\n  name: \"E\"\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "application|e|new|",
+            "application|y|moved|x"
+          ],
+          "warnings": []
+        },
+        {
+          "plateau": "p2",
+          "against": "p1",
+          "rows": [
+            "application|e|new|"
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "id": "R10",
+      "what": "two plateaus that fork compose the layers the target stands on since their common plateau; the base decides what counts",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"b\"\n",
+        "manifests/q/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"q\"\n",
+        "manifests/q2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"q2\"\n  patches:\n    - operator: REMOVE\n      target: \"a\"\n",
+        "manifests/base/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n  name: \"A\"\n",
+        "manifests/p1/b.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"b\"\n  name: \"B\"\n  replaces: [\"a\"]\n",
+        "manifests/p2/c.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"c\"\n  name: \"C\"\n  replaces: [\"b\"]\n",
+        "manifests/q/w.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: q\ncontent:\n  id: \"w\"\n  name: \"W\"\n",
+        "manifests/q2/w2.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: q2\ncontent:\n  id: \"w2\"\n  name: \"W2\"\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "q",
+          "rows": [
+            "application|c|moved|a",
+            "application|w|removed|"
+          ],
+          "warnings": []
+        },
+        {
+          "plateau": "p2",
+          "against": "q2",
+          "rows": [
+            "application|c|new|",
+            "application|w2|removed|"
+          ],
+          "warnings": [
+            "replaces of c (application layer): a is not an element of the base plateau, ignored"
+          ]
+        },
+        {
+          "plateau": "p1",
+          "against": "q",
+          "rows": [
+            "application|b|moved|a",
+            "application|w|removed|"
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    {
+      "id": "R11",
+      "what": "the technology layer composes too",
+      "files": {
+        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+        "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"dc\"\n      layer: technology\n",
+        "manifests/p2/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p2\"\n  override: \"p1\"\n  patches:\n    - operator: REMOVE\n      target: \"cloud\"\n      layer: technology\n",
+        "manifests/base/dc.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"dc\"\n  name: \"DC\"\n",
+        "manifests/p1/cloud.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\n  plateau: p1\ncontent:\n  id: \"cloud\"\n  name: \"CLOUD\"\n  replaces: [\"dc\"]\n",
+        "manifests/p2/eu.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\n  plateau: p2\ncontent:\n  id: \"eu\"\n  name: \"EU\"\n  replaces: [\"cloud\"]\n"
+      },
+      "comparisons": [
+        {
+          "plateau": "p2",
+          "against": "baseline",
+          "rows": [
+            "technology|eu|moved|dc"
+          ],
+          "warnings": []
+        }
+      ]
+    }
+  ]
+}
