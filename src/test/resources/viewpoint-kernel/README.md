@@ -4,7 +4,7 @@ An invented workspace (an online shop) whose generated views are the reference t
 against. It exists so that the Java viewpoints, the Rust kernel embedded in the standalone editor and, later, the CLI
 that runs the kernel can never drift apart unnoticed.
 
-- `workspace/` is the workspace: nested elements at three depths, a group, a person, an external system, links that
+- `workspace/` is the workspace: nested elements at four depths, a person, an external system, links that
   get grouped under an enclosing element, links without a label, and a technology layer hosting applications. Its
   settings define four facets that exercise the supported JSONPath filters (see the kernel's `facet` section).
 - `workspace/views*/` are the views the ArchiCode CLI generates for it, one directory for the workspace and one per

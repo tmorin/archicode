@@ -1,5 +1,5 @@
 # A small, invented workspace used to check the viewpoint kernel against the code the CLI runs (see ../README.md).
-# It is built to hit every rule of the viewpoints: nested elements at three depths, a group, a person, an external
+# It is built to hit every rule of the viewpoints: nested elements at four depths, a person, an external
 # system, links that must be grouped under an enclosing element, links without a label, links between siblings,
 # and a technology layer that hosts applications.
 styles:

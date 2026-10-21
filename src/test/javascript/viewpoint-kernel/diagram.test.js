@@ -550,7 +550,6 @@ test('the tree of Elements is a tree too: short kinds with their title, a dot fo
   assert.equal((html.match(/role="treeitem"[^>]*tabindex="0"/g) || []).length, 1, 'one tab stop for both trees');
   assert.match(row('shop.web'), /tabindex="0"/, 'on the selected row, when the user was on none');
   assert.match(html, /aria-label="Add an element to Applications"/);
-  assert.equal(sandbox.kindAbbreviation('group'), 'GRP');
   assert.equal(sandbox.kindAbbreviation('environment'), 'ENV');
   assert.equal(sandbox.kindAbbreviation('node'), 'NOD');
   // a facet greys rows: the tree says why, and how to get rid of it

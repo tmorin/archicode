@@ -439,8 +439,8 @@ test('with Nothing the drawing is byte for byte what it was before the compariso
   run(sandbox, "currentPerspective = 'elements';");
   const cases = [
     ['map', '', { opened: ['shop'] }, false, '1a0bdc9985dce9ff'], ['map', '', { opened: ['shop'] }, true, 'f8b2870c66ae26cf'],
-    ['overview', 'shop.web.api', {}, false, '69766c249ae388fb'], ['overview', 'shop.web.api', {}, true, '76540f700e7b8cb2'],
-    ['deep', 'shop', {}, false, '890ad56c651197ae'], ['deep', 'shop', {}, true, 'ffd7ec1efa7a61a3'],
+    ['overview', 'shop.web.api', {}, false, 'e6ddcb235de2694a'], ['overview', 'shop.web.api', {}, true, '062843508b2565f0'],
+    ['deep', 'shop', {}, false, 'c305d271995ba73c'], ['deep', 'shop', {}, true, '6f186c1fb01f4fa3'],
     ['detailed', 'shop', {}, false, '9c0e4da41a64d94b'], ['detailed', 'shop', {}, true, '9647cd9194428675'],
     ['overview', 'prod.cluster', { layer: 'technology' }, false, '1bff9fe59a4677e8'], ['overview', 'prod.cluster', { layer: 'technology' }, true, '1bff9fe59a4677e8']
   ];

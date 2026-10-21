@@ -15,13 +15,10 @@ import io.morin.archicode.resource.element.Element;
 import io.morin.archicode.resource.element.application.Application;
 import io.morin.archicode.resource.element.application.Component;
 import io.morin.archicode.resource.element.application.Container;
-import io.morin.archicode.resource.element.application.ContainerGroup;
 import io.morin.archicode.resource.element.application.Nesting;
 import io.morin.archicode.resource.element.application.Parent;
 import io.morin.archicode.resource.element.application.Person;
 import io.morin.archicode.resource.element.application.Solution;
-import io.morin.archicode.resource.element.application.SolutionGroup;
-import io.morin.archicode.resource.element.application.SystemGroup;
 import io.morin.archicode.resource.element.technology.Environment;
 import io.morin.archicode.resource.element.technology.Node;
 import io.morin.archicode.resource.element.technology.Technology;
@@ -444,7 +441,7 @@ class LayerLoaderTest {
             """
         );
         val sentence =
-            "`plateaus/inhouse/odd.yaml` is not valid: unknown kind `system` under `shop.web` (known: component, group) at `header.kind`";
+            "`plateaus/inhouse/odd.yaml` is not valid: unknown kind `system` under `shop.web` (known: component) at `header.kind`";
         assertEquals(sentence, errorOf(files, "inhouse"), "inhouse has patches");
         assertEquals(sentence, errorOf(files, "marketplace"), "and so does the plateau that overrides it");
         assertNotNull(load(files, "baseline"), "the layers below are not looked at");
@@ -463,7 +460,7 @@ class LayerLoaderTest {
             """
         );
         assertEquals(
-            "`plateaus/saas/odd.yaml` is not valid: unknown kind `system` under `shop.web` (known: component, group) at `header.kind`",
+            "`plateaus/saas/odd.yaml` is not valid: unknown kind `system` under `shop.web` (known: component) at `header.kind`",
             errorOf(files, "saas"),
             "saas has no patch"
         );
@@ -804,25 +801,18 @@ class LayerLoaderTest {
         instances.forEach((kind, element) ->
             assertEquals(textsOf(table.get(kind)), Nesting.kindsHeldBy(element), "the kinds a " + kind + " holds")
         );
-        // a group holds what the element it sits in holds
-        assertEquals(textsOf(table.get("solution")), Nesting.kindsHeldBy(SolutionGroup.builder().id("x").build()));
-        assertEquals(textsOf(table.get("system")), Nesting.kindsHeldBy(SystemGroup.builder().id("x").build()));
-        assertEquals(textsOf(table.get("container")), Nesting.kindsHeldBy(ContainerGroup.builder().id("x").build()));
     }
 
     private static final List<String> APPLICATION = List.of("solution", "system", "container", "component", "person");
     private static final List<String> TECHNOLOGY = List.of("environment", "node");
 
-    /** Every parent (a manifest, or a group in a manifest) with every kind of the same layer. */
+    /** Every parent with every kind of the same layer. */
     static Stream<Arguments> pairs() {
         val out = new ArrayList<Arguments>();
         for (val layer : List.of(APPLICATION, TECHNOLOGY)) {
             for (val parent : layer) {
                 for (val child : layer) {
-                    out.add(Arguments.of(parent, false, child));
-                    if (List.of("solution", "system", "container").contains(parent)) {
-                        out.add(Arguments.of(parent, true, child));
-                    }
+                    out.add(Arguments.of(parent, child));
                 }
             }
         }
@@ -842,15 +832,12 @@ class LayerLoaderTest {
         );
     }
 
-    @ParameterizedTest(name = "a {2} under a {0}{1}")
+    @ParameterizedTest(name = "a {1} under a {0}")
     @MethodSource("pairs")
-    void shouldAcceptTheKindsAParentHoldsAndTellTheOthers(String parentKind, boolean inGroup, String childKind) {
+    void shouldAcceptTheKindsAParentHoldsAndTellTheOthers(String parentKind, String childKind) {
         val files = new java.util.LinkedHashMap<String, String>();
-        files.put(
-            "manifests/parent.yaml",
-            manifest(parentKind, "p", null, inGroup ? "  elements:\n    - kind: \"group\"\n      id: \"g\"\n" : "")
-        );
-        val under = inGroup ? "p.g" : "p";
+        files.put("manifests/parent.yaml", manifest(parentKind, "p", null, ""));
+        val under = "p";
         files.put("manifests/child.yaml", manifest(childKind, "c", under, ""));
         val workspace = writeCase(files);
         val allowed = textsOf(holds().get(parentKind));

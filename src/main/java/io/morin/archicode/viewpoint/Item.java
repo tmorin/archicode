@@ -108,7 +108,6 @@ public class Item implements Comparable<Item> {
         SYSTEM("System"),
         CONTAINER("Container"),
         COMPONENT("Component"),
-        GROUP("Group"),
         ENVIRONMENT("Environment"),
         NODE("Node");
 
@@ -129,8 +128,6 @@ public class Item implements Comparable<Item> {
                 return Kind.ENVIRONMENT;
             } else if (element instanceof Node) {
                 return Kind.NODE;
-            } else if (element instanceof Parent<?>) {
-                return Kind.GROUP;
             }
             throw new ArchiCodeException("unable to find a matching for", element);
         }

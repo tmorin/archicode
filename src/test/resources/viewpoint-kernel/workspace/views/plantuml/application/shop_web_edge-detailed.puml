@@ -1,5 +1,5 @@
 @startuml shop_web_edge-detailed
-title Group - Edge - Detailed View
+title Container - Edge - Detailed View
 skinparam defaultTextAlignment center
 skinparam defaultTextAlignment<<atomic>> center
 skinparam wrapWidth 200
@@ -25,10 +25,10 @@ rectangle shop.web.api <<Spring Boot>> <<container>> <<atomic>> [
 **API**
 ""[container: Spring Boot]""
 ]
-rectangle shop.web.edge as "**Edge**\n""[group]""" <<composite>> {
-rectangle shop.web.edge.gateway <<Envoy>> <<container>> <<atomic>> [
+rectangle shop.web.edge as "**Edge**\n""[container]""" <<composite>> {
+rectangle shop.web.edge.gateway <<Envoy>> <<component>> <<atomic>> [
 **Gateway**
-""[container: Envoy]""
+""[component: Envoy]""
 ]
 }
 }

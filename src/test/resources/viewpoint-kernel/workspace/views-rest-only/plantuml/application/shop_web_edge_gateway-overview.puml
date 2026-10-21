@@ -1,5 +1,5 @@
 @startuml shop_web_edge_gateway-overview
-title Container - Gateway - Overview
+title Component - Gateway - Overview
 skinparam defaultTextAlignment center
 skinparam defaultTextAlignment<<atomic>> center
 skinparam wrapWidth 200
@@ -15,10 +15,10 @@ FontStyle: normal
 </style>
 rectangle shop as "**Online Shop**\n""[solution]""" <<composite>> {
 rectangle shop.web as "**Web Shop**\n""[system]""" <<composite>> {
-rectangle shop.web.edge as "**Edge**\n""[group]""" <<composite>> {
-rectangle shop.web.edge.gateway <<Envoy>> <<container>> <<atomic>> [
+rectangle shop.web.edge as "**Edge**\n""[container]""" <<composite>> {
+rectangle shop.web.edge.gateway <<Envoy>> <<component>> <<atomic>> [
 **Gateway**
-""[container: Envoy]""
+""[component: Envoy]""
 ]
 }
 }

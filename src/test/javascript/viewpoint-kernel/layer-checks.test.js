@@ -55,12 +55,11 @@ for (const c of DOCUMENT.cases) {
 
 const HOLDS = DOCUMENT.nesting.holds;
 
-test('the page derives the kinds a parent holds from READ_SCHEMA, and they are the table of the cases (group last, as the creation form lists them)', () => {
+test('the page derives the kinds a parent holds from READ_SCHEMA, and they are the table of the cases', () => {
   const sandbox = createApp({});
   for (const [level, kinds] of Object.entries(HOLDS)) {
     const options = Array.from(sandbox.childKindOptionsForLevel(level));
     assert.deepEqual(options.slice().sort(), kinds.slice().sort(), 'the kinds a ' + level + ' holds');
-    if (kinds.includes('group')) assert.equal(options[options.length - 1], 'group', 'group last');
   }
   for (const level of ['group', 'application', 'technology', 'view', 'unknown', '', null, undefined, 7]) assert.deepEqual(Array.from(sandbox.childKindOptionsForLevel(level)), [], 'a level that is no parent holds nothing: ' + String(level));
 });
@@ -82,12 +81,12 @@ const manifest = (kind, id, parent, body) => 'header:\n  kind: "archicode.morin.
 
 for (const layer of [APPLICATION, TECHNOLOGY]) {
   for (const parentKind of layer) {
-    for (const inGroup of parentKind === 'solution' || parentKind === 'system' || parentKind === 'container' ? [false, true] : [false]) {
+    {
       for (const childKind of layer) {
-        test('a ' + childKind + ' under a ' + parentKind + (inGroup ? ' group' : '') + ' is ' + (HOLDS[parentKind].includes(childKind) ? 'accepted' : 'told'), async () => {
-          const under = inGroup ? 'p.g' : 'p';
+        test('a ' + childKind + ' under a ' + parentKind + ' is ' + (HOLDS[parentKind].includes(childKind) ? 'accepted' : 'told'), async () => {
+          const under = 'p';
           const { sandbox, state } = await open({
-            'manifests/parent.yaml': manifest(parentKind, 'p', null, inGroup ? '  elements:\n    - kind: "group"\n      id: "g"\n' : ''),
+            'manifests/parent.yaml': manifest(parentKind, 'p', null),
             'manifests/child.yaml': manifest(childKind, 'c', under)
           });
           const model = sandbox.layerModelOf('baseline', state.workspace.settings);
