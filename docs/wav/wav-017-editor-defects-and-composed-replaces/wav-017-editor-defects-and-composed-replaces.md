@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 017
-status: proposed
+status: completed
 date: 2026-10-20
 related:
   - docs/wav/wav-017-editor-defects-and-composed-replaces/wbc-017-editor-defects-and-composed-replaces.md
@@ -53,7 +53,7 @@ Not the author's yet: the plan chooses so that an unattended wave can run.
 wave_manifest:
   wave: 017
   slug: editor-defects-and-composed-replaces
-  status: proposed
+  status: completed
   sources: []
   phases:
     - id: P0
@@ -187,7 +187,7 @@ wave_manifest:
       slug: manual-and-tutorial-017
       phase: P2
       depends_on: [W-1, W-2, W-3, W-4, W-5, W-6, W-7, W-8]
-      run: null
+      run: 0127
       delegation: standard
       likely_paths:
         - 'src/doc/**'

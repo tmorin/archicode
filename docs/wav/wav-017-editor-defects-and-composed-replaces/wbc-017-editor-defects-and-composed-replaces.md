@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 017
-status: proposed
+status: completed
 date: 2026-10-20
 related:
   - docs/wav/wav-016-band-tree-and-technology-map/wav-016-band-tree-and-technology-map.md
