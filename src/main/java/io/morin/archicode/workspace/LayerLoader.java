@@ -172,7 +172,8 @@ public class LayerLoader {
             );
         }
         for (val report : answer.path("patches")) {
-            if (report.path("operator").asText().equals("REMOVE")) {
+            // a REMOVE that names a field takes the field out of the elements it selects: nothing leaves the graph, so it is no removal
+            if (report.path("operator").asText().equals("REMOVE") && report.has("removed")) {
                 removals.add(removal(node.id(), report));
             }
         }

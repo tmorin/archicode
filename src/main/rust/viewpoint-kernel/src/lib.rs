@@ -91,6 +91,9 @@
 //!         | { error, patch?: {plateau?, rank, operator?, selector?} }
 //! It is additive: it changed neither the input nor the output of the other entry points and did not move the version (the
 //! answer says the version, 4). A patch that selects nothing is an `error` that names the plateau, the rank and the selector.
+//! Since wave 017 (run 0126, issue #94) a `REMOVE` may name a `field`: it then takes that field out of the elements it selects (the element stays; `id`,
+//! `parent`, `elements` and `kind` are refused) and its report has `matched` and `touched` only. Additive: a `REMOVE` with a `field` was an `error`
+//! before, a `REMOVE` without one is what it was, and the version stays 5.
 //! A map that fails on `pinned`, `opened` or `hidden` (`dangling reference: x`, the first of them) also lists all the entries it cannot find, in
 //! `dangling` of the error: a key of the error only, added to version 4 (an input that worked gives the same output).
 //!

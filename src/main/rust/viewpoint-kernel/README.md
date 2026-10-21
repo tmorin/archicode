@@ -367,7 +367,16 @@ output: { version,
   `expect`, and a miss is an error that names the plateau, the rank and the selector, for example
   `plateau saas: patch 2 (REMOVE target shop.cart): selects nothing, there is no element shop.cart in the application layer`.
 - **`REMOVE`** takes the selected nodes out and, when an element goes, what points at it in the same step (the cascade of the facets:
-  `facet.rs` has the one routine), and not the node that hosted it. **`SET`** replaces a field (a list or an object is replaced, not
+  `facet.rs` has the one routine), and not the node that hosted it. **`REMOVE` with a `field`** (wave 017, run 0126, issue #94) takes that field
+  out of the selected elements instead and leaves the elements: it is how a plateau says that an inherited description is gone (a `SET` with a
+  null `value` cannot: a null is no value, and cannot be told from one). Any field but `id`, `parent`, `elements` (refused for every operator) and
+  `kind` (an element always has one) can go, `name` and `description` as well as a list or an object (`tags`, `qualifiers`...: `SET` of an empty
+  list or object says the same). A field the element does not have is already gone, which is no error, so a bulk `REMOVE` over a `json-path`
+  does not miss the elements that never had it and a plateau over a layer that already took the field out still resolves; a selected node
+  that is not an object has no field to take out (an error, as for `SET`); `where` and `value` are refused. Nothing leaves the graph, so the
+  report has `matched` and `touched` and no `removed` or `dropped`; a later `SET` of the field (of the same plateau, or of one that
+  overrides it) gives it back. It is additive in contract 5 (a `REMOVE` with a `field` was an error, one without is what it was) and the number
+  does not move. **`SET`** replaces a field (a list or an object is replaced, not
   added to; a `SET` of `tags` that keeps the other tags is a `MERGE`); with `where` it replaces the fields of the one relationship
   found by `(destination, label)`. **`ADD`** appends to a list. **`MERGE`** sets the keys of an object, one level deep.
 - **A patch never changes an `id` or a `parent`**, and no combination of keys is guessed: what has no meaning is an error that says

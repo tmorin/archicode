@@ -170,7 +170,7 @@ wave_manifest:
       slug: patch-takes-a-field-out
       phase: P1
       depends_on: [W-7]
-      run: null
+      run: 0126
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'

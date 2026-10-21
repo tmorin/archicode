@@ -21,7 +21,9 @@ import lombok.extern.jackson.Jacksonized;
  * json-path} (RFC 9535, with {@code expect} for the number of nodes it selects); {@code field}; {@code where} (finds a
  * relationship by its destination and its label); {@code value}. What the kernel checks of their combinations (a {@code
  * REMOVE} takes no {@code value}, a {@code where} goes with {@code SET}, a patch never changes an {@code id} or a {@code
- * parent}...) is told by the kernel when the layer is built, with the plateau and the rank of the patch.
+ * parent}...) is told by the kernel when the layer is built, with the plateau and the rank of the patch. A {@code REMOVE}
+ * with a {@code field} takes that field out of the elements it selects (an inherited description is gone); without one
+ * it removes what the selector selects.
  * <p>
  * The reader takes an operator and a layer in any case ({@code remove}, {@code Technology}), as it does every enum; the kernel
  * takes {@code REMOVE} and {@code technology} only. Whoever hands a patch to the kernel writes {@link Operator#name()} and the
@@ -68,7 +70,7 @@ public class Patch {
     /** The number of nodes a {@code json-path} selects. */
     Integer expect;
 
-    /** The field of the selected element that changes. */
+    /** The field of the selected element that changes (that is taken out, for a {@code REMOVE}). */
     String field;
 
     /** Finds the relationship a {@code SET} changes: by its destination and its label. */
