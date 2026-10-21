@@ -1,29 +1,40 @@
 package io.morin.archicode.manifest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.TreeSet;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * KNOWN DIFFERENCE with the editor (issue #103): a plain scalar written as a YAML 1.1 number is read as that number by the
- * command line, and its text is the number's ({@code 010} is {@code 8}, {@code 1.50} is {@code 1.5}). The editor keeps every
- * plain scalar it cannot print back as it was written as the text it was written as ({@code editor-reads-like-cli.test.js},
- * the test of the same issue). This test pins what the command line does; when the two are made equal, both change.
+ * A plain scalar written as a YAML 1.1 number is read as that number by the command line, and its text is the number's ({@code 010}
+ * is {@code 8}, {@code 1.50} is {@code 1.5}); where the target is a whole number or a boolean it is accepted ({@code line-gap: 0x1F});
+ * the fields of a header are the text as written ({@code parent: 0} is the reference {@code 0.c}). The editor reads them the same way
+ * since wave 018, run 0134 (issue #103): the cases are in {@code yaml-number-cases.json}, which {@code yaml-numbers.test.js} runs on
+ * the editor. The expectations were written from this side, so this test is the record of what the command line does.
  */
 @QuarkusTest
 class YamlOneDotOneNumbersTest {
+
+    private static final Path CASES = Path.of("src/test/javascript/viewpoint-kernel/yaml-number-cases.json");
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Inject
     WorkspaceFactory workspaceFactory;
@@ -32,68 +43,68 @@ class YamlOneDotOneNumbersTest {
     Path dir;
 
     @SneakyThrows
-    private TreeSet<String> referencesOf(String settings, String... manifests) {
-        Files.writeString(dir.resolve("workspace.yaml"), settings);
-        Files.createDirectories(dir.resolve("manifests"));
-        for (int i = 0; i < manifests.length; i++) {
-            Files.writeString(dir.resolve("manifests").resolve("m" + i + ".yaml"), manifests[i]);
+    private static JsonNode document() {
+        return JSON.readTree(Files.readString(CASES));
+    }
+
+    static Stream<String> caseIds() {
+        val ids = new ArrayList<String>();
+        document()
+            .get("cases")
+            .forEach(c -> ids.add(c.get("id").asText() + " " + c.get("title").asText()));
+        return ids.stream();
+    }
+
+    @SneakyThrows
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("caseIds")
+    void shouldReadThePlainScalarAsTheCasesSay(String label) {
+        val id = label.substring(0, label.indexOf(' '));
+        JsonNode c = null;
+        for (val candidate : document().get("cases")) {
+            if (candidate.get("id").asText().equals(id)) {
+                c = candidate;
+            }
         }
-        return new TreeSet<>(
-            workspaceFactory.create(dir.resolve("workspace.yaml")).appIndex.elementByReferenceIndex.keySet()
-        );
-    }
-
-    @ParameterizedTest(name = "id: {0} is the reference {1}")
-    @CsvSource(
-        delimiter = '|',
-        value = { "010|8", "007|7", "0x1F|31", "0b11|3", "1_000|1000", "+5|5", "-0|0", "yes|true", "No|false" }
-    )
-    void shouldReadAPlainScalarAsTheYaml11NumberItIs(String written, String reference) {
-        val references = referencesOf(
-            "settings: {}\n",
-            "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: " + written + "\n"
-        );
-        assertEquals(new TreeSet<>(java.util.List.of(reference)), references);
-    }
-
-    /** A number with a dot is an id with a dot, which is refused in both tools (issue #104, M83 of plateau-model-cases.json). */
-    @ParameterizedTest(name = "id: {0} has a dot, whatever the number is")
-    @CsvSource(delimiter = '|', value = { "1.50|1.5", "1e3|1000.0", ".5|0.5" })
-    void shouldRefuseANumberThatHasADotAsAnId(String written, String number) {
-        val error = assertThrows(ArchiCodeException.class, () ->
-            referencesOf(
-                "settings: {}\n",
-                "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: " + written + "\n"
-            )
-        );
-        assertEquals(
-            "`manifests/m0.yaml` is not valid: the id `" +
-                number +
-                "` contains a dot, which separates the levels of a reference, at `content.id`",
-            error.getMessage()
-        );
-    }
-
-    @ParameterizedTest(name = "id: \"{0}\" is the text as written")
-    @CsvSource({ "010", "0x1F", "007", "yes" })
-    void shouldKeepAQuotedScalarAsWritten(String written) {
-        val references = referencesOf(
-            "settings: {}\n",
-            "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"" + written + "\"\n"
-        );
-        assertEquals(new TreeSet<>(java.util.List.of(written)), references);
-    }
-
-    @ParameterizedTest(name = "header.parent: {0}")
-    @CsvSource({ "0", "010", "0x1F", "yes", "On" })
-    void shouldKeepTheTextAsWrittenInAFieldOfTheHeader(String written) {
-        val references = referencesOf(
-            "settings: {}\n",
-            "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"" + written + "\"\n",
-            "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: " +
-                written +
-                "\ncontent:\n  id: c\n"
-        );
-        assertEquals(new TreeSet<>(java.util.List.of(written, written + ".c")), references);
+        assertNotNull(c);
+        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [manifests]\n");
+        for (val file : c.get("files").properties()) {
+            val target = dir.resolve(file.getKey());
+            Files.createDirectories(target.getParent());
+            Files.writeString(target, file.getValue().asText());
+        }
+        val expect = c.get("expect");
+        val workspace = dir.resolve("workspace.yaml");
+        if (expect.has("error")) {
+            val message = assertThrows(Exception.class, () -> workspaceFactory.create(workspace)).getMessage();
+            val prefix = "`" + expect.get("file").asText() + "` is not valid: ";
+            assertEquals(
+                prefix + expect.get("error").asText(),
+                message.replaceFirst(" \\(line \\d+, column \\d+\\)$", "")
+            );
+            return;
+        }
+        val loaded = workspaceFactory.create(workspace);
+        val references = new ArrayList<String>();
+        val qualifiers = new TreeMap<String, List<String>>();
+        for (val index : List.of(loaded.appIndex, loaded.techIndex)) {
+            index.elementByReferenceIndex.forEach((reference, element) -> {
+                references.add(reference);
+                if (!element.getQualifiers().isEmpty()) {
+                    qualifiers.put(reference, new ArrayList<>(element.getQualifiers()));
+                }
+            });
+        }
+        references.sort(null);
+        val expectedReferences = new ArrayList<String>();
+        expect.get("references").forEach(r -> expectedReferences.add(r.asText()));
+        assertEquals(expectedReferences, references);
+        Map<String, List<String>> expectedQualifiers = new TreeMap<>();
+        for (val entry : expect.path("qualifiers").properties()) {
+            val list = new ArrayList<String>();
+            entry.getValue().forEach(q -> list.add(q.asText()));
+            expectedQualifiers.put(entry.getKey(), list);
+        }
+        assertEquals(expectedQualifiers, qualifiers);
     }
 }

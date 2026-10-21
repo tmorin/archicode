@@ -203,7 +203,7 @@ wave_manifest:
       slug: stories-generate
       phase: P2
       depends_on: [W-6]
-      run: null
+      run: 0135
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/**'

@@ -1,8 +1,58 @@
 ---
 type: run
 run: 0134
-status: proposed
+status: completed
+profile: single-document
 wave: 018
 ---
 
 # Run 0134: yaml-numbers-read-alike
+
+Wave 018, W-7. Closes GitHub issue tmorin/archicode#103 (decision D8 of the author, 2026-10-21: "the parser marks the plain scalars that YAML 1.1 reads as numbers"; T4 of the wave plan: the editor adopts what the command line reads, the command line is not changed).
+
+## Scope
+
+A plain (unquoted) scalar that YAML 1.1 reads as a number is read by the editor as the command line reads it, and saved back as written. The command line is not touched (no Java under `src/main` changed). What the command line does was measured, not assumed: every spelling of up to five characters over `0189_.eE+-xbF` (402,233 strings) was read by Jackson 2.21 over SnakeYAML 2.6 and the grammar of the page checked against it (zero differences), then 124 cases (a scalar in a target) were run on the jar of `archicode-0.16.0` and their results written into `yaml-number-cases.json`, which both tools run.
+
+What the command line does, per target (found by the measure, not in the issue):
+
+| target | reading |
+|---|---|
+| a text field of the content of a manifest | the text Java prints for the number, because the content is read again as JSON text: `010` is `8`, `0x1F` `31`, `1_000` `1000`, `1.50` `1.5`, `5.0` `5.0`, `1e3` `1000.0`, `1e22` `1.0E22`, `0.0001` `1.0E-4`, an integer beyond 2^53 its digits; `09`, `0o17`, `1:30` are texts |
+| a text field of `workspace.yaml` | the text as written (`name: 010` is `010`), the YAML is read directly |
+| `header.parent`, `plateau`, `version` | the text as written (`parent: 0` is the reference `0.c`), `header.kind` is an enum (`0x1F` is unrecognized `"31"`, `5.0` is the wrong shape) |
+| a whole number (`line-gap`) | any number: a float is truncated (`1.5` is accepted), out of range is `Numeric value (<text as written>) out of range of int ...` |
+| a boolean (`shadowing`, `global-enabled`) | a whole number of any size (`012`, `0x1`, `9999999999999999999`), a float is `wrong shape (found a number)` |
+| an enum (`layer`) | the number as a whole number says it (`0x1F` is `"31"`), a float is the wrong shape |
+| `.inf`, `-.inf`, `.nan`, `._` | `Malformed numeric value '.inf'` + `at \`content\``, `at \`header.parent\`` or nothing (`workspace.yaml`); `-.nan` is a text |
+
+## Decisions
+
+- **T4 kept, with a sharper statement.** The editor adopts what the command line reads. It could not be "one value for the model": the command line itself reads the same scalar two ways (the content of a manifest as the number, `workspace.yaml` and the header as the text as written), so the page has two readings of a plain scalar, chosen by the file: `parseYamlAsModel` (a manifest; `yamlModelNumbers`) and the plain `parseYaml` (`workspace.yaml`). Rejected: one reading for both (`name: 010` in `workspace.yaml` would be `8` for the page and `010` for the command line, or `id: 010` the reverse).
+- **The marker (D8).** In a manifest the model value of a plain number is a JS number when the page can hold the text Java prints for it (`010` is `8`) and otherwise that text (`5.0`, `1000.0`, `1.0E22`, an integer beyond 2^53), so every consumer of the model (`String(id)`, the reference, the qualifiers) gets what the command line gets with no change. In `workspace.yaml` the value is the text as written, as before. In both, the parser records that the value *was a plain number* when it is held as a text: `plainNumberOf(container, key)`, a hidden symbol on the mapping or list (as `YAML_KEY_ORDER` is), filled by `setYamlKey` and `pushYamlItem` from the last scalar `resolveYamlPlain` classified; valid only while `container[key]` is still the value that was recorded; copied by `cloneYamlValue`. The checks of `readValue` read it for a whole number, a boolean and an enum, so `line-gap: 0x1F` is accepted and `line-gap: "0x1F"` (quoted: no marker) is `found a string`, which the page could not tell before. Rejected: a wrapper object for the number (a `typeof` on about twenty lines of the page, deep equality and `JSON.stringify` of the model, the kernel input); rejected: a marker in the value (a prefix on the text): it leaks into every display and comparison; rejected: keeping the text and converting at each consumer (about fifty places read an id, a reference or a qualifier).
+- **The header fields are the text as written, numbers included.** The page read `parent: yes` as the text since run 0092; `parent: 0` was the number 0, tested for truth (`c` drawn for the command line's `0.c`), `version: 1` the number 1. `keepHeaderAsWritten` now re-reads the header with `yamlKeepWords` (which keeps the words and the numbers as written) when a text key came out as anything but a text, or as a text the parser marks as a number (`1e3`, which the model reads as `1000.0`). `header.kind` stays as it was, an enum read by the kind of the value, with the marker for a float (`5.0` is the wrong shape).
+- **The save writes a number back as written by the words the emitter would write, not by a stored spelling.** The line-preserving save compares the lines the emitter writes for the old value with the lines of the file; `yamlEmittedWordsOf` already mapped `yes` to the emitter's `true`, it now maps `010` to `8` (reading the line in the mode of the file, `yamlPlainReading` when `patchYamlText(..., true)` saves `workspace.yaml`). The flow lists of a file are read in the same mode (`openFlowLists`), and a word the author wrote stays the author's when the reader makes of it the value of the emitter's token (`yamlWordIsToken`: `on` for `true`, `1_000` for `1000`). Rejected: remembering the source text of each scalar in the marker and teaching the emitter to print it (a copy of the model, a clone, or a form edit would lose it silently; the words of the line are always available and cannot go stale). The consequence, stated: a block the emitter writes anew (a new file, a copy of an element) spells the number as the emitter does, `8` for `010`, which is the same value for both tools.
+- **A number the reader refuses is a parse error with its sentence.** `resolveYamlPlain` throws `YamlMalformedNumber` (`Malformed numeric value '.inf'`), and `parseManifestText` adds the place the command line names: `at \`content\`` for anything in the content, `at \`header.<key>\`` for a header field (found from the line of the error). `workspace.yaml` says it without a place (`Could not read/parse workspace.yaml: Malformed numeric value '.inf'`). The calls that only look for a word (`!!null`, `!!bool`, the flow-list token) pass `wordsOnly`.
+- **Style drawing is not changed.** The diagram draws a style through `styleWholeNumber`, which takes a number or a text of digits and ignores anything else on purpose (`styles.test.js` pins that `'1e2'` and `'2.5'` are ignored: the value reaches CSS variables). A quoted text and a plain number are the same text for it (the style is copied before it is drawn, the marker is gone), so it cannot take `0x1F` without taking `"1e2"`. The checks accept `line-gap: 0x1F` (the file loads), the diagram draws it with the default. Rejected: carrying the marker through the copy of the styles (a change of the model of styles for a drawing); cosmetic, listed as a remainder.
+- **What stays different, pinned (`editor-reads-like-cli.test.js`, KNOWN DIFFERENCE):** (a) the page does not tell the line and the column (as before); (b) `foo: .inf` under an unknown key of the header: the command line meets the key and never decodes the value, the page decodes every scalar when it reads: the page says the number, the command line the unknown key; (c) a float whose Java text differs from JavaScript's (`5.0`) is the text in a field of any shape, including a `value` of a patch, which is a number for the command line (a text field is right; no shipped file does it); (d) the diagram draws a style written `line-gap: 0x1F` or `round-corner: 8.0` with the default (above). None of them is a difference in a reference or in a load that succeeds, so #103 is closed.
+- **The Java test.** `YamlOneDotOneNumbersTest` runs `yaml-number-cases.json`; its old parameterised cases (the ids, the dotted ids, the quoted ids, the header parent) are cases of the file (Y01 to Y25, Y56 to Y63). Case N77 of `negative-cases.json` is a shared case now (`editor: [{expect: {}}]`, it was `null` with a reason).
+- **Rejected: changing the command line** (the plan's other branch: read a plain scalar of a text field as the text as written). It would change `id: 010` from `8` to `010`, a change of a reference for a workspace that has one, and the command line itself reads a text field of the content as a number by design of the JSON re-read.
+
+## What changed
+
+- `src/main/resources/editor-webapp/standalone.html`: `yamlOneDotOneNumber`, `javaDoubleText`, `resolveYamlPlain` (two readings, the marker, the refusal), `notePlainNumber`/`plainNumberOf`/`copyPlainNumbers`/`pushYamlItem`, `parseYamlAsModel`, `keepHeaderAsWritten`, `malformedNumberSentence`, `readValue` and `readObject` (`plain`), `readFound`/`readWrongShape`, `headerProblem` (kind), `yamlEmittedWordsOf`, `yamlWordIsToken`, `openFlowLists`, `patchYamlText` (third argument). No kernel change: `embed.sh --check` clean.
+- Tests: `yaml-number-cases.json` (124 cases, Y01 to Y124), `yaml-numbers.test.js` (the 124 cases on the editor + 5 tests: the references, a rename of an element whose ids are numbers with the file otherwise byte for byte, a move of a block with `0x1F`, a save of `workspace.yaml`, the style pinned), `YamlOneDotOneNumbersTest.java` (the same cases on the command line), `editor-reads-like-cli.test.js` (the old KNOWN DIFFERENCE is now the positive test; two pinned differences), N77.
+- `CLAUDE.md`: the paragraph "Known difference, pinned and filed as #103" says what is true now; #103 leaves the list of the limits of the manual (`src/doc/README.adoc` is W-9's).
+
+## Verification
+
+- `./mvnw -o verify -DskipITs=false '-Dtest=!CustomRenderingTest' -Dsurefire.failIfNoSpecifiedTests=false`: 1082 unit tests (2 skipped, as before; `YamlOneDotOneNumbersTest` 124 of them), 21 integration tests, build success (run twice: the second after the last change to the page).
+- `cargo test`: 230 passed. `embed.sh --check`: the committed wasm is the one the sources build (785781 bytes). `node --test "src/test/javascript/**/*.test.js"`: 2197 tests, 2197 passed (2191 before the cases of the second batch; `yaml-numbers.test.js` has 129). `npx prettier --check "src/**/*.java"`: clean.
+- The first full node run after the change had one failure, `styles.test.js` ("values that are not whole numbers are ignored"): my first version of the drawing took `0x1F` and `1e2` as numbers; reverted (decision above).
+
+- Editor identity: the manifests of the 20 workspaces with a `workspace.yaml` in `src/doc/examples` and `src/test/resources` (411 manifest files, none with a number-like plain scalar) were loaded, re-serialised by the save (`reserializeManifestFile`, marked dirty, `saveAllChanges`) in an in-memory folder on the page of HEAD and on this page: the sha-256 of every file of every folder is the same (20 of 20 identical, no error on either side).
+- Command line: untouched (no file under `src/main/java` changed, no resource of the application); T1 byte identity with `archicode-0.16.0` holds by construction, and the expectations of the 129 cases come from that jar.
+
+## Canonical impact
+
+`CLAUDE.md` (above). The manual says in `[[plateau-limits]]` that #103 is open and describes the pinned difference; that is for W-9 to rewrite: findings for W-9 in the report.

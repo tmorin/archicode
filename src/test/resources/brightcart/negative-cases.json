@@ -2677,7 +2677,7 @@
     {
       "id": "N77",
       "variant": "-",
-      "title": "#80: `line-gap: 0x1F` is read as a number by the command line (YAML 1.1); the editor keeps a plain scalar it cannot print back as it is as a text, and refuses it",
+      "title": "#103: `line-gap: 0x1F` is a number for both tools (YAML 1.1): the command line and the editor accept it",
       "ops": [
         {
           "op": "replace",
@@ -2697,8 +2697,13 @@
           "stderr": []
         }
       ],
-      "editor": null,
-      "reason": "YAML 1.1 numbers (0x1F, 012, 1_0, 5.0, 1e2) are read as numbers by the command line and kept as text by the editor, which tells a plain scalar from a quoted one by no mark (issue #103); pinned by editor-reads-like-cli.test.js"
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {}
+        }
+      ]
     },
     {
       "id": "N78",
