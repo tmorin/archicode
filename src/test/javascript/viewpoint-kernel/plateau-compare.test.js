@@ -347,7 +347,10 @@ test('the legend explains the four states with their glyph, their line and their
   const { sandbox } = await open();
   compareWith(sandbox, 'as-is');
   const legend = sandbox.diagramComparisonLegendHtml(sandbox.comparisonState());
-  const text = legend.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  // the Key button (run 0130, #132) is the only addition: the text of the open key is what it was
+  assert.match(legend, /<button type="button" class="dg-legend-toggle" data-action="toggle-diagram-key" aria-expanded="false" aria-controls="diagram-key"[^>]*>Key<\/button>/);
+  assert.match(legend, /id="diagram-key"/);
+  const text = legend.replace(/<button[\s\S]*?<\/button>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
   assert.equal(text, 'To be compared with As is: + new thick solid ~ changed dotted − removed long dashes, narrow gaps, struck title ± contains changes thin dashed: something inside changed Red dashed is kept for dangling references (unknown elements).');
   assert.deepEqual(Array.from(legend.matchAll(/data-state="([^"]*)"/g), (m) => m[1]), ['new', 'changed', 'removed', 'contains-changes']);
   // a sample of each: the box with the classes and variables of the boxes, the link with the class of the links
@@ -373,7 +376,7 @@ test('the key says, next to each state, how many boxes and links of it the drawi
   const { result, comparison } = await draw(sandbox, 'map', '');
   const counts = plain(sandbox.comparisonCountsOf(result));
   assert.deepEqual(counts, { new: { boxes: 1, links: 1 }, changed: { boxes: 1, links: 0 }, removed: { boxes: 2, links: 1 }, 'contains-changes': { boxes: 1, links: 0 } });
-  const text = sandbox.diagramComparisonLegendHtml(comparison, counts).replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  const text = sandbox.diagramComparisonLegendHtml(comparison, counts).replace(/<button[\s\S]*?<\/button>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
   assert.equal(text, 'To be compared with As is: + new thick solid 1 box, 1 link ~ changed dotted 1 box, 0 links \u2212 removed long dashes, narrow gaps, struck title 2 boxes, 1 link \u00B1 contains changes thin dashed: something inside changed 1 box Red dashed is kept for dangling references (unknown elements).');
 });
 

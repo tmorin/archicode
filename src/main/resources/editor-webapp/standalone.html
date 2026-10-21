@@ -540,6 +540,15 @@
   .dg-legend-compare { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; align-items: center; margin-top: 0.15rem; }
   .dg-legend-title { color: var(--muted); }
   .dg-legend-state { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.1rem 0.3rem; }
+  /* the key folded (wave 018, run 0130, #132): one row, a sample, a glyph, a word and a count for each state (the sample carries the line style); the sentences and the note open with the Key button */
+  .dg-legend-toggle { height: 1.4rem; min-width: 0; padding: 0 0.5rem !important; font-size: 0.78rem; }
+  .dg-legend-toggle[aria-expanded="true"] { background: var(--accent) !important; color: var(--on-accent); border-color: var(--accent) !important; }
+  .dg-legend-compare:not(.dg-key-open) { gap: 0.25rem 0.6rem; }
+  .dg-legend-compare:not(.dg-key-open) > * { flex: none; white-space: nowrap; }
+  /* on a narrow screen the folded row stays one row and scrolls along, rather than taking one row for each state */
+  @media (max-width: 700px) { .dg-legend-compare:not(.dg-key-open) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; } }
+  .dg-legend-compare:not(.dg-key-open) .dg-legend-how, .dg-legend-compare:not(.dg-key-open) .dg-legend-note, .dg-legend-compare:not(.dg-key-open) .dg-legend-title { display: none; } /* the pair compared is on the band, and in the title of the button */
+  .dg-legend-compare.dg-key-open { max-height: var(--dg-key-max, 30vh); overflow-y: auto; }
   .dg-legend-state .dg-glyph { font-size: 0.95rem; }
   .dg-legend-how, .dg-legend-count { color: var(--muted); font-size: 0.78rem; }
   .dg-legend-note { color: var(--muted); font-size: 0.78rem; }
@@ -7685,6 +7694,7 @@ function resetUiState() {
   setDiagramShow(null);
   appDialog = null;
   keptElementForm = null;
+  diagramKeyOpen = false; // the key under the diagram is folded again with a new folder
   storyBarEditing = false;
   storyBarNotice = null;
   removedStep = null;
@@ -11995,6 +12005,8 @@ function commitElementWithDraft(reference, structuralFn) {
 
 /** The write of `commitElementWithDraft`, once the draft is read and the author has said yes to whatever was asked. Returns false when it did not write (a refusal, or a dialog is open). */
 function writeElementDraft(reference, layer, draft, structuralFn) {
+  // a refused write, or an error, redraws the form from the model (`guardedLayerWrite` first, then the sentence in the top bar): the fields as typed are kept before it and put back by that redraw (wave 018, run 0130, #129)
+  const typedForm = keepElementForm();
   try {
     // a rename rewrites the references to the element, in the model and in the UI state, inside the commit (DEC-8)
     const written = commitElementEdit(reference, (node) => {
@@ -12005,6 +12017,7 @@ function writeElementDraft(reference, layer, draft, structuralFn) {
     if (written && written.pending) return false; // wave 014 (run 0082): the author is asked first (the plateaus it changes); nothing is applied yet, and "Save all changes" waits
   } catch (e) {
     saveStatus = { state: 'error', failedFile: reference, message: e && e.message ? e.message : String(e) };
+    keptElementForm = typedForm; // `render()` puts it back and drops it (no dialog is open): view state, no `modelsChanged()`
     render();
     return false;
   }
@@ -15714,6 +15727,25 @@ function hideUnlinkedItems(items, links, focalReference) {
   };
 }
 
+/**
+ * Whether the key to a comparison, under the diagram, is open (wave 018, run 0130, #132). Folded, it is one row with the sample, the glyph, the word and the count of each state; open, it also says
+ * how each line is drawn, capped at about 30 % of the diagram area, with its own scroll. View state only: kept while the editor stays open on the folder, not an input of any diagram or
+ * cache, not in the address, not in the workspace; no `modelsChanged()`.
+ */
+let diagramKeyOpen = false;
+
+/** Puts the state of the key on the one on screen: its class, `aria-expanded` and the cap of its height. */
+function syncDiagramKey() {
+  const key = typeof document !== 'undefined' ? document.getElementById('diagram-key') : null;
+  if (!key) return;
+  if (key.classList) key.classList.toggle('dg-key-open', diagramKeyOpen);
+  const button = key.querySelector ? key.querySelector('[data-action="toggle-diagram-key"]') : null;
+  if (button) button.setAttribute('aria-expanded', String(diagramKeyOpen));
+  const area = key.closest ? key.closest('.diagram-status') : null;
+  const holder = area && area.parentElement ? area.parentElement : null;
+  if (diagramKeyOpen && holder && holder.clientHeight && key.style) key.style.setProperty('--dg-key-max', Math.max(48, Math.round(holder.clientHeight * 0.3)) + 'px');
+}
+
 /** The key to the line styles, shown under the diagram. */
 function diagramLegendHtml(hasGhosts, stereotypes) {
   const sample = (cls) => '<svg width="26" height="8" aria-hidden="true"><line class="dg-edge ' + cls + '" x1="0" y1="4" x2="26" y2="4"/></svg>';
@@ -15753,8 +15785,10 @@ function diagramComparisonLegendHtml(comparison, counts) {
     const box = '<svg width="28" height="16" aria-hidden="true"><g class="dg-node dg-context"><rect class="dg-box" x="2" y="2" width="24" height="12" rx="3"/></g></svg>';
     entries.push('<span class="dg-legend-state" data-state="context">' + box + 'context <span class="dg-legend-how">faded: shown to place the changes</span> <span class="dg-legend-count">' + noun(counts.context.boxes, 'box', 'boxes') + '</span></span>');
   }
-  return ' <span class="dg-legend-compare" role="group" aria-label="Comparison">' +
+  return ' <span class="dg-legend-compare" id="diagram-key" role="group" aria-label="Comparison">' +
     '<span class="dg-legend-title">' + escapeHtml(plateauTitle(comparison.target)) + ' compared with ' + escapeHtml(plateauTitle(comparison.base)) + ':</span> ' +
+    // folded or open is view state: the markup is the same either way, `syncDiagramKey` sets the class and `aria-expanded` when the key is put on screen
+    '<button type="button" class="dg-legend-toggle" data-action="toggle-diagram-key" aria-expanded="false" aria-controls="diagram-key" title="' + escapeHtml(plateauTitle(comparison.target) + ' compared with ' + plateauTitle(comparison.base)) + ': show or hide how each line is drawn">Key</button> ' +
     entries.join(' ') +
     ' <span class="dg-legend-note">Red dashed is kept for dangling references (unknown elements).</span></span>';
 }
@@ -16076,6 +16110,7 @@ function showDiagramScene(scene) {
   if (status) { status.textContent = scene.status; status.title = scene.status; }
   const legend = document.getElementById('diagram-legend');
   if (legend) legend.innerHTML = scene.legend;
+  syncDiagramKey();
   applyDiagramScale();
   // the same diagram, whichever perspective shows it, keeps the view the user chose; another one opens framed on its element
   if (scene.viewKey !== diagramShownView && typeof diagramScale === 'number') diagramScale = 'auto';
@@ -19488,6 +19523,11 @@ function handleAppClick(e) {
       expandAncestorsOf(owner, ownerLayer || undefined);
       scrollNavToSelection = true;
       setPerspective('elements');
+      break;
+    }
+    case 'toggle-diagram-key': { // issue #132: the key under a comparison, folded or open (view state; the key is changed in place, nothing is drawn again)
+      diagramKeyOpen = !diagramKeyOpen;
+      syncDiagramKey();
       break;
     }
     case 'toggle-map-part': { // issue #107: the Map of the technology layer draws its applications and its relationships, or not (view state, not model state)
