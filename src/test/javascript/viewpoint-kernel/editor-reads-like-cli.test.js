@@ -152,9 +152,9 @@ test('a header field the command line types as text is the text as written: yes,
   }
   const flow = app.parseManifestText('header: {kind: "archicode.morin.io/container", version: yes, parent: On, plateau: "yes"}\ncontent: {id: c}\n');
   assert.deepEqual([flow.header.version, flow.header.parent, flow.header.plateau], ['yes', 'On', 'yes'], 'in a flow mapping too');
-  // nothing else of the header changes: a number is a number, null is no value, a quoted text is a text
+  // nothing else of the header changes: null is no value, a quoted text is a text; a number is the text as written too (issue #103: `parent: 0` is the reference `0.c`)
   const other = app.parseManifestText(header('  parent: 5\n  plateau: ~\n'));
-  assert.deepEqual([other.header.parent, other.header.plateau], [5, null]);
+  assert.deepEqual([other.header.parent, other.header.plateau], ['5', null]);
   // the kind is an enum, which the command line reads by the kind of the value: a boolean is the wrong shape, not an unknown kind
   assert.equal(errorOf(manifest('  id: s\n', 'header:\n  kind: yes\n  version: "1"\n')), 'the value has the wrong shape (found a boolean) at `header.kind`');
   // the content keeps reading a YAML 1.1 boolean as the boolean, as the command line does (it says `true` for it)
@@ -216,28 +216,37 @@ test('a number is no value of an enum, a value of an enum is told without the bl
   assert.equal(gap('"５"'), null, 'any digit, as the command line reads it');
 });
 
-test('KNOWN DIFFERENCE (issue #103): a plain scalar spelled as a YAML 1.1 number that JavaScript would print another way is kept as text by the page, the command line reads a number', () => {
+test('a plain scalar that YAML 1.1 reads as a number is read as the command line reads it (issue #103, run 0134; the cases both tools run are in yaml-number-cases.json)', () => {
   const problem = (text) => app.workspaceProblem(app.parseYaml(text));
-  // where a number is expected the page refuses the text (the command line accepts each of them, case N77 of negative-cases.json)
-  for (const spelled of ['0x1F', '0b11', '1_0', '5.0', '1e2', '1E2', '.5', '1.']) {
-    assert.equal(problem('styles:\n  composite:\n    line-gap: ' + spelled + '\n'), 'the value has the wrong shape (found a string) at `styles.composite.line-gap`', spelled);
+  // where a number is expected the page takes each of the spellings the command line takes
+  for (const spelled of ['0x1F', '0b11', '1_0', '5.0', '1e2', '1E2', '.5', '1.', '012', '+5']) {
+    assert.equal(problem('styles:\n  composite:\n    line-gap: ' + spelled + '\n'), null, spelled);
   }
-  assert.equal(problem('styles:\n  composite:\n    line-gap: 5\n'), null);
-  assert.equal(problem('styles:\n  composite:\n    line-gap: 012\n'), null, 'digits only are a whole number for both');
-  for (const spelled of ['0x1', '012']) assert.equal(problem('styles:\n  composite:\n    shadowing: ' + spelled + '\n'), 'the value has the wrong shape (found a string) at `styles.composite.shadowing`', spelled);
-  // where a text is expected the page keeps the spelling, the command line says the number (`id: 010` is the reference `8` there: YamlOneDotOneNumbersTest.java)
+  for (const spelled of ['0x1', '012']) assert.equal(problem('styles:\n  composite:\n    shadowing: ' + spelled + '\n'), null, spelled);
+  // and a quoted one is a text, which is no number for the command line either
+  assert.equal(problem('styles:\n  composite:\n    line-gap: "0x1F"\n'), 'the value has the wrong shape (found a string) at `styles.composite.line-gap`');
+  // where a text is expected, the content of a manifest says the number (`id: 010` is the reference `8`) and workspace.yaml the text as written, as the command line does
   const id = (spelled) => app.parseManifestText(manifest('  id: ' + spelled + '\n')).content.id;
-  assert.equal(id('010'), '010');
-  assert.equal(id('0x1F'), '0x1F');
-  assert.equal(id('1.50'), '1.50');
-  assert.equal(id('1_000'), '1_000');
-  assert.equal(id('1e3'), '1e3');
-  // and an id with a dot (issue #104) is judged on the spelling: `1.50` is refused as `1.50` (the command line says `1.5`), `1e3` has no dot for the page and is `1000.0` for the command line, which refuses it
-  assert.equal(app.parseManifestText(manifest('  id: 1.50\n')).error, 'the id `1.50` contains a dot, which separates the levels of a reference, at `content.id`');
-  assert.equal(app.parseManifestText(manifest('  id: 1e3\n')).error, null);
-  // and a header.parent of 0 is no parent for the page (a falsy number), the reference `0.c` for the command line
+  assert.equal(id('010'), 8);
+  assert.equal(id('0x1F'), 31);
+  assert.equal(id('1_000'), 1000);
+  assert.equal(id('1.50'), 1.5);
+  assert.equal(id('"010"'), '010');
+  assert.equal(app.parseYaml('settings:\n  name: 010\n').settings.name, '010', 'workspace.yaml hands a text field the text as written');
+  // a dotted number is an id with a dot, in the words of the number the command line makes of it
+  assert.equal(app.parseManifestText(manifest('  id: 1.50\n')).error, 'the id `1.5` contains a dot, which separates the levels of a reference, at `content.id`');
+  assert.equal(app.parseManifestText(manifest('  id: 1e3\n')).error, 'the id `1000.0` contains a dot, which separates the levels of a reference, at `content.id`');
+  // the reader refuses .inf and .nan, with its sentence (it names `content` wherever the number stands in a manifest)
+  assert.equal(app.parseManifestText(manifest('  id: s\n  name: .inf\n')).error, "Malformed numeric value '.inf' at `content`");
+  // a header.parent of 0 is the reference `0.c`: a text, and a truthy one
   const parent = app.parseManifestText('header:\n  kind: "archicode.morin.io/container"\n  parent: 0\n  version: "1"\ncontent:\n  id: c\n').header.parent;
-  assert.equal(parent, 0);
+  assert.equal(parent, '0');
+});
+
+test('KNOWN DIFFERENCE (issue #103): a number the reader refuses under a key the header does not take is told as the number by the page, as the unknown key by the command line', () => {
+  // the command line meets the key first and never decodes its value; the page decodes every scalar when it reads the file
+  assert.equal(errorOf('header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n  foo: .inf\ncontent:\n  id: s\n'), "Malformed numeric value '.inf' at `header.foo`");
+  // the command line: `unknown key `foo` (known: kind, parent, plateau, version) at `header.foo``
 });
 
 test('KNOWN DIFFERENCE: the page does not tell the line and the column of a file, the command line does (negative-cases.json)', () => {

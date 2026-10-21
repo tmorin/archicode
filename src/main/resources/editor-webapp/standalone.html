@@ -1086,6 +1086,13 @@ function setYamlKey(map, key, value) {
   } else {
     map[key] = value;
   }
+  notePlainNumber(map, key, value);
+}
+
+/** Add an item to a list read by the parser, noting a plain scalar that is a YAML 1.1 number (see `notePlainNumber`). */
+function pushYamlItem(arr, value) {
+  arr.push(value);
+  notePlainNumber(arr, arr.length - 1, value);
 }
 
 function isYamlWs(ch) {
@@ -1254,26 +1261,135 @@ function stripYamlComment(line) {
 }
 
 /**
- * Set while `parseManifestText` reads the header a second time: a word YAML 1.1 reads as a boolean (`yes`, `On`, `FALSE`) is then the text as written. The command line
- * reads the fields of a header (`kind`, `version`, `parent`, `plateau`) as the text they are written as (issue #85); the rest of a manifest is read as the value, as it does.
+ * Set while `parseYamlAsModel` reads the header a second time: a plain scalar that YAML 1.1 reads as a boolean (`yes`, `On`, `FALSE`) or as a number (`010`, `0x1F`, `5.0`, `0`) is then
+ * the text as written. The command line reads the fields of a header (`kind`, `version`, `parent`, `plateau`) as the text they are written as (issues #85 and #103); the rest of a
+ * manifest is read as the value, as it does.
  */
 let yamlKeepWords = false;
 
 /**
- * Resolve a plain (unquoted) scalar into its JS value: null (`null`/`~`/empty), a boolean (true/false/yes/no/on/off,
- * as the Java side reads them), a number, else the text itself. A number is only turned into a JS number when the text
- * is exactly what `String(number)` gives back (so `01234`, `1.50`, `2.0`, `-0` and integers beyond 2^53 stay the text
- * they were and are written back unchanged).
+ * Set while `parseYamlAsModel` reads a manifest: a plain scalar that YAML 1.1 reads as a number is the value the command line's reader gives its content (issue #103). The command
+ * line reads the content of a manifest again as JSON text, so a number is a number there: `id: 010` is the reference `8`, `0x1F` is `31`, `1_000` is `1000`. A number that JavaScript
+ * would print another way than Java (`5.0`, `1e3` are `5.0` and `1000.0` there; an integer beyond 2^53) is the text Java prints. `workspace.yaml` is read by the plain `parseYaml`:
+ * the command line hands a text field the text as written there (`name: 010` is `010`) and a number to a field that is one, so the page keeps the text and knows the scalar was a number
+ * (`plainNumberOf`).
  */
-function resolveYamlPlain(text) {
+let yamlModelNumbers = false;
+
+/** The last plain scalar read as a number whose value is not a JS number: `notePlainNumber` takes it to the collection that holds the value. */
+let yamlPlainNumberSeen = null;
+
+/** Set while `patchYamlText` saves `workspace.yaml`: `parseYamlAsModel` reads as the plain `parseYaml` does (the numbers as written; see `yamlModelNumbers`). */
+let yamlPlainReading = false;
+
+/** The plain scalars of a collection that YAML 1.1 reads as numbers and the page holds as text, by key (hidden, like `YAML_KEY_ORDER`). */
+const YAML_PLAIN_NUMBERS = Symbol('yamlPlainNumbers');
+
+/** Java's `Double.toString`: what the command line makes of a number with a dot or an exponent when it is a text (`5.0`, `1000.0`, `1.0E22`, `1.0E-4`). */
+function javaDoubleText(d) {
+  if (Number.isNaN(d)) return 'NaN';
+  if (!Number.isFinite(d)) return d > 0 ? 'Infinity' : '-Infinity';
+  if (Object.is(d, -0)) return '-0.0';
+  if (d === 0) return '0.0';
+  const sign = d < 0 ? '-' : '';
+  const parts = Math.abs(d).toExponential().split('e');
+  const digits = parts[0].replace('.', '');
+  const exp = Number(parts[1]);
+  if (exp >= -3 && exp < 7) {
+    if (exp >= 0) {
+      const whole = digits.length > exp + 1 ? digits.slice(0, exp + 1) : digits.padEnd(exp + 1, '0');
+      return sign + whole + '.' + (digits.length > exp + 1 ? digits.slice(exp + 1) : '0');
+    }
+    return sign + '0.' + '0'.repeat(-exp - 1) + digits;
+  }
+  return sign + digits[0] + '.' + (digits.length > 1 ? digits.slice(1) : '0') + 'E' + exp;
+}
+
+/**
+ * What the command line's reader (Jackson over SnakeYAML) makes of a plain scalar, when it makes a number of it (issue #103, found by trying every spelling of up to five characters):
+ * `{ kind: 'int', big, javaText }` for `0`, a decimal (`12`, `+5`, `-3`), an octal (`010`, which is `8`; `09` is no octal and stays a text), a hexadecimal (`0x1F`), a binary (`0b11`) or any of
+ * them with `_` in the digits (`1_000`); `{ kind: 'float', value, javaText }` for a number with a dot or an exponent (`.5`, `1.`, `5.0`, `1e3`, `1.5E+3`, `1_0.5`); `{ kind: 'malformed' }` for
+ * what the reader refuses (`.inf`, `-.nan`, `._`); null for a text.
+ */
+function yamlOneDotOneNumber(text) {
+  if (!/^[-+.0-9]/.test(text)) return null;
+  const negative = text[0] === '-';
+  const unsigned = /^[-+]/.test(text) ? text.slice(1) : text;
+  const bare = unsigned.replace(/_/g, '');
+  let big = null;
+  if (/^(0|[1-9][0-9_]*)$/.test(unsigned)) big = BigInt(bare);
+  else if (/^0[0-7_]*[0-7][0-7_]*$/.test(unsigned)) big = BigInt('0o' + bare.slice(1));
+  else if (/^0x[0-9a-fA-F_]*[0-9a-fA-F][0-9a-fA-F_]*$/.test(unsigned)) big = BigInt(bare);
+  else if (/^0b[01_]*[01][01_]*$/.test(unsigned)) big = BigInt(bare);
+  if (big !== null) {
+    if (negative) big = -big;
+    return { kind: 'int', big, javaText: big.toString() };
+  }
+  const dotted = /^([0-9][0-9_]*)?\.([0-9_]*)([eE][-+]?[0-9]+)?$/.exec(unsigned);
+  if (dotted) {
+    const mantissa = (dotted[1] || '') + dotted[2];
+    if (!/[0-9]/.test(mantissa)) return /_/.test(mantissa) ? { kind: 'malformed' } : null;
+  } else if (!/^[0-9][0-9_]*[eE][-+]?[0-9]+$/.test(unsigned)) {
+    return /^\.(inf|Inf|INF)$/.test(unsigned) || /^\.(nan|NaN|NAN)$/.test(text) ? { kind: 'malformed' } : null; // a sign does not make `.nan` a number
+  }
+  const value = Number(bare) * (negative ? -1 : 1);
+  return { kind: 'float', value, javaText: javaDoubleText(value) };
+}
+
+/** The error for a scalar the command line's reader refuses as a number (`.inf`): its sentence, without the place (`at \`content\`` is added for a manifest, as the command line does). */
+function yamlMalformedNumber(text) {
+  const e = new Error("Malformed numeric value '" + text + "'");
+  e.name = 'YamlMalformedNumber';
+  return e;
+}
+
+/**
+ * Resolve a plain (unquoted) scalar into its JS value: null (`null`/`~`/empty), a boolean (true/false/yes/no/on/off,
+ * as the Java side reads them), a number, else the text itself. In the plain reading a number is only turned into a JS number when the text
+ * is exactly what `String(number)` gives back (so `01234`, `1.50`, `2.0`, `-0` and integers beyond 2^53 stay the text
+ * they were and are written back unchanged); in a manifest (`yamlModelNumbers`) every YAML 1.1 number is the number the command line reads
+ * (`010` is `8`), or the text Java prints for it when JavaScript cannot hold it as that text. `wordsOnly`: only the null and the booleans are looked at.
+ */
+function resolveYamlPlain(text, wordsOnly) {
   if (text === '' || text === '~' || /^(null|Null|NULL)$/.test(text)) return null;
   if (/^(true|True|TRUE|yes|Yes|YES|on|On|ON)$/.test(text)) return yamlKeepWords ? text : true;
   if (/^(false|False|FALSE|no|No|NO|off|Off|OFF)$/.test(text)) return yamlKeepWords ? text : false;
-  if (/^-?\d+$/.test(text) || /^-?\d+\.\d+$/.test(text)) {
-    const number = Number(text);
-    return String(number) === text ? number : text;
+  if (wordsOnly) return text;
+  const number = yamlOneDotOneNumber(text);
+  if (number === null) return text;
+  if (number.kind === 'malformed') throw yamlMalformedNumber(text);
+  let value = text;
+  if (!yamlKeepWords && yamlModelNumbers) {
+    if (number.kind === 'int') {
+      value = number.big >= -9007199254740991n && number.big <= 9007199254740991n ? Number(number.big) : number.javaText;
+    } else {
+      value = !Number.isInteger(number.value) && String(number.value) === number.javaText ? number.value : number.javaText;
+    }
+  } else if (!yamlKeepWords && (/^-?\d+$/.test(text) || /^-?\d+\.\d+$/.test(text)) && String(Number(text)) === text) {
+    value = Number(text);
   }
-  return text;
+  if (typeof value === 'string') yamlPlainNumberSeen = { value, number: { kind: number.kind, big: number.kind === 'int' ? number.big : null, value: number.kind === 'float' ? number.value : null, source: text } };
+  return value;
+}
+
+/** Record, for the collection that now holds `value` under `key`, that it was a plain scalar read as a number (the text the page holds is not one a quoted scalar can be told from). */
+function notePlainNumber(container, key, value) {
+  const seen = yamlPlainNumberSeen;
+  yamlPlainNumberSeen = null;
+  if (seen === null || typeof value !== 'string' || seen.value !== value) return;
+  let marks = container[YAML_PLAIN_NUMBERS];
+  if (!marks) {
+    marks = Object.create(null);
+    Object.defineProperty(container, YAML_PLAIN_NUMBERS, { value: marks, writable: true, enumerable: false, configurable: true });
+  }
+  marks[key] = { value, number: seen.number };
+}
+
+/** What `container[key]` was written as when it is a text only because the page holds a YAML 1.1 number so (`{ kind, big, value, source }`), else undefined. */
+function plainNumberOf(container, key) {
+  const marks = container !== null && typeof container === 'object' ? container[YAML_PLAIN_NUMBERS] : undefined;
+  const mark = marks ? marks[key] : undefined;
+  return mark !== undefined && container[key] === mark.value ? mark.number : undefined;
 }
 
 // The functions below read through a cursor `p` = { lines, i, col }: the lines of the document, and the position of
@@ -1390,7 +1506,12 @@ function readYamlPlainBlock(p, parentIndent) {
   p.i = last;
   p.col = lines[last].length;
   p.plain = out;
-  return resolveYamlPlain(out);
+  try {
+    return resolveYamlPlain(out);
+  } catch (e) {
+    if (e.name === 'YamlMalformedNumber') e.line = p.i + 1;
+    throw e;
+  }
 }
 
 /** Read a literal (`|`) or folded (`>`) block scalar whose header is at the cursor. */
@@ -1548,9 +1669,9 @@ function parseYamlFlowNode(p, startLine) {
         const pair = {};
         keyed(item.text, at, read);
         setYamlKey(pair, item.text, parseYamlFlowPairValue(p, startLine));
-        arr.push(pair);
+        pushYamlItem(arr, pair);
       } else {
-        arr.push(item.value);
+        pushYamlItem(arr, item.value);
       }
       skipYamlFlowSpace(p, startLine);
       const d = p.lines[p.i][p.col];
@@ -1606,7 +1727,12 @@ function parseYamlFlowNode(p, startLine) {
   const plain = readYamlFlowPlain(p, startLine);
   if (plain.text === '') throw yamlError('unexpected "' + (p.lines[p.i][p.col] || '') + '" in a flow collection', p.i);
   note('', plain.text);
-  return { value: resolveYamlPlain(plain.text), text: plain.text, scalar: true };
+  try {
+    return { value: resolveYamlPlain(plain.text), text: plain.text, scalar: true };
+  } catch (e) {
+    if (e.name === 'YamlMalformedNumber') e.line = p.i + 1;
+    throw e;
+  }
 }
 
 /** The value after the `:` of a pair of a flow collection (null when it is missing). */
@@ -1647,12 +1773,23 @@ function parseYamlInline(p, parentIndent, keyed) {
   return value;
 }
 
+/** The plain scalars read as numbers that `from` notes, noted for `to` (a copy of it). */
+function copyPlainNumbers(from, to) {
+  const marks = from[YAML_PLAIN_NUMBERS];
+  if (marks) Object.defineProperty(to, YAML_PLAIN_NUMBERS, { value: Object.assign(Object.create(null), marks), writable: true, enumerable: false, configurable: true });
+}
+
 /** A copy of a value read by `parseYaml`, the order of the keys included: what an alias is. */
 function cloneYamlValue(value) {
-  if (Array.isArray(value)) return value.map(cloneYamlValue);
+  if (Array.isArray(value)) {
+    const copy = value.map(cloneYamlValue);
+    copyPlainNumbers(value, copy);
+    return copy;
+  }
   if (value !== null && typeof value === 'object') {
     const copy = {};
     for (const key of yamlKeysOf(value)) setYamlKey(copy, key, cloneYamlValue(value[key]));
+    copyPlainNumbers(value, copy);
     return copy;
   }
   return value;
@@ -1719,9 +1856,9 @@ function applyYamlTag(tag, value, text, lineIndex) {
   const name = named ? named[1] : null;
   const body = String(text);
   if (name === 'binary') throw yamlError('a binary value (!!binary) is not supported', lineIndex);
-  if (name === 'null') return resolveYamlPlain(body) === null ? null : body;
+  if (name === 'null') return resolveYamlPlain(body, true) === null ? null : body;
   if (name === 'bool') {
-    const word = resolveYamlPlain(body);
+    const word = resolveYamlPlain(body, true);
     return typeof word === 'boolean' ? word : body;
   }
   if (body === '') return body;
@@ -1828,7 +1965,7 @@ function parseYamlSequence(p, indent) {
   const arr = [];
   for (;;) {
     p.col += 1; // the dash
-    arr.push(parseYamlSeqItem(p, indent));
+    pushYamlItem(arr, parseYamlSeqItem(p, indent));
     if (!skipYamlToContent(p)) break;
     if (p.col < indent) break;
     if (p.col > indent) throw yamlError('unexpected indentation', p.i);
@@ -2068,9 +2205,19 @@ function serializeManifestFile(header, content) {
  * An anchor, an alias or a tag (`name: &n "Bakery"`, `description: *n`, `size: !!str 12`) is followed too (see `openYamlDecorations`): the lines the edit does not touch stay as
  * they were written, a line it changes keeps its anchor and its tag, and an alias stays as long as the line still says what it points at.
  */
-function patchYamlText(oldText, newValue) {
+function patchYamlText(oldText, newValue, workspaceFile) {
+  const before = yamlPlainReading;
+  yamlPlainReading = workspaceFile === true; // `workspace.yaml` is read with the plain `parseYaml` (numbers as written), a manifest as a model: the old value is read as the new one was
+  try {
+    return patchYamlTextRead(oldText, newValue);
+  } finally {
+    yamlPlainReading = before;
+  }
+}
+
+function patchYamlTextRead(oldText, newValue) {
   // a text that starts with a byte-order mark is patched without it and keeps it (the page holds the text of a file without the mark, see `readTextAndMark`; #119)
-  if (oldText.charCodeAt(0) === 0xfeff) return '\ufeff' + patchYamlText(oldText.slice(1), newValue);
+  if (oldText.charCodeAt(0) === 0xfeff) return '\ufeff' + patchYamlTextRead(oldText.slice(1), newValue);
   const opened = openYamlDecorations(oldText);
   if (opened === null) return patchYamlTextPlain(oldText, newValue);
   const emitted = serializeYamlValue(newValue, 0);
@@ -2391,7 +2538,7 @@ function emitFlowBlock(value, read, indent) {
     const token = lines[at].slice(added.valueAt);
     if (leaves[k].quote === '') { // a word that reads as the emitter's token (`on` for `true`, `~` for `null`) stays the author's
       const word = leaves[k].word;
-      if (word !== null && word !== token && /^(true|false|null)$/.test(token) && resolveYamlPlain(word) === JSON.parse(token)) lines[at] = lines[at].slice(0, added.valueAt) + word;
+      if (word !== null && word !== token && /^(true|false|null|-?\d+(\.\d+)?)$/.test(token) && yamlWordIsToken(word, token)) lines[at] = lines[at].slice(0, added.valueAt) + word;
     } else if (added.plainable) {
       lines[at] = lines[at].slice(0, added.valueAt) + (leaves[k].quote === '"' ? '"' + escapeYamlDoubleQuoted(token) + '"' : "'" + token.replace(/'/g, "''") + "'");
     }
@@ -2440,6 +2587,16 @@ function emitFlowBlock(value, read, indent) {
  * read as the block they become.
  */
 function openFlowLists(text) {
+  const before = yamlModelNumbers;
+  yamlModelNumbers = !yamlPlainReading; // the lists are read as the value of the file is: `[1_000]` holds `1000` in a manifest
+  try {
+    return openFlowListsRead(text);
+  } finally {
+    yamlModelNumbers = before;
+  }
+}
+
+function openFlowListsRead(text) {
   const eol = /\r\n/.test(text) ? '\r\n' : '\n';
   const lines = text.split(/\r\n|\r|\n/);
   const lists = [];
@@ -2687,6 +2844,17 @@ function quoteYamlAddedLine(line, dropped, siblings, votes) {
   return line.slice(0, added.valueAt) + (quote === '"' ? '"' + escapeYamlDoubleQuoted(token) + '"' : "'" + token.replace(/'/g, "''") + "'");
 }
 
+/** A plain word of the file (`on`, `1_000`) that the reader makes the value of the token the emitter writes (`true`, `1000`). */
+function yamlWordIsToken(word, token) {
+  try {
+    return resolveYamlPlain(word) === JSON.parse(token);
+  } catch (e) {
+    return false;
+  } finally {
+    yamlPlainNumberSeen = null;
+  }
+}
+
 /**
  * The words of the line `at` of `original` as the emitter would write them: a plain scalar that the reader reads as a boolean or a null by another word than the
  * emitter's (`yes`, `Off`, `~`) is the word the emitter writes for that value (`true`, `false`, `null`), and so is a key with nothing after it and nothing below it
@@ -2707,8 +2875,19 @@ function yamlEmittedWordsOf(original, at) {
     return words + ' null';
   }
   if (read.quote !== '') return words;
-  const value = resolveYamlPlain(stripYamlComment(line).replace(/\s+$/, '').slice(read.valueAt));
-  if (value !== null && typeof value !== 'boolean') return words;
+  // a number the emitter writes another way (`010` is `8` in a manifest, `1_000` is `1000`) is found by the words the emitter writes (issue #103)
+  const before = yamlModelNumbers;
+  yamlModelNumbers = !yamlPlainReading;
+  let value;
+  try {
+    value = resolveYamlPlain(stripYamlComment(line).replace(/\s+$/, '').slice(read.valueAt));
+  } catch (e) {
+    return words; // a number the reader refuses is not one the emitter writes
+  } finally {
+    yamlModelNumbers = before;
+    yamlPlainNumberSeen = null;
+  }
+  if (value !== null && typeof value !== 'boolean' && typeof value !== 'number') return words;
   return (yamlWordsOf(line.slice(0, read.valueAt)) + ' ' + serializeYamlScalarToken(value)).trim();
 }
 
@@ -6969,7 +7148,8 @@ function readIsMissing(value) {
 }
 
 /** What kind of value this is, in the words of the command line's sentence. */
-function readFound(value) {
+function readFound(value, plain) {
+  if (plain !== undefined) return 'a number'; // a plain scalar YAML 1.1 reads as a number, held as the text it was written as
   if (Array.isArray(value)) return 'an array';
   if (readIsObject(value)) return 'an object';
   if (typeof value === 'string') return 'a string';
@@ -6978,8 +7158,8 @@ function readFound(value) {
 }
 
 /** The sentence for a value that is not of the shape its key takes; the command line says the same (`ArchiCodeException.reason`). */
-function readWrongShape(value, path) {
-  return 'the value has the wrong shape (found ' + readFound(value) + ')' + (path ? ' at `' + path + '`' : '');
+function readWrongShape(value, path, plain) {
+  return 'the value has the wrong shape (found ' + readFound(value, plain) + ')' + (path ? ' at `' + path + '`' : '');
 }
 
 function readAt(path, key) {
@@ -7006,15 +7186,21 @@ const READ_INT_MIN = -2147483648;
 const READ_INT_MAX = 2147483647;
 
 /** The first problem of one value against its spec, in document order, or null. `prefix`: where the `Missing` sentences start. */
-function readValue(spec, value, path, prefix) {
+function readValue(spec, value, path, prefix, plain) {
   if (readIsMissing(value) || spec === 'any') return null;
-  const wrong = () => readWrongShape(value, path);
+  const wrong = () => readWrongShape(value, path, plain);
   const nested = Array.isArray(value) || readIsObject(value);
   if (spec === 'text') return nested ? wrong() : null;
   if (spec === 'int') {
     if (nested || typeof value === 'boolean') return wrong();
+    if (plain !== undefined) {
+      // a plain scalar YAML 1.1 reads as a number (`0x1F`, `5.0`, `9999999999999999999`): the command line takes a float as the whole number it truncates to, and says a number out of range with the text
+      // as written (issue #103)
+      const beyond = plain.kind === 'int' ? plain.big > BigInt(READ_INT_MAX) || plain.big < BigInt(READ_INT_MIN) : Math.trunc(plain.value) > READ_INT_MAX || Math.trunc(plain.value) < READ_INT_MIN;
+      return beyond ? 'Numeric value (' + plain.source + ') out of range of int (' + READ_INT_MIN + ' - ' + READ_INT_MAX + ')' + (path ? ' at `' + path + '`' : '') : null;
+    }
     // a whole number must fit in the 32 bits of the command line's `int`: said with its sentence for a number, as a text that is no number for a quoted one
-    if (typeof value === 'number' && Number.isInteger(value) && (value > READ_INT_MAX || value < READ_INT_MIN)) {
+    if (typeof value === 'number' && (Math.trunc(value) > READ_INT_MAX || Math.trunc(value) < READ_INT_MIN)) {
       return 'Numeric value (' + value + ') out of range of int (' + READ_INT_MIN + ' - ' + READ_INT_MAX + ')' + (path ? ' at `' + path + '`' : '');
     }
     if (typeof value === 'string' && value !== '') {
@@ -7025,6 +7211,7 @@ function readValue(spec, value, path, prefix) {
   }
   if (spec === 'bool') {
     if (nested) return wrong();
+    if (plain !== undefined) return plain.kind === 'int' ? null : wrong(); // a whole number is read as true or false, a number with a dot or an exponent is not
     if (typeof value === 'string') return value === '' || ['true', 'True', 'TRUE', 'false', 'False', 'FALSE'].includes(value) ? null : wrong();
     return typeof value === 'number' && !Number.isInteger(value) ? wrong() : null;
   }
@@ -7046,10 +7233,11 @@ function readValue(spec, value, path, prefix) {
     return null;
   }
   if (spec.startsWith('enum:')) {
-    if (nested || typeof value === 'boolean' || (typeof value === 'number' && !Number.isInteger(value))) return wrong();
+    if (nested || typeof value === 'boolean' || (typeof value === 'number' && !Number.isInteger(value)) || (plain !== undefined && plain.kind !== 'int')) return wrong();
     const values = spec.slice('enum:'.length).split(',');
-    if (values.some((v) => v.toLowerCase() === String(value).trim().toLowerCase())) return null;
-    return 'unrecognized `' + path + '` "' + String(value).trim() + '" (known: ' + values.join(', ') + ')'; // the command line says the value without the blanks around it
+    const written = plain !== undefined ? plain.big.toString() : String(value).trim(); // a number is said as the number it is (`0x1F` is `31`)
+    if (values.some((v) => v.toLowerCase() === written.toLowerCase())) return null;
+    return 'unrecognized `' + path + '` "' + written + '" (known: ' + values.join(', ') + ')'; // the command line says the value without the blanks around it
   }
   if (spec.startsWith('[')) {
     if (!Array.isArray(value)) return wrong();
@@ -7093,7 +7281,7 @@ function readObject(typeName, node, path, prefix, consumesKind) {
       const write = kebab !== key && type.known.includes(kebab) ? ', write `' + kebab + '`' : '';
       return 'unknown key `' + key + '`' + write + ' (known: ' + type.known.join(', ') + ') at `' + readAt(path, key) + '`';
     }
-    const problem = readValue(type.fields[field], node[key], readAt(path, key), prefix);
+    const problem = readValue(type.fields[field], node[key], readAt(path, key), prefix, plainNumberOf(node, key));
     if (problem) return problem;
   }
   for (const key of type.required) {
@@ -7146,8 +7334,8 @@ function headerProblem(header) {
     if (key !== 'kind') {
       const problem = readValue('text', value, 'header.' + key, '');
       if (problem) return problem;
-    } else if (Array.isArray(value) || readIsObject(value) || typeof value === 'boolean' || (typeof value === 'number' && !Number.isInteger(value))) {
-      return readWrongShape(value, 'header.kind');
+    } else if (Array.isArray(value) || readIsObject(value) || typeof value === 'boolean' || (typeof value === 'number' && !Number.isInteger(value)) || (plainNumberOf(header, 'kind') || { kind: 'int' }).kind === 'float') {
+      return readWrongShape(value, 'header.kind', plainNumberOf(header, 'kind'));
     } else if (manifestKindName(value) === null) {
       return unrecognizedKindProblem(value);
     }
@@ -7232,25 +7420,50 @@ function workspaceProblem(raw) {
 }
 
 /**
- * `parseYaml` for a file of the model (a manifest): the fields of its header that YAML 1.1 reads as a boolean (`parent: yes`, `plateau: On`) are the text as written, as the
- * command line reads them (issue #85). The model then holds `yes`, not `true`, and a save compares the file with the model on the same terms.
+ * `parseYaml` for a file of the model (a manifest): the fields of its header that YAML 1.1 reads as a boolean or a number (`parent: yes`, `plateau: On`, `parent: 0`, `version: 1.0`) are
+ * the text as written, as the command line reads them (issues #85 and #103). The model then holds `yes`, not `true`, and `0`, not the number, and a save compares the file with the
+ * model on the same terms. The content is read as the command line reads it, which makes a number of every YAML 1.1 number (`yamlModelNumbers`).
  */
 function parseYamlAsModel(text) {
-  const value = parseYaml(text);
-  if (value !== null && typeof value === 'object') keepHeaderAsWritten(value, text);
-  return value;
+  const before = yamlModelNumbers;
+  yamlModelNumbers = !yamlPlainReading;
+  try {
+    const value = parseYaml(text);
+    if (value !== null && typeof value === 'object') keepHeaderAsWritten(value, text);
+    return value;
+  } finally {
+    yamlModelNumbers = before;
+  }
 }
 
-/** The header is read once more, keeping the words, only when one of its fields came out as a boolean (which is rare): those fields take the text as written. */
+/** The header is read once more, keeping the words and the numbers, only when one of its fields came out as a boolean or a number (which is rare): those fields take the text as written. */
 function keepHeaderAsWritten(parsed, text) {
-  if (!readIsObject(parsed.header) || !MANIFEST_HEADER_TEXT_KEYS.some((key) => typeof parsed.header[key] === 'boolean')) return;
+  if (!readIsObject(parsed.header)) return;
+  const changed = (key) => parsed.header[key] !== undefined && parsed.header[key] !== null && (typeof parsed.header[key] !== 'string' || plainNumberOf(parsed.header, key) !== undefined);
+  const keys = MANIFEST_HEADER_TEXT_KEYS.filter(changed);
+  if (keys.length === 0) return;
   yamlKeepWords = true;
   try {
     const again = parseYaml(text);
-    for (const key of MANIFEST_HEADER_TEXT_KEYS) if (typeof parsed.header[key] === 'boolean') parsed.header[key] = again.header[key];
+    for (const key of keys) parsed.header[key] = again.header[key];
   } finally {
     yamlKeepWords = false;
   }
+}
+
+/** The sentence for a number the reader refuses in a manifest: it names the key of the header (`header.parent`) and `content` for anything in the content, wherever it stands. */
+function malformedNumberSentence(e, text) {
+  const lines = String(text).split(/\r\n|\r|\n/);
+  const at = e.line ? e.line - 1 : -1;
+  let section = 'content';
+  for (let i = Math.min(at, lines.length - 1); i >= 0; i--) {
+    const found = /^(header|content)\s*:/.exec(lines[i]);
+    if (found) { section = found[1]; break; }
+  }
+  if (section === 'content') return e.message + ' at `content`';
+  const word = /'(.*)'$/.exec(e.message)[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const key = new RegExp('([A-Za-z0-9_-]+)\\s*:\\s*' + word).exec(lines[at] || '');
+  return e.message + ' at `header' + (key ? '.' + key[1] : '') + '`';
 }
 
 /**
@@ -7266,7 +7479,7 @@ function parseManifestText(text) {
     const content = (parsed.content && typeof parsed.content === 'object') ? parsed.content : null;
     return { header, content, error: manifestProblem(parsed) };
   } catch (e) {
-    return { header: null, content: null, error: e && e.message ? e.message : String(e) };
+    return { header: null, content: null, error: e && e.name === 'YamlMalformedNumber' ? malformedNumberSentence(e, text) : e && e.message ? e.message : String(e) };
   }
 }
 
@@ -9229,7 +9442,7 @@ async function writeWorkspaceYaml() {
     if (Object.prototype.hasOwnProperty.call(raw, key)) continue;
     if (key === 'settings' || isYamlComplexValue(managed[key])) raw[key] = managed[key];
   }
-  const text = typeof ws.rawText === 'string' && ws.rawText !== '' ? patchYamlText(ws.rawText, raw) : serializeYamlValue(raw, 0);
+  const text = typeof ws.rawText === 'string' && ws.rawText !== '' ? patchYamlText(ws.rawText, raw, true) : serializeYamlValue(raw, 0);
   const fileHandle = await AppState.folder.handle.getFileHandle('workspace.yaml');
   const writable = await fileHandle.createWritable();
   await writable.write(withByteOrderMark(ws.bom, text));

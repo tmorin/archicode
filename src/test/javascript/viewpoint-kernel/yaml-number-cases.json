@@ -1,0 +1,1790 @@
+{
+ "comment": "Plain scalars that YAML 1.1 reads as numbers (issue #103, wave 018 run 0134), as the command line reads them: `expect` is what `query graph` prints (the references of the elements and the qualifiers that they have) or the one-line error without the file and the place (`file` is the file it names). Each case is a folder: `files` are its files (`workspace.yaml` is `settings: {manifests: {paths: [manifests]}}` when a case does not give it). YamlOneDotOneNumbersTest.java (command line) and yaml-numbers.test.js (editor) run every case; a case that has `editor` is one where the editor says another thing, with the `reason`. The expectations were written from the jar of archicode-0.16.0, which reads these scalars as the jar of this tree does.",
+ "cases": [
+  {
+   "id": "Y01",
+   "title": "`id: 010` (an octal)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 010\n"
+   },
+   "expect": {
+    "references": [
+     "8"
+    ]
+   }
+  },
+  {
+   "id": "Y02",
+   "title": "`id: 007` (an octal)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 007\n"
+   },
+   "expect": {
+    "references": [
+     "7"
+    ]
+   }
+  },
+  {
+   "id": "Y03",
+   "title": "`id: 0x1F` (a hexadecimal)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 0x1F\n"
+   },
+   "expect": {
+    "references": [
+     "31"
+    ]
+   }
+  },
+  {
+   "id": "Y04",
+   "title": "`id: 0b11` (a binary)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 0b11\n"
+   },
+   "expect": {
+    "references": [
+     "3"
+    ]
+   }
+  },
+  {
+   "id": "Y05",
+   "title": "`id: 1_000` (digits with an underscore)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 1_000\n"
+   },
+   "expect": {
+    "references": [
+     "1000"
+    ]
+   }
+  },
+  {
+   "id": "Y06",
+   "title": "`id: +5` (a signed number)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: +5\n"
+   },
+   "expect": {
+    "references": [
+     "5"
+    ]
+   }
+  },
+  {
+   "id": "Y07",
+   "title": "`id: -0` (minus zero)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: -0\n"
+   },
+   "expect": {
+    "references": [
+     "0"
+    ]
+   }
+  },
+  {
+   "id": "Y08",
+   "title": "`id: 09` (no octal: a text)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 09\n"
+   },
+   "expect": {
+    "references": [
+     "09"
+    ]
+   }
+  },
+  {
+   "id": "Y09",
+   "title": "`id: 0o17` (YAML 1.2 octal: a text)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 0o17\n"
+   },
+   "expect": {
+    "references": [
+     "0o17"
+    ]
+   }
+  },
+  {
+   "id": "Y10",
+   "title": "`id: 1:30` (a base 60 number: a text)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 1:30\n"
+   },
+   "expect": {
+    "references": [
+     "1:30"
+    ]
+   }
+  },
+  {
+   "id": "Y11",
+   "title": "`id: 0x20000000000000` (beyond 2^53)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 0x20000000000000\n"
+   },
+   "expect": {
+    "references": [
+     "9007199254740992"
+    ]
+   }
+  },
+  {
+   "id": "Y12",
+   "title": "`id: 9007199254740993` (beyond 2^53)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 9007199254740993\n"
+   },
+   "expect": {
+    "references": [
+     "9007199254740993"
+    ]
+   }
+  },
+  {
+   "id": "Y13",
+   "title": "`id: 99999999999999999999` (beyond a long)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 99999999999999999999\n"
+   },
+   "expect": {
+    "references": [
+     "99999999999999999999"
+    ]
+   }
+  },
+  {
+   "id": "Y14",
+   "title": "`id: \"010\"` (quoted: a text)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"010\"\n"
+   },
+   "expect": {
+    "references": [
+     "010"
+    ]
+   }
+  },
+  {
+   "id": "Y15",
+   "title": "`id: '0x1F'` (quoted: a text)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: '0x1F'\n"
+   },
+   "expect": {
+    "references": [
+     "0x1F"
+    ]
+   }
+  },
+  {
+   "id": "Y16",
+   "title": "`id: \"1_000\"` (quoted: a text)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"1_000\"\n"
+   },
+   "expect": {
+    "references": [
+     "1_000"
+    ]
+   }
+  },
+  {
+   "id": "Y17",
+   "title": "`id: 1.50` (a number with a dot)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 1.50\n"
+   },
+   "expect": {
+    "error": "the id `1.5` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y18",
+   "title": "`id: 1e3` (a number with an exponent)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 1e3\n"
+   },
+   "expect": {
+    "error": "the id `1000.0` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y19",
+   "title": "`id: .5` (a number with a dot)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: .5\n"
+   },
+   "expect": {
+    "error": "the id `0.5` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y20",
+   "title": "`id: 1.` (a number with a dot)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 1.\n"
+   },
+   "expect": {
+    "error": "the id `1.0` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y21",
+   "title": "`id: 5.0` (a number with a dot)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 5.0\n"
+   },
+   "expect": {
+    "error": "the id `5.0` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y22",
+   "title": "`id: 1e22` (a number with an exponent)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: 1e22\n"
+   },
+   "expect": {
+    "error": "the id `1.0E22` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y23",
+   "title": "`id: .inf` (refused by the reader)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: .inf\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y24",
+   "title": "`id: -.nan` (refused by the reader)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: -.nan\n"
+   },
+   "expect": {
+    "error": "the id `-.nan` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y25",
+   "title": "`id: ._` (refused by the reader)",
+   "group": "id",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: ._\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '._' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y26",
+   "title": "`qualifiers: [010]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [010]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "8"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y27",
+   "title": "`qualifiers: [0x1F]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [0x1F]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "31"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y28",
+   "title": "`qualifiers: [0b11]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [0b11]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "3"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y29",
+   "title": "`qualifiers: [1_000]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1_000]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1000"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y30",
+   "title": "`qualifiers: [+5]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [+5]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "5"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y31",
+   "title": "`qualifiers: [-0]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [-0]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y32",
+   "title": "`qualifiers: [5.0]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [5.0]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "5.0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y33",
+   "title": "`qualifiers: [1.50]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1.50]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1.5"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y34",
+   "title": "`qualifiers: [2.0]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [2.0]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "2.0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y35",
+   "title": "`qualifiers: [1e3]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1e3]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1000.0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y36",
+   "title": "`qualifiers: [1.5e3]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1.5e3]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1500.0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y37",
+   "title": "`qualifiers: [.5]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [.5]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "0.5"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y38",
+   "title": "`qualifiers: [1.]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1.]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1.0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y39",
+   "title": "`qualifiers: [1e22]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1e22]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1.0E22"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y40",
+   "title": "`qualifiers: [1e7]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1e7]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1.0E7"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y41",
+   "title": "`qualifiers: [0.0001]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [0.0001]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1.0E-4"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y42",
+   "title": "`qualifiers: [-0.0]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [-0.0]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "-0.0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y43",
+   "title": "`qualifiers: [1234567.0]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1234567.0]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1234567.0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y44",
+   "title": "`qualifiers: [10000000.0]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [10000000.0]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1.0E7"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y45",
+   "title": "`qualifiers: [9007199254740993]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [9007199254740993]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "9007199254740993"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y46",
+   "title": "`qualifiers: [99999999999999999999]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [99999999999999999999]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "99999999999999999999"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y47",
+   "title": "`qualifiers: [09]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [09]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "09"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y48",
+   "title": "`qualifiers: [1:30]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1:30]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1:30"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y49",
+   "title": "`qualifiers: [\"010\"]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [\"010\"]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "010"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y50",
+   "title": "`qualifiers: [\"5.0\"]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [\"5.0\"]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "5.0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y51",
+   "title": "`qualifiers: [1.5]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [1.5]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "1.5"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y52",
+   "title": "`qualifiers: [12]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [12]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "12"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y53",
+   "title": "`qualifiers: [.inf]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [.inf]\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y54",
+   "title": "`qualifiers: [-.nan]`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [-.nan]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "-.nan"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y55",
+   "title": "`qualifiers` as a block list, `- 010`",
+   "group": "text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers:\n    - 010\n    - 5.0\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "8",
+      "5.0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y56",
+   "title": "`header.parent: 0`",
+   "group": "parent",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"0\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: 0\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "0",
+     "0.c"
+    ]
+   }
+  },
+  {
+   "id": "Y57",
+   "title": "`header.parent: 010`",
+   "group": "parent",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"010\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: 010\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "010",
+     "010.c"
+    ]
+   }
+  },
+  {
+   "id": "Y58",
+   "title": "`header.parent: 0x1F`",
+   "group": "parent",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"0x1F\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: 0x1F\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "0x1F",
+     "0x1F.c"
+    ]
+   }
+  },
+  {
+   "id": "Y59",
+   "title": "`header.parent: 1_000`",
+   "group": "parent",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"1_000\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: 1_000\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "1_000",
+     "1_000.c"
+    ]
+   }
+  },
+  {
+   "id": "Y60",
+   "title": "`header.parent: +5`",
+   "group": "parent",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"+5\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: +5\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "+5",
+     "+5.c"
+    ]
+   }
+  },
+  {
+   "id": "Y61",
+   "title": "`header.parent: yes`",
+   "group": "parent",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"yes\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: yes\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "yes",
+     "yes.c"
+    ]
+   }
+  },
+  {
+   "id": "Y62",
+   "title": "`header.parent: On`",
+   "group": "parent",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"On\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: On\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "On",
+     "On.c"
+    ]
+   }
+  },
+  {
+   "id": "Y63",
+   "title": "`header.parent: \"0\"`",
+   "group": "parent",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"0\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: \"0\"\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "0",
+     "0.c"
+    ]
+   }
+  },
+  {
+   "id": "Y64",
+   "title": "`line-gap: 5`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 5\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y65",
+   "title": "`line-gap: 012`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 012\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y66",
+   "title": "`line-gap: 0x1F`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x1F\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y67",
+   "title": "`line-gap: 0b11`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0b11\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y68",
+   "title": "`line-gap: 1_0`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1_0\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y69",
+   "title": "`line-gap: +5`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: +5\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y70",
+   "title": "`line-gap: -5`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: -5\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y71",
+   "title": "`line-gap: 5.0`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 5.0\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y72",
+   "title": "`line-gap: 1.5`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1.5\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y73",
+   "title": "`line-gap: .5`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: .5\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y74",
+   "title": "`line-gap: 1.`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1.\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y75",
+   "title": "`line-gap: 1e2`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1e2\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y76",
+   "title": "`line-gap: 1.5e3`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1.5e3\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y77",
+   "title": "`line-gap: \"0x1F\"`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: \"0x1F\"\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a string) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y78",
+   "title": "`line-gap: \"5\"`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: \"5\"\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y79",
+   "title": "`line-gap: \"5.0\"`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: \"5.0\"\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a string) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y80",
+   "title": "`line-gap: 9999999999`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 9999999999\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Numeric value (9999999999) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y81",
+   "title": "`line-gap: -9999999999`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: -9999999999\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Numeric value (-9999999999) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y82",
+   "title": "`line-gap: 9999999999999999999`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 9999999999999999999\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Numeric value (9999999999999999999) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y83",
+   "title": "`line-gap: 1e22`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1e22\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Numeric value (1e22) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y84",
+   "title": "`line-gap: 0x7FFFFFFF`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x7FFFFFFF\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y85",
+   "title": "`line-gap: 0x80000000`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x80000000\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Numeric value (0x80000000) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y86",
+   "title": "`line-gap: 2147483648.5`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 2147483648.5\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Numeric value (2147483648.5) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y87",
+   "title": "`line-gap: .inf`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: .inf\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf'",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y88",
+   "title": "`shadowing: true`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: true\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y89",
+   "title": "`shadowing: 1`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 1\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y90",
+   "title": "`shadowing: 0`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 0\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y91",
+   "title": "`shadowing: 012`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 012\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y92",
+   "title": "`shadowing: 0x1`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 0x1\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y93",
+   "title": "`shadowing: 5.0`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 5.0\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `styles.composite.shadowing`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y94",
+   "title": "`shadowing: 1.5`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 1.5\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `styles.composite.shadowing`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y95",
+   "title": "`shadowing: 1e2`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 1e2\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `styles.composite.shadowing`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y96",
+   "title": "`shadowing: \"1\"`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: \"1\"\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a string) at `styles.composite.shadowing`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y97",
+   "title": "`shadowing: 09`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 09\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a string) at `styles.composite.shadowing`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y98",
+   "title": "`shadowing: 9999999999999999999`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 9999999999999999999\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y99",
+   "title": "`shadowing: .inf`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: .inf\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf'",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y100",
+   "title": "`settings.name: 010`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: 010\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y101",
+   "title": "`settings.name: 0x1F`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: 0x1F\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y102",
+   "title": "`settings.name: 5.0`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: 5.0\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y103",
+   "title": "`settings.name: 1e3`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: 1e3\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y104",
+   "title": "`settings.name: \"010\"`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: \"010\"\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y105",
+   "title": "`settings.facets.global-enabled: 0x1F`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: 0x1F\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y106",
+   "title": "`settings.facets.global-enabled: 5.0`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: 5.0\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `settings.facets.global-enabled`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y107",
+   "title": "`settings.facets.global-enabled: 1`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: 1\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y108",
+   "title": "`settings.facets.global-enabled: \"1\"`",
+   "group": "workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: \"1\"\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a string) at `settings.facets.global-enabled`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y109",
+   "title": "`layer: 1` of a view",
+   "group": "enum",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: \"overview\"\n  layer: 1\n"
+   },
+   "expect": {
+    "error": "unrecognized `layer` \"1\" (known: APPLICATION, TECHNOLOGY)",
+    "file": "manifests/v.yaml"
+   }
+  },
+  {
+   "id": "Y110",
+   "title": "`layer: 0x1F` of a view",
+   "group": "enum",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: \"overview\"\n  layer: 0x1F\n"
+   },
+   "expect": {
+    "error": "unrecognized `layer` \"31\" (known: APPLICATION, TECHNOLOGY)",
+    "file": "manifests/v.yaml"
+   }
+  },
+  {
+   "id": "Y111",
+   "title": "`layer: 010` of a view",
+   "group": "enum",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: \"overview\"\n  layer: 010\n"
+   },
+   "expect": {
+    "error": "unrecognized `layer` \"8\" (known: APPLICATION, TECHNOLOGY)",
+    "file": "manifests/v.yaml"
+   }
+  },
+  {
+   "id": "Y112",
+   "title": "`layer: 5.0` of a view",
+   "group": "enum",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: \"overview\"\n  layer: 5.0\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `layer`",
+    "file": "manifests/v.yaml"
+   }
+  },
+  {
+   "id": "Y113",
+   "title": "`layer: 1.5` of a view",
+   "group": "enum",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: \"overview\"\n  layer: 1.5\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `layer`",
+    "file": "manifests/v.yaml"
+   }
+  },
+  {
+   "id": "Y114",
+   "title": "`layer: \"1\"` of a view",
+   "group": "enum",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: \"overview\"\n  layer: \"1\"\n"
+   },
+   "expect": {
+    "error": "unrecognized `layer` \"1\" (known: APPLICATION, TECHNOLOGY)",
+    "file": "manifests/v.yaml"
+   }
+  },
+  {
+   "id": "Y115",
+   "title": "`header.kind: 1`",
+   "group": "kind",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: 1\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unrecognized `header.kind` \"1\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y116",
+   "title": "`header.kind: 0x1F`",
+   "group": "kind",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: 0x1F\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unrecognized `header.kind` \"31\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y117",
+   "title": "`header.kind: 5.0`",
+   "group": "kind",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: 5.0\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `header.kind`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y118",
+   "title": "`header.version: 1`",
+   "group": "version",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: 1\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y119",
+   "title": "`header.version: 1.0`",
+   "group": "version",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: 1.0\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y120",
+   "title": "`header.version: 010`",
+   "group": "version",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: 010\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y121",
+   "title": "`header.parent: .inf`",
+   "group": "header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header.parent`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y122",
+   "title": "`header.plateau: .nan`",
+   "group": "header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: .nan\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.nan' at `header.plateau`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y123",
+   "title": "`header.version: .inf`",
+   "group": "header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header.version`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y124",
+   "title": "`header: {parent: .inf, ...}` in a flow mapping",
+   "group": "header",
+   "files": {
+    "manifests/m0.yaml": "header: {kind: \"archicode.morin.io/system\", version: \"1\", parent: .inf}\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header.parent`",
+    "file": "manifests/m0.yaml"
+   }
+  }
+ ]
+}
