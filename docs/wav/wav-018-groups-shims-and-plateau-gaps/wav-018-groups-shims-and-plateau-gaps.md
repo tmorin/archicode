@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 018
-status: proposed
+status: completed
 date: 2026-10-21
 related:
   - docs/wav/wav-018-groups-shims-and-plateau-gaps/wbc-018-groups-shims-and-plateau-gaps.md
@@ -59,7 +59,7 @@ Not the author's yet: the plan chooses so that an unattended wave can run; the r
 wave_manifest:
   wave: 018
   slug: groups-shims-and-plateau-gaps
-  status: proposed
+  status: completed
   sources: []
   phases:
     - id: P0
@@ -217,7 +217,7 @@ wave_manifest:
       slug: manual-and-upgrade-notes-018
       phase: P3
       depends_on: [W-1, W-2, W-3, W-4, W-5, W-6, W-7, W-8]
-      run: null
+      run: 0136
       delegation: standard
       likely_paths:
         - 'src/doc/**'

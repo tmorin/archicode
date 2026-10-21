@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 018
-status: proposed
+status: completed
 date: 2026-10-21
 related:
   - docs/wav/wav-017-editor-defects-and-composed-replaces/wav-017-editor-defects-and-composed-replaces.md
