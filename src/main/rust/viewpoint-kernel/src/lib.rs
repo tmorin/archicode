@@ -615,8 +615,8 @@ struct MetaLink {
     from: String,
     to: String,
     rel: Rel,
-    /// the application that declares `rel`, when the relationship is a dependency derived between two environments:
-    /// the ends are then the nodes that host the applications, not the applications themselves
+    /// the element (an application or one of its descendants) that declares `rel`, when the relationship is a dependency derived between
+    /// two environments: the ends are then the nodes that host the applications, not the applications themselves
     application: Option<String>,
 }
 
@@ -841,7 +841,7 @@ fn overview(input: &Input, known: &Known, focal: &str) -> Result<Content, String
             dependencies.extend(local_dependencies(input, &app_known));
         }
         for d in dependencies {
-            let meta = MetaLink { from: d.from_node.to_string(), to: d.to_node.to_string(), rel: d.rel.clone(), application: Some(d.from_app.to_string()) };
+            let meta = MetaLink { from: d.from_node.to_string(), to: d.to_node.to_string(), rel: d.rel.clone(), application: Some(d.source.to_string()) };
             match (within(d.from_node, focal), within(d.to_node, focal)) {
                 (true, false) => egress.push(meta),
                 (false, true) => ingress.push(meta),
@@ -961,10 +961,10 @@ fn map(input: &Input, known: &Known) -> Result<Content, String> {
                 let g = by_key.entry(format!("{} -> {}", from, to)).or_insert_with(|| Groomed { from: from.clone(), to: to.clone(), ..Default::default() });
                 if grouped {
                     g.synthetic.insert(d.rel.clone());
-                    g.synthetic_src.insert(OutRel::of_application(d.from_app, d.rel));
+                    g.synthetic_src.insert(OutRel::of_application(d.source, d.rel));
                 } else {
                     g.natural.insert(d.rel.clone());
-                    g.natural_src.insert(OutRel::of_application(d.from_app, d.rel));
+                    g.natural_src.insert(OutRel::of_application(d.source, d.rel));
                 }
             }
         }
@@ -1101,6 +1101,8 @@ fn within(reference: &str, scope: &str) -> bool {
 struct Derived<'a> {
     from_node: &'a str,
     from_app: &'a str,
+    /// the element that declares `rel`: `from_app` itself or one of its descendants
+    source: &'a str,
     to_node: &'a str,
     rel: &'a Rel,
 }
@@ -1116,8 +1118,24 @@ fn hosts_of_applications(elements: &[Elem]) -> BTreeMap<&str, BTreeSet<&str>> {
     hosts
 }
 
+/// The relationships that stand for the dependencies of a deployed application: its own and those of everything inside it
+/// (issue #124: a relationship of `shop.app.payments` is a dependency of the node that hosts `shop.app`), each with the element
+/// that declares it. One that ends inside the application itself is internal, not a dependency.
+fn relationships_of_deployed<'a>(input: &'a Input, app: &'a str) -> Vec<(&'a str, &'a Rel)> {
+    let mut out = Vec::new();
+    for elem in input.app_elements.iter().filter(|e| within(&e.reference, app)) {
+        for rel in elem.relationships.iter().collect::<BTreeSet<_>>() {
+            if within(&rel.destination, app) {
+                continue; // internal to the application
+            }
+            out.push((elem.reference.as_str(), rel));
+        }
+    }
+    out
+}
+
 /// The dependencies the applications of an environment have on applications deployed in another one. A relationship of
-/// an application towards another application is a dependency of the node that hosts the first on the node that hosts
+/// an application, or of anything inside it, towards another application is a dependency of the node that hosts the first on the node that hosts
 /// the second. An environment reaches what it hosts itself first; what it does not host, it finds in the environments
 /// (or the nodes) it `uses`, and nowhere else: an application deployed in several environments is therefore reached
 /// where the environment says so.
@@ -1126,8 +1144,10 @@ fn derived_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Deri
     let scopes: HashMap<&str, &Vec<String>> = input.elements.iter().filter(|e| !e.uses.is_empty()).map(|e| (e.reference.as_str(), &e.uses)).collect();
     let mut out = Vec::new();
     for (app, from_nodes) in &hosts {
-        let Some(elem) = app_known.get(app) else { continue };
-        for rel in elem.relationships.iter().collect::<BTreeSet<_>>() {
+        if !app_known.contains_key(app) {
+            continue;
+        }
+        for (source, rel) in relationships_of_deployed(input, app) {
             let Some(to_nodes) = hosts.get(rel.destination.as_str()) else { continue };
             for from_node in from_nodes {
                 let environment = environment_of(from_node);
@@ -1136,7 +1156,7 @@ fn derived_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Deri
                 }
                 let Some(scope) = scopes.get(environment) else { continue };
                 for to_node in to_nodes.iter().filter(|to_node| scope.iter().any(|used| within(to_node, used))) {
-                    out.push(Derived { from_node, from_app: app, to_node, rel });
+                    out.push(Derived { from_node, from_app: app, source, to_node, rel });
                 }
             }
         }
@@ -1155,7 +1175,7 @@ fn local_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Derive
             let Some(to_nodes) = hosts.get(rel.destination.as_str()) else { continue };
             for from_node in from_nodes {
                 for to_node in to_nodes.iter().filter(|to_node| *to_node != from_node && environment_of(to_node) == environment_of(from_node)) {
-                    out.push(Derived { from_node, from_app: app, to_node, rel });
+                    out.push(Derived { from_node, from_app: app, source: app, to_node, rel });
                 }
             }
         }
@@ -1264,7 +1284,7 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
             qualifiers: d.rel.qualifiers.clone(),
             tags: d.rel.tags.clone(),
             secondary: false,
-            relationships: BTreeSet::from([OutRel::of_application(d.from_app, d.rel)]),
+            relationships: BTreeSet::from([OutRel::of_application(d.source, d.rel)]),
             change: None,
         });
     }
@@ -2826,6 +2846,79 @@ mod tests {
         assert!(grouped["synthetic"].as_bool().unwrap());
         assert_eq!(grouped["label"], "reads patients from", "the caption of a single relationship is kept");
         assert!(link(&out, "dev.app", "int.b").is_some());
+    }
+
+    /// `dev.app` hosts the container `shop.app`, which has no relationship of its own: its component `shop.app.payments` calls `ext.registry`
+    /// (hosted by `int.a`), and also `shop.app.cart` (internal) and `ext.other` (hosted by `dev.db`, the same environment).
+    fn descendants(viewpoint: &str, focal: &str, extra: Value) -> Value {
+        let mut input = json!({
+            "viewpoint": viewpoint, "layer": "technology", "focal": focal,
+            "elements": [
+                { "reference": "dev", "parent": true, "uses": ["int"] },
+                { "reference": "dev.app", "applications": ["shop.app"] },
+                { "reference": "dev.db", "applications": ["ext.other"] },
+                { "reference": "int", "parent": true },
+                { "reference": "int.a", "applications": ["ext.registry"] }
+            ],
+            "app_elements": [
+                { "reference": "shop", "parent": true },
+                { "reference": "shop.app" },
+                { "reference": "shop.app.payments", "relationships": [
+                    { "destination": "ext.registry", "label": "charges", "qualifiers": ["REST"] },
+                    { "destination": "shop.app.cart", "label": "reads" },
+                    { "destination": "ext.other", "label": "reads" }
+                ] },
+                { "reference": "shop.app.cart" },
+                { "reference": "ext", "parent": true },
+                { "reference": "ext.registry" },
+                { "reference": "ext.other" }
+            ]
+        });
+        for (key, value) in extra.as_object().cloned().unwrap_or_default() {
+            input[key] = value;
+        }
+        compute(input)
+    }
+
+    #[test]
+    fn the_relationships_of_what_is_inside_a_deployed_application_are_dependencies_of_its_node() {
+        let out = descendants("deep", "dev", json!({}));
+        let found = link(&out, "app_shop_app", "a_ext_registry").expect("the box of the container is linked through its component");
+        assert_eq!(found["label"], "charges");
+        assert_eq!(found["qualifiers"], json!(["REST"]));
+        assert_eq!(found["relationships"][0]["from"], "shop.app.payments", "the relationship says who declares it");
+        assert!(found["relationships"][0]["application"].as_bool().unwrap());
+        assert_eq!(out["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).count(), 1, "the internal and the same-environment ones are no dependency");
+        for viewpoint in ["overview", "detailed"] {
+            let out = descendants(viewpoint, "dev", json!({}));
+            let from = if viewpoint == "overview" { "dev" } else { "dev.app" };
+            let l = link(&out, from, "int").unwrap_or_else(|| panic!("{viewpoint}: the node that hosts the container depends on the environment"));
+            assert_eq!(l["relationships"][0]["from"], "shop.app.payments");
+        }
+    }
+
+    #[test]
+    fn several_descendants_with_the_same_relationship_fold_into_one_link_as_before() {
+        let out = descendants("deep", "dev", json!({ "app_elements": [
+            { "reference": "shop", "parent": true },
+            { "reference": "shop.app", "relationships": [ { "destination": "ext.registry", "label": "charges", "qualifiers": ["REST"] } ] },
+            { "reference": "shop.app.payments", "relationships": [ { "destination": "ext.registry", "label": "charges", "qualifiers": ["REST"] } ] },
+            { "reference": "shop.app.cart", "relationships": [ { "destination": "ext.registry", "label": "asks" } ] },
+            { "reference": "ext", "parent": true },
+            { "reference": "ext.registry" },
+            { "reference": "ext.other" }
+        ] }));
+        let drawn: Vec<&Value> = out["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).collect();
+        assert_eq!(drawn.len(), 2, "one link per caption, as for any relationships");
+        let charges = drawn.iter().find(|l| l["label"] == "charges").unwrap_or_else(|| panic!("{out}"));
+        assert_eq!(charges["relationships"].as_array().unwrap().len(), 2, "both declarers are listed in the one link");
+    }
+
+    #[test]
+    fn the_map_of_the_technology_layer_takes_the_dependencies_of_the_descendants() {
+        let out = descendants("map", "", json!({ "opened": ["dev", "int"] }));
+        let drawn = out["links"].as_array().unwrap().iter().any(|l| l["relationships"].as_array().unwrap().iter().any(|r| r["from"] == "shop.app.payments" && r["destination"] == "ext.registry"));
+        assert!(drawn, "{out}");
     }
 
     #[test]
