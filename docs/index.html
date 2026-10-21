@@ -560,7 +560,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_composition_2">Composition</a></li>
 <li><a href="#_environment">Environment</a></li>
 <li><a href="#_node">Node</a></li>
-<li><a href="#_using_other_environments">Using other environments</a></li>
+<li><a href="#using-environments">Using other environments</a></li>
 </ul>
 </li>
 <li><a href="#_relationships">Relationships</a></li>
@@ -627,6 +627,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#generate-views">Generate views</a></li>
 <li><a href="#_query_views">Query views</a></li>
 <li><a href="#_query_graph">Query graph</a></li>
+<li><a href="#stories-generate">Draw the stories</a></li>
 <li><a href="#plateau-list">List the plateaus</a></li>
 <li><a href="#diff">Compare plateaus</a></li>
 <li><a href="#_generate_json_schemas">Generate JSON Schemas</a></li>
@@ -973,19 +974,27 @@ qualifiers = [&quot;Console&quot;]</code></pre>
 </tbody>
 </table>
 <div class="paragraph">
-<p><code>container-group</code>, <code>solution-group</code> and <code>system-group</code> are no kinds, in the command line and in the editor: a group is an element of kind <code>group</code>, nested in a container, a solution or a system (<code>kind: group</code> in its <code>elements</code>). A manifest of one of those three kinds is refused with the one sentence, which lists the kinds there are:</p>
+<p><strong>The group is gone.</strong> Since 0.17 there is no notion of group: <code>container-group</code>, <code>solution-group</code>, <code>system-group</code> and <code>group</code> are no kinds, in the command line and in the editor. Write the children of a former group in the <code>elements</code> of its parent. A nested element of <code>kind: group</code> is refused with the sentence below, which lists the kinds the parent holds:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>error: `manifests/grp.yaml` is not valid: unrecognized `header.kind` "archicode.morin.io/system-group" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)</pre>
+<pre>error: `manifests/a.yaml` is not valid: unknown kind `group`, a group is no kind any more: write its children in the `elements` of its parent (known: container) at `elements[0]`</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and so is a manifest whose header is one of the three old kinds, with the same words before the list of the kinds there are:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>error: `manifests/a.yaml` is not valid: unrecognized `header.kind` "archicode.morin.io/system-group", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view) (line 2, column 9)</pre>
 </div>
 </div>
 <div id="nesting" class="paragraph">
-<p><strong>What a parent holds.</strong> A solution holds systems and groups; a system holds containers and groups; a container holds components and groups; an environment and a node hold nodes; a group holds what the element it sits in holds; a person and a component hold nothing. An element declared under a parent that cannot hold its kind (<code>header.parent</code>: a system under a container) is an error in both tools, with or without plateaus, that names the file and says what the parent holds:</p>
+<p><strong>What a parent holds.</strong> A solution holds systems; a system holds containers; a container holds components; an environment and a node hold nodes; a person and a component hold nothing. An element declared under a parent that cannot hold its kind (<code>header.parent</code>: a system under a container) is an error in both tools, with or without plateaus, that names the file and says what the parent holds:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>error: `manifests/grp.yaml` is not valid: unknown kind `system` under `ArchiCode.CommandLineInterface` (known: component, group) at `header.kind`</pre>
+<pre>error: `manifests/grp.yaml` is not valid: unknown kind `system` under `ArchiCode.CommandLineInterface` (known: component) at `header.kind`</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1747,7 +1756,7 @@ Node *--&gt; "*" Node
 </div>
 </div>
 <div class="sect3">
-<h4 id="_using_other_environments">Using other environments</h4>
+<h4 id="using-environments">Using other environments</h4>
 <div class="paragraph">
 <p>An application rarely lives alone in its environment: the development environment of a platform talks to an identity provider, to a mail relay, to the integration environment of a partner. Those are environments too, each with the nodes that host the applications modeled for them. An environment says which ones it depends on with <code>uses</code>.</p>
 </div>
@@ -1776,7 +1785,7 @@ Node *--&gt; "*" Node
 <div class="ulist">
 <ul>
 <li>
-<p>When an application deployed in the environment has a relationship towards another application, ArchiCode looks where that other application is deployed. If the environment hosts it, nothing leaves the environment.</p>
+<p>When an application deployed in the environment, or anything inside it, has a relationship towards another application, ArchiCode looks where that other application is deployed. A node that lists the container <code>shop.app</code> in <code>applications</code> hosts the relationships of its components too: a relationship of <code>shop.app.payments</code> towards <code>billing</code> is a dependency of the node, where it used to give none. A relationship that stays inside the deployed application gives nothing, and the destination must still be a deployed application. If the environment hosts it, nothing leaves the environment.</p>
 </li>
 <li>
 <p>Otherwise, it is looked for in the environments, or the nodes, listed in <code>uses</code>, and nowhere else. An application deployed in several environments is reached in the ones the environment uses. That is how <code>dev</code> reaches the <code>integration</code> instance of an application, and not the <code>production</code> one.</p>
@@ -1984,7 +1993,7 @@ View o--&gt; "1" Layer
 <p><strong>The applications</strong> are the <code>applications</code> that the nodes list, one box each, inside its node. Only an open node shows them (a node is open when it is in <code>opened</code>, or when it encloses a pinned element), and a node that is hidden shows none; when the map is pinned, they are drawn only inside what it is pinned on. A node that hosts applications can be opened, so it is no longer drawn as a closed box with nothing in it; an application box has nothing to open. A <code>pinned</code>, <code>hidden</code> or <code>opened</code> entry names a technology element: an application is not pinned, hidden or opened on its own (hide its node, or leave the applications out with <code>applications: false</code>).</p>
 </li>
 <li>
-<p><strong>The relationships</strong> are the ones the elements of the layer declare, and the dependencies between environments that the deployed applications give: an application of one environment that depends on an application the environment does not host, found in an environment or a node that the first <code>uses</code>, is a link between the two application boxes when both are drawn, and between the boxes of the nodes that host them otherwise. These are the dependencies that the <code>overview</code>, <code>detailed</code> and <code>deep</code> viewpoints draw; the dependencies inside one environment stay out, as in those viewpoints. <code>uses</code> is a scope and no link of its own. The dependency is read from the relationships of the application that is deployed, not from the ones of what is inside it (see <a href="#plateau-limits">Limits of today</a>).</p>
+<p><strong>The relationships</strong> are the ones the elements of the layer declare, and the dependencies between environments that the deployed applications give: an application of one environment that depends on an application the environment does not host, found in an environment or a node that the first <code>uses</code>, is a link between the two application boxes when both are drawn, and between the boxes of the nodes that host them otherwise. These are the dependencies that the <code>overview</code>, <code>detailed</code> and <code>deep</code> viewpoints draw; the dependencies inside one environment stay out, as in those viewpoints. <code>uses</code> is a scope and no link of its own. The dependency is read from the relationships of the application that is deployed and from the ones of everything inside it (a relationship of a component of a deployed container counts); a relationship that ends inside the same application gives nothing, and the destination must still be a deployed application (see <a href="#using-environments">Using other environments</a>).</p>
 </li>
 </ul>
 </div>
@@ -2142,7 +2151,7 @@ error: the story `s` (`manifests/story.s.yaml`) step 1 says `at: to-be` but the 
 </div>
 </div>
 <div class="paragraph">
-<p>The last one is told for a workspace that has no plateau too. The command line only checks the steps: it does not draw a story, so a step told at a plateau is never drawn by it (see <a href="#plateau-limits">Limits of today</a>). The fork of the layered Brightcart ships a story that tells one (<code>fork_tour</code>: its steps are told at <code>baseline</code>, at <code>saas</code> and at <code>inhouse</code>, two plateaus that override <code>baseline</code> and do not stand on each other, and compared with <code>baseline</code>, with each other and with the plateaus <code>marketplace</code> stands on), next to <code>order_journey</code>, whose steps name no plateau, and <code>seller_journey</code>, whose steps are all told at <code>marketplace</code>. A name that the plateau of a step lacks is no mistake either, and the command line does not say it. The editor plays the steps, draws their plateaus and tells it (see <a href="#editor-stories">Stories: stories and views</a>).</p>
+<p>The last one is told for a workspace that has no plateau too. The command line checks the steps when it loads the workspace, and draws them with <code>archicode stories generate</code> (see <a href="#stories-generate">Draw the stories</a>). The fork of the layered Brightcart ships a story that tells one (<code>fork_tour</code>: its steps are told at <code>baseline</code>, at <code>saas</code> and at <code>inhouse</code>, two plateaus that override <code>baseline</code> and do not stand on each other, and compared with <code>baseline</code>, with each other and with the plateaus <code>marketplace</code> stands on), next to <code>order_journey</code>, whose steps name no plateau, and <code>seller_journey</code>, whose steps are all told at <code>marketplace</code>. A name that the plateau of a step lacks is no mistake either: <code>stories generate</code> skips the step with a warning, and the editor, which plays the steps and draws their plateaus, tells it (see <a href="#editor-stories">Stories: stories and views</a>).</p>
 </div>
 <div class="paragraph">
 <p>Workspaces written before stories became manifests keep their views in <code>views:</code> of <code>workspace.yaml</code>, and may have a <code>stories:</code> there too: both are still read. The editor offers to move them to manifests, which keeps <code>workspace.yaml</code> small and free of the rewrites an editor save makes to it.</p>
@@ -2556,7 +2565,7 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <p><code>replaces</code> is read from the elements of the plateau that is compared; a <code>replaces</code> on an element of the other plateau is not read. A plateau that is not compared does not use it.</p>
 </div>
 <div class="paragraph">
-<p><strong>The <code>replaces</code> of the layers are composed.</strong> Each layer writes <code>replaces</code> relative to the plateau it overrides, so a move that took two steps (a plateau moves <code>shop.app.search</code> to <code>commerce.search</code>, the next one moves it again to <code>discovery.search</code>) names, in the second layer, <code>commerce.search</code>, which a plateau two layers up does not have. Between two plateaus several layers apart the comparison reads the entries through the layers in between, down to the plateau it is compared with, so the move is a move: <code>discovery.search</code> replaces <code>shop.app.search</code>. Only what the layers wrote is read, nothing is guessed. A move then a split is a split, a move then a merge is a merge; an element that a layer in between created and the next one moved replaces nothing (it is <code>new</code>) and its entry is no mistake; an element that a layer in between removed ends its own chain. The comparison with the plateau a plateau overrides is as it was: one layer, nothing to compose. On the layered Brightcart of the repository (<code>src/test/resources/brightcart/layered</code>), <code>archicode diff --plateau marketplace --against baseline</code> counts <code>+38 ~3 -6</code> elements, <code>11 moved, 2 split, 1 merged</code> and <code>+35 ~1 -9</code> relationships, lists <code>discovery.search</code> as <code>moved</code> from <code>shop.app.search</code>, and has no warning. Between two plateaus that do not stand on each other (<code>marketplace</code> against <code>saas</code>) only the layers of the plateau drawn since the plateau they have in common are read, and an entry that the plateau compared with still lacks is ignored with the usual warning, which names the reference the layers composed (<code>shop.app.search</code>, where the entry says <code>commerce.search</code>). <strong>Write replaces</strong> in the editor writes the entry you choose, one step: see <a href="#plateau-limits">Limits of today</a> for the one case where that entry is a mistake of its own layer.</p>
+<p><strong>The <code>replaces</code> of the layers are composed.</strong> Each layer writes <code>replaces</code> relative to the plateau it overrides, so a move that took two steps (a plateau moves <code>shop.app.search</code> to <code>commerce.search</code>, the next one moves it again to <code>discovery.search</code>) names, in the second layer, <code>commerce.search</code>, which a plateau two layers up does not have. Between two plateaus several layers apart the comparison reads the entries through the layers in between, down to the plateau it is compared with, so the move is a move: <code>discovery.search</code> replaces <code>shop.app.search</code>. Only what the layers wrote is read, nothing is guessed. A move then a split is a split, a move then a merge is a merge; an element that a layer in between created and the next one moved replaces nothing (it is <code>new</code>) and its entry is no mistake; an element that a layer in between removed ends its own chain. The comparison with the plateau a plateau overrides is as it was: one layer, nothing to compose. On the layered Brightcart of the repository (<code>src/test/resources/brightcart/layered</code>), <code>archicode diff --plateau marketplace --against baseline</code> counts <code>+38 ~3 -6</code> elements, <code>11 moved, 2 split, 1 merged</code> and <code>+35 ~1 -9</code> relationships, lists <code>discovery.search</code> as <code>moved</code> from <code>shop.app.search</code>, and has no warning. Between two plateaus that do not stand on each other (<code>marketplace</code> against <code>saas</code>) only the layers of the plateau drawn since the plateau they have in common are read, and an entry that the plateau compared with still lacks is ignored with the usual warning, which names the reference the layers composed (<code>shop.app.search</code>, where the entry says <code>commerce.search</code>). <strong>Write replaces</strong> in the editor writes the entry you choose, one step. When the comparison is several layers apart and a layer in between removed the replaced element, the entry would be a mistake of its own layer: the editor refuses it and prints the sentence quoted in <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>.</p>
 </div>
 <div class="paragraph">
 <p><strong>What the command line shows.</strong> <code>archicode diff</code> has the three states in its table, with the counts of <code>moved</code>, <code>split</code> and <code>merged</code> on a line of their own (<code>replacing</code>), and says in the details of each row what the element replaces (see <a href="#diff">Compare plateaus</a>). The views of the comparison draw them with the marks above (see <a href="#plateau-comparison">Comparing two plateaus</a>). The editor draws them too, lists the candidates, and writes <code>replaces</code> for you (see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>).</p>
@@ -3873,7 +3882,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p>(The command also prints, on the error output, the warning of step 3 about the hand-written <code>new</code> of <code>shop.payments</code>: against <code>to-be</code> that element did not change, so the word is only the author&#8217;s.) <code>archicode diff --plateau later --against baseline</code> compares the last plateau with the first one, and <code>archicode plateau list</code> shows the three. When two plateaus override the same one, the tree forks and the commands ask for the plateau with <code>--plateau</code> (see <a href="#plateau-choose">[plateau-choose]</a>); the editor opens the plateau of the address, else the one you drew last, else the one <code>settings.current</code> names (which <strong>Settings</strong> can write, see <a href="#editor-current-plateau">The current plateau</a>), else the root.</p>
 </div>
 <div class="paragraph">
-<p><strong>Step 10. Put it away.</strong> A plateau that no other plateau overrides can be deleted in the editor, from the page <strong>Plateaus</strong> (see <a href="#editor-plateaus">The Plateaus page</a>): <strong>Delete</strong> opens a dialog that lists the files that go, here <code>plateaus/later/plateau.later.yaml</code> and <code>plateaus/later/search.yaml</code>, and nothing else. The files leave the disk at the next <strong>Save all changes</strong>. The command line deletes nothing: remove the files by hand, and the folders <code>views-later</code> and <code>views-later-vs-to-be</code> that <code>views generate</code> wrote, if you made them.</p>
+<p><strong>Step 10. Put it away.</strong> A plateau can be deleted in the editor, from the page <strong>Plateaus</strong> (see <a href="#editor-plateaus">The Plateaus page</a>): <strong>Delete</strong> opens a dialog that lists the files that go, here <code>plateaus/later/plateau.later.yaml</code> and <code>plateaus/later/search.yaml</code>, and nothing else. Had another plateau overridden <code>later</code>, the dialog would also have said which plateaus go under its parent and what they lose. The files leave the disk at the next <strong>Save all changes</strong>. The command line deletes nothing: remove the files by hand, and the folders <code>views-later</code> and <code>views-later-vs-to-be</code> that <code>views generate</code> wrote, if you made them.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3925,10 +3934,10 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p><strong>A view or a story that says <code>plateau:</code>.</strong> It is accepted and means nothing, with no message at all (see <a href="#plateau-untied">[plateau-untied]</a>; the warning that earlier versions printed is gone). A workspace whose only <code>plateau:</code> is on a view or a story is no longer a workspace of plateaus, so <code>--plateau</code> and <code>settings.current</code> are errors for it, as for any workspace without plateaus. Two plateaus that each declared a view of one id, or a story of one id, are now one error: a view and a story are declared once.</p>
 </li>
 <li>
-<p><strong>Kinds.</strong> <code>container-group</code>, <code>solution-group</code> and <code>system-group</code> are refused, in both tools: write an element of kind <code>group</code> in the <code>elements</code> of the container, the solution or the system (see <a href="#manifest-kinds">[manifest-kinds]</a>). An element declared with <code>header.parent</code> under a parent that cannot hold its kind (a system under a container) is an error, with or without patches, where it used to load in a plateau that had none (see <a href="#nesting">[nesting]</a>); an id with a dot is an error; and the key <code>element</code> of a group in a solution, which was read by mistake, is not read.</p>
+<p><strong>Kinds.</strong> An element declared with <code>header.parent</code> under a parent that cannot hold its kind (a system under a container) is an error, with or without patches, where it used to load in a plateau that had none (see <a href="#nesting">[nesting]</a>); an id with a dot is an error. The group kinds were refused here at the time; since 0.17 there is no group at all (see below).</p>
 </li>
 <li>
-<p><strong>Empty values and spellings.</strong> A key with nothing after it and an item with no value in a list are absent, in both tools (<code>global-enabled:</code> with nothing is <code>true</code>; an empty <code>workspace.yaml</code> is the default workspace; an item of <code>relationships</code> with no value draws no relationship in the editor either). The keys of <code>settings.facets</code> are <code>global-enabled</code>, <code>directory-name-template</code>, <code>hide-unlinked</code> and <code>json-path</code>; the camel-case spelling is still read. The text of <code>header.parent</code>, <code>header.plateau</code> and <code>header.version</code> is the text as written: <code>parent: yes</code> is the reference <code>yes</code>.</p>
+<p><strong>Empty values and spellings.</strong> A key with nothing after it and an item with no value in a list are absent, in both tools (<code>global-enabled:</code> with nothing is <code>true</code>; an empty <code>workspace.yaml</code> is the default workspace; an item of <code>relationships</code> with no value draws no relationship in the editor either). The keys of <code>settings.facets</code> are <code>global-enabled</code>, <code>directory-name-template</code>, <code>hide-unlinked</code> and <code>json-path</code>; the camel-case spelling was still read then; since 0.17 it is refused (see below). The text of <code>header.parent</code>, <code>header.plateau</code> and <code>header.version</code> is the text as written: <code>parent: yes</code> is the reference <code>yes</code>.</p>
 </li>
 <li>
 <p><strong>The maps.</strong> <code>archicode views generate --view &lt;id&gt;</code> draws a view of the <code>map</code> viewpoint, which it used to skip with a warning (see <a href="#map-viewpoint">[map-viewpoint]</a>).</p>
@@ -3941,6 +3950,43 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </li>
 <li>
 <p><strong>The editor.</strong> The pages are Plateaus, Applications, Environments, Elements, Stories, Files and Settings (see <a href="#editor-pages">The perspectives and their pages</a>); the band has two lists; Files has no choice of what it lists.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>What changes for a reader who knows 0.16.0.</strong> This release removes things that were deprecated, so the first four items can stop a workspace that loaded before. Each prints one <code>error:</code> line, exit code 1, and writes nothing; the sentences below are the ones the tools print.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>The group is gone</strong> (Breaking). Write the children of a former group in the <code>elements</code> of its parent, which shortens each reference by one segment (<code>shop.web.edge.gateway</code> with a group <code>edge</code> becomes <code>shop.web.gateway</code>). The sentences, for <code>kind: group</code> and for the three old header kinds, are in <a href="#manifest-kinds">[manifest-kinds]</a>; the editor says the same words.</p>
+</li>
+<li>
+<p><strong>The camel-case keys of a facet are gone</strong> (Breaking). <code>hideUnlinked</code>, <code>globalEnabled</code>, <code>directoryNameTemplate</code> and <code>jsonPath</code> must be written <code>hide-unlinked</code>, <code>global-enabled</code>, <code>directory-name-template</code> and <code>json-path</code>. The sentence names the key to write: <code>+unknown key `hideUnlinked</code>, write <code>hide-unlinked</code> (known: actions, hide-unlinked, name) at <code>settings.facets.customs[0].hideUnlinked</code> +<code>. `json_path</code> of a patch is still read.</p>
+</li>
+<li>
+<p><strong>The Jayway dialect of the facets is gone</strong> (Breaking). <code>anyof</code>, <code>noneof</code>, <code>== null</code> and <code>!= null</code> are not JSONPath. The command line and the editor refuse the path with <code>+facet f: the facet path `&#8230;&#8203;</code> uses <code>@.qualifiers anyof ['a']</code>, which is not JSONPath (RFC 9535) and is no longer read: write <code>@.qualifiers[?(@ == 'a')]</code> +`; the table of the four rewrites is in <a href="#facets">Tackling view clutter</a>. The warning that used to rewrite them is gone with them.</p>
+</li>
+<li>
+<p><strong>The old addresses of the editor are gone</strong> (Breaking). <code><mark>/map</code>, <code></mark>/elements</code>, <code><mark>/library</code>, <code></mark>/diagram</code>, <code><mark>/applications</code>, <code></mark>/plateaus</code>, <code><mark>/environments</code> and <code></mark>/timeline</code> alone open the default page, Applications, like any unknown address. Write <code><mark>/timeline/applications</code>, <code></mark>/timeline/elements</code>, <code><mark>/stories</code>, <code></mark>/stories/views</code>, <code><mark>/timeline/plateaus</code> and <code></mark>/timeline/environments</code> (see <a href="#editor-pages">The perspectives and their pages</a>). Update your bookmarks.</p>
+</li>
+<li>
+<p><strong><code>archicode stories generate</code></strong> draws the steps of the stories (see <a href="#stories-generate">Draw the stories</a>). <code>views generate</code> still does not.</p>
+</li>
+<li>
+<p><strong>More dependencies between environments.</strong> A relationship declared by what is inside a deployed application (a component of a container that a node lists in <code>applications</code>) is now a dependency of the node, in the overview, the detailed and the deep viewpoints of the technology layer and in the Map of the technology layer (see <a href="#using-environments">Using other environments</a>). A workspace that deploys containers whose components declare the relationships gains links there; the layered Brightcart gains the dependencies of <code>app-vm</code> and <code>staging.vm</code> towards <code>partners</code> and <code>sandbox</code>. The views of every other example are written byte for byte as before.</p>
+</li>
+<li>
+<p><strong>Deleting a plateau in the middle.</strong> A plateau that other plateaus override can be deleted in the editor, in one step; they go under its parent and the dialog lists what each loses (see <a href="#editor-plateau-delete">[editor-plateau-delete]</a>).</p>
+</li>
+<li>
+<p><strong>Write replaces refuses an entry its layer cannot hold</strong>, when the comparison is several layers apart and a layer in between removed the replaced element: the button is off, with a sentence (see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>).</p>
+</li>
+<li>
+<p><strong>The key of a comparison is folded</strong> under the diagram, with a <strong>Key</strong> button (see <a href="#editor-compare">Comparing two plateaus</a>), and a write the editor refuses, or an error while it reads the form, no longer empties the form: what you typed stays (see <a href="#editor-rename">[editor-rename]</a>).</p>
+</li>
+<li>
+<p><strong>The numbers.</strong> The editor reads a plain scalar that YAML 1.1 reads as a number as the command line does, and saves it back as written: <code>id: 010</code> is the reference <code>8</code> in both tools, <code>parent: 0</code> and <code>version: 1</code> in a header are the text as written, <code>line-gap: 0x1F</code> is accepted for a whole number and <code>"0x1F"</code>, quoted, is refused, and <code>.inf</code> is the one line <code>+Malformed numeric value '.inf' at `content</code> +`. Four differences are left and pinned (see <a href="#plateau-limits">Limits of today</a>). The command line is unchanged.</p>
 </li>
 </ol>
 </div>
@@ -3992,7 +4038,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <div class="sect2">
 <h3 id="plateau-limits">Limits of today</h3>
 <div class="paragraph">
-<p>These are things that do not work yet, or not the way you might expect. Each is known and filed (the issue is <code>tmorin/archicode#N</code> on GitHub), and the tools say so when they meet one.</p>
+<p>These are things that do not work yet, or not the way you might expect. Each is known, and the tools say so when they meet one. Those with an issue number are filed on GitHub (<code>tmorin/archicode#N</code>); the last two are not planned.</p>
 </div>
 <div class="paragraph">
 <p><strong>Plateaus.</strong></p>
@@ -4000,22 +4046,13 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <div class="ulist">
 <ul>
 <li>
-<p><strong>The editor does not move an element a plateau inherits</strong> (a patch never changes an <code>id</code> or a <code>parent</code>): draw the plateau that declares it. It does not move a group under a parent of a plateau that the plateau drawn overrides either (#114): the group is written inside a file and has no manifest of its own to say where it goes.</p>
-</li>
-<li>
-<p><strong>Write replaces, several layers apart, can write an entry that the layer does not have</strong> (#130). The key is read relative to the plateau a manifest builds on, and the panel proposes pairs between the plateau drawn and any other. When they are several layers apart, <code>from</code> is an element of the plateau compared with that the parent of the plateau drawn may no longer have (a layer in between removed it without replacing it): the entry then is the composed move against the plateau compared with, and against the plateau it was written for it is the warning <code>&#8230;&#8203; is not an element of the base plateau, ignored</code>. The editor does not refuse it.</p>
+<p><strong>The editor does not move an element a plateau inherits</strong> (a patch never changes an <code>id</code> or a <code>parent</code>): draw the plateau that declares it.</p>
 </li>
 <li>
 <p><strong>A comparison with the parent cannot stay on the parent.</strong> On the band, the parent in the tree of <strong>Compare with</strong> is read as <em>Past (follows the plateau drawn)</em>, so the comparison moves to the new parent when another plateau is drawn. There is no fixed comparison with the parent.</p>
 </li>
 <li>
-<p><strong>A plateau that other plateaus override cannot be deleted in the editor</strong> (#112): the dialog says which plateaus override it, and nothing is deleted. Delete the plateaus above it first, or change their <code>override</code> in <strong>Edit</strong>. The editor draws the plateau of the address, then the one this browser drew last, then <code>settings.current</code> (which <strong>Settings</strong> writes, see <a href="#editor-current-plateau">The current plateau</a>), then the root; the command line draws the last plateau when the plateaus form one line and no <code>settings.current</code> says otherwise.</p>
-</li>
-<li>
-<p><strong>A story told at a plateau is never drawn by the command line</strong> (#109). <code>archicode</code> checks <code>at</code> and <code>against</code> and draws no story, so there is nothing to draw a step with. The editor plays them.</p>
-</li>
-<li>
-<p><strong>The dependencies that a deployed application gives do not include those of what is inside it</strong> (#124). The map of the technology layer, like the overview, the detailed and the deep viewpoints of an environment, reads the relationships of the application that a node lists in <code>applications</code>, not those of its components: a container deployed on a node whose components declare the relationships gives no link to the node that hosts what they depend on.</p>
+<p><strong>Which plateau the editor and the command line draw first.</strong> The editor draws the plateau of the address, then the one this browser drew last, then <code>settings.current</code> (which <strong>Settings</strong> writes, see <a href="#editor-current-plateau">The current plateau</a>), then the root; the command line draws the last plateau when the plateaus form one line and no <code>settings.current</code> says otherwise.</p>
 </li>
 <li>
 <p><strong>The editor is slow on very large pairs of plateaus</strong> (#125). The number of kernel calls does not grow with the elements, but the time of one call does: for the 591 elements and 839 changes of a test pair (<code>replaces-large-pair</code>), in Node, the first call that finds what has nothing to draw takes about half a second where the 82 elements of the layered Brightcart take 16 milliseconds, ten to thirty times longer for seven times more elements. No shipped workspace is that large.</p>
@@ -4031,10 +4068,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p><strong>The save of the editor writes a file again in its own layout</strong> in these cases (#78): an anchor, an alias or a tag inside square or curly brackets (<code>qualifiers: [&amp;a oven, *a]</code>); a tag on a text that goes over several lines, when the tag changes what the text reads as; and a layout the save does not follow (an anchor on a list item whose map starts on the next line); an anchor or a tag on a key (<code>&amp;k name: x</code>) is the other case: the command line reads it and the editor refuses with <code>an anchor or a tag on a key is not supported</code>. In the first two the file is read and the model is what it says, but the comments are lost and the aliases are written as their values; the third is not opened.</p>
 </li>
 <li>
-<p><strong>The two tools read a few plain scalars differently</strong> (#103). A plain scalar written as a number in YAML 1.1 that a browser cannot print back as it was written (<code>0x1F</code>, <code>010</code>, <code>1_0</code>, <code>5.0</code>, <code>1e2</code>) is a number for the command line and a text for the editor; quote it where it is an id or a reference. The editor does not tell the line and the column of a mistake in a file: it names the place by its path in the file, as the command line does (see <a href="#errors-and-warnings">Errors, warnings and exit codes</a>).</p>
-</li>
-<li>
-<p><strong>A write that is refused redraws the form from the model</strong> (#129). Cancelling a dialog gives the form back as you typed it (see <a href="#editor-rename">[editor-rename]</a>), but a write the editor refuses (<code>Not written: &#8230;&#8203;</code>) and an error while it reads the form redraw the form of the element from the model: the sentence is shown beside a form that has lost the id, the name and the description you had typed. Type them again after the fix, or copy them first.</p>
+<p><strong>Four differences in how the two tools read a plain number are left</strong> (the issue #103 is closed: a plain scalar that YAML 1.1 reads as a number is read alike, see <a href="#plateaus-upgrade">Upgrading: what breaks, and what does not</a>). The editor does not tell the line and the column of a mistake in a file: it names the place by its path in the file, as the command line does (see <a href="#errors-and-warnings">Errors, warnings and exit codes</a>). A number that the reader refuses under a key the header does not take (<code>foo: .inf</code>) is told as the number by the editor, as the unknown key by the command line. A float that JavaScript prints another way than Java (<code>5.0</code>) is the text in a field of any shape: a <code>value</code> of a patch is the text <code>"5.0"</code> in the editor, a number for the command line. The diagram of the editor draws a style written <code>line-gap: 0x1F</code> or <code>round-corner: 8.0</code> with the default (it draws only digits), where the command line reads the number.</p>
 </li>
 </ul>
 </div>
@@ -4044,12 +4078,12 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <div class="ulist">
 <ul>
 <li>
-<p><strong><code>archicode diff</code> cannot compare with another version of the workspace in git</strong> (<code>--baseline-ref</code>, #25). <code>--width</code>, <code>--fail-on</code> and <code>--only-changes</code> are built (see <a href="#diff">Compare plateaus</a> and <a href="#generate-views">Generate views</a>). <code>views generate</code> writes no text table, so it has no <code>--width</code>.</p>
+<p><strong><code>archicode diff</code> cannot compare with another version of the workspace in git</strong> (a <code>--baseline-ref</code>; not planned). <code>--width</code>, <code>--fail-on</code> and <code>--only-changes</code> are built (see <a href="#diff">Compare plateaus</a> and <a href="#generate-views">Generate views</a>). <code>views generate</code> writes no text table, so it has no <code>--width</code>.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p><strong>The editor on a phone</strong> (#29). Nobody has used the editor on a real phone: what the editor does in a window 360 pixels wide was measured in a desktop browser, and is told in <a href="#editor-small-screen">The editor on a small screen</a>.</p>
+<p><strong>The editor on a phone</strong> (not planned). Nobody has used the editor on a real phone: what the editor does in a window 360 pixels wide was measured in a desktop browser, and is told in <a href="#editor-small-screen">The editor on a small screen</a>.</p>
 </div>
 </div>
 </div>
@@ -4148,7 +4182,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </tbody>
 </table>
 <div class="paragraph">
-<p>The addresses of the earlier versions still open: <code><mark>/map</code> opens Applications, <code></mark>/elements</code> opens Elements, <code><mark>/library</code>, <code></mark>/library/stories</code> and <code><mark>/stories</code> open the Stories side of Stories, <code></mark>/library/views</code> its Views side, and <code><mark>/diagram</code> opens Elements as it always did. <code></mark>/timeline</code> used to name the list of the plateaus: it now opens Applications, like the button, and the list is <code><mark>/timeline/plateaus</code>, or <code></mark>/plateaus</code>. The page writes its own address in place of the one that was typed, without adding an entry to the history of the browser. The parameters of an address (<code>ref</code>, <code>tab</code>, <code>pin</code>, <code>facet</code>, <code>story</code>, <code>view</code>, <code>plateau</code>&#8230;&#8203;) are the ones they were.</p>
+<p>Since 0.17 the pages answer to the addresses of the table above and to no other: <code><mark>/map</code>, <code></mark>/elements</code>, <code><mark>/library</code>, <code></mark>/library/stories</code>, <code><mark>/library/views</code>, <code></mark>/diagram</code>, <code><mark>/applications</code>, <code></mark>/plateaus</code>, <code><mark>/environments</code> and <code></mark>/timeline</code> alone are no routes any more, and open the default page, Applications, like any address the editor does not know. Replace them with <code><mark>/timeline/applications</code>, <code></mark>/timeline/elements</code>, <code><mark>/stories</code>, <code></mark>/stories/views</code>, <code><mark>/timeline/plateaus</code> and <code></mark>/timeline/environments</code>. The page writes its own address in place of the one that was typed, without adding an entry to the history of the browser. The parameters of an address (<code>ref</code>, <code>tab</code>, <code>pin</code>, <code>facet</code>, <code>story</code>, <code>view</code>, <code>plateau</code>&#8230;&#8203;) are the ones they were.</p>
 </div>
 <div class="paragraph">
 <p><strong>The address says the plateau.</strong> A link with <code>plateau=&lt;id&gt;</code> draws that plateau, and <code>compare=</code> the comparison it names (see <a href="#editor-changes-address">The address and the trees</a>); an address with no <code>plateau=</code> is the root, <code>baseline</code>, which the page never writes. This is also true once the editor is open: an address that is typed in the tab, followed, or reached by Back and Forward draws the plateau it names (an unknown plateau leaves the one that is drawn). A plateau that you choose, on the band or on the page Plateaus, is an entry of the history, so Back walks back through the plateaus you drew. A comparison chosen on the band changes no address, so Back between two comparisons of the same plateau does nothing.</p>
@@ -4179,7 +4213,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p><strong>Renaming an element in a workspace of plateaus.</strong> Saving the form of an element with another <code>id</code> rewrites every reference to it. In a workspace that has plateaus the rewrite is made in the files of the plateau that is drawn and of the plateaus that stand on it, since the others do not see the element through it, and in the views and the stories of the workspace, which belong to no plateau and so follow everywhere. A plateau beside the one drawn (one that does not stand on it and does not override it) may still declare the element, or inherit it, under its old reference: a view or a step that names the new reference then cannot be drawn there any more. When that is so, saving the form first opens a dialog before anything is written. It names the plateaus that keep the old reference and the views and the steps of the stories (by story and number) that could no longer be drawn in them, and has two buttons: <strong>Cancel</strong>, which writes nothing, and <strong>Rename anyway</strong>, which writes what a rename always wrote. To keep every view whole, cancel, draw each of those plateaus and give the element the same new id there; once every plateau that has it uses the new reference, the views are drawn in all of them. Nothing is asked when no view or step is at risk, when the plateau drawn is <code>baseline</code> (every plateau stands on it), or in a workspace with no plateau.</p>
 </div>
 <div class="paragraph">
-<p><strong>Cancelling.</strong> <strong>Cancel</strong> (or Escape, or a click beside the dialog) writes nothing and gives the form back as you typed it: the new id, the name, the description, what was in the boxes that add a qualifier or a tag, the relationship rows and the <code>replaces</code>, and <strong>Save all changes</strong> is lit as before. The same goes for the dialog that lists the plateaus a write changes (<em>Writing in baseline changes other plateaus</em>, see <a href="#editor-writing">Writing in a plateau</a>). Saying yes writes the form that was typed. A write that the editor refuses (<code>Not written: &#8230;&#8203;</code>) is another path and still redraws the form from the model (see <a href="#plateau-limits">Limits of today</a>).</p>
+<p><strong>Cancelling.</strong> <strong>Cancel</strong> (or Escape, or a click beside the dialog) writes nothing and gives the form back as you typed it: the new id, the name, the description, what was in the boxes that add a qualifier or a tag, the relationship rows and the <code>replaces</code>, and <strong>Save all changes</strong> is lit as before. The same goes for the dialog that lists the plateaus a write changes (<em>Writing in baseline changes other plateaus</em>, see <a href="#editor-writing">Writing in a plateau</a>). Saying yes writes the form that was typed. A write that the editor refuses (<code>Not written: &#8230;&#8203;</code>) and an error while it reads the form give the form back as typed too, beside the sentence that tells why: nothing you typed is lost.</p>
 </div>
 <div class="paragraph">
 <p><strong>Move</strong> changes a reference too, and the views and the steps follow it in every plateau, so it asks the same question when you press the button of its dialog with a parent chosen and the move is allowed: the same list of plateaus that keep the old reference and of views and steps that could no longer be drawn there, in words of a move, with the buttons <strong>Back to Move</strong> and <strong>Move anyway</strong>. <strong>Back to Move</strong>, Escape and a click beside the dialog give the <em>Move</em> dialog back with its parent and its search as they were, and write nothing, so that you can choose another parent. A move that no sibling plateau is concerned by (none keeps the old reference, or no view or step names it there), a move in <code>baseline</code> and a move in a workspace with no plateau are written at once, as they were.</p>
@@ -4250,6 +4284,9 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <li>
 <p><strong>Very narrow</strong>: the header takes two rows.</p>
 </li>
+<li>
+<p><strong>The key of a comparison</strong> is one row that scrolls along under 700 pixels (see <a href="#editor-compare">Comparing two plateaus</a>).</p>
+</li>
 </ul>
 </div>
 </div>
@@ -4300,7 +4337,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p>Nothing is wider than the window, on the seven pages, on 52 states of the Brightcart in each theme (the forms of ten elements in view, edit, <em>Move</em> and delete, three stories, seven views) and on 20 of <code>domain_application</code>; the diagram is drawn to scale and scrolls in its own box, and the code editor of Files scrolls inside itself, as they do on a large screen. Four places did go past the window inside the scroll of the center and are fixed: the row that adds a tag, the four buttons in the header of an element, the list of saved views of a story, and the lists of the references in <em>Confirm delete</em>. The list of the places not offered in the dialog of <em>Move</em> has text wider than its box and scrolls inside it.</p>
 </div>
 <div class="paragraph">
-<p>What this does not say: whether the order of the stacked regions and their heights suit a phone, whether the buttons are easy to touch, and how the on-screen keyboard behaves. They are a judgment on a real device, which nobody has made (see <a href="#plateau-limits">Limits of today</a>).</p>
+<p>What this does not say: whether the order of the stacked regions and their heights suit a phone, whether the buttons are easy to touch, and how the on-screen keyboard behaves. They are a judgment on a real device, which nobody has made and which is not planned (see <a href="#plateau-limits">Limits of today</a>).</p>
 </div>
 </div>
 <div class="sect2">
@@ -4555,9 +4592,6 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <li>
 <p>A plateau cannot be drawn when the kernel refuses its patches: nothing is written in it until they are repaired in <strong>Files</strong>.</p>
 </li>
-<li>
-<p>A group under an element that the plateau inherits: a group has no manifest of its own, so it cannot be written in the plateau drawn (<em>A group under “shop” (declared in the plateau <code>baseline</code>) cannot be written in a manifest of its own: draw <code>baseline</code> to add it.</em>).</p>
-</li>
 </ul>
 </div>
 <div class="paragraph">
@@ -4567,7 +4601,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <div class="sect2">
 <h3 id="editor-plateaus">The Plateaus page</h3>
 <div class="paragraph">
-<p><strong>Plateaus</strong>, a page of the perspective Timeline (its address is <code><mark>/timeline/plateaus</code>, or <code></mark>/plateaus</code>), lists the plateaus as a tree: one entry for each, in the order of the tree, each indented by its depth. An entry says the name of the plateau, its id, its <code>horizon</code>, whether it is the one drawn or the one compared, and, in a line below, the plateau it overrides, where it is written (<code>described in inhouse/plateau.yaml</code>, or <code>exists only through the plateau key of a header</code> for a plateau that has no manifest of its own), how many patches it has and how many files belong to it. Below that, what it changes over the plateau it overrides, as the chips of the <strong>Changes</strong> panel, for the elements and for the relationships: new, changed, removed, and moved, split and merged when there are some. They are the counts of <code>archicode diff --plateau &lt;id&gt;</code>; a plateau that the command line refuses, or that overrides one it refuses, says it is not counted (a <code>!</code> marks it). The root overrides nothing, and says so. A workspace that writes no layer has the page too: one entry, <code>baseline</code>, and a note on what a plateau is. This page is the one place that lists the plateaus as a tree with their counts and the one place that writes a plateau: the band chooses and writes nothing.</p>
+<p><strong>Plateaus</strong>, a page of the perspective Timeline (its address is <code>#/timeline/plateaus</code>), lists the plateaus as a tree: one entry for each, in the order of the tree, each indented by its depth. An entry says the name of the plateau, its id, its <code>horizon</code>, whether it is the one drawn or the one compared, and, in a line below, the plateau it overrides, where it is written (<code>described in inhouse/plateau.yaml</code>, or <code>exists only through the plateau key of a header</code> for a plateau that has no manifest of its own), how many patches it has and how many files belong to it. Below that, what it changes over the plateau it overrides, as the chips of the <strong>Changes</strong> panel, for the elements and for the relationships: new, changed, removed, and moved, split and merged when there are some. They are the counts of <code>archicode diff --plateau &lt;id&gt;</code>; a plateau that the command line refuses, or that overrides one it refuses, says it is not counted (a <code>!</code> marks it). The root overrides nothing, and says so. A workspace that writes no layer has the page too: one entry, <code>baseline</code>, and a note on what a plateau is. This page is the one place that lists the plateaus as a tree with their counts and the one place that writes a plateau: the band chooses and writes nothing.</p>
 </div>
 <div class="paragraph">
 <p>The name of a plateau draws it, as a choice in the list <strong>Plateau</strong> of the band does. <strong>Changes</strong> draws the plateau and compares it with the plateau it overrides in one step, and the <strong>Changes</strong> panel opens on the right with the same lists as on the other pages; a click on one of its rows opens the element in <strong>Elements</strong>, since this page draws none (<strong>Next change</strong> and <strong>Previous change</strong> show the change they are at under the buttons, see <a href="#editor-changes-panel">The Changes panel</a>).</p>
@@ -4581,19 +4615,22 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <div class="ulist">
 <ul>
 <li>
-<p><strong>What can go.</strong> Only a plateau that no other plateau overrides: nothing inherits what it declares or patches, so no other plateau changes with it. The dialog refuses, with one sentence and without a <strong>Delete</strong> button, the root (<em>every other plateau stands on it</em>), a plateau that others override (it names them, and says to delete them first or to give them another parent with <strong>Edit</strong>; deleting a plateau that others override is not built, #112), a workspace that has no plateau but <code>baseline</code>, plateaus that cannot be drawn, and a save in flight. The button of a plateau that others override stays, with a tooltip that says why: a button that vanishes says nothing.</p>
+<p><strong>What can go.</strong> Any plateau but the root. The dialog refuses, with one sentence and without a <strong>Delete</strong> button, the root (<em>every other plateau stands on it</em>), a workspace that has no plateau but <code>baseline</code>, plateaus that cannot be drawn, and a save in flight.</p>
+</li>
+<li>
+<p><strong>A plateau that others override.</strong> It is deleted in the same one step. The plateaus that override it go under its parent: their <code>override</code> is rewritten, line by line, in their manifest of kind <code>archicode.morin.io/plateau</code> (the key is taken out when the new parent is the root). What the deleted plateau declared and patched is lost to every plateau that stands on it, and the dialog says it before anything is written: for each plateau above, its new parent, the elements it loses, the ones it gets back (the deleted plateau had removed them) and the ones that read differently. <strong>Delete plateau</strong> is the yes to those plateaus; a change to any other plateau is still asked. A comparison with the past of a plateau that overrode it follows it to the new parent.</p>
 </li>
 <li>
 <p><strong>What goes, and only that.</strong> Its manifest of kind <code>archicode.morin.io/plateau</code> and every manifest whose header says its id, listed one by one (a file not saved yet is marked <em>new, not saved yet</em>, and a modified one says its changes go with it). A view or a story that says <code>plateau: &lt;id&gt;</code> belongs to no plateau: it stays, and the dialog says so. The files leave the disk at the next <strong>Save all changes</strong>, like any change, and <strong>Cancel</strong> gives the delete up with the others.</p>
 </li>
 <li>
-<p><strong>Files that the editor does not read.</strong> A <code>.toml</code> or <code>.json</code> manifest, or a YAML file that the editor cannot read, may say <code>plateau: &lt;id&gt;</code> for the command line: the delete does not touch them, the dialog lists them, and says that the command line still reads the plateau if one of them names it.</p>
+<p><strong>Files that the editor does not read.</strong> A <code>.toml</code> or <code>.json</code> manifest, or a YAML file that the editor cannot read, may say <code>plateau: &lt;id&gt;</code>, or <code>override: &lt;id&gt;</code>, for the command line: the delete touches and rewrites none of them, the dialog lists them, and says that the command line still reads the plateau if one of them names it.</p>
 </li>
 <li>
 <p><strong><code>settings.current</code>.</strong> When it names the plateau (or <code>baseline</code>, when the last plateau goes), the key is taken out of <code>workspace.yaml</code>, and the dialog says that the command line then draws the last plateau when the plateaus form one line, and asks for <code>--plateau</code> otherwise. A <code>current</code> that names another plateau, gone already, is left as it is.</p>
 </li>
 <li>
-<p><strong>What blocks it.</strong> A step of a story that names the plateau in <code>at</code> or <code>against</code>, and a view or a story step that names an element that only this plateau declares (it would exist in no plateau): the dialog lists the sentences, offers no <strong>Delete</strong>, and says to change them in Stories first. They are not cleared for you: a step told at a plateau is your statement of which state it shows.</p>
+<p><strong>What blocks it.</strong> A step of a story that names the plateau in <code>at</code> or <code>against</code>, a view or a story step that names an element that only this plateau declares (it would exist in no plateau), a step told <code>at</code> a plateau above that would lose the element it draws, and a plateau above that would no longer resolve (a patch that selects nothing, a relationship or a parent that is gone): the dialog lists the sentences, offers no <strong>Delete</strong>, and says to change them first, in Stories for the steps, or to repair the plateau above or give it another parent with <strong>Edit</strong>. They are not cleared for you: a step told at a plateau is your statement of which state it shows. On the layered Brightcart, <code>inhouse</code> cannot be deleted for that reason (<code>marketplace</code> patches what <code>inhouse</code> declares).</p>
 </li>
 <li>
 <p><strong>After it.</strong> The plateau it overrode is drawn, with no comparison, when the plateau drawn was the one deleted; the plateau drawn stays, compared with nothing, when the one deleted was the one compared with. The folders of views that the command line generated (<code>views-&lt;id&gt;</code> and the folders of its comparisons) are not manifests: they stay where they are.</p>
@@ -4682,7 +4719,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p>The look is a default, given to the stereotype of the same name as the state (<code>new</code>, <code>changed</code>, <code>removed</code>, <code>contains-changes</code>). A style of your own for that name in <code>styles</code> (see <a href="#stereotypes-and-styles">Stereotypes and styles</a>) wins property by property: your <code>line-color</code> replaces the colour of the line and keeps its style and thickness, your <code>background-color</code> fills the box and replaces the tint, your <code>font-color</code> replaces the grey of a removed title. The state is the last stereotype of a box, so it overrides the style of the others, as a later stereotype always does. A <code>new</code> or <code>changed</code> tag that you wrote by hand on an element that does not have that state is only your stereotype, with your own style if you gave it one, and the command line draws it the same way (see <a href="#plateau-state-tags">[plateau-state-tags]</a>).</p>
 </div>
 <div class="paragraph">
-<p>Under the diagram, the key adds an entry for each state the drawing uses, with a sample of its box and its link, its mark, its name, how its line is drawn, and how many boxes and links of that state the drawing shows. The SVG and PNG downloads draw the same marks, lines, struck titles, pills and tints; like the other keys, the key itself is not part of the image.</p>
+<p><strong>The key is folded.</strong> Under the diagram, the key starts as one row: a sample of the box and of the link, the mark, the name and the count of each state the drawing uses, and a <strong>Key</strong> button. The row wraps on a wide window and stays one row that scrolls along under 700 pixels. <strong>Key</strong> (<code>aria-expanded</code>) opens the rest, which says how each line is drawn and the note about references that point nowhere; the open key takes at most 30 % of the height of the diagram area and scrolls inside. Open or folded is not saved: it is not in the address or the workspace, and a new folder folds it again. Open, the key adds an entry for each state the drawing uses, with a sample of its box and its link, its mark, its name, how its line is drawn, and how many boxes and links of that state the drawing shows. The SVG and PNG downloads draw the same marks, lines, struck titles, pills and tints; like the other keys, the key itself is not part of the image.</p>
 </div>
 <div class="sect3">
 <h4 id="editor-changes-panel">The Changes panel</h4>
@@ -4780,6 +4817,17 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p><strong>Write replaces</strong> writes the key on the element <code>to</code> of the <em>more recent</em> plateau of the two compared, in the manifest that declares it, and nowhere else; when the plateau compared with is the past of the one drawn (or any plateau the plateau drawn stands on), the more recent plateau is the one drawn, and when it is a plateau above the one drawn, the more recent plateau is the one compared with, which the button writes all the same, since it is the one thing the <strong>Changes</strong> panel offers. It is refused, with the reason in the panel and nothing written, when the element belongs to the older plateau of the two (<code>replaces</code> goes on the more recent plateau: compare the other way round), when the more recent plateau only <em>inherits</em> the element (it is declared in a plateau above, and the key would change that plateau and the ones that override it: compare that plateau with its past instead), when the replaced element is still in the more recent plateau, when it is not an element of the older one, or when the <code>replaces</code> of the element is not a list.</p>
 </div>
 <div class="paragraph">
+<p>One more refusal belongs to comparisons several layers apart. <code>replaces</code> is read against the plateau a manifest builds on, so when a layer in between removed the replaced element, the entry would name nothing in the layer it is written in. The button is then off, and the sentence is its title and is written under the pair; a click that gets through anyway writes nothing and shows the same sentence, which names the element, the plateau the manifest builds on and what to do:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>“a” is not an element of “p1”, the plateau “p2” builds on (a layer in between removed it): replaces is read against that plateau, so the entry would name nothing there. Compare “p2” with “p1”, or write the entry in the layer that still has “a” (a plateau that overrides one that holds it); nothing was written.</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A split or a merge is written one pair at a time and each replaced element is checked alone. A comparison one layer apart is not concerned. The field <strong>Add replaces</strong> of the form of an element types a reference by hand and is not checked.</p>
+</div>
+<div class="paragraph">
 <p><strong>By hand.</strong> The edit form of an element has a <strong>Replaces</strong> section as soon as the workspace has several plateaus: the list, each reference with a button to remove it, and a field to add one (it completes with the references of the plateau compared with). A reference the plateau compared with does not have is accepted and flagged ("not in “Base”", with the name of that plateau), because you may have written it for another baseline; one that the plateau drawn still has is flagged "still in this plateau: ignored". An element cannot replace itself, and a reference is listed once. The details of an element that replaces something list it too.</p>
 </div>
 <div class="paragraph">
@@ -4795,10 +4843,10 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p>In the edit form of an element, <strong>Move</strong> (after <strong>Delete</strong>, before <strong>Add child</strong>) puts the element, and everything inside it, under another parent, or at the top level, without breaking a reference. It is offered when the dialog has at least one place to offer, the top level included: a solution, a person and an environment are at the top already and have nowhere else to go, so they have no <strong>Move</strong>; a system can go under a solution, and goes to the top level from there. It works on the plateau that is drawn, and never on the one it is compared with, which is read-only. In a plateau of layers it moves an element that plateau declares; an element it inherits is refused (a patch never changes a parent), and says which plateau declares it.</p>
 </div>
 <div class="paragraph">
-<p>The dialog has a search field (it keeps the places that have every word you type in their name, id, reference or kind) and the list of the places the element can go, in the layer of the element: the <em>top level</em>, when it may be there, then the <strong>valid parents</strong>, each an element that may hold the kind of this one (the rules that create an element under a parent, see <a href="#nesting">[nesting]</a>). It says how many elements follow, how many references will be rewritten in how many files, and how many saved views follow. Under the places, a closed list says, for every element of the layer that is not offered, why not, with the same search: <em>N places are not offered, and why</em>. The reasons are the sentences that refuse a move: it is the element itself, it is inside the element, it is its parent already, its kind cannot be held by that parent (the sentence says what the parent holds), the parent already holds an element with that id, the parent is declared twice, and a group cannot go under a parent of a plateau that the plateau drawn overrides (#114). A reason that stops every move (an element inside it is declared twice, a manifest cannot be read, a reference cannot be rewritten as text) is told once, at the top, as <em>No move can be written now</em>.</p>
+<p>The dialog has a search field (it keeps the places that have every word you type in their name, id, reference or kind) and the list of the places the element can go, in the layer of the element: the <em>top level</em>, when it may be there, then the <strong>valid parents</strong>, each an element that may hold the kind of this one (the rules that create an element under a parent, see <a href="#nesting">[nesting]</a>). It says how many elements follow, how many references will be rewritten in how many files, and how many saved views follow. Under the places, a closed list says, for every element of the layer that is not offered, why not, with the same search: <em>N places are not offered, and why</em>. The reasons are the sentences that refuse a move: it is the element itself, it is inside the element, it is its parent already, its kind cannot be held by that parent (the sentence says what the parent holds), the parent already holds an element with that id, the parent is declared twice. A reason that stops every move (an element inside it is declared twice, a manifest cannot be read, a reference cannot be rewritten as text) is told once, at the top, as <em>No move can be written now</em>.</p>
 </div>
 <div class="paragraph">
-<p><strong>The top level.</strong> The kinds that may be at the top level are the ones the layer holds there: a person, a solution and a system in the application layer, an environment in the technology layer; a group is no root. For any other kind the list says so (<em>A container is never at the top level: the application layer holds only person, solution and system there.</em>), and the editor neither offers it nor moves an element there. In practice the top level is offered for a system that sits in a solution.</p>
+<p><strong>The top level.</strong> The kinds that may be at the top level are the ones the layer holds there: a person, a solution and a system in the application layer, an environment in the technology layer; for any other kind the list says so (<em>A container is never at the top level: the application layer holds only person, solution and system there.</em>), and the editor neither offers it nor moves an element there. In practice the top level is offered for a system that sits in a solution.</p>
 </div>
 <div class="paragraph">
 <p><strong>What follows.</strong> The reference of the element becomes the reference of the new parent followed by its id (its id alone, at the top level), and so does the reference of each element inside it. Every reference to the element or to something inside it is rewritten, in every file of the workspace, by the machinery of an id change:</p>
@@ -4958,8 +5006,8 @@ error: the workspace file `/work/workspace.yaml` does not exist (`-w` names anot
 <div class="listingblock">
 <div class="content">
 <pre>unknown key `nme` (known: description, id, name, qualifiers, relationships, replaces, tags) at `nme`
-unknown kind `containr` (known: container, group) at `elements[0]`
-missing `kind` (known: container, group) at `elements[0]`
+unknown kind `containr` (known: container) at `elements[0]`
+missing `kind` (known: container) at `elements[0]`
 unrecognized `header.kind` "archicode.morin.io/persn" (known: archicode.morin.io/component, ...)
 the value has the wrong shape (found a string) at `settings.views.labels`
 Missing content.elements[0].id</pre>
@@ -4974,10 +5022,10 @@ Missing content.elements[0].id</pre>
 <div class="ulist">
 <ul>
 <li>
-<p>a facet written in the old dialect (<code>anyof</code>, <code>noneof</code>, <code>== null</code>): it is rewritten, and the warning gives the standard form (see <a href="#facets">Tackling view clutter</a>);</p>
+<p>a step of a story that names a view nobody declares;</p>
 </li>
 <li>
-<p>a step of a story that names a view nobody declares;</p>
+<p>a step of a story that <code>archicode stories generate</code> skips: it names an element that the plateau of the step does not have, or it is told at a plateau and compared with that same plateau (see <a href="#stories-generate">Draw the stories</a>);</p>
 </li>
 <li>
 <p>a view that cannot be drawn in the plateau, because it names an element that the plateau does not have and another plateau has: skipped by <code>views generate --view</code>, or, for the entries of the lists of a map, left out (see <a href="#plateau-views-lacking">[plateau-views-lacking]</a>);</p>
@@ -5074,7 +5122,7 @@ Missing content.elements[0].id</pre>
 <div class="ulist">
 <ul>
 <li>
-<p>Comparison: a plateau other than the root is compared with the plateau it overrides, or with <code>--against &lt;id&gt;</code>, any other plateau (see <a href="#plateau-comparison">Comparing two plateaus</a>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in <code>views-&lt;plateau&gt;-vs-&lt;against&gt;</code> (and one folder per facet, <code>views-&lt;plateau&gt;-vs-&lt;against&gt;-&lt;facet&gt;</code>), next to two files that tell the same in text: <code>gap.md</code> and <code>gap.json</code>, the table of changes that <code>archicode diff</code> prints (see <a href="#diff">Compare plateaus</a>), with the elements that moved, split or merged, the candidates (see <a href="#plateau-replaces">Saying what an element replaces</a>) and the cascade of the <code>REMOVE</code> patches (see <a href="#plateau-cascade">[plateau-cascade]</a>), and the same warnings about <code>replaces</code> on the error output. A workspace that sets <code>settings.facets.global-enabled: false</code> has nothing but these two files in <code>views-&lt;plateau&gt;-vs-&lt;against&gt;</code>: its views are in the folders of its facets. The root overrides nothing, so it is drawn alone unless <code>--against</code> names a plateau to compare it with (<code>--plateau baseline --against to-be</code> writes <code>views-baseline-vs-to-be</code>). An unknown plateau given to <code>--against</code>, the plateau itself, or <code>--against</code> on a workspace that has no plateau, stops the command before anything is written. <code>--output</code> is, with plateaus, the beginning of the name of these folders (see <a href="#plateau-limits">Limits of today</a> for what it means for the manifests that a path with <code>/**</code> reads).</p>
+<p>Comparison: a plateau other than the root is compared with the plateau it overrides, or with <code>--against &lt;id&gt;</code>, any other plateau (see <a href="#plateau-comparison">Comparing two plateaus</a>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in <code>views-&lt;plateau&gt;-vs-&lt;against&gt;</code> (and one folder per facet, <code>views-&lt;plateau&gt;-vs-&lt;against&gt;-&lt;facet&gt;</code>), next to two files that tell the same in text: <code>gap.md</code> and <code>gap.json</code>, the table of changes that <code>archicode diff</code> prints (see <a href="#diff">Compare plateaus</a>), with the elements that moved, split or merged, the candidates (see <a href="#plateau-replaces">Saying what an element replaces</a>) and the cascade of the <code>REMOVE</code> patches (see <a href="#plateau-cascade">[plateau-cascade]</a>), and the same warnings about <code>replaces</code> on the error output. A workspace that sets <code>settings.facets.global-enabled: false</code> has nothing but these two files in <code>views-&lt;plateau&gt;-vs-&lt;against&gt;</code>: its views are in the folders of its facets. The root overrides nothing, so it is drawn alone unless <code>--against</code> names a plateau to compare it with (<code>--plateau baseline --against to-be</code> writes <code>views-baseline-vs-to-be</code>). An unknown plateau given to <code>--against</code>, the plateau itself, or <code>--against</code> on a workspace that has no plateau, stops the command before anything is written. <code>--output</code> is, with plateaus, the beginning of the name of these folders (see <a href="#manifests-folders">Manifests in folders</a> for what it means for the manifests that a path with <code>/**</code> reads).</p>
 </li>
 </ul>
 </div>
@@ -5250,6 +5298,46 @@ A relationship whose destination does not exist is an error, as it is for the vi
 <p>Sorted Output: the elements come by layer (application, then technology) and, in a layer, by reference; the relationships come by the reference of their source in the same order and, for one source, as the author wrote them. Two runs and two builds of the same version give the same output byte for byte, which lets you diff it or keep it in git. Before 0.14.0 the elements came in the hash order of their references: the same for one workspace and one JDK, but not a promised one. The order of the output changes once, when you upgrade; the elements and the relationships did not change.</p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="stories-generate">Draw the stories</h3>
+<div class="listingblock">
+<div class="title">Draw the stories - The command line</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode stories generate --help</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>views generate</code> does not draw the stories. <code>archicode stories generate [--story &lt;id&gt;]&#8230;&#8203;</code> draws the steps of the stories of the workspace, one folder for each step:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A step is drawn like a view of the plateau it is told at: its <code>at</code>, else <code>--plateau</code>, else <code>settings.current</code> (see <a href="#story-step-plateaus">[story-step-plateaus]</a>). A plateau is loaded once, however many steps are told at it. When the step says <code>against</code>, it is drawn like the views of a comparison of that plateau with the <code>against</code> one (<code>views generate --plateau &lt;at&gt; --against &lt;against&gt;</code>); the comparison writes no <code>gap.md</code> or <code>gap.json</code>, which belong to <code>diff</code> and <code>views generate</code>, and no facet is applied: the stories are drawn with the global views only.</p>
+</li>
+<li>
+<p>The files go to <code>&lt;views.path&gt;-stories/&lt;story&gt;/&lt;NN&gt;-&lt;view&gt;/</code>, with <code>views.path</code> read without the <code>-&lt;plateau&gt;</code> that a workspace of plateaus adds (<code>views-stories</code> for the default), <code>NN</code> the number of the step from <code>01</code>, and <code>&lt;view&gt;</code> the view the step names, else the viewpoint of the view it carries (whose file is <code>step_NN.puml</code>). The renderer then adds its own folders as it does for any view (<code>plantuml/application/&#8230;&#8203;</code>). <code>--output</code> (<code>-o</code>) replaces the beginning of the folder name, as in <code>views generate</code>, and <code>--engine</code> (<code>-e</code>) chooses the renderer.</p>
+</li>
+<li>
+<p><code>--story</code> (<code>-s</code>) draws the stories named, repeated for several; with none, every story is drawn, in the order of their ids. An unknown story is one <code>error:</code> line and exit 1, before anything is written: <code>error: no story `nope` in the workspace (known: migration)</code>.</p>
+</li>
+<li>
+<p>A tree of plateaus that forks needs <code>--plateau</code>, as every command that loads a plateau (see <a href="#plateau-choose">[plateau-choose]</a>), even when all the steps say <code>at</code>.</p>
+</li>
+<li>
+<p>A step that cannot be drawn is a warning and is skipped; the others are drawn and the exit code is 0: <code>warning: skip fork_tour/7: it is told at the plateau `saas` and compared with it: there is nothing to compare</code> and <code>warning: skip &lt;story&gt;/&lt;n&gt;: it names `x`, which the plateau `p` does not have</code>. A story with no step is a warning too.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title">Draw the stories of the example <code>domain_plateaus</code></div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode stories generate</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>writes <code>views-stories/migration/01-overview/</code> to <code>04-overview/</code>, one for each step of the story <code>migration</code>. On the layered Brightcart, <code>archicode stories generate --story fork_tour --plateau saas</code> draws the seven steps of <code>fork_tour</code> in <code>views-stories/fork_tour/01-shop_overview/</code> to <code>07-overview/</code>, the last one skipped with the warning above, since it is told at <code>saas</code> and compared with it.</p>
 </div>
 </div>
 <div class="sect2">
@@ -6523,7 +6611,15 @@ EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.Use
 <p>The <code>json-path</code> of an action is a JSONPath as standardized by <a href="https://www.rfc-editor.org/rfc/rfc9535">RFC 9535</a>. It selects nodes of the workspace, and the <code>REMOVE</code> operator deletes them. The same code evaluates it in the command line and in the editor, so a facet cannot mean one thing in each. Beyond comparisons, a filter can combine tests with <code>&amp;&amp;</code>, <code>||</code> and <code>!</code>, test that a field exists (<code>?(@.label)</code>), look inside a list (<code>?(@.qualifiers[?(@ == 'oidc')])</code>) and call <code>length()</code> or <code>count()</code>. The functions <code>match()</code> and <code>search()</code> (regular expressions) are not available.</p>
 </div>
 <div class="paragraph">
-<p>The facets written for the previous engine (Jayway) keep working for now, with a warning that gives the standard form. They are going to be removed in a future major version. The command line prints the warning on its error output, one line per rewritten filter (see <a href="#errors-and-warnings">Errors, warnings and exit codes</a>).</p>
+<p>The facets written for the previous engine (Jayway) are no longer read since 0.17. A path that uses <code>anyof</code>, <code>noneof</code>, <code>== null</code> or <code>!= null</code> is refused, by the command line and by the editor, with one sentence that names the standard form:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>error: facet f: the facet path `$.application..elements[?(@.qualifiers anyof ['a'])]` uses `@.qualifiers anyof ['a']`, which is not JSONPath (RFC 9535) and is no longer read: write `@.qualifiers[?(@ == 'a')]`</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Nothing is written, and the exit code is 1; the editor shows the same sentence as the error of the view. Rewrite the paths as follows:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -6533,7 +6629,7 @@ EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.Use
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Before</th>
-<th class="tableblock halign-left valign-top">Now</th>
+<th class="tableblock halign-left valign-top">Write</th>
 </tr>
 </thead>
 <tbody>
@@ -6555,6 +6651,14 @@ EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.Use
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>The keys of a facet are written in kebab-case: <code>global-enabled</code>, <code>directory-name-template</code>, <code>hide-unlinked</code> and <code>json-path</code>. The camel-case spelling is no longer read either, and the sentence says which key to write:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>error: `workspace.yaml` is not valid: unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked` (line 5, column 27)</pre>
+</div>
+</div>
 <div class="paragraph">
 <p>Relationships that have no tag, or no qualifier, simply do not have the field: <code>@.tags['k'] != 'v'</code> selects them, <code>@.tags['k'] == 'v'</code> does not.</p>
 </div>
@@ -7928,7 +8032,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-21 05:52:32 UTC
+Last updated 2026-10-21 20:55:59 UTC
 </div>
 </div>
 </body>
