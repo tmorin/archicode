@@ -2642,19 +2642,13 @@
     {
       "id": "N76",
       "variant": "-",
-      "title": "#80: the older spellings of the keys of a facet are still read (camel-case)",
+      "title": "#128: the camel-case spelling of a key of `settings.facets` is no longer read (0.17): the sentence says the kebab-case key to write",
       "ops": [
         {
           "op": "replace",
           "file": "workspace.yaml",
-          "from": "json-path: \"$.application..elements[?(@.id == 'cart')]\"",
-          "to": "jsonPath: \"$.application..elements[?(@.id == 'cart')]\""
-        },
-        {
-          "op": "replace",
-          "file": "workspace.yaml",
           "from": "  facets:\n",
-          "to": "  facets:\n    globalEnabled: true\n    directoryNameTemplate: \"%s-%s\"\n"
+          "to": "  facets:\n    globalEnabled: true\n"
         }
       ],
       "cli": [
@@ -2664,15 +2658,19 @@
             "--plateau",
             "saas"
           ],
-          "exit": 0,
-          "stderr": []
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: unknown key `globalEnabled`, write `global-enabled` (known: customs, directory-name-template, global-enabled) at `settings.facets.globalEnabled` (line 6, column 24)"
+          ]
         }
       ],
       "editor": [
         {
           "plateau": "saas",
           "compareTo": null,
-          "expect": {}
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `globalEnabled`, write `global-enabled` (known: customs, directory-name-template, global-enabled) at `settings.facets.globalEnabled`"
+          }
         }
       ]
     },
@@ -3341,6 +3339,111 @@
             "manifestErrors": {
               "baseline/application/agent.yaml": "unrecognized `header.kind` \"archicode.morin.io/group\", a group is no kind any more: write its children in the `elements` of its parent (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)"
             }
+          }
+        }
+      ]
+    },
+    {
+      "id": "N91",
+      "variant": "-",
+      "title": "#128: `directoryNameTemplate` is no longer read: the sentence says `directory-name-template`",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "  facets:\n",
+          "to": "  facets:\n    directoryNameTemplate: \"%s-%s\"\n"
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: unknown key `directoryNameTemplate`, write `directory-name-template` (known: customs, directory-name-template, global-enabled) at `settings.facets.directoryNameTemplate` (line 6, column 35)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `directoryNameTemplate`, write `directory-name-template` (known: customs, directory-name-template, global-enabled) at `settings.facets.directoryNameTemplate`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N92",
+      "variant": "-",
+      "title": "#128: `hideUnlinked` on a facet is no longer read: the sentence says `hide-unlinked`",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "      - name: \"journey\"",
+          "to": "      - hideUnlinked: true\n        name: \"journey\""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked` (line 7, column 27)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked`"
+          }
+        }
+      ]
+    },
+    {
+      "id": "N93",
+      "variant": "-",
+      "title": "#128: `jsonPath` on an action is no longer read: the sentence says `json-path`",
+      "ops": [
+        {
+          "op": "replace",
+          "file": "workspace.yaml",
+          "from": "json-path: \"$.application..elements[?(@.id == 'cart')]\"",
+          "to": "jsonPath: \"$.application..elements[?(@.id == 'cart')]\""
+        }
+      ],
+      "cli": [
+        {
+          "args": [
+            "diff",
+            "--plateau",
+            "saas"
+          ],
+          "exit": 1,
+          "stderr": [
+            "error: `workspace.yaml` is not valid: unknown key `jsonPath`, write `json-path` (known: json-path, operator) at `settings.facets.customs[2].actions[0].jsonPath` (line 18, column 67)"
+          ]
+        }
+      ],
+      "editor": [
+        {
+          "plateau": "saas",
+          "compareTo": null,
+          "expect": {
+            "fatalError": "Could not read/parse workspace.yaml: unknown key `jsonPath`, write `json-path` (known: json-path, operator) at `settings.facets.customs[2].actions[0].jsonPath`"
           }
         }
       ]

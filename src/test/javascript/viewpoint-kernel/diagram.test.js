@@ -33,25 +33,21 @@ test('the URL carries the tab and the facet of a diagram, and restores them; an 
   run(sandbox, "elementTab = 'details';");
   assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api', 'Details stays out of the URL, and so does the facet it ignores');
 
-  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=detailed&facet=rest-only';
+  sandbox.location.hash = '#/timeline/elements?ref=shop.web.api&tab=detailed&facet=rest-only';
   sandbox.syncPerspectiveFromHash();
   assert.equal(run(sandbox, 'elementTab'), 'detailed');
   assert.equal(run(sandbox, 'diagramFacet'), 'rest-only');
 
-  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=sideways&facet=nope';
+  sandbox.location.hash = '#/timeline/elements?ref=shop.web.api&tab=sideways&facet=nope';
   sandbox.syncPerspectiveFromHash();
   assert.equal(run(sandbox, 'elementTab'), 'details', 'an unknown tab falls back');
   assert.equal(run(sandbox, 'diagramFacet'), null, 'an unknown facet falls back');
 
-  // the links of the Diagram perspective, which is gone, open the matching tab
+  // the links of the Diagram perspective, which is gone, are no route any more (0.17): they open the default page, Applications
   sandbox.location.hash = '#/diagram?ref=shop.web.api&vp=deep&facet=no-smtp';
   sandbox.syncPerspectiveFromHash();
-  assert.equal(run(sandbox, 'currentPerspective'), 'elements');
-  assert.equal(run(sandbox, 'elementTab'), 'deep');
-  assert.equal(run(sandbox, 'diagramFacet'), 'no-smtp');
-  sandbox.location.hash = '#/diagram?ref=shop.web.api';
-  sandbox.syncPerspectiveFromHash();
-  assert.equal(run(sandbox, 'elementTab'), 'overview', 'a Diagram link with no viewpoint was the overview');
+  assert.equal(run(sandbox, 'currentPerspective'), 'map');
+  assert.equal(run(sandbox, 'pageIdFromHash()'), 'map');
 });
 
 test('the header of Elements offers Details and the three viewpoints, and the facets of the workspace', async () => {
@@ -226,9 +222,9 @@ test('the viewpoints of an element have no fold button and no Fold all / Unfold 
   assert.match(sandbox.renderDiagramCanvasHtml(record), /data-action="toggle-hide-unlinked" aria-pressed="true"/);
   assert.match(sandbox.currentRouteHash(), /hide-unlinked=1/);
   assert.equal(sandbox.currentViewDefinition().properties['hide-unlinked'], true);
-  run(sandbox, "location.hash = '#/elements?ref=shop.web.api&tab=overview'; applyDiagramParamsFromHash();");
+  run(sandbox, "location.hash = '#/timeline/elements?ref=shop.web.api&tab=overview'; applyDiagramParamsFromHash();");
   assert.equal(run(sandbox, 'diagramHideUnlinked'), false, 'a link without it shows every box');
-  run(sandbox, "location.hash = '#/elements?ref=shop.web.api&tab=overview&hide-unlinked=1'; applyDiagramParamsFromHash();");
+  run(sandbox, "location.hash = '#/timeline/elements?ref=shop.web.api&tab=overview&hide-unlinked=1'; applyDiagramParamsFromHash();");
   assert.equal(run(sandbox, 'diagramHideUnlinked'), true);
   run(sandbox, 'diagramHideUnlinked = false');
   assert.ok(!('hide-unlinked' in sandbox.currentViewDefinition().properties), 'off is the default: not remembered');
@@ -521,7 +517,7 @@ test('the tree of the Map greys the elements the drawn map leaves out, and unfol
   assert.equal(state.expanded.has('application:shop.catalog'), false, 'the element itself is left as it was');
   state.expanded.clear();
   run(sandbox, 'mapPinned = [];');
-  sandbox.location.hash = '#/map?pin=shop.web';
+  sandbox.location.hash = '#/timeline/applications?pin=shop.web';
   sandbox.syncPerspectiveFromHash();
   assert.equal(state.expanded.has('application:shop'), true, 'also when the pin comes from the URL');
 });
@@ -671,7 +667,7 @@ test('Elements and Map lead to each other, and the URL of the map carries the fa
   assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web&tab=overview&facet=no-smtp');
 
   run(sandbox, 'mapPinned = []; diagramFacet = null;');
-  sandbox.location.hash = '#/map?pin=shop.web,nope&facet=rest-only';
+  sandbox.location.hash = '#/timeline/applications?pin=shop.web,nope&facet=rest-only';
   sandbox.syncPerspectiveFromHash();
   assert.equal(run(sandbox, 'currentPerspective'), 'map');
   assert.equal(run(sandbox, 'JSON.stringify(mapPinned)'), JSON.stringify(['shop.web']), 'an element that does not exist is dropped');
@@ -980,10 +976,10 @@ test('the texts of a diagram start as the default says, and only a choice that d
   assert.equal(sandbox.currentRouteHash(), '/timeline/elements?ref=shop.web.api');
 
   // read back from a link, and a map has its own defaults
-  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=overview&qualifiers=0&labels=1&wrap=1';
+  sandbox.location.hash = '#/timeline/elements?ref=shop.web.api&tab=overview&qualifiers=0&labels=1&wrap=1';
   sandbox.syncPerspectiveFromHash();
   assert.deepEqual(JSON.parse(JSON.stringify(sandbox.diagramShows(false))), { labels: true, qualifiers: false, descriptions: false, wrap: true });
-  sandbox.location.hash = '#/map?labels=1&qualifiers=1';
+  sandbox.location.hash = '#/timeline/applications?labels=1&qualifiers=1';
   sandbox.syncPerspectiveFromHash();
   assert.equal(sandbox.currentRouteHash(), '/timeline/applications?labels=1&qualifiers=1');
 });
@@ -1113,7 +1109,7 @@ test('the Map is where the editor opens: with no route, or one it does not know'
     sandbox.location.hash = hash;
     assert.equal(sandbox.pageIdFromHash(), 'map', JSON.stringify(hash));
   }
-  sandbox.location.hash = '#/elements?ref=shop';
+  sandbox.location.hash = '#/timeline/elements?ref=shop';
   assert.equal(sandbox.pageIdFromHash(), 'elements', 'a route that names a perspective still wins');
 });
 
@@ -1134,10 +1130,10 @@ test('Fit is in the URL, Center is how a diagram opens, and a link restores eith
 
   // read back
   run(sandbox, "diagramScale = 'auto';");
-  sandbox.location.hash = '#/map?pin=shop&frame=fit';
+  sandbox.location.hash = '#/timeline/applications?pin=shop&frame=fit';
   sandbox.syncPerspectiveFromHash();
   assert.equal(run(sandbox, 'diagramScale'), 'fit');
-  sandbox.location.hash = '#/map?pin=shop';
+  sandbox.location.hash = '#/timeline/applications?pin=shop';
   sandbox.syncPerspectiveFromHash();
   assert.equal(run(sandbox, 'diagramScale'), 'auto', 'no frame: Center');
   run(sandbox, 'diagramScale = 2;');
@@ -1154,7 +1150,7 @@ test('pressing Fit or Center, or moving away from Fit, changes the address bar a
   const canvas = { clientWidth: 800, clientHeight: 600, querySelector: (s) => (s === 'svg' ? svg : null), getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) };
   sandbox.document.getElementById = (id) => (id === 'diagram-canvas' ? canvas : null);
   run(sandbox, "diagramScene = { width: 900, height: 700, hasSvg: true, focal: null };");
-  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=overview';
+  sandbox.location.hash = '#/timeline/elements?ref=shop.web.api&tab=overview';
 
   sandbox.setDiagramScale('fit');
   assert.match(sandbox.location.hash, /frame=fit/, 'Fit');

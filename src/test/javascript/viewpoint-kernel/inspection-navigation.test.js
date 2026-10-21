@@ -202,12 +202,12 @@ test('the guard is the state, not the caller: the other places that write the ad
 test('an address with a link selects it on the Map, as a click would, and brings it into view', async () => {
   const { sandbox, state } = await page('map', 'map', null);
   state.selection = NONE;
-  sandbox.location.hash = '#/map?link-from=customer&link-to=shop';
+  sandbox.location.hash = '#/timeline/applications?link-from=customer&link-to=shop';
   sandbox.applySelectionFromHashRef();
   assert.deepEqual(plain(state.selection), linkSelection('customer', 'shop'));
   assert.deepEqual(plain(run(sandbox, 'revealLinkAfterDrawing')), { nth: null }, 'which twin is not in an address: the first');
   // the link wins over the element that `ref=` named: a selection is one thing
-  sandbox.location.hash = '#/map?ref=shop.web&link-from=customer&link-to=shop';
+  sandbox.location.hash = '#/timeline/applications?ref=shop.web&link-from=customer&link-to=shop';
   sandbox.applySelectionFromHashRef();
   assert.equal(state.selection.kind, 'link');
 });
@@ -215,7 +215,7 @@ test('an address with a link selects it on the Map, as a click would, and brings
 test('an address with a link selects it over the element of a diagram tab in Elements, with its layer', async () => {
   const { sandbox, state } = await page('elements', 'overview', 'shop.web.api');
   state.selection = NONE;
-  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=overview&link-from=shop.web.frontend&link-to=shop.web.api';
+  sandbox.location.hash = '#/timeline/elements?ref=shop.web.api&tab=overview&link-from=shop.web.frontend&link-to=shop.web.api';
   sandbox.applySelectionFromHashRef();
   assert.deepEqual(plain(state.selection), linkSelection('shop.web.frontend', 'shop.web.api', { focal: 'shop.web.api' }));
   assert.deepEqual(plain(sandbox.elementSelection()), { kind: 'element', key: 'shop.web.api', layer: 'application', mode: 'view' }, 'the element stays the subject');
@@ -225,16 +225,16 @@ test('where a link cannot be selected the parameters are ignored: Details, an un
   const { sandbox, state } = await page('elements', 'overview', 'shop.web.api');
   const read = (hash) => { state.selection = NONE; sandbox.location.hash = hash; sandbox.applySelectionFromHashRef(); return plain(state.selection); };
   const link = '&link-from=shop.web.frontend&link-to=shop.web.api';
-  assert.deepEqual(read('#/elements?ref=shop.web.api' + link), { kind: 'element', key: 'shop.web.api', mode: 'view' }, 'Details has no diagram');
-  assert.deepEqual(read('#/elements?ref=nope&tab=overview' + link), NONE);
-  assert.deepEqual(read('#/elements?tab=overview' + link), NONE, 'no element to be about');
-  assert.deepEqual(read('#/library/views?x=1' + link), NONE);
+  assert.deepEqual(read('#/timeline/elements?ref=shop.web.api' + link), { kind: 'element', key: 'shop.web.api', mode: 'view' }, 'Details has no diagram');
+  assert.deepEqual(read('#/timeline/elements?ref=nope&tab=overview' + link), NONE);
+  assert.deepEqual(read('#/timeline/elements?tab=overview' + link), NONE, 'no element to be about');
+  assert.deepEqual(read('#/stories/views?x=1' + link), NONE);
   assert.equal(run(sandbox, 'revealLinkAfterDrawing'), false, 'and nothing is brought into view');
 });
 
 test('half a link, an empty one or a broken quoting names nothing, and does no harm', async () => {
   const { sandbox, state } = await page('map', 'map', null);
-  for (const hash of ['#/map?link-from=customer', '#/map?link-to=shop', '#/map?link-from=&link-to=shop', '#/map?link-from=customer&link-to=', '#/map?link-from=%E0%A4%A&link-to=%', '#/map?link-from', '#/map?']) {
+  for (const hash of ['#/timeline/applications?link-from=customer', '#/timeline/applications?link-to=shop', '#/timeline/applications?link-from=&link-to=shop', '#/timeline/applications?link-from=customer&link-to=', '#/timeline/applications?link-from=%E0%A4%A&link-to=%', '#/timeline/applications?link-from', '#/timeline/applications?']) {
     state.selection = NONE;
     sandbox.location.hash = hash;
     sandbox.applySelectionFromHashRef();
@@ -245,7 +245,7 @@ test('half a link, an empty one or a broken quoting names nothing, and does no h
 
 test('an address with no link parameter reads exactly as it did', async () => {
   const { sandbox, state } = await page('map', 'map', null);
-  sandbox.location.hash = '#/map?ref=shop.web&pin=shop.web';
+  sandbox.location.hash = '#/timeline/applications?ref=shop.web&pin=shop.web';
   sandbox.applySelectionFromHashRef();
   assert.deepEqual(plain(state.selection), { kind: 'element', key: 'shop.web', mode: 'view' });
   assert.equal(run(sandbox, 'revealLinkAfterDrawing'), false);
@@ -254,7 +254,7 @@ test('an address with no link parameter reads exactly as it did', async () => {
 test('a link of the address that the drawing does not have is dropped when the drawing arrives, and the address is cleaned', async () => {
   const { sandbox, state, show, scene } = await page('map', 'map', null);
   state.selection = NONE;
-  sandbox.location.hash = '#/map?link-from=customer&link-to=nowhere';
+  sandbox.location.hash = '#/timeline/applications?link-from=customer&link-to=nowhere';
   sandbox.applySelectionFromHashRef();
   assert.equal(state.selection.kind, 'link', 'until the drawing says otherwise, the panel waits');
   assert.match(sandbox.renderMapPerspectiveHtml().right, /Reading the link/);
@@ -270,20 +270,20 @@ test('a link of the address that the drawing does not have is dropped when the d
 test('a link of the address that the drawing has is kept, with its panel, and stays in the address', async () => {
   const { sandbox, state } = await page('map', 'map', null);
   state.selection = NONE;
-  sandbox.location.hash = '#/map?link-from=customer&link-to=shop';
+  sandbox.location.hash = '#/timeline/applications?link-from=customer&link-to=shop';
   sandbox.applySelectionFromHashRef();
   const holder = { outerHTML: 'old' };
   sandbox.document.querySelector = (selector) => (selector === '.inspection' ? holder : null);
   sandbox.reconcileLinkSelection();
   assert.equal(state.selection.kind, 'link');
   assert.match(holder.outerHTML, /2 relationships are grouped/);
-  assert.equal(sandbox.location.hash, '#/map?link-from=customer&link-to=shop');
+  assert.equal(sandbox.location.hash, '#/timeline/applications?link-from=customer&link-to=shop');
 });
 
 test('in Elements a link the diagram lacks gives the element back and cleans the address', async () => {
   const { sandbox, state, show, scene } = await page('elements', 'overview', 'shop.web.api');
   state.selection = NONE;
-  sandbox.location.hash = '#/elements?ref=shop.web.api&tab=overview&link-from=shop.web.frontend&link-to=gone';
+  sandbox.location.hash = '#/timeline/elements?ref=shop.web.api&tab=overview&link-from=shop.web.frontend&link-to=gone';
   sandbox.applySelectionFromHashRef();
   fakePanel(sandbox, []);
   show(scene);
@@ -346,11 +346,11 @@ test('hashchange applies a link that changed and leaves one the page wrote itsel
   sandbox.location.hash = '#' + sandbox.currentRouteHash();
   listener();
   assert.equal(renders.n, 0, 'the state already is what the address says');
-  sandbox.location.hash = '#/map?link-from=mailer&link-to=customer';
+  sandbox.location.hash = '#/timeline/applications?link-from=mailer&link-to=customer';
   listener();
   assert.equal(renders.n, 1);
   assert.deepEqual(plain(state.selection), linkSelection('mailer', 'customer'));
-  sandbox.location.hash = '#/map';
+  sandbox.location.hash = '#/timeline/applications';
   listener();
   assert.deepEqual(plain(state.selection), NONE, 'Back to an entry without the link');
 });

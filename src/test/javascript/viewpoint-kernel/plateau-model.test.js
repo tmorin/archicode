@@ -27,7 +27,7 @@ async function open(c, hash) {
 
 for (const c of DOCUMENT.cases) {
   test(c.id + ': ' + c.what, async () => {
-    const { state } = await open(c, c.plateau ? '#/timeline?plateau=' + c.plateau : '');
+    const { state } = await open(c, c.plateau ? '#/timeline/applications?plateau=' + c.plateau : '');
     const expect = c.expect;
     if (expect.removedKey !== undefined || expect.noPlateau !== undefined) {
       // the command line refuses the workspace with this sentence, and the editor with the same one under its own heading (a capital and a full stop apart)

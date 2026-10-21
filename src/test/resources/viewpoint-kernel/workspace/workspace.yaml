@@ -24,27 +24,27 @@ settings:
       - name: "rest-only"
         actions:
           - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers noneof ['REST'])]"
+            json-path: "$.application..relationships[?((@.qualifiers && !@.qualifiers[?(@ == 'REST')]))]"
           - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers == null)]"
+            json-path: "$.application..relationships[?(!@.qualifiers)]"
       # drops the e-mails
       - name: "no-smtp"
         actions:
           - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers anyof ['SMTP'])]"
+            json-path: "$.application..relationships[?(@.qualifiers[?(@ == 'SMTP')])]"
       # works on the technology layer, and on a label
       - name: "quiet-infra"
         actions:
           - operator: "REMOVE"
-            json-path: "$.technology..relationships[?(@.qualifiers anyof ['gRPC'])]"
+            json-path: "$.technology..relationships[?(@.qualifiers[?(@ == 'gRPC')])]"
           - operator: "REMOVE"
             json-path: "$.application..relationships[?(@.label == 'routes to')]"
-      # removes what has qualifiers but none of REST, and keeps what has no qualifier at all (tells how `noneof`
-      # treats a relationship without qualifiers)
+      # removes what has qualifiers but none of REST, and keeps what has no qualifier at all (a relationship without qualifiers is not removed:
+      # the path tests that `qualifiers` is there)
       - name: "keep-untyped"
         actions:
           - operator: "REMOVE"
-            json-path: "$.application..relationships[?(@.qualifiers noneof ['REST'])]"
+            json-path: "$.application..relationships[?((@.qualifiers && !@.qualifiers[?(@ == 'REST')]))]"
       # filters on a tag: removes what is tagged audited=yes; what has no such tag is kept
       - name: "unaudited"
         actions:

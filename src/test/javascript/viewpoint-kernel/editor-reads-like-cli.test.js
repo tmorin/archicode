@@ -189,13 +189,16 @@ test('an item of a list of elements that is a list is the wrong shape, as it is 
   assert.equal(errorOf(manifest('  id: s\n  elements: [5]\n')), 'missing `kind` (known: container) at `elements[0]`', 'a scalar is an element with no kind');
 });
 
-test('the sentences name the keys of the facets as the manual writes them, and the other spelling is still read (#80)', () => {
+test('the sentences name the keys of the facets as the manual writes them, and the camel-case spelling is refused with the key to write (#80, #128)', () => {
   const problem = (text) => app.workspaceProblem(app.parseYaml(text));
   assert.equal(problem('settings:\n  facets:\n    nothing: 1\n'), 'unknown key `nothing` (known: customs, directory-name-template, global-enabled) at `settings.facets.nothing`');
   assert.equal(problem('settings:\n  facets:\n    customs:\n      - nothing: 1\n'), 'unknown key `nothing` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].nothing`');
   assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        actions:\n          - nothing: 1\n'), 'unknown key `nothing` (known: json-path, operator) at `settings.facets.customs[0].actions[0].nothing`');
-  assert.equal(problem('settings:\n  facets:\n    globalEnabled: false\n    directoryNameTemplate: "%s"\n    customs:\n      - name: a\n        hideUnlinked: true\n        actions:\n          - operator: REMOVE\n            jsonPath: "$"\n'), null);
-  assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        actions:\n          - jsonPath: "$"\n'), 'Missing settings.facets.customs[0].actions[0].operator');
+  assert.equal(problem('settings:\n  facets:\n    globalEnabled: false\n'), 'unknown key `globalEnabled`, write `global-enabled` (known: customs, directory-name-template, global-enabled) at `settings.facets.globalEnabled`');
+  assert.equal(problem('settings:\n  facets:\n    directoryNameTemplate: "%s"\n'), 'unknown key `directoryNameTemplate`, write `directory-name-template` (known: customs, directory-name-template, global-enabled) at `settings.facets.directoryNameTemplate`');
+  assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        hideUnlinked: true\n'), 'unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked`');
+  assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        actions:\n          - operator: REMOVE\n            jsonPath: "$"\n'), 'unknown key `jsonPath`, write `json-path` (known: json-path, operator) at `settings.facets.customs[0].actions[0].jsonPath`');
+  assert.equal(problem('settings:\n  facets:\n    customs:\n      - name: a\n        actions:\n          - jsonPath: "$"\n'), 'unknown key `jsonPath`, write `json-path` (known: json-path, operator) at `settings.facets.customs[0].actions[0].jsonPath`');
 });
 
 test('a number is no value of an enum, a value of an enum is told without the blanks around it, and a whole number fits an int (#80)', () => {

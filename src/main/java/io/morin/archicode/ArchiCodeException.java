@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import io.morin.archicode.manifest.ManifestParser;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
@@ -90,9 +91,14 @@ public class ArchiCodeException extends RuntimeException {
                           .filter(key -> !key.startsWith("$"))
                           .sorted()
                           .collect(Collectors.joining(", "));
-            return (
-                "unknown key `" + unknown.getPropertyName() + "`" + (known.isEmpty() ? "" : " (known: " + known + ")")
-            );
+            // a key written in camel-case that the manual writes in kebab-case (`hideUnlinked`): the spelling that was removed in 0.17
+            val written = unknown.getPropertyName();
+            val kebab = written == null ? "" : ManifestParser.documented(written);
+            val write =
+                !kebab.equals(written) && Arrays.asList(known.split(", ")).contains(kebab)
+                    ? ", write `" + kebab + "`"
+                    : "";
+            return "unknown key `" + written + "`" + write + (known.isEmpty() ? "" : " (known: " + known + ")");
         }
         val original = e.getOriginalMessage();
         if (original == null) {

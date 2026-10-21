@@ -1,6 +1,5 @@
 package io.morin.archicode.resource.workspace;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -128,7 +127,6 @@ public class Settings {
          */
         @Builder.Default
         @JsonProperty("global-enabled")
-        @JsonAlias("globalEnabled")
         boolean globalEnabled = true;
 
         /**
@@ -139,7 +137,6 @@ public class Settings {
         @NonNull
         @Builder.Default
         @JsonProperty("directory-name-template")
-        @JsonAlias("directoryNameTemplate")
         String directoryNameTemplate = "%s-%s";
 
         /**
@@ -174,7 +171,6 @@ public class Settings {
              */
             @Builder.Default
             @JsonProperty("hide-unlinked")
-            @JsonAlias("hideUnlinked")
             boolean hideUnlinked = false;
 
             @Value
@@ -187,7 +183,6 @@ public class Settings {
 
                 @NonNull
                 @JsonProperty("json-path")
-                @JsonAlias("jsonPath")
                 String jsonPath;
 
                 public enum Operator {

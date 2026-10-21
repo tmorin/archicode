@@ -24,8 +24,8 @@
 //! the facet do not end in a `dangling reference`. A reference that already led nowhere before the action is not
 //! touched: it is still an error.
 //!
-//! The paths of the earlier, Jayway dialect keep working for now: `@.f anyof [...]`, `@.f noneof [...]` and
-//! `@.f == null` / `!= null` are rewritten to their standard form, and the rewrite is reported as a warning.
+//! The paths of the earlier, Jayway dialect (`@.f anyof [...]`, `@.f noneof [...]` and `@.f == null` / `!= null`) are no longer
+//! read (contract 5, 0.17): the path is refused with one sentence that names the standard form to write ([`refuse_legacy`]).
 use super::{null_as_default, Elem, Input, Rel};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
@@ -91,16 +91,15 @@ fn remove_at(doc: &mut Value, steps: &[Step]) {
     }
 }
 
-/// Runs the actions on the document, in order. Returns the warnings (deprecated syntax that was rewritten).
+/// Runs the actions on the document, in order. Returns the warnings (none today: the Jayway dialect is an error, not a warning).
 pub(crate) fn apply(doc: &mut Value, actions: &[Action]) -> Result<Vec<String>, String> {
-    let mut warnings = Vec::new();
+    let warnings = Vec::new();
     for action in actions {
         if action.operator != "REMOVE" {
             return Err(format!("unsupported facet action: {} {}", action.operator, action.json_path));
         }
-        let (path, rewrites) = translate_legacy(&action.json_path);
-        warnings.extend(rewrites);
-        let parsed = JsonPath::parse(&path).map_err(|e| format!("invalid facet JSONPath {}: {e}", action.json_path))?;
+        refuse_legacy(&action.json_path)?;
+        let parsed = JsonPath::parse(&action.json_path).map_err(|e| format!("invalid facet JSONPath {}: {e}", action.json_path))?;
         let found: Vec<Vec<Step>> = parsed
             .query_located(doc)
             .iter()
@@ -344,10 +343,9 @@ fn legacy_at(chars: &[char], at: usize) -> Option<(String, usize)> {
     None
 }
 
-/// The path with the earlier dialect rewritten to the standard one, and one warning per rewrite.
-pub(crate) fn translate_legacy(path: &str) -> (String, Vec<String>) {
+/// The first use of the earlier dialect in the path, as `(as written, standard form)`, or None.
+pub(crate) fn find_legacy(path: &str) -> Option<(String, String)> {
     let chars: Vec<char> = path.chars().collect();
-    let (mut out, mut warnings) = (String::new(), Vec::new());
     let (mut i, mut quote) = (0, None);
     while i < chars.len() {
         let c = chars[i];
@@ -357,17 +355,22 @@ pub(crate) fn translate_legacy(path: &str) -> (String, Vec<String>) {
             quote = Some(c);
         } else if c == '@' && chars.get(i + 1) == Some(&'.') {
             if let Some((replacement, end)) = legacy_at(&chars, i) {
-                let old: String = chars[i..end].iter().collect();
-                warnings.push(format!("deprecated facet syntax `{old}`: write `{replacement}`"));
-                out.push_str(&replacement);
-                i = end;
-                continue;
+                return Some((chars[i..end].iter().collect(), replacement));
             }
         }
-        out.push(c);
         i += 1;
     }
-    (out, warnings)
+    None
+}
+
+/// The Jayway dialect is not read any more: one sentence that says the standard form to write (the first use in the path).
+pub(crate) fn refuse_legacy(path: &str) -> Result<(), String> {
+    match find_legacy(path) {
+        Some((old, replacement)) => Err(format!(
+            "the facet path `{path}` uses `{old}`, which is not JSONPath (RFC 9535) and is no longer read: write `{replacement}`"
+        )),
+        None => Ok(()),
+    }
 }
 
 // ---- the document of a set of elements ----

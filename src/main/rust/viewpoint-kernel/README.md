@@ -99,10 +99,15 @@ Two things worth knowing before touching the code:
   an entry of `uses`, an entry of `applications`; a reference that led nowhere before is left as it was). `functions` such as `length()` and `count()` are there, `match()` and `search()` (regular expressions) are not,
   to keep the module small: they are refused with an error, as is any path that does not parse or operator other than
   REMOVE. See `src/facet.rs` for the document a path is evaluated against.
-- The paths written for the previous engine (Jayway) keep working, with a warning: `@.qualifiers anyof ['a']`,
-  `@.qualifiers noneof ['a']` and `@.field == null` / `!= null` are rewritten to
-  `@.qualifiers[?(@ == 'a')]`, `(@.qualifiers && !@.qualifiers[?(@ == 'a')])` and `!@.field` / `@.field`. Anything
-  else Jayway accepted and the standard does not is an error that names the path.
+- The paths written for the previous engine (Jayway) are refused since 0.17 (issue #128, no legacy), without a contract number
+  change: the shape of the input and of the output is as it was, and a path the kernel will not read was already an
+  `error` (the one `{error}` of `compute`, `quiet` and `apply_facet`). `@.qualifiers anyof ['a']`, `@.qualifiers noneof ['a']`
+  and `@.field == null` / `!= null` are one sentence each, which says the form to write, for example
+  ``the facet path `…` uses `@.qualifiers anyof ['a']`, which is not JSONPath (RFC 9535) and is no longer read: write `@.qualifiers[?(@ == 'a')]` ``
+  (the standard forms are `(@.qualifiers && !@.qualifiers[?(@ == 'a')])` for `noneof`, and `!@.field` / `@.field`). Only the first
+  use in a path is told. The text of a quoted literal is not looked at. The cases are `src/test/javascript/viewpoint-kernel/facet-dialect-cases.json`,
+  read by the tests of the kernel, `ViewpointKernelTest` and `conformance.test.js`. `warnings` stays in the output (it is empty for a facet).
+  Anything else Jayway accepted and the standard does not is an error that names the path, as before.
 
 ## Comparing two plateaus
 

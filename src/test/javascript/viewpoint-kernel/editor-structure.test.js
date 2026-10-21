@@ -1,6 +1,6 @@
 'use strict';
 // The structure of the editor (wave 014, run 0081, W-7): the perspectives are Timeline (with the pages Plateaus, Applications, Environments and Elements), Stories, Files and
-// Settings; every page has its own route and the former routes (#/map, #/elements, #/library, #/stories) still open; the Plateaus page lists the plateaus with what each
+// Settings; every page has its own route and the former routes (#/map, #/elements, #/library, #/diagram) are dropped and open the default page; the Plateaus page lists the plateaus with what each
 // changes over the one it overrides; Stories show what belongs to the plateau of the band, and Files lists every file in a group per plateau (wave 015, run 0098); the plateau of each manifest. The layered Brightcart
 // (src/test/resources/brightcart/layered/) is the workspace for the counts, read from expected/comparisons.json as in editor-reads-layers.test.js; the other workspaces are
 // small files written here (a ferry company).
@@ -166,26 +166,35 @@ test('each page has one address, and that address opens it', async () => {
   }
 });
 
-// The former routes are links that people have kept: each still opens the page that took its place, and the page then writes its new address.
-const FORMER_ROUTES = [
+// The routes are the ones the pages write. The former routes (0.17: no legacy) are no routes: they open the default page, Applications, and the page writes its address.
+const ROUTES = [
+  ['#/timeline/applications?pin=fleet', 'map', '/timeline/applications?pin=fleet'],
+  ['#/timeline/elements', 'elements', '/timeline/elements'],
+  ['#/timeline/elements?ref=harbour', 'elements', '/timeline/elements?ref=harbour'],
+  ['#/timeline/environments', 'environments', '/timeline/environments'],
+  ['#/timeline/plateaus', 'plateaus', '/timeline/plateaus'],
+  ['#/stories', 'library', '/stories'],
+  ['#/stories/views', 'library', '/stories/views'],
+  ['#/stories?story=tour', 'library', '/stories?story=tour'],
+  ['#/files', 'files', '/files'],
+  ['#/settings', 'settings', '/settings'],
+  // dropped: no legacy
   ['#/map', 'map', '/timeline/applications'],
   ['#/map?pin=fleet', 'map', '/timeline/applications?pin=fleet'],
-  ['#/elements', 'elements', '/timeline/elements'],
-  ['#/elements?ref=harbour', 'elements', '/timeline/elements?ref=harbour'],
-  ['#/diagram?ref=harbour&vp=overview', 'elements', '/timeline/elements?ref=harbour&tab=overview'],
-  ['#/library', 'library', '/stories'],
-  ['#/library/stories', 'library', '/stories'],
-  ['#/library/views', 'library', '/stories/views'],
-  ['#/stories', 'library', '/stories'],
-  ['#/stories?story=tour', 'library', '/stories?story=tour'],
+  ['#/elements', 'map', '/timeline/applications'],
+  ['#/elements?ref=harbour', 'map', '/timeline/applications?ref=harbour'],
+  ['#/diagram?ref=harbour&vp=overview', 'map', '/timeline/applications?ref=harbour'],
+  ['#/library', 'map', '/timeline/applications'],
+  ['#/library/stories', 'map', '/timeline/applications'],
+  ['#/library/views', 'map', '/timeline/applications'],
   ['#/applications', 'map', '/timeline/applications'],
-  ['#/timeline', 'map', '/timeline/applications'], // it named the list of the plateaus, which is now #/timeline/plateaus
+  ['#/timeline', 'map', '/timeline/applications'],
   ['#/timeline?plateau=fast', 'map', '/timeline/applications?plateau=fast'],
-  ['#/plateaus', 'plateaus', '/timeline/plateaus'], // the short address of the page Plateaus keeps working
-  ['#/environments', 'environments', '/timeline/environments']
+  ['#/plateaus', 'map', '/timeline/applications'],
+  ['#/environments', 'map', '/timeline/applications']
 ];
-for (const [former, page, address] of FORMER_ROUTES) {
-  test('the former address ' + former + ' still opens ' + page + ', and the page writes ' + address, async () => {
+for (const [former, page, address] of ROUTES) {
+  test('the address ' + former + ' opens ' + page + ', and the page writes ' + address, async () => {
     const { sandbox } = await openFiles(FERRY);
     const got = opens(sandbox, former);
     assert.equal(got.page, page);
@@ -198,7 +207,7 @@ for (const [former, page, address] of FORMER_ROUTES) {
 }
 
 test('an address opens the page when the workspace is loaded, as a bookmark does', async () => {
-  for (const [former, page] of [['#/map', 'map'], ['#/elements', 'elements'], ['#/library', 'library'], ['#/stories', 'library'], ['#/timeline/environments', 'environments'], ['#/timeline', 'map'], ['#/timeline/plateaus', 'plateaus'], ['#/plateaus', 'plateaus']]) {
+  for (const [former, page] of [['#/map', 'map'], ['#/timeline/elements', 'elements'], ['#/library', 'map'], ['#/stories', 'library'], ['#/timeline/environments', 'environments'], ['#/timeline', 'map'], ['#/timeline/plateaus', 'plateaus'], ['#/plateaus', 'map']]) {
     const sandbox = createApp({});
     run(sandbox, 'location.hash = ' + JSON.stringify(former));
     sandbox.syncPerspectiveFromHash(); // what the page does as it starts

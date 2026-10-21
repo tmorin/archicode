@@ -585,7 +585,7 @@ test('in Elements the removed element is in the address next to the element that
 });
 
 test('an address with a removed element reopens it with the same comparison, whatever this browser had remembered', async () => {
-  const hash = '#/map?removed=shop.session&compare=other%3Aas-is&plateau=to-be';
+  const hash = '#/timeline/applications?removed=shop.session&compare=other%3Aas-is&plateau=to-be';
   const local = storage();
   local.setItem('archicode-standalone-editor:compare:name:ws', ''); // this browser had nothing compared
   const { sandbox, state } = await open(undefined, { localStorage: local, hash });
@@ -610,7 +610,7 @@ test('an address that names a comparison the plateaus cannot honour is no choice
   const local = storage();
   await open('as-is', { localStorage: local });
   assert.equal(local.getItem('archicode-standalone-editor:compare:name:ws'), 'other:as-is');
-  const page = await open(undefined, { localStorage: local, hash: '#/map?plateau=to-be&compare=other%3Anowhere' });
+  const page = await open(undefined, { localStorage: local, hash: '#/timeline/applications?plateau=to-be&compare=other%3Anowhere' });
   assert.equal(page.sandbox.layerCompareChoice(), '', 'the address wins, and names nothing the workspace has');
   assert.equal(local.getItem('archicode-standalone-editor:compare:name:ws'), 'other:as-is', 'and the browser keeps what it had');
 });
@@ -628,13 +628,13 @@ test('the address of a removed element round trips: written, read back by a fres
 });
 
 test('an address that names a removed element the comparison does not have, or no comparison at all, picks nothing and is cleaned', async () => {
-  const gone = await open(undefined, { hash: '#/map?removed=shop.nothing&compare=other%3Aas-is&plateau=to-be' });
+  const gone = await open(undefined, { hash: '#/timeline/applications?removed=shop.nothing&compare=other%3Aas-is&plateau=to-be' });
   run(gone.sandbox, "currentPerspective = 'map';");
   assert.equal(gone.sandbox.currentRouteHash(), '/timeline/applications?plateau=to-be', 'the element is not in the comparison, and the comparison is not in the address without it');
-  const none = await open(undefined, { hash: '#/map?removed=shop.session&compare=other%3Anowhere&plateau=to-be' });
+  const none = await open(undefined, { hash: '#/timeline/applications?removed=shop.session&compare=other%3Anowhere&plateau=to-be' });
   assert.equal(none.sandbox.layerCompareChoice(), '', 'a plateau the workspace does not have is nothing compared');
   assert.equal(run(none.sandbox, 'removedPick'), null);
-  const plain1 = await open('', { hash: '#/map?removed=shop.session&plateau=to-be' });
+  const plain1 = await open('', { hash: '#/timeline/applications?removed=shop.session&plateau=to-be' });
   assert.equal(run(plain1.sandbox, 'removedPick'), null, 'without a comparison there is nothing to pick');
 });
 
