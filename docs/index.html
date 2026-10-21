@@ -596,6 +596,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#editor-map">Applications and Environments: the Map</a></li>
 <li><a href="#editor-inspection">The inspection panel</a></li>
 <li><a href="#editor-header">The header of a diagram</a></li>
+<li><a href="#editor-small-screen">The editor on a small screen</a></li>
 <li><a href="#editor-texts">The texts of a diagram</a></li>
 <li><a href="#editor-stories">Stories: stories and views</a></li>
 <li><a href="#editor-facets">Facets</a></li>
@@ -1264,7 +1265,7 @@ warning: the horizon `2026-Q1` of the plateau `to-be` is earlier than the horizo
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>REMOVE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The element goes, with what is in it and what points at it: the relationships towards it, its entry in a <code>uses</code> or an <code>applications</code> list. The node that hosted the element stays, even when it hosts nothing any more. Takes no <code>field</code>, <code>where</code> or <code>value</code>. What it took besides the element is told after the table of changes (see <a href="#plateau-cascade">[plateau-cascade]</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The element goes, with what is in it and what points at it: the relationships towards it, its entry in a <code>uses</code> or an <code>applications</code> list. The node that hosted the element stays, even when it hosts nothing any more. Takes no <code>where</code> or <code>value</code>. What it took besides the element is told after the table of changes (see <a href="#plateau-cascade">[plateau-cascade]</a>). With a <code>field</code> it takes that field out of the selected elements and leaves the elements (below).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SET</code></p></td>
@@ -1300,7 +1301,7 @@ warning: the horizon `2026-Q1` of the plateau `to-be` is earlier than the horizo
 </tbody>
 </table>
 <div class="paragraph">
-<p><code>field</code> is the field of the element that is changed (<code>name</code>, <code>description</code>, <code>qualifiers</code>, <code>tags</code>, <code>relationships</code>, <code>applications</code>, <code>uses</code>&#8230;&#8203;); with a <code>json-path</code>, a patch with no <code>field</code> changes the selected nodes themselves. <code>where: {destination: "shop.catalog", label: "reads"}</code> finds one relationship by its destination and its label (a missing label is none); zero or several matches is an error. <code>id</code>, <code>parent</code> and <code>elements</code> cannot be changed: a patch never renames or moves an element, and an element that moved is told with <code>replaces</code> (see <a href="#plateau-replaces">Saying what an element replaces</a>). A patch never takes a field out (see <a href="#plateau-limits">Limits of today</a>). Views and stories belong to no plateau, so there is nothing to patch in them (see <a href="#plateau-untied">[plateau-untied]</a>).</p>
+<p><code>field</code> is the field of the element that is changed (<code>name</code>, <code>description</code>, <code>qualifiers</code>, <code>tags</code>, <code>relationships</code>, <code>applications</code>, <code>uses</code>&#8230;&#8203;); with a <code>json-path</code>, a patch with no <code>field</code> changes the selected nodes themselves. <code>where: {destination: "shop.catalog", label: "reads"}</code> finds one relationship by its destination and its label (a missing label is none); zero or several matches is an error. <code>id</code>, <code>parent</code> and <code>elements</code> cannot be changed: a patch never renames or moves an element, and an element that moved is told with <code>replaces</code> (see <a href="#plateau-replaces">Saying what an element replaces</a>). Views and stories belong to no plateau, so there is nothing to patch in them (see <a href="#plateau-untied">[plateau-untied]</a>).</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1320,8 +1321,14 @@ warning: the horizon `2026-Q1` of the plateau `to-be` is earlier than the horizo
     <span class="key">value</span>: <span class="string"><span class="content">{zone: &quot;north&quot;}</span></span>
     <span class="key">expect</span>: <span class="string"><span class="content">9</span></span>
   - <span class="string"><span class="content">operator: REMOVE</span></span>
-    <span class="key">target</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.mailer</span><span class="delimiter">&quot;</span></span></code></pre>
+    <span class="key">target</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.mailer</span><span class="delimiter">&quot;</span></span>
+  - <span class="string"><span class="content">operator: REMOVE</span></span>         <span class="comment"># a field, not the element: the inherited description is gone</span>
+    <span class="key">target</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">shop.web</span><span class="delimiter">&quot;</span></span>
+    <span class="key">field</span>: <span class="string"><span class="content">description</span></span></code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p><strong>Taking a field out.</strong> A plateau says that something it inherits is gone with <code>REMOVE</code>, a <code>field</code> and the selector: the element stays, the field does not (a <code>SET</code> with no value cannot say it, since a missing value is no value). It works with a <code>target</code>, as above, and with a <code>json-path</code>, to take the field out of every element selected. Any field goes (<code>name</code>, <code>description</code>, <code>qualifiers</code>, <code>tags</code>, <code>relationships</code>, <code>applications</code>, <code>uses</code>, <code>replaces</code>) but <code>id</code>, <code>parent</code> and <code>elements</code>, which no patch changes, and <code>kind</code>, since an element always has one. A field the element does not have is already gone: that is no error, so a plateau still resolves when the plateau under it takes the same field out, and a bulk patch does not miss the elements that never had the field. A <code>where</code> or a <code>value</code> is refused. Nothing leaves the plateau, so the patch is not part of the cascade of the removals, and the comparison reads it as a change of the field of that element (<code>description: "The front of the shop." &#8594; (none)</code>). A later <code>SET</code> of the same field, in this plateau or in one above, gives it back; a plateau that stands on this one sees it gone. The editor writes this patch when you clear a text that the plateau only inherits (see <a href="#editor-writing">Writing in a plateau</a>).</p>
 </div>
 <div class="paragraph">
 <p>A patch that cannot be applied stops the load, and the line names the plateau, the rank of the patch (from 1) and its selector, so that the patch can be found. These are the lines the commands print, on the example with one patch added each time:</p>
@@ -1330,6 +1337,8 @@ warning: the horizon `2026-Q1` of the plateau `to-be` is earlier than the horizo
 <div class="content">
 <pre>error: plateau to-be: patch 10 (SET target shop.catalogue): selects nothing, there is no element shop.catalogue in the application layer
 error: plateau to-be: patch 12 (REMOVE target shop.mailer): selects nothing, there is no element shop.mailer in the application layer
+error: plateau to-be: patch 12 (REMOVE target shop.web): `kind` cannot be taken out: an element always has a kind
+error: plateau to-be: patch 12 (REMOVE target shop.web): REMOVE takes no `value`: it takes a field out of what the selector selects
 error: plateau to-be: patch 12 (SET json-path $.application..elements[?(@.kind == 'container')]): selects 9 nodes, 3 expected
 error: plateau to-be: patch 12 (SET json-path $.application..elements[?(@.kind == 'component' &amp;&amp; @.name == 'Nope')]): selects nothing, at least one node is expected
 error: plateau to-be: patch 12 (SET target shop.web): shop.web has no relationship to shop.catalog with the label `nope`
@@ -1997,7 +2006,15 @@ View o--&gt; "1" Layer
 <p><strong>A shipped example.</strong> The layered Brightcart of the repository (<code>src/test/resources/brightcart/layered</code>, a fixture of the tests, not an example of this manual) keeps seven views and three stories in a folder, <code>shared/</code>, that no plateau owns, so that these cases are checked on it. <code>shop_overview</code> is an overview of <code>shop</code>, which the plateau <code>marketplace</code> renames <code>storefront</code>: <code>archicode views generate --plateau marketplace -i shop_overview</code> skips it with the warning above, and the three other plateaus draw it. <code>marketplace_overview</code> is drawn in one plateau only, and <code>applications_map</code> is drawn everywhere, without <code>shop</code> in <code>marketplace</code>, with a warning. A view is drawn by <code>views generate</code> only when it is named with <code>-i</code>; the plain command draws the built-in views alone.</p>
 </div>
 <div class="paragraph">
-<p>A view that is about an element that a facet removes is a limit of the command line (#121): <code>views generate --view &lt;id&gt;</code> fails with <code>error: dangling reference: &lt;element&gt;</code>, which names neither the view nor the facet, and does so after the views of the facets before it were written.</p>
+<p><strong>A view whose element a facet removes.</strong> A view you ask for by its <code>id</code> (<code>views generate --view &lt;id&gt;</code>) that is about an element that a facet removes cannot be drawn in that facet. The command does not skip it, since you asked for it by name: it stops with one line that names the view, the element and the facet, exits with the code 1 and writes nothing, not even the folders of the facets before it. The check is made when <code>--view</code> is given, in the facets of the plateau and in those of its comparison, before the first view is drawn:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>error: the view `saas_probe` cannot be drawn: it names `commerce-saas`, which the facet `no-externals` removes</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The line is the one of <code>archicode views generate --plateau saas -i saas_probe</code> on a copy of the layered Brightcart with a view <code>saas_probe</code>, an <code>overview</code> of <code>commerce-saas</code>, which the facet <code>no-externals</code> of that workspace removes (the first facet that does, in the order of the file; the facets of the plateau come before those of its comparison). Name the view in a workspace where the facet keeps its element, or leave it out of the command. The same holds in a workspace that has no plateau. Without <code>--view</code> nothing is checked, since the views drawn are made from the elements the facet still has; a map whose lists name an element that a facet removes draws it without that element and says nothing.</p>
 </div>
 <div class="paragraph">
 <p>By embracing dynamic view generation, leveraging pluggable Viewpoint Services, and facilitating ad-hoc view definitions, ArchiCode equips architects with a toolkit for capturing, communicating, and exploring architectural insights in a dynamic and tailored manner. As we navigate deeper into ArchiCode&#8217;s capabilities, you&#8217;ll uncover the rendering of views and how they enhance your architectural workflow.</p>
@@ -2539,7 +2556,7 @@ The editor styles only the stereotypes of an element, its qualifiers and the wor
 <p><code>replaces</code> is read from the elements of the plateau that is compared; a <code>replaces</code> on an element of the other plateau is not read. A plateau that is not compared does not use it.</p>
 </div>
 <div class="paragraph">
-<p><strong>The <code>replaces</code> of the layers are not composed.</strong> A <code>replaces</code> names references of the plateau it is compared with, and the facts of the plateaus in between are not combined (see <a href="#plateau-limits">Limits of today</a>): a move that took two steps, in two layers, is read as one element new and one removed when the plateaus are two layers apart. Compare the plateaus one step at a time to see it as a move.</p>
+<p><strong>The <code>replaces</code> of the layers are composed.</strong> Each layer writes <code>replaces</code> relative to the plateau it overrides, so a move that took two steps (a plateau moves <code>shop.app.search</code> to <code>commerce.search</code>, the next one moves it again to <code>discovery.search</code>) names, in the second layer, <code>commerce.search</code>, which a plateau two layers up does not have. Between two plateaus several layers apart the comparison reads the entries through the layers in between, down to the plateau it is compared with, so the move is a move: <code>discovery.search</code> replaces <code>shop.app.search</code>. Only what the layers wrote is read, nothing is guessed. A move then a split is a split, a move then a merge is a merge; an element that a layer in between created and the next one moved replaces nothing (it is <code>new</code>) and its entry is no mistake; an element that a layer in between removed ends its own chain. The comparison with the plateau a plateau overrides is as it was: one layer, nothing to compose. On the layered Brightcart of the repository (<code>src/test/resources/brightcart/layered</code>), <code>archicode diff --plateau marketplace --against baseline</code> counts <code>+38 ~3 -6</code> elements, <code>11 moved, 2 split, 1 merged</code> and <code>+35 ~1 -9</code> relationships, lists <code>discovery.search</code> as <code>moved</code> from <code>shop.app.search</code>, and has no warning. Between two plateaus that do not stand on each other (<code>marketplace</code> against <code>saas</code>) only the layers of the plateau drawn since the plateau they have in common are read, and an entry that the plateau compared with still lacks is ignored with the usual warning, which names the reference the layers composed (<code>shop.app.search</code>, where the entry says <code>commerce.search</code>). <strong>Write replaces</strong> in the editor writes the entry you choose, one step: see <a href="#plateau-limits">Limits of today</a> for the one case where that entry is a mistake of its own layer.</p>
 </div>
 <div class="paragraph">
 <p><strong>What the command line shows.</strong> <code>archicode diff</code> has the three states in its table, with the counts of <code>moved</code>, <code>split</code> and <code>merged</code> on a line of their own (<code>replacing</code>), and says in the details of each row what the element replaces (see <a href="#diff">Compare plateaus</a>). The views of the comparison draw them with the marks above (see <a href="#plateau-comparison">Comparing two plateaus</a>). The editor draws them too, lists the candidates, and writes <code>replaces</code> for you (see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>).</p>
@@ -3928,6 +3945,25 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </ol>
 </div>
 <div class="paragraph">
+<p><strong>What changes for a reader who knows 0.15.0.</strong> Since that release, these things moved; the first can change a file that a workspace had, the second an error:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>A comparison several layers apart reads the <code>replaces</code> of the layers in between.</strong> <code>archicode diff --plateau &lt;a&gt; --against &lt;b&gt;</code> and the editor give a move that took two steps as a move, where they gave one element new and one removed with a warning; the table of the two plateaus, the counts and the files that <code>views generate</code> writes for the comparison change with it. The comparison of a plateau with the plateau it overrides is as it was (see <a href="#plateau-replaces">Saying what an element replaces</a>).</p>
+</li>
+<li>
+<p><strong><code>views generate --view</code> on a view whose element a facet removes</strong> is one <code>error:</code> line that names the view and the facet, with nothing written, where it was a bare <code>dangling reference</code> after some folders were written (see <a href="#plateau-views-lacking">[plateau-views-lacking]</a>).</p>
+</li>
+<li>
+<p><strong>A patch can take a field out</strong> (<code>operator: REMOVE</code>, <code>target</code>, <code>field</code>), and the editor writes it when you clear an inherited text, where it refused (see <a href="#plateau-patches">[plateau-patches]</a> and <a href="#editor-writing">Writing in a plateau</a>). The patches that were written before are read as they were.</p>
+</li>
+<li>
+<p><strong>The editor</strong>: the Remove buttons of a qualifier, an application and a use remove the item they sit on; cancelling the dialog of a rename or of a write that changes other plateaus gives the form back as typed; <strong>Move</strong> asks which views would break in the plateaus beside the one drawn, as a rename does; a saved file keeps its byte-order mark, and a comment after the last line of a moved block goes with it (see <a href="#editor-rename">[editor-rename]</a>, <a href="#editor-move">Moving an element under another parent</a>); and the forms of the centre no longer go past a window 360 pixels wide (see <a href="#editor-small-screen">The editor on a small screen</a>).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
 <p><strong>What changes for a reader who knows 0.14.0.</strong> Since that release, these things moved; the first two can change a file or an error that a workspace had:</p>
 </div>
 <div class="olist arabic">
@@ -3964,21 +4000,10 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <div class="ulist">
 <ul>
 <li>
-<p><strong>The <code>replaces</code> of the layers are not composed</strong> (#89). <code>replaces</code> is read relative to the two plateaus compared, and the facts of the plateaus in between are not combined. A move that took two steps (a plateau moves <code>shop.app.search</code> to <code>commerce.search</code>, the next one moves it again to <code>discovery.search</code>) is not seen as a move against a plateau two layers up: the second <code>replaces</code> names <code>commerce.search</code>, which the older plateau does not have, so the element reads as new and the first one as removed. On the layered Brightcart of the repository (<code>src/test/resources/brightcart/layered</code>), <code>archicode diff --plateau marketplace --against baseline</code> prints, besides the table:</p>
-<div class="listingblock">
-<div class="content">
-<pre>warning: replaces of discovery.search (application layer): commerce.search is not an element of the base plateau, ignored</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>and lists <code>discovery.search</code> as <code>new</code> and <code>shop.app.search</code> as <code>removed</code>. Compared with the plateau it overrides, the same plateau reads the move right. Compare the plateaus one step at a time to see a move that took two.</p>
-</div>
+<p><strong>The editor does not move an element a plateau inherits</strong> (a patch never changes an <code>id</code> or a <code>parent</code>): draw the plateau that declares it. It does not move a group under a parent of a plateau that the plateau drawn overrides either (#114): the group is written inside a file and has no manifest of its own to say where it goes.</p>
 </li>
 <li>
-<p><strong>A patch cannot take a field out</strong> (#94). <code>SET</code>, <code>ADD</code> and <code>MERGE</code> need a value, and <code>REMOVE</code> takes an element, so a plateau cannot say "this inherited description is gone". A list or tags can be emptied (<code>SET</code> of <code>[]</code> or <code>{}</code>), a text can be set to another text. The editor refuses to clear an inherited text with one sentence.</p>
-</li>
-<li>
-<p><strong>The editor does not move an element a plateau inherits</strong> (a patch never changes an <code>id</code> or a <code>parent</code>): draw the plateau that declares it. It does not move a group under a parent of a plateau that the plateau drawn overrides either (#114): the group is written inside a file and has no manifest of its own to say where it goes. A <strong>Move</strong> does not warn of the views it leaves broken in a plateau beside the one drawn, as a rename does (#122).</p>
+<p><strong>Write replaces, several layers apart, can write an entry that the layer does not have</strong> (#130). The key is read relative to the plateau a manifest builds on, and the panel proposes pairs between the plateau drawn and any other. When they are several layers apart, <code>from</code> is an element of the plateau compared with that the parent of the plateau drawn may no longer have (a layer in between removed it without replacing it): the entry then is the composed move against the plateau compared with, and against the plateau it was written for it is the warning <code>&#8230;&#8203; is not an element of the base plateau, ignored</code>. The editor does not refuse it.</p>
 </li>
 <li>
 <p><strong>A comparison with the parent cannot stay on the parent.</strong> On the band, the parent in the tree of <strong>Compare with</strong> is read as <em>Past (follows the plateau drawn)</em>, so the comparison moves to the new parent when another plateau is drawn. There is no fixed comparison with the parent.</p>
@@ -3991,9 +4016,6 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </li>
 <li>
 <p><strong>The dependencies that a deployed application gives do not include those of what is inside it</strong> (#124). The map of the technology layer, like the overview, the detailed and the deep viewpoints of an environment, reads the relationships of the application that a node lists in <code>applications</code>, not those of its components: a container deployed on a node whose components declare the relationships gives no link to the node that hosts what they depend on.</p>
-</li>
-<li>
-<p><strong>A view whose element a facet removes fails <code>views generate --view</code></strong> (#121) with <code>error: dangling reference: &lt;element&gt;</code>, which names neither the view nor the facet; the views of the facets before it are written already. Name such a view in a workspace where the facet keeps its element, or leave it out of the command.</p>
 </li>
 <li>
 <p><strong>The editor is slow on very large pairs of plateaus</strong> (#125). The number of kernel calls does not grow with the elements, but the time of one call does: for the 591 elements and 839 changes of a test pair (<code>replaces-large-pair</code>), in Node, the first call that finds what has nothing to draw takes about half a second where the 82 elements of the layered Brightcart take 16 milliseconds, ten to thirty times longer for seven times more elements. No shipped workspace is that large.</p>
@@ -4012,13 +4034,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p><strong>The two tools read a few plain scalars differently</strong> (#103). A plain scalar written as a number in YAML 1.1 that a browser cannot print back as it was written (<code>0x1F</code>, <code>010</code>, <code>1_0</code>, <code>5.0</code>, <code>1e2</code>) is a number for the command line and a text for the editor; quote it where it is an id or a reference. The editor does not tell the line and the column of a mistake in a file: it names the place by its path in the file, as the command line does (see <a href="#errors-and-warnings">Errors, warnings and exit codes</a>).</p>
 </li>
 <li>
-<p><strong>The Remove buttons of a qualifier, an application and a use</strong> address the file by the position in the list drawn (#120). A list that has an item with no value (<code>qualifiers: [a, null, b]</code>) is drawn without it, and <strong>Remove</strong> on <code>b</code> takes out the empty item and keeps <code>b</code>. Remove the item in <strong>Files</strong>.</p>
-</li>
-<li>
-<p><strong>Two small losses of the save</strong> (#119): a UTF-8 byte-order mark at the start of a file is dropped when the editor saves it, and when a block is moved to another file a comment after its last line may stay with the next element instead of going with the block.</p>
-</li>
-<li>
-<p><strong>Cancelling a dialog may drop what was typed</strong> (#123, not verified in a browser): saving the form of an element can open a dialog before anything is written (the plateaus a write changes, the plateaus that keep the old reference after a rename), and <strong>Cancel</strong> may rebuild the form from the model.</p>
+<p><strong>A write that is refused redraws the form from the model</strong> (#129). Cancelling a dialog gives the form back as you typed it (see <a href="#editor-rename">[editor-rename]</a>), but a write the editor refuses (<code>Not written: &#8230;&#8203;</code>) and an error while it reads the form redraw the form of the element from the model: the sentence is shown beside a form that has lost the id, the name and the description you had typed. Type them again after the fix, or copy them first.</p>
 </li>
 </ul>
 </div>
@@ -4033,7 +4049,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </ul>
 </div>
 <div class="paragraph">
-<p><strong>The editor on a small screen</strong> (#82). On a window 360 pixels wide the top bar still wraps onto several lines (about 105 pixels), and the regions under it keep the heights they have on a large screen. Nobody has judged the editor on a phone.</p>
+<p><strong>The editor on a phone</strong> (#29). Nobody has used the editor on a real phone: what the editor does in a window 360 pixels wide was measured in a desktop browser, and is told in <a href="#editor-small-screen">The editor on a small screen</a>.</p>
 </div>
 </div>
 </div>
@@ -4160,13 +4176,19 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </ul>
 </div>
 <div id="editor-rename" class="paragraph">
-<p><strong>Renaming an element in a workspace of plateaus.</strong> Saving the form of an element with another <code>id</code> rewrites every reference to it. In a workspace that has plateaus the rewrite is made in the files of the plateau that is drawn and of the plateaus that stand on it, since the others do not see the element through it, and in the views and the stories of the workspace, which belong to no plateau and so follow everywhere. A plateau beside the one drawn (one that does not stand on it and does not override it) may still declare the element, or inherit it, under its old reference: a view or a step that names the new reference then cannot be drawn there any more. When that is so, saving the form first opens a dialog before anything is written. It names the plateaus that keep the old reference and the views and the steps of the stories (by story and number) that could no longer be drawn in them, and has two buttons: <strong>Cancel</strong>, which writes nothing, and <strong>Rename anyway</strong>, which writes what a rename always wrote. To keep every view whole, cancel, draw each of those plateaus and give the element the same new id there; once every plateau that has it uses the new reference, the views are drawn in all of them. Nothing is asked when no view or step is at risk, when the plateau drawn is <code>baseline</code> (every plateau stands on it), or in a workspace with no plateau. <strong>Move</strong> changes a reference too and does not warn yet (tmorin/archicode#122).</p>
+<p><strong>Renaming an element in a workspace of plateaus.</strong> Saving the form of an element with another <code>id</code> rewrites every reference to it. In a workspace that has plateaus the rewrite is made in the files of the plateau that is drawn and of the plateaus that stand on it, since the others do not see the element through it, and in the views and the stories of the workspace, which belong to no plateau and so follow everywhere. A plateau beside the one drawn (one that does not stand on it and does not override it) may still declare the element, or inherit it, under its old reference: a view or a step that names the new reference then cannot be drawn there any more. When that is so, saving the form first opens a dialog before anything is written. It names the plateaus that keep the old reference and the views and the steps of the stories (by story and number) that could no longer be drawn in them, and has two buttons: <strong>Cancel</strong>, which writes nothing, and <strong>Rename anyway</strong>, which writes what a rename always wrote. To keep every view whole, cancel, draw each of those plateaus and give the element the same new id there; once every plateau that has it uses the new reference, the views are drawn in all of them. Nothing is asked when no view or step is at risk, when the plateau drawn is <code>baseline</code> (every plateau stands on it), or in a workspace with no plateau.</p>
+</div>
+<div class="paragraph">
+<p><strong>Cancelling.</strong> <strong>Cancel</strong> (or Escape, or a click beside the dialog) writes nothing and gives the form back as you typed it: the new id, the name, the description, what was in the boxes that add a qualifier or a tag, the relationship rows and the <code>replaces</code>, and <strong>Save all changes</strong> is lit as before. The same goes for the dialog that lists the plateaus a write changes (<em>Writing in baseline changes other plateaus</em>, see <a href="#editor-writing">Writing in a plateau</a>). Saying yes writes the form that was typed. A write that the editor refuses (<code>Not written: &#8230;&#8203;</code>) is another path and still redraws the form from the model (see <a href="#plateau-limits">Limits of today</a>).</p>
+</div>
+<div class="paragraph">
+<p><strong>Move</strong> changes a reference too, and the views and the steps follow it in every plateau, so it asks the same question when you press the button of its dialog with a parent chosen and the move is allowed: the same list of plateaus that keep the old reference and of views and steps that could no longer be drawn there, in words of a move, with the buttons <strong>Back to Move</strong> and <strong>Move anyway</strong>. <strong>Back to Move</strong>, Escape and a click beside the dialog give the <em>Move</em> dialog back with its parent and its search as they were, and write nothing, so that you can choose another parent. A move that no sibling plateau is concerned by (none keeps the old reference, or no view or step names it there), a move in <code>baseline</code> and a move in a workspace with no plateau are written at once, as they were.</p>
 </div>
 <div class="paragraph">
 <p>The badges and colours of styled stereotypes, on the boxes and in the tree, are explained in <a href="#stereotypes-and-styles">Stereotypes and styles</a>.</p>
 </div>
 <div class="paragraph">
-<p>Changes stay in memory, with a mark on the tree for each modified element, until <strong>Save all changes</strong> writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one. A file that is saved keeps what the changes did not touch: its comments, its blank lines, the quotes of the values and its final line break. Only the lines that changed are rewritten, and a value written anew (a renamed id, a new parent, a reference that follows, a <code>replaces</code>) keeps the quoting of the line it replaces, the way its key is written and its trailing comment; a line that is added is written like the lines around it (double quotes, single quotes or none, as the file does), and plain when the file quotes nothing. A list or a map written in square or curly brackets (<code>replaces: [a, b]</code>, <code>tags: {zone: north}</code>, on one line or on several, nested, as an item of a list of maps) stays as written when the change does not reach it; a change to it writes it as a block, in which the comments that were inside its brackets stay as lines of the block (a comment above a value above it, a comment after a value at the end of its line), and the quotes of its values and of its keys and the words of its booleans (<code>on</code>, <code>yes</code>) are the ones you wrote, except for a value the change sets. The same words (<code>yes</code>, <code>no</code>, <code>on</code>, <code>off</code>, <code>~</code>) and a key with no value (<code>description:</code>) stay as written in the lines the change does not reach, and a comment or a blank line above a line that is rewritten stays above it. A list written at the same column as its key (<code>tags:</code> then <code>- a</code> at the same column) is followed too: its items and comments stay, and an item that is added is written at the column the list uses; the comment after <code>[]</code>, <code>{}</code> or a key with no value stays on the line when a change fills the collection, and the comments inside empty brackets stay under the key. A manifest that uses a YAML anchor, an alias or a tag is read by the editor and by the command line the same way: an alias (<code>description: *n</code>) is the value of the anchor it points at (<code>name: &amp;n "Bakery"</code>), not its name, and a tag qualifies a scalar (<code>!!str 12</code> is the text <code>12</code>; <code>!!int</code>, <code>!!float</code>, <code>!!bool</code> and <code>!!null</code> read it as such, any other tag as a text). A merge key (<code>&lt;&lt;: *base</code>) is not a merge: it is a key named <code>&lt;&lt;</code>. The anchor, the alias and the tag stay as written in the lines a change does not touch, and a line a change rewrites keeps its anchor and its tag; an alias stays an alias as long as the line still says what its anchor says, and is written as its value when a change makes them differ. The editor does not follow an anchor, an alias or a tag inside square or curly brackets (<code>[&amp;a one, *a]</code>), nor a tag on a text that goes over several lines: such a file is written again entirely in the editor&#8217;s own layout, its comments lost and its aliases written as their values (see tmorin/archicode#78). An anchor or a tag on a key (<code>&amp;k name: x</code>) is read by the command line and refused by the editor, which does not open the file and says so (see <a href="#plateau-limits">Limits of today</a>). When a file is laid out in a way the editor does not write (an indentation other than two spaces, for example), it is written again entirely in the editor&#8217;s own layout, and its comments are lost.</p>
+<p>Changes stay in memory, with a mark on the tree for each modified element, until <strong>Save all changes</strong> writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one. A file that is saved keeps what the changes did not touch: its comments, its blank lines, the quotes of the values, its final line break and, for a file that starts with one, its UTF-8 byte-order mark (<code>workspace.yaml</code> as well as the manifests; a browser never hands the mark to the page, so the editor reads the first three bytes of the file to know it, and puts the mark back when it writes; a file the editor creates has none). Only the lines that changed are rewritten, and a value written anew (a renamed id, a new parent, a reference that follows, a <code>replaces</code>) keeps the quoting of the line it replaces, the way its key is written and its trailing comment; a line that is added is written like the lines around it (double quotes, single quotes or none, as the file does), and plain when the file quotes nothing. A list or a map written in square or curly brackets (<code>replaces: [a, b]</code>, <code>tags: {zone: north}</code>, on one line or on several, nested, as an item of a list of maps) stays as written when the change does not reach it; a change to it writes it as a block, in which the comments that were inside its brackets stay as lines of the block (a comment above a value above it, a comment after a value at the end of its line), and the quotes of its values and of its keys and the words of its booleans (<code>on</code>, <code>yes</code>) are the ones you wrote, except for a value the change sets. The same words (<code>yes</code>, <code>no</code>, <code>on</code>, <code>off</code>, <code>~</code>) and a key with no value (<code>description:</code>) stay as written in the lines the change does not reach, and a comment or a blank line above a line that is rewritten stays above it. A list written at the same column as its key (<code>tags:</code> then <code>- a</code> at the same column) is followed too: its items and comments stay, and an item that is added is written at the column the list uses; the comment after <code>[]</code>, <code>{}</code> or a key with no value stays on the line when a change fills the collection, and the comments inside empty brackets stay under the key. A manifest that uses a YAML anchor, an alias or a tag is read by the editor and by the command line the same way: an alias (<code>description: *n</code>) is the value of the anchor it points at (<code>name: &amp;n "Bakery"</code>), not its name, and a tag qualifies a scalar (<code>!!str 12</code> is the text <code>12</code>; <code>!!int</code>, <code>!!float</code>, <code>!!bool</code> and <code>!!null</code> read it as such, any other tag as a text). A merge key (<code>&lt;&lt;: *base</code>) is not a merge: it is a key named <code>&lt;&lt;</code>. The anchor, the alias and the tag stay as written in the lines a change does not touch, and a line a change rewrites keeps its anchor and its tag; an alias stays an alias as long as the line still says what its anchor says, and is written as its value when a change makes them differ. The editor does not follow an anchor, an alias or a tag inside square or curly brackets (<code>[&amp;a one, *a]</code>), nor a tag on a text that goes over several lines: such a file is written again entirely in the editor&#8217;s own layout, its comments lost and its aliases written as their values (see tmorin/archicode#78). An anchor or a tag on a key (<code>&amp;k name: x</code>) is read by the command line and refused by the editor, which does not open the file and says so (see <a href="#plateau-limits">Limits of today</a>). When a file is laid out in a way the editor does not write (an indentation other than two spaces, for example), it is written again entirely in the editor&#8217;s own layout, and its comments are lost.</p>
 </div>
 </div>
 <div class="sect2">
@@ -4229,6 +4251,56 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p><strong>Very narrow</strong>: the header takes two rows.</p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="editor-small-screen">The editor on a small screen</h3>
+<div class="paragraph">
+<p>In a window narrower than 40 rem (640 pixels at the usual size) the regions of the editor are stacked one under the other, and the page scrolls from one to the next. It was measured in a desktop browser (the browser pane of the development tool), at 360 by 800 pixels, in the light and in the dark theme, on the layered Brightcart and on the example <code>domain_application</code>, with a script that walks every page and form and compares the right edge of every box with the width of the window, and the screenshots of the pages were looked at:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 66.6666%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">What</th>
+<th class="tableblock halign-left valign-top">Measured</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the top bar</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">105 pixels high</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the band of the plateaus (the pages of Plateaus, Applications, Environments and Elements)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 pixels, two lists of one line each</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the tabs of the pages</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">39 pixels</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the tree / the center / the inspection</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">up to 240 / 640 / up to 400 pixels (30, 80 and 50 percent of the height of an 800 pixel window)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the width of the document, on Plateaus, Applications, Environments, Elements, Stories, Files and Settings</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">360 pixels on all seven</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the widest control of Settings, the list <em>Current plateau</em> included</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ends at 332 pixels</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Nothing is wider than the window, on the seven pages, on 52 states of the Brightcart in each theme (the forms of ten elements in view, edit, <em>Move</em> and delete, three stories, seven views) and on 20 of <code>domain_application</code>; the diagram is drawn to scale and scrolls in its own box, and the code editor of Files scrolls inside itself, as they do on a large screen. Four places did go past the window inside the scroll of the center and are fixed: the row that adds a tag, the four buttons in the header of an element, the list of saved views of a story, and the lists of the references in <em>Confirm delete</em>. The list of the places not offered in the dialog of <em>Move</em> has text wider than its box and scrolls inside it.</p>
+</div>
+<div class="paragraph">
+<p>What this does not say: whether the order of the stacked regions and their heights suit a phone, whether the buttons are easy to touch, and how the on-screen keyboard behaves. They are a judgment on a real device, which nobody has made (see <a href="#plateau-limits">Limits of today</a>).</p>
 </div>
 </div>
 <div class="sect2">
@@ -4391,7 +4463,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p><strong>Cascade.</strong> Below the lists, the Changes panel has <strong>Cascade of the removals</strong> when a <code>REMOVE</code> of the more recent plateau took more than what it selects: the elements that went with the selected one, and the entries taken out of elements that stay (a relationship towards it, an entry of <code>uses</code> or of <code>applications</code>), among what the other plateau has, as <code>archicode diff</code> lists them after the table. <strong>Write replaces</strong> and <strong>Not related</strong> work on the pairs of any two plateaus; <strong>Write replaces</strong> writes <code>replaces</code> in the manifest that declares the new element, and refuses an element the plateau only inherits (it is declared in a plateau above, which the key would change).</p>
 </div>
 <div class="paragraph">
-<p><strong>Where a value comes from.</strong> In the panel of an element, each value (name, description, qualifiers, tags, relationships, replaces, uses, applications) says where it comes from: <em>declared in</em> the plateau drawn, <em>inherited from</em> another plateau (the one whose manifest declares the element), or <em>set by patch N</em> of a plateau (with the operator and the selector of the patch, and "inherited" when the patch is one of a plateau above). A block <strong>Origin</strong> lists the plateau that declares the element and the patches that selected it.</p>
+<p><strong>Where a value comes from.</strong> In the panel of an element, each value (name, description, qualifiers, tags, relationships, replaces, uses, applications) says where it comes from: <em>declared in</em> the plateau drawn, <em>inherited from</em> another plateau (the one whose manifest declares the element), or <em>set by patch N</em> of a plateau (with the operator and the selector of the patch, and "inherited" when the patch is one of a plateau above), or <em>taken out by patch N</em> when a <code>REMOVE</code> with a <code>field</code> took the value out (see <a href="#plateau-patches">[plateau-patches]</a>). A block <strong>Origin</strong> lists the plateau that declares the element and the patches that selected it.</p>
 </div>
 <div class="paragraph">
 <p><strong>Writing.</strong> The plateau that is drawn is the one a write goes to, and the page Plateaus says so (<em>writing in: Buy the commerce platform</em>). What an edit writes, and what is refused, is in <a href="#editor-writing">Writing in a plateau</a>.</p>
@@ -4420,11 +4492,11 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">a field of an element the plateau inherits (name, description, qualifiers, tags, relationships, applications, uses, replaces)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">a patch in the manifest of kind <code>archicode.morin.io/plateau</code> of the plateau, at the end of its <code>patches</code>: <code>SET</code> for a value (a list set whole too), <code>ADD</code> for items added at the end of a list, <code>MERGE</code> for tags that only gain or change keys, <code>SET</code> with <code>where</code> for one relationship changed (found by its destination and its label)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a patch in the manifest of kind <code>archicode.morin.io/plateau</code> of the plateau, at the end of its <code>patches</code>: <code>SET</code> for a value (a list set whole too), <code>ADD</code> for items added at the end of a list, <code>MERGE</code> for tags that only gain or change keys, <code>SET</code> with <code>where</code> for one relationship changed (found by its destination and its label), <code>REMOVE</code> with a <code>field</code> for a text or a number that is cleared (below)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">the same field again</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">the patch the plateau already has on that element and that field is changed, and taken out when the field is back to what the plateau above gives it; one patch for the field, not one more for each edit. When the plateau has several patches on the field (a relationship added, another relabeled), none is rewritten: the last one takes an edit of its kind, and any other edit is a patch after it</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the patch the plateau already has on that element and that field is changed (a <code>REMOVE</code> becomes a <code>SET</code> when you write a new text, a <code>SET</code> becomes a <code>REMOVE</code> when you clear it), and taken out when the field is back to what the plateau above gives it; one patch for the field, not one more for each edit. When the plateau has several patches on the field (a relationship added, another relabeled), none is rewritten: the last one takes an edit of its kind, and any other edit is a patch after it</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">a value a patch of the plateau set</p></td>
@@ -4467,15 +4539,15 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p><strong>Only what was meant.</strong> Every write is made on the manifests in memory by the same line-preserving save as ever (the lines the edit does not touch, their comments and quotes, stay as they were written; a flow list or map that an edit changes becomes a block), and it is kept only if the plateaus are resolved again and all of this holds: the plateau written gives back the value that was edited; no plateau that resolved before is refused now, and no new mistake appears in the tree of the plateaus or in a plateau (a rename, a delete or a new parent that would make a patch of another plateau select nothing is refused, and says which plateau and which patch). A write that is refused is one sentence in the top bar, and nothing is changed: not a file, not a mark of what is modified. A new patch is always written at the end of the patches, never between two patches of yours, so that a comment above a patch stays above it.</p>
 </div>
 <div class="paragraph">
+<p><strong>Clearing what the plateau inherits.</strong> When you clear a name, a description or another text that the plateau only inherits, the editor writes a <code>REMOVE</code> patch with the <code>field</code>, at the end of the patches of the plateau drawn, after the question above if other plateaus stand on it. The Inspector then says where the value went (<em>taken out by patch 3 of saas (REMOVE target shop.web)</em>), and writing a text again changes that patch instead of adding one. A list or tags are emptied with a <code>SET</code> of an empty list or object, as before, and clearing a field that the plateau declares itself removes its line from the manifest, as before. If the plateau written does not give the field back gone, nothing is written.</p>
+</div>
+<div class="paragraph">
 <p><strong>Refused, with one sentence.</strong></p>
 </div>
 <div class="ulist">
 <ul>
 <li>
 <p>Renaming (<code>id</code>) or moving an element the plateau inherits: a patch never changes an id or a parent; draw the plateau that declares the element. Renaming or moving an element the plateau declares works as it does in <code>baseline</code>; the <code>target</code> of patches, the relationships they add, and the <code>replaces</code> entries that name it follow the new reference.</p>
-</li>
-<li>
-<p>A value that comes from another plateau cannot be taken out by a patch (a patch sets a value); write a new text, or draw the plateau that declares it. A list or tags can be emptied (<code>SET</code> of an empty list or object).</p>
 </li>
 <li>
 <p>A field that a patch written by hand with a free <code>json-path</code> sets (for instance a <code>MERGE</code> of tags on every element that has a qualifier): the editor shows it, with its origin, and does not edit it field by field. Edit the patch in <strong>Files</strong>.</p>
@@ -4773,10 +4845,10 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </ul>
 </div>
 <div class="paragraph">
-<p>The comments on lines of their own inside the block go with it. A comment after the last line of the block, before the next element, is the next element&#8217;s and stays where it was. A file whose layout the move cannot follow (an anchor, an alias, a tag, a list written at the column of its key) is written by the ordinary save: the move works and the file says the right thing, and the comments of the block are the price. The end of line of each file is its own.</p>
+<p>The comments on lines of their own inside the block go with it, and so do the comments after its last line when they belong to it. The rule is the indentation, nothing else (a comment cannot be asked whom it is about): a comment after the last line goes with the block when it is indented deeper than the item, as the keys of the block are, or when it is at the column of the item and nothing follows it in the list; a comment at the column of the item above a sibling is that sibling&#8217;s introduction and stays, and so does one that is shallower than the item. The first comment that stays ends the scan, and the blank lines between the block and a comment that goes with it go with it. The rule is wrong in a few cases: a comment about the block written at the column of an item that has a sibling after it stays (it reads as the sibling&#8217;s); a comment about the next element indented as the keys of the block goes with the block; a comment at the column of the item, last in its list, goes with the block even when you meant it for the next key of the parent; and a comment deeper than the item after a blank line goes with it, even as a section comment. It is the same for the block that moves to another file and for the one that becomes a manifest of its own. A file whose layout the move cannot follow (an anchor, an alias, a tag, a list written at the column of its key) is written by the ordinary save: the move works and the file says the right thing, and the comments of the block are the price. The end of line of each file is its own.</p>
 </div>
 <div class="paragraph">
-<p><strong>What a move does not tell.</strong> A move changes the reference of the element, so the views and the steps of the stories that name it follow it, in every plateau. A plateau beside the one drawn that still declares the old reference can then no longer draw those views, and <strong>Move</strong>, unlike a rename (see <a href="#editor-rename">[editor-rename]</a>), does not say so before it writes (tmorin/archicode#122): draw that plateau and move the element there too.</p>
+<p><strong>What a move tells before it writes.</strong> A move changes the reference of the element, so the views and the steps of the stories that name it follow it, in every plateau. A plateau beside the one drawn that still declares the old reference can then no longer draw those views, and <strong>Move</strong> says so as a rename does (see <a href="#editor-rename">[editor-rename]</a>): it opens a dialog that names those plateaus and the views and steps, and asks before it writes (<em>Back to Move</em> or <em>Move anyway</em>). The plateaus it does not name are not concerned. Moving the element there too keeps the views whole.</p>
 </div>
 <div class="paragraph">
 <p><strong>Replaces.</strong> <strong>Move</strong> does not write <code>replaces</code>: the element that a move can reach is declared by the plateau that is drawn, and the plateaus it overrides do not have its old reference, so there is nothing for the key to name. In a workspace of plateaus the dialog says so in one line. To say that an element replaces one of another plateau, use <strong>Write replaces</strong> in the <strong>Changes</strong> panel, or the <strong>Replaces</strong> section of the form of the element (see <a href="#editor-replaces">Moved, split and merged elements, and candidates</a>).</p>
@@ -5073,7 +5145,7 @@ Generating the views of a workspace twice gives the same files, byte for byte, s
 This does not depend on the folder the workspace is in, on the order a file system lists the manifests in, on the JVM that runs the command, nor on the order in which the author wrote the elements of a list, the relationships of an element or its tags.
 Inside a file, the boxes come by reference and then by identifier, the links by their ends, their label, their qualifiers and their tags, and the styles by the name of the stereotype.
 What the author writes in an order keeps it: the qualifiers of an element and the words of <code>rendering-stereotypes</code> are the order of the stereotypes of its box (see <a href="#stereotypes-and-styles">Stereotypes and styles</a>), so reordering them is a change of the workspace.
-Only a new version of ArchiCode rewrites files that the workspace did not change: the order of the stereotypes of a box changed in 0.10.0 and in 0.11.0, and the order of two links that only differ by the node they end on changed in 0.12.0 (it used to depend on the JVM). A saved map of the technology layer draws more since 0.15.0 (see <a href="#map-technology">[map-technology]</a>).
+Only a new version of ArchiCode rewrites files that the workspace did not change: the order of the stereotypes of a box changed in 0.10.0 and in 0.11.0, and the order of two links that only differ by the node they end on changed in 0.12.0 (it used to depend on the JVM). A saved map of the technology layer draws more since 0.15.0 (see <a href="#map-technology">[map-technology]</a>). A comparison of two plateaus several layers apart reads the <code>replaces</code> of the layers in between since 0.16.0 (see <a href="#plateau-replaces">Saying what an element replaces</a>).
 A test (<code>DeterministicGenerationTest</code>) generates a workspace twice, with the manifests, the elements, the relationships and the tags declared in the reverse order and in another folder, and compares the files.</p>
 </div>
 </div>
@@ -6513,7 +6585,7 @@ EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.Use
 </div>
 </div>
 <div class="paragraph">
-<p>With this facet, the view of <code>shop.web</code> in <code>views-without-catalog</code> no longer shows a <code>browses</code> link to <code>shop.catalog</code>, and no view of <code>shop.catalog</code> (the element, or a view of the manifests that is about it) is written for the facet. The same goes for a facet that selects on the state of a comparison (<code>$.application..elements[?(@.change == 'moved')]</code>). A reference that already pointed nowhere before the facet is not hidden by it: it is still reported as a <code>dangling reference</code>.</p>
+<p>With this facet, the view of <code>shop.web</code> in <code>views-without-catalog</code> no longer shows a <code>browses</code> link to <code>shop.catalog</code>, and no view of <code>shop.catalog</code> (the element, or a view of the manifests that is about it) is written for the facet. The same goes for a facet that selects on the state of a comparison (<code>$.application..elements[?(@.change == 'moved')]</code>). A reference that already pointed nowhere before the facet is not hidden by it: it is still reported as a <code>dangling reference</code>. A view of the manifests that is about the removed element, asked for with <code>views generate --view</code>, is an error that names the view and the facet (see <a href="#plateau-views-lacking">[plateau-views-lacking]</a>).</p>
 </div>
 </td>
 </tr>
@@ -7856,7 +7928,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-20 19:01:31 UTC
+Last updated 2026-10-21 05:52:32 UTC
 </div>
 </div>
 </body>
