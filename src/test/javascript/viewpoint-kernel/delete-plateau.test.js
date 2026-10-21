@@ -1,6 +1,6 @@
 'use strict';
-// A plateau is deleted from the page Plateaus (wave 015, run 0102, W-14, issue #93). Only a plateau that no other plateau overrides can go, never the root; a dialog lists
-// the files that go (its manifest of kind plateau and every manifest whose header says its id) and nothing else goes. A `settings.current` that names it is taken out of
+// A plateau is deleted from the page Plateaus (wave 015, run 0102, W-14, issue #93). Any plateau but the root can go (one that others override: wave 018, run 0132, #112,
+// delete-plateau-in-the-middle.test.js); a dialog lists the files that go (its manifest of kind plateau and every manifest whose header says its id) and, for a leaf, nothing else goes. A `settings.current` that names it is taken out of
 // workspace.yaml; a step of a story that names it, or a view or a step that names an element only it declares, refuses the delete (the author changes them in Stories).
 // The write runs under `guardedLayerWrite`: refused, it puts everything back. The layered Brightcart (src/test/resources/brightcart/layered/: baseline, inhouse over
 // baseline, marketplace over inhouse, saas over baseline) is copied into an in-memory folder; "Save all changes" writes the folder and the files are compared byte for byte.
@@ -67,18 +67,17 @@ const VIEW = (id, element) => 'header:\n  kind: "archicode.morin.io/view"\n  ver
 
 // ---- what can be deleted ----
 
-test('a plateau that another plateau overrides cannot be deleted: the refusal names it, and nothing changes', async () => {
+test('a plateau that another plateau overrides is not refused for that alone (run 0132, #112): inhouse is refused by what marketplace would be without it, and nothing changes', async () => {
   const opened = await open(BRIGHTCART, { drawn: 'inhouse' });
   const { sandbox, state } = opened;
   const plan = plain(sandbox.plateauDeletion('inhouse'));
   assert.deepEqual(plan.overriding, ['marketplace']);
-  assert.equal(plan.refusal, 'The plateau `inhouse` cannot be deleted: the plateau `marketplace` overrides it. Only a plateau that no other plateau overrides can be deleted: delete it first, or give it another parent with Edit.');
-  assert.deepEqual(plan.files, [], 'nothing is listed to go');
-  assert.throws(() => sandbox.commitPlateauDelete('inhouse'), (e) => e.message === plan.refusal);
+  assert.equal(plan.refusal, null);
+  assert.match(plan.breaks[0], /^the plateau `marketplace` could no longer be resolved \(plateau marketplace: patch 3 \(ADD target commerce\.checkout\): selects nothing/);
+  assert.throws(() => sandbox.commitPlateauDelete('inhouse'), /^Error: The plateau `inhouse` cannot be deleted: 2 mistakes would appear in the plateaus that stand on it /);
   sandbox.openPlateauDeleteDialog('inhouse');
   const html = dialogHtml(sandbox);
-  assert.match(text(html), /the plateau marketplace overrides it/);
-  assert.match(html, /<li><code>marketplace<\/code> Marketplace and personalisation<\/li>/);
+  assert.match(html, /<li data-plateau="marketplace"><code>marketplace<\/code> Marketplace and personalisation, over <code>baseline<\/code> instead of <code>inhouse<\/code>:/);
   assert.doesNotMatch(html, /Delete plateau<\/button>/, 'no button deletes it');
   assert.equal(state.plateauTree.nodes.has('inhouse'), true);
   assert.deepEqual(plain(state.pendingFileRemovals), []);
@@ -93,7 +92,8 @@ test('the plateaus that override it are all named, in the order of the band', as
   const { sandbox } = await open(files);
   const plan = plain(sandbox.plateauDeletion('inhouse'));
   assert.deepEqual(plan.overriding, ['marketplace', 'alt'], 'the order of the band: a plateau with a horizon before one without');
-  assert.match(plan.refusal, /^The plateau `inhouse` cannot be deleted: the plateaus `marketplace` and `alt` override it\. .* delete them first, or give them another parent with Edit\.$/);
+  assert.deepEqual(plan.rewritten.map((r) => r.relPath), ['marketplace/plateau.yaml', 'inhouse2/plateau.yaml'], 'each goes under baseline in its own manifest (run 0132)');
+  assert.deepEqual(plan.above.map((a) => a.id), ['alt', 'marketplace'], 'what each plateau above loses is told, in the order of the tree');
 });
 
 test('the root cannot be deleted, and no button offers it', async () => {
@@ -350,7 +350,7 @@ test('a plateau created and not saved yet is deleted from memory: nothing is rem
   sandbox.commitPlateauCreate({ id: 'draft', parent: 'saas' });
   const created = state.manifestFiles.find((mf) => mf.content && mf.content.id === 'draft').relPath;
   assert.equal(plain(sandbox.plateauDeletion('draft')).files[0].unsaved, true);
-  assert.match(sandbox.plateauDeletion('saas').refusal, /the plateau `draft` overrides it/);
+  assert.deepEqual(plain(sandbox.plateauDeletion('saas').overriding), ['draft'], 'saas could go too, and draft with it under baseline (run 0132)');
   sandbox.commitPlateauDelete('draft');
   assert.equal(state.manifestFiles.some((mf) => mf.relPath === created), false);
   assert.deepEqual(plain(state.pendingFileRemovals), []);
