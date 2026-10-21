@@ -159,7 +159,7 @@ wave_manifest:
       slug: delete-a-plateau-in-the-middle
       phase: P1
       depends_on: []
-      run: null
+      run: 0132
       delegation: hard_judgment
       delegation_reason: 'data deletion: it removes the manifests of a plateau from the author folder and rewrites the override of the plateaus above it'
       likely_paths:
