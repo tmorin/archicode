@@ -2,7 +2,7 @@
 // Brightcart (wave 012, run 0061): the editor on the invented shopping solution of docs/fixtures/brightcart-spec.md (sections 10 and 11), read from
 // src/test/resources/brightcart/layered/ (the plateaus are layers). Three things, each against the answers the generator wrote in expected/ and not against numbers typed here:
 //   - the editor draws each of the four plateaus and finds the sizes of the document;
-//   - the Changes panel of each comparison that a tool can say today (P1, P2, P3, P5) shows the counts `archicode diff` prints (BrightcartLayeredDiffTest.java reads the same file);
+//   - the Changes panel of each comparison that a tool can say today (P1 to P5) shows the counts `archicode diff` prints (BrightcartLayeredDiffTest.java reads the same file);
 //   - the save keeps what an edit does not touch (the line-preserving save of run 0055 and wave 011): every file of `layered/` (60 files, the views and the stories among them) is
 //     saved as it was when nothing changed, an edit of its name changes its name line and no other, an addition keeps every line it had; and the editor itself
 //     writes a rename in the manifests a plateau declares and writes it back to the bytes of the file on the disk.
@@ -99,7 +99,7 @@ function listedRows(html, title) {
 for (const comparison of COMPARISONS) {
   test(comparison.id + ': the Changes panel of ' + comparison.comparison + ' has the counts of archicode diff', async () => {
     const { sandbox, state } = await openLayered();
-    const [base, target] = comparison.chain;
+    const base = comparison.chain[0], target = comparison.chain[comparison.chain.length - 1]; // P4 is two steps apart: the plateau in between is not asked for
     sandbox.drawPlateau(target);
     sandbox.compareWithPlateau(base);
     assert.equal(state.layers.current, target);
@@ -121,14 +121,17 @@ for (const comparison of COMPARISONS) {
   });
 }
 
-test('P4 is not asked of the editor as the model answers it: no plateau compares marketplace with baseline through inhouse, and the editor gives the counts of the tool', async () => {
+test('P4 is asked of the editor as the model answers it: marketplace compared with baseline, two steps apart, composes the replaces of inhouse (wave 017, issue #89)', async () => {
   const { sandbox, state } = await openLayered();
   sandbox.drawPlateau('marketplace');
   sandbox.compareWithPlateau('baseline');
   const p4 = ALL_COMPARISONS.find((c) => c.id === 'P4');
-  const [added, changed, removed, moved, split, merged] = p4.gives;
   const elements = sandbox.comparisonState().counts.elements;
-  assert.deepEqual({ new: elements.new, changed: elements.changed, removed: elements.removed, moved: elements.moved, split: elements.split, merged: elements.merged }, { new: added, changed, removed, moved, split, merged }, 'the `replaces` of the last step only: one move less than the model\'s');
+  assert.deepEqual({ new: elements.new, changed: elements.changed, removed: elements.removed, moved: elements.moved, split: elements.split, merged: elements.merged }, { ...p4.elements, ...p4.replacing }, 'the model\'s numbers: +38 ~3 -6, 11 moved');
+  const view = sandbox.comparisonState();
+  assert.deepEqual(plain(view.warnings), [], 'the chain explains the entry that names commerce.search');
+  assert.equal(view.records.get('application|discovery.search').change, 'moved');
+  assert.deepEqual(plain(view.records.get('application|discovery.search').replaces), ['shop.app.search'], 'the composed word');
   assert.equal(state.layers.current, 'marketplace');
 });
 

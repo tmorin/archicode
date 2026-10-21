@@ -634,6 +634,30 @@ public final class PlateauTree {
     }
 
     /**
+     * The plateaus a plateau is built on that no other plateau shares with it, for composing the {@code replaces} of the layers
+     * between two plateaus (wave 017, issue #89): from the plateau {@code target} has in common with {@code other} (the deepest
+     * ancestor of both, either of them included) up to the plateau {@code target} overrides, the root side first, {@code target}
+     * itself not included. None when {@code target} is that common plateau (it is the past of {@code other}, or the same).
+     * {@code other} is the base when {@code target} is a descendant of it; between two siblings it is their last common plateau.
+     *
+     * @param target the plateau that is compared
+     * @param other  the plateau it is compared with
+     * @return the plateaus the target stands on, oldest first
+     * @throws ArchiCodeException when there is no such plateau
+     */
+    public List<Node> standsOn(String target, String other) {
+        val chain = chain(target);
+        val shared = chain(other).stream().map(Node::id).collect(java.util.stream.Collectors.toSet());
+        var common = -1;
+        for (var i = 0; i < chain.size(); i++) {
+            if (shared.contains(chain.get(i).id())) {
+                common = i;
+            }
+        }
+        return common < 0 ? List.of() : List.copyOf(chain.subList(common, chain.size() - 1));
+    }
+
+    /**
      * The plateaus that override a plateau directly, sorted by id.
      *
      * @param id the id of the plateau

@@ -351,13 +351,13 @@ test('the future gives the same numbers: the plateau drawn is the base, the plat
   assert.equal(comparison.base.id, 'baseline');
   assert.equal(comparison.target.id, 'saas');
   assert.deepEqual(countsOf(comparison), wanted('P1'));
-  // a plateau further down is the future too: the P4 of the document, which the command line gives with the one move less
+  // a plateau further down is the future too: the P4 of the document, composed (wave 017, issue #89)
   sandbox.compareWithPlateau('marketplace');
   assert.deepEqual(plain(state.layers.compare), { mode: 'future', other: 'marketplace', chosen: true });
   comparison = sandbox.comparisonState();
   assert.equal(comparison.target.id, 'marketplace');
   assert.equal(comparison.base.id, 'baseline');
-  assert.deepEqual([comparison.counts.elements.new, comparison.counts.elements.changed, comparison.counts.elements.removed], [39, 3, 7], 'what `diff --plateau marketplace --against baseline` prints (#89)');
+  assert.deepEqual(countsOf(comparison), wanted('P4'), 'what `diff --plateau marketplace --against baseline` prints');
 });
 
 test('with the future, what the plateau drawn does not have is read from the other one, and what it has is selectable as ever', async () => {

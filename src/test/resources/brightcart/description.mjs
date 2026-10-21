@@ -432,12 +432,10 @@ export const COMPARISONS = [
   { id: 'P3', title: '`marketplace` vs `inhouse`', chain: ['inhouse', 'marketplace'], command: 'archicode diff --plateau marketplace', source: 'tool' },
   { id: 'P4', title: '`marketplace` vs `baseline`, composed', chain: ['baseline', 'inhouse', 'marketplace'],
     command: 'archicode diff --plateau marketplace --against baseline',
-    // What the tool prints for the same question: it reads the `replaces` of every layer of the chain, relative to the plateau compared with, and does not compose them (L9),
-    // so `discovery.search` (which replaces `commerce.search`, itself a replacement of `shop.app.search`) is new and `shop.app.search` removed: one move less.
-    gives: [39, 3, 7, 10, 2, 1, 35, 1, 9],
-    ignored: 1,
-    source: 'model',
-    note: 'Needs the composition of `replaces` (L9). The tool does not compose them: it gives one move less (see `gives`).' },
+    // The composition of `replaces` (L9, wave 017, issue #89): `discovery.search` replaces `commerce.search`, itself a replacement of `shop.app.search`, so against the baseline it is
+    // moved from `shop.app.search`, and the tool says no warning.
+    ignored: 0,
+    source: 'tool' },
   { id: 'P5', title: '`inhouse` vs `saas` (siblings)', chain: ['saas', 'inhouse'], command: 'archicode diff --plateau inhouse --against saas', source: 'tool' },
   { id: 'P6', title: '`marketplace` vs `baseline`, last step only', chain: ['baseline', 'marketplace'], command: null, source: 'model', note: 'What a tool that reads only the last step\'s `replaces` prints (the tool of waves 008 to 013, whose option for it no longer exists).' }
 ];

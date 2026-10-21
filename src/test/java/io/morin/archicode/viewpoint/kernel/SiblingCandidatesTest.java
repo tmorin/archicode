@@ -54,6 +54,34 @@ class SiblingCandidatesTest {
             .toList();
     }
 
+    /**
+     * The plateaus a plateau stands on since the one it shares with another (wave 017, issue #89), which the kernel composes the
+     * {@code replaces} of the layers from.
+     */
+    @Test
+    void theTreeSaysWhichPlateausATargetStandsOnSinceTheOneItSharesWithTheBase() {
+        val tree = workspaceFactory.plateauTree(BRIGHTCART.toAbsolutePath());
+        val ids = (java.util.function.BiFunction<String, String, List<String>>) (target, base) ->
+            tree
+                .standsOn(target, base)
+                .stream()
+                .map(n -> n.id())
+                .toList();
+        assertEquals(List.of("baseline", "inhouse"), ids.apply("marketplace", "baseline"));
+        assertEquals(List.of("inhouse"), ids.apply("marketplace", "inhouse"));
+        assertEquals(
+            List.of("baseline", "inhouse"),
+            ids.apply("marketplace", "saas"),
+            "siblings: since baseline, which they share"
+        );
+        assertEquals(List.of("baseline"), ids.apply("inhouse", "saas"));
+        assertEquals(List.of("baseline"), ids.apply("saas", "baseline"));
+        assertEquals(List.of(), ids.apply("baseline", "marketplace"), "the target is the past of the base");
+        assertEquals(List.of(), ids.apply("baseline", "baseline"));
+        assertEquals(List.of(), ids.apply("inhouse", "marketplace"));
+        assertThrows(ArchiCodeException.class, () -> tree.standsOn("saas", "nowhere"));
+    }
+
     @Test
     void theTreeSaysWhichPlateausAreOneThePastOfTheOther() {
         val tree = workspaceFactory.plateauTree(BRIGHTCART.toAbsolutePath());

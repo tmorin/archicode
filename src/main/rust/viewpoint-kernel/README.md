@@ -114,7 +114,8 @@ its tests there; a JS test (`src/test/javascript/viewpoint-kernel/compare.test.j
 ```
 input : { base:   { application: [element], technology: [element] },
           target: { application: [element], technology: [element] },             (a missing or null list is empty)
-          on_one_chain: bool }                                                   (contract 5, required: see "Candidates")
+          on_one_chain: bool,                                                    (contract 5, required: see "Candidates")
+          chain: [ { application: [ { reference, replaces? } ], technology: [..] } ] }   (optional, see "`chain`")
 output: { version,
           elements:      [ { layer, reference, parent, parent_reference?, kind?, name?, description?, qualifiers, tags,
                              applications, uses, change, natures?, wording_only?, replaces?, replaced_by?,
@@ -182,6 +183,22 @@ output: { version,
   `applications` and `uses` as the target does: an entry that points at an element that was replaced points at the element
   that replaced it, and one that points at an element that was split is left out, so that nothing in the union points at
   an element the union does not hold (the union can be handed to `compute`, whatever was replaced).
+- **`chain`, the plateaus between the base and the target** (additive to contract 5, wave 017, issue #89; the number does not move). Each
+  layer of plateaus writes `replaces` relative to the plateau it overrides, so a move made in two steps (`z` replaces `y`, which replaced
+  `x`) names, between plateaus two steps apart, an element the base does not have: without help it is a `new` `z`, a `removed` `x` and a
+  warning. The host, which knows the tree of plateaus, gives the plateaus the target stands on: `chain` is the list of them, oldest first,
+  the last one being the plateau the target overrides and the first the base, or, for two siblings, the plateau they have in common. Only
+  `reference` and `replaces` (as the layer that declared the element wrote it; an inherited element keeps its word) are read of an
+  element. With two plateaus or more the kernel rewrites the `replaces` of the target before it reads them (rule 6 then applies to
+  what it wrote): an entry that names an element of the plateau just above, which the target no longer has, is read through the step that
+  made that element, down to the first plateau of the chain; an element is read through the step that made it only when its layer wrote the
+  word (the plateau above does not say the same of it). So a move then a move is a `moved` that replaces the first element; a move then a
+  split, or a split then a move of one half, is a `split`; a move then a merge is a `merged`; an element created by a layer in between and
+  moved by the next one replaces nothing (it is `new`, and the entry is no mistake); an element that a layer in between removed ends its
+  chain. An entry the last step cannot explain (it names nothing of the plateau above) and an entry that is not a string are left as
+  written, so that rule 6 ignores them with its warning as before. An element whose `replaces` the host did not give is not rewritten.
+  `warnings` and the `replaces` of the union say the composed words, not the ones the layers wrote. Without `chain`, with `null` or with a
+  single plateau nothing is composed and the answer is what it was.
 - **Candidates** are listed in `candidates`, never applied, never drawn: pairs (an element only the base has and nothing replaces,
   an element only the target has that replaces nothing) of the same layer and kind, with the reasons `name` (same name, ignoring
   case, and only when no other removed element and no other new element of that kind has it: a name that repeats would pair every

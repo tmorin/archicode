@@ -63,6 +63,15 @@ public class Workspace {
     java.util.List<Removal> removals = java.util.List.of();
 
     /**
+     * The plateaus of the chain a layered plateau was built from, the root first, each as its layer left it; none for any
+     * other workspace. A comparison several layers apart composes the {@code replaces} of the layers in between from them.
+     */
+    @JsonIgnore
+    @Getter
+    @Builder.Default
+    java.util.List<PlateauStep> steps = java.util.List.of();
+
+    /**
      * The plateau this workspace is compared with, for the workspace of a comparison (it holds the plateau and what only
      * the baseline has: see {@code WorkspaceFactory.createUnion}); null otherwise.
      */

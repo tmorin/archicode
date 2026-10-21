@@ -6,7 +6,7 @@
 // saved maps of both layers, and plays the stories: one whose steps name no plateau, one whose steps are told at the plateaus of the fork (`saas` and `inhouse` both override
 // `baseline` and do not stack) and compared with others, one told in a single plateau. The command line is asked the same in BrightcartViewsAndStoriesTest.java.
 // Nothing here is typed from memory: the plateaus a view can be drawn in, and the sentences the command line says, are read from entries.json; the numbers of a comparison are those
-// of expected/comparisons.json (P4: what the tool prints, `gives`).
+// of expected/comparisons.json (P4 is composed, wave 017, issue #89).
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,10 +46,6 @@ const storyOf = (id) => ENTRIES.stories.find((s) => s.id === id);
 /** `expected/comparisons.json` as the counts the page gives: elements and relationships `+new ~changed -removed`, then moved/split/merged. */
 const wanted = (id) => {
   const c = COMPARISONS.get(id);
-  if (c.gives) {
-    const [n, ch, r, mv, sp, mg, rn, rch, rr] = c.gives;
-    return { elements: { new: n, changed: ch, removed: r }, replacing: { moved: mv, split: sp, merged: mg }, relationships: { new: rn, changed: rch, removed: rr } };
-  }
   return { elements: c.elements, replacing: c.replacing, relationships: c.relationships };
 };
 const countsOf = (comparison) => {

@@ -160,16 +160,18 @@ class ComparisonLoadTest {
         assertEquals("", parent.err());
         assertEquals(5, json(parent.out()).at("/counts/elements/moved").asInt());
 
-        // the root has not got the layer inhouse: the moves it wrote are the news, and so they were before this rule moved
+        // the root has not got the layer inhouse: the moves it wrote are the news, composed with the move marketplace made of one of them
+        // (wave 017, issue #89: 10 moved before the composition, and a warning for the entry that names commerce.search)
         val skipping = cli.in(
             workspace,
             List.of("diff", "--plateau", "marketplace", "--against", "baseline", "-f", "json")
         );
         assertEquals(0, skipping.exit(), skipping.err());
         val counts = json(skipping.out()).at("/counts/elements");
-        assertEquals(10, counts.get("moved").asInt());
+        assertEquals(11, counts.get("moved").asInt());
         assertEquals(2, counts.get("split").asInt());
         assertEquals(1, counts.get("merged").asInt());
+        assertEquals("", skipping.err(), "the chain explains the entry that names commerce.search");
 
         // the other way round, a plateau is compared with one that builds on it: what inhouse wrote is the history of an element the
         // base holds too, and is not news, except for the element the base moved again (it has lost it, so the entry is all there is

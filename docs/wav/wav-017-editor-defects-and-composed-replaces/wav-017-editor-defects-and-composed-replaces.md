@@ -153,7 +153,7 @@ wave_manifest:
       slug: compose-replaces-along-the-chain
       phase: P1
       depends_on: []
-      run: null
+      run: 0125
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/workspace/**'

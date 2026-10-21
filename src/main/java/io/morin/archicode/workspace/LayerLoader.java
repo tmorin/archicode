@@ -72,8 +72,9 @@ public class LayerLoader {
      *
      * @param resources the workspace, with every element of the chain in its two layers, and the views and stories
      * @param removals  the {@code REMOVE} patches of the chain, in the order they were applied
+     * @param steps     the plateaus of the chain, the root first, each as it was once its layer was applied
      */
-    public record Loaded(Workspace resources, List<Removal> removals) {}
+    public record Loaded(Workspace resources, List<Removal> removals, List<PlateauStep> steps) {}
 
     /**
      * Load a plateau.
@@ -89,6 +90,7 @@ public class LayerLoader {
         val chain = parsed.plateaus().chain(plateauId);
         var resources = start;
         val removals = new ArrayList<Removal>();
+        val steps = new ArrayList<PlateauStep>();
         // one mapper for the load (built by the first layer that has patches), not one for each of them
         ObjectMapper json = null;
         Indexes drawn = null;
@@ -105,12 +107,13 @@ public class LayerLoader {
             }
             tell(problems(node.id(), indexes));
             drawn = indexes;
+            steps.add(new PlateauStep(node.id(), indexes.application(), indexes.technology()));
         }
         // the views and the stories belong to no plateau: checked once, against the plateau that is drawn and then, for what it
         // lacks, against what any plateau declares
         tell(entryProblems(parsed, drawn, start));
         resources = resources.toBuilder().views(parsed.views()).stories(parsed.stories()).build();
-        return new Loaded(resources, removals);
+        return new Loaded(resources, removals, steps);
     }
 
     /** The mistakes of a layer, one sentence per line; nothing when there is none. */

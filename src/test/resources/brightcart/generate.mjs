@@ -25,7 +25,7 @@
 //   4. the negative variants V1 to V8 fail in the model with the words expected;
 //   5. the views and the stories name only what some plateau declares, every view a step names is declared once, and the fixture holds what issue #115 asks for (a view that names an
 //      element one plateau alone declares, a technology map, a story whose steps are told at the plateaus of the fork, a story whose steps name no plateau); the files read back are the description.
-// The command line checks the other side (README.md): `archicode diff` on layered/ gives the counts of P1, P2, P3 and P5.
+// The command line checks the other side (README.md): `archicode diff` on layered/ gives the counts of P1 to P5.
 //
 // Everything is invented; nothing comes from a real workspace.
 import fs from 'node:fs';
@@ -949,10 +949,8 @@ function main() {
       replacing: n.replacing,
       relationships: n.relationships,
       verified: c.source === 'tool' ? 'archicode diff' : 'model only',
-      command: c.command, // null for P6, which only a tool that reads the last step's `replaces` alone would print: the tool has one answer for that question, listed under P4
-      // what the tool is expected to print: the counts of the comparison, except for P4 (the composition of `replaces` is not implemented: `gives`)
-      gives: c.gives || null,
-      // the warnings the tool prints for a `replaces` that names something the compared plateau does not have (only the last step's replaces are read)
+      command: c.command, // null for P6, which only a tool that reads the last step's `replaces` alone would print: the tool has one answer for that question, listed under P4 (composed)
+      // the warnings the tool prints for a `replaces` that names something the compared plateau does not have (the `replaces` of the layers between two plateaus are composed, P4)
       ignoredReplaces: c.ignored ?? (c.source === 'tool' ? ignoredReplaces(S[c.chain[0]], S[c.chain.at(-1)], c.chain.at(-1)) : null),
       note: c.note || null
     });

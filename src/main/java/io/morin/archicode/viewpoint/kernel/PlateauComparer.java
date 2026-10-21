@@ -1,9 +1,12 @@
 package io.morin.archicode.viewpoint.kernel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.morin.archicode.workspace.ElementIndex;
+import io.morin.archicode.workspace.PlateauStep;
 import io.morin.archicode.workspace.Workspace;
+import java.util.TreeMap;
 import java.util.function.Predicate;
 import lombok.AccessLevel;
 import lombok.NonNull;
@@ -73,8 +76,58 @@ public class PlateauComparer {
         input.set("base", side(base, null));
         input.set("target", side(target, base));
         input.put("on_one_chain", onOneChain);
+        val chain = chain(base, target);
+        if (chain != null) {
+            input.set("chain", chain);
+        }
         val answer = ViewpointKernel.getInstance().compare(objectMapper.writeValueAsString(input));
         return Comparison.of(objectMapper.readTree(answer)).between(base.getPlateau(), target.getPlateau());
+    }
+
+    /**
+     * The plateaus the target stands on, for the kernel to compose the {@code replaces} of the layers between the base and the
+     * target (wave 017, issue #89): each layer writes {@code replaces} relative to the plateau it overrides, so a move made in two
+     * steps names, for a plateau two steps up, an element the base does not have. The chain runs from the base (or, for two
+     * siblings, from the plateau they have in common) to the plateau the target overrides, oldest first; each plateau gives its
+     * references and the {@code replaces} of its elements as their layer wrote them. Null when there is nothing to compose: the
+     * workspace has no layers, the target is the base or its past, or it is one layer above the plateau it is compared with.
+     */
+    private ArrayNode chain(Workspace base, Workspace target) {
+        val tree = target.getPlateauTree();
+        if (tree == null || base.getPlateau() == null || target.getPlateau() == null) {
+            return null;
+        }
+        val nodes = tree.standsOn(target.getPlateau().getId(), base.getPlateau().getId());
+        if (nodes.size() < 2) {
+            return null;
+        }
+        val steps = new TreeMap<String, PlateauStep>();
+        target.getSteps().forEach(step -> steps.put(step.plateau(), step));
+        val chain = objectMapper.createArrayNode();
+        for (val node : nodes) {
+            val step = steps.get(node.id());
+            if (step == null) {
+                return null;
+            }
+            val plateau = chain.addObject();
+            plateau.set("application", stepLayer(step.application()));
+            plateau.set("technology", stepLayer(step.technology()));
+        }
+        return chain;
+    }
+
+    /** What the kernel reads of the elements of a plateau of the chain: the references and the {@code replaces} as written. */
+    private ArrayNode stepLayer(ElementIndex index) {
+        val elements = objectMapper.createArrayNode();
+        new TreeMap<>(index.elementByReferenceIndex).forEach((reference, element) -> {
+            val node = elements.addObject();
+            node.put("reference", reference);
+            val written = KernelGraph.replacesAsWritten(element);
+            if (written != null) {
+                node.set("replaces", written);
+            }
+        });
+        return elements;
     }
 
     /**

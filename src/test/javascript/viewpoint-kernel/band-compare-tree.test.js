@@ -141,9 +141,9 @@ test('the plateau drawn is greyed at the root, in the middle and at the leaf of 
 
 // ---- the comparison a choice makes: the one `archicode diff --plateau <drawn> --against <id>` makes ----
 
-const GRANDPARENT = { elements: { new: 39, changed: 3, removed: 7 }, replacing: { moved: 10, split: 2, merged: 1 }, relationships: { new: 35, changed: 1, removed: 9 } }; // diff --plateau marketplace --against baseline
+const GRANDPARENT = { elements: { new: 38, changed: 3, removed: 6 }, replacing: { moved: 11, split: 2, merged: 1 }, relationships: { new: 35, changed: 1, removed: 9 } }; // diff --plateau marketplace --against baseline
 const COUSIN = { elements: { new: 48, changed: 3, removed: 8 }, replacing: { moved: 4, split: 2, merged: 1 }, relationships: { new: 43, changed: 0, removed: 10 } }; // diff --plateau marketplace --against saas
-const GRANDCHILD = { elements: { new: 39, changed: 3, removed: 7 }, replacing: { moved: 10, split: 2, merged: 1 }, relationships: { new: 35, changed: 1, removed: 9 } }; // the same pair read from the other end: baseline drawn, marketplace chosen
+const GRANDCHILD = { elements: { new: 38, changed: 3, removed: 6 }, replacing: { moved: 11, split: 2, merged: 1 }, relationships: { new: 35, changed: 1, removed: 9 } }; // the same pair read from the other end: baseline drawn, marketplace chosen
 
 const CHOICES = [
   // [what it is, drawn, chosen, the comparison the state holds, the numbers]

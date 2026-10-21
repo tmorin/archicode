@@ -31,8 +31,8 @@ import picocli.CommandLine;
  * model of the generator computes.
  *
  * <p>The fixture forks ({@code inhouse} and {@code saas} both override {@code baseline}), so the plateau is always named:
- * without {@code --plateau} the command tells so. P4 (composed) is the model's alone and the tool does not compose the
- * {@code replaces} of the steps, which the test of P4 pins as what it prints, with the one element that differs.
+ * without {@code --plateau} the command tells so. P4 (composed, several layers apart) is composed by the kernel from the plateaus in
+ * between (wave 017, issue #89), so the tool gives the model's table.
  */
 @QuarkusTest
 class BrightcartLayeredDiffTest {
@@ -93,7 +93,13 @@ class BrightcartLayeredDiffTest {
             );
         }
         assertEquals(comparison.get("chain").get(0).asText(), json(comparison).at("/baseline/id").asText());
-        assertEquals(comparison.get("chain").get(1).asText(), json(comparison).at("/plateau/id").asText());
+        assertEquals(
+            comparison
+                .get("chain")
+                .get(comparison.get("chain").size() - 1)
+                .asText(),
+            json(comparison).at("/plateau/id").asText()
+        );
     }
 
     @ParameterizedTest(name = "{0}")
@@ -102,7 +108,14 @@ class BrightcartLayeredDiffTest {
         val comparison = Brightcart.comparison(id);
         val lines = cli().diff(workspace, comparison, "text").out().lines().toList();
         assertTrue(
-            lines.get(0).startsWith("comparing " + comparison.get("chain").get(1).asText() + " ("),
+            lines.get(0).startsWith(
+                "comparing " +
+                    comparison
+                        .get("chain")
+                        .get(comparison.get("chain").size() - 1)
+                        .asText() +
+                    " ("
+            ),
             lines.get(0)
         );
         assertEquals("elements      " + Brightcart.triple(comparison.get("elements")), lines.get(1));
@@ -163,7 +176,7 @@ class BrightcartLayeredDiffTest {
             for (val check : notable.get("checks")) {
                 val comparison = Brightcart.comparison(check.get("in").asText());
                 if (!comparison.get("verified").asText().equals("archicode diff")) {
-                    continue; // P4: the model's alone
+                    continue; // P6: the model's alone
                 }
                 if (check.get("state").asText().equals("contains-changes")) {
                     continue; // a state of the drawing: see BrightcartLayeredViewsTest
@@ -253,7 +266,7 @@ class BrightcartLayeredDiffTest {
         // against a descendant nothing is removed between the two: no cascade
         val future = cli().in(
             workspace,
-            List.of("diff", "--plateau", "inhouse", "--against", "marketplace", "-f", "json")
+            List.of("diff", "--plateau", "inhouse", "--against", "marketplace", "--format", "json")
         );
         assertEquals(0, future.exit(), future.err());
         assertEquals(List.of(), cascade(readTree(future.out())).stream().toList());
@@ -328,69 +341,70 @@ class BrightcartLayeredDiffTest {
     }
 
     /**
-     * The layered tool reads the {@code replaces} of every layer of the chain, relative to the plateau it compares with, and
-     * does not compose them (L9, P4): {@code discovery.search} replaces {@code commerce.search}, which replaces
-     * {@code shop.app.search}, so against {@code baseline} it is new and {@code shop.app.search} is removed. This pins what
-     * the tool prints, and the two rows that make the difference with the model's P4; the day it composes (#89), this test is the
-     * one to change.
+     * A comparison several layers apart composes the {@code replaces} of the layers in between (L9, P4; wave 017, issue #89):
+     * {@code discovery.search} (marketplace) replaces {@code commerce.search}, which {@code inhouse} wrote as the replacement of
+     * {@code shop.app.search}, so against {@code baseline} it is moved from {@code shop.app.search}, which is not removed, and the
+     * entry that names {@code commerce.search} is no mistake. The tool gives the model's P4, row by row (before the change it gave
+     * one move less, {@code discovery.search} new, {@code shop.app.search} removed and a warning).
      */
     @Test
-    void marketplaceAgainstBaselineIsP4ButForTheMoveThatTookTwoSteps() {
+    void marketplaceAgainstBaselineIsP4BecauseTheReplacesOfTheTwoStepsAreComposed() {
         val p4 = Brightcart.comparison("P4");
+        assertEquals("archicode diff", p4.get("verified").asText());
         val result = cli().diff(workspace, p4, "json");
         assertEquals(0, result.exit(), result.err());
         val diff = readTree(result.out());
-        val want = p4.get("gives");
         val counts = diff.get("counts");
-        val got = List.of(
-            counts.at("/elements/new").asInt(),
-            counts.at("/elements/changed").asInt(),
-            counts.at("/elements/removed").asInt(),
-            counts.at("/elements/moved").asInt(),
-            counts.at("/elements/split").asInt(),
-            counts.at("/elements/merged").asInt(),
-            counts.at("/relationships/new").asInt(),
-            counts.at("/relationships/changed").asInt(),
-            counts.at("/relationships/removed").asInt()
-        );
-        val wanted = new ArrayList<Integer>();
-        want.forEach(n -> wanted.add(n.asInt()));
-        assertEquals(wanted, got);
-        // the model's P4, row by row: the two that differ
-        val differences = new TreeSet<String>();
-        val model = new TreeSet<>(Brightcart.expectedElementRows("P4"));
-        val tool = new TreeSet<>(Brightcart.elementRows(diff.get("changes")));
-        for (val row : tool) {
-            if (!model.contains(row)) {
-                differences.add("tool " + row);
-            }
-        }
-        for (val row : model) {
-            if (!tool.contains(row)) {
-                differences.add("model " + row);
-            }
-        }
-        // the model says `discovery.search` is moved (from `shop.app.search`), the tool says new and lists `shop.app.search` as removed
         assertEquals(
-            new TreeSet<>(
-                List.of(
-                    "model application|discovery.search|moved",
-                    "tool application|discovery.search|new",
-                    "tool application|shop.app.search|removed"
-                )
-            ),
-            differences
+            List.of(38, 3, 6, 11, 2, 1, 35, 1, 9),
+            List.of(
+                counts.at("/elements/new").asInt(),
+                counts.at("/elements/changed").asInt(),
+                counts.at("/elements/removed").asInt(),
+                counts.at("/elements/moved").asInt(),
+                counts.at("/elements/split").asInt(),
+                counts.at("/elements/merged").asInt(),
+                counts.at("/relationships/new").asInt(),
+                counts.at("/relationships/changed").asInt(),
+                counts.at("/relationships/removed").asInt()
+            )
         );
+        assertEquals(Brightcart.expectedElementRows("P4"), Brightcart.elementRows(diff.get("changes")));
+        var composed = "";
+        for (val row : diff.get("changes")) {
+            if (
+                row.path("thing").asText().equals("element") &&
+                row.path("reference").asText().equals("discovery.search")
+            ) {
+                composed = row.path("change").asText() + " " + row.path("replaces");
+            }
+            assertTrue(
+                !row.path("reference").asText().equals("shop.app.search"),
+                "what discovery.search replaces is not removed: " + row
+            );
+        }
         assertEquals(
-            p4.get("ignoredReplaces").asInt(),
-            result
-                .err()
-                .lines()
-                .filter(l -> l.startsWith("warning: "))
-                .count(),
-            result.err()
+            "moved [\"shop.app.search\"]",
+            composed,
+            "the row says the composed word, not the one `marketplace` wrote"
         );
-        assertTrue(result.err().contains("commerce.search is not an element of the base plateau"), result.err());
+        assertEquals("", result.err(), "no warning: the chain explains the entry that names commerce.search");
+    }
+
+    /**
+     * Between a plateau and the one it overrides (one step) nothing is composed: the {@code replaces} of {@code inhouse} read
+     * against {@code baseline} are the same with and without {@code --against}.
+     */
+    @Test
+    void aComparisonWithTheParentIsAsItWas() {
+        val explicit = cli().in(
+            workspace,
+            List.of("diff", "--plateau", "marketplace", "--against", "inhouse", "--format", "json")
+        );
+        val implicit = cli().in(workspace, List.of("diff", "--plateau", "marketplace", "--format", "json"));
+        assertEquals(0, explicit.exit(), explicit.err());
+        assertEquals(implicit.out(), explicit.out());
+        assertEquals(implicit.err(), explicit.err());
     }
 
     @Test

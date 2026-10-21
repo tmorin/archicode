@@ -4,7 +4,7 @@
 // src/test/resources/brightcart/expected/ (written by generate.mjs), and the plateaus are read from src/test/resources/brightcart/layered/ through the editor's own loader
 // (loadWorkspace, drawPlateau, toKernelElements) and the embedded module (`compare`, then `compute` for the state a box gets from what is below it). The Java side is in
 // src/test/java/io/morin/archicode/brightcart/: `archicode diff` gives the same counts and the same table from the same files.
-// Only the comparisons that the current tools can say are asserted (`verified: "archicode diff"`): P4 is the model's alone (it needs the composition of `replaces`).
+// Only the comparisons that the current tools can say are asserted (`verified: "archicode diff"`): P6 is the model's alone. P4 needs the composition of `replaces`, which the kernel does from `chain`, the plateaus between the two (wave 017, issue #89).
 // The `deep` view of `inhouse` and `marketplace` against their baselines is drawn (E1 of the document, section 12, fixed by W-3 of wave 012): see "E1" below.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
@@ -22,7 +22,7 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 const COMPARISONS = expected('comparisons');
 const CHANGES = expected('changes');
 const CASES = expected('notable-cases');
-/** The comparisons a tool can say today: the others (P4) are the model's. */
+/** The comparisons a tool can say today: the others (P6) are the model's. */
 const VERIFIED = COMPARISONS.filter((c) => c.verified === 'archicode diff');
 
 let opened = null;
@@ -67,8 +67,11 @@ function withoutInheritedReplaces(base, target) {
 
 async function compare(comparison) {
   const { kernel, sides } = await brightcart();
-  const [base, target] = comparison.chain;
-  const out = plain(kernel.compare({ base: sides[base], target: withoutInheritedReplaces(sides[base], sides[target]), on_one_chain: true })); // plain objects of this realm
+  // the plateaus from the base to the target; the ones in between are what the kernel composes the `replaces` from (`PlateauComparer.chain`, `replacesChainBetween`)
+  const base = comparison.chain[0], target = comparison.chain[comparison.chain.length - 1];
+  const input = { base: sides[base], target: withoutInheritedReplaces(sides[base], sides[target]), on_one_chain: true };
+  if (comparison.chain.length > 2) input.chain = comparison.chain.slice(0, -1).map((id) => sides[id]);
+  const out = plain(kernel.compare(input)); // plain objects of this realm
   assert.equal(out.error, undefined, comparison.id);
   return out;
 }
@@ -90,11 +93,12 @@ for (const comparison of VERIFIED) {
   });
 }
 
-test('the baseline of a comparison is the one the file says: P5 compares siblings, P6 skips a plateau and is the model\'s', () => {
+test('the baseline of a comparison is the one the file says: P5 compares siblings, P4 is two steps apart and composed, P6 skips a plateau and is the model\'s', () => {
   assert.deepEqual(byId('P5').chain, ['saas', 'inhouse']);
+  assert.deepEqual(byId('P4').chain, ['baseline', 'inhouse', 'marketplace']);
   assert.deepEqual(byId('P6').chain, ['baseline', 'marketplace']);
-  assert.equal(byId('P6').verified, 'model only', 'the tool has one answer for that question: P4, and it does not compose the replaces either');
-  assert.equal(byId('P4').verified, 'model only', 'the composed comparison is not something a tool says today');
+  assert.equal(byId('P6').verified, 'model only', 'what a tool that reads the last step\'s `replaces` alone would print: P4 is the answer of the tool, composed');
+  assert.equal(byId('P4').verified, 'archicode diff', 'the composed comparison is something the tools say (wave 017, issue #89)');
 });
 
 // ---- the table of changes: element by element, relationship by relationship ----
@@ -152,7 +156,7 @@ for (const notable of CASES) {
 test('the notable cases name every case N1 to N17, and the ones that are not run are the model\'s or a variant', () => {
   assert.deepEqual(CASES.map((c) => c.id), Array.from({ length: 17 }, (_, i) => 'N' + (i + 1)));
   const skipped = CASES.flatMap((c) => c.checks.filter((k) => byId(k.in).verified !== 'archicode diff').map((k) => c.id + ' in ' + k.in));
-  assert.deepEqual(skipped, ['N8 in P4', 'N8 in P6', 'N13 in P4'], 'only the composed comparison P4 and the question of P6, which the tool answers as P4, are not run here');
+  assert.deepEqual(skipped, ['N8 in P6'], 'only the question of P6, which the tool answers as P4, is not run here');
   assert.deepEqual(CASES.find((c) => c.id === 'N17').checks, [], 'N17 is variant V8, described and not run');
 });
 
@@ -183,7 +187,7 @@ test('N10, N12: the link follows the replaced destination and only its qualifier
 /** The stereotypes `compute` gives each box of the picture of a comparison: the states of the drawing. */
 async function drawn(comparison, viewpoint, reference, layer) {
   const { sandbox, state, kernel } = await brightcart();
-  sandbox.drawPlateau(comparison.chain[1]);
+  sandbox.drawPlateau(comparison.chain[comparison.chain.length - 1]);
   // a click on the plateau already compared with ends the comparison: ask only when it is not the one made
   if (!(state.layers.compare && state.layers.compare.other === comparison.chain[0])) sandbox.compareWithPlateau(comparison.chain[0]);
   vm.runInContext("currentPerspective = 'map';", sandbox);
