@@ -354,6 +354,12 @@ output: { version, quiet: [ reference ] }            (those of `focals` that hav
   and `expandable` (which builds the view again for every box that could open) and the stereotypes, which `quiet` does not need, would be built for nothing. A new entry point is additive: nothing the others
   take or give changes (the views of every workspace of the repository are byte for byte those of the commit before), the number stays 5, and the answer says it.
   The command line has no use for it (it draws views, it does not grey a tree), so `ViewpointKernel.java` does not expose it.
+- **What the views share** (wave 019, run 0143, issue #125). The views of one call are built from the same two lists of elements, so `quiet` (one view per element) and
+  `expandable` of `compute` (one view per box that could open) work out once what a view reads and no focal element, `focals` entry or list of boxes changes: the elements
+  by reference, the relationships of each element without duplicates and in order, the dependencies the deployed applications give and the references that have a change
+  below them (`Shared` in `src/lib.rs`, each part worked out when a view first asks for it). It borrows the two lists of elements and not the input, so the viewpoint and the
+  focal element can change while it is held. Before, each view rebuilt them, which is why the time of `quiet` grew with the square of the elements (591 elements of
+  `replaces-large-pair`: 175 ms to 39 ms in WebAssembly, the answer byte for byte the same).
 - **The cases** are in `src/quiet_tests.rs`: the answer is compared, for the three viewpoints and for facets that remove relationships, one element, a parent and
   everything, with what one `compute` per element says. The editor's tests (`quiet-references.test.js`) do the same through the embedded module on the layered Brightcart.
 
@@ -401,6 +407,14 @@ output: { version,
 - **A patch never changes an `id` or a `parent`**, and no combination of keys is guessed: what has no meaning is an error that says
   which key. Nothing else is checked: a relationship added towards an element that does not exist is the loader's error after the
   layer, which names the layer.
+- **The references of the document are counted once, not read for each patch.** A patch with a `field` cannot change an `id` or the nesting (`id`, `parent` and
+  `elements` are refused), so it does not read them. A `REMOVE` of elements (the usual patch of a plateau) counts how many times each reference is held when it first
+  needs to (`RefCounts` in `src/facet.rs`), then only subtracts the references of the subtrees it removes: what leaves the graph is what no holder is left for, and the next
+  patch starts from those counts (`remove_nodes` takes and gives them back). What is not an element, a path inside another, an element with no `id` on the way, a patch
+  without `field` (which may replace an element) and a removal of anything but an element read the document again, or empty what was kept (a field of an element may be its
+  `id`). What points at what leaves is found in one pass over the keys of each element. The time of the patches of a plateau no longer grows with the square of its
+  elements (`replaces-large-pair`, 216 patches on 591 elements: 164 ms to 22 ms in WebAssembly, every answer byte for byte the same; `patch_tests.rs` compares a run of
+  patches with the same patches one at a time).
 - **The contract number did not move for it.** `apply_patches` is additive: nothing `compute`, `apply_facet` or `compare` take or give
   changes (the views of every workspace of the repository are byte for byte those of the commit before) and the answer says the
   version (4 when it was added, 5 since `compare` took `on_one_chain`). A host that needs it ships with a kernel that has it, as for the

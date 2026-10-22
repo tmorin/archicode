@@ -4,7 +4,8 @@
 // larger. Two sizes are measured with the real page, the real kernel and a fake layout engine:
 //   - the layered Brightcart, plateau `marketplace` compared with `inhouse`: 82 elements, 65 changes;
 //   - the invented harbour of `replaces-large-pair`, plateau `after` compared with `before`: 591 elements, 839 changes (the largest pair of the repository; the sizes are asserted below).
-// What is ASSERTED is a count, never a time: (1) the calls to the kernel, entry by entry (`compute`, `quiet`, `compare`, `applyPatches`), which depend on the number of plateaus, of layers and of
+// What is ASSERTED is a count, and, since run 0143 (issue #125), the time of the two kernel entries that grew with the square of the elements, as a ratio (the 591 elements to the 82, measured in
+// the same run on the same machine, so that a slow machine does not fail it) (a ceiling in ms was tried and fails when the whole suite runs at once, the ratio does not); every other time is only recorded. (1) the calls to the kernel, entry by entry (`compute`, `quiet`, `compare`, `applyPatches`), which depend on the number of plateaus, of layers and of
 // renders and on nothing else; (2) the reads of the rows of the table of changes (every property read of a row, every index read of the table, through a Proxy), which may grow with the number of
 // rows (a list shows every row) but at the same rate per row, so that a list that was quadratic in the rows would be seen. What is RECORDED is the times (`t.diagnostic`: the wall time of each step
 // and the time spent in each kernel entry): they depend on the machine, and the layout of ELK (the cost of the extra boxes of an unfolded Map, run 0114) is not in them, the layout engine
@@ -240,9 +241,9 @@ test('#118: the list of changes, the pages that show it and the walk read each r
   assert.ok(per(large, 'walk') / WALKS < 120, 'one step of the walk: ' + fmt(per(large, 'walk') / WALKS) + ' reads per row');
 });
 
-// ---- 4. the times: recorded, never asserted ----
+// ---- 4. the times: recorded, and for two entries bounded ----
 
-test('#118: the times of each step at both sizes are recorded (not asserted)', async (t) => {
+test('#118: the times of each step at both sizes are recorded', async (t) => {
   const { small, large } = await measure();
   const names = ['draw', 'compare', 'first', 'again', 'quietAgain', 'applicationMap', 'technologyMap', 'plateaus', 'panel', 'walk', 'filter'];
   for (const name of names) {
@@ -257,6 +258,34 @@ test('#118: the times of each step at both sizes are recorded (not asserted)', a
     }
   }
   assert.ok(names.every((name) => Number.isFinite(small.steps[name].wallMs) && Number.isFinite(large.steps[name].wallMs)));
+});
+
+// What the kernel did in a step, in ms, for an entry. `quiet` and `apply_patches` (issue #125, run 0143) took 19 and 18 times longer at 591 elements than at 82 (7.2 times more), because
+// each `quiet` view rebuilt what every other one reads and each `REMOVE` read the whole graph twice; they now take 8 and 5 times longer (medians of five runs, Node, 2026-10-22). The
+// limits sit between the two (the new ratios stayed at 7.7 and 5.1 or less in three runs of the whole suite at once, where a time in ms went from 78 to 630).
+const TIME_BUDGET = [
+  { label: 'first `quiet`', step: 'first', entry: 'quiet', ratio: 12 },
+  { label: '`apply_patches` of the plateau drawn', step: 'draw', entry: 'applyPatches', ratio: 10 }
+];
+
+/** The problems of a kernel entry whose time grows faster than the elements: as sentences. */
+function timeProblems(budget, small, large) {
+  const a = small.steps[budget.step].kernelMs[budget.entry];
+  const b = large.steps[budget.step].kernelMs[budget.entry];
+  const out = [];
+  if (!(a > 0)) out.push(budget.label + ': the small pair made no call to measure');
+  else if (b / a > budget.ratio) out.push(budget.label + ': ' + fmt(b) + ' ms at ' + FIXTURES.large.elements + ' elements is ' + fmt(b / a) + ' times the ' + fmt(a) + ' ms at ' + FIXTURES.small.elements + ' (the limit is ' + budget.ratio + ')');
+  return out;
+}
+
+test('#125: the first `quiet` and the `apply_patches` of a plateau take less than twelve and ten times as long at 591 elements as at 82', async (t) => {
+  const { small, large } = await measure();
+  for (const budget of TIME_BUDGET) {
+    const a = small.steps[budget.step].kernelMs[budget.entry];
+    const b = large.steps[budget.step].kernelMs[budget.entry];
+    t.diagnostic(budget.label + ': ' + fmt(a) + ' ms at ' + FIXTURES.small.elements + ', ' + fmt(b) + ' ms at ' + FIXTURES.large.elements + ' (' + fmt(b / a) + ' times, elements: ' + fmt(large.elements / small.elements) + ' times)');
+    assert.deepEqual(timeProblems(budget, small, large), []);
+  }
 });
 
 // ---- 5. the instruments see a page that grows ----
@@ -300,4 +329,13 @@ test('#118: the comparison of the two sizes says nothing about a page that holds
   const a = { rowReads: 100, tableReads: 10 };
   assert.deepEqual(readsGrow('x', a, { rowReads: 800, tableReads: 80 }, 10, 80), [], 'eight times the rows, eight times the reads');
   assert.equal(readsGrow('x', a, { rowReads: 6400, tableReads: 640 }, 10, 80).length, 1, 'eight times the rows, sixty-four times the reads');
+});
+
+test('#125: the time budget tells a call that grows with the square of the elements, and holds for one that grows with the elements', () => {
+  const steps = (ms) => ({ first: { kernelMs: { quiet: ms } }, draw: { kernelMs: { applyPatches: ms } } });
+  const small = { steps: steps(10) };
+  assert.deepEqual(TIME_BUDGET.flatMap((budget) => timeProblems(budget, small, { steps: steps(80) })), [], 'eight times the time for 7.2 times the elements');
+  assert.equal(TIME_BUDGET.flatMap((budget) => timeProblems(budget, small, { steps: steps(190) })).length, 2, 'nineteen times: both entries are told');
+  assert.deepEqual(TIME_BUDGET.flatMap((budget) => timeProblems(budget, { steps: steps(40) }, { steps: steps(300) })), [], 'a slow machine is not a page that grows: only the ratio is judged');
+  assert.equal(TIME_BUDGET.flatMap((budget) => timeProblems(budget, { steps: steps(0) }, { steps: steps(10) })).length, 2, 'a step that made no call is not a pass');
 });

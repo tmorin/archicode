@@ -162,7 +162,7 @@ wave_manifest:
       slug: kernel-cost-on-large-pairs
       phase: P0
       depends_on: []
-      run: null
+      run: 0143
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'

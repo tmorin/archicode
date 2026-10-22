@@ -131,6 +131,7 @@ pub use facet::apply_facet_json;
 pub use patch::apply_patches_json;
 
 use serde::{Deserialize, Serialize};
+use std::cell::OnceCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Bumped when the shape of the input or output changes in a way a caller must know about.
@@ -594,12 +595,12 @@ fn down_reference(r: &str) -> String {
         None => r.to_string(),
     }
 }
-fn starts_with_parts(actual: &[&str], expected: &[&str]) -> bool {
-    actual.len() >= expected.len() && actual[..expected.len()] == *expected
-}
 fn is_descendant_of(candidate: &str, reference: &str) -> bool {
     // the segments of `reference` are the first ones of `candidate`, and `candidate` has more (no allocation: this is called for every pair of elements)
     candidate.len() > reference.len() && candidate.starts_with(reference) && candidate.as_bytes()[reference.len()] == b'.'
+}
+fn starts_with_parts(actual: &[&str], expected: &[&str]) -> bool {
+    actual.len() >= expected.len() && actual[..expected.len()] == *expected
 }
 fn is_ancestor_of(candidate: &str, reference: &str) -> bool {
     let (c, r) = (parts(candidate), parts(reference));
@@ -717,19 +718,79 @@ fn groom(metas: &[MetaLink], dir: Direction, from_t: usize, to_t: usize, expande
 
 type Known<'a> = HashMap<&'a str, &'a Elem>;
 
+/// What a view reads of the two layers and does not change from one view of the same input to the next (`quiet` builds one view per element, the map builds one
+/// per box it could open): the elements by reference, the relationships of each element once, without duplicates and in order, the dependencies the deployed
+/// applications give and the references that have a change below them. Each is worked out when it is first asked for. It borrows the two lists of elements only, not the
+/// input, so that the viewpoint, the focal element and the lists of boxes of the input can change while it is held.
+struct Shared<'a> {
+    elements: &'a [Elem],
+    app_elements: &'a [Elem],
+    known: Known<'a>,
+    app_known: OnceCell<Known<'a>>,
+    rels: OnceCell<Vec<Vec<&'a Rel>>>,
+    derived: OnceCell<Vec<Derived<'a>>>,
+    local: OnceCell<Vec<Derived<'a>>>,
+    main_above: OnceCell<HashSet<String>>,
+    apps_above: OnceCell<HashSet<String>>,
+}
+
+impl<'a> Shared<'a> {
+    fn new(elements: &'a [Elem], app_elements: &'a [Elem]) -> Self {
+        Shared {
+            elements,
+            app_elements,
+            known: elements.iter().map(|e| (e.reference.as_str(), e)).collect(),
+            app_known: OnceCell::new(),
+            rels: OnceCell::new(),
+            derived: OnceCell::new(),
+            local: OnceCell::new(),
+            main_above: OnceCell::new(),
+            apps_above: OnceCell::new(),
+        }
+    }
+
+    /// The elements of the application layer by reference.
+    fn app_known(&self) -> &Known<'a> {
+        self.app_known.get_or_init(|| self.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect())
+    }
+
+    /// The relationships of each element, in the order of the elements: each distinct one once, sorted (what a `BTreeSet` of them gives).
+    fn rels(&self) -> &[Vec<&'a Rel>] {
+        self.rels.get_or_init(|| self.elements.iter().map(|e| e.relationships.iter().collect::<BTreeSet<_>>().into_iter().collect()).collect())
+    }
+
+    /// The dependencies between environments (`derived_dependencies`).
+    fn derived(&self) -> &[Derived<'a>] {
+        self.derived.get_or_init(|| derived_dependencies(self.elements, self.app_elements, self.app_known()))
+    }
+
+    /// The dependencies between applications of one environment (`local_dependencies`).
+    fn local(&self) -> &[Derived<'a>] {
+        self.local.get_or_init(|| local_dependencies(self.elements, self.app_elements, self.app_known()))
+    }
+
+    fn main_above(&self) -> &HashSet<String> {
+        self.main_above.get_or_init(|| above_changes(self.elements))
+    }
+
+    fn apps_above(&self) -> &HashSet<String> {
+        self.apps_above.get_or_init(|| above_changes(self.app_elements))
+    }
+}
+
 fn require(known: &Known, dest: &str) -> Result<(), String> {
     if known.contains_key(dest) { Ok(()) } else { Err(format!("dangling reference: {dest}")) }
 }
 
 /// MetaLinkFinderForEgress: relationships leaving the subtree rooted at `root`.
-fn find_egress(elems: &[Elem], known: &Known, root: &str) -> Result<Vec<MetaLink>, String> {
+fn find_egress(shared: &Shared, root: &str) -> Result<Vec<MetaLink>, String> {
     let mut out = Vec::new();
-    for e in elems {
+    for (e, rels) in shared.elements.iter().zip(shared.rels()) {
         if e.reference == root || is_descendant_of(&e.reference, root) {
-            for r in e.relationships.iter().collect::<BTreeSet<_>>() {
+            for r in rels {
                 if !is_descendant_of(&r.destination, root) {
-                    require(known, &r.destination)?;
-                    out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: r.clone(), application: None });
+                    require(&shared.known, &r.destination)?;
+                    out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: (*r).clone(), application: None });
                 }
             }
         }
@@ -738,16 +799,16 @@ fn find_egress(elems: &[Elem], known: &Known, root: &str) -> Result<Vec<MetaLink
 }
 
 /// MetaLinkFinderForIngress: relationships coming from outside the subtree and targeting it.
-fn find_ingress(elems: &[Elem], known: &Known, root: &str) -> Result<Vec<MetaLink>, String> {
+fn find_ingress(shared: &Shared, root: &str) -> Result<Vec<MetaLink>, String> {
     let mut out = Vec::new();
-    for e in elems {
+    for (e, rels) in shared.elements.iter().zip(shared.rels()) {
         if is_descendant_of(&e.reference, root) {
             continue;
         }
-        for r in e.relationships.iter().collect::<BTreeSet<_>>() {
+        for r in rels {
             if r.destination == root || is_descendant_of(&r.destination, root) {
-                require(known, &r.destination)?;
-                out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: r.clone(), application: None });
+                require(&shared.known, &r.destination)?;
+                out.push(MetaLink { from: e.reference.clone(), to: r.destination.clone(), rel: (*r).clone(), application: None });
             }
         }
     }
@@ -828,17 +889,17 @@ fn emit_links(groomed: &[Groomed], default_label: &str, refs: &mut Vec<String>) 
 }
 
 /// OverviewViewpointFactory
-fn overview(input: &Input, known: &Known, focal: &str) -> Result<Content, String> {
+fn overview(input: &Input, shared: &Shared, focal: &str) -> Result<Content, String> {
+    let known = &shared.known;
     require(known, focal)?;
-    let mut egress = find_egress(&input.elements, known, focal)?;
-    let mut ingress = find_ingress(&input.elements, known, focal)?;
+    let mut egress = find_egress(shared, focal)?;
+    let mut ingress = find_ingress(shared, focal)?;
     if input.layer == "technology" {
         // the dependencies of the applications deployed in an environment on those of another one it uses are relationships
         // of the nodes that host them
-        let app_known: Known = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
-        let mut dependencies = derived_dependencies(input, &app_known);
+        let mut dependencies: Vec<&Derived> = shared.derived().iter().collect();
         if input.application_links {
-            dependencies.extend(local_dependencies(input, &app_known));
+            dependencies.extend(shared.local());
         }
         for d in dependencies {
             let meta = MetaLink { from: d.from_node.to_string(), to: d.to_node.to_string(), rel: d.rel.clone(), application: Some(d.source.to_string()) };
@@ -870,7 +931,8 @@ fn overview(input: &Input, known: &Known, focal: &str) -> Result<Content, String
 /// (a box inside its node, drawn when the node is open: `applications`) and the dependencies the applications of an environment have on those of the environments it
 /// `uses` (`derived_dependencies`, the ones the overview, the detailed and the deep viewpoints draw; the dependencies inside one environment stay out, as they are
 /// "secondary" there), as links between the deployed applications when both boxes are drawn, else between the boxes they land on (`relationships`).
-fn map(input: &Input, known: &Known) -> Result<Content, String> {
+fn map(input: &Input, shared: &Shared) -> Result<Content, String> {
+    let known = &shared.known;
     for reference in input.pinned.iter().chain(input.opened.iter()).chain(input.hidden.iter()) {
         require(known, reference)?;
     }
@@ -895,7 +957,7 @@ fn map(input: &Input, known: &Known) -> Result<Content, String> {
         cur
     };
     let draw_links = input.relationships.unwrap_or(true) || input.layer != "technology"; // the key means nothing in the map of the application layer
-    let app_known: Known = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+    let app_known = shared.app_known();
 
     // the applications deployed on the nodes that are open (and, when the map is pinned, inside what it is pinned on), by (node, application)
     let mut deployed_items: Vec<(String, String, String)> = Vec::new();
@@ -938,7 +1000,7 @@ fn map(input: &Input, known: &Known) -> Result<Content, String> {
             }
         }
         if input.layer == "technology" {
-            for d in derived_dependencies(input, &app_known) {
+            for d in shared.derived() {
                 let destination = d.to_app;
                 if is_hidden(d.from_node) || is_hidden(d.to_node) {
                     continue;
@@ -1032,7 +1094,8 @@ fn deployed_ids(input: &Input) -> Vec<(String, String, String)> {
 }
 
 /// DetailedViewpointFactory: the union of the overview of every direct child of the focal parent.
-fn detailed(input: &Input, known: &Known) -> Result<Content, String> {
+fn detailed(input: &Input, shared: &Shared) -> Result<Content, String> {
+    let known = &shared.known;
     let focal = input.focal.as_str();
     let focal_elem = known.get(focal).ok_or_else(|| format!("unknown focal element: {focal}"))?;
     if !focal_elem.parent {
@@ -1042,7 +1105,7 @@ fn detailed(input: &Input, known: &Known) -> Result<Content, String> {
     let mut links = BTreeSet::new();
     for e in &input.elements {
         if is_descendant_of(&e.reference, focal) && down_reference(&e.reference) == focal {
-            let (i, l) = overview(input, known, &e.reference)?;
+            let (i, l) = overview(input, shared, &e.reference)?;
             items.extend(i);
             links.extend(l);
         }
@@ -1051,14 +1114,15 @@ fn detailed(input: &Input, known: &Known) -> Result<Content, String> {
 }
 
 /// Deep viewpoint (application layer): every relationship touching the focal subtree, no grooming.
-fn deep(input: &Input, known: &Known) -> Result<(Content, Vec<String>), String> {
+fn deep(input: &Input, shared: &Shared) -> Result<(Content, Vec<String>), String> {
+    let known = &shared.known;
     let focal = input.focal.as_str();
     require(known, focal)?;
     let mut metas = Vec::new();
     for e in &input.elements {
         if e.reference == focal || is_descendant_of(&e.reference, focal) {
-            metas.extend(find_egress(&input.elements, known, &e.reference)?);
-            metas.extend(find_ingress(&input.elements, known, &e.reference)?);
+            metas.extend(find_egress(shared, &e.reference)?);
+            metas.extend(find_ingress(shared, &e.reference)?);
         }
     }
     let mut refs = vec![focal.to_string()];
@@ -1098,6 +1162,7 @@ fn within(reference: &str, scope: &str) -> bool {
 
 /// A dependency between two deployed applications that live in two environments: `from_app`, deployed on `from_node`,
 /// has the relationship `rel` towards `to_app`, deployed on `to_node`.
+#[derive(Clone, Copy)]
 struct Derived<'a> {
     from_node: &'a str,
     from_app: &'a str,
@@ -1135,9 +1200,9 @@ fn deployed_application_of<'a>(hosts: &BTreeMap<&'a str, BTreeSet<&'a str>>, ref
 /// The relationships that stand for the dependencies of a deployed application: its own and those of everything inside it
 /// (issue #124: a relationship of `shop.app.payments` is a dependency of the node that hosts `shop.app`), each with the element
 /// that declares it. One that ends inside the application itself is internal, not a dependency.
-fn relationships_of_deployed<'a>(input: &'a Input, app: &'a str) -> Vec<(&'a str, &'a Rel)> {
+fn relationships_of_deployed<'a>(app_elements: &'a [Elem], app: &'a str) -> Vec<(&'a str, &'a Rel)> {
     let mut out = Vec::new();
-    for elem in input.app_elements.iter().filter(|e| within(&e.reference, app)) {
+    for elem in app_elements.iter().filter(|e| within(&e.reference, app)) {
         for rel in elem.relationships.iter().collect::<BTreeSet<_>>() {
             if within(&rel.destination, app) {
                 continue; // internal to the application
@@ -1153,15 +1218,15 @@ fn relationships_of_deployed<'a>(input: &'a Input, app: &'a str) -> Vec<(&'a str
 /// the second. An environment reaches what it hosts itself first; what it does not host, it finds in the environments
 /// (or the nodes) it `uses`, and nowhere else: an application deployed in several environments is therefore reached
 /// where the environment says so.
-fn derived_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Derived<'a>> {
-    let hosts = hosts_of_applications(&input.elements);
-    let scopes: HashMap<&str, &Vec<String>> = input.elements.iter().filter(|e| !e.uses.is_empty()).map(|e| (e.reference.as_str(), &e.uses)).collect();
+fn derived_dependencies<'a>(elements: &'a [Elem], app_elements: &'a [Elem], app_known: &Known<'a>) -> Vec<Derived<'a>> {
+    let hosts = hosts_of_applications(elements);
+    let scopes: HashMap<&str, &Vec<String>> = elements.iter().filter(|e| !e.uses.is_empty()).map(|e| (e.reference.as_str(), &e.uses)).collect();
     let mut out = Vec::new();
     for (app, from_nodes) in &hosts {
         if !app_known.contains_key(app) {
             continue;
         }
-        for (source, rel) in relationships_of_deployed(input, app) {
+        for (source, rel) in relationships_of_deployed(app_elements, app) {
             let Some(to_app) = deployed_application_of(&hosts, &rel.destination) else { continue };
             let Some(to_nodes) = hosts.get(to_app) else { continue };
             for from_node in from_nodes {
@@ -1181,14 +1246,14 @@ fn derived_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Deri
 
 /// The dependencies between the applications deployed in one environment, on different nodes: the node that hosts the
 /// first depends on the node that hosts the second. Only a view about a flow (`application_links`) draws them.
-fn local_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Derived<'a>> {
-    let hosts = hosts_of_applications(&input.elements);
+fn local_dependencies<'a>(elements: &'a [Elem], app_elements: &'a [Elem], app_known: &Known<'a>) -> Vec<Derived<'a>> {
+    let hosts = hosts_of_applications(elements);
     let mut out = Vec::new();
     for (app, from_nodes) in &hosts {
         if !app_known.contains_key(app) {
             continue;
         }
-        for (source, rel) in relationships_of_deployed(input, app) {
+        for (source, rel) in relationships_of_deployed(app_elements, app) {
             let Some(to_app) = deployed_application_of(&hosts, &rel.destination) else { continue };
             let Some(to_nodes) = hosts.get(to_app) else { continue };
             for from_node in from_nodes {
@@ -1206,19 +1271,22 @@ fn local_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Derive
 /// environment, the applications are linked together with "secondary" links (which are not drawn, unless the view is about
 /// a flow chosen by a facet: `application_links`) when one has a relationship towards another deployed one. Between two environments, the relationships of the applications are drawn
 /// as links between the deployed applications, as far as the first environment `uses` the second.
-fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
+fn deep_technology(input: &Input, shared: &Shared) -> Result<Content, String> {
+    let known = &shared.known;
     let focal = input.focal.as_str();
-    let ((mut items, mut links), tech_refs) = deep(input, known)?;
+    let ((mut items, mut links), tech_refs) = deep(input, shared)?;
     for e in &input.elements {
         for used in &e.uses {
             require(known, used)?;
         }
     }
-    let app_known: Known = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+    let app_known = shared.app_known();
     let hosts = hosts_of_applications(&input.elements);
     // the dependencies between environments that touch the focal element, with the nodes they end on
-    let derived: Vec<Derived> = derived_dependencies(input, &app_known)
-        .into_iter()
+    let derived: Vec<Derived> = shared
+        .derived()
+        .iter()
+        .copied()
         .filter(|d| within(d.from_node, focal) || within(d.to_node, focal))
         .collect();
     let mut node_refs: BTreeSet<String> = tech_refs.into_iter().collect();
@@ -1268,7 +1336,7 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
             return Err(format!("dangling application reference: {app}"));
         }
         for (from_id, from_node) in from_items {
-            for (source, rel) in relationships_of_deployed(input, app) {
+            for (source, rel) in relationships_of_deployed(&input.app_elements, app) {
                 let to_app = deployed_application_of(&hosts, &rel.destination);
                 if let Some(to_items) = to_app.and_then(|to_app| by_app.get(to_app)) {
                     for (to_id, to_node) in to_items {
@@ -1461,19 +1529,18 @@ fn above_changes(elements: &[Elem]) -> HashSet<String> {
 
 /// A comparison: tells each item and each link what changed (`change`, `natures`, `contains-changes`). Then, for `only_changes`,
 /// leaves out the rest.
-fn annotate(mut items: Vec<OutItem>, mut links: Vec<OutLink>, input: &Input) -> (Vec<OutItem>, Vec<OutLink>) {
+fn annotate(mut items: Vec<OutItem>, mut links: Vec<OutLink>, input: &Input, shared: &Shared) -> (Vec<OutItem>, Vec<OutLink>) {
     if input.compared {
-        let main: HashMap<&str, &Elem> = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
-        let apps: HashMap<&str, &Elem> = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
-        let (main_above, apps_above) = (above_changes(&input.elements), above_changes(&input.app_elements));
+        let (main, apps) = (&shared.known, shared.app_known());
+        let (main_above, apps_above) = (shared.main_above(), shared.apps_above());
         for item in items.iter_mut() {
             let main_layer = item.id == item.reference;
-            let element = if main_layer { &main } else { &apps }.get(item.reference.as_str());
+            let element = if main_layer { main } else { apps }.get(item.reference.as_str());
             let change = element.and_then(|e| e.change()).unwrap_or(Change::None);
             item.change = Some(change);
             item.natures = element.map(|e| e.natures()).unwrap_or_default();
             // an element that changed says so itself; a container is not `changed` because of what is inside it
-            item.contains_changes = change == Change::None && if main_layer { &main_above } else { &apps_above }.contains(&item.reference);
+            item.contains_changes = change == Change::None && if main_layer { main_above } else { apps_above }.contains(&item.reference);
         }
         for link in links.iter_mut() {
             link.change = Some(aggregate(&link.relationships));
@@ -1518,13 +1585,17 @@ fn keep_changes(items: Vec<OutItem>, links: Vec<OutLink>, input: &Input) -> (Vec
 
 /// The view of the input: the viewpoint, then the folds, then what changed.
 fn build(input: &Input) -> Result<(Vec<OutItem>, Vec<OutLink>), String> {
-    let known: Known = input.elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+    build_in(input, &Shared::new(&input.elements, &input.app_elements))
+}
+
+/// `build` with what the views of the same elements share already at hand (see `Shared`).
+fn build_in(input: &Input, shared: &Shared) -> Result<(Vec<OutItem>, Vec<OutLink>), String> {
     let (items, links) = match input.viewpoint.as_str() {
-        "overview" => overview(input, &known, &input.focal),
-        "map" => map(input, &known),
-        "detailed" => detailed(input, &known),
-        "deep" if input.layer == "technology" => deep_technology(input, &known),
-        "deep" => deep(input, &known).map(|(c, _)| c),
+        "overview" => overview(input, shared, &input.focal),
+        "map" => map(input, shared),
+        "detailed" => detailed(input, shared),
+        "deep" if input.layer == "technology" => deep_technology(input, shared),
+        "deep" => deep(input, shared).map(|(c, _)| c),
         other => Err(format!("unsupported viewpoint: {other}")),
     }?;
     let (items, links) = if input.hide_unlinked && input.layer == "technology" && input.viewpoint != "map" {
@@ -1533,7 +1604,7 @@ fn build(input: &Input) -> Result<(Vec<OutItem>, Vec<OutLink>), String> {
         (items, links)
     };
     let (items, links) = collapse(items, merge_links(links), input);
-    Ok(annotate(items, links, input))
+    Ok(annotate(items, links, input, shared))
 }
 
 /// Flags the items that hide children of the model, and whose opening changes the view: a leaf of the view whose element
@@ -1550,13 +1621,15 @@ fn mark_expandable(items: &mut [OutItem], links: &[OutLink], input: &mut Input) 
         HashSet::new()
     };
     let shown: Vec<OutItem> = items.to_vec();
+    // the lists of boxes to open change from one try to the next, the elements do not
+    let shared = Shared::new(&input.elements, &input.app_elements);
     for item in items.iter_mut() {
         if item.collapsed || item.id != item.reference || !(with_children.contains(&item.id) || hosts.contains(&item.id)) || shown_parents.contains(&item.id) {
             continue;
         }
         let opened = if map { &mut input.opened } else { &mut input.expanded };
         opened.push(item.id.clone());
-        let opens = build(input);
+        let opens = build_in(input, &shared);
         let opened = if map { &mut input.opened } else { &mut input.expanded };
         opened.pop();
         item.expandable = matches!(opens, Ok((i, l)) if i != shown || l != links);
@@ -1637,6 +1710,8 @@ pub fn quiet_json(input: &str) -> String {
             let through_facet = input.facet.is_some();
             prepare(&mut input)?;
             let default_viewpoint = input.viewpoint.clone();
+            // what every focal element shares is worked out once (`input.viewpoint` and `input.focal` change below, the elements do not)
+            let shared = Shared::new(&input.elements, &input.app_elements);
             let mut quiet: Vec<String> = Vec::new();
             for focal in focals {
                 input.viewpoint = if focal.viewpoint.is_empty() { default_viewpoint.clone() } else { focal.viewpoint };
@@ -1644,7 +1719,7 @@ pub fn quiet_json(input: &str) -> String {
                     return Err("the map has no focal element: nothing to ask quiet about".to_string());
                 }
                 input.focal = focal.reference.clone();
-                let nothing_to_draw = match build(&input) {
+                let nothing_to_draw = match build_in(&input, &shared) {
                     Ok((_, links)) => links.iter().all(|link| link.secondary),
                     Err(_) => through_facet,
                 };
