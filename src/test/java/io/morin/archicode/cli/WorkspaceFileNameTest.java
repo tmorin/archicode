@@ -2,11 +2,16 @@ package io.morin.archicode.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.workspace.WorkspaceFactory;
+import io.morin.archicode.workspace.WorkspaceFileException;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.nio.file.Files;
@@ -40,6 +45,9 @@ class WorkspaceFileNameTest {
     @Inject
     EditorHttpServer editorHttpServer;
 
+    @Inject
+    WorkspaceFactory workspaceFactory;
+
     @TempDir
     Path dir;
 
@@ -67,6 +75,11 @@ class WorkspaceFileNameTest {
                 for (val file : c.get("files").properties()) {
                     Files.writeString(dir.resolve(file.getKey()), file.getValue().asText());
                 }
+                if (c.has("directories")) {
+                    for (val directory : c.get("directories")) {
+                        Files.createDirectories(dir.resolve(directory.asText()));
+                    }
+                }
                 return c;
             }
         }
@@ -87,9 +100,107 @@ class WorkspaceFileNameTest {
             assertEquals(1, result.exit());
             assertEquals("error: " + document().get("sentence").asText() + "\n", result.err());
             assertEquals("", result.out());
-        } else {
+        } else if (c.get("expect").has("loads")) {
             assertEquals(0, result.exit(), result.err());
         }
+        // the cases that fail with another sentence (`expect.failure`) are run below, by their type
+    }
+
+    /**
+     * The failure is typed (wave 020, run 0147, #146), the same three kinds the editor keeps apart: a workspace file that
+     * cannot be had is a {@link WorkspaceFileException}, one that is read and found wrong is any other
+     * {@link ArchiCodeException}, whatever file name its sentence holds.
+     */
+    @ParameterizedTest
+    @MethodSource("caseIds")
+    void shouldTypeTheFailureAsTheCaseFileSaysAndPrintItsMessageAsItIs(String id) {
+        val c = build(id);
+        val failure = c.get("expect").has("failure") ? c.get("expect").get("failure").asText() : null;
+        val workspaceFile = dir.resolve(".archicode.yaml");
+        if (failure == null) {
+            assertEquals(0, run("-w", workspaceFile.toString(), "query", "graph").exit());
+            return;
+        }
+        val thrown = assertThrows(ArchiCodeException.class, () -> workspaceFactory.plateauTree(workspaceFile));
+        switch (failure) {
+            case "unreadable" -> assertEquals(
+                WorkspaceFileException.Reason.MISSING,
+                assertInstanceOf(WorkspaceFileException.class, thrown).getReason()
+            );
+            case "renamed" -> assertEquals(
+                WorkspaceFileException.Reason.FORMER_NAME,
+                assertInstanceOf(WorkspaceFileException.class, thrown).getReason()
+            );
+            case "content" -> assertFalse(thrown instanceof WorkspaceFileException, thrown.getMessage());
+            default -> throw new IllegalArgumentException(failure);
+        }
+        // the command line prints the message, and nothing of its own
+        val result = run("-w", workspaceFile.toString(), "query", "graph");
+        assertEquals(1, result.exit());
+        assertEquals(
+            thrown
+                .getMessage()
+                .lines()
+                .map(line -> "error: " + line + "\n")
+                .collect(java.util.stream.Collectors.joining()),
+            result.err()
+        );
+    }
+
+    @Test
+    void shouldSayTheWordsItAlwaysSaidWhenTheFileIsMissingOrIsAFolder() {
+        val workspaceFile = dir.resolve(".archicode.yaml");
+        val missing = "error: the workspace file `" + workspaceFile + "` does not exist (`-w` names another one)\n";
+        assertEquals(missing, run("-w", workspaceFile.toString(), "query", "graph").err());
+        build("F05");
+        assertEquals(missing, run("-w", workspaceFile.toString(), "views", "generate").err());
+    }
+
+    @Test
+    @SneakyThrows
+    void shouldTellAFileTheFileSystemRefusesInOneLineWithoutAStackTrace() {
+        val workspaceFile = Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+            workspaceFile.toFile().setReadable(false) && !Files.isReadable(workspaceFile),
+            "the file can be made unreadable (not as root)"
+        );
+        try {
+            val expected = "error: the workspace file `" + workspaceFile + "` cannot be read: permission denied\n";
+            for (val command : java.util.List.of(
+                new String[] { "query", "graph" },
+                new String[] { "views", "generate" },
+                new String[] { "diff" },
+                new String[] { "plateau", "list" }
+            )) {
+                val result = run(
+                    java.util.stream.Stream.concat(
+                        java.util.stream.Stream.of("-w", workspaceFile.toString()),
+                        java.util.Arrays.stream(command)
+                    ).toArray(String[]::new)
+                );
+                assertEquals(1, result.exit(), String.join(" ", command));
+                assertEquals(expected, result.err(), String.join(" ", command));
+                assertEquals("", result.out());
+            }
+            val thrown = assertThrows(WorkspaceFileException.class, () -> workspaceFactory.plateauTree(workspaceFile));
+            assertEquals(WorkspaceFileException.Reason.UNREADABLE, thrown.getReason());
+        } finally {
+            assertTrue(workspaceFile.toFile().setReadable(true));
+        }
+    }
+
+    /** A message that names {@code .archicode.yaml} for another reason is printed as it is: nothing is guessed from the name. */
+    @Test
+    void shouldPrintAMessageThatMentionsTheWorkspaceFileAsItIs() {
+        for (val message : java.util.List.of(
+            "`.archicode.yaml` is not valid: unknown key `foo` at `settings.foo`",
+            "the path `../x` of `settings.manifests.paths` contains `..`: below the folder of .archicode.yaml",
+            "the workspace file `/w/.archicode.yaml` was found wrong, and does not exist (`-w` names another one)"
+        )) {
+            assertEquals(message, ErrorOutput.message(new ArchiCodeException("%s", message)));
+        }
+        assertNotNull(ErrorOutput.message(WorkspaceFileException.formerName()));
+        assertEquals(WorkspaceFactory.FORMER_NAME_SENTENCE, ErrorOutput.message(WorkspaceFileException.formerName()));
     }
 
     @Test

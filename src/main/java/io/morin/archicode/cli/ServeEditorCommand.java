@@ -1,7 +1,7 @@
 package io.morin.archicode.cli;
 
-import io.morin.archicode.ArchiCodeException;
 import io.morin.archicode.workspace.WorkspaceFactory;
+import io.morin.archicode.workspace.WorkspaceFileException;
 import jakarta.inject.Inject;
 import java.util.HashSet;
 import java.util.List;
@@ -76,7 +76,7 @@ public class ServeEditorCommand implements Runnable {
             );
         }
         if (WorkspaceFactory.holdsFormerNameOnly(workspaceFilePath)) {
-            throw new ArchiCodeException("%s", WorkspaceFactory.FORMER_NAME_SENTENCE);
+            throw WorkspaceFileException.formerName();
         }
         val running = editorHttpServer.start(host, port, workspaceFilePath, new HashSet<>(allowedHosts));
 

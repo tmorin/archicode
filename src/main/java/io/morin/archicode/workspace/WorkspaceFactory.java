@@ -22,6 +22,7 @@ import io.morin.archicode.viewpoint.Change;
 import io.morin.archicode.viewpoint.kernel.Comparison;
 import io.morin.archicode.viewpoint.kernel.ViewpointKernel;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -392,10 +393,10 @@ public class WorkspaceFactory {
         log.info("parse the resources {}", path);
 
         if (holdsFormerNameOnly(path)) {
-            throw new ArchiCodeException("%s", FORMER_NAME_SENTENCE);
+            throw WorkspaceFileException.formerName();
         }
         if (!Files.isRegularFile(path)) {
-            throw new ArchiCodeException("the workspace file `%s` does not exist (`-w` names another one)", path);
+            throw WorkspaceFileException.missing(path);
         }
 
         // create the RawWorkspace
@@ -417,6 +418,9 @@ public class WorkspaceFactory {
             throw ManifestParser.missingKey(e, "")
                 .map(reason -> new ArchiCodeException("`%s` is not valid: %s", path.getFileName().toString(), reason))
                 .orElseGet(() -> ArchiCodeException.unreadable(path.getFileName().toString(), e, true));
+        } catch (IOException e) {
+            // not a text that is wrong, the file itself: it was a stack trace (an unexpected FileNotFoundException) before
+            throw WorkspaceFileException.unreadable(path, e);
         }
         return new Source(rawWorkspace, path.toFile().getParentFile().toPath());
     }
