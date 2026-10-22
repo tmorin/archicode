@@ -630,6 +630,9 @@
   .story-bar-title { font-weight: 700; }
   .story-bar-step { color: var(--muted); }
   .story-bar-actions { display: inline-flex; gap: 0.4rem; margin-left: auto; flex-wrap: wrap; }
+  /* The menu of the steps (wave 020, run 0149, #142): a native list, as wide as its longest step up to what the line leaves it, never wider than the bar, so that at 360 px it
+     wraps to a line of its own and the bar does not scroll sideways. A step that cannot be shown is told in the text of its entry. */
+  .story-step-menu { flex: 0 1 18rem; min-width: 0; max-width: 100%; box-sizing: border-box; text-overflow: ellipsis; }
   .story-bar-actions button { padding: 0.2rem 0.7rem !important; }
   .story-bar-text { width: 100%; box-sizing: border-box; margin-top: 0.4rem; resize: vertical; }
   .button-group { display: inline-flex; }
@@ -19395,8 +19398,9 @@ document.addEventListener('pointerdown', notePointer, true);
 document.addEventListener('pointerup', notePointer, true);
 document.addEventListener('pointercancel', notePointer, true);
 
-/** Delegated `change` listener: the form of a view on its page. */
+/** Delegated `change` listener: the form of a view on its page, the list of Settings, the menu of the steps of a story. */
 function handleAppChange(e) {
+  if (e.target && e.target.matches && e.target.matches('[data-story-step-menu]')) { chooseStoryStep(e.target.getAttribute('data-story'), Number(e.target.value)); return; } // wave 020 (run 0149): the menu of the steps
   if (e.target && e.target.matches && e.target.matches('[data-settings-current]')) { chooseCurrentPlateau(e.target); return; }
   const control = e.target && e.target.closest ? e.target.closest('[data-view-field], [data-view-list]') : null;
   if (control) handleViewFieldChange(control);
@@ -20129,6 +20133,56 @@ function moveLegacyEntriesToManifests() {
 
 // ---- What is drawn ----
 
+/** How a step is named in the menu when it names no view of its own: the first words of what it says (wave 020, run 0149). */
+const STORY_MENU_WORDS = 6;
+
+/**
+ * The title of a step in the menu of the steps: the label of the view it names (`viewLabel`, as the bar and the story editor say it), else the first words of its text, else
+ * the label of the recipe it carries (the element and the viewpoint), else what is wrong with it (a view that is gone, a step with no view).
+ */
+function storyStepTitle(step) {
+  const view = stepView(step);
+  if (view && step.view) return viewLabel(view);
+  const words = typeof step.text === 'string' ? step.text.split(/\s+/).filter(Boolean) : [];
+  if (words.length) return words.length > STORY_MENU_WORDS ? words.slice(0, STORY_MENU_WORDS).join(' ').replace(/[\s,:;.\-–—]+$/, '') + '…' : words.join(' ');
+  if (view) return viewLabel(view);
+  return step.view ? 'Missing view “' + step.view + '”' : 'No view';
+}
+
+/**
+ * The menu of the steps of a story (wave 020, run 0149, #142, second request; T7): a native `<select>`, so that the keys, the touch and the screen readers work as for any list
+ * and the bar does not grow past the window at 360 px. One entry per step, "n. title", the step on screen selected; a step that cannot be shown (`stepProblem`) says so in the
+ * text of its entry and carries the sentence as its title. A story with one step has nothing to choose: no menu. The bar places it, and the reading mode will place it in its
+ * own layout (the one function that renders it, `chooseStoryStep` the one handler, called from `handleAppChange`); `className` is the class of the list.
+ */
+function renderStoryStepMenuHtml(story, current, className) {
+  const steps = storySteps(story);
+  if (steps.length < 2) return '';
+  const id = escapeHtml(story.id);
+  const options = steps.map((step, i) => {
+    const problem = stepProblem(step);
+    return '<option value="' + i + '"' + (i === current ? ' selected' : '') + (problem ? ' title="' + escapeHtml(problem) + '"' : '') + '>' +
+      (i + 1) + '. ' + escapeHtml(storyStepTitle(step)) + (problem ? ' — cannot be shown: ' + escapeHtml(problem) : '') + '</option>';
+  });
+  return '<select class="' + (className || 'story-step-menu') + '" data-story-step-menu data-story="' + id + '" aria-label="Show a step of the story" title="Show any step: the plateau and the comparison it names are drawn, as for Next">' + options.join('') + '</select>';
+}
+
+/**
+ * Shows the step chosen in the menu (wave 020, run 0149): `goToStoryStep`, so the plateau and the comparison of the step are drawn as for Previous and Next, after the question
+ * those two ask when a form holds what was typed. View state only: nothing is written and no model changes. The list keeps the focus, and goes back to the step on screen when
+ * the question is answered no. Returns whether the step was drawn.
+ */
+function chooseStoryStep(storyId, index) {
+  const story = findStory(storyId);
+  pendingFocusSelector = '[data-story-step-menu]';
+  if (!story || !Number.isInteger(index) || index < 0 || index >= storySteps(story).length) { render(); return false; }
+  storyBarNotice = null;
+  removedStep = null;
+  if (draftTyped && !confirmDiscardingDraft()) { render(); return false; }
+  goToStoryStep(storyId, index);
+  return true;
+}
+
 /**
  * Over a diagram that belongs to a story: where we are in it, the way to the other steps, and the words of the step
  * (read, or typed when "Edit text" is on). A step that cannot be drawn says why here, and the way on stays open.
@@ -20149,6 +20203,7 @@ function renderStoryBarHtml() {
     '<div class="story-bar-line">' +
       '<span class="story-bar-title">' + escapeHtml(storyLabel(story)) + '</span>' +
       '<span class="story-bar-step">Step ' + (n + 1) + ' of ' + steps.length + (view ? ' · ' + escapeHtml(viewLabel(view)) : '') + '</span>' +
+      renderStoryStepMenuHtml(story, n) +
       stepPlateausHtml(steps[n], 'story-bar-plateaus') +
       '<span class="story-bar-actions">' +
         '<span class="button-group" role="group" aria-label="Steps">' +
