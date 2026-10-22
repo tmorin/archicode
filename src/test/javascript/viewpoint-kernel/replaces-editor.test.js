@@ -458,14 +458,14 @@ test('a list written on one line gets the new reference appended, and only that 
   assert.deepEqual(plain(sandbox.__state().index.application.get('archive.vault').replaces), ['archive.ghost', 'archive.rack'], 'appended after what the author wrote, no duplicate');
   await sandbox.saveAllChanges();
   const saved = mem.files.get(target('archive.vault')).text;
-  assert.deepEqual(lineDiff(DISK['app.archive.vault.yaml'], saved), { removed: ['  replaces: [archive.ghost]'], added: ['  replaces:', '    - archive.ghost', '    - archive.rack'] });
+  assert.deepEqual(lineDiff(DISK['app.archive.vault.yaml'], saved), { removed: ['  replaces: [archive.ghost]'], added: ['  replaces: [archive.ghost, archive.rack]'] });
   assert.ok(saved.startsWith('# the manifest of vault\n') && saved.endsWith('# end of vault\n'));
   assert.equal(sandbox.comparisonState().changes.find((r) => r.reference === 'archive.vault').change, 'moved');
   // writing the same reference again changes nothing (the kernel would not propose it, but the writer does not duplicate)
   assert.deepEqual(plain(run(sandbox, "replacesWith(['a', 'b'], 'a')")), ['a', 'b']);
 });
 
-test('other flow lists of a file the edit does not touch stay on their line, and a flow list the edit changes becomes a block', async () => {
+test('other flow lists of a file the edit does not touch stay on their line, and the list the edit adds as a new key is a block', async () => {
   const withQualifiers = element('container', 'library', 'lending', 'Lending', LOANS_DESCRIPTION + '  qualifiers: [Loan, Member]  # who borrows\n');
   const { sandbox, mem } = await open({ target: Object.assign({}, TARGET, { 'app.library.lending.yaml': withQualifiers }) });
   click(sandbox, { 'data-action': 'accept-candidate', 'data-layer': 'application', 'data-from': 'library.loans', 'data-to': 'library.lending' });

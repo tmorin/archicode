@@ -190,10 +190,10 @@ test('a list the plateau sets whole stays a SET with the new list; a list it onl
       '      value: {destination: "commerce-saas", label: "maintains products in", qualifiers: ["HTTPS"]}'
     ],
     added: [
-      '      value:', '        - "React"', '        - "Next.js"', '        - "PWA"',
-      '      value:', '        - destination: commerce-saas', '          label: maintains products in', '          qualifiers:', '            - "HTTPS"', '        - destination: psp', '          label: refunds through'
+      '      value: ["React", "Next.js", "PWA"]',
+      '      value:', '        - destination: commerce-saas', '          label: maintains products in', '          qualifiers:', '            - HTTPS', '        - destination: psp', '          label: refunds through'
     ]
-  }, 'a flow list that an edit changes becomes a block, and nothing else of the file moves');
+  }, 'a flow list that an edit changes stays in brackets on its line when it fits (the first save of the two), a block when it does not (a list of two maps, over 100 columns), and nothing else of the file moves');
   assert.deepEqual(patchesOf(state, 'saas').find((p) => p.target === 'shop.web' && p.field === 'qualifiers').value, ['React', 'Next.js', 'PWA']);
   const adds = patchesOf(state, 'saas').find((p) => p.target === 'backoffice.console' && p.field === 'relationships');
   assert.equal(adds.operator, 'ADD');

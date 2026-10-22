@@ -217,9 +217,9 @@ test('#54: a value changed in the list keeps the comment of its line, and the co
 
 test('#54: a map that an edit changes keeps the quotes of its keys, the quotes of its values and the words of its booleans, and writes true or false only for what the edit sets', () => {
   const out = save(TAGS, (v) => { v.content.zone.size = 'big'; });
-  assert.equal(out, TAGS.replace(/  zone: \{.*\}   # one line/, '  zone:  # one line\n    "tier": \'gold\'\n    heat: on\n    "cold": off\n    "label": plain\n    size: big'));
+  assert.equal(out, TAGS.replace(/  zone: \{.*\}   # one line/, '  zone: {"tier": \'gold\', heat: on, "cold": off, "label": plain, size: big}   # one line'));
   const set = save(TAGS, (v) => { v.content.zone.heat = false; });
-  assert.ok(set.includes('    "tier": \'gold\'\n    heat: false\n    "cold": off\n    "label": plain\n'));
+  assert.ok(set.includes('  zone: {"tier": \'gold\', heat: false, "cold": off, "label": plain}   # one line\n'));
 });
 
 test('#54: a collection that no edit reaches is saved as written, comments inside included', () => {

@@ -202,7 +202,7 @@ for (const [rendition, root, files] of [['layered', LAYERED, LAYERED_FILES]]) {
       const kept = out.split('\n');
       let at = 0;
       for (const line of text.split('\n')) {
-        // a flow list or map the edit reaches is rewritten as a block (#54): the lines of the original that do not come back are the ones of such a collection, never another
+        // a flow list or map the edit reaches is rewritten (in brackets again when it fits, else as a block; #54, #145): the lines of the original that do not come back are the ones of such a collection, never another
         const found = kept.indexOf(line, at);
         if (found === -1) assert.ok(/[[{]/.test(line) || line.trim().startsWith('#') || line.trim() === '', file + ': lost "' + line + '"');
         else at = found + 1;
