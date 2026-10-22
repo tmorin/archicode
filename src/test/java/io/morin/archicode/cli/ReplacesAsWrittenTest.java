@@ -73,7 +73,7 @@ class ReplacesAsWrittenTest {
             system("postman", replaces).replace("version: \"1\"\n", "version: \"1\"\n  plateau: \"after\"\n")
         );
         return Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             "settings:\n  manifests:\n    paths: [\"plateaus/**\"]\n"
         );
     }

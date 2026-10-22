@@ -41,16 +41,16 @@ async function open(files) {
   return { sandbox, state, mem, original: Object.assign({}, files) };
 }
 
-const WORKSPACE = BRIGHTCART['workspace.yaml'];
+const WORKSPACE = BRIGHTCART['.archicode.yaml'];
 const text = (html) => html.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
 const field = (sandbox, state) => sandbox.renderCurrentPlateauSettingsHtml(state.workspace.settings);
 const drawing = (state) => ({ plateau: state.layers.current, against: state.layers.compare ? state.layers.compare.other : null });
 
 const SYSTEM = (id) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + id + '"\n';
 const PLATEAU = (id, override, body) => 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (override ? '  override: "' + override + '"\n' : '') + (body || '');
-/** Three plateaus in a line, the manifests in the default folder, and a workspace.yaml with NO `settings` block. */
+/** Three plateaus in a line, the manifests in the default folder, and a .archicode.yaml with NO `settings` block. */
 const FERRY = {
-  'workspace.yaml': 'styles:\n  by-tags:\n    external:\n      background-color: "lightgray"\n',
+  '.archicode.yaml': 'styles:\n  by-tags:\n    external:\n      background-color: "lightgray"\n',
   'manifests/app.ferry.yaml': SYSTEM('ferry'),
   'manifests/plateau.later.yaml': PLATEAU('later', null),
   'manifests/plateau.latest.yaml': PLATEAU('latest', 'later')
@@ -73,21 +73,21 @@ test('the field lists the plateaus in the order of the band and "None", with the
   assert.ok(page.indexOf('settings-current-select') < page.indexOf('<h3>Manifests</h3>'));
   assert.doesNotMatch(page, /<h3>Plateaus<\/h3>/);
   // a `current` the file has is the one selected
-  const named = await open(Object.assign({}, BRIGHTCART, { 'workspace.yaml': WORKSPACE.replace(/^settings:\n/, 'settings:\n  current: "saas"\n') }));
+  const named = await open(Object.assign({}, BRIGHTCART, { '.archicode.yaml': WORKSPACE.replace(/^settings:\n/, 'settings:\n  current: "saas"\n') }));
   assert.match(field(named.sandbox, named.state), /<option value="saas" selected>/);
   assert.match(field(named.sandbox, named.state), /<option value="">None<\/option>/);
 });
 
 test('a workspace with no plateau shows no field; one plateau alone shows none either (nothing to choose), unless the file already has a `current`', async () => {
-  const flat = await open({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': SYSTEM('ferry') });
+  const flat = await open({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': SYSTEM('ferry') });
   assert.equal(flat.state.plateauTree.layered, false);
   assert.equal(field(flat.sandbox, flat.state), '');
   assert.equal(flat.sandbox.renderSettingsViewHtml().includes('settings-current-select'), false);
-  const one = await open({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': SYSTEM('ferry'), 'plateau.baseline.yaml': PLATEAU('baseline', null) });
+  const one = await open({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': SYSTEM('ferry'), 'plateau.baseline.yaml': PLATEAU('baseline', null) });
   assert.equal(one.state.plateauTree.layered, true);
   assert.deepEqual(plain(one.state.plateauTree.ids), ['baseline']);
   assert.equal(field(one.sandbox, one.state), '', 'one plateau: the command line draws it, there is nothing to choose');
-  const keeps = await open({ 'workspace.yaml': 'settings:\n  current: baseline\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': SYSTEM('ferry'), 'plateau.baseline.yaml': PLATEAU('baseline', null) });
+  const keeps = await open({ '.archicode.yaml': 'settings:\n  current: baseline\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': SYSTEM('ferry'), 'plateau.baseline.yaml': PLATEAU('baseline', null) });
   assert.match(field(keeps.sandbox, keeps.state), /<option value="baseline" selected>/, 'a `current` the file has can be taken out');
   await keeps.sandbox.commitCurrentPlateau('');
   assert.equal(keeps.state.workspace.settings.current, '');
@@ -103,7 +103,7 @@ test('while the plateaus have mistakes no plateau is offered, the field says why
   assert.match(text(html), /The plateaus have mistakes \(see the Plateaus page\): put them right first\./);
   assert.throws(() => sandbox.commitCurrentPlateau('later'), (e) => /^The plateaus have mistakes/.test(e.message));
   // a file that names a plateau: it is the one selected, and *None* takes it out
-  const named = await open(Object.assign({}, lost, { 'workspace.yaml': 'settings:\n  current: later\n  manifests:\n    paths: ["manifests"]\n' }));
+  const named = await open(Object.assign({}, lost, { '.archicode.yaml': 'settings:\n  current: later\n  manifests:\n    paths: ["manifests"]\n' }));
   assert.match(field(named.sandbox, named.state), /<option value="later" selected>/);
   assert.equal(named.sandbox.commitCurrentPlateau(''), true);
   assert.equal(named.state.workspace.settings.current, '');
@@ -111,7 +111,7 @@ test('while the plateaus have mistakes no plateau is offered, the field says why
 
 // ---- the write ----
 
-test('choosing a plateau writes that one line in workspace.yaml and nothing else; none takes it out and the file is as it was', async () => {
+test('choosing a plateau writes that one line in .archicode.yaml and nothing else; none takes it out and the file is as it was', async () => {
   const opened = await open(BRIGHTCART);
   const { sandbox, state, mem } = opened;
   assert.equal(state.workspace.settingsDirty, false);
@@ -120,8 +120,8 @@ test('choosing a plateau writes that one line in workspace.yaml and nothing else
   assert.equal(state.workspace.settingsDirty, true);
   assert.equal(sandbox.countUnsavedChanges(), 1);
   await sandbox.saveAllChanges();
-  assert.deepEqual(mem.writes, ['workspace.yaml']);
-  const written = mem.files.get('workspace.yaml').text;
+  assert.deepEqual(mem.writes, ['.archicode.yaml']);
+  const written = mem.files.get('.archicode.yaml').text;
   const gained = written.split('\n').filter((line) => !WORKSPACE.split('\n').includes(line));
   assert.equal(gained.length, 1, 'one line is new');
   assert.match(gained[0], /^ {2}current: "?saas"?$/);
@@ -132,26 +132,26 @@ test('choosing a plateau writes that one line in workspace.yaml and nothing else
   sandbox.commitCurrentPlateau('inhouse');
   mem.writes.length = 0;
   await sandbox.saveAllChanges();
-  assert.equal(mem.files.get('workspace.yaml').text, written.replace('current: "saas"', 'current: "inhouse"'));
+  assert.equal(mem.files.get('.archicode.yaml').text, written.replace('current: "saas"', 'current: "inhouse"'));
 
   // none: the key goes, the file is what it was
   sandbox.commitCurrentPlateau('');
   assert.equal(state.workspace.settings.current, '');
   await sandbox.saveAllChanges();
-  assert.equal(mem.files.get('workspace.yaml').text, WORKSPACE);
+  assert.equal(mem.files.get('.archicode.yaml').text, WORKSPACE);
   assert.equal(sandbox.commitCurrentPlateau(''), false, 'none again changes nothing');
   assert.equal(sandbox.commitCurrentPlateau('baseline'), true);
   assert.equal(sandbox.commitCurrentPlateau('baseline'), false, 'the same plateau again changes nothing');
 });
 
-test('a workspace.yaml with no `settings` block yet gets one with that key alone, not the defaults', async () => {
+test('a .archicode.yaml with no `settings` block yet gets one with that key alone, not the defaults', async () => {
   const opened = await open(FERRY);
   const { sandbox, state, mem } = opened;
   assert.equal(state.plateauTree.layered, true);
   sandbox.commitCurrentPlateau('latest');
   await sandbox.saveAllChanges();
-  assert.deepEqual(mem.writes, ['workspace.yaml']);
-  assert.equal(mem.files.get('workspace.yaml').text, FERRY['workspace.yaml'] + 'settings:\n  current: "latest"\n');
+  assert.deepEqual(mem.writes, ['.archicode.yaml']);
+  assert.equal(mem.files.get('.archicode.yaml').text, FERRY['.archicode.yaml'] + 'settings:\n  current: "latest"\n');
   // read again: the plateau is the current one
   const again = await open(Object.fromEntries(Array.from(mem.files).map(([p, f]) => [p, f.text])));
   assert.equal(again.state.fatalError, null);
@@ -159,7 +159,7 @@ test('a workspace.yaml with no `settings` block yet gets one with that key alone
   // and none takes the line out: the block is left empty (`settings: {}`, as the delete of a plateau leaves it), which both tools read as the defaults
   again.sandbox.commitCurrentPlateau('');
   await again.sandbox.saveAllChanges();
-  assert.equal(again.mem.files.get('workspace.yaml').text, FERRY['workspace.yaml'] + 'settings: {}\n');
+  assert.equal(again.mem.files.get('.archicode.yaml').text, FERRY['.archicode.yaml'] + 'settings: {}\n');
   const empty = await open(Object.fromEntries(Array.from(again.mem.files).map(([p, f]) => [p, f.text])));
   assert.equal(empty.state.fatalError, null);
   assert.equal(empty.state.workspace.settings.current, '');
@@ -173,10 +173,10 @@ test('a plateau that is none is refused with the sentence of the tools, and noth
   assert.equal(state.workspace.settingsDirty, false);
   assert.equal(state.workspace.settings.current, '');
   // it is the very sentence a file that says so gets when it is opened (and the one of WorkspaceFactory.chosen, pinned by layer-checks-cases.json)
-  const bad = await open(Object.assign({}, BRIGHTCART, { 'workspace.yaml': WORKSPACE.replace(/^settings:\n/, 'settings:\n  current: "gone"\n') }));
-  assert.equal(bad.state.fatalError, 'Could not read the plateaus of workspace.yaml:\n' + sentence);
+  const bad = await open(Object.assign({}, BRIGHTCART, { '.archicode.yaml': WORKSPACE.replace(/^settings:\n/, 'settings:\n  current: "gone"\n') }));
+  assert.equal(bad.state.fatalError, 'Could not read the plateaus of .archicode.yaml:\n' + sentence);
   // a workspace with no plateau: the sentence for that
-  const flat = await open({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': SYSTEM('ferry') });
+  const flat = await open({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': SYSTEM('ferry') });
   assert.throws(() => flat.sandbox.commitCurrentPlateau('later'), (e) => /^`settings.current` is `later` but the workspace declares no plateau \(/.test(e.message));
   // a tree with mistakes
   const broken = await open(Object.assign({}, FERRY, { 'manifests/plateau.lost.yaml': PLATEAU('lost', 'nowhere') }));
@@ -205,7 +205,7 @@ test('what was typed in the form is kept: the draft is applied in the same step,
   assert.equal(state.workspace.settings.name, 'Brightcart shop');
   assert.equal(state.workspace.settings.current, 'saas');
   await sandbox.saveAllChanges();
-  const written = opened.mem.files.get('workspace.yaml').text;
+  const written = opened.mem.files.get('.archicode.yaml').text;
   assert.match(written, /name: "?Brightcart shop"?/);
   assert.match(written, /current: "?saas"?/, 'the key the settings do not manage survives the rewrite of the ones they do');
   assert.match(written, /customs:/, 'the rest of the settings is kept');
@@ -296,11 +296,11 @@ test('the delete of the plateau the setting names takes the key out again: the f
   const { sandbox, state, mem } = opened;
   sandbox.commitCurrentPlateau('saas');
   await sandbox.saveAllChanges();
-  assert.match(mem.files.get('workspace.yaml').text, /current: "?saas"?/);
+  assert.match(mem.files.get('.archicode.yaml').text, /current: "?saas"?/);
   sandbox.commitPlateauDelete('saas');
   assert.equal(state.workspace.settings.current, '');
   await sandbox.saveAllChanges();
-  assert.equal(mem.files.get('workspace.yaml').text, WORKSPACE);
+  assert.equal(mem.files.get('.archicode.yaml').text, WORKSPACE);
   assert.equal(state.plateauTree.nodes.has('saas'), false);
   assert.equal(field(sandbox, state).includes('value="saas"'), false);
 });

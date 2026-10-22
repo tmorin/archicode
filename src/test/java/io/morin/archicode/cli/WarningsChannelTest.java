@@ -85,7 +85,7 @@ class WarningsChannelTest {
     @SneakyThrows
     void aFacetInTheOldDialectIsRefusedAndTheStandardFormSaysNothing() {
         copy(KERNEL_WORKSPACE, dir);
-        val workspace = dir.resolve("workspace.yaml");
+        val workspace = dir.resolve(".archicode.yaml");
         // the standard JSONPath says nothing: no warning of a deprecated syntax any more
         val standard = run("-w", workspace.toString(), "views", "generate");
         assertEquals(0, standard.exit(), standard.err());
@@ -109,7 +109,7 @@ class WarningsChannelTest {
     @Test
     @SneakyThrows
     void aStoryStepOnAViewNobodyDeclaredAndASkippedViewpointAreToldToo() {
-        val workspace = Files.writeString(dir.resolve("workspace.yaml"), STORY_WORKSPACE);
+        val workspace = Files.writeString(dir.resolve(".archicode.yaml"), STORY_WORKSPACE);
         val result = run("-w", workspace.toString(), "views", "generate", "-i", "sol_overview", "-i", "the_map");
         assertEquals(0, result.exit(), result.err());
         assertEquals(
@@ -126,7 +126,7 @@ class WarningsChannelTest {
     void theWarningsComeBeforeTheErrorWhenTheCommandFails() {
         // the story is read before the references are drawn: the warning is said, then the command fails
         val workspace = Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             STORY_WORKSPACE.replace(
                 "id: \"sys_aa\"",
                 "id: \"sys_aa\"\n          relationships:\n            - destination: \"nowhere\"\n              label: \"uses\""
@@ -144,7 +144,7 @@ class WarningsChannelTest {
     @SneakyThrows
     void aWorkspaceWithNothingToSayPrintsNothingOnTheErrorOutput() {
         val workspace = Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             STORY_WORKSPACE.replace("      - view: \"nobody_declared_this\"\n", "")
         );
         val result = run("-w", workspace.toString(), "views", "generate", "-i", "sol_overview");

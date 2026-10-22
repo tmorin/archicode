@@ -32,7 +32,7 @@ class StyleNumbersTest {
     @Test
     void shouldReadTheWholeNumbersOfAStyleAsTheYamlNumbersTheyAreWrittenAs() {
         Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             """
             settings:
               manifests:
@@ -64,7 +64,7 @@ class StyleNumbersTest {
               id: s
             """
         );
-        val styles = workspaceFactory.create(dir.resolve("workspace.yaml")).getStyles().getByTags();
+        val styles = workspaceFactory.create(dir.resolve(".archicode.yaml")).getStyles().getByTags();
         val hot = styles.get("hot");
         assertEquals(5, hot.getLineStyle());
         assertEquals(10, hot.getLineGap());

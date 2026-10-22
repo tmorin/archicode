@@ -179,7 +179,7 @@ test('choosing a theme in Settings does not modify the workspace, light "Save al
   assert.equal(sandbox.hasUnsavedChanges(), false, 'the workspace is not modified');
   assert.match(sandbox.renderSaveAllButtonHtml(), /disabled/, 'Save all changes stays off');
   assert.equal(renders, 0, 'no redraw: what is typed in the settings is not lost');
-  assert.equal(JSON.stringify(sandbox.serializeSettingsToRaw(sandbox.__state().workspace.settings)).includes('theme'), false, 'nothing in workspace.yaml');
+  assert.equal(JSON.stringify(sandbox.serializeSettingsToRaw(sandbox.__state().workspace.settings)).includes('theme'), false, 'nothing in .archicode.yaml');
 
   // while typing in the form still dirties it
   sandbox.handleAppInput({ target: { id: 'x', matches: () => false, closest: (selector) => (/settings-view/.test(selector) ? {} : null) } });

@@ -39,7 +39,7 @@ import picocli.CommandLine;
 @QuarkusTest
 class SortedQueryOutputTest {
 
-    private static final String WORKSPACE = "src/test/resources/viewpoint-kernel/workspace/workspace.yaml";
+    private static final String WORKSPACE = "src/test/resources/viewpoint-kernel/workspace/.archicode.yaml";
 
     @Inject
     CommandLine.IFactory factory;
@@ -264,7 +264,7 @@ class SortedQueryOutputTest {
     @SneakyThrows
     @Test
     void queryGraphListsTheElementsByLayerThenReferenceAndTheRelationshipsBySourceThenAsWritten(@TempDir Path folder) {
-        val workspaceFile = folder.resolve("workspace.yaml");
+        val workspaceFile = folder.resolve(".archicode.yaml");
         Files.writeString(workspaceFile, GRAPH_WORKSPACE);
 
         // the input is one whose hash order is not the sorted order: the test would pass by chance otherwise

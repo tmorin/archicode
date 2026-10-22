@@ -76,7 +76,7 @@ class StateTagRuleTest {
                 }
             }
         }
-        return into.resolve("workspace.yaml");
+        return into.resolve(".archicode.yaml");
     }
 
     /** The file of a view of the comparison, as the command line wrote it. */
@@ -232,10 +232,10 @@ class StateTagRuleTest {
         Files.createDirectories(dir.resolve("manifests"));
         Files.copy(FIXTURE.resolve("plateaus/10_before/office.yaml"), dir.resolve("manifests/office.yaml"));
         Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             "styles:\n  by-tags:\n    new:\n      line-color: \"#7B3FA0\"\nsettings:\n  name: \"Ticket office\"\n"
         );
-        val result = run("-w", dir.resolve("workspace.yaml").toString(), "views", "generate");
+        val result = run("-w", dir.resolve(".archicode.yaml").toString(), "views", "generate");
         assertEquals(0, result.exit, result.err);
         assertEquals("", result.err);
         assertTrue(

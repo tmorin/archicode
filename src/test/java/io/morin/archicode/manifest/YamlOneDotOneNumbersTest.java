@@ -67,14 +67,14 @@ class YamlOneDotOneNumbersTest {
             }
         }
         assertNotNull(c);
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [manifests]\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  manifests:\n    paths: [manifests]\n");
         for (val file : c.get("files").properties()) {
             val target = dir.resolve(file.getKey());
             Files.createDirectories(target.getParent());
             Files.writeString(target, file.getValue().asText());
         }
         val expect = c.get("expect");
-        val workspace = dir.resolve("workspace.yaml");
+        val workspace = dir.resolve(".archicode.yaml");
         if (expect.has("error")) {
             val message = assertThrows(Exception.class, () -> workspaceFactory.create(workspace)).getMessage();
             val prefix = "`" + expect.get("file").asText() + "` is not valid: ";

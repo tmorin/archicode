@@ -1,5 +1,5 @@
 {
- "comment": "Plain scalars that YAML 1.1 reads as numbers (issue #103, wave 018 run 0134), as the command line reads them: `expect` is what `query graph` prints (the references of the elements and the qualifiers that they have) or the one-line error without the file and the place (`file` is the file it names). Each case is a folder: `files` are its files (`workspace.yaml` is `settings: {manifests: {paths: [manifests]}}` when a case does not give it). YamlOneDotOneNumbersTest.java (command line) and yaml-numbers.test.js (editor) run every case; a case that has `editor` is one where the editor says another thing, with the `reason`. The expectations were written from the jar of archicode-0.16.0, which reads these scalars as the jar of this tree does. Y125 to Y279 (wave 019, run 0137, issues #136 and #78): where the reader meets a scalar it refuses (Y125 to Y144: the header is read key by key and the content whole, so `foo: .inf` under an unknown key of the header is the unknown key), the scalars with a tag (`!!int`, `!!float`, `!!binary`, `!!str`: Y145 to Y254, found by trying every spelling of up to five characters on Jackson 2.21 and the long ones that decide between `int`, `long` and `BigInteger`; a tagged integer or binary text it cannot read is refused when the reader gets to the token, a tagged float when a value is asked of it, Y255 to Y279), and the number a patch holds (Y252 to Y254). Their expectations were written from the jar of archicode-0.17.0 (build the jar and run it, do not guess).",
+ "comment": "Plain scalars that YAML 1.1 reads as numbers (issue #103, wave 018 run 0134), as the command line reads them: `expect` is what `query graph` prints (the references of the elements and the qualifiers that they have) or the one-line error without the file and the place (`file` is the file it names). Each case is a folder: `files` are its files (`.archicode.yaml` is `settings: {manifests: {paths: [manifests]}}` when a case does not give it). YamlOneDotOneNumbersTest.java (command line) and yaml-numbers.test.js (editor) run every case; a case that has `editor` is one where the editor says another thing, with the `reason`. The expectations were written from the jar of archicode-0.16.0, which reads these scalars as the jar of this tree does. Y125 to Y279 (wave 019, run 0137, issues #136 and #78): where the reader meets a scalar it refuses (Y125 to Y144: the header is read key by key and the content whole, so `foo: .inf` under an unknown key of the header is the unknown key), the scalars with a tag (`!!int`, `!!float`, `!!binary`, `!!str`: Y145 to Y254, found by trying every spelling of up to five characters on Jackson 2.21 and the long ones that decide between `int`, `long` and `BigInteger`; a tagged integer or binary text it cannot read is refused when the reader gets to the token, a tagged float when a value is asked of it, Y255 to Y279), and the number a patch holds (Y252 to Y254). Their expectations were written from the jar of archicode-0.17.0 (build the jar and run it, do not guess).",
  "cases": [
   {
    "id": "Y01",
@@ -977,7 +977,7 @@
    "title": "`line-gap: 5`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 5\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 5\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -991,7 +991,7 @@
    "title": "`line-gap: 012`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 012\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 012\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1005,7 +1005,7 @@
    "title": "`line-gap: 0x1F`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x1F\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x1F\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1019,7 +1019,7 @@
    "title": "`line-gap: 0b11`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0b11\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0b11\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1033,7 +1033,7 @@
    "title": "`line-gap: 1_0`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1_0\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1_0\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1047,7 +1047,7 @@
    "title": "`line-gap: +5`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: +5\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: +5\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1061,7 +1061,7 @@
    "title": "`line-gap: -5`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: -5\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: -5\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1075,7 +1075,7 @@
    "title": "`line-gap: 5.0`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 5.0\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 5.0\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1089,7 +1089,7 @@
    "title": "`line-gap: 1.5`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1.5\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1.5\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1103,7 +1103,7 @@
    "title": "`line-gap: .5`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: .5\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: .5\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1117,7 +1117,7 @@
    "title": "`line-gap: 1.`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1.\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1.\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1131,7 +1131,7 @@
    "title": "`line-gap: 1e2`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1e2\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1e2\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1145,7 +1145,7 @@
    "title": "`line-gap: 1.5e3`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1.5e3\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1.5e3\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1159,12 +1159,12 @@
    "title": "`line-gap: \"0x1F\"`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: \"0x1F\"\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: \"0x1F\"\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a string) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1172,7 +1172,7 @@
    "title": "`line-gap: \"5\"`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: \"5\"\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: \"5\"\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1186,12 +1186,12 @@
    "title": "`line-gap: \"5.0\"`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: \"5.0\"\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: \"5.0\"\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a string) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1199,12 +1199,12 @@
    "title": "`line-gap: 9999999999`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 9999999999\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 9999999999\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Numeric value (9999999999) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1212,12 +1212,12 @@
    "title": "`line-gap: -9999999999`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: -9999999999\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: -9999999999\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Numeric value (-9999999999) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1225,12 +1225,12 @@
    "title": "`line-gap: 9999999999999999999`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 9999999999999999999\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 9999999999999999999\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Numeric value (9999999999999999999) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1238,12 +1238,12 @@
    "title": "`line-gap: 1e22`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1e22\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 1e22\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Numeric value (1e22) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1251,7 +1251,7 @@
    "title": "`line-gap: 0x7FFFFFFF`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x7FFFFFFF\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x7FFFFFFF\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1265,12 +1265,12 @@
    "title": "`line-gap: 0x80000000`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x80000000\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x80000000\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Numeric value (0x80000000) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1278,12 +1278,12 @@
    "title": "`line-gap: 2147483648.5`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 2147483648.5\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 2147483648.5\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Numeric value (2147483648.5) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1291,12 +1291,12 @@
    "title": "`line-gap: .inf`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: .inf\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: .inf\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Malformed numeric value '.inf'",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1304,7 +1304,7 @@
    "title": "`shadowing: true`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: true\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: true\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1318,7 +1318,7 @@
    "title": "`shadowing: 1`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 1\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 1\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1332,7 +1332,7 @@
    "title": "`shadowing: 0`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 0\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 0\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1346,7 +1346,7 @@
    "title": "`shadowing: 012`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 012\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 012\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1360,7 +1360,7 @@
    "title": "`shadowing: 0x1`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 0x1\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 0x1\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1374,12 +1374,12 @@
    "title": "`shadowing: 5.0`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 5.0\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 5.0\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a number) at `styles.composite.shadowing`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1387,12 +1387,12 @@
    "title": "`shadowing: 1.5`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 1.5\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 1.5\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a number) at `styles.composite.shadowing`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1400,12 +1400,12 @@
    "title": "`shadowing: 1e2`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 1e2\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 1e2\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a number) at `styles.composite.shadowing`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1413,12 +1413,12 @@
    "title": "`shadowing: \"1\"`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: \"1\"\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: \"1\"\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a string) at `styles.composite.shadowing`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1426,12 +1426,12 @@
    "title": "`shadowing: 09`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 09\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 09\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a string) at `styles.composite.shadowing`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1439,7 +1439,7 @@
    "title": "`shadowing: 9999999999999999999`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 9999999999999999999\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: 9999999999999999999\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1453,12 +1453,12 @@
    "title": "`shadowing: .inf`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: .inf\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: .inf\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Malformed numeric value '.inf'",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1466,7 +1466,7 @@
    "title": "`settings.name: 010`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: 010\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: 010\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1480,7 +1480,7 @@
    "title": "`settings.name: 0x1F`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: 0x1F\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: 0x1F\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1494,7 +1494,7 @@
    "title": "`settings.name: 5.0`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: 5.0\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: 5.0\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1508,7 +1508,7 @@
    "title": "`settings.name: 1e3`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: 1e3\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: 1e3\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1522,7 +1522,7 @@
    "title": "`settings.name: \"010\"`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: \"010\"\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: \"010\"\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1536,7 +1536,7 @@
    "title": "`settings.facets.global-enabled: 0x1F`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: 0x1F\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: 0x1F\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1550,12 +1550,12 @@
    "title": "`settings.facets.global-enabled: 5.0`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: 5.0\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: 5.0\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a number) at `settings.facets.global-enabled`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -1563,7 +1563,7 @@
    "title": "`settings.facets.global-enabled: 1`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: 1\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: 1\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -1577,12 +1577,12 @@
    "title": "`settings.facets.global-enabled: \"1\"`",
    "group": "workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: \"1\"\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: \"1\"\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a string) at `settings.facets.global-enabled`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -2956,7 +2956,7 @@
    "title": "`line-gap: !!int 0x1F`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 0x1F\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 0x1F\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -2970,7 +2970,7 @@
    "title": "`line-gap: !!int 010`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 010\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 010\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -2984,12 +2984,12 @@
    "title": "`line-gap: !!int abc`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int abc\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int abc\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a string) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -2997,7 +2997,7 @@
    "title": "`line-gap: !!float 1e2`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float 1e2\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float 1e2\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3011,7 +3011,7 @@
    "title": "`line-gap: !!float 1.5`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float 1.5\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float 1.5\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3025,12 +3025,12 @@
    "title": "`line-gap: !!float Infinity`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float Infinity\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float Infinity\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Numeric value (Infinity) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -3038,7 +3038,7 @@
    "title": "`line-gap: !!float NaN`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float NaN\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float NaN\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3052,12 +3052,12 @@
    "title": "`line-gap: !!int 09`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 09\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 09\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -3065,12 +3065,12 @@
    "title": "`line-gap: !!int 0x80000000`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 0x80000000\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 0x80000000\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Numeric value (0x80000000) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -3078,12 +3078,12 @@
    "title": "`line-gap: !!float 1e22`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float 1e22\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float 1e22\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Numeric value (1e22) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -3091,16 +3091,16 @@
    "title": "`line-gap: !!binary aGVsbG8=`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!binary aGVsbG8=\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!binary aGVsbG8=\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Cannot deserialize value of type `java.lang.Integer` from Embedded Object value (token `JsonToken.VALUE_EMBEDDED_OBJECT`) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    },
    "editor": {
     "error": "the value has the wrong shape (found a string) at `styles.composite.line-gap`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    },
    "reason": "KNOWN DIFFERENCE (issue #136): the command line names the Java class of the target and the token (\"Cannot deserialize value of type `java.lang.Integer` from Embedded Object value\"); the page has no Java classes and says what it says of a text. The same holds for a boolean, an enum and the kind of a header. In a text field the binary text is read alike (Y185 to Y195, Y240, Y207)."
   },
@@ -3109,7 +3109,7 @@
    "title": "`shadowing: !!int 1`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 1\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 1\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3123,7 +3123,7 @@
    "title": "`shadowing: !!int 012`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 012\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 012\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3137,7 +3137,7 @@
    "title": "`shadowing: !!int 0x1`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 0x1\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 0x1\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3151,12 +3151,12 @@
    "title": "`shadowing: !!float 1`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!float 1\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!float 1\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a number) at `styles.composite.shadowing`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -3164,12 +3164,12 @@
    "title": "`shadowing: !!int abc`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int abc\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int abc\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a string) at `styles.composite.shadowing`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -3177,7 +3177,7 @@
    "title": "`shadowing: !!str true`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!str true\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!str true\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3191,7 +3191,7 @@
    "title": "`shadowing: !!bool yes`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!bool yes\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!bool yes\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3205,7 +3205,7 @@
    "title": "`shadowing: !!int 9999999999999999999`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 9999999999999999999\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 9999999999999999999\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3219,7 +3219,7 @@
    "title": "`settings.name: !!int 0x1F`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: !!int 0x1F\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: !!int 0x1F\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3233,7 +3233,7 @@
    "title": "`settings.name: !!float 5`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: !!float 5\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: !!float 5\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3247,12 +3247,12 @@
    "title": "`settings.name: !!int 09`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: !!int 09\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: !!int 09\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -3260,7 +3260,7 @@
    "title": "`settings.name: !!int abc`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: !!int abc\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: !!int abc\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3274,7 +3274,7 @@
    "title": "`settings.name: !!str 010`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: !!str 010\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: !!str 010\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3288,7 +3288,7 @@
    "title": "`settings.name: !!binary aGVsbG8=`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  name: !!binary aGVsbG8=\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  name: !!binary aGVsbG8=\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3302,7 +3302,7 @@
    "title": "`settings.current: !!int 010` and a plateau `010`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  current: !!int 010\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  current: !!int 010\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
     "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"010\"\n  override: baseline\n"
    },
@@ -3317,7 +3317,7 @@
    "title": "`settings.current: !!float 5` and a plateau `5`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  current: !!float 5\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  current: !!float 5\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
     "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"5\"\n  override: baseline\n"
    },
@@ -3332,7 +3332,7 @@
    "title": "`settings.current: !!str 010` and a plateau `010`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  current: !!str 010\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  current: !!str 010\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
     "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"010\"\n  override: baseline\n"
    },
@@ -3347,13 +3347,13 @@
    "title": "`settings.current: !!int 09` and a plateau `09`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  current: !!int 09\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  current: !!int 09\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
     "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"09\"\n  override: baseline\n"
    },
    "expect": {
     "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -3361,7 +3361,7 @@
    "title": "`settings.current: !!int 1_000` and a plateau `1_000`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  current: !!int 1_000\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  current: !!int 1_000\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
     "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"1_000\"\n  override: baseline\n"
    },
@@ -3376,7 +3376,7 @@
    "title": "`settings.facets.global-enabled: !!int 1` and `!!float 1`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: !!int 1\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: !!int 1\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
@@ -3390,25 +3390,25 @@
    "title": "`settings.facets.global-enabled: !!float 1`",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: !!float 1\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: !!float 1\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "the value has the wrong shape (found a number) at `settings.facets.global-enabled`",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
    "id": "Y248",
-   "title": "`foo: !!int 09` an unknown key of workspace.yaml",
+   "title": "`foo: !!int 09` an unknown key of .archicode.yaml",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nfoo: !!int 09\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\nfoo: !!int 09\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
    },
    "expect": {
     "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
-    "file": "workspace.yaml"
+    "file": ".archicode.yaml"
    }
   },
   {
@@ -3416,7 +3416,7 @@
    "title": "`layer: !!int 0x1F` of a view",
    "group": "tag-workspace",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
     "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: overview\n  layer: !!int 0x1F\n"
    },
@@ -3456,7 +3456,7 @@
    "title": "a patch that sets `qualifiers` to `[5.0, 1e3, 0x1F, 1_0.5, 0.0001]`",
    "group": "patch-value",
    "files": {
-    "workspace.yaml": "settings:\n  current: later\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  current: later\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
     "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: later\n  override: baseline\n  patches:\n    - operator: SET\n      target: s\n      field: qualifiers\n      value: [5.0, 1e3, 0x1F, 1_0.5, 0.0001]\n"
    },
@@ -3480,7 +3480,7 @@
    "title": "a patch that sets `qualifiers` to `[!!int 0x1F, !!float 5, !!binary aGVsbG8=]`",
    "group": "patch-value",
    "files": {
-    "workspace.yaml": "settings:\n  current: later\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  current: later\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
     "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: later\n  override: baseline\n  patches:\n    - operator: SET\n      target: s\n      field: qualifiers\n      value: [!!int 0x1F, !!float 5, !!binary aGVsbG8=]\n"
    },
@@ -3502,7 +3502,7 @@
    "title": "a patch whose `value` is `.inf`",
    "group": "patch-value",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [manifests]\n",
     "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
     "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: later\n  override: baseline\n  patches:\n    - operator: SET\n      target: s\n      field: qualifiers\n      value: [.inf]\n"
    },

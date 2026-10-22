@@ -101,7 +101,7 @@ class ReadingNullsTest {
                 com.fasterxml.jackson.core.JsonProcessingException.class,
                 () -> YAML.readValue(key + ": x\n", Settings.Facets.class)
             );
-            val sentence = io.morin.archicode.ArchiCodeException.unreadable("workspace.yaml", e, false).getMessage();
+            val sentence = io.morin.archicode.ArchiCodeException.unreadable(".archicode.yaml", e, false).getMessage();
             assertTrue(
                 sentence.contains("unknown key `" + key + "`, write `" + ManifestParser.documented(key) + "` (known: "),
                 sentence

@@ -37,14 +37,14 @@ class ShippedFilesTest {
     @Inject
     WorkspaceFactory workspaceFactory;
 
-    /** Every {@code workspace.yaml} under the roots, from the root of the repository, with {@code /}, sorted. */
+    /** Every {@code .archicode.yaml} under the roots, from the root of the repository, with {@code /}, sorted. */
     @SneakyThrows
     static List<String> workspaces() {
         val found = new ArrayList<String>();
         for (val root : ROOTS) {
             try (val files = Files.walk(Path.of(root))) {
                 files
-                    .filter(f -> f.getFileName().toString().equals("workspace.yaml"))
+                    .filter(f -> f.getFileName().toString().equals(".archicode.yaml"))
                     .forEach(f -> found.add(f.toString().replace('\\', '/')));
             }
         }
@@ -53,8 +53,8 @@ class ShippedFilesTest {
 
     /**
      * The workspace files the manual includes under another name (the steps of the design example, the defaults, the
-     * parts of the configuration): each is a workspace file, or a part of one, and is loaded as the {@code workspace.yaml}
-     * of an empty folder. Every YAML file of the manual that is neither a {@code workspace.yaml} nor in a manifests or
+     * parts of the configuration): each is a workspace file, or a part of one, and is loaded as the {@code .archicode.yaml}
+     * of an empty folder. Every YAML file of the manual that is neither a {@code .archicode.yaml} nor in a manifests or
      * plateau folder.
      */
     @SneakyThrows
@@ -64,7 +64,7 @@ class ShippedFilesTest {
             files
                 .filter(f -> f.getFileName().toString().endsWith(".yaml"))
                 .map(f -> f.toString().replace('\\', '/'))
-                .filter(f -> !f.endsWith("/workspace.yaml") && !f.contains("/manifests/") && !f.contains("/plateaus/"))
+                .filter(f -> !f.endsWith("/.archicode.yaml") && !f.contains("/manifests/") && !f.contains("/plateaus/"))
                 .forEach(found::add);
         }
         return found.stream().sorted().toList();
@@ -112,14 +112,14 @@ class ShippedFilesTest {
     void shouldFindTheWorkspacesOfTheRepository() {
         val found = workspaces();
         assertTrue(found.size() >= 17, "the manual and the fixtures ship at least 17 workspaces: " + found);
-        assertTrue(found.contains("src/doc/examples/domain_plateaus/workspace.yaml"), found.toString());
-        assertTrue(found.contains("src/test/resources/brightcart/layered/workspace.yaml"), found.toString());
+        assertTrue(found.contains("src/doc/examples/domain_plateaus/.archicode.yaml"), found.toString());
+        assertTrue(found.contains("src/test/resources/brightcart/layered/.archicode.yaml"), found.toString());
     }
 
     @Test
     void shouldLoadEveryPlateauOfTheLayeredBrightcart() {
         // a layered workspace is read once per plateau of its tree, and the tree of Brightcart forks: the plateau is named
-        val layered = Path.of("src/test/resources/brightcart/layered/workspace.yaml").toAbsolutePath();
+        val layered = Path.of("src/test/resources/brightcart/layered/.archicode.yaml").toAbsolutePath();
         assertEquals(
             List.of("baseline", "inhouse", "marketplace", "saas"),
             plateausOf(layered).stream().sorted().toList()
@@ -183,10 +183,10 @@ class ShippedFilesTest {
         val failures = new ArrayList<String>();
         for (val file : files) {
             val folder = Files.createTempDirectory(dir, "ws");
-            Files.copy(Path.of(file), folder.resolve("workspace.yaml"));
+            Files.copy(Path.of(file), folder.resolve(".archicode.yaml"));
             String failure = null;
             try {
-                workspaceFactory.create(folder.resolve("workspace.yaml"));
+                workspaceFactory.create(folder.resolve(".archicode.yaml"));
             } catch (RuntimeException e) {
                 failure = e.getMessage();
             }
@@ -216,13 +216,14 @@ class ShippedFilesTest {
         val manifest = Files.walk(dir)
             .filter(
                 f ->
-                    f.getFileName().toString().endsWith(".yaml") && !f.getFileName().toString().equals("workspace.yaml")
+                    f.getFileName().toString().endsWith(".yaml") &&
+                    !f.getFileName().toString().equals(".archicode.yaml")
             )
             .sorted()
             .findFirst()
             .orElseThrow();
         Files.writeString(manifest, Files.readString(manifest).replaceFirst("version:", "unknown-key: x\n  version:"));
-        val e = assertThrows(ArchiCodeException.class, () -> workspaceFactory.create(dir.resolve("workspace.yaml")));
+        val e = assertThrows(ArchiCodeException.class, () -> workspaceFactory.create(dir.resolve(".archicode.yaml")));
         assertTrue(e.getMessage().contains("unknown key `unknown-key`"), e.getMessage());
     }
 }

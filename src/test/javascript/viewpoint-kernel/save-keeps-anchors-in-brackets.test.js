@@ -383,7 +383,7 @@ const PLATEAUS = 'settings:\n  manifests:\n    paths:\n      - plateaus/10_base\
 const MILL = 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "mill"\n  name: "Mill"\n';
 
 async function openMem(files) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': PLATEAUS }, Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': PLATEAUS }, Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };

@@ -356,10 +356,44 @@ public class WorkspaceFactory {
         " the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau`" +
         " (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)";
 
+    /** The name of the workspace file, the one {@code -w} defaults to. */
+    public static final String WORKSPACE_FILE_NAME = ".archicode.yaml";
+
+    /** The name it had before 0.18: no alias, a folder that still has it is told to rename it. */
+    public static final String FORMER_WORKSPACE_FILE_NAME = "workspace.yaml";
+
+    /**
+     * The sentence for a folder that holds the former workspace file and not the new one. The editor says the same sentence,
+     * word for word ({@code FORMER_WORKSPACE_FILE_SENTENCE} in {@code standalone.html}); {@code workspace-file-name-cases.json}
+     * pins it in both tools.
+     */
+    public static final String FORMER_NAME_SENTENCE =
+        "`workspace.yaml` is no longer the name of the workspace file: rename it to `.archicode.yaml`" +
+        " (`git mv workspace.yaml .archicode.yaml`), or tell the command line where it is with `-w workspace.yaml`";
+
+    /**
+     * Whether the workspace file is missing under its name while the folder holds the file under the former name.
+     *
+     * @param path the workspace file asked for
+     * @return whether the folder is one that was not renamed
+     */
+    public static boolean holdsFormerNameOnly(Path path) {
+        val parent = path.toAbsolutePath().getParent();
+        return (
+            parent != null &&
+            WORKSPACE_FILE_NAME.equals(String.valueOf(path.getFileName())) &&
+            !Files.isRegularFile(path) &&
+            Files.isRegularFile(parent.resolve(FORMER_WORKSPACE_FILE_NAME))
+        );
+    }
+
     @SneakyThrows
     private Source read(Path path) {
         log.info("parse the resources {}", path);
 
+        if (holdsFormerNameOnly(path)) {
+            throw new ArchiCodeException("%s", FORMER_NAME_SENTENCE);
+        }
         if (!Files.isRegularFile(path)) {
             throw new ArchiCodeException("the workspace file `%s` does not exist (`-w` names another one)", path);
         }
@@ -400,7 +434,7 @@ public class WorkspaceFactory {
             viewsDirPath == null ? rawWorkspace : withViewsPath(rawWorkspace, viewsDirPath.toString());
 
         // parse the manifests: the elements, and the views and the stories that are manifests of their own, which join
-        // the ones of workspace.yaml. A reference declared twice is an error inside a plateau and in a plateau and its
+        // the ones of .archicode.yaml. A reference declared twice is an error inside a plateau and in a plateau and its
         // ancestors, and the same reference in two plateaus that do not stack is the very point of having two
         val parsed = parse(path, source, fixedRawWorkspace.getSettings().getManifests().getPaths(), viewsDirPath);
         if (parsed.plateaus().isLayered()) {

@@ -50,7 +50,7 @@ function lineDiff(before, after) {
 }
 
 async function openIn(files, settings) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -58,7 +58,7 @@ async function openIn(files, settings) {
   await sandbox.loadWorkspace(mem.handle);
   await sandbox.loadViewpointKernel();
   assert.equal(state.fatalError, null);
-  return { sandbox, state, mem, original: Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files) };
+  return { sandbox, state, mem, original: Object.assign({ '.archicode.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files) };
 }
 
 /**
@@ -601,7 +601,7 @@ test('a rename in baseline reaches what names the element in the plateaus above 
 test('a rename in baseline reaches the replaces of an element of a plateau above it that sits under the renamed one (only the element renamed or moved in the plateau written keeps its own old reference: move-editor.test.js)', async () => {
   const el = (kind, parent, id, name, extra, plateau) => 'header:\n  kind: "archicode.morin.io/' + kind + '"\n' + (parent ? '  parent: "' + parent + '"\n' : '') + (plateau ? '  plateau: ' + plateau + '\n' : '') + '  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"\n' + (extra || '');
   const mem = memFolder({
-    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - m\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - m\n',
     'm/app.shop.yaml': el('system', null, 'shop', 'Shop'),
     'm/app.shop.till.yaml': el('container', 'shop', 'till', 'Till'),
     'm/app.shop.till.display.yaml': el('component', 'shop.till', 'display', 'Display'),
@@ -828,7 +828,7 @@ test('baseline of a layered workspace saves its own edits as before, once the au
 test('a workspace that writes no plateau saves an edit as before: no layer written, no guard, no plateau header', async () => {
   const system = (id, name) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + name + '"  # as written\n';
   const files = {
-    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
     'manifests/app.shop.yaml': system('shop', 'Shop as is'),
     'manifests/app.billing.yaml': system('billing', 'Billing')
   };

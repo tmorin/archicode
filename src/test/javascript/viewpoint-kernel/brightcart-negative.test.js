@@ -3,7 +3,7 @@
 // src/test/resources/brightcart/negative-cases.json is the layered Brightcart with one alteration, built in a temporary folder from layered/
 // (nothing negative is committed as a workspace), opened as the editor opens a folder, and the page says the sentence of the command line
 // (`BrightcartNegativeCasesTest.java` runs the same file) or its stated equivalent: the editor's banners start with a capital and end with a
-// full stop, the plateau rules come under "Could not read the plateaus of workspace.yaml:", and the keys and shapes of workspace.yaml under "Could not read/parse workspace.yaml: " (run 0072).
+// full stop, the plateau rules come under "Could not read the plateaus of .archicode.yaml:", and the keys and shapes of .archicode.yaml under "Could not read/parse .archicode.yaml: " (run 0072).
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -126,7 +126,7 @@ for (const c of CASES) {
 
 test('the editor sentences are the command line sentences, up to the capital, the full stop, the heading of the plateau rules and the position of a file', () => {
   // the case table spells both; this keeps them from drifting apart
-  const normal = (text) => text.replace(/^Could not read the plateaus of workspace\.yaml:\n/, '').replace(/^Could not read\/parse workspace\.yaml: /, '').replace(/^[A-Z]/, (l) => l.toLowerCase()).replace(/\.$/, '');
+  const normal = (text) => text.replace(/^Could not read the plateaus of \.archicode\.yaml:\n/, '').replace(/^Could not read\/parse \.archicode\.yaml: /, '').replace(/^[A-Z]/, (l) => l.toLowerCase()).replace(/\.$/, '');
   const FILE = /^`[^`]+` is not valid: /;
   for (const c of CASES) {
     if (c.editor === null) continue;
@@ -137,7 +137,7 @@ test('the editor sentences are the command line sentences, up to the capital, th
       for (const [key, value] of Object.entries(step.expect)) {
         if (typeof value === 'number' || key === 'viewProblems' || key === 'stepProblems') continue; // a count, told by a badge and not by a sentence; what the page says in a view it cannot draw here
         const texts = typeof value === 'string' ? [value] : Array.isArray(value) ? value : Object.values(value);
-        const known = key === 'manifestErrors' || key === 'fatalError' ? bare : whole; // the banner for workspace.yaml names the file in its heading
+        const known = key === 'manifestErrors' || key === 'fatalError' ? bare : whole; // the banner for .archicode.yaml names the file in its heading
         for (const text of texts) assert.ok(known.has(normal(text)), c.id + ': the editor says (' + key + ') "' + text + '" and the command line does not say it');
       }
     }

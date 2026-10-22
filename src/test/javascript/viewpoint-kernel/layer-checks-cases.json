@@ -1,5 +1,5 @@
 {
-  "comment": "The checks of a layer and the nesting rule (run 0093, wave 015, W-5; issues #90 and #87). LayerLoaderTest.java (command line) and layer-checks.test.js (editor) read this file; add a case here and both run it. `files`: a path from the folder of the workspace -> the text of the file (workspace.yaml is `settings: {manifests: {paths: [manifests/**]}}`); `plateau`: the plateau that is loaded (null: the workspace has no plateau, nothing is named). `cli`: what the command line does, which stops at the first layer that is wrong and draws nothing: `error` (the lines of its one `error:` message, in order) or `loaded` (the references of each layer it draws). `editor`: what the page does, which draws the plateau all the same so that it can be repaired, and tells the sentences of the first layer of the chain that is wrong: `problems` (null when there is none), `failedAt` (that plateau) and `drawn` (the references of the model, by layer). The sentences are the same in both tools. `nesting.holds`: which kinds a parent of each kind holds (a leaf holds none), the sentence of K20 for every other pair; the model classes say it (`Nesting.java`, compared with this table by LayerLoaderTest), the page derives its tables from READ_SCHEMA (compared with this table by layer-checks.test.js), and each tool loads every pair of a parent and a child of the same layer, accepted or refused as this table says. Run 0093 also moves the case of #104 (an id with a dot) to plateau-model-cases.json, M81 to M83. Run 0100 (wave 015, W-12, issues #100 and #86) revises K04 and K05 and adds K32 to K36: a view and a story belong to no plateau, so what they name is not a mistake of a layer but a plateau-free check (every name exists in at least one plateau: it is declared by a manifest or by workspace.yaml, whatever the plateau). The command line tells it once, after the layers, and stops there; the editor tells it apart from the layers, whatever plateau is drawn (`entryProblems`, absent: none). Run 0101 (wave 015, W-13, issue #24) adds K37 to K42: a step of a story may say `at` (the plateau it is told at) and `against` (the plateau it is compared with); each must be a plateau of the workspace and the two cannot be one plateau, told with the story, the file and the number of the step, before the names the step carries (a workspace that has no plateau says it in `negative-cases.json` and in the tests of both tools, since these cases are all layered). `against` with no `at` is read, an empty text names nothing, and what the plateau of a step lacks is a state of the step in the editor, never a mistake. K41 pins the order of the plateaus in the sentence, K42 the number of a step after an item with no value. Run 0108 (wave 016, W-2, issue #106) adds K43 to K49 and `nesting.top`: in a workspace that has plateaus a layer holds at its top only the kinds of its model class (`Application` holds person, solution and system, `Technology` an environment; `nesting.top`, compared with the classes by LayerLoaderTest and with READ_SCHEMA by layer-checks.test.js), so a manifest of kind container, component or node with no `header.parent` is held by no layer and a patch could not select it: one sentence with the file and the kind, told with the nesting mistakes (the application layer first, each by reference), the editor drawing the element where its manifest puts it. A workspace with no plateau is untouched (K48: such a root is indexed and drawn as it always was), and the kinds a layer holds are accepted (K49).",
+  "comment": "The checks of a layer and the nesting rule (run 0093, wave 015, W-5; issues #90 and #87). LayerLoaderTest.java (command line) and layer-checks.test.js (editor) read this file; add a case here and both run it. `files`: a path from the folder of the workspace -> the text of the file (.archicode.yaml is `settings: {manifests: {paths: [manifests/**]}}`); `plateau`: the plateau that is loaded (null: the workspace has no plateau, nothing is named). `cli`: what the command line does, which stops at the first layer that is wrong and draws nothing: `error` (the lines of its one `error:` message, in order) or `loaded` (the references of each layer it draws). `editor`: what the page does, which draws the plateau all the same so that it can be repaired, and tells the sentences of the first layer of the chain that is wrong: `problems` (null when there is none), `failedAt` (that plateau) and `drawn` (the references of the model, by layer). The sentences are the same in both tools. `nesting.holds`: which kinds a parent of each kind holds (a leaf holds none), the sentence of K20 for every other pair; the model classes say it (`Nesting.java`, compared with this table by LayerLoaderTest), the page derives its tables from READ_SCHEMA (compared with this table by layer-checks.test.js), and each tool loads every pair of a parent and a child of the same layer, accepted or refused as this table says. Run 0093 also moves the case of #104 (an id with a dot) to plateau-model-cases.json, M81 to M83. Run 0100 (wave 015, W-12, issues #100 and #86) revises K04 and K05 and adds K32 to K36: a view and a story belong to no plateau, so what they name is not a mistake of a layer but a plateau-free check (every name exists in at least one plateau: it is declared by a manifest or by .archicode.yaml, whatever the plateau). The command line tells it once, after the layers, and stops there; the editor tells it apart from the layers, whatever plateau is drawn (`entryProblems`, absent: none). Run 0101 (wave 015, W-13, issue #24) adds K37 to K42: a step of a story may say `at` (the plateau it is told at) and `against` (the plateau it is compared with); each must be a plateau of the workspace and the two cannot be one plateau, told with the story, the file and the number of the step, before the names the step carries (a workspace that has no plateau says it in `negative-cases.json` and in the tests of both tools, since these cases are all layered). `against` with no `at` is read, an empty text names nothing, and what the plateau of a step lacks is a state of the step in the editor, never a mistake. K41 pins the order of the plateaus in the sentence, K42 the number of a step after an item with no value. Run 0108 (wave 016, W-2, issue #106) adds K43 to K49 and `nesting.top`: in a workspace that has plateaus a layer holds at its top only the kinds of its model class (`Application` holds person, solution and system, `Technology` an environment; `nesting.top`, compared with the classes by LayerLoaderTest and with READ_SCHEMA by layer-checks.test.js), so a manifest of kind container, component or node with no `header.parent` is held by no layer and a patch could not select it: one sentence with the file and the kind, told with the nesting mistakes (the application layer first, each by reference), the editor drawing the element where its manifest puts it. A workspace with no plateau is untouched (K48: such a root is indexed and drawn as it always was), and the kinds a layer holds are accepted (K49).",
   "nesting": {
     "holds": {
       "solution": [
@@ -570,25 +570,25 @@
     },
     {
       "id": "K36",
-      "what": "the views and the stories that workspace.yaml keeps (an older place for them) are checked the same way, after those of the manifests, and a layer is not asked about them",
+      "what": "the views and the stories that .archicode.yaml keeps (an older place for them) are checked the same way, after those of the manifests, and a layer is not asked about them",
       "plateau": "baseline",
       "files": {
-        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\nviews:\n  - id: old\n    viewpoint: overview\n    layer: technology\n    properties:\n      element: ghost\nstories:\n  - id: tale\n    steps:\n      - viewpoint: overview\n        properties:\n          element: gone\n",
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\nviews:\n  - id: old\n    viewpoint: overview\n    layer: technology\n    properties:\n      element: ghost\nstories:\n  - id: tale\n    steps:\n      - viewpoint: overview\n        properties:\n          element: gone\n",
         "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n",
         "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n"
       },
       "cli": {
         "error": [
-          "the view `old` (`workspace.yaml`) names `ghost`, which exists in no plateau",
-          "the story `tale` (`workspace.yaml`) names `gone`, which exists in no plateau"
+          "the view `old` (`.archicode.yaml`) names `ghost`, which exists in no plateau",
+          "the story `tale` (`.archicode.yaml`) names `gone`, which exists in no plateau"
         ]
       },
       "editor": {
         "problems": null,
         "failedAt": null,
         "entryProblems": [
-          "the view `old` (`workspace.yaml`) names `ghost`, which exists in no plateau",
-          "the story `tale` (`workspace.yaml`) names `gone`, which exists in no plateau"
+          "the view `old` (`.archicode.yaml`) names `ghost`, which exists in no plateau",
+          "the story `tale` (`.archicode.yaml`) names `gone`, which exists in no plateau"
         ],
         "drawn": {
           "application": [
@@ -1018,25 +1018,25 @@
     },
     {
       "id": "K40",
-      "what": "the plateaus of a step are told before the names it carries, step by step, and the stories of workspace.yaml (an older place for them) are looked at too, after those of the manifests",
+      "what": "the plateaus of a step are told before the names it carries, step by step, and the stories of .archicode.yaml (an older place for them) are looked at too, after those of the manifests",
       "plateau": "baseline",
       "files": {
-        "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\nstories:\n  - id: s\n    steps:\n      - viewpoint: overview\n        at: gone\n        properties:\n          element: ghost\n",
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\nstories:\n  - id: s\n    steps:\n      - viewpoint: overview\n        at: gone\n        properties:\n          element: ghost\n",
         "manifests/p1/plateau.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"p1\"\n",
         "manifests/a.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"a\"\n"
       },
       "cli": {
         "error": [
-          "the story `s` (`workspace.yaml`) step 1 says `at: gone`, which is not a plateau of this workspace (the plateaus are `baseline`, `p1`)",
-          "the story `s` (`workspace.yaml`) names `ghost`, which exists in no plateau"
+          "the story `s` (`.archicode.yaml`) step 1 says `at: gone`, which is not a plateau of this workspace (the plateaus are `baseline`, `p1`)",
+          "the story `s` (`.archicode.yaml`) names `ghost`, which exists in no plateau"
         ]
       },
       "editor": {
         "problems": null,
         "failedAt": null,
         "entryProblems": [
-          "the story `s` (`workspace.yaml`) step 1 says `at: gone`, which is not a plateau of this workspace (the plateaus are `baseline`, `p1`)",
-          "the story `s` (`workspace.yaml`) names `ghost`, which exists in no plateau"
+          "the story `s` (`.archicode.yaml`) step 1 says `at: gone`, which is not a plateau of this workspace (the plateaus are `baseline`, `p1`)",
+          "the story `s` (`.archicode.yaml`) names `ghost`, which exists in no plateau"
         ],
         "drawn": {
           "application": [

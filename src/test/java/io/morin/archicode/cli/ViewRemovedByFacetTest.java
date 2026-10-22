@@ -65,7 +65,7 @@ class ViewRemovedByFacetTest {
                 }
             }
         }
-        return into.resolve("workspace.yaml");
+        return into.resolve(".archicode.yaml");
     }
 
     @SneakyThrows

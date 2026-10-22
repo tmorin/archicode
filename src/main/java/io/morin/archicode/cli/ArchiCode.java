@@ -35,7 +35,7 @@ public class ArchiCode {
     @CommandLine.Option(
         names = { "-w", "--workspace" },
         description = "The workspace file.",
-        defaultValue = "workspace.yaml",
+        defaultValue = ".archicode.yaml",
         paramLabel = "<workspace file>",
         scope = CommandLine.ScopeType.INHERIT
     )

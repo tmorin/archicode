@@ -54,8 +54,8 @@ class LayeredPlateauTest {
               name: "Shop"
             """.formatted(kind, headerKey)
         );
-        Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
-        val args = new java.util.ArrayList<>(List.of("-w", dir.resolve("workspace.yaml").toString()));
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
+        val args = new java.util.ArrayList<>(List.of("-w", dir.resolve(".archicode.yaml").toString()));
         args.addAll(List.of(command));
         return CliHarness.run(factory, errorOutput, args.toArray(String[]::new));
     }
@@ -64,8 +64,8 @@ class LayeredPlateauTest {
     private CliHarness.Result runManifest(String manifest) {
         Files.createDirectories(dir.resolve("manifests"));
         Files.writeString(dir.resolve("manifests/shop.yaml"), manifest);
-        Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
-        return CliHarness.run(factory, errorOutput, "-w", dir.resolve("workspace.yaml").toString(), "query", "graph");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
+        return CliHarness.run(factory, errorOutput, "-w", dir.resolve(".archicode.yaml").toString(), "query", "graph");
     }
 
     private static void assertOneLine(CliHarness.Result result, String expected) {

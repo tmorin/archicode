@@ -294,7 +294,7 @@ test('an element the plateau drawn only inherits is refused by the Move dialog w
 
 test('a workspace with no plateau moves as it always did: no dialog, the view follows', async () => {
   const files = {
-    'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
     'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n  elements:\n    - kind: container\n      id: "ticketing"\n      name: "Ticketing"\n',
     'app.pier.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "pier"\n  name: "Pier"\n',
     'view.ticketing_overview.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "ticketing_overview"\n  viewpoint: overview\n  properties:\n    element: ferry.ticketing\n'

@@ -653,7 +653,7 @@ test('a comparison with no replaces and no candidate is the Changes panel it was
   assert.equal(JSON.stringify(sandbox.comparisonInput()).includes('replaces'), false);
   // the edit form of an element has no Replaces section when the workspace has a single plateau
   const single = createApp({});
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n  name: One\n' }, { 'manifests/app.shop.yaml': element('system', null, 'shop', 'Shop') }));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': 'settings:\n  name: One\n' }, { 'manifests/app.shop.yaml': element('system', null, 'shop', 'Shop') }));
   const st = single.__state();
   st.folder = { handle: mem.handle, name: 'ws' };
   st.permissionState = 'granted';

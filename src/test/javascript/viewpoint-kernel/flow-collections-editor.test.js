@@ -327,7 +327,7 @@ const PLATEAU_LIST = [{ id: 'base', name: 'Base', path: 'plateaus/10_base' }, { 
 /** One manifest, in a plain folder; with `compare`, as the two sibling layers `base` and `target` (see layered-folders.js), the target drawn and compared with the base. */
 async function open(manifest, compare) {
   if (!compare) {
-    const mem = memFolder({ 'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n', 'manifests/app.garden.yaml': manifest });
+    const mem = memFolder({ '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n', 'manifests/app.garden.yaml': manifest });
     const sandbox = createApp({});
     const state = sandbox.__state();
     state.folder = { handle: mem.handle, name: 'ws' };

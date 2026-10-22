@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class SiblingCandidatesTest {
 
-    private static final Path BRIGHTCART = Path.of("src/test/resources/brightcart/layered/workspace.yaml");
+    private static final Path BRIGHTCART = Path.of("src/test/resources/brightcart/layered/.archicode.yaml");
 
     @Inject
     WorkspaceFactory workspaceFactory;

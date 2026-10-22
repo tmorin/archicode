@@ -30,8 +30,8 @@ import picocli.CommandLine;
 @QuarkusTest
 class DiffFailOnTest {
 
-    private static final Path BOOKSHOP = Path.of("src/test/resources/plateau-comparison/workspace.yaml");
-    private static final Path WAREHOUSE = Path.of("src/test/resources/plateau-comparison/replaces/workspace.yaml");
+    private static final Path BOOKSHOP = Path.of("src/test/resources/plateau-comparison/.archicode.yaml");
+    private static final Path WAREHOUSE = Path.of("src/test/resources/plateau-comparison/replaces/.archicode.yaml");
 
     @Inject
     CommandLine.IFactory factory;
@@ -218,7 +218,7 @@ class DiffFailOnTest {
 
     @Test
     void aWorkspaceWithoutPlateauKeepsItsOwnError() {
-        val result = diff(Path.of("src/doc/examples/domain_workspace/workspace.yaml"), "--fail-on", "any");
+        val result = diff(Path.of("src/doc/examples/domain_workspace/.archicode.yaml"), "--fail-on", "any");
         assertEquals(ErrorOutput.FAILURE, result.exit());
         assertEquals(1, result.err().lines().count(), result.err());
         assertTrue(result.err().startsWith("error: the workspace declares no plateau"), result.err());
@@ -278,9 +278,9 @@ class DiffFailOnTest {
             Files.writeString(file, pathsAndContents[i + 1]);
         }
         Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             "# two states\nsettings:\n  manifests:\n    paths: [\"plateaus/**\"]\n"
         );
-        return dir.resolve("workspace.yaml");
+        return dir.resolve(".archicode.yaml");
     }
 }

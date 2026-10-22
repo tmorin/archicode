@@ -89,7 +89,7 @@ class ManifestDiscoveryTest {
         );
     }
 
-    /** The folder of a case: workspace.yaml, the files, the empty folders and the links. */
+    /** The folder of a case: .archicode.yaml, the files, the empty folders and the links. */
     @SneakyThrows
     private void build(JsonNode c) {
         val settings = new StringBuilder("settings:\n  manifests:\n    paths: ")
@@ -101,7 +101,7 @@ class ManifestDiscoveryTest {
                 .append(JSON.writeValueAsString(c.get("views").asText()))
                 .append("\n");
         }
-        Files.writeString(dir.resolve("workspace.yaml"), settings.toString());
+        Files.writeString(dir.resolve(".archicode.yaml"), settings.toString());
         val files = c.get("files").properties();
         for (val file : files) {
             val target = dir.resolve(file.getKey());
@@ -148,7 +148,7 @@ class ManifestDiscoveryTest {
     void shouldRunTheCaseTheEditorRunsToo(String id) {
         val c = caseOf(id);
         build(c);
-        val workspace = dir.resolve("workspace.yaml");
+        val workspace = dir.resolve(".archicode.yaml");
         val expect = c.get("expect");
         if (expect.has("error")) {
             val message = assertThrows(ArchiCodeException.class, () -> workspaceFactory.create(workspace)).getMessage();
@@ -181,26 +181,26 @@ class ManifestDiscoveryTest {
     @Test
     @SneakyThrows
     void shouldKeepTheViewsFolderOfTheWorkspaceWhenTheOutputOptionNamesAnother() {
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [\"./**\"]\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  manifests:\n    paths: [\"./**\"]\n");
         Files.createDirectories(dir.resolve("views-to-be"));
         Files.writeString(dir.resolve("views-to-be/gap.json"), "{\"gap\": true}\n");
         Files.createDirectories(dir.resolve("manifests"));
         Files.writeString(dir.resolve("manifests/a.yaml"), manifestOf("a.yaml", "a"));
-        val loaded = workspaceFactory.create(dir.resolve("workspace.yaml"), Path.of("elsewhere"), null);
+        val loaded = workspaceFactory.create(dir.resolve(".archicode.yaml"), Path.of("elsewhere"), null);
         assertEquals(Set.of("a"), loaded.appIndex.elementByReferenceIndex.keySet());
     }
 
     @Test
     @SneakyThrows
     void shouldReadALinkToAFileLikeTheFile() {
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n");
         Files.createDirectories(dir.resolve("manifests"));
         Files.createDirectories(dir.resolve("shared"));
         Files.writeString(dir.resolve("shared/real.yaml"), manifestOf("real.yaml", "real"));
         Files.createSymbolicLink(dir.resolve("manifests/alias.yaml"), dir.resolve("shared/real.yaml"));
         val read = new ArrayList<String>();
-        ManifestDiscovery.discover(dir, List.of("manifests/**"), "views", dir.resolve("workspace.yaml")).forEach(file ->
-            read.add(ManifestParser.sourceOf(dir, file))
+        ManifestDiscovery.discover(dir, List.of("manifests/**"), "views", dir.resolve(".archicode.yaml")).forEach(
+            file -> read.add(ManifestParser.sourceOf(dir, file))
         );
         assertEquals(List.of("manifests/alias.yaml"), read);
     }
@@ -209,13 +209,13 @@ class ManifestDiscoveryTest {
     @SneakyThrows
     void shouldLeaveOutTheFoldersOfEveryViewsPathItIsGiven() {
         // the folders of settings.views.path and the ones an `--output` option named (issue #88)
-        Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
         for (val folder : List.of("manifests", "views-saas", "out-saas", "out-saas-vs-baseline", "outside")) {
             Files.createDirectories(dir.resolve(folder));
             Files.writeString(dir.resolve(folder + "/a.yaml"), manifestOf("a.yaml", "a"));
         }
         val settingsOnly = new ArrayList<String>();
-        ManifestDiscovery.discover(dir, List.of("./**"), "views", dir.resolve("workspace.yaml")).forEach(file ->
+        ManifestDiscovery.discover(dir, List.of("./**"), "views", dir.resolve(".archicode.yaml")).forEach(file ->
             settingsOnly.add(ManifestParser.sourceOf(dir, file))
         );
         assertEquals(
@@ -228,7 +228,7 @@ class ManifestDiscoveryTest {
             dir,
             List.of("./**"),
             List.of("views", "out"),
-            dir.resolve("workspace.yaml")
+            dir.resolve(".archicode.yaml")
         ).forEach(file -> both.add(ManifestParser.sourceOf(dir, file)));
         assertEquals(List.of("manifests/a.yaml", "outside/a.yaml"), both);
     }
@@ -236,7 +236,7 @@ class ManifestDiscoveryTest {
     @Test
     @SneakyThrows
     void shouldFollowTheLinkThatIsTheFolderOfAPathAndNotTheOnesFoundBelowIt() {
-        Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
         Files.createDirectories(dir.resolve("shared"));
         Files.writeString(dir.resolve("shared/s.yaml"), manifestOf("s.yaml", "s"));
         Files.createSymbolicLink(dir.resolve("manifests"), dir.resolve("shared"));
@@ -250,7 +250,7 @@ class ManifestDiscoveryTest {
     @Test
     @SneakyThrows
     void shouldNameAFolderItCannotReadByItsPathFromTheWorkspace() {
-        Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
         val locked = dir.resolve("manifests/locked");
         Files.createDirectories(locked);
         Files.writeString(dir.resolve("manifests/a.yaml"), manifestOf("a.yaml", "a"));
@@ -270,7 +270,7 @@ class ManifestDiscoveryTest {
     @Test
     @SneakyThrows
     void shouldFindTheFilesOfEveryFormatTheCommandLineReads() {
-        Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
         Files.createDirectories(dir.resolve("manifests/sub"));
         for (val name : List.of("a.yaml", "b.yml", "c.json", "sub/d.toml", "e.YAML", "f.txt")) {
             Files.writeString(dir.resolve("manifests").resolve(name), "x\n");
@@ -290,7 +290,7 @@ class ManifestDiscoveryTest {
             example,
             List.of("manifests/**"),
             "views",
-            example.resolve("workspace.yaml")
+            example.resolve(".archicode.yaml")
         ).forEach(file -> read.add(ManifestParser.sourceOf(example, file)));
         assertEquals(
             List.of(
@@ -302,7 +302,7 @@ class ManifestDiscoveryTest {
             ),
             read
         );
-        val loaded = workspaceFactory.create(example.resolve("workspace.yaml"));
+        val loaded = workspaceFactory.create(example.resolve(".archicode.yaml"));
         assertEquals(
             Set.of("customer", "shop", "shop.web", "shop.warehouse"),
             loaded.appIndex.elementByReferenceIndex.keySet()
@@ -320,29 +320,29 @@ class ManifestDiscoveryTest {
     @SneakyThrows
     void shouldGenerateTheViewsTwiceFromAFolderThatHoldsTheViewsOfTheFirstRun() {
         // the reason for leaving the folders of the views out: `./**` reads the folder of the workspace, where the first run wrote its views
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [\"./**\"]\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  manifests:\n    paths: [\"./**\"]\n");
         Files.createDirectories(dir.resolve("domain/shop"));
         Files.writeString(dir.resolve("domain/shop/shop.yaml"), manifestOf("shop.yaml", "shop"));
-        assertEquals(0, run("-w", dir.resolve("workspace.yaml").toString(), "views", "generate"));
-        assertTrue(Files.isDirectory(dir.resolve("views")), "the first run wrote its views next to workspace.yaml");
+        assertEquals(0, run("-w", dir.resolve(".archicode.yaml").toString(), "views", "generate"));
+        assertTrue(Files.isDirectory(dir.resolve("views")), "the first run wrote its views next to .archicode.yaml");
         Files.writeString(dir.resolve("views/gap.json"), "{\"gap\": true}\n");
         Files.createDirectories(dir.resolve("views-to-be-vs-as-is"));
         Files.writeString(dir.resolve("views-to-be-vs-as-is/gap.json"), "{\"gap\": true}\n");
-        assertEquals(0, run("-w", dir.resolve("workspace.yaml").toString(), "views", "generate"));
+        assertEquals(0, run("-w", dir.resolve(".archicode.yaml").toString(), "views", "generate"));
     }
 
     @Test
     @SneakyThrows
     void shouldTellAMalformedPathInOneLineWithoutAStackTrace() {
         Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             "settings:\n  manifests:\n    paths: [\"manifests/**/sub\"]\n"
         );
         val err = new java.io.ByteArrayOutputStream();
         val commandLine = new CommandLine(ArchiCode.class, factory);
         commandLine.setErr(new java.io.PrintWriter(err, true, java.nio.charset.StandardCharsets.UTF_8));
         errorOutput.install(commandLine);
-        assertEquals(1, commandLine.execute("-w", dir.resolve("workspace.yaml").toString(), "views", "generate"));
+        assertEquals(1, commandLine.execute("-w", dir.resolve(".archicode.yaml").toString(), "views", "generate"));
         val lines = err.toString(java.nio.charset.StandardCharsets.UTF_8).strip().lines().toList();
         assertEquals(1, lines.size(), lines.toString());
         assertTrue(

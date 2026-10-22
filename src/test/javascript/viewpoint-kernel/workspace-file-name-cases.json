@@ -1,0 +1,37 @@
+{
+  "comment": "The workspace file is `.archicode.yaml` (wave 019, run 0144, #133, decision T9): a rename with no alias. A folder that holds `workspace.yaml` and no `.archicode.yaml` is told with one sentence, the same in both tools, word for word: the command line prints it as the `error:` line (exit 1) before anything is loaded, the editor shows it as the reason the folder cannot be opened. WorkspaceFileNameTest.java (command line, and `editor serve`) and workspace-file-name.test.js (editor) read this file; `files` are written in an empty folder. `expect.loads`: the folder opens; `expect.error`: the sentence.",
+  "sentence": "`workspace.yaml` is no longer the name of the workspace file: rename it to `.archicode.yaml` (`git mv workspace.yaml .archicode.yaml`), or tell the command line where it is with `-w workspace.yaml`",
+  "cases": [
+    {
+      "id": "F01",
+      "what": "only the old name: the sentence, nothing else is read",
+      "files": {
+        "workspace.yaml": "settings: {}\n"
+      },
+      "expect": {
+        "error": "${sentence}"
+      }
+    },
+    {
+      "id": "F02",
+      "what": "the old name beside the new one: the new one is the workspace file and the old one is a file like another (no manifest reads it here)",
+      "files": {
+        ".archicode.yaml": "settings: {}\n",
+        "workspace.yaml": "settings: {}\n"
+      },
+      "expect": {
+        "loads": true
+      }
+    },
+    {
+      "id": "F03",
+      "what": "only the new name opens",
+      "files": {
+        ".archicode.yaml": "settings: {}\n"
+      },
+      "expect": {
+        "loads": true
+      }
+    }
+  ]
+}

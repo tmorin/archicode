@@ -1270,7 +1270,7 @@ let yamlKeepWords = false;
 /**
  * Set while `parseYamlAsModel` reads a manifest: a plain scalar that YAML 1.1 reads as a number is the value the command line's reader gives its content (issue #103). The command
  * line reads the content of a manifest again as JSON text, so a number is a number there: `id: 010` is the reference `8`, `0x1F` is `31`, `1_000` is `1000`. A number that JavaScript
- * would print another way than Java (`5.0`, `1e3` are `5.0` and `1000.0` there; an integer beyond 2^53) is the text Java prints. `workspace.yaml` is read by the plain `parseYaml`:
+ * would print another way than Java (`5.0`, `1e3` are `5.0` and `1000.0` there; an integer beyond 2^53) is the text Java prints. `.archicode.yaml` is read by the plain `parseYaml`:
  * the command line hands a text field the text as written there (`name: 010` is `010`) and a number to a field that is one, so the page keeps the text and knows the scalar was a number
  * (`plainNumberOf`).
  */
@@ -1289,7 +1289,7 @@ let yamlDeferMalformed = false;
 /** Set while the plain scalar that follows a tag is read: the tag says what it is, so it is not looked at as a number first (`!!int .inf` is a text for the command line). */
 let yamlRawScalars = false;
 
-/** Set while `patchYamlText` saves `workspace.yaml`: `parseYamlAsModel` reads as the plain `parseYaml` does (the numbers as written; see `yamlModelNumbers`). */
+/** Set while `patchYamlText` saves `.archicode.yaml`: `parseYamlAsModel` reads as the plain `parseYaml` does (the numbers as written; see `yamlModelNumbers`). */
 let yamlPlainReading = false;
 
 /** The plain scalars of a collection that YAML 1.1 reads as numbers and the page holds as text, by key (hidden, like `YAML_KEY_ORDER`). */
@@ -2525,7 +2525,7 @@ function serializeManifestFile(header, content) {
  */
 function patchYamlText(oldText, newValue, workspaceFile) {
   const before = yamlPlainReading;
-  yamlPlainReading = workspaceFile === true; // `workspace.yaml` is read with the plain `parseYaml` (numbers as written), a manifest as a model: the old value is read as the new one was
+  yamlPlainReading = workspaceFile === true; // `.archicode.yaml` is read with the plain `parseYaml` (numbers as written), a manifest as a model: the old value is read as the new one was
   try {
     return patchYamlTextRead(oldText, newValue);
   } finally {
@@ -4362,7 +4362,7 @@ async function rememberFolder(handle, known) {
 
 /**
  * Stores the name the loaded workspace gives itself with its folder (DEC-4), when it changed: on each open, and after a
- * save that wrote workspace.yaml. Best effort: a failure is logged, never shown.
+ * save that wrote .archicode.yaml. Best effort: a failure is logged, never shown.
  */
 async function noteWorkspaceName() {
   const folder = AppState.folder;
@@ -4512,7 +4512,7 @@ let landingFocusSelector = null;
 
 /**
  * "Opening “x”…" for a folder: the name its workspace gave itself when it was last opened (stored with the folder,
- * TDD-0020 DEC-4), the name of the folder otherwise — before workspace.yaml is read, nothing else is known.
+ * TDD-0020 DEC-4), the name of the folder otherwise — before .archicode.yaml is read, nothing else is known.
  */
 function openingMessage(folderName, name) {
   return 'Opening “' + (name || folderName) + '”…';
@@ -4578,7 +4578,7 @@ function plateauPathProblem(path) {
 // ---- Where the manifests are (run 0076, issue #73): the entries of `settings.manifests.paths`. The rules are the ones of the command line
 // (`ManifestDiscovery.java`), and one list of cases, discovery-cases.json, is run by both: keep them alike. ----
 
-/** Whether an entry of `manifests.paths` is read recursively: it ends in `/**` (`manifests/**`, or `./**` for the folder of workspace.yaml). */
+/** Whether an entry of `manifests.paths` is read recursively: it ends in `/**` (`manifests/**`, or `./**` for the folder of .archicode.yaml). */
 function isRecursiveManifestsPath(path) {
   return typeof path === 'string' && path.endsWith('/**');
 }
@@ -4591,7 +4591,7 @@ function manifestsFolderOf(path) {
 /** `**` means something at the end of an entry, after a `/`, and nowhere else: the end of the sentence that says so, or null. */
 function manifestsPatternProblem(path) {
   if (typeof path !== 'string' || !manifestsFolderOf(path).includes('**')) return null;
-  return 'uses `**` where ArchiCode does not read it: only a path that ends in `/**` is read recursively (`manifests/**`, or `./**` for the folder of workspace.yaml), ' +
+  return 'uses `**` where ArchiCode does not read it: only a path that ends in `/**` is read recursively (`manifests/**`, or `./**` for the folder of .archicode.yaml), ' +
     'and `**` means nothing anywhere else. Write one path for each folder, or end the path with `/**`';
 }
 
@@ -4599,8 +4599,8 @@ function manifestsPatternProblem(path) {
 function manifestsPathSentence(path) {
   const problem = plateauPathProblem(path);
   if (problem !== null) {
-    return 'the path `' + path + '` of `settings.manifests.paths` ' + problem + ': a manifests folder must be below the folder of workspace.yaml, written relative to it, without `..`. ' +
-      'Move the folder below workspace.yaml (or move workspace.yaml up, to a folder that holds both) and change the path to match';
+    return 'the path `' + path + '` of `settings.manifests.paths` ' + problem + ': a manifests folder must be below the folder of .archicode.yaml, written relative to it, without `..`. ' +
+      'Move the folder below .archicode.yaml (or move .archicode.yaml up, to a folder that holds both) and change the path to match';
   }
   const pattern = manifestsPatternProblem(path);
   return pattern === null ? null : 'the path `' + path + '` of `settings.manifests.paths` ' + pattern;
@@ -4621,7 +4621,7 @@ function compareCodePoints(a, b) {
 
 /**
  * Whether a folder found below an entry that ends in `/**` is one of the generated views: the folder `views.path` names, or a sibling that begins with its
- * name and a dash (`views-to-be`, `views-to-be-vs-baseline`, `views-shop`). `folder` is its segments from the folder of workspace.yaml.
+ * name and a dash (`views-to-be`, `views-to-be-vs-baseline`, `views-shop`). `folder` is its segments from the folder of .archicode.yaml.
  */
 function isGeneratedViewsFolder(folder, viewsPath) {
   if (typeof viewsPath === 'number' || typeof viewsPath === 'boolean') viewsPath = String(viewsPath); // a scalar is read as the text it is, as the command line reads it
@@ -5452,7 +5452,7 @@ function declaredAnywhereCached() {
 /**
  * The plateau-free check (wave 015, run 0100, issue #100): what a view and a story name must exist in at least one plateau. Not a mistake of a plateau: the page tells it
  * once, whatever plateau is drawn. "Exists in a plateau" is decided from what the manifests declare, as `LayerLoader.entryProblems` does (a patch never creates an
- * element). Only a workspace that has plateaus is checked, as the command line does; the views first, then the stories, in the order of the files, those of workspace.yaml
+ * element). Only a workspace that has plateaus is checked, as the command line does; the views first, then the stories, in the order of the files, those of .archicode.yaml
  * after those of the manifests.
  */
 function entryProblemsOf(settings) {
@@ -5482,11 +5482,11 @@ function entryProblemsIn(manifestFiles, tree, declaredGiven) {
     }
   };
   const files = (kind) => manifestFiles.filter((mf) => !mf.error && mf.header && mf.content && isPlainObject(mf.content) && manifestKindName(mf.header.kind) === kind);
-  // the views and stories of workspace.yaml (an older place for them) come after those of the manifests, unless a manifest has the id: it shadows them (`entriesOf`)
+  // the views and stories of .archicode.yaml (an older place for them) come after those of the manifests, unless a manifest has the id: it shadows them (`entriesOf`)
   const legacy = (key, kind) => { const own = new Set(files(kind).map((mf) => String(mf.content.id))); return legacyEntries(key).filter((entry) => !own.has(entry.id)); };
   if (layered) {
     for (const mf of files('view')) told('view', mf.content.id, mf.relPath, mf.content);
-    for (const view of legacy('views', 'view')) told('view', view.id, 'workspace.yaml', view);
+    for (const view of legacy('views', 'view')) told('view', view.id, '.archicode.yaml', view);
   }
   const ids = layered ? tree.ids : [];
   const broken = !!(tree && tree.problems && tree.problems.length); // a tree that is refused names the plateaus that exist no better than a workspace with none: the tree is what is told
@@ -5499,7 +5499,7 @@ function entryProblemsIn(manifestFiles, tree, declaredGiven) {
     });
   };
   for (const mf of files('story')) tellSteps(mf.content.id, mf.relPath, mf.content.steps);
-  for (const story of legacy('stories', 'story')) tellSteps(story.id, 'workspace.yaml', story.steps);
+  for (const story of legacy('stories', 'story')) tellSteps(story.id, '.archicode.yaml', story.steps);
   return Array.from(new Set(out));
 }
 
@@ -7203,7 +7203,7 @@ function commitPlateauEdit(spec, options) {
 // on it. The dialog says, for each of them, what it loses, gets back (an element the deleted plateau removed) and reads differently, worked out by resolving it again without
 // the plateau (`plateauDeletionAbove`), not guessed. A plateau above that would no longer resolve (a patch that selects nothing, a relationship towards an element that is
 // gone) refuses the delete: that is a mistake to repair first, not a loss. Three things name a plateau besides its files (and a saved view is looked at too):
-//   - `settings.current`: the delete takes it out of workspace.yaml (the editor has no other place to change it, and a `current` that names no plateau stops both tools);
+//   - `settings.current`: the delete takes it out of .archicode.yaml (the editor has no other place to change it, and a `current` that names no plateau stops both tools);
 //   - a step of a story (`at`, `against`, run 0101): the delete is refused and lists the steps, as it is for a view or a step that names an element that only this
 //     plateau declares, and for a step told at or compared with a plateau above that would lose an element the step draws (`at`: run 0132; `against`: wave 019,
 //     run 0139, #138). Which plateau the step should be told at instead is the author's choice, made with the two lists of the step in Stories;
@@ -7361,7 +7361,7 @@ function stepsLosingTheirView(effects) {
   const out = [];
   if (!effects.above.length) return out;
   const byId = new Map(effects.above.map((entry) => [entry.id, entry]));
-  const sourceOf = (entry) => { const owner = entryOwners.get(entry); return owner ? owner.relPath : 'workspace.yaml'; };
+  const sourceOf = (entry) => { const owner = entryOwners.get(entry); return owner ? owner.relPath : '.archicode.yaml'; };
   for (const story of storiesList()) {
     const source = sourceOf(story);
     (Array.isArray(story.steps) ? story.steps : []).filter((step) => step !== null && step !== undefined).forEach((step, i) => {
@@ -7443,7 +7443,7 @@ function commitPlateauDelete(id, options) {
       AppState.manifestFiles = AppState.manifestFiles.filter((mf) => !goes.has(mf.relPath));
       if (plan.current !== null) {
         const raw = AppState.workspace.topLevel && AppState.workspace.topLevel.settings;
-        if (isPlainObject(raw)) delete raw.current; // workspace.yaml is written line by line: the line of the key goes, nothing else
+        if (isPlainObject(raw)) delete raw.current; // .archicode.yaml is written line by line: the line of the key goes, nothing else
         AppState.workspace.settings.current = '';
         markWorkspaceYamlChanged();
       }
@@ -7528,7 +7528,7 @@ function renderPlateauDeleteDialogHtml(dialog) {
     }
     return { title, body, actions: cancel(true) };
   }
-  if (plan.current !== null) body += '<p><code>settings.current</code> names ' + code(plan.current) + ': the key is taken out of <code>workspace.yaml</code> (the command line then draws the last plateau when the plateaus are one line, and asks for <code>--plateau</code> otherwise).</p>';
+  if (plan.current !== null) body += '<p><code>settings.current</code> names ' + code(plan.current) + ': the key is taken out of <code>.archicode.yaml</code> (the command line then draws the last plateau when the plateaus are one line, and asks for <code>--plateau</code> otherwise).</p>';
   if (plan.unread.length) body += '<p>The editor does not read ' + (plan.unread.length === 1 ? 'this file' : 'these files') + ' (TOML, JSON, or YAML it could not read), so ' + (plan.unread.length === 1 ? 'it is' : 'they are') + ' not deleted' + (middle ? ' nor rewritten' : '') + ': if one says <code>plateau: ' + escapeHtml(dialog.plateau) + '</code>' + (middle ? ' or <code>override: ' + escapeHtml(dialog.plateau) + '</code>' : '') + ', the command line still reads the plateau. Look at ' + (plan.unread.length === 1 ? 'it' : 'them') + ' in a text editor.</p>' + list(plan.unread.map((relPath) => '<li>' + code(relPath) + '</li>'));
   if (plan.kept.length) body += '<p>' + (plan.kept.length === 1 ? 'This view or story says' : 'These views and stories say') + ' <code>plateau: ' + escapeHtml(dialog.plateau) + '</code> in the header, which names no plateau: ' + (plan.kept.length === 1 ? 'it stays' : 'they stay') + '.</p>' + list(plan.kept.map((relPath) => '<li>' + code(relPath) + '</li>'));
   const views = viewsFolderName();
@@ -7719,7 +7719,7 @@ async function getDirectoryHandleByRelativePath(rootHandle, relPath, options) {
 
 /**
  * What the command line reads, as the editor knows it (run 0072, issues #75 and #76): the keys each part of a manifest and of
- * `workspace.yaml` takes, the shape of each value, the kinds a nested element may have, and the kinds of manifest. The command
+ * `.archicode.yaml` takes, the shape of each value, the kinds a nested element may have, and the kinds of manifest. The command
  * line takes them from its classes; this table is checked against them (`EditorReadSchemaTest.java` reads it from this page), so the
  * two cannot drift. Specs: `text` (a text; a number or a boolean is read as one), `int`, `bool`, `any` (not checked), `texts` (a list of
  * texts), `text-map` (a map of texts), `object-map` (a map of objects), `enum:A,B`, `T` (an object of type T), `[T]` (a list of them),
@@ -7837,7 +7837,7 @@ function unrecognizedKindProblem(value) {
   return 'unrecognized `header.kind` "' + value + '"' + gone + ' (known: ' + known.join(', ') + ')';
 }
 
-/** The range of a Java `int`: what the command line takes for a whole number of `workspace.yaml` (`line-gap`, `round-corner`...). */
+/** The range of a Java `int`: what the command line takes for a whole number of `.archicode.yaml` (`line-gap`, `round-corner`...). */
 const READ_INT_MIN = -2147483648;
 const READ_INT_MAX = 2147483647;
 
@@ -8097,7 +8097,7 @@ function plateauShapeProblem(content) {
 }
 
 /**
- * The first problem `workspace.yaml` has, as the command line's sentence without the file and the place, or null: the key that no longer exists
+ * The first problem `.archicode.yaml` has, as the command line's sentence without the file and the place, or null: the key that no longer exists
  * (the command line looks for it first, before anything else is read: `WorkspaceFactory.read`), then the keys it takes and the shape of each value.
  */
 function workspaceProblem(raw) {
@@ -8159,7 +8159,10 @@ function parseManifestText(text) {
   }
 }
 
-const WORKSPACE_FILE_NAME = 'workspace.yaml'; // the only workspace file the editor opens (and writes)
+const WORKSPACE_FILE_NAME = '.archicode.yaml'; // the only workspace file the editor opens (and writes)
+const FORMER_WORKSPACE_FILE_NAME = 'workspace.yaml'; // its name before 0.18: no alias, a folder that still has it is told to rename it
+/** The sentence for a folder that holds the former file and not the new one; the command line says the same, word for word (`WorkspaceFactory.FORMER_NAME_SENTENCE`; `workspace-file-name-cases.json` pins both). */
+const FORMER_WORKSPACE_FILE_SENTENCE = '`workspace.yaml` is no longer the name of the workspace file: rename it to `.archicode.yaml` (`git mv workspace.yaml .archicode.yaml`), or tell the command line where it is with `-w workspace.yaml`';
 
 /**
  * The manifests of one folder below the root handle (the reading loop of `loadWorkspace` as a function of a folder): the direct children of `relDir` that are YAML, as the records
@@ -8204,6 +8207,8 @@ async function readManifestFolder(rootHandle, relDir, options) {
       const relPath = (dir ? dir + '/' : '') + name;
       // the workspace is not a manifest of itself (a folder written `.`): the file the editor opened, like the CLI, which leaves out the workspace file it read and nothing else
       if (relPath === WORKSPACE_FILE_NAME) continue;
+      // a file of that name in a folder below is the workspace file of that folder, never a manifest (hidden, so left out below a `/**` path too; a folder read without `/**` leaves it out as well)
+      if (name === WORKSPACE_FILE_NAME) continue;
       // like the CLI (String.endsWith): `.YAML` is not a manifest. The CLI reads .toml and .json too; the editor writes YAML only
       if (/\.(toml|json)$/.test(name)) result.unread.push(relPath);
       if (!/\.(ya?ml)$/.test(name)) continue;
@@ -8258,7 +8263,7 @@ async function loadWorkspace(dirHandle) {
   AppState.pendingFileRemovals = []; // a reload starts from the disk: a removal queued before it must not delete a file later
   AppState.removedFileBaselines = new Map();
 
-  // FR-4 / DEC-10: workspace.yaml is fatal to the open attempt if missing/unparseable.
+  // FR-4 / DEC-10: .archicode.yaml is fatal to the open attempt if missing/unparseable.
   let workspaceRaw;
   let workspaceLastKnownDiskModified = null; // TDD-0010 DEC-8
   let workspaceText = ''; // the file as it is: the next Save keeps of it what the edit did not touch
@@ -8272,10 +8277,15 @@ async function loadWorkspace(dirHandle) {
     workspaceText = text;
     workspaceBom = read.bom;
     workspaceRaw = parseYaml(text) || {};
-    // a workspace.yaml that is not a mapping is not one the editor can write back without losing it
+    // a .archicode.yaml that is not a mapping is not one the editor can write back without losing it
     if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw)) throw new Error(readWrongShape(workspaceRaw, '')); // the sentence of the command line
   } catch (e) {
-    AppState.fatalError = 'Could not read/parse workspace.yaml: ' + (e && e.message ? e.message : String(e));
+    let renamed = false;
+    try { await dirHandle.getFileHandle(WORKSPACE_FILE_NAME); } catch (_) {
+      try { await dirHandle.getFileHandle(FORMER_WORKSPACE_FILE_NAME); renamed = true; } catch (__) { /* neither: the error below */ }
+    }
+    // the file is absent and the folder still has its former name: the one sentence, as the command line says it (a file that is there and cannot be read is the error below)
+    AppState.fatalError = renamed ? FORMER_WORKSPACE_FILE_SENTENCE : 'Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     render();
     return;
@@ -8284,7 +8294,7 @@ async function loadWorkspace(dirHandle) {
   // run 0072: the key that no longer exists, then the keys and the shapes the command line refuses, in its words
   const readProblem = workspaceProblem(workspaceRaw);
   if (readProblem) {
-    AppState.fatalError = 'Could not read/parse workspace.yaml: ' + readProblem;
+    AppState.fatalError = 'Could not read/parse .archicode.yaml: ' + readProblem;
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     render();
     return;
@@ -8295,7 +8305,7 @@ async function loadWorkspace(dirHandle) {
   // a manifests path that leaves the folder, or uses `**` where it is not read, is refused like the command line refuses it, with its words
   const pathProblems = manifestsPathProblems(settings);
   if (pathProblems.length) {
-    AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + pathProblems.join('\n');
+    AppState.fatalError = 'Could not read the plateaus of .archicode.yaml:\n' + pathProblems.join('\n');
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     render();
     return;
@@ -8337,7 +8347,7 @@ async function loadWorkspace(dirHandle) {
   if (settings.current !== '') {
     const sentence = layersOfSettingsCurrentProblem(settings.current, plateauTree);
     if (sentence !== null) {
-      AppState.fatalError = 'Could not read the plateaus of workspace.yaml:\n' + sentence;
+      AppState.fatalError = 'Could not read the plateaus of .archicode.yaml:\n' + sentence;
       AppState.selection = { kind: 'none', key: null, mode: 'view' };
       render();
       return;
@@ -8356,7 +8366,7 @@ async function loadWorkspace(dirHandle) {
     settings,
     styles: (workspaceRaw.styles && typeof workspaceRaw.styles === 'object') ? workspaceRaw.styles : {},
     formatters: (workspaceRaw.formatters && typeof workspaceRaw.formatters === 'object') ? workspaceRaw.formatters : {},
-    // The whole parsed workspace.yaml: writeWorkspaceYaml re-emits it, with only styles/formatters/settings replaced,
+    // The whole parsed .archicode.yaml: writeWorkspaceYaml re-emits it, with only styles/formatters/settings replaced,
     // so the other top-level keys (application, technology, views, ...) and the unknown settings survive a save.
     topLevel: workspaceRaw,
     settingsDirty: false, // TDD-0010 DEC-8
@@ -8582,7 +8592,7 @@ async function openFolder() {
 
 const FOLDER_REFUSED = 'The browser did not give access to this folder.';
 const FOLDER_UNREACHABLE = 'This folder could not be reached: it may have been moved or deleted.';
-const FOLDER_UNREADABLE = 'Its workspace.yaml could not be read the last time it was opened.';
+const FOLDER_UNREADABLE = 'Its .archicode.yaml could not be read the last time it was opened.';
 
 /** Click handler for the "Reopen <name>" button of the reopen card: the folder the page holds, as remembered (FR-2/DEC-4). */
 async function reopenFolder() {
@@ -8788,7 +8798,7 @@ function resetUiState() {
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* no history to edit (file:// sandboxes) */ }
 }
 
-/** "Try again" on the landing error card: re-read the already-picked folder (e.g. after fixing workspace.yaml). */
+/** "Try again" on the landing error card: re-read the already-picked folder (e.g. after fixing .archicode.yaml). */
 async function retryFolder() {
   if (!AppState.folder || !AppState.folder.handle) return;
   const entry = rememberedFolderById(AppState.folder.id);
@@ -9991,10 +10001,10 @@ async function removeManifestFile(relPath) {
   }
 }
 
-/** `statManifestFile`'s own counterpart for `workspace.yaml`, which lives at the folder root rather than under a manifests subpath (TDD-0010 DEC-9). */
+/** `statManifestFile`'s own counterpart for `.archicode.yaml`, which lives at the folder root rather than under a manifests subpath (TDD-0010 DEC-9). */
 async function statWorkspaceYaml() {
   try {
-    const fileHandle = await AppState.folder.handle.getFileHandle('workspace.yaml');
+    const fileHandle = await AppState.folder.handle.getFileHandle('.archicode.yaml');
     const file = await fileHandle.getFile();
     return file.lastModified;
   } catch (e) {
@@ -10087,7 +10097,7 @@ function serializeManagedSettings(settings) {
 }
 
 /**
- * Whether the settings the editor manages say what the file says (wave 015, run 0102): a save of workspace.yaml for another reason (a story kept in it, a `settings.current`
+ * Whether the settings the editor manages say what the file says (wave 015, run 0102): a save of .archicode.yaml for another reason (a story kept in it, a `settings.current`
  * taken out by the delete of a plateau) then writes the settings as they are in the file, and not every default the editor knows of.
  */
 function managedSettingsAsRead(settings, rawSettings) {
@@ -10096,7 +10106,7 @@ function managedSettingsAsRead(settings, rawSettings) {
 }
 
 /**
- * Write `workspace.yaml` (TDD-0010 DEC-9/DEC-10): `styles`/`formatters`
+ * Write `.archicode.yaml` (TDD-0010 DEC-9/DEC-10): `styles`/`formatters`
  * carried through verbatim from `AppState.workspace` (no editing surface
  * in this wave ever touches them), `settings` serialized via
  * `serializeSettingsToRaw`, the whole raw object serialized via `W-3`'s
@@ -10119,7 +10129,7 @@ async function writeWorkspaceYaml() {
     if (key === 'settings' || isYamlComplexValue(managed[key])) raw[key] = managed[key];
   }
   const text = typeof ws.rawText === 'string' && ws.rawText !== '' ? patchYamlText(ws.rawText, raw, true) : serializeYamlValue(raw, 0);
-  const fileHandle = await AppState.folder.handle.getFileHandle('workspace.yaml');
+  const fileHandle = await AppState.folder.handle.getFileHandle('.archicode.yaml');
   const writable = await fileHandle.createWritable();
   await writable.write(withByteOrderMark(ws.bom, text));
   await writable.close();
@@ -10142,7 +10152,7 @@ function hasUnsavedChanges() {
   return countUnsavedChanges() > 0;
 }
 
-/** How many things "Save all changes" would write: modified files, pending file removals, and workspace.yaml if its settings changed. */
+/** How many things "Save all changes" would write: modified files, pending file removals, and .archicode.yaml if its settings changed. */
 function countUnsavedChanges() {
   return AppState.manifestFiles.filter((f) => f.dirty).length +
     AppState.pendingFileRemovals.length +
@@ -10167,11 +10177,11 @@ function clearDirtyReferencesForFile(relPath) {
  * The full save pipeline (TDD-0010 DEC-9, resolves FR-13 through FR-17 and
  * `Q-1`): acquire `readwrite` permission first (DEC-7); if denied, stop
  * writing nothing. Otherwise stale-check *every* dirty file, pending
- * removal, and (if settings changed) `workspace.yaml` — all before any
+ * removal, and (if settings changed) `.archicode.yaml` — all before any
  * write starts (FR-16/NFR-3) — and refuse the whole attempt, writing
  * nothing at all, if any target has changed on disk since it was loaded
  * or last saved. Only once every target is confirmed fresh does the write
- * phase begin: dirty files, then pending removals, then `workspace.yaml`
+ * phase begin: dirty files, then pending removals, then `.archicode.yaml`
  * if its settings changed, each step able to stop-and-report its own
  * failure (FR-17) without rolling back whatever already succeeded.
  */
@@ -10234,9 +10244,9 @@ async function performSave() {
       if (current !== null && current !== baseline) conflicts.push(relPath);
     }
     if (settingsDirty) {
-      checking = 'workspace.yaml';
+      checking = '.archicode.yaml';
       const current = await statWorkspaceYaml();
-      if (current !== workspace.settingsLastKnownDiskModified) conflicts.push('workspace.yaml');
+      if (current !== workspace.settingsLastKnownDiskModified) conflicts.push('.archicode.yaml');
     }
   } catch (e) {
     saveStatus = { state: 'error', failedFile: checking, message: 'could not check it on disk before saving (' + (e && e.message ? e.message : String(e)) + '). Nothing was saved.' };
@@ -10305,7 +10315,7 @@ async function performSave() {
       await noteWorkspaceName(); // a name changed in Settings shows in the list of folders without reopening (never throws)
       workspace.settingsLastKnownDiskModified = await statWorkspaceYaml(); // FR-19
     } catch (e) {
-      saveStatus = { state: 'error', failedFile: 'workspace.yaml', message: e && e.message ? e.message : String(e) };
+      saveStatus = { state: 'error', failedFile: '.archicode.yaml', message: e && e.message ? e.message : String(e) };
       render();
       return;
     }
@@ -10528,7 +10538,7 @@ function forgetUiReferences(deletedRefs, layer) {
  */
 function rewriteInboundReferences(oldRef, newRef, layer) {
   const changedFiles = [];
-  rewriteSavedViewReferences(oldRef, newRef, layer); // the views of workspace.yaml that point at it follow
+  rewriteSavedViewReferences(oldRef, newRef, layer); // the views of .archicode.yaml that point at it follow
   const layered = writingPlateau() !== null;
   for (const mf of AppState.manifestFiles) {
     if (!writeScopeHas(mf)) continue;
@@ -11514,7 +11524,7 @@ function renderSaveButtonHtml() {
   const busy = saveInFlight ? ' disabled aria-busy="true"' : '';
   if (count === 0) return '<button type="button" class="btn-primary" data-action="save-all-changes"' + busy + ' title="Applies what you typed, then writes it to disk.">Save all changes</button>';
   return '<button type="button" class="btn-primary" data-action="save-all-changes"' + busy + ' title="Writes ' + count + ' modified item' + (count === 1 ? '' : 's') +
-    ' to disk (files, pending file removals, workspace.yaml settings). Until then, edits live in memory only.">Save all changes (' + count + ')</button>';
+    ' to disk (files, pending file removals, .archicode.yaml settings). Until then, edits live in memory only.">Save all changes (' + count + ')</button>';
 }
 
 /** True once something was typed in the form on screen and not applied to the model yet. Any redraw starts a form afresh. */
@@ -11998,10 +12008,10 @@ function renderLeftPanelWrapperHtml(innerHtml) {
  */
 const SETTINGS_HELP = {
   name: 'The name of the workspace. The editor shows it in place of the name of the folder, which then becomes a tooltip. Leave empty to show the folder name.',
-  manifestsPaths: 'Folders scanned for manifest files, relative to the folder containing `workspace.yaml` and below it (no `..`, not absolute). One per line. Default: `manifests`. A path that ends in `/**` (`manifests/**`) is read with the folders below it, in order of path, leaving out the folders and files whose name begins with a dot, the links to folders and the folders of the generated views; `./**` is the folder of `workspace.yaml`. `**` means nothing elsewhere in a path.',
+  manifestsPaths: 'Folders scanned for manifest files, relative to the folder containing `.archicode.yaml` and below it (no `..`, not absolute). One per line. Default: `manifests`. A path that ends in `/**` (`manifests/**`) is read with the folders below it, in order of path, leaving out the folders and files whose name begins with a dot, the links to folders and the folders of the generated views; `./**` is the folder of `.archicode.yaml`. `**` means nothing elsewhere in a path.',
   defaultLabel: 'Label for a relationship that declares none, and for a link merged from several relationships. Default: `uses`.',
   current: 'The plateau the command line draws when `--plateau` is not given, and the one the editor opens the folder on when nothing else tells (the address, or the plateau this browser drew last). None: the command line draws the last plateau when the plateaus are one line, and asks for `--plateau` otherwise. Changing it does not redraw what is on screen.',
-  viewsPath: 'Folder where generated views are written, relative to `workspace.yaml`. Facets write to sibling folders (see Facets). Default: `views`.',
+  viewsPath: 'Folder where generated views are written, relative to `.archicode.yaml`. Facets write to sibling folders (see Facets). Default: `views`.',
   viewsLabels: 'Title of the generated view for each viewpoint. Leave empty to use the default shown in the field.',
   viewsProperties: 'Extra properties merged into every view of that viewpoint, as a JSON object. Free-form: keys are passed through as-is and not validated here.',
   facetsIntro: 'A facet is a filtered copy of the workspace: its actions remove matching elements or relationships, and its views are generated in their own folder. Useful for focused views, e.g. only the OIDC flows.',
@@ -12291,7 +12301,7 @@ function renderCurrentPlateauSettingsHtml(settings) {
  * Writes `settings.current` (run 0111, #111): the plateau `value`, or the empty text for none (the key leaves the file). Through `commitSettingsEdit`, as the other fields of
  * Settings; `draft` is what the form held (`readSettingsDraft`), applied in the same step so that nothing typed is lost. Not under `guardedLayerWrite`: no plateau is resolved
  * from this key, so no plateau can change or be refused by it; the one thing that can be wrong is the name, refused with the sentence both tools say of a `current` that names no plateau
- * (`layersOfSettingsCurrentProblem`). The key is edited in the raw `settings` of workspace.yaml (`serializeSettingsToRaw` keeps what it does not manage as the file has it) and
+ * (`layersOfSettingsCurrentProblem`). The key is edited in the raw `settings` of .archicode.yaml (`serializeSettingsToRaw` keeps what it does not manage as the file has it) and
  * a file that has no `settings` yet gets one with this key alone, so a save writes that line and not the defaults. The plateau drawn is not changed: what the reader chose
  * on the band is not undone by a setting for the next time. Returns whether anything changed.
  */
@@ -12329,7 +12339,7 @@ function chooseCurrentPlateau(select) {
     commitCurrentPlateau(select.value, draft);
   } catch (e) {
     if (draft) commitSettingsEdit(draft.apply); // what was typed in the form is kept: the redraw gives the form afresh from the model
-    saveStatus = { state: 'error', failedFile: 'workspace.yaml', message: e && e.message ? e.message : String(e) };
+    saveStatus = { state: 'error', failedFile: '.archicode.yaml', message: e && e.message ? e.message : String(e) };
     restore();
     render();
   }
@@ -12457,7 +12467,7 @@ function renderFileViewHtml(relPath) {
 
 // =====================================================================
 // Theme — light, dark or the system's, a preference of this browser (never of the workspace: it is not in
-// workspace.yaml, and choosing it neither modifies the workspace nor lights "Save all changes"). The stylesheet reads
+// .archicode.yaml, and choosing it neither modifies the workspace nor lights "Save all changes"). The stylesheet reads
 // `data-theme` on the root element; "system" is no attribute at all. The <head> carries a script that applies the stored
 // choice before the first paint, with the same key and values.
 // =====================================================================
@@ -18306,8 +18316,8 @@ function renderSettingsPerspectiveHtml() {
 // pinned, hidden and open (Map), with the facet and the texts it draws. A *story* lists steps in the order they are
 // told, with a text for each; a step names a saved view, or carries its own recipe. Both are manifests, like the
 // elements: `view.<id>.yaml` and `story.<id>.yaml` (kinds `archicode.morin.io/view` and `…/story`), one file each, so
-// that they are saved, cancelled and checked against the disk file by file, and never grow workspace.yaml. The ones
-// that older workspaces keep in `views:` and `stories:` of workspace.yaml are still read and edited where they are,
+// that they are saved, cancelled and checked against the disk file by file, and never grow .archicode.yaml. The ones
+// that older workspaces keep in `views:` and `stories:` of .archicode.yaml are still read and edited where they are,
 // until "Move to manifests" takes them out.
 // =====================================================================
 
@@ -18337,7 +18347,7 @@ function workspaceTopLevel() {
   return workspace.topLevel;
 }
 
-/** Where an entry lives: the manifest file it was read from, or null (workspace.yaml: where older workspaces keep them). */
+/** Where an entry lives: the manifest file it was read from, or null (.archicode.yaml: where older workspaces keep them). */
 const entryOwners = new WeakMap();
 
 /**
@@ -18360,7 +18370,7 @@ function takenEntryIds(kind, key) {
   return new Set(manifestEntries(kind).concat(legacyEntries(key)).map((entry) => entry.id));
 }
 
-/** The entries of `views:` / `stories:` of workspace.yaml (an older place for them). Nothing is created by reading. */
+/** The entries of `views:` / `stories:` of .archicode.yaml (an older place for them). Nothing is created by reading. */
 function legacyEntries(key) {
   const list = AppState.workspace ? workspaceTopLevel()[key] : null;
   const out = Array.isArray(list) ? list.filter((entry) => isPlainObject(entry) && typeof entry.id === 'string' && entry.id) : [];
@@ -18368,14 +18378,14 @@ function legacyEntries(key) {
   return out;
 }
 
-/** Manifests first; an entry of workspace.yaml with the same id is shadowed by the manifest, as the file of an element would. */
+/** Manifests first; an entry of .archicode.yaml with the same id is shadowed by the manifest, as the file of an element would. */
 function entriesOf(kind, key) {
   const own = manifestEntries(kind);
   const ids = new Set(own.map((entry) => entry.id));
   return own.concat(legacyEntries(key).filter((entry) => !ids.has(entry.id)));
 }
 
-/** workspace.yaml has changed in memory: "Save all changes" writes it (with the settings). */
+/** .archicode.yaml has changed in memory: "Save all changes" writes it (with the settings). */
 function markWorkspaceYamlChanged() {
   if (layerCache) layerCache.entryProblems = undefined; // the views and stories it keeps are looked at by `entryProblemsOf`, which keeps its answer with the layers
   const workspace = AppState.workspace;
@@ -18384,7 +18394,7 @@ function markWorkspaceYamlChanged() {
   saveStatus = { state: 'idle' };
 }
 
-/** An entry changed in memory: its manifest is rewritten and marked modified, or workspace.yaml is, for an older entry. */
+/** An entry changed in memory: its manifest is rewritten and marked modified, or .archicode.yaml is, for an older entry. */
 function markEntryChanged(entry) {
   const owner = entryOwners.get(entry);
   if (!owner) { markWorkspaceYamlChanged(); return; }
@@ -19396,7 +19406,7 @@ function savedViewsSorted() {
   return savedViews().slice().sort((a, b) => viewLabel(a).localeCompare(viewLabel(b), undefined, { sensitivity: 'base' }));
 }
 
-/** Has this entry changed in memory since it was read (its manifest, or workspace.yaml for an older one)? */
+/** Has this entry changed in memory since it was read (its manifest, or .archicode.yaml for an older one)? */
 function entryIsModified(entry) {
   const owner = entryOwners.get(entry);
   return owner ? !!owner.dirty : !!(AppState.workspace && AppState.workspace.settingsDirty);
@@ -19777,7 +19787,7 @@ function deleteSavedView(viewId) {
   render();
 }
 
-/** The views and the stories that are still in workspace.yaml (and not shadowed by a manifest): what "Move to manifests" takes out. */
+/** The views and the stories that are still in .archicode.yaml (and not shadowed by a manifest): what "Move to manifests" takes out. */
 function legacyEntriesToMove() {
   const movable = (key, kind) => {
     const taken = new Set(manifestEntries(kind).map((entry) => entry.id));
@@ -19786,7 +19796,7 @@ function legacyEntriesToMove() {
   return { views: movable('views', 'view'), stories: movable('stories', 'story') };
 }
 
-/** One manifest for each view and each story of workspace.yaml, and workspace.yaml without them. */
+/** One manifest for each view and each story of .archicode.yaml, and .archicode.yaml without them. */
 function moveLegacyEntriesToManifests() {
   const top = workspaceTopLevel();
   const { views, stories } = legacyEntriesToMove();
@@ -19959,10 +19969,10 @@ function renderStoryEditorHtml(story) {
   return html + '</section>';
 }
 
-/** Where an entry is kept: its manifest, or workspace.yaml for an older one. */
+/** Where an entry is kept: its manifest, or .archicode.yaml for an older one. */
 function entryFileLabel(entry) {
   const owner = entryOwners.get(entry);
-  return owner ? owner.relPath : 'workspace.yaml';
+  return owner ? owner.relPath : '.archicode.yaml';
 }
 
 /**
@@ -20070,15 +20080,15 @@ function renderViewsNavHtml() {
   return html + '</div>';
 }
 
-/** Views and stories that an older workspace keeps in workspace.yaml: said once, with the way to move them out. */
+/** Views and stories that an older workspace keeps in .archicode.yaml: said once, with the way to move them out. */
 function renderLegacyEntriesNoticeHtml() {
   const { views, stories } = legacyEntriesToMove();
   const total = views.length + stories.length;
   if (!total) return '';
   const parts = [views.length ? views.length + (views.length === 1 ? ' view' : ' views') : '', stories.length ? (stories.length === 1 ? '1 story' : stories.length + ' stories') : ''].filter(Boolean).join(' and ');
-  return '<div class="story-legacy" role="status"><span>' + parts + (total === 1 ? ' is' : ' are') + ' still in workspace.yaml. ' + (total === 1 ? 'It works' : 'They work') +
-    ' there, but every save rewrites that file. Move ' + (total === 1 ? 'it' : 'them') + ' into files of ' + (total === 1 ? 'its' : 'their') + ' own to keep workspace.yaml small.</span>' +
-    '<button type="button" data-action="legacy-move" title="Write a manifest file for each, and take them out of workspace.yaml">Move to manifests</button></div>';
+  return '<div class="story-legacy" role="status"><span>' + parts + (total === 1 ? ' is' : ' are') + ' still in .archicode.yaml. ' + (total === 1 ? 'It works' : 'They work') +
+    ' there, but every save rewrites that file. Move ' + (total === 1 ? 'it' : 'them') + ' into files of ' + (total === 1 ? 'its' : 'their') + ' own to keep .archicode.yaml small.</span>' +
+    '<button type="button" data-action="legacy-move" title="Write a manifest file for each, and take them out of .archicode.yaml">Move to manifests</button></div>';
 }
 
 /** The two sides of the Library, as one group of joined buttons. */
@@ -21360,13 +21370,13 @@ function landingScreenConfig() {
   if (landingBusy) return { kind: 'busy', busy: landingBusy };
   const folderName = AppState.folder ? AppState.folder.name : null;
   if (AppState.fatalError) {
-    const unreadable = /workspace\.yaml/.test(AppState.fatalError);
+    const unreadable = /\.archicode\.yaml/.test(AppState.fatalError) && AppState.fatalError !== FORMER_WORKSPACE_FILE_SENTENCE;
     return {
       kind: 'error',
       title: 'Can’t open this workspace',
-      text: unreadable && folderName ? 'workspace.yaml could not be read in “' + folderName + '”.' : AppState.fatalError,
+      text: unreadable && folderName ? '.archicode.yaml could not be read in “' + folderName + '”.' : AppState.fatalError,
       error: unreadable ? AppState.fatalError : null,
-      hint: unreadable ? 'Choose the workspace root — the folder that contains workspace.yaml — and make sure the file is valid YAML.' : null,
+      hint: unreadable ? 'Choose the workspace root — the folder that contains .archicode.yaml — and make sure the file is valid YAML.' : null,
       actions: [
         { label: 'Choose another folder', action: 'open-folder', primary: true, icon: LANDING_ICON_FOLDER }
       ].concat(folderName ? [{ label: 'Try again', action: 'retry-folder' }] : [])
@@ -21381,7 +21391,7 @@ function landingScreenConfig() {
       notice: landingNotice,
       actions: [{ label: 'Open workspace folder', action: 'open-folder', primary: true, icon: LANDING_ICON_FOLDER }],
       folders: landingFolderRows(),
-      note: 'Choose the folder that contains workspace.yaml. ' + LANDING_SAVE_NOTE
+      note: 'Choose the folder that contains .archicode.yaml. ' + LANDING_SAVE_NOTE
     };
   }
   if (AppState.permissionState === 'needs-click') {

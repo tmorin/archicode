@@ -40,7 +40,7 @@ class RemovedElementCopyTest {
 
     private Path workspace(String baselineSystem, String baselineEnvironment) {
         write(
-            "workspace.yaml",
+            ".archicode.yaml",
             """
             settings:
               manifests:
@@ -158,7 +158,7 @@ class RemovedElementCopyTest {
                     - "prod.vm"
             """
         );
-        return dir.resolve("workspace.yaml");
+        return dir.resolve(".archicode.yaml");
     }
 
     private static final String SHOP = """

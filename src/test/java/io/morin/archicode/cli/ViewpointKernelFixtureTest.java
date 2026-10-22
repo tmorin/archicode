@@ -50,11 +50,11 @@ class ViewpointKernelFixtureTest {
     @SneakyThrows
     @Test
     void shouldGenerateTheCommittedViews(@TempDir Path workspaceDir) {
-        Files.copy(FIXTURE.resolve("workspace.yaml"), workspaceDir.resolve("workspace.yaml"));
+        Files.copy(FIXTURE.resolve(".archicode.yaml"), workspaceDir.resolve(".archicode.yaml"));
         copy(FIXTURE.resolve("manifests"), workspaceDir.resolve("manifests"));
 
         val archiCode = new ArchiCode();
-        archiCode.workspaceFilePath = workspaceDir.resolve("workspace.yaml");
+        archiCode.workspaceFilePath = workspaceDir.resolve(".archicode.yaml");
         val views = new ViewsGroup();
         views.archiCode = archiCode;
         generateViewsCommand.viewsGroup = views;

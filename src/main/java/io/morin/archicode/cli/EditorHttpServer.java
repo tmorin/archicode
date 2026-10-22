@@ -24,6 +24,7 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -74,6 +75,12 @@ public class EditorHttpServer {
     static final String MODIFIED_HEADER = "X-ArchiCode-Modified";
 
     static final String SESSION_COOKIE = "archicode-session";
+
+    /**
+     * The workspace file: hidden, and the one hidden file the API reaches, at the root of the folder and only there (a hidden
+     * file in a folder below is the workspace file of another workspace, which the editor never opens).
+     */
+    static final String WORKSPACE_FILE = ".archicode.yaml";
 
     private static final String API_PREFIX = "/api/fs/";
     private static final String WEBAPP_RESOURCE = "/editor-webapp/standalone.html";
@@ -282,7 +289,11 @@ public class EditorHttpServer {
         val entries = JsonNodeFactory.instance.arrayNode();
         try (val stream = Files.list(directory)) {
             val sorted = stream
-                .filter(p -> !p.getFileName().toString().startsWith("."))
+                .filter(
+                    p ->
+                        !p.getFileName().toString().startsWith(".") ||
+                        (directory.equals(root) && WORKSPACE_FILE.equals(p.getFileName().toString()))
+                )
                 .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                 .toList();
             for (Path entry : sorted) {
@@ -381,9 +392,13 @@ public class EditorHttpServer {
             throw new Refusal(400, "invalid path");
         }
         val segments = new ArrayList<String>();
+        val named = Arrays.stream(relative.split("/"))
+            .filter(x -> !x.isEmpty() && !".".equals(x))
+            .toList();
+        val isWorkspaceFile = isFile && named.size() == 1 && WORKSPACE_FILE.equals(named.get(0));
         for (String segment : relative.split("/")) {
             if (segment.isEmpty() || ".".equals(segment)) continue;
-            if ("..".equals(segment) || segment.startsWith(".")) {
+            if ("..".equals(segment) || (segment.startsWith(".") && !isWorkspaceFile)) {
                 throw new Refusal(400, "path is not allowed: " + relative);
             }
             segments.add(segment);

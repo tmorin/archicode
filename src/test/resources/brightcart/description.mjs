@@ -389,7 +389,7 @@ export const ENTRIES = [
   }
 ];
 
-// What workspace.yaml holds in both renditions (section 4 of the specification). Facets are evaluated by the kernel, as standard JSONPath (RFC 9535).
+// What .archicode.yaml holds in both renditions (section 4 of the specification). Facets are evaluated by the kernel, as standard JSONPath (RFC 9535).
 export const WORKSPACE_SETTINGS = `  name: "Brightcart"
   views:
     path: "views"

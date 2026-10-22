@@ -104,9 +104,9 @@ function memFolder(initial, options) {
   return mem;
 }
 
-/** The files of the fixture workspace (workspace.yaml and the manifests), as a path -> text object. */
+/** The files of the fixture workspace (.archicode.yaml and the manifests), as a path -> text object. */
 function fixtureFiles() {
-  const out = { 'workspace.yaml': fs.readFileSync(path.join(FIXTURE, 'workspace.yaml'), 'utf8') };
+  const out = { '.archicode.yaml': fs.readFileSync(path.join(FIXTURE, '.archicode.yaml'), 'utf8') };
   for (const name of fs.readdirSync(path.join(FIXTURE, 'manifests'))) {
     out['manifests/' + name] = fs.readFileSync(path.join(FIXTURE, 'manifests', name), 'utf8');
   }

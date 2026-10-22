@@ -57,7 +57,7 @@ class StepPlateausTest {
                 """ + story
             );
         }
-        return Files.writeString(dir.resolve("workspace.yaml"), workspaceYaml);
+        return Files.writeString(dir.resolve(".archicode.yaml"), workspaceYaml);
     }
 
     private static final String MANIFESTS = "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n";
@@ -99,7 +99,7 @@ class StepPlateausTest {
             )
         ).getMessage();
         assertEquals(
-            "the story `old` (`workspace.yaml`) step 1 says `at: later` but the workspace declares no plateau" +
+            "the story `old` (`.archicode.yaml`) step 1 says `at: later` but the workspace declares no plateau" +
                 WorkspaceFactory.NO_PLATEAU,
             message
         );
@@ -166,7 +166,7 @@ class StepPlateausTest {
     void shouldLoadTheShippedExampleWithStepsToldAtPlateaus() {
         for (val plateau : List.of("baseline", "to-be")) {
             val workspace = workspaceFactory.create(
-                Path.of("src/doc/examples/domain_plateaus/workspace.yaml"),
+                Path.of("src/doc/examples/domain_plateaus/.archicode.yaml"),
                 null,
                 plateau
             );

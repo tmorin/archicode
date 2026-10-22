@@ -16,7 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
 /**
- * The folders that {@code views generate --output out} writes next to {@code workspace.yaml} ({@code out-saas},
+ * The folders that {@code views generate --output out} writes next to {@code .archicode.yaml} ({@code out-saas},
  * {@code out-saas-vs-baseline}) hold {@code gap.json}, and the layered Brightcart reads {@code ./**} for its manifests: the next
  * run must not read them as manifests (issue #88).
  */

@@ -2,7 +2,7 @@
 // What the editor does with the `styles` of the workspace (run 0017): the colour of a stereotype read from the YAML, the text
 // colour computed from it (not themed), the look of a list of stereotypes, the boxes and their badges in the SVG, the layout
 // that makes room for them, the rows of both trees, the legend, the CSS of the export and of the page, and the guard against
-// a value of `workspace.yaml` that reaches the markup. The look itself is checked in a browser; here, markup, numbers and CSS text.
+// a value of `.archicode.yaml` that reaches the markup. The look itself is checked in a browser; here, markup, numbers and CSS text.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -73,7 +73,7 @@ class DuplicateReferenceTest {
     @SneakyThrows
     private Path workspace(String... pathsAndTexts) {
         Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             """
             settings:
               manifests:
@@ -87,7 +87,7 @@ class DuplicateReferenceTest {
             Files.createDirectories(file.getParent());
             Files.writeString(file, pathsAndTexts[i + 1]);
         }
-        return dir.resolve("workspace.yaml");
+        return dir.resolve(".archicode.yaml");
     }
 
     private String messageOf(Path workspace) {

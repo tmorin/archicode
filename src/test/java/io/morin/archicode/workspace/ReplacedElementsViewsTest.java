@@ -27,7 +27,7 @@ import picocli.CommandLine;
  * a container of {@code a}, and the node of {@code a} that deployed that container is gone in {@code b}. The comparison
  * keeps the node as removed, and what it deployed or used must still point at something in the comparison, or drawing the
  * views of the comparison stops on a dangling reference. The workspace is the four small files of the document (two
- * manifests per plateau) and its {@code workspace.yaml}.
+ * manifests per plateau) and its {@code .archicode.yaml}.
  */
 @QuarkusTest
 class ReplacedElementsViewsTest {
@@ -108,7 +108,7 @@ class ReplacedElementsViewsTest {
 
     private Path workspace() {
         write(
-            "workspace.yaml",
+            ".archicode.yaml",
             """
             settings:
               facets:
@@ -183,7 +183,7 @@ class ReplacedElementsViewsTest {
                 - "s.y"
             """
         );
-        return dir.resolve("workspace.yaml");
+        return dir.resolve(".archicode.yaml");
     }
 
     private Result run(String... args) {
@@ -239,7 +239,7 @@ class ReplacedElementsViewsTest {
     /** The system {@code shop} and its web container become {@code storefront} and its web container; {@code shop.old} goes. */
     private Path workspaceWithAReplacedBox() {
         write(
-            "workspace.yaml",
+            ".archicode.yaml",
             """
             settings:
               manifests:
@@ -291,7 +291,7 @@ class ReplacedElementsViewsTest {
                     - "shop.web"
             """
         );
-        return dir.resolve("workspace.yaml");
+        return dir.resolve(".archicode.yaml");
     }
 
     @Test

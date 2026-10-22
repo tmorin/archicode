@@ -1,5 +1,7 @@
 package io.morin.archicode.cli;
 
+import io.morin.archicode.ArchiCodeException;
+import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
 import java.util.HashSet;
 import java.util.List;
@@ -67,11 +69,14 @@ public class ServeEditorCommand implements Runnable {
     @Override
     public void run() {
         val workspaceFilePath = editorGroup.archiCode.workspaceFilePath.toAbsolutePath();
-        if (!"workspace.yaml".equals(String.valueOf(workspaceFilePath.getFileName()))) {
+        if (!".archicode.yaml".equals(String.valueOf(workspaceFilePath.getFileName()))) {
             throw new CommandLine.ParameterException(
                 spec.commandLine(),
-                "the editor opens a folder with a workspace.yaml: " + workspaceFilePath + " is not named so."
+                "the editor opens a folder with a .archicode.yaml: " + workspaceFilePath + " is not named so."
             );
+        }
+        if (WorkspaceFactory.holdsFormerNameOnly(workspaceFilePath)) {
+            throw new ArchiCodeException("%s", WorkspaceFactory.FORMER_NAME_SENTENCE);
         }
         val running = editorHttpServer.start(host, port, workspaceFilePath, new HashSet<>(allowedHosts));
 

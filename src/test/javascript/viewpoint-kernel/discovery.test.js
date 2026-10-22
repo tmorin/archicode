@@ -30,7 +30,7 @@ function sentence(template) {
 async function open(c, options) {
   const files = {};
   const settings = 'settings:\n  manifests:\n    paths: ' + JSON.stringify(c.paths) + '\n' + (c.views ? '  views:\n    path: ' + JSON.stringify(c.views) + '\n' : '');
-  files['workspace.yaml'] = settings;
+  files['.archicode.yaml'] = settings;
   for (const [file, value] of Object.entries(c.files)) files[file] = typeof value === 'string' ? manifestOf(file, value) : value.raw;
   const mem = memFolder(files, { links: c.links, markLinks: !(options && options.markLinks === false) });
   for (const dir of c.empty_dirs || []) mem.mkdir(dir);
@@ -48,7 +48,7 @@ const isYaml = (file) => /\.ya?ml$/.test(file);
 function check(c, state) {
   const expect = c.expect;
   if (expect.error !== undefined) {
-    const told = state.fatalError ? state.fatalError.replace(/^Could not read the plateaus of workspace.yaml:\n/, '') : state.duplicateReferences.map((d) => d.message).join('\n');
+    const told = state.fatalError ? state.fatalError.replace(/^Could not read the plateaus of .archicode.yaml:\n/, '') : state.duplicateReferences.map((d) => d.message).join('\n');
     assert.equal(told, sentence(expect.error), c.what);
     return;
   }
@@ -128,7 +128,7 @@ test('the path of the Settings screen survives a save, `/**` included', async ()
   state.workspace.settings.manifests.paths = ['manifests/**', 'more/**'];
   state.workspace.settingsDirty = true;
   await sandbox.writeWorkspaceYaml();
-  const written = mem.files.get('workspace.yaml').text;
+  const written = mem.files.get('.archicode.yaml').text;
   assert.match(written, /manifests\/\*\*/);
   assert.match(written, /more\/\*\*/);
 });
@@ -137,7 +137,7 @@ test('a served folder says which folders are links, and the editor does not foll
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'served-links-'));
   fs.mkdirSync(path.join(root, 'manifests/sub'), { recursive: true });
   fs.mkdirSync(path.join(root, 'shared'));
-  fs.writeFileSync(path.join(root, 'workspace.yaml'), 'settings:\n  manifests:\n    paths: ["manifests/**"]\n');
+  fs.writeFileSync(path.join(root, '.archicode.yaml'), 'settings:\n  manifests:\n    paths: ["manifests/**"]\n');
   fs.writeFileSync(path.join(root, 'manifests/a.yaml'), manifestOf('a.yaml', 'a'));
   fs.writeFileSync(path.join(root, 'manifests/sub/b.yaml'), manifestOf('b.yaml', 'b'));
   fs.writeFileSync(path.join(root, 'shared/s.yaml'), manifestOf('s.yaml', 's'));
@@ -155,7 +155,8 @@ test('a served folder says which folders are links, and the editor does not foll
     const target = path.join(root, rel);
     if (route === 'info') return answer(200, { folder: 'ws' });
     if (route === 'list') {
-      return answer(200, fs.readdirSync(target).sort().filter((n) => !n.startsWith('.')).map((name) => {
+      return answer(200, fs.readdirSync(target).sort().filter((n) => !n.startsWith('.') || (rel === '' && n === '.archicode.yaml')) // as EditorHttpServer lists: nothing hidden but the workspace file at the root
+      .map((name) => {
         const entry = path.join(target, name);
         const out = { name, kind: fs.statSync(entry).isDirectory() ? 'directory' : 'file' };
         if (fs.lstatSync(entry).isSymbolicLink()) out.link = true; // as EditorHttpServer says it
@@ -176,7 +177,7 @@ test('the folders of a real disk are read the same way: the harness handle is a 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'disk-'));
   fs.mkdirSync(path.join(root, 'manifests/sub'), { recursive: true });
   fs.mkdirSync(path.join(root, 'views-to-be'));
-  fs.writeFileSync(path.join(root, 'workspace.yaml'), 'settings:\n  manifests:\n    paths: ["manifests/**", "./**"]\n');
+  fs.writeFileSync(path.join(root, '.archicode.yaml'), 'settings:\n  manifests:\n    paths: ["manifests/**", "./**"]\n');
   fs.writeFileSync(path.join(root, 'manifests/sub/b.yaml'), manifestOf('b.yaml', 'b'));
   fs.writeFileSync(path.join(root, 'manifests/a.yaml'), manifestOf('a.yaml', 'a'));
   fs.writeFileSync(path.join(root, 'views-to-be/gap.json'), '{"gap": true}\n');

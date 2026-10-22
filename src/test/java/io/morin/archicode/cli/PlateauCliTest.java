@@ -66,10 +66,10 @@ class PlateauCliTest {
             system("crm", "CRM").replace("version: \"1\"\n", "version: \"1\"\n  plateau: \"to-be\"\n")
         );
         Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             "# two states\nsettings:\n  manifests:\n    paths: [\"plateaus/**\"]\n"
         );
-        return dir.resolve("workspace.yaml");
+        return dir.resolve(".archicode.yaml");
     }
 
     private record Result(int exit, String out, String err) {}

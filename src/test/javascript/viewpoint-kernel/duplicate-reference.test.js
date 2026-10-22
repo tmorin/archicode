@@ -25,7 +25,7 @@ const story = (id) => 'header:\n  kind: "archicode.morin.io/story"\n  version: "
 /** A workspace of the given manifests (path -> text), the manifests folders being `manifests` and `shared`. */
 async function open(files) {
   // a text file in each folder, so that the folder exists (it is not a manifest)
-  const mem = memFolder(Object.assign({ 'manifests/.keep.txt': '', 'shared/.keep.txt': '', 'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n      - shared\n' }, files));
+  const mem = memFolder(Object.assign({ 'manifests/.keep.txt': '', 'shared/.keep.txt': '', '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n      - shared\n' }, files));
   const sandbox = createApp();
   await sandbox.loadWorkspace(mem.handle);
   const state = sandbox.__state();
@@ -144,7 +144,7 @@ test('fixing the duplicate in the editor clears the report, and making one raise
 test('a closed and reopened folder starts from no duplicate', async () => {
   const { sandbox, state } = await open({ 'manifests/a.yaml': system('shop', 'Shop'), 'manifests/b.yaml': system('shop', 'Shop') });
   assert.equal(state.duplicateReferences.length, 1);
-  const mem = memFolder({ 'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n', 'manifests/a.yaml': system('shop', 'Shop') });
+  const mem = memFolder({ '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n', 'manifests/a.yaml': system('shop', 'Shop') });
   await sandbox.loadWorkspace(mem.handle);
   assert.equal(sandbox.__state().duplicateReferences.length, 0);
 });

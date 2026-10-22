@@ -5,7 +5,7 @@
    "id": "F01",
    "what": "a plateau takes an inherited description out; the plateau over it does not have it either, and the plateau below keeps it",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
     "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
     "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
     "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
@@ -82,7 +82,7 @@
    "id": "F02",
    "what": "a later plateau that sets the field again gets it back; the plateau between stays without it",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
     "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
     "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
     "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
@@ -126,7 +126,7 @@
    "id": "F03",
    "what": "in one plateau the last patch wins: a SET then a REMOVE leaves it out, a REMOVE then a SET sets it",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
     "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
     "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
     "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
@@ -170,7 +170,7 @@
    "id": "F04",
    "what": "a REMOVE of a field over a json-path takes it out of every element it selects, and misses none that never had it",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
     "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
     "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
     "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
@@ -232,7 +232,7 @@
    "id": "F05",
    "what": "a name can be taken out, and a field of the technology layer; a field the element does not have is already gone",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
     "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
     "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
     "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",
@@ -290,7 +290,7 @@
    "id": "F06",
    "what": "a sibling plateau does not see it; a REMOVE that is not about a field still removes the element",
    "files": {
-    "workspace.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
+    ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n",
     "manifests/base/shop.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n  name: \"Shop\"\n  description: \"Sells things.\"\n  elements:\n    - kind: \"container\"\n      id: \"web\"\n      name: \"Web\"\n      description: \"The storefront.\"\n    - kind: \"container\"\n      id: \"api\"\n      name: \"API\"\n      description: \"The API.\"\n      tags:\n        tier: \"gold\"\n",
     "manifests/base/tax.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"tax\"\n  name: \"Tax\"\n  description: \"Computes the tax.\"\n",
     "manifests/base/prod.yaml": "header:\n  kind: \"archicode.morin.io/environment\"\n  version: \"1\"\ncontent:\n  id: \"prod\"\n  name: \"Production\"\n  elements:\n    - kind: \"node\"\n      id: \"vm\"\n      name: \"VM\"\n      description: \"The machine.\"\n      applications: [\"shop.web\"]\n",

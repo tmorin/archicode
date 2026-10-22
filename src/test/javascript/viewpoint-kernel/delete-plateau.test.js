@@ -1,7 +1,7 @@
 'use strict';
 // A plateau is deleted from the page Plateaus (wave 015, run 0102, W-14, issue #93). Any plateau but the root can go (one that others override: wave 018, run 0132, #112,
 // delete-plateau-in-the-middle.test.js); a dialog lists the files that go (its manifest of kind plateau and every manifest whose header says its id) and, for a leaf, nothing else goes. A `settings.current` that names it is taken out of
-// workspace.yaml; a step of a story that names it, or a view or a step that names an element only it declares, refuses the delete (the author changes them in Stories).
+// .archicode.yaml; a step of a story that names it, or a view or a step that names an element only it declares, refuses the delete (the author changes them in Stories).
 // The write runs under `guardedLayerWrite`: refused, it puts everything back. The layered Brightcart (src/test/resources/brightcart/layered/: baseline, inhouse over
 // baseline, marketplace over inhouse, saas over baseline) is copied into an in-memory folder; "Save all changes" writes the folder and the files are compared byte for byte.
 // The other workspaces here are invented (a ferry company).
@@ -58,7 +58,7 @@ async function saved(opened) {
   return { changed: changed.sort(), added: added.sort(), removed: opened.mem.removals.slice().sort(), status: plain(run(opened.sandbox, 'saveStatus')) };
 }
 
-const withSettings = (files, line) => Object.assign({}, files, { 'workspace.yaml': files['workspace.yaml'].replace(/^settings:\n/, 'settings:\n' + line + '\n') });
+const withSettings = (files, line) => Object.assign({}, files, { '.archicode.yaml': files['.archicode.yaml'].replace(/^settings:\n/, 'settings:\n' + line + '\n') });
 const drawing = (state) => ({ plateau: state.layers.current, compare: state.layers.compare ? state.layers.compare.other : null });
 const dialogHtml = (sandbox) => sandbox.renderAppDialogHtml();
 const text = (html) => html.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
@@ -109,7 +109,7 @@ test('the root cannot be deleted, and no button offers it', async () => {
 });
 
 test('a workspace with no plateau has nothing to delete', async () => {
-  const { sandbox } = await open({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: ferry\n' });
+  const { sandbox } = await open({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: ferry\n' });
   assert.match(sandbox.plateauDeletion('baseline').refusal, /no plateau but baseline/);
   assert.doesNotMatch(sandbox.renderPlateausPageHtml(), /plateau-delete/);
 });
@@ -202,20 +202,20 @@ test('the plateau compared with is deleted: the plateau drawn stays, and nothing
   assert.deepEqual(drawing(other.state), { plateau: 'inhouse', compare: null });
 });
 
-test('settings.current that names the plateau is taken out of workspace.yaml, and only that line', async () => {
+test('settings.current that names the plateau is taken out of .archicode.yaml, and only that line', async () => {
   const files = withSettings(BRIGHTCART, '  current: "saas"');
   const opened = await open(files);
   const { sandbox, state } = opened;
   const plan = plain(sandbox.plateauDeletion('saas'));
   assert.equal(plan.current, 'saas');
   sandbox.openPlateauDeleteDialog('saas');
-  assert.match(text(dialogHtml(sandbox)), /settings\.current names saas: the key is taken out of workspace\.yaml/);
+  assert.match(text(dialogHtml(sandbox)), /settings\.current names saas: the key is taken out of \.archicode\.yaml/);
   sandbox.closeAppDialog();
   sandbox.commitPlateauDelete('saas');
   assert.equal(state.workspace.settings.current, '');
   const out = await saved(opened);
-  assert.deepEqual(out.changed, ['workspace.yaml']);
-  assert.equal(opened.mem.files.get('workspace.yaml').text, BRIGHTCART['workspace.yaml'], 'workspace.yaml is the file without the line of `current`');
+  assert.deepEqual(out.changed, ['.archicode.yaml']);
+  assert.equal(opened.mem.files.get('.archicode.yaml').text, BRIGHTCART['.archicode.yaml'], '.archicode.yaml is the file without the line of `current`');
   const again = await open(Object.fromEntries(Array.from(opened.mem.files).map(([p, f]) => [p, f.text])));
   assert.equal(again.state.fatalError, null);
 });
@@ -308,7 +308,7 @@ test('a write the checks say changes other plateaus asks first, and changes noth
 test('a plateau declared by headers only (no manifest of kind plateau) is deleted with those files; the workspace is then one plateau', async () => {
   const SYSTEM = (id, plateau) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n' + (plateau ? '  plateau: ' + plateau + '\n' : '') + 'content:\n  id: ' + id + '\n';
   const files = {
-    'workspace.yaml': 'settings:\n  current: later\n  manifests:\n    paths: ["./**"]\n',
+    '.archicode.yaml': 'settings:\n  current: later\n  manifests:\n    paths: ["./**"]\n',
     'app.ferry.yaml': SYSTEM('ferry'),
     'later/app.port.yaml': SYSTEM('port', 'later'),
     'later/app.dock.yaml': SYSTEM('dock', 'later')
@@ -324,15 +324,15 @@ test('a plateau declared by headers only (no manifest of kind plateau) is delete
   assert.equal(state.index.application.has('ferry'), true);
   const out = await saved(opened);
   assert.deepEqual(out.removed, ['later/app.dock.yaml', 'later/app.port.yaml']);
-  assert.deepEqual(out.changed, ['workspace.yaml']);
-  assert.equal(opened.mem.files.get('workspace.yaml').text, 'settings:\n  manifests:\n    paths: ["./**"]\n');
+  assert.deepEqual(out.changed, ['.archicode.yaml']);
+  assert.equal(opened.mem.files.get('.archicode.yaml').text, 'settings:\n  manifests:\n    paths: ["./**"]\n');
   assert.equal(opened.mem.files.get('app.ferry.yaml').text, files['app.ferry.yaml']);
 });
 
 test('the last plateau goes: `current: baseline` and a step told at baseline would name a plateau of a workspace that has none', async () => {
   const SYSTEM = (id, plateau) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n' + (plateau ? '  plateau: ' + plateau + '\n' : '') + 'content:\n  id: ' + id + '\n';
   const files = {
-    'workspace.yaml': 'settings:\n  current: baseline\n  manifests:\n    paths: ["./**"]\n',
+    '.archicode.yaml': 'settings:\n  current: baseline\n  manifests:\n    paths: ["./**"]\n',
     'app.ferry.yaml': SYSTEM('ferry'),
     'later/app.port.yaml': SYSTEM('port', 'later')
   };

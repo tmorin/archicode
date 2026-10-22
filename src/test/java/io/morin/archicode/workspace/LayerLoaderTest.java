@@ -587,7 +587,7 @@ class LayerLoaderTest {
 
     @Test
     void anExplicitPlateauGetsPastACurrentThatNamesNothingAnyMore() {
-        // `settings.current` names a plateau that was renamed: --plateau must not wait for workspace.yaml to be edited first
+        // `settings.current` names a plateau that was renamed: --plateau must not wait for .archicode.yaml to be edited first
         val files = LayeredFixtures.files();
         files.put(LayeredFixtures.WORKSPACE, files.get(LayeredFixtures.WORKSPACE) + "  current: renamed\n");
         assertEquals("inhouse", load(files, "inhouse").getPlateau().getId());
@@ -721,13 +721,16 @@ class LayerLoaderTest {
     private Path writeCase(Map<String, String> files) {
         val folder = fresh();
         Files.createDirectories(folder);
-        Files.writeString(folder.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n");
+        Files.writeString(
+            folder.resolve(".archicode.yaml"),
+            "settings:\n  manifests:\n    paths: [\"manifests/**\"]\n"
+        );
         for (val file : files.entrySet()) {
             val target = folder.resolve(file.getKey());
             Files.createDirectories(target.getParent());
             Files.writeString(target, file.getValue());
         }
-        return folder.resolve("workspace.yaml");
+        return folder.resolve(".archicode.yaml");
     }
 
     private static Map<String, String> filesOf(JsonNode node) {
@@ -915,16 +918,16 @@ class LayerLoaderTest {
     @Test
     @SneakyThrows
     void anIdWithADotInTheWorkspaceFileIsNotAnIndexMistake() {
-        // issue #104: the id of a manifest is refused (M81 to M83 of plateau-model-cases.json); the elements that workspace.yaml holds itself are not
+        // issue #104: the id of a manifest is refused (M81 to M83 of plateau-model-cases.json); the elements that .archicode.yaml holds itself are not
         // looked at, and an element declared under one of them must not make the index fail with a null pointer
         val folder = fresh();
         Files.createDirectories(folder.resolve("manifests"));
         Files.writeString(
-            folder.resolve("workspace.yaml"),
+            folder.resolve(".archicode.yaml"),
             "settings:\n  manifests:\n    paths: [\"manifests\"]\napplication:\n  elements:\n    - kind: system\n      id: \"a.b\"\n"
         );
         Files.writeString(folder.resolve("manifests/c.yaml"), manifest("container", "c", "a.b", ""));
-        val loaded = workspaceFactory.create(folder.resolve("workspace.yaml"), null, null);
+        val loaded = workspaceFactory.create(folder.resolve(".archicode.yaml"), null, null);
         assertTrue(loaded.appIndex.searchElement("a.b.c").isPresent());
     }
 }

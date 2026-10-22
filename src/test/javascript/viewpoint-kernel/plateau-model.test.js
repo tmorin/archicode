@@ -14,7 +14,7 @@ const { memFolder } = require('./mem-folder');
 const DOCUMENT = JSON.parse(fs.readFileSync(path.join(__dirname, 'plateau-model-cases.json'), 'utf8'));
 
 async function open(c, hash) {
-  const files = Object.assign({ 'workspace.yaml': c.settings !== undefined ? c.settings : 'settings: {}\n' }, c.files); // an empty text is a workspace.yaml with nothing in it (M74)
+  const files = Object.assign({ '.archicode.yaml': c.settings !== undefined ? c.settings : 'settings: {}\n' }, c.files); // an empty text is a .archicode.yaml with nothing in it (M74)
   const mem = memFolder(files);
   const sandbox = createApp({});
   if (hash) vm.runInContext('location.hash = ' + JSON.stringify(hash), sandbox);
@@ -33,7 +33,7 @@ for (const c of DOCUMENT.cases) {
       // the command line refuses the workspace with this sentence, and the editor with the same one under its own heading (a capital and a full stop apart)
       if (expect.editorSays !== undefined) {
         assert.equal(state.fatalError, expect.editorSays);
-        if (expect.removedKey !== undefined) assert.equal(state.fatalError, 'Could not read/parse workspace.yaml: ' + expect.removedKey, 'one line: the heading and the sentence of the command line');
+        if (expect.removedKey !== undefined) assert.equal(state.fatalError, 'Could not read/parse .archicode.yaml: ' + expect.removedKey, 'one line: the heading and the sentence of the command line');
         else assert.equal(state.fatalError.split('\n').slice(1).join('\n'), expect.noPlateau);
       } else {
         // the editor has no option to type: the address names a plateau it does not have, and the page draws baseline

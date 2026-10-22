@@ -25,7 +25,7 @@ Only when the manifests or the way the CLI draws views change on purpose:
 ./mvnw package -DskipTests
 cd src/test/resources/viewpoint-kernel/workspace
 rm -rf views views-*
-java -jar ../../../../../target/quarkus-app/quarkus-run.jar views generate -w workspace.yaml
+java -jar ../../../../../target/quarkus-app/quarkus-run.jar views generate -w .archicode.yaml
 ```
 
 Review the diff of the generated files like any other change: it is the behaviour of the viewpoints.

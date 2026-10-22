@@ -14,7 +14,7 @@ import lombok.val;
 
 /**
  * What the integration tests share: the shipped examples and fixtures, copied to a temporary folder (the commands write
- * the views next to {@code workspace.yaml}, and no test writes in the repository), and the assertions on a run of the
+ * the views next to {@code .archicode.yaml}, and no test writes in the repository), and the assertions on a run of the
  * packaged application.
  *
  * <p>The packaged application is a process of its own, the jar under the JVM and the native runner under {@code -Dnative}:
@@ -48,7 +48,7 @@ final class Shipped {
             .collect(Collectors.joining("\n"));
     }
 
-    /** A copy of a shipped folder under {@code dir}, the folder that holds the copy of {@code workspace.yaml}. */
+    /** A copy of a shipped folder under {@code dir}, the folder that holds the copy of {@code .archicode.yaml}. */
     @SneakyThrows
     static Path copy(Path source, Path dir, String name) {
         val target = dir.resolve(name);
@@ -66,7 +66,7 @@ final class Shipped {
     }
 
     static String workspace(Path folder) {
-        return folder.resolve("workspace.yaml").toString();
+        return folder.resolve(".archicode.yaml").toString();
     }
 
     /** Everything a run said, for the message of a failed assertion. */

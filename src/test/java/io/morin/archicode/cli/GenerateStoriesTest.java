@@ -96,7 +96,7 @@ class GenerateStoriesTest {
                 }
             }
         }
-        return into.resolve("workspace.yaml");
+        return into.resolve(".archicode.yaml");
     }
 
     private CliHarness.Result stories(Path workspace, String... more) {

@@ -149,7 +149,7 @@ test('the editor opens layered/: the tree of the four plateaus, every manifest r
   assert.deepEqual(Array.from(state.duplicateReferences.map((d) => d.message)), []);
   assert.deepEqual(Array.from(state.manifestFiles.filter((f) => f.error).map((f) => f.relPath + ': ' + f.error)), []);
   assert.deepEqual(Array.from(state.unreadManifestFiles), []);
-  const written = Array.from(files(LAYERED).keys()).filter((f) => f !== 'workspace.yaml');
+  const written = Array.from(files(LAYERED).keys()).filter((f) => f !== '.archicode.yaml');
   assert.deepEqual(Array.from(state.manifestFiles.map((f) => f.relPath)).sort(), written, 'the editor reads every file the generator wrote, in every folder');
 });
 

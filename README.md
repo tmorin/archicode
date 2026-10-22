@@ -76,7 +76,7 @@ docker run \
 ```
 
 The command prints a URL, `http://127.0.0.1:48080/?token=...`: opening it in a
-browser serves the editor and opens the folder of `workspace.yaml` in it, with
+browser serves the editor and opens the folder of `.archicode.yaml` in it, with
 nothing to pick (the page is refused without the token; the editor removes it
 from the address bar, and a session cookie lets a reload in): browse the elements,
 edit them, see their diagrams and the maps of the application and technology layers, and save. It works
@@ -90,10 +90,10 @@ and every call carry a token that only the printed URL gives, a request must be 
 to `localhost`, `127.0.0.1` or `[::1]` (`--allowed-host <name>` adds one, for a
 server reached by name), a page of another origin is refused, and the editor
 can only reach the `.yaml`, `.yml` and `.json` files below the folder of
-`workspace.yaml`, never a hidden entry or a link that leaves it. The container
+`.archicode.yaml`, never a hidden entry or a link that leaves it. The container
 listens on `0.0.0.0` so that Docker's `-p` forwards traffic: keep the host side
 of the mapping on `127.0.0.1` as above, since `-p 48080:48080` would expose the
-port to the whole LAN. The workspace file must be named `workspace.yaml`;
+port to the whole LAN. The workspace file must be named `.archicode.yaml`;
 `--workspace` points at one in another folder:
 
 ```shell
@@ -102,7 +102,7 @@ docker run \
   -v "$(pwd):/workdir" -w "/workdir" \
   -p 127.0.0.1:48080:48080 \
   --rm ghcr.io/tmorin/archicode \
-  --workspace ./architecture/workspace.yaml editor serve
+  --workspace ./architecture/.archicode.yaml editor serve
 ```
 
 The same works directly against a locally built jar, with no Docker and no
@@ -111,7 +111,7 @@ port mapping to reason about:
 ```shell
 ./mvnw package -Dquarkus.container-image.build=false -Dmaven.test.skip
 java -jar target/quarkus-app/quarkus-run.jar \
-  --workspace "$(pwd)/.custom/workspace.yaml" \
+  --workspace "$(pwd)/.custom/.archicode.yaml" \
   editor serve --host 127.0.0.1 --port 48080
 ```
 

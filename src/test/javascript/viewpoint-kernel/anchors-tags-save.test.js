@@ -211,7 +211,7 @@ const FILES = {
 
 async function openMem(extra) {
   const files = Object.assign({}, FILES, extra || {});
-  const mem = memFolder(Object.assign({ 'workspace.yaml': PLATEAUS }, Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': PLATEAUS }, Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };

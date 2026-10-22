@@ -78,7 +78,7 @@ class CleanFailuresTest {
     private Path dangling() {
         Files.createDirectories(dir.resolve("manifests"));
         Files.writeString(dir.resolve("manifests/shop.yaml"), system("shop", "nowhere"));
-        return Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        return Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
     }
 
     /** A workspace with two plateaus ({@code before}, an empty layer over the root, and {@code after}), which are valid. */
@@ -96,7 +96,7 @@ class CleanFailuresTest {
             "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: after\n  override: before\n"
         );
         return Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             "settings:\n  manifests:\n    paths: [\"plateaus/**\"]\n"
         );
     }
@@ -147,7 +147,7 @@ class CleanFailuresTest {
     @Test
     @SneakyThrows
     void diffSaysThereIsNothingToCompareWhenTheWorkspaceHasNoPlateaus() {
-        val workspace = Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        val workspace = Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
         val result = run("-w", workspace.toString(), "diff");
         assertEquals(1, result.exit(), result.err());
         assertEquals(1, result.err().lines().count(), result.err());
@@ -172,7 +172,7 @@ class CleanFailuresTest {
     void aManifestThatIsNotValidIsNamedWithTheLineAndTheColumn() {
         Files.createDirectories(dir.resolve("manifests"));
         Files.writeString(dir.resolve("manifests/shop.yaml"), "header: [\n");
-        val workspace = Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        val workspace = Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
         val result = run("-w", workspace.toString(), "views", "generate");
         assertEquals(1, result.exit(), result.err());
         assertEquals(1, result.err().lines().count(), result.err());
@@ -190,7 +190,7 @@ class CleanFailuresTest {
             dir.resolve("manifests/shop.yaml"),
             "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  name: \"no id\"\n"
         );
-        val workspace = Files.writeString(dir.resolve("workspace.yaml"), "settings: {}\n");
+        val workspace = Files.writeString(dir.resolve(".archicode.yaml"), "settings: {}\n");
         val result = run("-w", workspace.toString(), "query", "graph");
         assertEquals(1, result.exit(), result.err());
         assertEquals(1, result.err().lines().count(), result.err());
@@ -202,16 +202,16 @@ class CleanFailuresTest {
     @Test
     @SneakyThrows
     void aWorkspaceFileThatIsNotValidIsNamedToo() {
-        val workspace = Files.writeString(dir.resolve("workspace.yaml"), "settings: [\n");
+        val workspace = Files.writeString(dir.resolve(".archicode.yaml"), "settings: [\n");
         val result = run("-w", workspace.toString(), "views", "generate");
         assertEquals(1, result.exit(), result.err());
         assertEquals(1, result.err().lines().count(), result.err());
-        assertTrue(result.err().startsWith("error: `workspace.yaml` is not valid: "), result.err());
+        assertTrue(result.err().startsWith("error: `.archicode.yaml` is not valid: "), result.err());
     }
 
     @Test
     void aWorkspaceFileThatDoesNotExistIsSaidInOneLine() {
-        val result = run("-w", dir.resolve("absent/workspace.yaml").toString(), "query", "graph");
+        val result = run("-w", dir.resolve("absent/.archicode.yaml").toString(), "query", "graph");
         assertEquals(1, result.exit(), result.err());
         assertEquals(1, result.err().lines().count(), result.err());
         assertTrue(result.err().contains("does not exist"), result.err());
@@ -252,11 +252,11 @@ class CleanFailuresTest {
     @Test
     @SneakyThrows
     void aUsageErrorFoundWhileTheCommandRunsIsSaidAsPicocliSaysTheOthers() {
-        // the editor opens a folder with a workspace.yaml: the check is made when the command runs
+        // the editor opens a folder with a .archicode.yaml: the check is made when the command runs
         val other = Files.writeString(dir.resolve("other.yaml"), "settings: {}\n");
         val result = run("-w", other.toString(), "editor", "serve");
         assertEquals(2, result.exit(), result.err());
-        assertTrue(result.err().contains("the editor opens a folder with a workspace.yaml"), result.err());
+        assertTrue(result.err().contains("the editor opens a folder with a .archicode.yaml"), result.err());
         assertFalse(result.err().contains("\tat "), result.err());
     }
 

@@ -89,12 +89,12 @@ test('the handles of the server read, write, create and remove like the ones of 
 
   const names = [];
   for await (const [name, handle] of root.entries()) names.push(name + ':' + handle.kind);
-  assert.ok(names.includes('workspace.yaml:file'));
+  assert.ok(names.includes('.archicode.yaml:file'));
   assert.ok(names.some((n) => n.endsWith(':directory')));
 
-  const file = await (await root.getFileHandle('workspace.yaml')).getFile();
-  assert.equal(await file.text(), fs.readFileSync(path.join(server.root, 'workspace.yaml'), 'utf8'));
-  assert.equal(file.lastModified, Math.round(fs.statSync(path.join(server.root, 'workspace.yaml')).mtimeMs), 'the time the editor compares to see a file changed under it');
+  const file = await (await root.getFileHandle('.archicode.yaml')).getFile();
+  assert.equal(await file.text(), fs.readFileSync(path.join(server.root, '.archicode.yaml'), 'utf8'));
+  assert.equal(file.lastModified, Math.round(fs.statSync(path.join(server.root, '.archicode.yaml')).mtimeMs), 'the time the editor compares to see a file changed under it');
 
   await assert.rejects(root.getFileHandle('missing.yaml'), (e) => e.name === 'NotFoundError');
   await assert.rejects(root.getDirectoryHandle('missing'), (e) => e.name === 'NotFoundError');

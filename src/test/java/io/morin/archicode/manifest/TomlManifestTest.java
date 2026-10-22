@@ -56,13 +56,13 @@ class TomlManifestTest {
     @TempDir
     Path dir;
 
-    /** Every {@code workspace.yaml} under the roots, sorted. */
+    /** Every {@code .archicode.yaml} under the roots, sorted. */
     @SneakyThrows
     private static List<Path> workspaces() {
         val found = new ArrayList<Path>();
         for (val root : ROOTS) {
             try (val files = Files.walk(Path.of(root))) {
-                files.filter(f -> f.getFileName().toString().equals("workspace.yaml")).forEach(found::add);
+                files.filter(f -> f.getFileName().toString().equals(".archicode.yaml")).forEach(found::add);
             }
         }
         return found.stream().sorted().toList();
@@ -71,7 +71,7 @@ class TomlManifestTest {
     /** A manifest has a header and a content; the workspace file and the other YAML files do not. */
     private boolean isManifest(Path file) {
         val name = file.getFileName().toString();
-        if (!(name.endsWith(".yaml") || name.endsWith(".yml")) || name.equals("workspace.yaml")) {
+        if (!(name.endsWith(".yaml") || name.endsWith(".yml")) || name.equals(".archicode.yaml")) {
             return false;
         }
         try {
@@ -130,7 +130,7 @@ class TomlManifestTest {
                 Files.copy(file, to);
             }
         }
-        return target.resolve("workspace.yaml");
+        return target.resolve(".archicode.yaml");
     }
 
     /** What a loaded workspace is: its elements, its views and its stories, in the order of their references. */
@@ -318,7 +318,7 @@ class TomlManifestTest {
         for (val format : List.of("yaml", "toml")) {
             val folder = Files.createDirectories(dir.resolve("views-and-stories-" + format));
             Files.writeString(
-                folder.resolve("workspace.yaml"),
+                folder.resolve(".archicode.yaml"),
                 "settings:\n  manifests:\n    paths: [\"manifests\"]\n"
             );
             Files.createDirectories(folder.resolve("manifests"));
@@ -333,7 +333,7 @@ class TomlManifestTest {
                     format.equals("yaml") ? text : tomlOfText(text)
                 );
             }
-            models.add(modelOf(workspaceFactory.create(folder.resolve("workspace.yaml"))));
+            models.add(modelOf(workspaceFactory.create(folder.resolve(".archicode.yaml"))));
         }
         assertEquals(models.get(0), models.get(1));
         assertTrue(models.get(0).contains("shop_overview") && models.get(0).contains("order_flow"), models.get(0));
@@ -358,7 +358,7 @@ class TomlManifestTest {
     @SneakyThrows
     void shouldKeepTheNestedElementsOfATomlManifest() {
         // TOML writes the nested elements as arrays of tables: a system with a container with a component
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [\"manifests\"]\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  manifests:\n    paths: [\"manifests\"]\n");
         Files.createDirectories(dir.resolve("manifests"));
         Files.writeString(
             dir.resolve("manifests/shop.toml"),
@@ -385,7 +385,7 @@ class TomlManifestTest {
             label = "uses"
             """
         );
-        val workspace = workspaceFactory.create(dir.resolve("workspace.yaml"));
+        val workspace = workspaceFactory.create(dir.resolve(".archicode.yaml"));
         assertEquals(
             List.of("shop", "shop.web", "shop.web.cart"),
             workspace.appIndex.elementByReferenceIndex.keySet().stream().sorted().toList()
@@ -396,11 +396,11 @@ class TomlManifestTest {
     @SneakyThrows
     void shouldTellAWrongTomlFileInOneLine() {
         // a TOML file that is not TOML is a manifest that is not valid, with the name of the file, as for the other formats
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [\"manifests\"]\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  manifests:\n    paths: [\"manifests\"]\n");
         Files.createDirectories(dir.resolve("manifests"));
         Files.writeString(dir.resolve("manifests/broken.toml"), "[header\nkind = \n");
         val message = assertThrows(ArchiCodeException.class, () ->
-            workspaceFactory.create(dir.resolve("workspace.yaml"))
+            workspaceFactory.create(dir.resolve(".archicode.yaml"))
         ).getMessage();
         assertTrue(message.startsWith("`manifests/broken.toml` is not valid: "), message);
         assertFalse(message.contains("\n"), message);
@@ -410,7 +410,7 @@ class TomlManifestTest {
     @SneakyThrows
     void shouldTellAFaultOfTheContentOfATomlManifestAsOfTheYamlOne() {
         // the second read: the content, as JSON text, has a key nobody knows; the sentence is the one of the YAML manifest
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [\"manifests\"]\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  manifests:\n    paths: [\"manifests\"]\n");
         Files.createDirectories(dir.resolve("manifests"));
         val sentences = new ArrayList<String>();
         for (val format : List.of("yaml", "toml")) {
@@ -418,7 +418,7 @@ class TomlManifestTest {
                 "header:\n  kind: archicode.morin.io/system\n  version: \"1\"\ncontent:\n  id: s\n  colour: red\n";
             Files.writeString(dir.resolve("manifests/s." + format), format.equals("yaml") ? yaml : tomlOfText(yaml));
             val message = assertThrows(ArchiCodeException.class, () ->
-                workspaceFactory.create(dir.resolve("workspace.yaml"))
+                workspaceFactory.create(dir.resolve(".archicode.yaml"))
             ).getMessage();
             sentences.add(message.replace("s." + format, "s.EXT"));
             Files.delete(dir.resolve("manifests/s." + format));
@@ -433,14 +433,14 @@ class TomlManifestTest {
     @Test
     @SneakyThrows
     void shouldRefuseAKindThatDoesNotExistInATomlManifestAsInAYamlOne() {
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  manifests:\n    paths: [\"manifests\"]\n");
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  manifests:\n    paths: [\"manifests\"]\n");
         Files.createDirectories(dir.resolve("manifests"));
         Files.writeString(
             dir.resolve("manifests/g.toml"),
             "[header]\nkind = \"archicode.morin.io/system-group\"\nversion = \"1\"\n[content]\nid = \"g\"\n"
         );
         val message = assertThrows(ArchiCodeException.class, () ->
-            workspaceFactory.create(dir.resolve("workspace.yaml"))
+            workspaceFactory.create(dir.resolve(".archicode.yaml"))
         ).getMessage();
         assertTrue(message.startsWith("`manifests/g.toml` is not valid: unrecognized `header.kind` "), message);
     }

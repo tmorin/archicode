@@ -78,7 +78,7 @@ const SYSTEM = (id) => 'header:\n  kind: "archicode.morin.io/system"\n  version:
 const PLATEAU = (id, override, body) => 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + (override ? '  override: "' + override + '"\n' : '') + (body || '');
 const TOUR = 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "tour"\n  steps:\n    # the ferry\n    - viewpoint: overview\n      properties:\n        element: ferry\n      text: Hello\n';
 const FERRY = {
-  'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
+  '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
   'app.ferry.yaml': SYSTEM('ferry'),
   'later/plateau.yaml': PLATEAU('later', null),
   'latest/plateau.yaml': PLATEAU('latest', 'later'),
@@ -232,7 +232,7 @@ test('the box writes into a new story too, and into a step that points at a name
 // ---- where the box is not ----
 
 test('a workspace with no plateau shows no box and writes no key, ticked or not', async () => {
-  const opened = await open({ 'workspace.yaml': FERRY['workspace.yaml'], 'app.ferry.yaml': SYSTEM('ferry'), 'story.tour.yaml': TOUR });
+  const opened = await open({ '.archicode.yaml': FERRY['.archicode.yaml'], 'app.ferry.yaml': SYSTEM('ferry'), 'story.tour.yaml': TOUR });
   const { sandbox, state } = opened;
   assert.equal(state.plateauTree.layered, false);
   showElement(opened, 'ferry');
@@ -284,7 +284,7 @@ test('the line-preserving save: a step is added after the comment and the lines 
   const added = appended(opened, 'story.tour.yaml');
   assert.match(added, /^ {4}- viewpoint: overview\n {6}layer: application\n {6}properties:\n {8}element: ferry\n {6}at: "?latest"?\n {6}against: "?later"?\n$/);
   assert.equal(file(state, 'story.tour.yaml').rawText.startsWith(TOUR), true, 'the comment and the first step are as they were');
-  assert.equal(state.workspace.settingsDirty, false, 'workspace.yaml is left alone');
+  assert.equal(state.workspace.settingsDirty, false, '.archicode.yaml is left alone');
   await sandbox.saveAllChanges();
   assert.deepEqual(mem.writes, ['story.tour.yaml']);
   // read again, the step has its keys

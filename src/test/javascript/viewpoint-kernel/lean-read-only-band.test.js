@@ -143,7 +143,7 @@ test('the mistakes of the plateaus are one button on the band that opens the sen
   const PLATEAU = (id, extra) => 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: "' + id + '"\n' + extra;
   const SYSTEM = (id) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  name: "' + id + '"\n';
   const mem = memFolder({
-    'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
     'app.ferry.yaml': SYSTEM('ferry'),
     'later/plateau.yaml': PLATEAU('later', '  patches:\n    - operator: SET\n      target: nope\n      field: name\n      value: x\n')
   });

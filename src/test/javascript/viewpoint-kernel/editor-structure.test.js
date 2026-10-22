@@ -33,7 +33,7 @@ async function openLayered() {
 }
 
 async function openFiles(files, settings) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -211,7 +211,7 @@ test('an address opens the page when the workspace is loaded, as a bookmark does
     const sandbox = createApp({});
     run(sandbox, 'location.hash = ' + JSON.stringify(former));
     sandbox.syncPerspectiveFromHash(); // what the page does as it starts
-    const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' }, FERRY));
+    const mem = memFolder(Object.assign({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' }, FERRY));
     const state = sandbox.__state();
     state.folder = { handle: mem.handle, name: 'ws' };
     state.permissionState = 'granted';
@@ -394,13 +394,13 @@ test('a workspace with no other plateau has the Plateaus page too: baseline alon
 });
 
 test('a workspace with settings.plateaus opens no page: it is refused with the one sentence, so there is no list of plateaus to show and no selector', async () => {
-  const mem = memFolder({ 'workspace.yaml': 'settings:\n  plateaus: []\n' });
+  const mem = memFolder({ '.archicode.yaml': 'settings:\n  plateaus: []\n' });
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  assert.match(state.fatalError, /^Could not read\/parse workspace\.yaml: `settings\.plateaus` no longer exists/);
+  assert.match(state.fatalError, /^Could not read\/parse \.archicode\.yaml: `settings\.plateaus` no longer exists/);
   assert.equal(state.workspace, null);
   assert.doesNotMatch(sandbox.renderShellHtml(), /id="plateau-band"|data-action="set-plateau"|id="page-tabs"/);
 });
@@ -648,7 +648,7 @@ test('the folds belong to one folder: another folder starts unfolded', async () 
   const { sandbox, state } = await openFiles(FERRY);
   sandbox.setPerspective('files');
   click(sandbox, { 'data-action': 'files-fold-all' });
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' }, FERRY));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' }, FERRY));
   state.folder = { handle: mem.handle, name: 'other' };
   await sandbox.loadWorkspace(mem.handle);
   assert.ok(filesGroupsOf(sandbox).every((g) => !g.folded));
@@ -765,7 +765,7 @@ test('an address that names an application element on Environments opens Environ
   const sandbox = createApp({});
   run(sandbox, "location.hash = '#/timeline/environments?ref=fleet'");
   sandbox.syncPerspectiveFromHash();
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' }, FERRY));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' }, FERRY));
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
@@ -807,7 +807,7 @@ test('the count of a move reaches every view and story, as the move does', async
   assert.equal(sandbox.scanMoveReferences('fleet', 'application').views, 2, 'the view of baseline and the view of fast');
 });
 
-test('a view or story of workspace.yaml whose id a manifest has is not moved, and does not show twice', async () => {
+test('a view or story of .archicode.yaml whose id a manifest has is not moved, and does not show twice', async () => {
   const settings = 'settings:\n  manifests:\n    paths: ["./**"]\nstories:\n  - id: speed\n    name: Old speed\n    steps: []\n  - id: only_old\n    name: Only old\n    steps: []\n';
   const { sandbox } = await openFiles(FERRY, settings);
   assert.deepEqual(ids(sandbox.legacyEntriesToMove().stories), ['only_old'], 'speed is declared by a manifest: moving it would declare it twice');

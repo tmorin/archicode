@@ -45,9 +45,10 @@ class RemovedPlateausKeyTest {
         "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n";
 
     private CliHarness.Result run(String... args) {
-        val all = Stream.concat(Stream.of("-w", dir.resolve("workspace.yaml").toString()), Arrays.stream(args)).toArray(
-            String[]::new
-        );
+        val all = Stream.concat(
+            Stream.of("-w", dir.resolve(".archicode.yaml").toString()),
+            Arrays.stream(args)
+        ).toArray(String[]::new);
         return CliHarness.run(factory, errorOutput, all);
     }
 
@@ -57,7 +58,7 @@ class RemovedPlateausKeyTest {
         Files.createDirectories(dir.resolve("p/b"));
         Files.writeString(dir.resolve("p/a/s.yaml"), SYSTEM);
         Files.writeString(dir.resolve("p/b/s.yaml"), SYSTEM);
-        Files.writeString(dir.resolve("workspace.yaml"), settings);
+        Files.writeString(dir.resolve(".archicode.yaml"), settings);
     }
 
     private static void assertTheSentence(CliHarness.Result result) {

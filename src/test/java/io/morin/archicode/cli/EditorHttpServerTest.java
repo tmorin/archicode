@@ -49,12 +49,12 @@ class EditorHttpServerTest {
         val base = Files.createTempDirectory("editor_server");
         folder = Files.createDirectories(base.resolve("architecture"));
         outside = Files.createDirectories(base.resolve("outside"));
-        Files.writeString(folder.resolve("workspace.yaml"), "application: {}\n");
+        Files.writeString(folder.resolve(".archicode.yaml"), "application: {}\n");
         Files.createDirectories(folder.resolve("manifests"));
         Files.writeString(folder.resolve("manifests/app.yaml"), "header: {kind: person}\n");
         Files.writeString(folder.resolve("notes.txt"), "not a manifest");
         Files.writeString(outside.resolve("secret.yaml"), "secret: true\n");
-        running = editorHttpServer.start("127.0.0.1", 0, folder.resolve("workspace.yaml"), Set.of());
+        running = editorHttpServer.start("127.0.0.1", 0, folder.resolve(".archicode.yaml"), Set.of());
     }
 
     @AfterEach
@@ -161,7 +161,7 @@ class EditorHttpServerTest {
         Files.createDirectories(folder.resolve(".git"));
         val root = api("GET", "list", "", null);
         assertEquals(200, root.statusCode());
-        assertTrue(root.body().contains("\"name\":\"workspace.yaml\",\"kind\":\"file\""));
+        assertTrue(root.body().contains("\"name\":\".archicode.yaml\",\"kind\":\"file\""));
         assertTrue(root.body().contains("\"name\":\"manifests\",\"kind\":\"directory\""));
         assertFalse(root.body().contains(".git"));
         assertTrue(api("GET", "list", "manifests", null).body().contains("app.yaml"));
@@ -215,7 +215,7 @@ class EditorHttpServerTest {
         running = editorHttpServer.start(
             "127.0.0.1",
             0,
-            folder.resolve("workspace.yaml"),
+            folder.resolve(".archicode.yaml"),
             Set.of("Editor.Example", "other.example:8080", "dotted.example.")
         );
         val allowedPage = "/?token=" + running.token();
@@ -301,7 +301,7 @@ class EditorHttpServerTest {
     @Test
     void refusesABodyThatIsTooLargeOrNotUtf8() throws Exception {
         editorHttpServer.stop(running);
-        running = editorHttpServer.start("127.0.0.1", 0, folder.resolve("workspace.yaml"), Set.of(), 16);
+        running = editorHttpServer.start("127.0.0.1", 0, folder.resolve(".archicode.yaml"), Set.of(), 16);
         assertEquals(201, api("PUT", "file", "manifests/small.yaml", "a".repeat(16)).statusCode(), "at the limit");
         assertEquals(413, api("PUT", "file", "manifests/big.yaml", "a".repeat(17)).statusCode(), "by its length");
         val chunked = HttpRequest.newBuilder(URI.create(base() + "/api/fs/file?path=manifests/big.yaml"))

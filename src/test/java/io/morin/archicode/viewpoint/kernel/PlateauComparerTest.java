@@ -409,7 +409,7 @@ class PlateauComparerTest {
     // ---- replaces: an element of the more recent plateau says what it is the new place of ----
 
     private static final Path REPLACES = Path.of(
-        "src/test/resources/plateau-comparison/replaces/workspace.yaml"
+        "src/test/resources/plateau-comparison/replaces/.archicode.yaml"
     ).toAbsolutePath();
 
     private Comparison compareReplaces() {

@@ -31,7 +31,7 @@ async function open(settingsYaml, folderName = 'my-folder') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archicode-name-'));
   fs.mkdirSync(path.join(dir, 'manifests'));
   fs.writeFileSync(path.join(dir, 'manifests', 'app.s1.yaml'), MANIFEST);
-  fs.writeFileSync(path.join(dir, 'workspace.yaml'), 'application:\n  elements: []\n' + (settingsYaml === null ? '' : 'settings:\n' + settingsYaml));
+  fs.writeFileSync(path.join(dir, '.archicode.yaml'), 'application:\n  elements: []\n' + (settingsYaml === null ? '' : 'settings:\n' + settingsYaml));
   const sandbox = createApp();
   sandbox.window.showDirectoryPicker = function () {};
   const handle = writableFolder(dir);
@@ -43,7 +43,7 @@ async function open(settingsYaml, folderName = 'my-folder') {
   return { sandbox, state, dir };
 }
 
-const saved = (dir) => fs.readFileSync(path.join(dir, 'workspace.yaml'), 'utf8');
+const saved = (dir) => fs.readFileSync(path.join(dir, '.archicode.yaml'), 'utf8');
 const run = (sandbox, code) => vm.runInContext(code, sandbox);
 
 test('the name is read from the settings, and is empty when the key is absent, blank or not a text', async () => {
@@ -203,12 +203,12 @@ test('"Opening “x”…" says the name stored with the folder, and the folder 
   assert.equal(run(sandbox, 'typeof lastWorkspaceName'), 'undefined', 'the memory of the last name rendered is gone');
 });
 
-test('a save keeps the comments of workspace.yaml and the lines it did not touch', async () => {
+test('a save keeps the comments of .archicode.yaml and the lines it did not touch', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archicode-keep-'));
   fs.mkdirSync(path.join(dir, 'manifests'));
   fs.writeFileSync(path.join(dir, 'manifests', 'app.s1.yaml'), MANIFEST);
   const original = '# my workspace\napplication:\n  elements: []\nsettings:\n  views:\n    path: "out"   # where the views go\n';
-  fs.writeFileSync(path.join(dir, 'workspace.yaml'), original);
+  fs.writeFileSync(path.join(dir, '.archicode.yaml'), original);
   const sandbox = createApp();
   await sandbox.loadWorkspace(writableFolder(dir));
   const state = sandbox.__state();
