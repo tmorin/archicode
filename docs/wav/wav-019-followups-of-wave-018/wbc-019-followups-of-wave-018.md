@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 019
-status: proposed
+status: completed
 date: 2026-10-22
 related:
   - docs/wav/wav-018-groups-shims-and-plateau-gaps/wav-018-groups-shims-and-plateau-gaps.md

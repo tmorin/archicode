@@ -89,6 +89,8 @@ In ArchiCode, a workspace is a fundamental construct that orchestrates the found
 
 - Plain Text Format: A workspace is represented as a plain text file, allowing you to choose between YAML, TOML, or JSON formats. This flexibility ensures that the workspace aligns seamlessly with your preferred configuration style.
 
+- The Name of the File: the workspace file is called `.archicode.yaml`, and `archicode` looks for it in the current directory. The name begins with a dot, so it is a hidden file: `ls -a` lists it, and a file dialog shows it only when you ask for hidden files (in the file manager of your system, or in the dialog of a browser). It is never read as a manifest, in any folder. `-w` (`--workspace`) names another file, in YAML, TOML or JSON, for the command line (`archicode -w ci/workspace.toml views generate`); the editor, and `archicode editor serve`, open a folder that has a `.archicode.yaml`. Before 0.18 the file was called `workspace.yaml`: <<plateaus-upgrade>> says what to do.
+
 - Centralized Definition and Configuration: The workspace serves as a central repository for defining and configuring your architecture work. This consolidation streamlines your workflow and provides a clear reference point for all aspects of your project.
 
 - Enrichment with Manifests: Workspaces can be enriched through the inclusion of manifests. A manifest, also presented as a plain text file in YAML, JSON or TOML format, further refines and specifies architectural details within the workspace. The command line reads the three; the editor reads YAML only (see <<editor-reads>>).
@@ -103,7 +105,7 @@ In ArchiCode, a workspace is a fundamental construct that orchestrates the found
 
 The following snippet describes a workspace named `ArchiCode`, designing the `CommandLineInterface` container of the `ArchiCode` system and its localization in the `Reference` environment.
 
-.The content of `workspace.yaml`
+.The content of `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/domain_workspace/.archicode.yaml[]
@@ -203,9 +205,9 @@ A workspace with no plateau is not concerned: such a root is indexed and drawn a
 [[manifests-folders]]
 ==== Manifests in folders
 
-`settings.manifests.paths` lists the folders the manifests are read from, `manifests` by default, and a path read as it is written names one folder: the files directly in it are the manifests, and the files of its sub-folders are not. To keep the manifests in folders of your own (by domain, by team), end a path with `/**`: the folder and every folder below it are read.
+`settings.manifests.paths` lists the folders the manifests are read from, `manifests` by default, and a path read as it is written names one folder: the files directly in it are the manifests, and the files of its sub-folders are not. To keep the manifests in folders of your own (by domain, by team), end a path with `+/**+`: the folder and every folder below it are read.
 
-.The content of `workspace.yaml` of a workspace whose manifests are in folders
+.The content of `.archicode.yaml` of a workspace whose manifests are in folders
 [source,yaml]
 ----
 include::examples/domain_manifest_folders/.archicode.yaml[]
@@ -213,7 +215,7 @@ include::examples/domain_manifest_folders/.archicode.yaml[]
 
 .The files of the example `domain_manifest_folders`
 ----
-workspace.yaml
+.archicode.yaml
 manifests/
   application/
     shop.yaml
@@ -226,12 +228,12 @@ manifests/
 
 The command line and the editor read the same files, in the same order, by these rules:
 
-. A path that does not end in `/**` is read exactly as it always was: the files directly in the folder. `./**` is the folder of `workspace.yaml` and everything below it, the file `workspace.yaml` excepted. A folder that does not exist reads nothing, with `/**` as without.
-. The files are read in the order of their path from the folder of `workspace.yaml`, written with `/` and compared by Unicode code point, whatever the file system or the language of the system: `B.yaml` comes before `a.yaml`, and `a.yaml` before `a/b.yaml`. A file that two paths find (`manifests` and `manifests/**`) is read once. The order tells which file an error names first and the order of the files in the editor; the views do not depend on it.
-. Below a path that ends in `/**`, these are not read: a file or a folder whose name begins with a dot (`.git`, `.cache`); a symbolic link to a folder (a link is never followed, so a link that points to its own folder is no loop; a link to a file is read like the file); and the folders of the generated views, which can hold files that are no manifests (the comparison of two plateaus writes a `gap.json`). These are the folder that `settings.views.path` names, as it is written in `workspace.yaml`, and the folders beside it whose name begins with that name and a dash: with `views`, the folders `views`, `views-to-be`, `views-to-be-vs-baseline` and `views-shop`; and any folder that holds both files a comparison writes, `gap.json` and `gap.md`, whatever `--output` named it and whichever command wrote it (a folder with only a `gap.json` is read, since a manifest may be called so). A folder that is deeper than `views.path`, or whose name only looks like it (`viewsx`, `views_extra`), is read. A path that names such a folder itself (`.manifests/**`, `views-notes/**`) reads it: the rule applies to what is found below a path, not to the path. A path that is a link to a folder is read, as it is without `/**`.
-. Every `.yaml`, `.yml`, `.json` and `.toml` file that is found is a manifest, as in a folder read without `/**`: a YAML file that is not a manifest (a CI file, a `values.yaml`) is refused with its name, so keep such files out of the folders you name, or in a hidden folder. A TOML manifest is a manifest like the others (see <<manifest-formats>>). The editor reads the YAML ones and says which files it does not read (see <<editor-reads>>).
+. A path that does not end in `+/**+` is read exactly as it always was: the files directly in the folder. `+./**+` is the folder of `.archicode.yaml` and everything below it. The workspace file is never a manifest, at any depth and whatever the path: it is hidden, so a `+/**+` path would skip it anyway, and a folder read without `+/**+` skips it too. A folder that does not exist reads nothing, with `+/**+` as without.
+. The files are read in the order of their path from the folder of `.archicode.yaml`, written with `/` and compared by Unicode code point, whatever the file system or the language of the system: `B.yaml` comes before `a.yaml`, and `a.yaml` before `a/b.yaml`. A file that two paths find (`manifests` and `+manifests/**+`) is read once. The order tells which file an error names first and the order of the files in the editor; the views do not depend on it.
+. Below a path that ends in `+/**+`, these are not read: a file or a folder whose name begins with a dot (`.git`, `.cache`); a symbolic link to a folder (a link is never followed, so a link that points to its own folder is no loop; a link to a file is read like the file); and the folders of the generated views, which can hold files that are no manifests (the comparison of two plateaus writes a `gap.json`). These are the folder that `settings.views.path` names, as it is written in `.archicode.yaml`, and the folders beside it whose name begins with that name and a dash: with `views`, the folders `views`, `views-to-be`, `views-to-be-vs-baseline` and `views-shop`; and any folder that holds both files a comparison writes, `gap.json` and `gap.md`, whatever `--output` named it and whichever command wrote it (a folder with only a `gap.json` is read, since a manifest may be called so). A folder that is deeper than `views.path`, or whose name only looks like it (`viewsx`, `views_extra`), is read. A path that names such a folder itself (`+.manifests/**+`, `+views-notes/**+`) reads it: the rule applies to what is found below a path, not to the path. A path that is a link to a folder is read, as it is without `+/**+`.
+. Every `.yaml`, `.yml`, `.json` and `.toml` file that is found is a manifest, as in a folder read without `+/**+`: a YAML file that is not a manifest (a CI file, a `values.yaml`) is refused with its name, so keep such files out of the folders you name, or in a hidden folder. A TOML manifest is a manifest like the others (see <<manifest-formats>>). The editor reads the YAML ones and says which files it does not read (see <<editor-reads>>).
 . A reference declared in two of the files that are found is the error of <<duplicate-references>>, in the same line, with the two files in the order above.
-. `**` means something only at the end of a path, after a `/`. `manifests/**/shop`, `manifests/**x`, `a**/b` and `**` are refused with one line that names the path and says what is read, in the command line and in the editor (where the Settings screen refuses them too). A path that contains `..` or is absolute is refused as before, with `/**` or without. A folder whose name contains `**` can no longer be named by a path.
+. `+**+` means something only at the end of a path, after a `/`. `+manifests/**/shop+`, `+manifests/**x+`, `+a**/b+` and `+**+` are refused with one line that names the path and says what is read, in the command line and in the editor (where the Settings screen refuses them too). A path that contains `..` or is absolute is refused as before, with `+/**+` or without. A folder whose name contains `+**+` can no longer be named by a path.
 
 Incorporating workspaces and manifests into your architectural workflow within ArchiCode empowers you with an efficient and organized foundation for your projects. Let's explore further as we navigate through the various dimensions of the ArchiCode domain.
 
@@ -242,7 +244,7 @@ An architecture goes through states: how it is today, how it should be next year
 
 [NOTE]
 ====
-*There is no `settings.plateaus` any more.* A plateau used to be a complete folder listed under `settings.plateaus` in `workspace.yaml`, created by `archicode plateau add` and compared with `--baseline`. The key, the command and the option no longer exist. A `workspace.yaml` that still has the key is refused by every command, and by the editor, with this one line, and nothing is read or written:
+*There is no `settings.plateaus` any more.* A plateau used to be a complete folder listed under `settings.plateaus` in `.archicode.yaml`, created by `archicode plateau add` and compared with `--baseline`. The key, the command and the option no longer exist. A `.archicode.yaml` that still has the key is refused by every command, and by the editor, with this one line, and nothing is read or written:
 
 ----
 error: `settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)
@@ -251,7 +253,7 @@ error: `settings.plateaus` no longer exists: a plateau is a layer now. Remove th
 `--baseline` is a usage error (`Unknown options: '--baseline', ...`, exit code 2) and `archicode plateau add` too (`Unmatched arguments from index 1: 'add', ...`); `--against` and `archicode plateau list` replace them (see <<plateau-choose>>). No command converts a workspace: <<plateaus-upgrade>> says how to do it by hand.
 ====
 
-.A workspace with a root and one layer: `workspace.yaml`
+.A workspace with a root and one layer: `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/domain_plateaus/.archicode.yaml[]
@@ -275,7 +277,7 @@ include::examples/domain_plateaus/.archicode.yaml[]
             - payments.yaml
             - plateau.to-be.yaml <3>
             - ratings.yaml
-    - workspace.yaml
+    - .archicode.yaml
 ----
 <1> The manifests of the root: no `plateau:` in their header. `plateau.baseline.yaml` is optional and only gives the root a name and a horizon.
 <2> The manifests of the layer `to-be`: each says `plateau: "to-be"` in its header. Only what the layer adds; what it inherits from `baseline` is not copied.
@@ -455,9 +457,9 @@ to-be     baseline  manifest plateaus/to-be/plateau.to-be.yaml        To be  202
 
 `--against <id>` names the plateau to compare with. Without it, a plateau is compared with the plateau it overrides; the root overrides nothing, so `baseline` is compared with nothing unless `--against` names a plateau (`diff --plateau baseline` alone stops with `error: the plateau `baseline` is the root of the plateaus and nothing is before it: there is nothing to compare it with. Name a plateau with `--against``). `--against` takes any plateau of the tree, a sibling or the future included, and refuses the plateau itself (`error: `--against to-be` is the plateau that is compared: choose another plateau to compare it with`). The views of a plateau are written in `views-<plateau>`, and the views of its comparison in `views-<plateau>-vs-<against>` (and one folder per facet, as the `directory-name-template` of the facets says); a workspace with no plateau writes `views`, as it always did. With `--output out`, the folders are `out-<plateau>` and `out-<plateau>-vs-<against>`. See <<generate-views>> and <<diff>>.
 
-`settings.manifests.paths` lists the folders of the manifests, for a workspace with plateaus as for one without. A layered workspace usually ends a path with `/**` (see <<manifests-folders>>), so that the folders of the plateaus are read.
+`settings.manifests.paths` lists the folders of the manifests, for a workspace with plateaus as for one without. A layered workspace usually ends a path with `+/**+` (see <<manifests-folders>>), so that the folders of the plateaus are read.
 
-IMPORTANT: *Breaking change* (see <<plateaus-upgrade>>). A path of `settings.manifests.paths` may no longer leave the folder of the workspace (`../shared`) nor be absolute (`/srv/manifests`, `C:\data`), so that one folder holds a whole workspace, and so that the editor, which only reaches the folder it opened, reads what the command line reads. A workspace that used such a path stops with an error that says which path and what to change: move the folder below `workspace.yaml`, or move `workspace.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected, and neither is a workspace without plateaus: it is read, and generates its views, exactly as before.
+IMPORTANT: *Breaking change* (see <<plateaus-upgrade>>). A path of `settings.manifests.paths` may no longer leave the folder of the workspace (`../shared`) nor be absolute (`/srv/manifests`, `C:\data`), so that one folder holds a whole workspace, and so that the editor, which only reaches the folder it opened, reads what the command line reads. A workspace that used such a path stops with an error that says which path and what to change: move the folder below `.archicode.yaml`, or move `.archicode.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected, and neither is a workspace without plateaus: it is read, and generates its views, exactly as before.
 
 [[plateau-comparison]]
 ==== Comparing two plateaus
@@ -706,7 +708,7 @@ content:
 
 `uses` is not a relationship and it draws nothing by itself. It tells where to look for what the applications of the environment depend on:
 
-- When an application deployed in the environment, or anything inside it, has a relationship towards another application, ArchiCode looks where that other application is deployed. A node that lists the container `shop.app` in `applications` hosts the relationships of its components too: a relationship of `shop.app.payments` towards `billing` is a dependency of the node, where it used to give none. A relationship that stays inside the deployed application gives nothing, and the destination must still be a deployed application. If the environment hosts it, nothing leaves the environment.
+- When an application deployed in the environment, or anything inside it, has a relationship towards another application, ArchiCode looks where that other application is deployed. A node that lists the container `shop.app` in `applications` hosts the relationships of its components too: a relationship of `shop.app.payments` towards `billing` is a dependency of the node, where it used to give none. The destination counts the same way: a relationship of `backoffice` towards `shop.app.orders`, a component of the deployed container `shop.app`, is a dependency towards the node that hosts `shop.app` (it used to give none, because `shop.app.orders` is not itself listed in `applications`). A relationship that stays inside the deployed application gives nothing, and the destination must be a deployed application or inside one. If the environment hosts it, nothing leaves the environment.
 - Otherwise, it is looked for in the environments, or the nodes, listed in `uses`, and nowhere else. An application deployed in several environments is reached in the ones the environment uses. That is how `dev` reaches the `integration` instance of an application, and not the `production` one.
 - The dependency is then drawn, in the deep view of the technology layer, between the two deployed applications, with the label, the qualifiers and the tags of the relationship of the application. It folds with the nodes: when they are collapsed, the dependencies between them are grouped in one link.
 - The overview and the detailed view of an environment, or of a node, show the same dependencies grouped on the nodes that host the applications: an environment is linked to the environments it uses.
@@ -714,7 +716,7 @@ content:
 
 An entry of `uses` is the reference of an environment, to use all of it, or of one of its nodes, to use a part of it. It has to exist, or the views are not generated.
 
-As the dependencies are derived from the relationships of the applications, a facet that removes some of them removes the dependencies that rest on them. Through a facet, the deep view of an environment also draws the relationships between the applications deployed in it, with their label and qualifiers: a facet that keeps one flow (an authentication, the audit events) shows that flow as it is deployed, on the nodes that host the applications. Without a facet these relationships are not drawn, there would be too many. The overview and the detailed view lift them to the nodes the view is made of. A facet that sets `hide-unlinked: true` also leaves out, in these views, the elements none of its links goes through, the element the view is about staying; in the editor it is a check box of the facet, in the Settings. The entries of `uses` can also be selected by a facet, as any other part of the workspace.
+As the dependencies are derived from the relationships of the applications, a facet that removes some of them removes the dependencies that rest on them. Through a facet, the deep view of an environment also draws the relationships between the applications deployed in it, with their label and qualifiers: a facet that keeps one flow (an authentication, the audit events) shows that flow as it is deployed, on the nodes that host the applications. Without a facet these relationships are not drawn, there would be too many. The overview and the detailed view lift them to the nodes the view is made of. These links between the nodes of one environment read, as the others do, the relationships of everything inside the deployed application, at both ends: a relationship of a component of a deployed container towards another deployed application is a link from the node of the container to the node of that application, and a relationship that stays inside one container draws nothing. They are drawn in the faceted views of the technology layer only, as before. A facet that sets `hide-unlinked: true` also leaves out, in these views, the elements none of its links goes through, the element the view is about staying; in the editor it is a check box of the facet, in the Settings. The entries of `uses` can also be selected by a facet, as any other part of the workspace.
 
 === Relationships
 
@@ -811,7 +813,7 @@ A view that has an `id` is a named view. Without `--view`, `archicode views gene
 [[map-viewpoint]]
 *The map.* A view of the `map` viewpoint draws a whole layer instead of the surroundings of one element: `layer: application` (the default) or `layer: technology`, folded, so that only the top of the layer shows and a link joins the boxes its two ends land on. Three lists of references, in `properties`, shape it: `pinned` keeps only what touches these elements, `hidden` leaves these elements, what is inside them and their relationships out, and `opened` opens these boxes, so that their children show. A map of the technology layer has two more properties, booleans, that are true when they are absent: `applications: false` leaves out the applications deployed on the nodes, and `relationships: false` leaves out the links (see below). The `layer` of a view (and of a step that carries its own view) is read in any case by both tools: `layer: Technology` and `layer: TECHNOLOGY` are the technology layer, and anything else is the application layer; `application` and `technology` in lower case remain the form to write. The editor draws the same view on its page Applications (the application layer) and its page Environments (the technology layer, see <<editor-map>>), and both tools draw the same boxes (the example below has the boxes of each view pinned by a test). The command line draws a map when it is asked for it by its `id`, as for any named view:
 
-.The content of `workspace.yaml` of the example `domain_technology_map`: three maps of a technology layer
+.The content of `.archicode.yaml` of the example `domain_technology_map`: three maps of a technology layer
 [source,yaml]
 ----
 include::examples/domain_technology_map/.archicode.yaml[]
@@ -828,7 +830,7 @@ writes `views/plantuml/technology/datacentre-map-open.puml`. The command line do
 *What a map of the technology layer draws.* Besides the nodes and the environments, it draws the applications deployed on the nodes and the relationships:
 
 * *The applications* are the `applications` that the nodes list, one box each, inside its node. Only an open node shows them (a node is open when it is in `opened`, or when it encloses a pinned element), and a node that is hidden shows none; when the map is pinned, they are drawn only inside what it is pinned on. A node that hosts applications can be opened, so it is no longer drawn as a closed box with nothing in it; an application box has nothing to open. A `pinned`, `hidden` or `opened` entry names a technology element: an application is not pinned, hidden or opened on its own (hide its node, or leave the applications out with `applications: false`).
-* *The relationships* are the ones the elements of the layer declare, and the dependencies between environments that the deployed applications give: an application of one environment that depends on an application the environment does not host, found in an environment or a node that the first `uses`, is a link between the two application boxes when both are drawn, and between the boxes of the nodes that host them otherwise. These are the dependencies that the `overview`, `detailed` and `deep` viewpoints draw; the dependencies inside one environment stay out, as in those viewpoints. `uses` is a scope and no link of its own. The dependency is read from the relationships of the application that is deployed and from the ones of everything inside it (a relationship of a component of a deployed container counts); a relationship that ends inside the same application gives nothing, and the destination must still be a deployed application (see <<using-environments>>).
+* *The relationships* are the ones the elements of the layer declare, and the dependencies between environments that the deployed applications give: an application of one environment that depends on an application the environment does not host, found in an environment or a node that the first `uses`, is a link between the two application boxes when both are drawn, and between the boxes of the nodes that host them otherwise. These are the dependencies that the `overview`, `detailed` and `deep` viewpoints draw; the dependencies inside one environment stay out, as in those viewpoints. `uses` is a scope and no link of its own. The dependency is read from the relationships of the application that is deployed and from the ones of everything inside it (a relationship of a component of a deployed container counts); a relationship that ends inside the same application gives nothing. The destination is read the same way: a relationship that ends on a component of a deployed container is a dependency towards the node that hosts the container, and the destination must be a deployed application or inside one (see <<using-environments>>).
 
 A saved map of the technology layer that says neither property draws both, so that a saved map of the technology layer draws more than it did in 0.14.0, where it drew neither the applications nor the dependencies between the environments. The properties are `applications` and `relationships`, `false` to leave one out; any other value is no choice, in both tools. They mean nothing in a map of the application layer. A comparison of two plateaus gives the states to the applications as it gives them to the other boxes.
 
@@ -928,7 +930,7 @@ error: the story `s` (`manifests/story.s.yaml`) step 1 says `at: to-be` but the 
 
 The last one is told for a workspace that has no plateau too. The command line checks the steps when it loads the workspace, and draws them with `archicode stories generate` (see <<stories-generate>>). The fork of the layered Brightcart ships a story that tells one (`fork_tour`: its steps are told at `baseline`, at `saas` and at `inhouse`, two plateaus that override `baseline` and do not stand on each other, and compared with `baseline`, with each other and with the plateaus `marketplace` stands on), next to `order_journey`, whose steps name no plateau, and `seller_journey`, whose steps are all told at `marketplace`. A name that the plateau of a step lacks is no mistake either: `stories generate` skips the step with a warning, and the editor, which plays the steps and draws their plateaus, tells it (see <<editor-stories>>).
 
-Workspaces written before stories became manifests keep their views in `views:` of `workspace.yaml`, and may have a `stories:` there too: both are still read. The editor offers to move them to manifests, which keeps `workspace.yaml` small and free of the rewrites an editor save makes to it.
+Workspaces written before stories became manifests keep their views in `views:` of `.archicode.yaml`, and may have a `stories:` there too: both are still read. The editor offers to move them to manifests, which keeps `.archicode.yaml` small and free of the rewrites an editor save makes to it.
 
 ==== Rendering
 
@@ -1073,18 +1075,18 @@ One thing cannot be computed: that two elements are the same thing. An element t
 
 === The layout
 
-The folder of the architecture holds one `workspace.yaml`, with the settings, the styles and the facets that every plateau shares, the manifests of the root, and, for each other plateau, the manifests that say `plateau: <id>` in their header and a manifest of kind `archicode.morin.io/plateau` with its patches. The folders of the example `domain_plateaus` of this manual (`src/doc/examples/domain_plateaus` in the source repository) are drawn in <<plateaus>>; the tutorial below builds it.
+The folder of the architecture holds one `.archicode.yaml`, with the settings, the styles and the facets that every plateau shares, the manifests of the root, and, for each other plateau, the manifests that say `plateau: <id>` in their header and a manifest of kind `archicode.morin.io/plateau` with its patches. The folders of the example `domain_plateaus` of this manual (`src/doc/examples/domain_plateaus` in the source repository) are drawn in <<plateaus>>; the tutorial below builds it.
 
 === The settings in short
 
 [cols="1,3"]
 |===
-| `settings.manifests.paths` | The folders the manifests are read from. A layered workspace ends a path with `/**` to read the folders of its plateaus too (see <<manifests-folders>>).
+| `settings.manifests.paths` | The folders the manifests are read from. A layered workspace ends a path with `+/**+` to read the folders of its plateaus too (see <<manifests-folders>>).
 | `settings.current` | The plateau that is drawn when none is asked for; the last one by default when the plateaus form one line. It must be a plateau of the tree. The editor writes it too (see <<editor-current-plateau>>), and opens the folder on it when nothing else says which plateau to draw.
 | `settings.plateaus` | No longer exists (see the note in <<plateaus>>): a plateau is a `plateau:` header and a manifest of kind `archicode.morin.io/plateau`.
 |===
 
-A path of `manifests.paths` is relative to the folder of `workspace.yaml`, below it (no `..`) and not absolute. Every rule is checked before anything is read, and each problem is reported. The details, with the messages, are in <<plateaus>>.
+A path of `manifests.paths` is relative to the folder of `.archicode.yaml`, below it (no `..`) and not absolute. Every rule is checked before anything is read, and each problem is reported. The details, with the messages, are in <<plateaus>>.
 
 === The states
 
@@ -1167,16 +1169,16 @@ warning: replaces of shop.report-b (application layer): shop.nowhere is not an e
 
 === A tutorial: from one workspace to a review of the changes
 
-The tutorial builds the example `domain_plateaus` of this manual, an invented bookshop, from the architecture it has today to a review of the changes in the editor, including the things that change shape. Its commands run in the folder of `workspace.yaml`; the output quoted is the one the commands print.
+The tutorial builds the example `domain_plateaus` of this manual, an invented bookshop, from the architecture it has today to a review of the changes in the editor, including the things that change shape. Its commands run in the folder of `.archicode.yaml`; the output quoted is the one the commands print.
 
-*Step 1. Start from the architecture you have.* An existing workspace is already your first plateau: its manifests are the root, `baseline`, and nothing in them has to change, not even a header. To keep the next plateaus in folders beside them, move the manifests to a folder of their own and read it with a path that ends in `/**` (see <<manifests-folders>>); the folder does not have to be called `baseline`, the name is for the reader.
+*Step 1. Start from the architecture you have.* An existing workspace is already your first plateau: its manifests are the root, `baseline`, and nothing in them has to change, not even a header. To keep the next plateaus in folders beside them, move the manifests to a folder of their own and read it with a path that ends in `+/**+` (see <<manifests-folders>>); the folder does not have to be called `baseline`, the name is for the reader.
 
 ----
 mkdir -p plateaus/baseline
 mv manifests/* plateaus/baseline/
 ----
 
-.`workspace.yaml`
+.`.archicode.yaml`
 [source,yaml]
 ----
 include::examples/domain_plateaus/.archicode.yaml[]
@@ -1338,7 +1340,7 @@ $ ls
 plateaus
 views-to-be
 views-to-be-vs-baseline
-workspace.yaml
+.archicode.yaml
 $ ls views-to-be-vs-baseline
 gap.json
 gap.md
@@ -1447,18 +1449,18 @@ new      element  application  shop.search    -        name: "Search"
 [[plateaus-upgrade]]
 === Upgrading: what breaks, and what does not
 
-*From `settings.plateaus` to layers.* The key no longer exists, and no command converts a workspace: a `workspace.yaml` that still has it is refused with the one line quoted in <<plateaus>>. To convert one by hand:
+*From `settings.plateaus` to layers.* The key no longer exists, and no command converts a workspace: a `.archicode.yaml` that still has it is refused with the one line quoted in <<plateaus>>. To convert one by hand:
 
 . Keep the manifests of your first plateau: they are the root, `baseline`, and need no header. Its id changes: `--plateau as-is`, `settings.current: as-is` and scripts that name it must say `baseline` (a `Kind: Plateau` manifest with `id: baseline` and `name: "As is"` keeps the name for people).
 . For each later plateau, from the oldest, write a manifest of kind `archicode.morin.io/plateau` (its `id`, `name`, `horizon` and `override`: the previous plateau, or `baseline` for the first). The manifests of elements that are _new_ in that plateau get `plateau: "<id>"` in their header. What the plateau removes or changes among the elements it inherits becomes a patch (`REMOVE`, `SET`, `ADD` or `MERGE`, see <<plateau-patches>>). The copies of the unchanged manifests in the old complete folders are deleted: a manifest that declares again an element of a plateau below it is the error of <<plateau-header>>.
-. Delete `settings.plateaus`, and write `manifests.paths` (a workspace with plateaus could not have one; the default is the folder `manifests`) with an entry that ends in `/**` for the folders that hold the plateaus (see <<manifests-folders>>).
+. Delete `settings.plateaus`, and write `manifests.paths` (a workspace with plateaus could not have one; the default is the folder `manifests`) with an entry that ends in `+/**+` for the folders that hold the plateaus (see <<manifests-folders>>).
 . Run `archicode plateau list` and `archicode diff --plateau <id>` for each plateau: the counts should be the ones you had.
 
 Four differences to know: the views of a plateau are written in `views-<plateau>` and the views of its comparison in `views-<plateau>-vs-<against>`; every plateau but the root is now compared with the plateau it overrides when its views are generated; a plateau id is lowercase letters, digits, `_` and `-` (a capital, or a dot as in `v1.2`, is refused: `error: the plateau id `v1.2` in ... is not valid`); and `--baseline` is `--against`. The `from` key of a plateau, which was reserved, and `archicode plateau add`, are gone.
 
 *Earlier changes.* Two things that used to pass stop with an error that says what to change. Everything else about a workspace that has no plateau is unchanged: it is read, and generates its views in the same folders, byte for byte as before (checked on the views of this repository's workspaces and on a copy of a real workspace of 3,411 views).
 
-. *A path of `settings.manifests.paths` with `..` or an absolute path.* `../shared`, `/srv/manifests` and `C:\data` are refused: one folder holds a whole workspace, so that the editor, which only reaches the folder it opened, reads what the command line reads. Move the folder below the folder of `workspace.yaml`, or move `workspace.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected.
+. *A path of `settings.manifests.paths` with `..` or an absolute path.* `../shared`, `/srv/manifests` and `C:\data` are refused: one folder holds a whole workspace, so that the editor, which only reaches the folder it opened, reads what the command line reads. Move the folder below the folder of `.archicode.yaml`, or move `.archicode.yaml` up to a folder that holds both, and change the path to match. A path that stays below the folder (`manifests`, `node_modules/<module>/manifests`) is not affected.
 . *A reference declared twice.* Two manifests, a manifest and an element nested in another one, or two elements of one file that share a reference used to pass silently, and which of them was drawn depended on chance. The command line now stops, names the reference and the two files, and writes nothing, and the editor reports the same in the same words (see <<duplicate-references>>). Remove one of the declarations, or give one of them another `id`. Two identical copies count too. This check applies to workspaces without plateaus as well; with plateaus, the same reference in a plateau and in its ancestor is the same error, and in two plateaus that do not stand on each other it is no duplicate, since they are alternatives.
 
 Nothing is to be changed in the manifests themselves: their format is the one it always was, with two optional keys more, `plateau` in the header and `replaces` (see <<plateau-replaces>>), that an older version of ArchiCode ignores.
@@ -1467,11 +1469,29 @@ Nothing is to be changed in the manifests themselves: their format is the one it
 
 . *A view or a story that says `plateau:`.* It is accepted and means nothing, with no message at all (see <<plateau-untied>>; the warning that earlier versions printed is gone). A workspace whose only `plateau:` is on a view or a story is no longer a workspace of plateaus, so `--plateau` and `settings.current` are errors for it, as for any workspace without plateaus. Two plateaus that each declared a view of one id, or a story of one id, are now one error: a view and a story are declared once.
 . *Kinds.* An element declared with `header.parent` under a parent that cannot hold its kind (a system under a container) is an error, with or without patches, where it used to load in a plateau that had none (see <<nesting>>); an id with a dot is an error. The group kinds were refused here at the time; since 0.17 there is no group at all (see below).
-. *Empty values and spellings.* A key with nothing after it and an item with no value in a list are absent, in both tools (`global-enabled:` with nothing is `true`; an empty `workspace.yaml` is the default workspace; an item of `relationships` with no value draws no relationship in the editor either). The keys of `settings.facets` are `global-enabled`, `directory-name-template`, `hide-unlinked` and `json-path`; the camel-case spelling was still read then; since 0.17 it is refused (see below). The text of `header.parent`, `header.plateau` and `header.version` is the text as written: `parent: yes` is the reference `yes`.
+. *Empty values and spellings.* A key with nothing after it and an item with no value in a list are absent, in both tools (`global-enabled:` with nothing is `true`; an empty `.archicode.yaml` is the default workspace; an item of `relationships` with no value draws no relationship in the editor either). The keys of `settings.facets` are `global-enabled`, `directory-name-template`, `hide-unlinked` and `json-path`; the camel-case spelling was still read then; since 0.17 it is refused (see below). The text of `header.parent`, `header.plateau` and `header.version` is the text as written: `parent: yes` is the reference `yes`.
 . *The maps.* `archicode views generate --view <id>` draws a view of the `map` viewpoint, which it used to skip with a warning (see <<map-viewpoint>>).
 . *The order of the warnings.* The facets are read in the order of the file, so the warnings that name them, and the creation of their folders, come in that order.
-. *Folders of a comparison.* A folder that holds both `gap.json` and `gap.md` is left out of a `/**` read, whichever command wrote it (see <<manifests-folders>>).
+. *Folders of a comparison.* A folder that holds both `gap.json` and `gap.md` is left out of a `+/**+` read, whichever command wrote it (see <<manifests-folders>>).
 . *The editor.* The pages are Plateaus, Applications, Environments, Elements, Stories, Files and Settings (see <<editor-pages>>); the band has two lists; Files has no choice of what it lists.
+
+[[upgrade-0-17]]
+*What changes for a reader who knows 0.17.0.* This release has one change that stops every workspace, the name of the workspace file, so it comes first. There is no release notes file in the repository: this block and the two that follow are the notes. The `error:` lines below are the ones the tools print.
+
+. *The workspace file is `.archicode.yaml`* (Breaking). It was `workspace.yaml`. The new name is the default of `-w` for every command and the name the editor looks for, and there is no alias and no command that converts: rename the file once, with `git mv workspace.yaml .archicode.yaml`, or keep the old name and say so with `-w workspace.yaml`. A folder that has `workspace.yaml` and no `.archicode.yaml` is refused, by every command and by the editor, with this one line, exit code 1, before anything is loaded or written:
++
+----
+error: `workspace.yaml` is no longer the name of the workspace file: rename it to `.archicode.yaml` (`git mv workspace.yaml .archicode.yaml`), or tell the command line where it is with `-w workspace.yaml`
+----
++
+`archicode -w workspace.yaml views generate` works as it did, since the path is explicit. `archicode editor serve` is the exception: it opens a folder that has a `.archicode.yaml`, so `-w workspace.yaml` is refused with a usage error (exit code 2), `the editor opens a folder with a .archicode.yaml: /work/workspace.yaml is not named so.`, followed by the usage of the command; rename the file for the editor. The name begins with a dot, so the file is hidden: `ls -a` shows it, and a file dialog shows it when you ask for hidden files. It is never read as a manifest, in a folder read with `+/**+` or without it (see <<manifests-folders>>); a `workspace.yaml` left behind in a folder that a path ending in `+/**+` reads is read as a manifest and refused (`+error: `workspace.yaml` is not valid: unknown key `settings` (known: content, header) at `settings` (line 5, column 3)+`), so remove it. Change the scripts, the CI files and the Docker commands that name the old file; the views, the tables and everything else the commands write are byte for byte what they were (checked on the twenty workspaces of this repository).
+. *`archicode stories generate` writes more* (see <<stories-generate>>). The folder of a step that compares two plateaus gets the table of changes, `gap.md` and `gap.json`, and the facets of the workspace are drawn beside each step, in `<NN>-<view>-<facet>` folders. The files that were written are the same, byte for byte, with one exception: `global-enabled: false` is now honoured, so a workspace with that setting and stories no longer gets the folders of the global views of its steps, only those of its facets. 0.17.0 drew them. A workspace that does not set it loses nothing.
+. *More links in the technology views* (see <<using-environments>> and <<map-technology>>). A relationship whose destination is inside a deployed application (a component of a container that a node lists in `applications`) is now a dependency towards the node that hosts it, as a relationship whose source is inside already was; and the links between the nodes of one environment that a facet that keeps a flow draws read the relationships of everything inside the deployed applications. The overview, detailed and deep views of the technology layer and the Map of the technology layer gain the links, in the command line and in the editor. The views of a workspace that deploys no application with such relationships are the same, byte for byte, and so are the views of all the examples of this manual. In the layered Brightcart of the repository's tests, the technology views of the facets `journey`, `no-externals` and `without-cart` and of their comparisons gain links, all inside one environment.
+. *The editor reads more like the command line* (see <<editor-elements>>). A tagged number is read as the command line reads it: `!!int 0x1F` is `31`, `!!int 1:30` stays the text `1:30`, `!!binary aGVsbG8=` stays the text `aGVsbG8=` (the page used to refuse them); `foo: .inf` under a key the header does not have is the unknown key, as in the command line; and a style written `line-gap: 0x1F`, `round-corner: 8.0` or `1.5` is drawn with the number the command line reads. The numbers of 0.17.0 are unchanged otherwise.
+. *The save keeps more as written* (see <<editor-elements>>). An anchor, an alias or a tag inside square or curly brackets, a text that goes over several lines and a list item whose map starts under its dash are kept as written when you save a file, where the editor wrote the whole file again in its own layout and lost its comments. A few layouts still fall back (see <<plateau-limits>>).
+. *The editor checks before it writes* (see <<editor-replaces>> and <<editor-plateau-delete>>). *Add replaces* is checked as *Write replaces* is; a merge that the layer cannot hold is refused as a whole, where its first pair used to be written alone; and the delete of a plateau that others override is also refused when a step of a story is compared `against` a plateau above that would lose what it draws, or when a saved view is drawn in such a plateau. A delete that was allowed and loses nothing is written as before. How to fold a plateau into the one above by hand is told in <<fold-by-hand>>.
+. *Three rough edges*, fixed (see <<editor-compare>>, <<editor-rename>> and <<facets>>): the open key under the diagram keeps its 30 % cap when the window is resized, a write that fails after you said yes to the dialog of the plateaus gives the form back as typed, and a facet the kernel refuses shows its sentence as the error of the view instead of "facet removes this element".
+. *The editor is quicker on a large pair of plateaus*: finding what has nothing to draw and resolving the patches take a quarter to a fifth of the time they took on the 591 elements of the test pair, and grow with the elements instead of faster (see <<plateau-limits>>). No output changes.
 
 *What changes for a reader who knows 0.16.0.* This release removes things that were deprecated, so the first four items can stop a workspace that loaded before. Each prints one `error:` line, exit code 1, and writes nothing; the sentences below are the ones the tools print.
 
@@ -1484,7 +1504,7 @@ Nothing is to be changed in the manifests themselves: their format is the one it
 . *Deleting a plateau in the middle.* A plateau that other plateaus override can be deleted in the editor, in one step; they go under its parent and the dialog lists what each loses (see <<editor-plateau-delete>>).
 . *Write replaces refuses an entry its layer cannot hold*, when the comparison is several layers apart and a layer in between removed the replaced element: the button is off, with a sentence (see <<editor-replaces>>).
 . *The key of a comparison is folded* under the diagram, with a *Key* button (see <<editor-compare>>), and a write the editor refuses, or an error while it reads the form, no longer empties the form: what you typed stays (see <<editor-rename>>).
-. *The numbers.* The editor reads a plain scalar that YAML 1.1 reads as a number as the command line does, and saves it back as written: `id: 010` is the reference `8` in both tools, `parent: 0` and `version: 1` in a header are the text as written, `line-gap: 0x1F` is accepted for a whole number and `"0x1F"`, quoted, is refused, and `.inf` is the one line `+Malformed numeric value '.inf' at `content` +`. Four differences are left and pinned (see <<plateau-limits>>). The command line is unchanged.
+. *The numbers.* The editor reads a plain scalar that YAML 1.1 reads as a number as the command line does, and saves it back as written: `id: 010` is the reference `8` in both tools, `parent: 0` and `version: 1` in a header are the text as written, `line-gap: 0x1F` is accepted for a whole number and `"0x1F"`, quoted, is refused, and `.inf` is the one line `+Malformed numeric value '.inf' at `content` +`. Two differences are left and pinned (see <<plateau-limits>>), and 0.18 reads the others like the command line (above). The command line is unchanged.
 
 *What changes for a reader who knows 0.15.0.* Since that release, these things moved; the first can change a file that a workspace had, the second an error:
 
@@ -1506,19 +1526,21 @@ One more thing changed for a workspace that has plateaus and that marks its boxe
 [[plateau-limits]]
 === Limits of today
 
-These are things that do not work yet, or not the way you might expect. Each is known, and the tools say so when they meet one. Those with an issue number are filed on GitHub (`tmorin/archicode#N`); the last two are not planned.
+These are things that do not work yet, or not the way you might expect. Each is known, and the tools say so when they meet one. Those marked _not planned_ will not be built; the others are known and not scheduled.
 
 *Plateaus.*
 
+* *The editor does not fold a plateau into the one above* (not planned). Deleting a plateau that others override is one step and tells what the plateaus above lose, but no operation moves the patches and the elements of the deleted plateau into the plateau above, and the delete is refused when a step or a view would lose what it draws. Folding is done by hand, and <<fold-by-hand>> says how.
 * *The editor does not move an element a plateau inherits* (a patch never changes an `id` or a `parent`): draw the plateau that declares it.
 * *A comparison with the parent cannot stay on the parent.* On the band, the parent in the tree of *Compare with* is read as _Past (follows the plateau drawn)_, so the comparison moves to the new parent when another plateau is drawn. There is no fixed comparison with the parent.
 * *Which plateau the editor and the command line draw first.* The editor draws the plateau of the address, then the one this browser drew last, then `settings.current` (which *Settings* writes, see <<editor-current-plateau>>), then the root; the command line draws the last plateau when the plateaus form one line and no `settings.current` says otherwise.
-* *The editor is slow on very large pairs of plateaus* (#125). The number of kernel calls does not grow with the elements, but the time of one call does: for the 591 elements and 839 changes of a test pair (`replaces-large-pair`), in Node, the first call that finds what has nothing to draw takes about half a second where the 82 elements of the layered Brightcart take 16 milliseconds, ten to thirty times longer for seven times more elements. No shipped workspace is that large.
+* *The editor and a large pair of plateaus.* Finding what has nothing to draw and resolving the patches grow with the number of elements, not faster: for the 591 elements and 839 changes of a test pair (`replaces-large-pair`), in the page, the first call takes about 0.08 second, where the 82 elements of the layered Brightcart take 10 milliseconds. What still grows faster is the unfolded Map, which builds the view again for each box it could open. No shipped workspace is that large.
 
 *Reading and writing files.*
 
-* *The save of the editor writes a file again in its own layout* in these cases (#78): an anchor, an alias or a tag inside square or curly brackets (`qualifiers: [&a oven, *a]`); a tag on a text that goes over several lines, when the tag changes what the text reads as; and a layout the save does not follow (an anchor on a list item whose map starts on the next line); an anchor or a tag on a key (`&k name: x`) is the other case: the command line reads it and the editor refuses with `an anchor or a tag on a key is not supported`. In the first two the file is read and the model is what it says, but the comments are lost and the aliases are written as their values; the third is not opened.
-* *Four differences in how the two tools read a plain number are left* (the issue #103 is closed: a plain scalar that YAML 1.1 reads as a number is read alike, see <<plateaus-upgrade>>). The editor does not tell the line and the column of a mistake in a file: it names the place by its path in the file, as the command line does (see <<errors-and-warnings>>). A number that the reader refuses under a key the header does not take (`foo: .inf`) is told as the number by the editor, as the unknown key by the command line. A float that JavaScript prints another way than Java (`5.0`) is the text in a field of any shape: a `value` of a patch is the text `"5.0"` in the editor, a number for the command line. The diagram of the editor draws a style written `line-gap: 0x1F` or `round-corner: 8.0` with the default (it draws only digits), where the command line reads the number.
+* *The save of the editor writes a file again in its own layout* in a few cases, with the comments lost and the aliases written as their values: an anchor or a tag on a key inside brackets (`{&k zone: north}`); a single pair in a list in brackets that also holds an anchor, an alias or a tag (`[&a one: two]`); a tagged text over several lines inside brackets; and a list item whose map starts under its dash, nested inside another such item. The file is read and the model is what it says. The other layouts that were in this list in 0.17.0 are kept as written (see <<editor-elements>>).
+* *An anchor or a tag on a mapping key* (`&k name: x`) is read by the command line and refused by the editor, which does not open the file and says `an anchor or a tag on a key is not supported` (not planned: a splice on a key could lose text, for a form nobody writes). *The merge key `<<`* is no merge in either tool: it is read as a key named `<<`, which a manifest does not have, so both refuse it (not planned).
+* *Differences in how the two tools read a number or a tag are left, and pinned* (a plain scalar that YAML 1.1 reads as a number, a tagged number and a style number are read alike, see <<plateaus-upgrade>>). The editor does not tell the line and the column of a mistake in a file: it names the place by its path in the file, as the command line does (see <<errors-and-warnings>>), because it reads a file into a tree that has no positions. A float that JavaScript prints another way than Java (`5.0`) is the text in a field of any shape: a `value` of a patch is the text `"5.0"` in the editor, a number for the command line (the qualifiers it sets are texts in both). A `!!binary` text in a field that is a whole number, a boolean or an enum is the wrong shape (found a string) for the editor, and `Cannot deserialize value of type ...` for the command line, which names a Java class. A few spellings that only Java defines differ in the sentence of the mistake (the digits of other scripts, a character that is not a base64 code point).
 
 *The command line.*
 
@@ -1536,15 +1558,17 @@ ArchiCode comes with an editor to browse, edit and draw a workspace without leav
 
 There are two ways to open it:
 
-- *Served by the command line.* `archicode editor serve` serves the editor and opens the folder of the `workspace.yaml` in it, with nothing to pick. It works in any browser. See <<serve-the-editor>>.
+- *Served by the command line.* `archicode editor serve` serves the editor and opens the folder of the `.archicode.yaml` in it, with nothing to pick. It works in any browser. See <<serve-the-editor>>.
 - *From the published page.* The page published next to this documentation, at `/editor/` of the same site, asks for a folder. That needs the File System Access API, which Chrome, Edge, Brave and Opera have and Firefox and Safari do not: with one of those, use the command above instead.
+
+The folder to open is the one that holds the workspace file, `.archicode.yaml`. You pick the folder, not the file, so the hidden name is no obstacle in the dialog of the browser. A folder that has a `workspace.yaml` and no `.archicode.yaml` is not opened: the editor gives the reason beside the folder, with the sentence the command line prints (see <<upgrade-0-17>>).
 
 [[editor-folders]]
 The published page remembers, in the browser, every folder it opened, with the name its workspace gives itself (see <<editor-workspace-name>>). When the page opens again, it opens the last folder directly if the browser still lets it read it; otherwise it asks for a click (*Reopen*), because a browser only gives that permission back on a click. *Close folder*, at the top right, closes the folder and shows the list of the remembered folders: the closed one stays in it, and the next visit does not open it by itself. When no folder is open, the list shows each folder by the name of its workspace, with the name of the folder below it when they differ, most recent first: a click on one opens it, *Remove from the list* makes the browser forget it, and nothing is deleted on disk. Under each folder, the list says what a click will meet, as the browser answers without asking anything: _Opens without asking_, _Will ask for permission_ (the browser shows its prompt), _Blocked by the browser_, or _Could not be reached_ / _Could not be checked_ (the folder may have been moved or deleted). A folder picked again is not added twice, even by two tabs at the same moment: the browser then holds two records for it for an instant, and the editor merges them into one, keeping the name of its workspace and its place in the list. A folder that cannot be opened (the permission refused, the folder moved or deleted) stays in the list, which says why, until it is removed. Served by `archicode editor serve`, the editor has one folder, the one of the server: there is no list and no *Close folder*.
 
 The editor loads `elkjs` (the diagram layout) and CodeMirror (the file editor) from a CDN when it opens. Without network access, it still works, with plainer diagrams and file editor.
 
-In *Settings*, the paths of the manifests are one per line, and a path that ends in `/**` is read with the folders below it (see <<manifests-folders>>); a new element, view or story is written in the folder of the first path. The editor served by `archicode editor serve` does not list the hidden entries of a folder at all, so a path that names a hidden folder reads nothing there, and does not list a link to a file that points out of the folder, which the command line reads. A browser that lets the page read a folder gives no way to tell a link from a folder: the page stops at a folder that is one it is inside of, but reads a link to another folder, which the command line does not.
+In *Settings*, the paths of the manifests are one per line, and a path that ends in `+/**+` is read with the folders below it (see <<manifests-folders>>); a new element, view or story is written in the folder of the first path. The editor served by `archicode editor serve` does not list the hidden entries of a folder at all, `.archicode.yaml` of the folder itself excepted (it is served at the root only, not in a sub-folder), so a path that names a hidden folder reads nothing there, and does not list a link to a file that points out of the folder, which the command line reads. A browser that lets the page read a folder gives no way to tell a link from a folder: the page stops at a folder that is one it is inside of, but reads a link to another folder, which the command line does not.
 
 [[editor-reads]]
 The editor reads and writes YAML manifests (`.yaml` and `.yml`) only. The command line reads JSON and TOML manifests too (see <<manifest-formats>>): the editor reads neither, so what such a file declares is missing from its trees and diagrams, and relationships that point at it show as dangling. It says so, in *Files* (which names the files) and above the trees of *Elements* (which counts them).
@@ -1588,13 +1612,13 @@ The *Elements* page is the tree of both layers of the workspace on the left, and
 [[editor-rename]]
 *Renaming an element in a workspace of plateaus.* Saving the form of an element with another `id` rewrites every reference to it. In a workspace that has plateaus the rewrite is made in the files of the plateau that is drawn and of the plateaus that stand on it, since the others do not see the element through it, and in the views and the stories of the workspace, which belong to no plateau and so follow everywhere. A plateau beside the one drawn (one that does not stand on it and does not override it) may still declare the element, or inherit it, under its old reference: a view or a step that names the new reference then cannot be drawn there any more. When that is so, saving the form first opens a dialog before anything is written. It names the plateaus that keep the old reference and the views and the steps of the stories (by story and number) that could no longer be drawn in them, and has two buttons: *Cancel*, which writes nothing, and *Rename anyway*, which writes what a rename always wrote. To keep every view whole, cancel, draw each of those plateaus and give the element the same new id there; once every plateau that has it uses the new reference, the views are drawn in all of them. Nothing is asked when no view or step is at risk, when the plateau drawn is `baseline` (every plateau stands on it), or in a workspace with no plateau.
 
-*Cancelling.* *Cancel* (or Escape, or a click beside the dialog) writes nothing and gives the form back as you typed it: the new id, the name, the description, what was in the boxes that add a qualifier or a tag, the relationship rows and the `replaces`, and *Save all changes* is lit as before. The same goes for the dialog that lists the plateaus a write changes (_Writing in baseline changes other plateaus_, see <<editor-writing>>). Saying yes writes the form that was typed. A write that the editor refuses (`Not written: ...`) and an error while it reads the form give the form back as typed too, beside the sentence that tells why: nothing you typed is lost.
+*Cancelling.* *Cancel* (or Escape, or a click beside the dialog) writes nothing and gives the form back as you typed it: the new id, the name, the description, what was in the boxes that add a qualifier or a tag, the relationship rows and the `replaces`, and *Save all changes* is lit as before. The same goes for the dialog that lists the plateaus a write changes (_Writing in baseline changes other plateaus_, see <<editor-writing>>). Saying yes writes the form that was typed. A write that the editor refuses (`Not written: ...`), a write that fails after you said yes to the dialog of the plateaus, and an error while it reads the form give the form back as typed too, beside the sentence that tells why: nothing you typed is lost.
 
 *Move* changes a reference too, and the views and the steps follow it in every plateau, so it asks the same question when you press the button of its dialog with a parent chosen and the move is allowed: the same list of plateaus that keep the old reference and of views and steps that could no longer be drawn there, in words of a move, with the buttons *Back to Move* and *Move anyway*. *Back to Move*, Escape and a click beside the dialog give the _Move_ dialog back with its parent and its search as they were, and write nothing, so that you can choose another parent. A move that no sibling plateau is concerned by (none keeps the old reference, or no view or step names it there), a move in `baseline` and a move in a workspace with no plateau are written at once, as they were.
 
 The badges and colours of styled stereotypes, on the boxes and in the tree, are explained in <<stereotypes-and-styles>>.
 
-Changes stay in memory, with a mark on the tree for each modified element, until *Save all changes* writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one. A file that is saved keeps what the changes did not touch: its comments, its blank lines, the quotes of the values, its final line break and, for a file that starts with one, its UTF-8 byte-order mark (`workspace.yaml` as well as the manifests; a browser never hands the mark to the page, so the editor reads the first three bytes of the file to know it, and puts the mark back when it writes; a file the editor creates has none). Only the lines that changed are rewritten, and a value written anew (a renamed id, a new parent, a reference that follows, a `replaces`) keeps the quoting of the line it replaces, the way its key is written and its trailing comment; a line that is added is written like the lines around it (double quotes, single quotes or none, as the file does), and plain when the file quotes nothing. A list or a map written in square or curly brackets (`replaces: [a, b]`, `tags: {zone: north}`, on one line or on several, nested, as an item of a list of maps) stays as written when the change does not reach it; a change to it writes it as a block, in which the comments that were inside its brackets stay as lines of the block (a comment above a value above it, a comment after a value at the end of its line), and the quotes of its values and of its keys and the words of its booleans (`on`, `yes`) are the ones you wrote, except for a value the change sets. The same words (`yes`, `no`, `on`, `off`, `~`) and a key with no value (`description:`) stay as written in the lines the change does not reach, and a comment or a blank line above a line that is rewritten stays above it. A list written at the same column as its key (`tags:` then `- a` at the same column) is followed too: its items and comments stay, and an item that is added is written at the column the list uses; the comment after `[]`, `{}` or a key with no value stays on the line when a change fills the collection, and the comments inside empty brackets stay under the key. A manifest that uses a YAML anchor, an alias or a tag is read by the editor and by the command line the same way: an alias (`description: *n`) is the value of the anchor it points at (`name: &n "Bakery"`), not its name, and a tag qualifies a scalar (`!!str 12` is the text `12`; `!!int`, `!!float`, `!!bool` and `!!null` read it as such, any other tag as a text). A merge key (`+<<: *base+`) is not a merge: it is a key named `+<<+`. The anchor, the alias and the tag stay as written in the lines a change does not touch, and a line a change rewrites keeps its anchor and its tag; an alias stays an alias as long as the line still says what its anchor says, and is written as its value when a change makes them differ. The editor does not follow an anchor, an alias or a tag inside square or curly brackets (`[&a one, *a]`), nor a tag on a text that goes over several lines: such a file is written again entirely in the editor's own layout, its comments lost and its aliases written as their values (see tmorin/archicode#78). An anchor or a tag on a key (`&k name: x`) is read by the command line and refused by the editor, which does not open the file and says so (see <<plateau-limits>>). When a file is laid out in a way the editor does not write (an indentation other than two spaces, for example), it is written again entirely in the editor's own layout, and its comments are lost.
+Changes stay in memory, with a mark on the tree for each modified element, until *Save all changes* writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one. A file that is saved keeps what the changes did not touch: its comments, its blank lines, the quotes of the values, its final line break and, for a file that starts with one, its UTF-8 byte-order mark (`.archicode.yaml` as well as the manifests; a browser never hands the mark to the page, so the editor reads the first three bytes of the file to know it, and puts the mark back when it writes; a file the editor creates has none). Only the lines that changed are rewritten, and a value written anew (a renamed id, a new parent, a reference that follows, a `replaces`) keeps the quoting of the line it replaces, the way its key is written and its trailing comment; a line that is added is written like the lines around it (double quotes, single quotes or none, as the file does), and plain when the file quotes nothing. A list or a map written in square or curly brackets (`replaces: [a, b]`, `tags: {zone: north}`, on one line or on several, nested, as an item of a list of maps) stays as written when the change does not reach it; a change to it writes it as a block, in which the comments that were inside its brackets stay as lines of the block (a comment above a value above it, a comment after a value at the end of its line), and the quotes of its values and of its keys and the words of its booleans (`on`, `yes`) are the ones you wrote, except for a value the change sets. The same words (`yes`, `no`, `on`, `off`, `~`) and a key with no value (`description:`) stay as written in the lines the change does not reach, and a comment or a blank line above a line that is rewritten stays above it. A list written at the same column as its key (`tags:` then `- a` at the same column) is followed too: its items and comments stay, and an item that is added is written at the column the list uses; the comment after `[]`, `{}` or a key with no value stays on the line when a change fills the collection, and the comments inside empty brackets stay under the key. A manifest that uses a YAML anchor, an alias or a tag is read by the editor and by the command line the same way: an alias (`description: *n`) is the value of the anchor it points at (`name: &n "Bakery"`), not its name, and a tag qualifies a scalar (`!!str 12` is the text `12`; `!!int`, `!!float`, `!!bool` and `!!null` read it as such, any other tag as a text; a tagged number is read as the command line reads it: `!!int 0x1F` is `31`, `!!int 1:30` stays the text `1:30` and `!!binary aGVsbG8=` stays the text `aGVsbG8=`). A merge key (`+<<: *base+`) is not a merge: it is a key named `+<<+`. The anchor, the alias and the tag stay as written in the lines a change does not touch, and a line a change rewrites keeps its anchor and its tag; an alias stays an alias as long as the line still says what its anchor says, and is written as its value when a change makes them differ. An anchor, an alias or a tag inside square or curly brackets (`qualifiers: [&a oven, *a]`), a text that goes over several lines (tagged or not) and a list item whose map starts on the line under its dash (`-`, then its keys, with or without an anchor) stay as written as well: every line a change does not reach is the line of the file, byte for byte. A collection in brackets that a change reaches is written as a block that keeps its anchors, aliases and tags; an anchored value that a change edits keeps its anchor, and each alias of it is written as the value it had, since it would now say the new one. An anchor or a tag on a key (`&k name: x`) is read by the command line and refused by the editor, which does not open the file and says so (see <<plateau-limits>>). A few layouts are still written again entirely in the editor's own layout, with the comments lost and the aliases written as their values, and <<plateau-limits>> lists them; so is a file laid out in a way the editor does not write (an indentation other than two spaces, for example).
 
 [[editor-map]]
 === Applications and Environments: the Map
@@ -1694,12 +1718,12 @@ Nothing is written to the disk by an edit. The view gets the mark *modified*, in
 
 A view that cannot be drawn (its element was deleted, nothing that was pinned exists any more, the viewpoint is unknown) keeps its message, what it draws, its fields and its steps in the center of the page, with no diagram and no panel.
 
-A story is a file (`story.<id>.yaml`) in the first manifests folder, and so is each named view. They wait in memory, like the other changes, with a mark on the file, for *Save all changes*, and *Cancel* gives them up: only the files that changed are written. When an older workspace still has views or stories in `workspace.yaml`, Stories says so, on both sides, with *Move to manifests*, which works whatever plateau is drawn.
+A story is a file (`story.<id>.yaml`) in the first manifests folder, and so is each named view. They wait in memory, like the other changes, with a mark on the file, for *Save all changes*, and *Cancel* gives them up: only the files that changed are written. When an older workspace still has views or stories in `.archicode.yaml`, Stories says so, on both sides, with *Move to manifests*, which works whatever plateau is drawn.
 
 [[editor-facets]]
 === Facets
 
-The facets of the workspace (see <<facets>>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out, and the elements it removes, with the relationships that pointed at them. In the tree, the elements the facet leaves with nothing to draw are greyed. The facets themselves are edited in the *Settings* perspective, along with the other settings of the workspace (see <<technical-configuration>>).
+The facets of the workspace (see <<facets>>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out, and the elements it removes, with the relationships that pointed at them. In the tree, the elements the facet leaves with nothing to draw are greyed. A facet that the kernel refuses (an old path of the previous engine, an invalid JSONPath) shows its sentence as the error of the view. The facets themselves are edited in the *Settings* perspective, along with the other settings of the workspace (see <<technical-configuration>>).
 
 [[editor-files]]
 === Files
@@ -1710,21 +1734,21 @@ The facets of the workspace (see <<facets>>) are in a list in the header of the 
 
 *Fold and unfold.* A click on the heading of a group folds and unfolds it (Enter and Space do the same), and *Fold all* and *Unfold all* do every group. A folded group still tells, in its heading, that one of its files has an _error_ or is _modified_. Opening a file, by its row, by an address or by a link of a message, unfolds its group; a fold that you make afterwards is kept. The folds are the page's own: they last as long as the editor stays open on the same folder, they are not written in the workspace, and they do not make a file _modified_.
 
-*Files that belong to no plateau.* The last group, *No plateau*, holds the files that belong to no plateau: the views and the stories (they are declared in no plateau, see <<plateau-untied>>) and a file the editor could not read, which is always listed, with its error. `workspace.yaml` is not in the list: it is the page *Settings*.
+*Files that belong to no plateau.* The last group, *No plateau*, holds the files that belong to no plateau: the views and the stories (they are declared in no plateau, see <<plateau-untied>>) and a file the editor could not read, which is always listed, with its error. `.archicode.yaml` is not in the list: it is the page *Settings*.
 
 *A plateau that disagrees with the folder.* The folder of a manifest does not matter to the tools: the plateau is what the header says. The folders of a project are often named after its plateaus, though, and a file moved from one to the other with its header left alone is read as the plateau of its header, not of its folder. When a manifest sits in a folder that is named like another plateau of the workspace (the deepest such folder counts), its row has a _folder_ mark, a note above the groups counts such files (_N files sit in the folder of another plateau_), and its page has a warning: `a/x.yaml` says `plateau: b` in its header but sits in the folder `a`; `b/y.yaml` has no `plateau` key, so it belongs to `baseline`, but sits in the folder `b`. It is only a warning: nothing is refused, the command line says nothing, and the file is where you put it. A folder that is named like no plateau says nothing.
 
 [[editor-workspace-name]]
 === Name of the workspace
 
-A workspace can have a name, the optional `name` key of its `settings` (see <<workspace>>). *Settings* has a section, *Workspace*, with a *Name* field. Unlike the theme below, the name is a setting of the workspace: it is written to `workspace.yaml`, so it counts as a change to save and lights *Save all changes*.
+A workspace can have a name, the optional `name` key of its `settings` (see <<workspace>>). *Settings* has a section, *Workspace*, with a *Name* field. Unlike the theme below, the name is a setting of the workspace: it is written to `.archicode.yaml`, so it counts as a change to save and lights *Save all changes*.
 
 When the workspace has a name, the editor shows it at the top left of the window, in place of the name of the folder, in the title of the page, in the <<editor-folders,list of remembered folders>> and in the "Opening" messages, which use the name the workspace had when its folder was last opened; the name of the folder is then the tooltip of the name. Without a name, or with a blank one, the editor shows the name of the folder, as before, and an emptied *Name* is left out of the file.
 
 [[editor-current-plateau]]
 === The current plateau
 
-*Settings*, in its section *Workspace*, has a field *Current plateau* when the workspace has at least two plateaus (or when `workspace.yaml` already says `current`): a list of the plateaus, in the order of the band, and _None_. It writes `settings.current` into `workspace.yaml`, the plateau the command line draws when `--plateau` is not given, and the plateau the editor opens the folder on when nothing else says which: no address with `plateau=`, and no plateau that this browser drew last in this folder. A file that has no `settings` gets one with that line alone; _None_ takes the line out (and leaves `settings: {}` when it was the only one). A name that is no plateau is refused with the sentence of the load. Like the other fields of *Settings* it is a change to save with *Save all changes*, and it is disabled while the plateaus have mistakes (only what the file says and _None_ can be chosen then).
+*Settings*, in its section *Workspace*, has a field *Current plateau* when the workspace has at least two plateaus (or when `.archicode.yaml` already says `current`): a list of the plateaus, in the order of the band, and _None_. It writes `settings.current` into `.archicode.yaml`, the plateau the command line draws when `--plateau` is not given, and the plateau the editor opens the folder on when nothing else says which: no address with `plateau=`, and no plateau that this browser drew last in this folder. A file that has no `settings` gets one with that line alone; _None_ takes the line out (and leaves `settings: {}` when it was the only one). A name that is no plateau is refused with the sentence of the load. Like the other fields of *Settings* it is a change to save with *Save all changes*, and it is disabled while the plateaus have mistakes (only what the file says and _None_ can be chosen then).
 
 It does not redraw the plateau on screen: what you chose on the band is not undone by a setting for the next time. With _None_, the command line draws the last plateau when the plateaus form one line, and asks for `--plateau` otherwise, while the editor opens the root.
 
@@ -1813,8 +1837,24 @@ The name of a plateau draws it, as a choice in the list *Plateau* of the band do
 * *A plateau that others override.* It is deleted in the same one step. The plateaus that override it go under its parent: their `override` is rewritten, line by line, in their manifest of kind `archicode.morin.io/plateau` (the key is taken out when the new parent is the root). What the deleted plateau declared and patched is lost to every plateau that stands on it, and the dialog says it before anything is written: for each plateau above, its new parent, the elements it loses, the ones it gets back (the deleted plateau had removed them) and the ones that read differently. *Delete plateau* is the yes to those plateaus; a change to any other plateau is still asked. A comparison with the past of a plateau that overrode it follows it to the new parent.
 * *What goes, and only that.* Its manifest of kind `archicode.morin.io/plateau` and every manifest whose header says its id, listed one by one (a file not saved yet is marked _new, not saved yet_, and a modified one says its changes go with it). A view or a story that says `plateau: <id>` belongs to no plateau: it stays, and the dialog says so. The files leave the disk at the next *Save all changes*, like any change, and *Cancel* gives the delete up with the others.
 * *Files that the editor does not read.* A `.toml` or `.json` manifest, or a YAML file that the editor cannot read, may say `plateau: <id>`, or `override: <id>`, for the command line: the delete touches and rewrites none of them, the dialog lists them, and says that the command line still reads the plateau if one of them names it.
-* *`settings.current`.* When it names the plateau (or `baseline`, when the last plateau goes), the key is taken out of `workspace.yaml`, and the dialog says that the command line then draws the last plateau when the plateaus form one line, and asks for `--plateau` otherwise. A `current` that names another plateau, gone already, is left as it is.
-* *What blocks it.* A step of a story that names the plateau in `at` or `against`, a view or a story step that names an element that only this plateau declares (it would exist in no plateau), a step told `at` a plateau above that would lose the element it draws, and a plateau above that would no longer resolve (a patch that selects nothing, a relationship or a parent that is gone): the dialog lists the sentences, offers no *Delete*, and says to change them first, in Stories for the steps, or to repair the plateau above or give it another parent with *Edit*. They are not cleared for you: a step told at a plateau is your statement of which state it shows. On the layered Brightcart, `inhouse` cannot be deleted for that reason (`marketplace` patches what `inhouse` declares).
+* *`settings.current`.* When it names the plateau (or `baseline`, when the last plateau goes), the key is taken out of `.archicode.yaml`, and the dialog says that the command line then draws the last plateau when the plateaus form one line, and asks for `--plateau` otherwise. A `current` that names another plateau, gone already, is left as it is.
+* *What blocks it.* A step of a story that names the plateau in `at` or `against`, a view or a story step that names an element that only this plateau declares (it would exist in no plateau), a step told `at` or compared `against` a plateau above that would lose the element it draws, a saved view that is drawn in a plateau above and would lose its element (or, for a map, every element it is pinned on), and a plateau above that would no longer resolve (a patch that selects nothing, a relationship or a parent that is gone): the dialog lists the sentences, offers no *Delete*, and says to change them first, in Stories for the steps and the views, or to repair the plateau above or give it another parent with *Edit*. They are not cleared for you: a step told at a plateau is your statement of which state it shows. A step compared `against` a plateau above is refused even when the comparison might still draw it, since the step names that plateau for what it has. The sentences are these (`tour` is a story, `beta` and `marketplace` stand above the plateau deleted, and `loyalty` is an element only the deleted plateau declares):
++
+----
+the story `tour` (`stories/story.tour.yaml`) step 1 is told at `beta`, which would no longer have `loyalty`
+the story `tour` (`stories/story.tour.yaml`) step 1 is compared with `marketplace`, which would no longer have `loyalty`
+the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `marketplace`, which would no longer have `loyalty`
+----
++
+A plateau that nothing of this kind concerns is deleted as before, byte for byte. On the layered Brightcart, `inhouse` cannot be deleted for that reason (`marketplace` patches what `inhouse` declares).
+* [[fold-by-hand]]*Folding a plateau into the one above, by hand.* The editor does not move the patches and the elements of a plateau into the plateau above: that is a choice about your history, and no button makes it. When the refusal tells you the plateau above would lose what the plateau deleted gave it, and you want that plateau to keep it, fold by hand, in the files, with the plateau `to-be` and the plateau `later` above it (`later` overrides `to-be`):
++
+. In every manifest whose header says `plateau: "to-be"`, write `plateau: "later"`. These are the elements `to-be` declares.
+. In the manifest of kind `archicode.morin.io/plateau` of `later`, change `override: "to-be"` to the plateau `to-be` overrode (`"baseline"`, or take the line out when that is the root), and put the `patches` of `to-be` in front of those of `later`, in their order: `later` was written to be read over `to-be`, so its patches come last. A patch of `later` that refers to what `to-be` declared (a `REMOVE` of an element of `to-be`) still finds it, since it is now declared by `later` itself.
+. Delete the manifest of kind `archicode.morin.io/plateau` of `to-be`, and any manifest that still names it, with your file manager or `git rm`.
+. Change every `at` and `against` of a story step, and every `plateau` of a view or a story that names `to-be`, to `later`, or to the plateau that fits: `archicode` tells the ones you forgot, one `error:` line each (`the story `migration` (`plateaus/story.migration.yaml`) step 2 says `at: to-be`, which is not a plateau of this workspace (the plateaus are `baseline`, `later`)`).
++
+Check it with `archicode plateau list` (`to-be` is gone, `later` has the plateau `to-be` overrode as its parent) and with `archicode diff --plateau later --against baseline`, before and after: the table is the same, row for row. On a copy of the example `domain_plateaus` with the plateau `later` of the tutorial, the only line that changes is the column PLATEAU of the cascade of the removals, which says `later` where it said `to-be`. This is for a plateau with one plateau above it; with two, keep it: folding it into one would leave the other without what it declared. The folding loses what the plateau `to-be` was on its own: a comparison `--plateau to-be`, its views folder `views-to-be`, and the `against: "to-be"` of any step, which you changed above.
 * *After it.* The plateau it overrode is drawn, with no comparison, when the plateau drawn was the one deleted; the plateau drawn stays, compared with nothing, when the one deleted was the one compared with. The folders of views that the command line generated (`views-<id>` and the folders of its comparisons) are not manifests: they stay where they are.
 
 [[editor-compare]]
@@ -1845,7 +1885,7 @@ A box that did not change is drawn as it always was. A removed element is not in
 
 The look is a default, given to the stereotype of the same name as the state (`new`, `changed`, `removed`, `contains-changes`). A style of your own for that name in `styles` (see <<stereotypes-and-styles>>) wins property by property: your `line-color` replaces the colour of the line and keeps its style and thickness, your `background-color` fills the box and replaces the tint, your `font-color` replaces the grey of a removed title. The state is the last stereotype of a box, so it overrides the style of the others, as a later stereotype always does. A `new` or `changed` tag that you wrote by hand on an element that does not have that state is only your stereotype, with your own style if you gave it one, and the command line draws it the same way (see <<plateau-state-tags>>).
 
-*The key is folded.* Under the diagram, the key starts as one row: a sample of the box and of the link, the mark, the name and the count of each state the drawing uses, and a *Key* button. The row wraps on a wide window and stays one row that scrolls along under 700 pixels. *Key* (`aria-expanded`) opens the rest, which says how each line is drawn and the note about references that point nowhere; the open key takes at most 30 % of the height of the diagram area and scrolls inside. Open or folded is not saved: it is not in the address or the workspace, and a new folder folds it again. Open, the key adds an entry for each state the drawing uses, with a sample of its box and its link, its mark, its name, how its line is drawn, and how many boxes and links of that state the drawing shows. The SVG and PNG downloads draw the same marks, lines, struck titles, pills and tints; like the other keys, the key itself is not part of the image.
+*The key is folded.* Under the diagram, the key starts as one row: a sample of the box and of the link, the mark, the name and the count of each state the drawing uses, and a *Key* button. The row wraps on a wide window and stays one row that scrolls along under 700 pixels. *Key* (`aria-expanded`) opens the rest, which says how each line is drawn and the note about references that point nowhere; the open key takes at most 30 % of the height of the diagram area and scrolls inside, and the cap follows a resize of the window (it is worked out again when the window changes size, so a key left open keeps within 30 % of a smaller window). Open or folded is not saved: it is not in the address or the workspace, and a new folder folds it again. Open, the key adds an entry for each state the drawing uses, with a sample of its box and its link, its mark, its name, how its line is drawn, and how many boxes and links of that state the drawing shows. The SVG and PNG downloads draw the same marks, lines, struck titles, pills and tints; like the other keys, the key itself is not part of the image.
 
 [[editor-changes-panel]]
 ==== The Changes panel
@@ -1880,7 +1920,7 @@ The panel of a selected element, link or removed box adds a *What changed* block
 
 A change of the description alone is a change of wording, not of structure. The *Changes* panel counts them apart ("10 of the changed elements are changes of wording only") and keeps them visible by default; the checkbox *Hide wording-only changes* sets them aside in one click: those elements are drawn as unchanged (and a box that only they changed is no longer marked `contains-changes`, nor kept by *Changes only*), their rows leave the list, the counts of changed elements drop by their number and the panel says "10 wording-only changes hidden". Relationships are never set aside: a change of a label, a qualifier or a tag is structure.
 
-Both choices are yours and not the workspace's: they are remembered per folder in this browser, like the plateau and the comparison, never written to `workspace.yaml`, and they do nothing while nothing is compared.
+Both choices are yours and not the workspace's: they are remembered per folder in this browser, like the plateau and the comparison, never written to `.archicode.yaml`, and they do nothing while nothing is compared.
 
 [[editor-changes-address]]
 ==== The address and the trees
@@ -1907,9 +1947,15 @@ One more refusal belongs to comparisons several layers apart. `replaces` is read
 “a” is not an element of “p1”, the plateau “p2” builds on (a layer in between removed it): replaces is read against that plateau, so the entry would name nothing there. Compare “p2” with “p1”, or write the entry in the layer that still has “a” (a plateau that overrides one that holds it); nothing was written.
 ----
 
-A split or a merge is written one pair at a time and each replaced element is checked alone. A comparison one layer apart is not concerned. The field *Add replaces* of the form of an element types a reference by hand and is not checked.
+A split has one replaced element for all its pairs, so they are all refused or all allowed. A merge is written one pair at a time, so every pair is checked before the first is written, and the merge is refused as a whole: if the layer cannot hold one of the replaced elements, the buttons of all its pairs are off (the first pair keeps its own sentence above), and none is written, where the pair the layer could hold used to be written alone. The other pairs say why:
 
-*By hand.* The edit form of an element has a *Replaces* section as soon as the workspace has several plateaus: the list, each reference with a button to remove it, and a field to add one (it completes with the references of the plateau compared with). A reference the plateau compared with does not have is accepted and flagged ("not in “Base”", with the name of that plateau), because you may have written it for another baseline; one that the plateau drawn still has is flagged "still in this plateau: ignored". An element cannot replace itself, and a reference is listed once. The details of an element that replaces something list it too.
+----
+“n” would merge “a” and “b”, which is written one pair at a time, so every pair is checked before the first is written: “a” is not an element of “p1”, the plateau “p2” builds on (a layer in between removed it): replaces is read against that plateau, so the entry would name nothing there. Compare “p2” with “p1”, or write the entry in the layer that still has “a” (a plateau that overrides one that holds it). If a pair is no part of the merge, set it aside with “Not related”; nothing was written.
+----
+
+A pair set aside with *Not related* is no part of the merge, so the others are written as a lone pair is. A merge whose every replaced element the layer holds is written as it was, and a comparison one layer apart is not concerned.
+
+*By hand.* The edit form of an element has a *Replaces* section as soon as the workspace has several plateaus: the list, each reference with a button to remove it, and a field to add one (it completes with the references of the plateau compared with). A reference the plateau compared with does not have is accepted and flagged ("not in “Base”", with the name of that plateau), because you may have written it for another baseline; one that the plateau drawn still has is flagged "still in this plateau: ignored". An element cannot replace itself, and a reference is listed once. *Add replaces* is checked as *Write replaces* is, when a comparison is on and the plateau drawn is the more recent of the two: if the comparison is several layers apart and a layer in between removed the reference, the field shows the sentence above under it, keeps what you typed, and nothing is written. With no comparison, or one layer apart, a reference is written as before. The details of an element that replaces something list it too.
 
 *Warnings.* What the comparison ignored in the `replaces` it was given (see <<plateau-replaces-warnings>>) is a short list in the *Changes* panel, under the candidates, with the sentences of the command line; the editor does not write them to the console. A second list, *Hand-written states*, has one line per element and word for the state words you wrote by hand that the comparison does not give to the element (see <<plateau-state-tags>>), with the sentences of the command line, and the panel of such an element says it too, so that a box with a `new` badge that is not drawn as new tells why.
 
@@ -1956,7 +2002,7 @@ Like every edit, a move is not written until *Save all changes*, and *Cancel* gi
 
 The editor is drawn in a light or a dark theme. By default it follows the one of the operating system. *Settings* has a section, *Appearance (this browser)*, to choose *Light*, *Dark* or *System* instead: the choice applies at once, to the page, the code editors and the SVG and PNG exported from a diagram.
 
-The choice is a preference of the browser, not of the workspace. It is remembered by the browser alone (nothing is written to `workspace.yaml` or to any file of the folder), it is not a change to save, and it does not light *Save all changes*. A browser that refuses to remember it keeps the choice until the page is closed.
+The choice is a preference of the browser, not of the workspace. It is remembered by the browser alone (nothing is written to `.archicode.yaml` or to any file of the folder), it is not a change to save, and it does not light *Save all changes*. A browser that refuses to remember it keeps the choice until the page is closed.
 
 [[editor-keyboard]]
 === Keyboard
@@ -2000,10 +2046,10 @@ Every command speaks on its error output in the same way, and keeps its standard
 error: dangling reference: payments
 error: unknown plateau `nope`: the plateaus of this workspace are `baseline` and `to-be`
 error: `manifests/shop.yaml` is not valid: the value has the wrong shape (found an array) at `header` (line 1, column 9)
-error: the workspace file `/work/workspace.yaml` does not exist (`-w` names another one)
+error: the workspace file `/work/.archicode.yaml` does not exist (`-w` names another one)
 ----
 
-*The same sentence in the editor.* A manifest or a `workspace.yaml` that the command line refuses, the editor refuses with the same sentence, without the file and the line (the editor shows it beside the file): a key that the element, the setting or the header does not have, a nested element whose `kind` is missing or none of those its parent takes, a value of the wrong shape, a `header.kind` that is none of the kinds, a key that is required and absent. The place is told by its path in the file, as the command line does:
+*The same sentence in the editor.* A manifest or a `.archicode.yaml` that the command line refuses, the editor refuses with the same sentence, without the file and the line (the editor shows it beside the file): a key that the element, the setting or the header does not have, a nested element whose `kind` is missing or none of those its parent takes, a value of the wrong shape, a `header.kind` that is none of the kinds, a key that is required and absent. The place is told by its path in the file, as the command line does:
 
 ----
 unknown key `nme` (known: description, id, name, qualifiers, relationships, replaces, tags) at `nme`
@@ -2019,7 +2065,7 @@ An option that does not exist or a missing argument is a usage error: the comman
 *Warnings.* A warning says that the command went on but that something is probably not what you meant. It is one line starting with `warning: ` on the error output, printed when the command has done its work (and before the error, if it fails), once for a sentence the command would say many times. The log is not where to look: the log level of the application is `ERROR`, which hides the warnings of the log. A warning does not change the exit code. The command line warns of:
 
 * a step of a story that names a view nobody declares;
-* a step of a story that `archicode stories generate` skips: it names an element that the plateau of the step does not have, or it is told at a plateau and compared with that same plateau (see <<stories-generate>>);
+* a step of a story that `archicode stories generate` skips: it names an element that the plateau of the step does not have, or it is told at a plateau and compared with that same plateau; or, for one facet only, a facet that removes the element it names (see <<stories-generate>>);
 * a view that cannot be drawn in the plateau, because it names an element that the plateau does not have and another plateau has: skipped by `views generate --view`, or, for the entries of the lists of a map, left out (see <<plateau-views-lacking>>);
 * a viewpoint that the command line has no service for, skipped by `views generate --view`;
 * what a comparison ignored in the `replaces` of a plateau, with `archicode diff` and `archicode views generate` (see <<plateau-replaces-warnings>>);
@@ -2036,7 +2082,7 @@ A command that has nothing to warn of prints nothing on its error output. Nothin
 archicode editor serve
 ----
 
-Serves the editor (see <<editor>>) and opens in it the folder of the workspace file, which must be named `workspace.yaml`. The command prints a URL, `http://127.0.0.1:48080/?token=...`: open it in a browser (the page is refused without the token; the editor removes it from the address bar, and a session cookie, which opens the page only and never the API, lets a reload in).
+Serves the editor (see <<editor>>) and opens in it the folder of the workspace file, which must be named `.archicode.yaml` (`-w` can name that file in another folder; any other name is a usage error, see <<upgrade-0-17>>). The command prints a URL, `http://127.0.0.1:48080/?token=...`: open it in a browser (the page is refused without the token; the editor removes it from the address bar, and a session cookie, which opens the page only and never the API, lets a reload in).
 
 - `--port` (`-p`): the port to listen on, `48080` by default.
 - `--host`: the address to bind to, `0.0.0.0` by default, which a Docker `-p` mapping needs.
@@ -2087,7 +2133,7 @@ The command offers also customization Capabilities:
 archicode views generate --plateau to-be
 ----
 
-- Comparison: a plateau other than the root is compared with the plateau it overrides, or with `--against <id>`, any other plateau (see <<plateau-comparison>>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in `views-<plateau>-vs-<against>` (and one folder per facet, `views-<plateau>-vs-<against>-<facet>`), next to two files that tell the same in text: `gap.md` and `gap.json`, the table of changes that `archicode diff` prints (see <<diff>>), with the elements that moved, split or merged, the candidates (see <<plateau-replaces>>) and the cascade of the `REMOVE` patches (see <<plateau-cascade>>), and the same warnings about `replaces` on the error output. A workspace that sets `settings.facets.global-enabled: false` has nothing but these two files in `views-<plateau>-vs-<against>`: its views are in the folders of its facets. The root overrides nothing, so it is drawn alone unless `--against` names a plateau to compare it with (`--plateau baseline --against to-be` writes `views-baseline-vs-to-be`). An unknown plateau given to `--against`, the plateau itself, or `--against` on a workspace that has no plateau, stops the command before anything is written. `--output` is, with plateaus, the beginning of the name of these folders (see <<manifests-folders>> for what it means for the manifests that a path with `/**` reads).
+- Comparison: a plateau other than the root is compared with the plateau it overrides, or with `--against <id>`, any other plateau (see <<plateau-comparison>>). The command then writes the plain views of the plateau, as above, and in addition the views of the comparison, which draw what is new, changed and removed. They are written in `views-<plateau>-vs-<against>` (and one folder per facet, `views-<plateau>-vs-<against>-<facet>`), next to two files that tell the same in text: `gap.md` and `gap.json`, the table of changes that `archicode diff` prints (see <<diff>>), with the elements that moved, split or merged, the candidates (see <<plateau-replaces>>) and the cascade of the `REMOVE` patches (see <<plateau-cascade>>), and the same warnings about `replaces` on the error output. A workspace that sets `settings.facets.global-enabled: false` has nothing but these two files in `views-<plateau>-vs-<against>`: its views are in the folders of its facets. The root overrides nothing, so it is drawn alone unless `--against` names a plateau to compare it with (`--plateau baseline --against to-be` writes `views-baseline-vs-to-be`). An unknown plateau given to `--against`, the plateau itself, or `--against` on a workspace that has no plateau, stops the command before anything is written. `--output` is, with plateaus, the beginning of the name of these folders (see <<manifests-folders>> for what it means for the manifests that a path with `+/**+` reads).
 
 .Generate Views - Comparison
 [source,shell]
@@ -2105,7 +2151,7 @@ A facet applies to the views of a comparison as it does to the others, and a fac
 archicode views generate --plateau to-be --against baseline --only-changes
 ----
 
-- Selective View Rendering: The power of customization lies in your hands. The command can be tailored to render specific views based on their unique identifier, providing you with control over the scope of generated visualizations. A view that a manifest or `workspace.yaml` names (its `id`), a map included (see <<map-viewpoint>>), is drawn when it is asked for, and the views asked for are the only ones drawn: no built-in view comes with them. A view that cannot be drawn in the plateau is skipped with a warning (see <<plateau-views-lacking>>).
+- Selective View Rendering: The power of customization lies in your hands. The command can be tailored to render specific views based on their unique identifier, providing you with control over the scope of generated visualizations. A view that a manifest or `.archicode.yaml` names (its `id`), a map included (see <<map-viewpoint>>), is drawn when it is asked for, and the views asked for are the only ones drawn: no built-in view comes with them. A view that cannot be drawn in the plateau is skipped with a warning (see <<plateau-views-lacking>>).
 
 .Generate Views - Selective View Rendering
 [source,shell]
@@ -2220,8 +2266,9 @@ archicode stories generate --help
 
 `views generate` does not draw the stories. `archicode stories generate [--story <id>]...` draws the steps of the stories of the workspace, one folder for each step:
 
-* A step is drawn like a view of the plateau it is told at: its `at`, else `--plateau`, else `settings.current` (see <<story-step-plateaus>>). A plateau is loaded once, however many steps are told at it. When the step says `against`, it is drawn like the views of a comparison of that plateau with the `against` one (`views generate --plateau <at> --against <against>`); the comparison writes no `gap.md` or `gap.json`, which belong to `diff` and `views generate`, and no facet is applied: the stories are drawn with the global views only.
-* The files go to `<views.path>-stories/<story>/<NN>-<view>/`, with `views.path` read without the `-<plateau>` that a workspace of plateaus adds (`views-stories` for the default), `NN` the number of the step from `01`, and `<view>` the view the step names, else the viewpoint of the view it carries (whose file is `step_NN.puml`). The renderer then adds its own folders as it does for any view (`plantuml/application/...`). `--output` (`-o`) replaces the beginning of the folder name, as in `views generate`, and `--engine` (`-e`) chooses the renderer.
+* A step is drawn like a view of the plateau it is told at: its `at`, else `--plateau`, else `settings.current` (see <<story-step-plateaus>>). A plateau is loaded once, however many steps are told at it. When the step says `against`, it is drawn like the views of a comparison of that plateau with the `against` one (`views generate --plateau <at> --against <against>`); the comparison is made once for the pair, and the table of its changes, `gap.md` and `gap.json`, is written in the folder of the step, beside its `plantuml/` folder, byte for byte what `views generate` writes in `views-<at>-vs-<against>` for the same pair (a step that compares nothing has none).
+* The files go to `<views.path>-stories/<story>/<NN>-<view>/`, with `views.path` read without the `-<plateau>` that a workspace of plateaus adds (`views-stories` for the default), `NN` the number of the step from `01`, and `<view>` the view the step names, else the viewpoint of the view it carries (whose file is `step_NN.puml`). The renderer then adds its own folders as it does for any view (`plantuml/application/...`).
+* The facets of the workspace (`settings.facets`) are drawn as `views generate` draws them: next to the folder of a step, one folder per facet, `<NN>-<view>-<facet>` (the name follows `directory-name-template`), with the same views in it; for a step that compares, the facet is applied to the comparison, and no table is written in a facet folder. A facet that removes the element a step names is a warning, `+warning: skip fork_tour/2 in the facet `no-externals`: it names `commerce-saas`, which the facet removes+`, and only that facet's folder is skipped. `global-enabled: false` is honoured as it is by `views generate`: the folder of the global views is not drawn and the folders of the facets are. In 0.17.0 a workspace with that setting still got the global folders of its steps; it does not any more. `--output` (`-o`) replaces the beginning of the folder name, as in `views generate`, and `--engine` (`-e`) chooses the renderer.
 * `--story` (`-s`) draws the stories named, repeated for several; with none, every story is drawn, in the order of their ids. An unknown story is one `error:` line and exit 1, before anything is written: `+error: no story `nope` in the workspace (known: migration)+`.
 * A tree of plateaus that forks needs `--plateau`, as every command that loads a plateau (see <<plateau-choose>>), even when all the steps say `at`.
 * A step that cannot be drawn is a warning and is skipped; the others are drawn and the exit code is 0: `+warning: skip fork_tour/7: it is told at the plateau `saas` and compared with it: there is nothing to compare+` and `+warning: skip <story>/<n>: it names `x`, which the plateau `p` does not have+`. A story with no step is a warning too.
@@ -2232,7 +2279,7 @@ archicode stories generate --help
 archicode stories generate
 ----
 
-writes `views-stories/migration/01-overview/` to `04-overview/`, one for each step of the story `migration`. On the layered Brightcart, `archicode stories generate --story fork_tour --plateau saas` draws the seven steps of `fork_tour` in `views-stories/fork_tour/01-shop_overview/` to `07-overview/`, the last one skipped with the warning above, since it is told at `saas` and compared with it.
+writes `views-stories/migration/01-overview/` to `04-overview/`, one for each step of the story `migration`. On the layered Brightcart, `archicode stories generate --story fork_tour --plateau saas` draws the seven steps of `fork_tour` in `views-stories/fork_tour/01-shop_overview/` to `07-overview/`, the last one skipped with the warning above, since it is told at `saas` and compared with it. Each step also has the folders of the three facets of the workspace (`01-shop_overview-journey`, `01-shop_overview-no-externals`, `01-shop_overview-without-cart`), and the steps `02` to `06`, which compare two plateaus, have a `gap.md` and a `gap.json` beside their `plantuml/` folder (the step `02` has no folder for `no-externals`: it names `commerce-saas`, which that facet removes, and the command warns). On `domain_plateaus`, whose story `migration` compares steps 2 and 4 with `baseline`, `02-overview` and `04-overview` have the two files and there is no facet.
 
 [[plateau-list]]
 === List the plateaus
@@ -2466,7 +2513,7 @@ In this initial step, we identify the foundational elements of the application l
 
 - PaymentGateway: The element symbolizes external payment processing services like Stripe and Braintree that facilitate secure financial transactions.
 
-.Step #1 - The addition of the elements in `workspace.yaml`
+.Step #1 - The addition of the elements in `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/design_example_step_1/workspace_element.yaml[]
@@ -2485,7 +2532,7 @@ Once the elements are identified, we design the relationships between them:
 
 - EcommercePlatform leverages PaymentGateway: Another relationship is formed from "EcommercePlatform" to "PaymentGateway" to illustrate the platform's integration with external payment processing services. Through this relationship, the platform enables customers to complete transactions using various payment methods.
 
-.Step #1 - The addition of the relationships in `workspace.yaml`
+.Step #1 - The addition of the relationships in `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/design_example_step_1/workspace_element.yaml[]
@@ -2557,7 +2604,7 @@ The first task involves breaking down the "EcommercePlatform" Solution into dist
 
 - User Interface: Provides personalized product recommendations based on user behavior.
 
-.Step #2 - The addition of the system elements in `workspace.yaml`
+.Step #2 - The addition of the system elements in `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/design_example_step_2/workspace_element.yaml[]
@@ -2579,7 +2626,7 @@ The second task focuses on designing relationships between the newly defined "Sy
 
 - Order Processing → Payment Gateway: The "Order Processing" system interfaces with external "Payment Gateway" services to facilitate secure payment processing and transaction completion.
 
-.Step #2 - The addition of the relationships in `workspace.yaml`
+.Step #2 - The addition of the relationships in `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/design_example_step_2/workspace_relationship.yaml[]
@@ -2593,7 +2640,7 @@ In the third task, we refine the "Ingress" and "Egress" relationships of the "Ec
 
 - The "Egress" relationship from the "EcommercePlatform" to "Payment Gateway" can be removed, as it is now covered by the "Order Processing" system's interaction with external "Payment Gateway" services for secure payment processing and transaction completion.
 
-.Step #2 - The removal of useless relationships in `workspace.yaml`
+.Step #2 - The removal of useless relationships in `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/design_example_step_2/workspace_refined.yaml[]
@@ -2665,7 +2712,7 @@ The first task involves decomposing the "UserManagement" System into distinct "C
 
 - UserProfile Database: Stores and manages user profile data, providing a reliable data source for the UserProfile Container.
 
-.Step #3 - The addition container elements in `workspace.yaml`
+.Step #3 - The addition container elements in `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/design_example_step_3/workspace_element.yaml[]
@@ -2677,7 +2724,7 @@ The second task focuses on designing relationships between the newly defined "Co
 
 - UserProfileService → UserProfileDatabase: The "UserProfileService" Container interacts with the "UserProfileDatabase" to store and retrieve user profile data.
 
-.Step #3 - The addition container elements in `workspace.yaml`
+.Step #3 - The addition container elements in `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/design_example_step_3/workspace_relationship.yaml[]
@@ -2689,7 +2736,7 @@ In the third task, we refine the "Ingress" and "Egress" relationships of the "Us
 
 - The "Egress" relationship from "UserManagement" to "SocialIdentityProvider" is refined to become "IdentityAndAccessManagement" → "SocialIdentityProvider". This adjustment aligns with the system's architecture, where the "IdentityAndAccessManagement" container handles interactions with "Social Identity Providers" for secure user authentication and identity verification.
 
-.Step #3 - The addition container elements in `workspace.yaml`
+.Step #3 - The addition container elements in `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/design_example_step_3/workspace_refined.yaml[]
@@ -2782,7 +2829,7 @@ The facets written for the previous engine (Jayway) are no longer read since 0.1
 error: facet f: the facet path `$.application..elements[?(@.qualifiers anyof ['a'])]` uses `@.qualifiers anyof ['a']`, which is not JSONPath (RFC 9535) and is no longer read: write `@.qualifiers[?(@ == 'a')]`
 ----
 
-Nothing is written, and the exit code is 1; the editor shows the same sentence as the error of the view. Rewrite the paths as follows:
+Nothing is written, and the exit code is 1; the editor shows the same sentence as the error of the diagram, and of a saved view that names the facet, where it used to say that the facet removes the element (it said so for any facet that the kernel refuses, which hid the sentence). Rewrite the paths as follows:
 
 [cols="1,1"]
 |===
@@ -2804,7 +2851,7 @@ Nothing is written, and the exit code is 1; the editor shows the same sentence a
 The keys of a facet are written in kebab-case: `global-enabled`, `directory-name-template`, `hide-unlinked` and `json-path`. The camel-case spelling is no longer read either, and the sentence says which key to write:
 
 ----
-error: `workspace.yaml` is not valid: unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked` (line 5, column 27)
+error: `.archicode.yaml` is not valid: unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked` (line 5, column 27)
 ----
 
 Relationships that have no tag, or no qualifier, simply do not have the field: `@.tags['k'] != 'v'` selects them, `@.tags['k'] == 'v'` does not.
@@ -2837,9 +2884,9 @@ With this facet, the view of `shop.web` in `views-without-catalog` no longer sho
 
 In this initial phase, establishing a well-defined workspace is paramount. We're essentially laying down the groundwork where all subsequent actions and implementations will take place. We revert to a previous model - an ecommerce platform - to set this stage, ensuring we have a tangible, relatable context for the steps that will follow.
 
-In this code snippet, we illustrate the initial configuration and elements included in the workspace.yaml file. This is the foundation upon which the ecommerce platform model is built.
+In this code snippet, we illustrate the initial configuration and elements included in the .archicode.yaml file. This is the foundation upon which the ecommerce platform model is built.
 
-.Step #1 - The initial `workspace.yaml`
+.Step #1 - The initial `.archicode.yaml`
 [source,yaml]
 ----
 include::examples/facet_example_step_1/.archicode.yaml[]
@@ -2875,9 +2922,9 @@ As we step into the second phase of our journey, the focal point shifts towards 
 
 In the context of the ecommerce platform, every component's interaction is bound by the validation of Access Tokens. We’re designing relationships between the components of the ecommerce platform and the Access component, all qualified with the term _oidc_.
 
-We expand the ___workspace.yaml___ file to integrate the __oidic__ relationships. It captures the intricate connections between the ecommerce platform components and the Access component, emphasizing the validation of Access Tokens.
+We expand the `.archicode.yaml` file to integrate the __oidic__ relationships. It captures the intricate connections between the ecommerce platform components and the Access component, emphasizing the validation of Access Tokens.
 
-.Step #2 - The `workspace.yaml` with the _oidc_ relationships
+.Step #2 - The `.archicode.yaml` with the _oidc_ relationships
 [source,yaml]
 ----
 include::examples/facet_example_step_2/.archicode.yaml[]
@@ -2912,9 +2959,9 @@ Step 3 marks a pivotal moment where we delve into the facet definition for autho
 
 The facet definition is embodied in the creation of the _oidc_ facet within the workspace configuration. This facet, named _oidc_, filters out elements and relationships that aren't tagged with the term _oidc_. The result is a refined view where authorization concerns are not just visible but are the focal point, enabling a deeper, uncluttered insight into these specific interactions.
 
-The _workspace.yaml_ file is enhanced with the definition of the _oidc_ facet. This inclusion is a significant stride towards achieving a tailored view that zeroes in on the authorization aspects of the architecture.
+The `.archicode.yaml` file is enhanced with the definition of the _oidc_ facet. This inclusion is a significant stride towards achieving a tailored view that zeroes in on the authorization aspects of the architecture.
 
-.Step #3 - The `workspace.yaml` with the facet definition
+.Step #3 - The `.archicode.yaml` with the facet definition
 [source,yaml]
 ----
 include::examples/facet_example_step_3/.archicode.yaml[]
@@ -2949,9 +2996,9 @@ In this step, we transition from the specific authorization focus, reintegrating
 
 This newly defined _main_ facet is crucial; it's a tool that filters out all relationships tagged with the term _oidc_. The outcome is a holistic yet focused view of the ecommerce platform, excluding the specific authorization elements, for a balanced and comprehensive perspective.
 
-The _workspace.yaml_ is updated to include the definition of the _main_ facet. This acts as a filter, excluding the _oidc_ qualified relationships, thus providing a clearer view of the primary architecture without the specific authorization elements.
+The `.archicode.yaml` is updated to include the definition of the _main_ facet. This acts as a filter, excluding the _oidc_ qualified relationships, thus providing a clearer view of the primary architecture without the specific authorization elements.
 
-.Step #4 - The `workspace.yaml` with the facet definition
+.Step #4 - The `.archicode.yaml` with the facet definition
 [source,yaml]
 ----
 include::examples/facet_example_step_4/.archicode.yaml[]
@@ -3001,7 +3048,7 @@ In the intricate dance of elements and relationships that define architectural m
 
 // - The best practices to organize the source code of a project using the tool ArchiCode.
 // - ArchiCode works with workspace file.
-// - The workspace centralizes the data, by default the name is `workspace.yaml`.
+// - The workspace centralizes the data, by default the name is `.archicode.yaml`.
 // - As the content of workspace file grows, the management of the file becomes complicated.
 // - Therefore, the manifest concept have been designed to solve big fat workspace files.
 // - A manifest represents a single resource.
@@ -3009,7 +3056,7 @@ In the intricate dance of elements and relationships that define architectural m
 
 Efficiently organizing your source code is a cornerstone of successful architectural endeavors, and ArchiCode is your companion in this journey. Let's delve into the best practices for structuring your source code using ArchiCode:
 
-- Workspace Dynamics: The workspace file, named `workspace.yaml` by default, serves as a centralized repository for your architectural data.
+- Workspace Dynamics: The workspace file, named `.archicode.yaml` by default, serves as a centralized repository for your architectural data.
 
 - Scaling Challenges: As your architectural vision flourishes, the workspace file's contents may expand, leading to management complexities. Recognizing the need for efficient management, ArchiCode introduces the concept of manifests. A manifest embodies a singular architectural resource, enabling focused and structured representation. With manifests, ArchiCode empowers you to break down complex elements into distinct resources, enhancing manageability and granularity. ArchiCode streamlines the process of manifest discovery by default. It effortlessly detects manifests residing in the "manifests" folder, positioned as a sibling to the workspace file.
 
@@ -3031,7 +3078,7 @@ Efficiently organizing your source code is a cornerstone of successful architect
             - technoloy/
                 - <VIEW_ID>.<EXTENSION>
                 - ....
-    - workspace.yaml <10>
+    - .archicode.yaml <10>
 ----
 <1> The directory of the project.
 <2> The directory containing the manifests.
@@ -3054,13 +3101,13 @@ Efficiently organizing your source code is a cornerstone of successful architect
     - manifests/ <2>
     - node_modules/ <3>
         - <MODULE_NAME>/ <4>
-    - workspace.yaml <5>
+    - .archicode.yaml <5>
 ----
 <1> The directory of the project.
 <2> The directory containing the manifests defined in the project.
 <3> The directory containing the installed NPM modules.
 <4> The directory containing the NPM module importing the other manifests.
-<5> The `workspace.yaml` must declare both directories `manifests` and `node_modules/<MODULE_NAME>` to be able to discover all manifests
+<5> The `.archicode.yaml` must declare both directories `manifests` and `node_modules/<MODULE_NAME>` to be able to discover all manifests
 
 // - Diagrams styling
 // - Label formatting
