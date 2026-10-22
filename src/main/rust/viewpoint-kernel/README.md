@@ -87,7 +87,14 @@ Two things worth knowing before touching the code:
   and gives nothing; the destination must still be a deployed application (not something inside one). Relationships with the same
   caption, qualifiers and tags fold into one link, as any others do. No key and no shape moves, so the contract stays 5; the output of
   `compute` changes for a workspace that deploys an application with descendants that declare relationships. The "secondary" links
-  inside an environment (`application_links`) still read the relationships of the deployed application itself.
+  inside an environment (`application_links`) read the relationships of everything inside the deployed application too (wave 019, run 0140,
+  issue #139, decision T5).
+  The same goes for the other end: a relationship whose destination is inside a deployed application (a component of `shop.app`, not
+  `shop.app` itself) is a dependency towards the node that hosts that application (nearest deployed application when they are nested), in the
+  derived dependencies between environments and in the secondary links of an environment; the link is drawn between the boxes of the
+  deployed applications and the relationship of the link says what it ends on (`destination: shop.app.catalog`). A relationship that ends
+  inside the deployed application it starts from stays internal and gives nothing (a loop on the box of the container is gone). The
+  destination must still be inside a deployed application. No key and no shape moves, the contract stays 5.
 - Inside an environment the relationships between deployed applications are "secondary" (not drawn), unless the view is
   about a flow: a `facet` in the input, or `application_links: true` (what the CLI says for the workspace of a facet),
   draws them with their label and qualifiers, and the overview and detailed viewpoints lift them to the nodes of the
