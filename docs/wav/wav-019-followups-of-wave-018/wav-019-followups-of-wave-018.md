@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 019
-status: proposed
+status: completed
 date: 2026-10-22
 related:
   - docs/wav/wav-019-followups-of-wave-018/wbc-019-followups-of-wave-018.md
@@ -51,7 +51,7 @@ Choices made by the plan, not by the author; each can be reversed by the author 
 wave_manifest:
   wave: 019
   slug: followups-of-wave-018
-  status: proposed
+  status: completed
   sources: []
   phases:
     - id: P0
@@ -190,7 +190,7 @@ wave_manifest:
       slug: manual-and-notes-019
       phase: P2
       depends_on: [W-1, W-2, W-3, W-4, W-5, W-6, W-7, W-8]
-      run: null
+      run: 0145
       delegation: standard
       likely_paths:
         - 'src/doc/**'

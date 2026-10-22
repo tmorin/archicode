@@ -5,6 +5,9 @@
 ## Run
 
 The following commands assume the ArchiCode workspace is located in the current directory.
+The workspace file is `.archicode.yaml`, a hidden file (`ls -a` lists it). It was called `workspace.yaml` before
+0.18: rename it with `git mv workspace.yaml .archicode.yaml`, or pass `-w workspace.yaml`. The commands print this
+advice when they find `workspace.yaml` and no `.archicode.yaml`; the manual says more (section _Upgrading_).
 
 **Show the help information**
 
@@ -90,7 +93,7 @@ and every call carry a token that only the printed URL gives, a request must be 
 to `localhost`, `127.0.0.1` or `[::1]` (`--allowed-host <name>` adds one, for a
 server reached by name), a page of another origin is refused, and the editor
 can only reach the `.yaml`, `.yml` and `.json` files below the folder of
-`.archicode.yaml`, never a hidden entry or a link that leaves it. The container
+`.archicode.yaml`, never another hidden entry or a link that leaves it. The container
 listens on `0.0.0.0` so that Docker's `-p` forwards traffic: keep the host side
 of the mapping on `127.0.0.1` as above, since `-p 48080:48080` would expose the
 port to the whole LAN. The workspace file must be named `.archicode.yaml`;
