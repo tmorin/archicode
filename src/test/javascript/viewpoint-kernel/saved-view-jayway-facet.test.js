@@ -74,3 +74,19 @@ test('a saved view through a facet in the Jayway dialect shows the one sentence 
   await drawn(page);
   assert.equal(run(sandbox, 'diagramScene').hasSvg, true);
 });
+
+test('every sentence the kernel says of a facet it refuses is the error of the view, not "the facet removes this element" (wave 019, #137: the list had missed "a facet left an element without an id")', async () => {
+  const { sandbox, kernel } = await openFixture();
+  const refusals = [
+    'the facet path `$..x[?(@.qualifiers anyof [\'a\'])]` uses `@.qualifiers anyof [\'a\']`, which is not JSONPath (RFC 9535) and is no longer read',
+    'unsupported facet action: ADD $..x',
+    'invalid facet JSONPath $..[: expected a selector',
+    'a facet cannot remove the whole workspace: $',
+    'a facet left an unreadable relationship of shop: invalid type',
+    'a facet left an unreadable `uses` in shop',
+    'a facet left an element without an id'
+  ];
+  for (const error of refusals) assert.equal(sandbox.facetRemovesElement(kernel, 'overview', 'shop', 'application', error), false, error);
+  // an element the view draws without the facet and not with it is what a removal looks like
+  assert.equal(sandbox.facetRemovesElement(kernel, 'overview', 'shop', 'application', 'dangling reference: shop'), true);
+});

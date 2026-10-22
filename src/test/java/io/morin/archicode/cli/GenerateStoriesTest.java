@@ -322,6 +322,25 @@ class GenerateStoriesTest {
         assertFalse(Files.exists(steps.resolve("02-overview/plantuml")));
     }
 
+    @Test
+    @SneakyThrows
+    void globalEnabledFalseWithoutFacetSaysThatNothingIsDrawn() {
+        val workspace = copy(PLATEAUS, dir.resolve("plateaus"));
+        val yaml = Files.readString(workspace);
+        Files.writeString(workspace, yaml.replaceFirst("settings:", "settings:\n  facets:\n    global-enabled: false"));
+        val result = stories(workspace, "--story", "migration");
+        assertEquals(0, result.exit(), result.err());
+        assertFalse(Files.exists(workspace.resolveSibling("views-stories/migration/01-overview")));
+        val said =
+            "warning: the global views are turned off (`global-enabled: false`) and the workspace has no facet: the steps of the stories are not drawn";
+        assertTrue(result.err().contains(said), result.err());
+        assertEquals(
+            1,
+            result.err().split(java.util.regex.Pattern.quote(said), -1).length - 1,
+            "said once: " + result.err()
+        );
+    }
+
     @SneakyThrows
     private static void write(Path workspace, String name, String text) {
         Files.writeString(workspace.resolveSibling(name), text);
