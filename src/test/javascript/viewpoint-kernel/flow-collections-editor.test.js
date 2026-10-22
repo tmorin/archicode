@@ -1,7 +1,8 @@
 'use strict';
 // The editor keeps the lines of a manifest that holds flow collections (wave 010, run 0053, issues #41 and #51). A list or a map written in flow style, on one line or on
 // several, with other collections inside, as the value of a key, in an item of a list of maps or as an item itself, is read as the block the emitter writes, and goes back
-// as it was written when the edit did not touch it; the one the edit changes is a block, whose values keep their quotes. A file that holds such a collection and is moved
+// as it was written when the edit did not touch it; the one the edit changes goes back in brackets on its line when it fits (wave 020, run 0148, #145; save-keeps-the-brackets.test.js)
+// and is a block, whose values keep their quotes, when it does not. A file that holds such a collection and is moved
 // within (an element put under another parent) carries the block over as written, the collections too. A result is accepted only if re-reading it gives the emitter's text of
 // the new value; any other layout is the emitter's, as before. The kernel is the real embedded module.
 // Everything here is invented: a mill, a bakery, a garden.
@@ -86,27 +87,27 @@ test('a file with every flow shape and an edit that touches none of them: only t
   assert.equal(more, MILL.replace('# end of the mill', '  size: 3\n# end of the mill'));
 });
 
-test('a flow map: kept when the edit leaves it alone, a block of its own (with its comment and its quotes) when the edit changes it, gone with its line when it goes', () => {
+test('a flow map: kept when the edit leaves it alone, in brackets on its line (with its comment and its quotes) when the edit changes it, gone with its line when it goes', () => {
   const changed = save(MILL, (v) => { v.content.tags.zone = 'south'; });
   assert.deepEqual(lineDiff(MILL, changed), {
     removed: ['  tags: {zone: north, tier: "gold"}   # where it is'],
-    added: ['  tags:  # where it is', '    zone: south', '    tier: "gold"']
+    added: ['  tags: {zone: south, tier: "gold"}   # where it is']
   });
-  assert.equal(changed, MILL.replace('  tags: {zone: north, tier: "gold"}   # where it is', '  tags:  # where it is\n    zone: south\n    tier: "gold"'));
-  // a key added is a key of the block, not a line under a map that was written on one line
+  assert.equal(changed, MILL.replace('{zone: north, tier: "gold"}', '{zone: south, tier: "gold"}'));
+  // a key added is a key of the map in brackets
   const added = save(MILL, (v) => { v.content.tags.size = 'big'; });
-  assert.equal(added, MILL.replace('  tags: {zone: north, tier: "gold"}   # where it is', '  tags:  # where it is\n    zone: north\n    tier: "gold"\n    size: "big"'));  // a new string takes the quotes of the file
+  assert.equal(added, MILL.replace('{zone: north, tier: "gold"}', '{zone: north, tier: "gold", size: "big"}'));  // a new string takes the quotes of the file
   const dropped = save(MILL, (v) => { delete v.content.tags; });
   assert.deepEqual(lineDiff(MILL, dropped), { removed: ['  tags: {zone: north, tier: "gold"}   # where it is'], added: [] });
 });
 
-test('a list in an item of a sequence of maps: written after the first key or on the dash line, kept alone, changed with the quotes of its values', () => {
+test('a list in an item of a sequence of maps: written after the first key or on the dash line, kept alone, changed in brackets with the quotes of its values', () => {
   // `qualifiers` after the first key of its item
   const afterKey = save(MILL, (v) => { v.content.relationships[0].qualifiers.push('Crate'); });
-  assert.equal(afterKey, MILL.replace('      qualifiers: [Sack, "Cart"]   # how', '      qualifiers:  # how\n        - Sack\n        - "Cart"\n        - "Crate"'));
+  assert.equal(afterKey, MILL.replace('      qualifiers: [Sack, "Cart"]   # how', '      qualifiers: [Sack, "Cart", "Crate"]   # how'));
   // `qualifiers` is the first key, on the dash line
   const onDash = save(MILL, (v) => { v.content.relationships[1].qualifiers.push('Rope'); });
-  assert.deepEqual(lineDiff(MILL, onDash), { removed: ['    - qualifiers: [Belt]'], added: ['    - qualifiers:', '        - Belt', '        - Rope'] });
+  assert.deepEqual(lineDiff(MILL, onDash), { removed: ['    - qualifiers: [Belt]'], added: ['    - qualifiers: [Belt, Rope]'] });
   // the item next to the one that changed is not touched; an item that goes takes its two lines, not its comment
   const dropped = save(MILL, (v) => { v.content.relationships.splice(1, 1); });
   assert.deepEqual(lineDiff(MILL, dropped), { removed: ['    - qualifiers: [Belt]', '      destination: "bakery.mixer"'], added: [] });
@@ -116,16 +117,16 @@ test('a list in an item of a sequence of maps: written after the first key or on
   assert.deepEqual(lineDiff(MILL, appended), { removed: [], added: ['    - destination: "bakery.till"', '      label: "rings"'] });
 });
 
-test('a list with nested brackets: kept when untouched, a block of blocks (read back the same) when changed', () => {
+test('a list with nested brackets: kept when untouched, nested brackets (read back the same) when changed', () => {
   const changed = save(MILL, (v) => { v.content.relationships[2].qualifiers[0].push('d'); });
-  assert.equal(changed, MILL.replace('      qualifiers: [[a, b], [c]]  # nested', '      qualifiers:  # nested\n        -\n          - a\n          - b\n          - d\n        -\n          - c'));
+  assert.equal(changed, MILL.replace('      qualifiers: [[a, b], [c]]  # nested', '      qualifiers: [[a, b, d], [c]]  # nested'));
   // brackets, commas and colons inside quoted values are text, not structure
   const text = 'content:\n  id: "m"\n  list: ["a, b", \'c]\', "d: e"]  # tricky\n  name: "N"\n';
   assert.equal(save(text, (v) => { v.content.name = 'M'; }), text.replace('"N"', '"M"'));
-  assert.equal(save(text, (v) => { v.content.list.push('f'); }), 'content:\n  id: "m"\n  list:  # tricky\n    - "a, b"\n    - \'c]\'\n    - "d: e"\n    - "f"\n  name: "N"\n');
+  assert.equal(save(text, (v) => { v.content.list.push('f'); }), 'content:\n  id: "m"\n  list: ["a, b", \'c]\', "d: e", "f"]  # tricky\n  name: "N"\n');
 });
 
-test('a list on several lines: kept whole when untouched (comments inside, trailing comment), a block with the quotes of its items and its comments when changed', () => {
+test('a list on several lines: kept whole when untouched (comments inside, trailing comment), a block with the quotes of its items and its comments when changed with comments inside (they cannot stand in brackets), on one line when it has none', () => {
   const changed = save(MILL, (v) => { v.content.replaces.push('mill.oldest'); });
   assert.deepEqual(lineDiff(MILL, changed), {
     removed: ['  replaces: [', '    "mill.old",', "    'mill.older',   # the oldest", '  ]  # on several lines'],
@@ -137,25 +138,25 @@ test('a list on several lines: kept whole when untouched (comments inside, trail
   // a map over several lines, and the lines of the file around it
   const text = 'header:\n  kind: x\n# note\ncontent:\n  id: m\n  name: N\n\n  tags: {\n    zone: north,\n    tier: gold\n  }\n\n  # last\n  size: 3\n';
   assert.equal(save(text, (v) => { v.content.name = 'M'; }), text.replace('name: N', 'name: M'));
-  assert.equal(save(text, (v) => { v.content.tags.zone = 'S'; }), 'header:\n  kind: x\n# note\ncontent:\n  id: m\n  name: N\n\n  tags:\n    zone: S\n    tier: gold\n\n  # last\n  size: 3\n');
+  assert.equal(save(text, (v) => { v.content.tags.zone = 'S'; }), 'header:\n  kind: x\n# note\ncontent:\n  id: m\n  name: N\n\n  tags: {zone: S, tier: gold}\n\n  # last\n  size: 3\n');
 });
 
-test('a flow map that is an item of a list: kept alone, a block with its comment when changed', () => {
+test('a flow map that is an item of a list: kept alone, in brackets with its comment when changed', () => {
   const changed = save(MILL, (v) => { v.content.relationships[3].label = 'stocks'; });
   assert.deepEqual(lineDiff(MILL, changed), {
     removed: ['    - {destination: "bakery.shelf", label: "fills"}   # inline'],
-    added: ['    - destination: "bakery.shelf"  # inline', '      label: "stocks"']
+    added: ['    - {destination: "bakery.shelf", label: "stocks"}   # inline']
   });
   const text = 'content:\n  id: m\n  matrix:\n    - [a, b]\n    - [c, d]  # row\n  name: N\n';
   assert.equal(save(text, (v) => { v.content.name = 'M'; }), text.replace('name: N', 'name: M'));
-  assert.equal(save(text, (v) => { v.content.matrix[1].push('e'); }), 'content:\n  id: m\n  matrix:\n    - [a, b]\n    -  # row\n      - c\n      - d\n      - e\n  name: N\n');
+  assert.equal(save(text, (v) => { v.content.matrix[1].push('e'); }), 'content:\n  id: m\n  matrix:\n    - [a, b]\n    - [c, d, e]  # row\n  name: N\n');
 });
 
 test('a key written in quotes, or with a space in it, in front of a flow collection: the same rules, and the key keeps its quotes', () => {
   const text = 'content:\n  id: m\n  "tags": {a: b}\n  \'my list\': [x, y]  # two\n  name: N\n';
   assert.equal(save(text, (v) => { v.content.name = 'M'; }), text.replace('name: N', 'name: M'));
-  assert.equal(save(text, (v) => { v.content['my list'].push('z'); }), 'content:\n  id: m\n  "tags": {a: b}\n  \'my list\':  # two\n    - x\n    - y\n    - z\n  name: N\n');
-  assert.equal(save(text, (v) => { v.content.tags.c = 'd'; }), 'content:\n  id: m\n  "tags":\n    a: b\n    c: d\n  \'my list\': [x, y]  # two\n  name: N\n');
+  assert.equal(save(text, (v) => { v.content['my list'].push('z'); }), 'content:\n  id: m\n  "tags": {a: b}\n  \'my list\': [x, y, z]  # two\n  name: N\n');
+  assert.equal(save(text, (v) => { v.content.tags.c = 'd'; }), 'content:\n  id: m\n  "tags": {a: b, c: d}\n  \'my list\': [x, y]  # two\n  name: N\n');
 });
 
 test('an empty collection written with a blank inside is still an empty collection, and the file keeps it', () => {
@@ -166,23 +167,23 @@ test('an empty collection written with a blank inside is still an empty collecti
 test('the lines of a block scalar are text, never a collection: a list written in them is not opened, and an edit elsewhere leaves them as they are', () => {
   const text = 'content:\n  id: m\n  description: |\n    tags: [a, b]\n    other: {x: y}\n  name: "N"\n  tags: {a: b}\n';
   assert.equal(save(text, (v) => { v.content.name = 'M'; }), text.replace('"N"', '"M"'));
-  assert.equal(save(text, (v) => { v.content.tags.c = 'd'; }), 'content:\n  id: m\n  description: |\n    tags: [a, b]\n    other: {x: y}\n  name: "N"\n  tags:\n    a: b\n    c: d\n');
+  assert.equal(save(text, (v) => { v.content.tags.c = 'd'; }), 'content:\n  id: m\n  description: |\n    tags: [a, b]\n    other: {x: y}\n  name: "N"\n  tags: {a: b, c: d}\n');
 });
 
 test('a file with Windows line breaks keeps them, around a collection on several lines too', () => {
   const text = 'header:\r\n  kind: x\r\n# c\r\ncontent:\r\n  id: m\r\n  tags: {a: b}\r\n  replaces: [\r\n    "x",\r\n    "y"\r\n  ]\r\n';
   assert.equal(save(text, (v) => { v.content.id = 'n'; }), text.replace('id: m', 'id: n'));
-  assert.equal(save(text, (v) => { v.content.replaces.push('z'); }), 'header:\r\n  kind: x\r\n# c\r\ncontent:\r\n  id: m\r\n  tags: {a: b}\r\n  replaces:\r\n    - "x"\r\n    - "y"\r\n    - "z"\r\n');
+  assert.equal(save(text, (v) => { v.content.replaces.push('z'); }), 'header:\r\n  kind: x\r\n# c\r\ncontent:\r\n  id: m\r\n  tags: {a: b}\r\n  replaces: ["x", "y", "z"]\r\n');
 });
 
 test('the quotes of a list written on one line stay with its items when the edit changes the list (double, single, plain, mixed)', () => {
   for (const [list, quote] of [['["a.one", "a.two"]', '"'], ["['a.one', 'a.two']", "'"], ['[a.one, a.two]', '']]) {
     const text = 'content:\n  id: m\n  replaces: ' + list + '\n';
-    assert.equal(save(text, (v) => { v.content.replaces.push('a.three'); }), 'content:\n  id: m\n  replaces:\n    - ' + quote + 'a.one' + quote + '\n    - ' + quote + 'a.two' + quote + '\n    - ' + quote + 'a.three' + quote + '\n', list);
-    assert.equal(save(text, (v) => { v.content.replaces.shift(); }), 'content:\n  id: m\n  replaces:\n    - ' + quote + 'a.two' + quote + '\n', list);
+    assert.equal(save(text, (v) => { v.content.replaces.push('a.three'); }), 'content:\n  id: m\n  replaces: [' + quote + 'a.one' + quote + ', ' + quote + 'a.two' + quote + ', ' + quote + 'a.three' + quote + ']\n', list);
+    assert.equal(save(text, (v) => { v.content.replaces.shift(); }), 'content:\n  id: m\n  replaces: [' + quote + 'a.two' + quote + ']\n', list);
   }
   const mixed = 'content:\n  id: m\n  replaces: ["a.one", b.two, \'c.three\']\n';
-  assert.equal(save(mixed, (v) => { v.content.replaces.shift(); }), 'content:\n  id: m\n  replaces:\n    - b.two\n    - \'c.three\'\n');
+  assert.equal(save(mixed, (v) => { v.content.replaces.shift(); }), 'content:\n  id: m\n  replaces: [b.two, \'c.three\']\n');
 });
 
 test('files made of every mix of block and flow shapes, with comments: saving without an edit changes nothing, and every edit reads back as what was asked', () => {
@@ -422,7 +423,7 @@ test('removing the collection of one of two that read the same leaves the other 
   // an edit of one of them changes that one only
   const changed = save(TWINS, (v) => { v.content.elements[1].tags.zone = 'south'; });
   assert.ok(changed.includes('      tags: {zone: north}\n'), changed);
-  assert.ok(changed.includes('      tags:\n        zone: south'), changed);
+  assert.ok(changed.includes('      tags: { zone: south }\n'), changed); // the spelling of the one that changed: its padding stays, its double blank does not
 });
 
 test('moving one of two elements whose collections read the same: each keeps the spelling it had', async () => {

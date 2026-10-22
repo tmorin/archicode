@@ -2510,7 +2510,8 @@ function serializeManifestFile(header, content) {
  *
  * A flow collection (`qualifiers: [Redis, Cache]`, `tags: {zone: north}`, one on several lines, one with others inside, one in an item of a list of maps) is
  * followed too (a list since wave 009, any shape since wave 010): it is read as the block the emitter writes, with the quotes of its values, and goes back
- * as it was written when the edit did not touch it (see `openFlowLists`); one that the edit changes stays a block.
+ * as it was written when the edit did not touch it (see `openFlowLists`); one that the edit changes goes back in brackets on its line when it fits and has no comment inside
+ * (since wave 020, #145: see `bracketChangedFlows`), else it stays a block.
  *
  * A list written at the column of its key (`tags:` then `- a` at the same column) is followed too (see `markKeyColumnLists`): the file is read as the emitter would write it, with
  * those lists two columns deeper, and the lists go back to their column in the result, the items the edit adds with them.
@@ -2518,7 +2519,7 @@ function serializeManifestFile(header, content) {
  * An anchor, an alias or a tag (`name: &n "Bakery"`, `description: *n`, `size: !!str 12`) is followed too (see `openYamlDecorations`): the lines the edit does not touch stay as
  * they were written, a line it changes keeps its anchor and its tag, and an alias stays as long as the line still says what it points at. Inside square or curly brackets too
  * (`[&a oven, *a]`, `{zone: &z north, other: *z}`; #78): the collection is read as the block it would be with them (see `openDecoratedFlows`) and goes back as it was written
- * when the edit did not touch it; one the edit changes stays a block, which keeps them by the same rules. A text that goes over several lines, plain or quoted, with a tag or
+ * when the edit did not touch it; one the edit changes stays a block, which keeps them by the same rules (the brackets of #145 are for a collection without them). A text that goes over several lines, plain or quoted, with a tag or
  * not, stays as written when the edit leaves it alone (it is read as the one line the emitter writes), and an item of a list whose map starts on the line below its dash
  * (`-` or `- &s`, then the keys) keeps that layout (see `mergeBareDashItems`). An anchor or a tag on a key (which the reader takes only inside brackets) and a pair in a list
  * (`[a: b]`) with them are not followed: the text is the emitter's.
@@ -2719,7 +2720,7 @@ function emitDecoratedFlow(ast, indent) {
 
 /**
  * `patched` with the flow collections that `openDecoratedFlows` wrote as blocks put back as they were written, where the edit left the block as it was (with its anchors,
- * its aliases and its tags back, see `closeYamlDecorations`); a block the edit changed stays a block, as the collections without them do. The text must still say what the
+ * its aliases and its tags back, see `closeYamlDecorations`); a block the edit changed stays a block (the collections without them go back in brackets, see `bracketChangedFlows`). The text must still say what the
  * edit says, else `patched` is.
  */
 function closeDecoratedFlows(patched, flows, emitted) {
@@ -3043,13 +3044,28 @@ function patchYamlTextAt(oldText, newValue) {
   }
   const opened = openFlowLists(oldText);
   if (opened === null) return emitted;
-  const quoted = { lines: 0, voteLines: oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/) }; // the quotes of the author are in the text as written, not in the lists opened
-  let patched = patchYamlLines(opened.text, emitted, newValue, quoted);
-  if (patched === null) return emitted;
-  let closed = closeFlowLists(patched, opened.lists);
-  if (quoted.lines > 0 && !says(closed)) closed = closeFlowLists(patchYamlLines(opened.text, emitted, newValue), opened.lists);
-  // if what is written does not say what the edit says, the emitter's text is the safe one
-  return says(closed) ? closed : emitted;
+  // a collection in brackets that the edit changes goes back in brackets where it can (see `bracketChangedFlows`); if that does not read as the edit, the blocks, as before
+  const marked = markOpenedFlows(opened);
+  const widest = oldText.split(/\r\n|\r|\n/).reduce((most, line) => Math.max(most, line.length), 0);
+  const attempt = (styled, brackets) => {
+    const patched = patchYamlLines(brackets ? marked : opened.text, emitted, newValue, styled);
+    if (patched === null) return null;
+    if (!brackets) return closeFlowLists(patched, opened.lists);
+    const bracketed = bracketChangedFlows(patched, opened, widest);
+    return closeFlowLists(bracketed.text, opened.lists.filter((list) => !bracketed.done.has(list)));
+  };
+  const run = (brackets) => {
+    const quoted = { lines: 0, voteLines: oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/) }; // the quotes of the author are in the text as written, not in the lists opened
+    let closed = attempt(quoted, brackets);
+    if (closed === null) return null;
+    if (quoted.lines > 0 && !says(closed)) closed = attempt(undefined, brackets);
+    // if what is written does not say what the edit says, the emitter's text is the safe one
+    return closed !== null && says(closed) ? closed : null;
+  };
+  const text = marked === null ? null : run(true);
+  if (text !== null) return text;
+  const blocks = run(false);
+  return blocks === null ? emitted : blocks;
 }
 
 /** The column of the key of a line that is `key:` with nothing after it but a comment (`- tags:` included), -1 for any other line. */
@@ -3257,8 +3273,10 @@ function openFlowListsRead(text) {
     const p = { lines, i, col: at, leaves: [], keys: [], comments: [] };
     let node;
     let comment = '';
+    let tailText = ''; // what follows the closing bracket, as written
     try {
       node = parseYamlFlowNode(p, i);
+      tailText = lines[p.i].slice(p.col);
       const tail = lines[p.i].slice(p.col).match(/^[ \t]*$|^[ \t]+(#.*)$/);
       if (!tail || node.scalar || node.value === null || typeof node.value !== 'object') { out.push(line); continue; }
       comment = tail[1] || '';
@@ -3295,7 +3313,11 @@ function openFlowListsRead(text) {
       if (!same) { out.push(line); continue; }
     }
     const original = lines.slice(i, p.i + 1);
-    if (expanded.join('\n') !== original.join('\n')) lists.push({ expanded, original, column, before: { original: lines.slice(Math.max(0, i - 3), i).reverse(), opened: out.slice(-3).reverse() } });
+    if (expanded.join('\n') !== original.join('\n')) {
+      const written = original.join('\n');
+      // `index`, `kind`, `empty`, `tail`, `width`, `pad` and `bare` are for `markOpenedFlows` and `bracketChangedFlows`: where the collection starts in the text opened, how it was written
+      lists.push({ expanded, original, column, before: { original: lines.slice(Math.max(0, i - 3), i).reverse(), opened: out.slice(-3).reverse() }, index: out.length, kind: keyed ? 'keyed' : 'item', empty: yamlEmptyCollection(node.value) !== null, tail: tailText, width: p.i === i ? line.length : 0, pad: { seq: /\[ +[^\s\]#]/.test(written), map: /\{ +[^\s}#]/.test(written) }, bare: false });
+    }
     out.push.apply(out, expanded);
     i = p.i;
   }
@@ -3365,6 +3387,189 @@ function closeFlowLists(text, lists) {
     from = place.i + list.original.length;
   });
   return lines.join(eol);
+}
+
+/**
+ * `opened.text` with a mark at the end of the first line of each collection `openFlowLists` opened (`\u0006` and its number, `\u0007`, in the comment of the line, which every edit of
+ * a line keeps, as the marks of `openYamlDecorations` are), so that `bracketChangedFlows` finds the block again after the edit. `opened.lists[n].bare` says that the mark made the comment.
+ * `null` when the file already uses the mark characters.
+ */
+function markOpenedFlows(opened) {
+  if (/[\u0006\u0007]/.test(opened.text)) return null;
+  const eol = /\r\n/.test(opened.text) ? '\r\n' : '\n';
+  const lines = opened.text.split(/\r\n|\r|\n/);
+  opened.lists.forEach((start, n) => {
+    const line = lines[start.index];
+    start.bare = stripYamlComment(line).length === line.length;
+    lines[start.index] = line + (start.bare ? ' #' : '') + '\u0006' + n + '\u0007';
+  });
+  return lines.join(eol);
+}
+
+/**
+ * `text` (written by the aligner on the output of `markOpenedFlows`) with the marks taken out, and each collection the edit changed written back in brackets on one line (#145):
+ * the block under the marked line is read, and if it is only keys, items and values (no comment inside it, no block scalar, no anchor), it becomes `key: [a, b]` / `key: {k: v}` /
+ * `- {k: v}`, with the first line's own comment after it as it was written and the spacing inside the brackets (`[ a ]`, `{ k: v }`) the file used; the values keep the quotes and the
+ * words the block has. It is written when it fits (`bracketWidth`) and when it reads as the block does; otherwise the block stays, as before. A block that is as `openFlowLists` wrote it
+ * is left for `closeFlowLists`. `{ text, done }`, `done` the `lists` that were written in brackets.
+ */
+function bracketChangedFlows(text, opened, widest) {
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n';
+  const lines = text.split(/\r\n|\r|\n/);
+  const done = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const found = /\u0006(\d+)\u0007/.exec(lines[i]);
+    if (found === null) continue;
+    const start = opened.lists[Number(found[1])];
+    lines[i] = lines[i].replace(found[0], '');
+    if (start === undefined) continue;
+    if (start.bare && lines[i].endsWith(' #')) lines[i] = lines[i].slice(0, -2);
+    if (start.empty) continue; // `[]` and `{}` are what the emitter writes for nothing, not a layout the author chose: filled, they are a block
+    let end = i + 1;
+    while (end < lines.length && lines[end].trim() !== '' && yamlIndentOf(lines[end]) > start.column && !/\u0006/.test(lines[end])) end++;
+    const region = lines.slice(i, end);
+    const delta = yamlIndentOf(region[0]) - yamlIndentOf(start.expanded[0]);
+    if (region.length === start.expanded.length && region.every((line, k) => line === shiftYamlLine(start.expanded[k], delta))) continue; // as it was opened: `closeFlowLists` puts it back
+    let line = null;
+    try {
+      line = bracketedLine(region, start, widest);
+    } catch (e) {
+      line = null; // something this does not know: the block stays
+    }
+    if (line === null) continue;
+    lines.splice(i, end - i, line);
+    done.add(start);
+  }
+  return { text: lines.join(eol), done };
+}
+
+/**
+ * The line that a collection written as a block (`region`: its first line, `key:` or `- key: v`, and the lines under it) is in brackets, or `null` when it cannot be (a comment inside
+ * it, an anchor, a block scalar, something that is not a key, an item or a value; or the line would be wider than `bracketWidth`; or it would not read as the block does).
+ */
+function bracketedLine(region, start, widest) {
+  const first = region[0];
+  const body = stripYamlComment(first).replace(/[ \t]+$/, '');
+  const comment = first.slice(body.length); // the blanks and the comment after the first line's words
+  // the comment of the first line is the one that followed the closing bracket, with the blanks before it as the author wrote them; any other is a comment inside the brackets, which they cannot hold
+  if (comment.trim() !== '' && start.tail.trim() !== comment.trim()) return null;
+  const tail = comment.trim() === '' ? '' : start.tail;
+  let head;
+  let node;
+  let firstIsChecked = false;
+  if (start.kind === 'keyed') {
+    const lead = first.match(/^ *(?:- +)*/)[0];
+    const key = scanYamlKey(first, lead.length, 0);
+    if (key === null) return null;
+    if (region.length === 1) { // the collection the edit emptied: `[]` or `{}` on its line, the comment as the author wrote it
+      const emptied = body.slice(key.end).trim();
+      return emptied === '[]' || emptied === '{}' ? body + tail : null;
+    }
+    if (body.slice(key.end).trim() !== '') return null;
+    head = body.slice(0, key.end) + ' ';
+    node = region.slice(1);
+  } else {
+    const dash = /^ *- */.exec(body);
+    if (dash === null) return null;
+    head = dash[0].endsWith(' ') ? dash[0] : dash[0] + ' ';
+    node = [' '.repeat(dash[0].length) + body.slice(dash[0].length)].concat(region.slice(1));
+    if (node[0].trim() === '') node.shift();
+    else firstIsChecked = true; // its comment was taken out above, with `body`
+  }
+  if (node.length === 0 || node.some((line, k) => (k === 0 && firstIsChecked ? false : stripYamlComment(line).replace(/[ \t]+$/, '') !== line.replace(/[ \t]+$/, '')))) return null; // a comment inside
+  const flow = yamlBlockLinesToFlow(node, start.pad);
+  if (flow === null) return null;
+  const line = head + flow + tail;
+  if (line.length > Math.max(bracketWidth(widest), start.width)) return null;
+  // it must read as the block does
+  const base = yamlIndentOf(node[0]);
+  const numbers = yamlModelNumbers;
+  yamlModelNumbers = !yamlPlainReading;
+  try {
+    const block = serializeYamlValue(parseYaml(node.map((l) => shiftYamlLine(l, -base)).join('\n')), 0);
+    if (serializeYamlValue(parseYaml(flow), 0) !== block) return null;
+  } finally {
+    yamlModelNumbers = numbers;
+  }
+  return line;
+}
+
+/**
+ * How wide a collection in brackets may be on its line (#145), comment included: as wide as the widest line the file already has, but not under 100 columns and not over 120; a
+ * collection that was on one line is allowed the width that line had, so that an edit which shortens it never moves it. Wider than that, the block stays.
+ */
+function bracketWidth(widest) {
+  return Math.max(100, Math.min(120, widest));
+}
+
+/**
+ * The block lines (one collection, at the indentation of the first line) as one flow collection (`[a, b]`, `{k: v, l: [x, y]}`), or `null` when a line is not a key, an item or a value
+ * that can stand in brackets. A value keeps the quotes it has; a plain text that holds a bracket, a brace or a comma is quoted, for the brackets cannot hold it. `pad` is the spacing
+ * the file used inside brackets (`[ a ]`, `{ k: v }`).
+ */
+function yamlBlockLinesToFlow(input, pad) {
+  const lines = input.slice();
+  let i = 0;
+  const wrap = (open, items, close, padded) => (items.length === 0 ? open + close : open + (padded ? ' ' : '') + items.join(', ') + (padded ? ' ' : '') + close);
+  const scalar = (text) => {
+    const token = text.trim();
+    if (token === '') return null;
+    if (token === '[]' || token === '{}') return token;
+    if (token[0] === '"') return /^"(?:[^"\\]|\\.)*"$/.test(token) ? token : null;
+    if (token[0] === "'") return /^'(?:[^']|'')*'$/.test(token) ? token : null;
+    if (/^[\[{&*!|>%@`#]/.test(token)) return null;
+    return /[,\[\]{}]/.test(token) ? '"' + escapeYamlDoubleQuoted(token) + '"' : token;
+  };
+  const isItem = (text) => text === '-' || text.startsWith('- ');
+  const node = (indent) => {
+    if (i >= lines.length || yamlIndentOf(lines[i]) !== indent) return null;
+    if (isItem(lines[i].slice(indent))) {
+      const items = [];
+      while (i < lines.length && yamlIndentOf(lines[i]) === indent && isItem(lines[i].slice(indent))) {
+        const rest = lines[i].slice(indent + 1);
+        const content = rest.replace(/^ +/, '');
+        const column = indent + 1 + (rest.length - content.length);
+        let value;
+        if (content === '') {
+          i++;
+          if (i >= lines.length || yamlIndentOf(lines[i]) <= indent) return null;
+          value = node(yamlIndentOf(lines[i]));
+        } else if (isItem(content) || scanYamlKey(content, 0, 0) !== null) {
+          lines[i] = ' '.repeat(column) + content; // the collection that starts after the dash is read as if it stood at its own column
+          value = node(column);
+        } else {
+          value = scalar(content);
+          i++;
+        }
+        if (value === null) return null;
+        items.push(value);
+      }
+      return wrap('[', items, ']', pad.seq);
+    }
+    const entries = [];
+    while (i < lines.length && yamlIndentOf(lines[i]) === indent) {
+      if (isItem(lines[i].slice(indent))) return null;
+      const found = scanYamlKey(lines[i], indent, 0);
+      if (found === null) return null;
+      let key = lines[i].slice(indent, found.end - 1).replace(/[ \t]+$/, '');
+      if (!/^["']/.test(key) && /[,\[\]{}]/.test(key)) key = '"' + escapeYamlDoubleQuoted(key) + '"';
+      const rest = lines[i].slice(found.end).trim();
+      let value;
+      if (rest === '') {
+        i++;
+        if (i >= lines.length || yamlIndentOf(lines[i]) <= indent) return null;
+        value = node(yamlIndentOf(lines[i]));
+      } else {
+        value = scalar(rest);
+        i++;
+      }
+      if (value === null) return null;
+      entries.push(key + ': ' + value);
+    }
+    return wrap('{', entries, '}', pad.map);
+  };
+  const flow = node(yamlIndentOf(lines[0]));
+  return flow !== null && i === lines.length ? flow : null;
 }
 
 /** The indentation of a YAML line, in spaces. */

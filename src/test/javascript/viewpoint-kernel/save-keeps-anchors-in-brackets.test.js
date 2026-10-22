@@ -4,8 +4,8 @@
 // over several lines (the text over several lines itself, with a tag or none, was not followed either), and an item of a list whose map starts on the line below its dash
 // (`- &s` or `-`, then the keys). Before, each of them wrote the whole file again in the emitter's layout (comments lost, aliases written as their values); the page of
 // `archicode-0.17.0` does (ARCHICODE_EDITOR_HTML=<that page> makes the tests below that keep a layout fail). Each case saves an edit and compares the file before and after,
-// every other line byte for byte, and reads the result back as the edit says. A collection in brackets that the edit changes is written as a block, as one without an anchor
-// is (wave 009), and keeps its anchors, aliases and tags by the rules of a block (anchors-tags-save.test.js): an alias whose anchor's value the edit changes is written as the
+// every other line byte for byte, and reads the result back as the edit says. A collection in brackets that has an anchor, an alias or a tag and that the edit changes is written as a block (one without them goes back
+// in brackets since wave 020, run 0148, #145: save-keeps-the-brackets.test.js), and keeps its anchors, aliases and tags by the rules of a block (anchors-tags-save.test.js): an alias whose anchor's value the edit changes is written as the
 // value it had. What still keeps the fallback (the emitter's text, which reads back as the edit) is pinned at the end, with the reason. Reading is not changed. Everything here
 // is invented: a mill and a bakery.
 // Run with: node --test "src/test/javascript/**/*.test.js"

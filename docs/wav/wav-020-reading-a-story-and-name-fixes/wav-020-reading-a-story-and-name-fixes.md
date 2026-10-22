@@ -112,7 +112,7 @@ wave_manifest:
       slug: save-keeps-the-brackets
       phase: P0
       depends_on: []
-      run: null
+      run: 0148
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
