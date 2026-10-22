@@ -205,6 +205,11 @@ public class GenerateStoriesCommand implements Runnable {
         val settings = workspace.getSettings().getFacets();
         if (settings.isGlobalEnabled()) {
             drawIn(from, view, comparison, folder, label);
+        } else if (settings.getCustoms().isEmpty()) {
+            // the same as views generate: no global views and no facet leave nothing to draw (said once, whichever the step)
+            warnings.warn(
+                "the global views are turned off (`global-enabled: false`) and the workspace has no facet: the steps of the stories are not drawn"
+            );
         }
         if (!settings.getCustoms().isEmpty()) {
             final Compared pair = made;

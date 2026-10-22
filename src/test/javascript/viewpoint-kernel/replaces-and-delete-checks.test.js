@@ -222,18 +222,17 @@ async function refused(files, id, blocking) {
   return { sandbox, state };
 }
 
-test('(c) a step compared with a plateau above that would lose what it draws refuses the delete; one that keeps a pin there, or compares with a plateau beside, does not', async () => {
+test('(c) a step compared with a plateau above refuses the delete when neither it nor the plateau it is told at keeps what it draws; one that keeps a pin there, is told at a plateau that keeps it, or compares with a plateau beside, does not', async () => {
   const files = Object.assign({}, PILOT, {
     'stories/story.tour.yaml': STORY('tour',
       '    - viewpoint: overview\n      properties:\n        element: loyalty\n      against: marketplace\n' + // told at the plateau drawn
-      '    - viewpoint: overview\n      properties:\n        element: loyalty\n      at: twin\n      against: marketplace\n' +
+      '    - viewpoint: overview\n      properties:\n        element: loyalty\n      at: twin\n      against: marketplace\n' + // twin keeps loyalty: the comparison is drawn from it, so the step still draws
       '    - viewpoint: map\n      properties:\n        pinned: [loyalty, customer]\n      against: marketplace\n' + // customer stays: the map is drawn
       '    - viewpoint: overview\n      properties:\n        element: loyalty\n      against: saas\n' + // saas does not stand on pilot
       '    - viewpoint: map\n      layer: technology\n      properties:\n        pinned: [lab]\n      at: saas\n      against: marketplace\n')
   });
   await refused(files, 'pilot', [
     'the story `tour` (`stories/story.tour.yaml`) step 1 is compared with `marketplace`, which would no longer have `loyalty`',
-    'the story `tour` (`stories/story.tour.yaml`) step 2 is compared with `marketplace`, which would no longer have `loyalty`',
     'the story `tour` (`stories/story.tour.yaml`) step 5 is compared with `marketplace`, which would no longer have `lab`'
   ]);
 });

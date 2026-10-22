@@ -7349,11 +7349,30 @@ function viewLosesInPlateauAbove(view, plateau, entry, effects) {
   return typeof properties.element === 'string' && lost.has(properties.element) ? [properties.element] : [];
 }
 
+/** The elements a view names, with their layer: its element, or the elements a map is pinned on. */
+function namedByView(view) {
+  if (!view || !isPlainObject(view)) return [];
+  const layer = viewLayerOf(view);
+  const properties = isPlainObject(view.properties) ? view.properties : {};
+  if (view.viewpoint === 'map') return stringList(properties.pinned).map((reference) => ({ layer, reference }));
+  return typeof properties.element === 'string' ? [{ layer, reference: properties.element }] : [];
+}
+
+/** Whether the plateau a step is told at (`at`, else the plateau drawn) still has `reference` once the plateau is deleted: what the plateau above has now, less what it would lose. */
+function survivesWhereTold(layer, reference, at, byId, effects) {
+  const id = at !== null ? at : AppState.layers ? AppState.layers.current : null;
+  const entry = id === null ? undefined : byId.get(id);
+  const then = entry && entry.lost ? effects.before.get(id) : undefined;
+  if (then && then.state) return graphReferencesOf(then.state.graph)[layer].has(reference) && !entry.lost[layer].includes(reference);
+  return indexOfPlateau(at)[layer].has(reference);
+}
+
 /**
  * What the views and the stories that stay would lose in the plateaus above the deleted one, one sentence each (the plateau-free check, `entryProblemsIn`, tells the names no
  * plateau declares any more; this tells a plateau above that has what they draw now and would not):
  *   - a step told at a plateau above (`at`, run 0132): the step could be drawn there and no longer could (`stepProblem` would say "is not in the plateau");
- *   - a step compared with a plateau above (`against`, wave 019 run 0139, #138): the step names that plateau for what it has, and it would no longer have it;
+ *   - a step compared with a plateau above (`against`, wave 019 run 0139, #138): the comparison is drawn from the plateau the step is told at, so the step loses its view only when
+ *     the plateau compared with would lose what it names and the plateau it is told at does not keep it either;
  *   - a saved view drawn in a plateau above (#138): it can be drawn there now and no longer could; one sentence per view, naming every such plateau in the order of the tree.
  * A step with neither key is drawn in whatever plateau the reader has, and is not told. In the order of the stories and their steps (`at`, then `against`), then the views.
  */
@@ -7370,7 +7389,11 @@ function stepsLosingTheirView(effects) {
       const where = 'the story `' + story.id + '` (`' + source + '`) step ' + (i + 1);
       for (const [key, words] of [['at', 'is told at'], ['against', 'is compared with']]) {
         const plateau = keys[key];
-        const gone = plateau === null ? [] : viewLosesInPlateauAbove(stepView(step), plateau, byId.get(plateau), effects);
+        const view = stepView(step);
+        let gone = plateau === null ? [] : viewLosesInPlateauAbove(view, plateau, byId.get(plateau), effects);
+        // a plateau only compared with does not have to hold what the step draws: the comparison is drawn from the plateau the step is told at, so the step loses its view only
+        // when that side does not keep what it names either
+        if (key === 'against' && gone.length && namedByView(view).some((one) => survivesWhereTold(one.layer, one.reference, keys.at, byId, effects))) gone = [];
         if (gone.length) out.push(where + ' ' + words + ' `' + plateau + '`, which would no longer have ' + plateauNames(gone, true));
       }
     });
@@ -16764,7 +16787,7 @@ function renderDiagramFallbackHtml(result, layer, readonly) {
 /** The diagram of an element fails through the facet and not without it: the facet removes the element itself (a rule that takes a whole layer away, for one). */
 function facetRemovesElement(kernel, viewpoint, reference, layer, error) {
   // a facet the kernel refuses (the Jayway dialect, a path it cannot read, an action it does not know) removes nothing: its sentence is the error of the view (wave 019, run 0138, #137)
-  if (error && /^(the facet path |unsupported facet action|invalid facet JSONPath|a facet cannot remove the whole|a facet left an unreadable)/.test(error)) return false;
+  if (error && /^(the facet path |unsupported facet action|invalid facet JSONPath|a facet cannot remove the whole|a facet left )/.test(error)) return false;
   const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer }).input);
   return !plain.error;
 }
