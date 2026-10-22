@@ -110,7 +110,7 @@ wave_manifest:
       slug: replaces-and-delete-checks
       phase: P0
       depends_on: []
-      run: null
+      run: 0139
       delegation: hard_judgment
       delegation_reason: 'changes the guard of the delete of a plateau (data deletion): a check that is too weak lets a plateau go with what stands on it'
       likely_paths:

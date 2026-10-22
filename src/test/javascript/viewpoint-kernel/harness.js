@@ -267,7 +267,9 @@ function fakeIndexedDB(options = {}) {
 }
 
 function createApp(options = {}) {
-  const html = fs.readFileSync(HTML, 'utf8');
+  // `options.html`: the text of another page to run (a test that compares with a released page, git show <tag>:...); `ARCHICODE_EDITOR_HTML`: the path of the page every
+  // test runs, to check that a new test fails on an older page (wave 019, run 0139)
+  const html = options.html !== undefined ? options.html : fs.readFileSync(process.env.ARCHICODE_EDITOR_HTML || HTML, 'utf8');
   const script = html.match(/<script>([\s\S]*?)<\/script>/);
   const wasm = html.match(/<script type="application\/octet-stream" id="viewpoint-kernel-wasm">([^<]+)<\/script>/);
   if (!script || !wasm) throw new Error('standalone.html: script or embedded kernel not found');
