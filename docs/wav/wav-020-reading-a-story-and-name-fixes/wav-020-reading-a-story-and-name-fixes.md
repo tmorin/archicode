@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 020
-status: in-progress
+status: completed
 date: 2026-10-22
 related:
   - docs/wav/wav-020-reading-a-story-and-name-fixes/wbc-020-reading-a-story-and-name-fixes.md
@@ -49,7 +49,7 @@ Choices made by the plan, not by the author; each can be reversed by the author 
 wave_manifest:
   wave: 020
   slug: reading-a-story-and-name-fixes
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P0
@@ -145,7 +145,7 @@ wave_manifest:
       slug: manual-and-notes-020
       phase: P2
       depends_on: [W-5]
-      run: null
+      run: 0151
       delegation: standard
       likely_paths:
         - 'src/doc/**'
@@ -202,4 +202,4 @@ P2:  W-6 <── W-5
 
 ## Completion Criteria
 
-The three phase gates verified; `./mvnw -o verify -DskipITs=false`, `cargo test`, `embed.sh --check`, `node --test` and `npx prettier --check "src/**/*.java"` pass on the final tree; every shipped story is walked in the reading mode in a test and viewing writes nothing; every shipped example and fixture is loaded by the command line and the editor in a test; #145, #146, #147 and #142 are closed by their commits; #143, #134, #135, #65, #24 and #144 stay open; the real browser and the Native job are named as not verified by the wave if they are not.
+The three phase gates verified; `./mvnw -o verify -DskipITs=false`, `cargo test`, `embed.sh --check`, `node --test` and `npx prettier --check "src/**/*.java"` pass on the final tree; every shipped story is walked in the reading mode in a test and viewing writes nothing; every shipped example and fixture is loaded by the command line and the editor in a test; #145, #146, #147 and #142 are closed by their commits; #143, #134, #135, #65, #24 and #144 stay open; the exceptions: a real phone, the dark theme, the screen-reader announcement, the File System Access path and the Native job were not verified by the wave (the Native job runs on the PR).
