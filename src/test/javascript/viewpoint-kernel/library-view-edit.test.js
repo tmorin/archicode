@@ -141,14 +141,14 @@ test('changing the viewpoint, the element, the facet, Hide unlinked and a text r
   assert.deepEqual(written(page), writes, 'nothing was written');
   assert.equal(page.mem.files.get('manifests/view.api_view.yaml').text, VIEW_FILE, 'the file on the disk is what it was');
   assert.deepEqual(dirtyFiles(page), ['manifests/view.api_view.yaml'], 'only this manifest is marked');
-  assert.equal(page.state.workspace.settingsDirty, false, 'and not workspace.yaml');
+  assert.equal(page.state.workspace.settingsDirty, false, 'and not .archicode.yaml');
 });
 
 test('Save all changes writes the manifest of the view and no other file; the new values read back, with the comments of the file', async () => {
   const page = await startMem();
   const view = viewOf(page, 'api_view');
   await openView(page, view);
-  const workspaceBefore = page.mem.files.get('workspace.yaml').text;
+  const workspaceBefore = page.mem.files.get('.archicode.yaml').text;
   await pickViewpoint(page, 'deep');
   await pickFacet(page, 'rest-only');
   await tick(page, 'hide-unlinked', true);
@@ -157,7 +157,7 @@ test('Save all changes writes the manifest of the view and no other file; the ne
   await page.sandbox.saveAllChanges();
   assert.equal(run(page.sandbox, 'saveStatus').state, 'success');
   assert.deepEqual(written(page).slice(writes), ['manifests/view.api_view.yaml'], 'only the view manifest');
-  assert.equal(page.mem.files.get('workspace.yaml').text, workspaceBefore);
+  assert.equal(page.mem.files.get('.archicode.yaml').text, workspaceBefore);
   assert.equal(page.sandbox.countUnsavedChanges(), 0);
   const text = page.mem.files.get('manifests/view.api_view.yaml').text;
   assert.ok(text.startsWith('# the architecture review reads this one\n'), 'the comment above the file stays');
@@ -516,19 +516,19 @@ test('the stories that show an edited view show the edited view', async () => {
   assert.match(page.right(), /data-action="library-go-story" data-story="tour"/);
 });
 
-test('a view that still lives in workspace.yaml is edited in place; saving it rewrites workspace.yaml, as it already did', async () => {
+test('a view that still lives in .archicode.yaml is edited in place; saving it rewrites .archicode.yaml, as it already did', async () => {
   const page = await startMem();
   run(page.sandbox, 'workspaceTopLevel().views = [{ id: "legacy", name: "Old", viewpoint: "overview", layer: "application", properties: { element: "shop" } }]');
   const legacy = viewOf(page, 'legacy');
   await openView(page, legacy);
-  assert.match(page.right(), /<code>workspace\.yaml<\/code>/);
+  assert.match(page.right(), /<code>\.archicode\.yaml<\/code>/);
   await pickViewpoint(page, 'deep');
   assert.equal(legacy.viewpoint, 'deep');
   assert.equal(page.state.workspace.settingsDirty, true);
   assert.deepEqual(dirtyFiles(page), [], 'no manifest is marked');
   await page.sandbox.saveAllChanges();
-  assert.deepEqual(written(page), ['workspace.yaml']);
-  assert.match(page.mem.files.get('workspace.yaml').text, /viewpoint: "deep"/, 'the new value is written in the quotes the file uses');
+  assert.deepEqual(written(page), ['.archicode.yaml']);
+  assert.match(page.mem.files.get('.archicode.yaml').text, /viewpoint: "deep"/, 'the new value is written in the quotes the file uses');
 });
 
 // ============================================================ 8. A text committed by leaving it

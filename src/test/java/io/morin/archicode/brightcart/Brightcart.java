@@ -31,7 +31,7 @@ import picocli.CommandLine;
  *
  * <p>The command line is run in the process, through the real picocli command line, on a <strong>copy</strong> of
  * {@code layered/} in a temporary folder: {@code views generate} writes {@code views-*} folders next to
- * {@code workspace.yaml}, and the repository is never written.
+ * {@code .archicode.yaml}, and the repository is never written.
  */
 final class Brightcart {
 
@@ -99,7 +99,7 @@ final class Brightcart {
         return words.subList(1, words.size());
     }
 
-    /** A copy of {@code layered/} into {@code into}; returns its {@code workspace.yaml}. */
+    /** A copy of {@code layered/} into {@code into}; returns its {@code .archicode.yaml}. */
     static Path copy(Path into) {
         return copy(LAYERED, into);
     }
@@ -116,7 +116,7 @@ final class Brightcart {
                 }
             }
         }
-        return into.resolve("workspace.yaml");
+        return into.resolve(".archicode.yaml");
     }
 
     /** The key of an element row of the table of changes, in the words of {@code expected/changes.json}. */

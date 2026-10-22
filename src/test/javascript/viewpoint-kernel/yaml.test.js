@@ -1,5 +1,5 @@
 'use strict';
-// The YAML layer of the standalone editor: the parser, the emitter, and what workspace.yaml goes through on a save.
+// The YAML layer of the standalone editor: the parser, the emitter, and what .archicode.yaml goes through on a save.
 // The golden cases of the emitter (src/test/resources/editor-yaml/emitter-cases.json) are checked on the Java side too
 // (EditorYamlCompatibilityTest): what the editor writes is what the CLI reads.
 const test = require('node:test');
@@ -161,7 +161,7 @@ test('whatever the parser cannot read is an error that names the line, never a s
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
-// The editor on top of it: workspace.yaml and the manifests that cannot be read.
+// The editor on top of it: .archicode.yaml and the manifests that cannot be read.
 
 function writableFolder(dir) {
   const handle = makeDirHandle(dir);
@@ -193,9 +193,9 @@ async function openTemp(files) {
 
 const MANIFEST = 'header:\n  kind: archicode.morin.io/system\n  version: "1"\ncontent:\n  id: s1\n  name: S1\n';
 
-test('saving the settings keeps the other top-level keys of workspace.yaml, in their order', async () => {
+test('saving the settings keeps the other top-level keys of .archicode.yaml, in their order', async () => {
   const { sandbox, state, dir } = await openTemp({
-    'workspace.yaml': [
+    '.archicode.yaml': [
       'application:', '  elements: []', 'technology:', '  elements:', '    - kind: environment', '      id: t1',
       'styles:', '  by-tags: {red: {line-color: "#ff0000"}}',
       'views:', '  - name: v1',
@@ -207,7 +207,7 @@ test('saving the settings keeps the other top-level keys of workspace.yaml, in t
   });
   state.workspace.settings.relationships.defaultSyntheticLabel = 'calls';
   await sandbox.writeWorkspaceYaml();
-  const written = fs.readFileSync(path.join(dir, 'workspace.yaml'), 'utf8');
+  const written = fs.readFileSync(path.join(dir, '.archicode.yaml'), 'utf8');
   const reread = plain(sandbox.parseYaml(written));
   assert.deepEqual(Object.keys(reread), ['application', 'technology', 'styles', 'views', 'settings', 'stories']);
   assert.deepEqual(reread.application, { elements: [] });
@@ -223,9 +223,9 @@ test('saving the settings keeps the other top-level keys of workspace.yaml, in t
   assert.ok(!('formatters' in reread), 'a key the file did not have is not invented');
 });
 
-test('a workspace.yaml that cannot be read is a fatal error that names the line, and is never written', async () => {
-  const { state } = await openTemp({ 'workspace.yaml': 'settings:\n  manifests: *paths\n    paths: [a]\n' });
-  assert.match(state.fatalError, /workspace\.yaml/);
+test('a .archicode.yaml that cannot be read is a fatal error that names the line, and is never written', async () => {
+  const { state } = await openTemp({ '.archicode.yaml': 'settings:\n  manifests: *paths\n    paths: [a]\n' });
+  assert.match(state.fatalError, /\.archicode\.yaml/);
   assert.match(state.fatalError, /line 2/);
   assert.equal(state.workspace, null);
 });
@@ -233,7 +233,7 @@ test('a workspace.yaml that cannot be read is a fatal error that names the line,
 test('a manifest the parser cannot read is shown as unparseable: no element from it, and its text is kept as it is', async () => {
   const broken = 'header:\n  kind: archicode.morin.io/system\ncontent:\n  id: s2\n  name: *n\n  elements:\n    - id: lost\n';
   const { state } = await openTemp({
-    'workspace.yaml': 'settings:\n  manifests:\n    paths: [manifests]\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths: [manifests]\n',
     'manifests/app.s1.yaml': MANIFEST,
     'manifests/app.s2.yaml': broken
   });

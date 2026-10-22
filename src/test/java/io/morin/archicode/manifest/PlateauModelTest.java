@@ -98,11 +98,11 @@ class PlateauModelTest {
         }
     }
 
-    /** The folder of a case: workspace.yaml and the files. */
+    /** The folder of a case: .archicode.yaml and the files. */
     @SneakyThrows
     private Path build(JsonNode c) {
         Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             c.has("settings") ? c.get("settings").asText() : "settings: {}\n"
         );
         for (val file : c.get("files").properties()) {
@@ -110,7 +110,7 @@ class PlateauModelTest {
             Files.createDirectories(target.getParent());
             Files.writeString(target, file.getValue().asText());
         }
-        return dir.resolve("workspace.yaml");
+        return dir.resolve(".archicode.yaml");
     }
 
     private static List<String> words(JsonNode array) {

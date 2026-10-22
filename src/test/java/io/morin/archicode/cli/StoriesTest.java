@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The editor keeps stories, and the views they are made of, in {@code workspace.yaml}. The command line reads them
+ * The editor keeps stories, and the views they are made of, in {@code .archicode.yaml}. The command line reads them
  * (and warns about a step on a view nobody declared) but only generates the views of its own viewpoints: a viewpoint it
  * does not know (the editor may draw more than the command line does) is skipped instead of stopping the generation.
  */
@@ -64,7 +64,7 @@ class StoriesTest extends AbstractGenerateViews {
     @SneakyThrows
     @Test
     void shouldReadTheStoriesAndTheViewsTheEditorKeeps() {
-        val path = Files.writeString(directory.resolve("workspace.yaml"), WORKSPACE);
+        val path = Files.writeString(directory.resolve(".archicode.yaml"), WORKSPACE);
 
         val workspace = workspaceFactory.create(path);
 
@@ -81,7 +81,7 @@ class StoriesTest extends AbstractGenerateViews {
     @SneakyThrows
     @Test
     void shouldSkipTheViewsOfAViewpointItDoesNotGenerate() {
-        val path = Files.writeString(directory.resolve("workspace.yaml"), WORKSPACE);
+        val path = Files.writeString(directory.resolve(".archicode.yaml"), WORKSPACE);
 
         renderWithPlantuml(path, "sol_overview", "the_map");
 
@@ -100,7 +100,7 @@ class StoriesTest extends AbstractGenerateViews {
     void shouldReadTheViewsAndTheStoriesThatAreManifestsOfTheirOwn() {
         val manifests = Files.createDirectories(directory.resolve("manifests"));
         val path = Files.writeString(
-            directory.resolve("workspace.yaml"),
+            directory.resolve(".archicode.yaml"),
             """
             application:
               elements:
@@ -152,7 +152,7 @@ class StoriesTest extends AbstractGenerateViews {
 
         val workspace = workspaceFactory.create(path);
 
-        assertEquals(2, workspace.getViews().size(), "the view of workspace.yaml and the view manifest");
+        assertEquals(2, workspace.getViews().size(), "the view of .archicode.yaml and the view manifest");
         assertTrue(workspace.viewIndex.searchView("sol_deep").isPresent());
         assertTrue(workspace.viewIndex.searchView("legacy_view").isPresent());
         val story = workspace.getStories().iterator().next();

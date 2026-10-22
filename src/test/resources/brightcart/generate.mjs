@@ -5,7 +5,7 @@
 //
 // It writes, next to this file (and nothing else; the three folders are emptied first, so a second run gives the same bytes):
 //   layered/    the layered rendition, the source of truth: a folder per plateau, a `Kind: Plateau` manifest in each (`name`, `horizon`, `override` when the parent is not the
-//               root, and the `patches`), a `plateau: <id>` header on every manifest of a plateau other than `baseline`, and a workspace.yaml with
+//               root, and the `patches`), a `plateau: <id>` header on every manifest of a plateau other than `baseline`, and a .archicode.yaml with
 //               `settings.manifests.paths: ["./**"]`. The layered engine reads it (`archicode diff --plateau <id>`, `views generate --plateau <id>`, the editor draws `baseline`).
 //               The folder `shared/` holds the views and the stories (ENTRIES of the description): they belong to no plateau, so they have no `plateau:` header and no folder of a plateau.
 //   variants/   V1 to V14 (negative variants) and M1 to M3 (merge scenarios) as descriptions with the expected class of message, and `status`: what a tool does with it
@@ -616,10 +616,10 @@ function layeredTree(pl, file) {
 
 function writeLayered(P) {
   const files = new Map();
-  // The manifests are in the folders next to workspace.yaml, and the default `manifests` folder does not exist here: say where they are, recursively.
+  // The manifests are in the folders next to .archicode.yaml, and the default `manifests` folder does not exist here: say where they are, recursively.
   // The plateau of a manifest is its header; the folders only keep the files of a plateau together.
   const manifests = '  manifests:\n    paths: ["./**"]\n';
-  files.set('workspace.yaml', 'settings:\n' + WORKSPACE_SETTINGS + manifests + WORKSPACE_STYLES);
+  files.set('.archicode.yaml', 'settings:\n' + WORKSPACE_SETTINGS + manifests + WORKSPACE_STYLES);
   for (const pid of ORDER) {
     const pl = P[pid];
     files.set(`${pid}/plateau.yaml`, plateauText(pl));
@@ -817,7 +817,7 @@ function readLayered(dir) {
   }
   const entries = [];
   for (const f of listFiles(dir)) {
-    if (f === 'workspace.yaml' || f.endsWith('/plateau.yaml')) continue;
+    if (f === '.archicode.yaml' || f.endsWith('/plateau.yaml')) continue;
     const doc = parseYaml(fs.readFileSync(path.join(dir, f), 'utf8'));
     const kind = doc.header.kind.split('/').at(-1);
     if (kind === 'view' || kind === 'story') {
@@ -872,11 +872,11 @@ function measure(files) {
   let lines = 0;
   let bytes = 0;
   for (const [name, content] of files) {
-    if (name === 'workspace.yaml') continue; // the workspace is shared; the document counts the manifests
+    if (name === '.archicode.yaml') continue; // the workspace is shared; the document counts the manifests
     lines += content.split('\n').length - 1;
     bytes += Buffer.byteLength(content);
   }
-  return { files: [...files.keys()].filter((n) => n !== 'workspace.yaml').length, lines, bytes };
+  return { files: [...files.keys()].filter((n) => n !== '.archicode.yaml').length, lines, bytes };
 }
 
 // The document's table of negative variants says, in its last column, what a tool does with each variant today: that cell is the `runToday` of the description, and

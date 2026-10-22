@@ -36,7 +36,7 @@ async function openLayered() {
 }
 
 async function openFiles(files, settings) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -174,13 +174,13 @@ test('a choice in the lists of the band is what the buttons were: draw a plateau
 });
 
 test('a workspace with settings.plateaus is refused with the one sentence of the command line, and there is no band and no selector to draw', async () => {
-  const mem = memFolder({ 'workspace.yaml': 'settings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n', 'plateaus/10_as-is/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n' });
+  const mem = memFolder({ '.archicode.yaml': 'settings:\n  plateaus:\n    - id: as-is\n      path: plateaus/10_as-is\n', 'plateaus/10_as-is/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n' });
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  assert.match(state.fatalError, /^Could not read\/parse workspace\.yaml: `settings\.plateaus` no longer exists: a plateau is a layer now\. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, /);
+  assert.match(state.fatalError, /^Could not read\/parse \.archicode\.yaml: `settings\.plateaus` no longer exists: a plateau is a layer now\. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, /);
   assert.equal(state.workspace, null);
   assert.equal(state.layers, null);
   assert.equal(sandbox.renderPlateauBandHtml(), '');
@@ -614,7 +614,7 @@ test('an element declared under a parent that does not exist names the plateau, 
   assert.equal(third.sandbox.viewProblem(third.sandbox.findSavedView('v')), null);
 });
 
-test('the views and the stories that workspace.yaml keeps are looked at too, after those of the manifests, unless a manifest has the id', async () => {
+test('the views and the stories that .archicode.yaml keeps are looked at too, after those of the manifests, unless a manifest has the id', async () => {
   const settings = 'settings:\n  manifests:\n    paths: ["./**"]\nviews:\n  - id: old\n    viewpoint: overview\n    layer: Technology\n    properties:\n      element: ghost\n  - id: shadowed\n    viewpoint: overview\n    properties:\n      element: nowhere\nstories:\n  - id: tale\n    steps:\n      - viewpoint: overview\n        properties:\n          element: gone\n';
   const { sandbox, state } = await openFiles({
     'app.ferry.yaml': SYSTEM('ferry'),
@@ -622,8 +622,8 @@ test('the views and the stories that workspace.yaml keeps are looked at too, aft
     'view.shadowed.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "shadowed"\n  viewpoint: "overview"\n  properties:\n    element: "ferry"\n'
   }, settings);
   assert.deepEqual(plain(sandbox.entryProblemsOf(state.workspace.settings)), [
-    'the view `old` (`workspace.yaml`) names `ghost`, which exists in no plateau',
-    'the story `tale` (`workspace.yaml`) names `gone`, which exists in no plateau'
+    'the view `old` (`.archicode.yaml`) names `ghost`, which exists in no plateau',
+    'the story `tale` (`.archicode.yaml`) names `gone`, which exists in no plateau'
   ]);
 });
 
@@ -662,9 +662,9 @@ test('settings.current names the plateau drawn at the opening, and one that is n
   assert.equal(state.layers.current, 'later');
   assert.equal(state.index.application.size, 0);
   const bad = await openFiles(files, 'settings:\n  current: nope\n  manifests:\n    paths: ["./**"]\n');
-  assert.equal(bad.state.fatalError, 'Could not read the plateaus of workspace.yaml:\n`settings.current` names the plateau `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `later`)');
+  assert.equal(bad.state.fatalError, 'Could not read the plateaus of .archicode.yaml:\n`settings.current` names the plateau `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `later`)');
   const none = await openFiles({ 'app.ferry.yaml': SYSTEM('ferry') }, 'settings:\n  current: later\n');
-  assert.equal(none.state.fatalError, 'Could not read the plateaus of workspace.yaml:\n`settings.current` is `later` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)');
+  assert.equal(none.state.fatalError, 'Could not read the plateaus of .archicode.yaml:\n`settings.current` is `later` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)');
 });
 
 // ---- writing ----

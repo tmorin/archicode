@@ -1,5 +1,5 @@
 'use strict';
-// The editor reads a manifest and workspace.yaml as the command line does (run 0072, issues #75 and #76): the same keys, the same kinds, the same
+// The editor reads a manifest and .archicode.yaml as the command line does (run 0072, issues #75 and #76): the same keys, the same kinds, the same
 // shapes, in the same order, and the same sentence. The cases that both tools run are in src/test/resources/brightcart/negative-cases.json
 // (BrightcartNegativeCasesTest.java and brightcart-negative.test.js read it); this file holds what is the editor's alone: the order of its checks,
 // the kinds it accepts, the table it reads with, and the forms it must go on accepting because the command line does.
@@ -27,7 +27,7 @@ test('an unknown header.kind gives one sentence, with the value and the kinds th
 
 test('a kind is read in any case and with spaces around it, as the command line reads it', async () => {
   assert.equal(errorOf(manifest('  id: s\n', 'header:\n  kind: "  ARCHICODE.Morin.IO/System "\n  version: "1"\n')), null);
-  const mem = memFolder({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: [m]\n', 'm/a.yaml': manifest('  id: s\n  name: S\n', 'header:\n  kind: "ARCHICODE.MORIN.IO/SYSTEM"\n  version: "1"\n') });
+  const mem = memFolder({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: [m]\n', 'm/a.yaml': manifest('  id: s\n  name: S\n', 'header:\n  kind: "ARCHICODE.MORIN.IO/SYSTEM"\n  version: "1"\n') });
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -94,7 +94,7 @@ test('what the command line accepts, the editor accepts', () => {
   assert.equal(errorOf(manifest('  id: s\n  elements:\n    - kind: group\n      id: g\n')), 'unknown kind `group`, a group is no kind any more: write its children in the `elements` of its parent (known: container) at `elements[0]`');
 });
 
-test('workspace.yaml: the keys and the shapes of the settings, the styles and the formatters are the command line\'s', () => {
+test('.archicode.yaml: the keys and the shapes of the settings, the styles and the formatters are the command line\'s', () => {
   const problem = (text) => app.workspaceProblem(app.parseYaml(text));
   assert.equal(problem('settings:\n  name: Shop\n'), null);
   assert.equal(problem('settings:\n  foo: 1\n'), 'unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo`');
@@ -113,14 +113,14 @@ test('workspace.yaml: the keys and the shapes of the settings, the styles and th
   assert.equal(problem('settings:\n  foo: 1\n  plateaus: []\n'), vm.runInContext('REMOVED_PLATEAUS_KEY', app), 'whatever else the file holds');
 });
 
-test('a workspace.yaml the editor refuses is a fatal error that says the sentence, and the folder is not opened', async () => {
-  const mem = memFolder({ 'workspace.yaml': 'settings:\n  foo: 1\n' });
+test('a .archicode.yaml the editor refuses is a fatal error that says the sentence, and the folder is not opened', async () => {
+  const mem = memFolder({ '.archicode.yaml': 'settings:\n  foo: 1\n' });
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  assert.equal(state.fatalError, 'Could not read/parse workspace.yaml: unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo`');
+  assert.equal(state.fatalError, 'Could not read/parse .archicode.yaml: unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo`');
   assert.equal(state.workspace, null);
 });
 
@@ -225,14 +225,14 @@ test('a plain scalar that YAML 1.1 reads as a number is read as the command line
   for (const spelled of ['0x1', '012']) assert.equal(problem('styles:\n  composite:\n    shadowing: ' + spelled + '\n'), null, spelled);
   // and a quoted one is a text, which is no number for the command line either
   assert.equal(problem('styles:\n  composite:\n    line-gap: "0x1F"\n'), 'the value has the wrong shape (found a string) at `styles.composite.line-gap`');
-  // where a text is expected, the content of a manifest says the number (`id: 010` is the reference `8`) and workspace.yaml the text as written, as the command line does
+  // where a text is expected, the content of a manifest says the number (`id: 010` is the reference `8`) and .archicode.yaml the text as written, as the command line does
   const id = (spelled) => app.parseManifestText(manifest('  id: ' + spelled + '\n')).content.id;
   assert.equal(id('010'), 8);
   assert.equal(id('0x1F'), 31);
   assert.equal(id('1_000'), 1000);
   assert.equal(id('1.50'), 1.5);
   assert.equal(id('"010"'), '010');
-  assert.equal(app.parseYaml('settings:\n  name: 010\n').settings.name, '010', 'workspace.yaml hands a text field the text as written');
+  assert.equal(app.parseYaml('settings:\n  name: 010\n').settings.name, '010', '.archicode.yaml hands a text field the text as written');
   // a dotted number is an id with a dot, in the words of the number the command line makes of it
   assert.equal(app.parseManifestText(manifest('  id: 1.50\n')).error, 'the id `1.5` contains a dot, which separates the levels of a reference, at `content.id`');
   assert.equal(app.parseManifestText(manifest('  id: 1e3\n')).error, 'the id `1000.0` contains a dot, which separates the levels of a reference, at `content.id`');
@@ -296,7 +296,7 @@ test('a scalar of settings that has nothing after its key is absent: the default
 
 test('an item with no value is no qualifier, no application and no use (#80)', async () => {
   const mem = memFolder({
-    'workspace.yaml': 'settings:\n  manifests:\n    paths: [m]\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths: [m]\n',
     'm/a.yaml': manifest('  id: s\n  qualifiers: [a, null, b]\n  relationships:\n    - destination: s\n      qualifiers:\n        -\n        - q\n'),
     'm/e.yaml': 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: e\n  uses: [~, s]\n  elements:\n    - kind: node\n      id: n\n      applications: [null, s]\n'
   });
@@ -314,7 +314,7 @@ test('an item with no value is no qualifier, no application and no use (#80)', a
 
 test('an item with no value in relationships is no relationship, and the forms go on addressing the others by their place in the file (#105, case N87)', async () => {
   const mem = memFolder({
-    'workspace.yaml': 'settings:\n  manifests:\n    paths: [m]\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths: [m]\n',
     'm/a.yaml': manifest('  id: s\n  relationships:\n    -\n    - destination: s\n      label: a\n    - null\n    - destination: s\n      label: b\n')
   });
   const sandbox = createApp({});

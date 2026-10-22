@@ -69,7 +69,7 @@ class HyphenIdViewsTest {
     }
 
     private void generate(Path folder, String... more) {
-        val args = new ArrayList<>(List.of("-w", folder.resolve("workspace.yaml").toString(), "views", "generate"));
+        val args = new ArrayList<>(List.of("-w", folder.resolve(".archicode.yaml").toString(), "views", "generate"));
         args.addAll(List.of(more));
         val result = CliHarness.run(factory, errorOutput, args.toArray(String[]::new));
         assertEquals(0, result.exit(), result.err());

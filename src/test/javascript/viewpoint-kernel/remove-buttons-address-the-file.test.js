@@ -12,7 +12,7 @@ const { memFolder } = require('./mem-folder');
 
 const HEADER = (kind) => 'header:\n  kind: "archicode.morin.io/' + kind + '"\n  version: "1"\n';
 const FILES = {
-  'workspace.yaml': 'settings:\n  manifests:\n    paths: [m]\n',
+  '.archicode.yaml': 'settings:\n  manifests:\n    paths: [m]\n',
   'm/s.yaml': HEADER('system') + 'content:\n  id: s\n  qualifiers: [null, a, ~, b, c, null]\n',
   'm/e.yaml':
     HEADER('environment') +

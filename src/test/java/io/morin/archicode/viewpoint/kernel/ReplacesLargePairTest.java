@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
 class ReplacesLargePairTest {
 
     private static final Path FIXTURE = Path.of("src/test/resources/replaces-large-pair");
-    private static final Path WORKSPACE = FIXTURE.resolve("workspace.yaml");
+    private static final Path WORKSPACE = FIXTURE.resolve(".archicode.yaml");
 
     @Inject
     WorkspaceFactory workspaceFactory;

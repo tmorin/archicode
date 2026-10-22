@@ -203,7 +203,7 @@ test('a drawing that fails does not leave the next address to be a new entry of 
 });
 
 test('a workspace with no plateau ignores plateau= and compare=: it has the root only', async () => {
-  const { sandbox, state } = await openIn({ 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n' });
+  const { sandbox, state } = await openIn({ '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n', 'app.ferry.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "ferry"\n  name: "Ferry"\n' });
   typeAddress(sandbox, '#/files?plateau=saas&compare=past');
   assert.deepEqual([state.layers.current, state.layers.compare], ['baseline', null]);
   assert.equal(sandbox.location.hash, '#/files');

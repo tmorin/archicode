@@ -217,7 +217,7 @@ test('saving refuses to overwrite a file that appeared on disk and that the edit
 // ---- 4. the same reference in both layers ----
 
 const TWO_LAYERS = {
-  'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+  '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
   'manifests/app.hub.yaml': SOLUTION('hub', '  name: "App side"\n  elements:\n    - kind: "system"\n      id: "core"\n'),
   'manifests/env.hub.yaml': ENVIRONMENT('hub', '  name: "Env side"\n  elements:\n    - kind: "node"\n      id: "n1"\n      applications:\n        - "hub.core"\n')
 };
@@ -458,7 +458,7 @@ test('a label is written when typed and dropped when emptied', async () => {
 });
 
 const COMMAS = {
-  'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+  '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
   'manifests/app.a.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "a"\n  relationships:\n    - destination: "b"\n      label: "talks"\n      qualifiers:\n        - "A, B"\n        - "C"\n      tags:\n        ports: "80,443"\n        mode: "x"\n',
   'manifests/app.b.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "b"\n'
 };
@@ -507,7 +507,7 @@ test('a tag key like __proto__ is kept as a key', async () => {
 // ---- 8. the kernel input is made of strings ----
 
 const NUMBERS = {
-  'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+  '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
   'manifests/app.a.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "a"\n  elements:\n    - kind: "container"\n      id: "c1"\n      relationships:\n        - destination: "p.c2"\n          label: 5\n          qualifiers:\n            - 8080\n            - "x"\n          tags:\n            port: 8080\n            tls: true\n        - destination: 8080\n',
   'manifests/app.p.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "p"\n  elements:\n    - kind: "container"\n      id: "c2"\n',
   'manifests/app.8080.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: 8080\n',
@@ -598,7 +598,7 @@ test('a failure while checking the files on disk is shown, and nothing is writte
 });
 
 test('a workspace without its manifests directory gets one when the first element is saved', async () => {
-  const { sandbox, mem } = await openMem({ 'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' });
+  const { sandbox, mem } = await openMem({ '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' });
   sandbox.commitCreateTopLevelElement({ category: 'application', headerKind: 'solution', attachUnderReference: null, id: 'first', name: 'First', description: null });
   await sandbox.saveAllChanges();
   assert.equal(ev(sandbox, 'saveStatus').state, 'success');
@@ -608,7 +608,7 @@ test('a workspace without its manifests directory gets one when the first elemen
 
 test('a manifests path such as ./manifests is normalised, and read once', async () => {
   const files = fixtureFiles();
-  files['workspace.yaml'] = 'settings:\n  manifests:\n    paths:\n      - ./manifests\n      - manifests/\n';
+  files['.archicode.yaml'] = 'settings:\n  manifests:\n    paths:\n      - ./manifests\n      - manifests/\n';
   const { sandbox, state } = await openMem(files);
   assert.equal(state.manifestFiles.length, 7);
   assert.ok(state.manifestFiles.every((f) => f.relPath.startsWith('manifests/')));
@@ -633,7 +633,7 @@ test('only .yaml and .yml are manifests, as the CLI reads them', async () => {
 // ---- 5. the environments an environment uses ----
 
 const USES = {
-  'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+  '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
   'manifests/env.dev.yaml': ENVIRONMENT('dev', '  uses:\n    - "int"\n    - "int.n1"\n  elements:\n    - kind: "node"\n      id: "n"\n'),
   'manifests/env.int.yaml': ENVIRONMENT('int', '  elements:\n    - kind: "node"\n      id: "n1"\n    - kind: "node"\n      id: "n2"\n'),
   'manifests/env.prd.yaml': ENVIRONMENT('prd', '  elements:\n    - kind: "node"\n      id: "n1"\n')
@@ -784,7 +784,7 @@ test('an element without any relationship has no Overview to open, while Detaile
 
 test('the navigation sorts its rows by kind (solution, system, container, component...) then by name, wherever the manifests put them', async () => {
   const { sandbox } = await openMem({
-    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
     'manifests/sol.yaml': SOLUTION('zeta', '  elements:\n    - kind: "system"\n      id: "b"\n      name: "Beta"\n    - kind: "system"\n      id: "p"\n      name: "Pat"\n    - kind: "system"\n      id: "a"\n      name: "alpha"\n    - kind: "system"\n      id: "c"\n'),
     'manifests/sol2.yaml': SOLUTION('alpha'),
     'manifests/env.yaml': ENVIRONMENT('e2', '  elements:\n    - kind: "node"\n      id: "n2"\n    - kind: "node"\n      id: "n1"\n')
@@ -801,7 +801,7 @@ test('the navigation sorts its rows by kind (solution, system, container, compon
 
 test('a facet that hides the elements with no link is read, given to the kernel, and written back only when it is on', async () => {
   const { sandbox, state } = await openMem(Object.assign({}, USES, {
-    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n  facets:\n    customs:\n      - name: "flow"\n        hide-unlinked: true\n        actions:\n          - operator: "REMOVE"\n            json-path: "$.application..relationships[?(@.tags.x != \'y\')]"\n      - name: "plain"\n        actions: []\n'
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n  facets:\n    customs:\n      - name: "flow"\n        hide-unlinked: true\n        actions:\n          - operator: "REMOVE"\n            json-path: "$.application..relationships[?(@.tags.x != \'y\')]"\n      - name: "plain"\n        actions: []\n'
   }));
   const [flow, plain] = state.workspace.settings.facets.customs;
   assert.equal(flow.hideUnlinked, true);
@@ -902,7 +902,7 @@ test('a diagram goes in a story as a step of its own; only a view that was named
   const file = manifest(state, 'manifests/story.order_flow.yaml');
   assert.equal(file.existedOnDisk, false);
   assert.equal(file.header.kind, 'archicode.morin.io/story');
-  assert.equal(state.workspace.settingsDirty, false, 'workspace.yaml is left alone');
+  assert.equal(state.workspace.settingsDirty, false, '.archicode.yaml is left alone');
   assert.equal(sandbox.countUnsavedChanges(), 1);
   same(ev(sandbox, 'activeStory'), { id: 'order_flow', step: 0 });
   assert.equal(sandbox.parseManifestText(file.rawText).error, null, 'the text to save is a manifest');
@@ -965,7 +965,7 @@ test('walking a story puts the editor back where each view was saved, and the UR
 
 test('the words of a step are typed straight into the story, and only its file is written; it reads back', async () => {
   const { sandbox, state, mem } = await openFixtureMem();
-  const workspaceBefore = mem.files.get('workspace.yaml').text;
+  const workspaceBefore = mem.files.get('.archicode.yaml').text;
   storySandbox(sandbox, ['Tour']);
   showApi(sandbox, state);
   sandbox.addCurrentViewToStory();
@@ -989,7 +989,7 @@ test('the words of a step are typed straight into the story, and only its file i
   const writesBefore = mem.writes.length;
   await sandbox.saveAllChanges();
   same(mem.writes.slice(writesBefore), ['manifests/story.tour.yaml'], 'nothing else is rewritten');
-  assert.equal(mem.files.get('workspace.yaml').text, workspaceBefore, 'workspace.yaml is not touched, nor its comments');
+  assert.equal(mem.files.get('.archicode.yaml').text, workspaceBefore, '.archicode.yaml is not touched, nor its comments');
 
   const again = createApp();
   await again.loadWorkspace(mem.handle);
@@ -1151,9 +1151,9 @@ test('the Library has a Stories side and a Views side that lead to one another, 
   assert.ok(state.workspace);
 });
 
-test('views and stories that older workspaces keep in workspace.yaml are read and edited there, and "Move to manifests" takes them out', async () => {
+test('views and stories that older workspaces keep in .archicode.yaml are read and edited there, and "Move to manifests" takes them out', async () => {
   const files = {
-    'workspace.yaml': '# my workspace\nviews:\n  - id: old_view\n    viewpoint: overview\n    layer: application\n    properties:\n      element: shop\nstories:\n  - id: old_story\n    name: Old\n    steps:\n      - view: old_view\n        text: first\nsettings:\n  manifests:\n    paths:\n      - manifests\n',
+    '.archicode.yaml': '# my workspace\nviews:\n  - id: old_view\n    viewpoint: overview\n    layer: application\n    properties:\n      element: shop\nstories:\n  - id: old_story\n    name: Old\n    steps:\n      - view: old_view\n        text: first\nsettings:\n  manifests:\n    paths:\n      - manifests\n',
     'manifests/app.shop.yaml': SOLUTION('shop')
   };
   const { sandbox, state, mem } = await openMem(files);
@@ -1161,9 +1161,9 @@ test('views and stories that older workspaces keep in workspace.yaml are read an
   assert.equal(sandbox.storiesList().length, 1);
   assert.equal(sandbox.savedViews().length, 1);
   assert.equal(sandbox.stepProblem(sandbox.storiesList()[0].steps[0]), null);
-  assert.match(sandbox.renderLibraryPerspectiveHtml().center, /1 view and 1 story are still in workspace\.yaml/);
+  assert.match(sandbox.renderLibraryPerspectiveHtml().center, /1 view and 1 story are still in \.archicode\.yaml/);
 
-  // edited where they are: workspace.yaml is what is written
+  // edited where they are: .archicode.yaml is what is written
   sandbox.updateStoryField({ value: 'changed', getAttribute: (a) => ({ 'data-story': 'old_story', 'data-story-field': 'step-text', 'data-step': '0' })[a] });
   assert.equal(state.workspace.settingsDirty, true);
   assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 0);
@@ -1172,23 +1172,23 @@ test('views and stories that older workspaces keep in workspace.yaml are read an
   assert.ok(!('views' in state.workspace.topLevel) && !('stories' in state.workspace.topLevel));
   same(dirtyPaths(state), ['manifests/story.old_story.yaml', 'manifests/view.old_view.yaml']);
   assert.equal(sandbox.storiesList()[0].steps[0].text, 'changed', 'what was typed comes along');
-  assert.doesNotMatch(sandbox.renderLibraryPerspectiveHtml().center, /still in workspace\.yaml/);
+  assert.doesNotMatch(sandbox.renderLibraryPerspectiveHtml().center, /still in \.archicode\.yaml/);
 
   await sandbox.saveAllChanges();
   assert.equal(ev(sandbox, 'saveStatus').state, 'success');
-  const written = mem.files.get('workspace.yaml').text;
+  const written = mem.files.get('.archicode.yaml').text;
   assert.doesNotMatch(written, /^(views|stories):/m);
   assert.match(mem.files.get('manifests/story.old_story.yaml').text, /text: changed/);
   const again = createApp();
   await again.loadWorkspace(mem.handle);
   assert.equal(again.storiesList().length, 1);
   assert.equal(again.savedViews()[0].id, 'old_view');
-  assert.doesNotMatch(again.renderLibraryPerspectiveHtml().center, /still in workspace\.yaml/);
+  assert.doesNotMatch(again.renderLibraryPerspectiveHtml().center, /still in \.archicode\.yaml/);
 });
 
 test('a view or a story manifest is a file like the others: listed, edited as text, never an element, never an error', async () => {
   const { sandbox, state } = await openMem({
-    'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n',
     'manifests/app.shop.yaml': SOLUTION('shop'),
     'manifests/view.v.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "v"\n  viewpoint: "overview"\n  properties:\n    element: "shop"\n',
     'manifests/story.s.yaml': 'header:\n  kind: "archicode.morin.io/story"\n  version: "1"\ncontent:\n  id: "s"\n  steps:\n    - view: "v"\n'

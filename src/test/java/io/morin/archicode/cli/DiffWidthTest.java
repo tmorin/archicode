@@ -53,7 +53,7 @@ class DiffWidthTest {
     @SneakyThrows
     private Path workspace() {
         val files = Map.of(
-            "workspace.yaml",
+            ".archicode.yaml",
             "settings:\n  name: \"Network\"\n  manifests:\n    paths: [\"manifests/**\"]\n",
             "manifests/system.yaml",
             manifest(
@@ -113,7 +113,7 @@ class DiffWidthTest {
             Files.createDirectories(file.getParent());
             Files.writeString(file, entry.getValue());
         }
-        return dir.resolve("workspace.yaml");
+        return dir.resolve(".archicode.yaml");
     }
 
     private CliHarness.Result diff(Path workspace, String... args) {
@@ -246,7 +246,7 @@ class DiffWidthTest {
     @Test
     void aWidthThatIsNotAWholeNumberAboveZeroIsOneErrorLineBeforeAnythingIsLoaded() {
         // the workspace file does not exist: the error is the width, so it was checked first
-        val missing = dir.resolve("nothing/workspace.yaml");
+        val missing = dir.resolve("nothing/.archicode.yaml");
         for (val width : List.of("0", "-5", "abc", "", "1.5", "99999999999", "wide")) {
             val result = diff(missing, "--width", width);
             assertEquals(1, result.exit(), width + "\n" + result.err());

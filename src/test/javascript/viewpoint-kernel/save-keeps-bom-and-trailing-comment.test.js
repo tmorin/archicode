@@ -3,7 +3,7 @@
 //   1. A file that starts with a UTF-8 byte-order mark loses it when the editor saves it: a browser never gives the mark to the page (`File.text()` and the decoder of a
 //      response drop it), so the page reads the first three bytes, holds the text without the mark and writes the mark back first.
 //   2. A comment after the last line of a block that is moved goes with the block when it is indented as the keys of the block (or as the item itself when no sibling follows),
-//      and stays when it introduces the next element (a heuristic of indentation, its limits are pinned below). The command line reads a BOM in a manifest and in workspace.yaml
+//      and stays when it introduces the next element (a heuristic of indentation, its limits are pinned below). The command line reads a BOM in a manifest and in .archicode.yaml
 //      (checked by hand on the jar: it gives the same graph), and never writes a manifest, so there is no case shared with it.
 // The real page, the real kernel, in-memory folders (`mem-folder.js` hands a file that starts with the mark as a browser does: `text()` without it, the bytes with it).
 // Everything is invented: an orchard, a market, a barn.
@@ -63,7 +63,7 @@ const MARKET = [
 const WORKSPACE = 'settings:\n  manifests:\n    paths:\n      - manifests\n';
 
 async function open(manifests, workspace) {
-  const files = Object.assign({ 'workspace.yaml': workspace === undefined ? WORKSPACE : workspace }, Object.fromEntries(Object.entries(manifests).map(([name, body]) => [`manifests/${name}`, body])));
+  const files = Object.assign({ '.archicode.yaml': workspace === undefined ? WORKSPACE : workspace }, Object.fromEntries(Object.entries(manifests).map(([name, body]) => [`manifests/${name}`, body])));
   const mem = memFolder(files);
   const sandbox = createApp({});
   const state = sandbox.__state();
@@ -74,7 +74,7 @@ async function open(manifests, workspace) {
   assert.equal(state.fatalError, null);
   return { sandbox, state, mem, files };
 }
-const onDisk = (page, name) => page.mem.files.get(name.includes('/') || name === 'workspace.yaml' ? name : 'manifests/' + name).text;
+const onDisk = (page, name) => page.mem.files.get(name.includes('/') || name === '.archicode.yaml' ? name : 'manifests/' + name).text;
 const move = (page, reference, parent) => page.sandbox.commitMoveElement(reference, 'application', parent);
 const rename = (page, reference, name) => page.sandbox.commitElementEdit(reference, (node) => { node.name = name; return {}; });
 
@@ -130,13 +130,13 @@ test('the text editor of Files, a reload of the file and an unrelated save keep 
   assert.equal(onDisk(page, 'app.orchard.yaml').indexOf(MARK, 1), -1);
 });
 
-test('workspace.yaml with a byte-order mark is saved with it, and without one it is not given one', async () => {
+test('.archicode.yaml with a byte-order mark is saved with it, and without one it is not given one', async () => {
   const page = await open({ 'app.orchard.yaml': ORCHARD }, MARK + '# the workspace\n' + WORKSPACE);
   assert.equal(page.state.workspace.bom, true);
   page.sandbox.commitSettingsEdit((live) => { live.name = 'Orchard'; });
   await page.sandbox.saveAllChanges();
   assert.equal(run(page.sandbox, 'saveStatus').state, 'success');
-  const saved = onDisk(page, 'workspace.yaml');
+  const saved = onDisk(page, '.archicode.yaml');
   assert.equal(saved.charCodeAt(0), 0xfeff);
   assert.equal(saved.indexOf(MARK, 1), -1);
   assert.ok(saved.slice(1).startsWith('# the workspace\n'), 'the comment of the file is the author\'s, after the mark');
@@ -145,7 +145,7 @@ test('workspace.yaml with a byte-order mark is saved with it, and without one it
   assert.equal(plainPage.state.workspace.bom, false);
   plainPage.sandbox.commitSettingsEdit((live) => { live.name = 'Orchard'; });
   await plainPage.sandbox.saveAllChanges();
-  assert.notEqual(onDisk(plainPage, 'workspace.yaml').charCodeAt(0), 0xfeff);
+  assert.notEqual(onDisk(plainPage, '.archicode.yaml').charCodeAt(0), 0xfeff);
 });
 
 test('a block moved to another file keeps the mark of the file it leaves and of the file it joins, each its own', async () => {
@@ -211,7 +211,7 @@ function bytesServer(files) {
 }
 
 test('served by archicode editor serve: the mark of a file is read from its bytes and written back to the server', async () => {
-  const server = bytesServer({ 'workspace.yaml': WORKSPACE, 'manifests/app.orchard.yaml': MARK + ORCHARD, 'manifests/app.market.yaml': MARKET });
+  const server = bytesServer({ '.archicode.yaml': WORKSPACE, 'manifests/app.orchard.yaml': MARK + ORCHARD, 'manifests/app.market.yaml': MARKET });
   const sandbox = createApp({ serverToken: server.TOKEN, fetch: server.fetch });
   await sandbox.openServedFolder();
   await sandbox.loadViewpointKernel();

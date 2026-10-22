@@ -219,7 +219,7 @@ class DeterministicGenerationTest {
 
     @SneakyThrows
     private void write(Path folder, boolean reversed) {
-        Files.writeString(folder.resolve("workspace.yaml"), WORKSPACE);
+        Files.writeString(folder.resolve(".archicode.yaml"), WORKSPACE);
         Files.createDirectories(folder.resolve("manifests"));
         val manifests = manifests(reversed);
         for (int i = 0; i < manifests.size(); i++) {
@@ -235,7 +235,7 @@ class DeterministicGenerationTest {
     @SneakyThrows
     private void generate(Path folder) {
         val archiCode = new ArchiCode();
-        archiCode.workspaceFilePath = folder.resolve("workspace.yaml");
+        archiCode.workspaceFilePath = folder.resolve(".archicode.yaml");
         val views = new ViewsGroup();
         views.archiCode = archiCode;
         generateViewsCommand.viewsGroup = views;

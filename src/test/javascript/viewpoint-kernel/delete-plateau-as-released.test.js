@@ -55,8 +55,13 @@ const FULL_MIDDLE = Object.assign({}, BRIGHTCART, {
   'marketplace/plateau.yaml': BRIGHTCART['marketplace/plateau.yaml'].replace('override: "inhouse"', 'override: "pilot"')
 });
 
+// the page of the tag still opens `workspace.yaml` (the file was renamed `.archicode.yaml` in wave 019, run 0144, #133): its copy of the folder has the former name,
+// and the files it saves are put back under the new one before they are compared
+const FORMER = 'workspace.yaml';
+const NEW = '.archicode.yaml';
+const renamed = (files, from, to) => Object.fromEntries(Object.entries(files).map(([p, text]) => [p === from ? to : p, text]));
 async function open(html, files) {
-  const mem = memFolder(files);
+  const mem = memFolder(html === null ? files : renamed(files, NEW, FORMER));
   const sandbox = createApp(html === null ? {} : { html });
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -79,7 +84,8 @@ async function deleted(html, files, id) {
   assert.equal(state.plateauTree.nodes.has(id), false, id + ' is deleted');
   await sandbox.saveAllChanges();
   assert.equal(run(sandbox, 'saveStatus.state'), 'success', id + ': saved');
-  return { allowed: true, files: Object.fromEntries(Array.from(mem.files, ([p, f]) => [p, f.text])), removed: plain(mem.removals).sort() };
+  const saved = Object.fromEntries(Array.from(mem.files, ([p, f]) => [p, f.text]));
+  return { allowed: true, files: html === null ? saved : renamed(saved, FORMER, NEW), removed: plain(mem.removals).map((p) => (html === null || p !== FORMER ? p : NEW)).sort() };
 }
 
 for (const [name, files, expected] of [

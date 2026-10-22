@@ -89,7 +89,7 @@ test('a split and a merge are written one pair at a time and each from is checke
 
 test('a workspace without plateaus is not affected: the check finds nothing to build on', async () => {
   const files = {
-    'workspace.yaml': 'settings:\n  manifests:\n    paths: ["manifests/**"]\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["manifests/**"]\n',
     'manifests/a.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "a"\n  name: "A"\n'
   };
   const mem = memFolder(files);

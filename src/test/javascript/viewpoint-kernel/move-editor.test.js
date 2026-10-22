@@ -147,7 +147,7 @@ const target = (name) => 'plateaus/20_target/' + name;
 async function open(options = {}) {
   const manifests = options.manifests || MANIFESTS;
   if (options.plateaus === false) {
-    const files = Object.assign({ 'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' }, Object.fromEntries(Object.entries(manifests).map(([name, body]) => ['manifests/' + name, body])));
+    const files = Object.assign({ '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' }, Object.fromEntries(Object.entries(manifests).map(([name, body]) => ['manifests/' + name, body])));
     return openLayered(createApp, memFolder, files, {});
   }
   // a view belongs to no plateau (run 0100): it is declared once, in the target's folder, not once in each

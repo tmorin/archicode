@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 class UnionWorkspaceTest {
 
     private static final Path WORKSPACE = Path.of(
-        "src/test/resources/plateau-comparison/workspace.yaml"
+        "src/test/resources/plateau-comparison/.archicode.yaml"
     ).toAbsolutePath();
 
     @Inject

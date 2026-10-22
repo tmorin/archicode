@@ -48,7 +48,7 @@ class PlateauComparisonTest {
 
     /** The invented warehouse of {@code replaces}: a workspace of its own, apart from the bookshop. */
     private Path replacesWorkspace() {
-        val workspace = dir.resolve("replaces").resolve("workspace.yaml");
+        val workspace = dir.resolve("replaces").resolve(".archicode.yaml");
         return Files.exists(workspace) ? workspace : copy(REPLACES, dir.resolve("replaces"));
     }
 
@@ -70,7 +70,7 @@ class PlateauComparisonTest {
                 }
             }
         }
-        return into.resolve("workspace.yaml");
+        return into.resolve(".archicode.yaml");
     }
 
     private record Result(int exit, String out, String err) {}
@@ -715,8 +715,8 @@ class PlateauComparisonTest {
     @Test
     @SneakyThrows
     void aWorkspaceWithoutPlateausHasNothingToBeComparedAndSaysSo() {
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  name: plain\n");
-        val result = diff(dir.resolve("workspace.yaml"));
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  name: plain\n");
+        val result = diff(dir.resolve(".archicode.yaml"));
         assertEquals(1, result.exit);
         assertTrue(result.err.contains("the workspace declares no plateau: there is nothing to compare"), result.err);
         assertEquals("", result.out);
@@ -750,14 +750,14 @@ class PlateauComparisonTest {
         // `to-be` overrides `as-is`: the comparison with it is drawn next to the plateau, in a folder named after both
         assertEquals(
             List.of(
+                ".archicode.yaml",
                 "plateaus",
                 "views-to-be",
                 "views-to-be-no-orders",
                 "views-to-be-vs-as-is",
                 "views-to-be-vs-as-is-no-orders",
                 "views-to-be-vs-as-is-without-removed",
-                "views-to-be-without-removed",
-                "workspace.yaml"
+                "views-to-be-without-removed"
             ),
             folders()
         );
@@ -857,8 +857,8 @@ class PlateauComparisonTest {
             dir.resolve("manifests/shop.yaml"),
             "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"shop\"\n"
         );
-        Files.writeString(dir.resolve("workspace.yaml"), "settings:\n  name: plain\n");
-        val result = generate(dir.resolve("workspace.yaml"));
+        Files.writeString(dir.resolve(".archicode.yaml"), "settings:\n  name: plain\n");
+        val result = generate(dir.resolve(".archicode.yaml"));
         assertEquals(0, result.exit, result.err);
         assertTrue(Files.exists(dir.resolve("views/plantuml/application/shop-overview.puml")));
         assertFalse(
@@ -868,14 +868,14 @@ class PlateauComparisonTest {
         );
         try (val children = Files.list(dir)) {
             assertEquals(
-                List.of("manifests", "views", "workspace.yaml"),
+                List.of(".archicode.yaml", "manifests", "views"),
                 children
                     .map(p -> p.getFileName().toString())
                     .sorted()
                     .collect(Collectors.toList())
             );
         }
-        val refused = generate(dir.resolve("workspace.yaml"), "--against", "as-is", "-o", "other");
+        val refused = generate(dir.resolve(".archicode.yaml"), "--against", "as-is", "-o", "other");
         assertEquals(1, refused.exit);
         assertTrue(
             refused.err.contains(
@@ -1098,7 +1098,7 @@ class PlateauComparisonTest {
         replaceIn("plateaus/20_to-be/plateau.yaml", "label: \"orders on\"", "label: \"orders on \"");
         replaceIn("plateaus/10_as-is/shop.yaml", "label: \"delegates to\"", "label: \"delegates to \"");
         replaceIn(
-            "workspace.yaml",
+            ".archicode.yaml",
             "    customs:\n",
             "    customs:\n      - name: \"without-new\"\n        actions:\n          - operator: \"REMOVE\"\n            json-path: \"$..relationships[?(@.change == 'new')]\"\n"
         );

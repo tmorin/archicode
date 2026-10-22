@@ -175,7 +175,7 @@ wave_manifest:
       slug: rename-workspace-file
       phase: P1
       depends_on: [W-1, W-2, W-3, W-4, W-5, W-6, W-7]
-      run: null
+      run: 0144
       delegation: standard
       likely_paths:
         - 'src/main/java/**'

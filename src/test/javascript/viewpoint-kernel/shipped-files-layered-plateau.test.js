@@ -12,7 +12,7 @@ const { memFolder } = require('./mem-folder');
 const manifest = (kind, extra) => 'header:\n  kind: "' + kind + '"\n' + (extra || '') + '  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n';
 
 async function open(files) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': 'settings: {}\n' }, files));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': 'settings: {}\n' }, files));
   const sandbox = createApp();
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };

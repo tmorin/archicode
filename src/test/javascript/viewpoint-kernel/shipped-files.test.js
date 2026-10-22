@@ -17,14 +17,14 @@ const REPO = path.resolve(__dirname, '../../../..');
 const ROOTS = ['src/doc/examples', 'src/test/resources'];
 const EXCEPTIONS = path.join(REPO, 'src/test/resources/shipped-files/exceptions.json');
 
-/** Every `workspace.yaml` under the roots, from the root of the repository, with `/`, sorted. */
+/** Every `.archicode.yaml` under the roots, from the root of the repository, with `/`, sorted. */
 function workspaces() {
   const found = [];
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.name === 'workspace.yaml') found.push(path.relative(REPO, full).split(path.sep).join('/'));
+      else if (entry.name === '.archicode.yaml') found.push(path.relative(REPO, full).split(path.sep).join('/'));
     }
   };
   for (const root of ROOTS) walk(path.join(REPO, root));
@@ -33,8 +33,8 @@ function workspaces() {
 
 /**
  * The workspace files the manual includes under another name (the steps of the design example, the defaults, the parts of the configuration): each is
- * a workspace file, or a part of one, and is opened as the `workspace.yaml` of an empty folder. Every YAML file of the manual that is neither a
- * `workspace.yaml` nor in a manifests or plateau folder.
+ * a workspace file, or a part of one, and is opened as the `.archicode.yaml` of an empty folder. Every YAML file of the manual that is neither a
+ * `.archicode.yaml` nor in a manifests or plateau folder.
  */
 function workspaceFilesUnderAnotherName() {
   const found = [];
@@ -46,7 +46,7 @@ function workspaceFilesUnderAnotherName() {
     }
   };
   walk(path.join(REPO, 'src/doc/examples'));
-  return found.filter((f) => !f.endsWith('/workspace.yaml') && !f.includes('/manifests/') && !f.includes('/plateaus/')).sort();
+  return found.filter((f) => !f.endsWith('/.archicode.yaml') && !f.includes('/manifests/') && !f.includes('/plateaus/')).sort();
 }
 
 /** The exceptions that apply to the editor: workspace -> reason. */
@@ -100,8 +100,8 @@ async function openEveryPlateau(dir) {
 test('the repository ships the workspaces this test looks for', () => {
   const found = workspaces();
   assert.ok(found.length >= 17, 'the manual and the fixtures ship at least 17 workspaces: ' + found.join(', '));
-  assert.ok(found.includes('src/test/resources/brightcart/layered/workspace.yaml'));
-  assert.ok(found.includes('src/doc/examples/domain_plateaus/workspace.yaml'));
+  assert.ok(found.includes('src/test/resources/brightcart/layered/.archicode.yaml'));
+  assert.ok(found.includes('src/doc/examples/domain_plateaus/.archicode.yaml'));
 });
 
 test('an exception names a workspace the repository ships', () => {
@@ -131,9 +131,9 @@ test('every plateau of a workspace that has plateaus is opened, each compared wi
 });
 
 for (const file of workspaceFilesUnderAnotherName()) {
-  test(file + ' opens in the editor as a workspace.yaml', async () => {
+  test(file + ' opens in the editor as a .archicode.yaml', async () => {
     const reason = exceptions().get(file);
-    const mem = memFolder({ 'workspace.yaml': fs.readFileSync(path.join(REPO, file), 'utf8') });
+    const mem = memFolder({ '.archicode.yaml': fs.readFileSync(path.join(REPO, file), 'utf8') });
     const sandbox = createApp();
     const state = sandbox.__state();
     state.folder = { handle: mem.handle, name: 'ws' };

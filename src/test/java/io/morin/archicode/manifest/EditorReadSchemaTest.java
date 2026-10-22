@@ -52,7 +52,7 @@ import lombok.val;
 import org.junit.jupiter.api.Test;
 
 /**
- * The table that the editor reads manifests and {@code workspace.yaml} with ({@code READ_SCHEMA} in {@code standalone.html}, run
+ * The table that the editor reads manifests and {@code .archicode.yaml} with ({@code READ_SCHEMA} in {@code standalone.html}, run
  * 0072) is the table of the classes the command line reads them with: the keys of each type, the keys a type needs, the other
  * names of a key, the kinds a nested element may have, and the kinds of manifest. The page cannot ask the classes, so this test does,
  * and a class that gains a key fails here until the page knows it.

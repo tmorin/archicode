@@ -15,13 +15,13 @@ const DEFAULT_WORKSPACE = 'settings:\n  manifests:\n    paths: [manifests]\n';
 
 /** What the editor makes of the folder of a case, in the words of `expect`: the references and the qualifiers, or the one error and the file it names. */
 async function read(files) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': DEFAULT_WORKSPACE }, files));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': DEFAULT_WORKSPACE }, files));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
   state.permissionState = 'granted';
   await sandbox.loadWorkspace(mem.handle);
-  if (state.fatalError) return { error: state.fatalError.replace(/^Could not read\/parse workspace\.yaml: /, ''), file: 'workspace.yaml' };
+  if (state.fatalError) return { error: state.fatalError.replace(/^Could not read\/parse \.archicode\.yaml: /, ''), file: '.archicode.yaml' };
   const bad = (state.manifestFiles || []).find((f) => f.error);
   if (bad) return { error: bad.error, file: bad.relPath };
   const records = [];
@@ -64,7 +64,7 @@ const CHILD = 'header:\n  kind: "archicode.morin.io/container"\n  parent: 0\n  v
 const ROOT_ZERO = 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "0"\n  name: Zero\n';
 
 async function open(manifests) {
-  const files = Object.assign({ 'workspace.yaml': WORKSPACE }, Object.fromEntries(Object.entries(manifests).map(([name, body]) => ['manifests/' + name, body])));
+  const files = Object.assign({ '.archicode.yaml': WORKSPACE }, Object.fromEntries(Object.entries(manifests).map(([name, body]) => ['manifests/' + name, body])));
   const mem = memFolder(files);
   const sandbox = createApp({});
   const state = sandbox.__state();
@@ -104,7 +104,7 @@ test('a block with numbers moves to another manifest as written (the cut and the
   assert.match(onDisk(page, 'shop.yaml'), /id: 010   # an octal\n/);
 });
 
-test('workspace.yaml keeps its numbers when it is saved (the text as written, quoted or not)', () => {
+test('.archicode.yaml keeps its numbers when it is saved (the text as written, quoted or not)', () => {
   const sandbox = createApp({});
   const text = 'settings:\n  name: 010  # the name\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: 0x1F  # a gap\n    line-style: 5.0\n';
   const value = sandbox.parseYaml(text);
@@ -120,7 +120,7 @@ test('a style written as a YAML 1.1 number is drawn as the command line reads it
     '    cut:', '      line-style: 0b11', '      line-gap: 1.5', '      round-corner: 8.9',
     '    quoted:', '      line-style: "7"', '      round-corner: !!int 0x1F', '      line-gap: 0x7FFFFFFF', ''
   ].join('\n');
-  const mem = memFolder({ 'workspace.yaml': workspace, 'manifests/m0.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: s\n' });
+  const mem = memFolder({ '.archicode.yaml': workspace, 'manifests/m0.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: s\n' });
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };

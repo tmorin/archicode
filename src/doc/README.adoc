@@ -106,7 +106,7 @@ The following snippet describes a workspace named `ArchiCode`, designing the `Co
 .The content of `workspace.yaml`
 [source,yaml]
 ----
-include::examples/domain_workspace/workspace.yaml[]
+include::examples/domain_workspace/.archicode.yaml[]
 ----
 
 The next one, shows the default properties of a workspace.
@@ -208,7 +208,7 @@ A workspace with no plateau is not concerned: such a root is indexed and drawn a
 .The content of `workspace.yaml` of a workspace whose manifests are in folders
 [source,yaml]
 ----
-include::examples/domain_manifest_folders/workspace.yaml[]
+include::examples/domain_manifest_folders/.archicode.yaml[]
 ----
 
 .The files of the example `domain_manifest_folders`
@@ -254,7 +254,7 @@ error: `settings.plateaus` no longer exists: a plateau is a layer now. Remove th
 .A workspace with a root and one layer: `workspace.yaml`
 [source,yaml]
 ----
-include::examples/domain_plateaus/workspace.yaml[]
+include::examples/domain_plateaus/.archicode.yaml[]
 ----
 
 .The folders of that workspace
@@ -665,7 +665,7 @@ In the ArchiCode domain, the concept of an "Environment" resonates in parallel w
 .The workspace defining the Reference environment
 [source,yaml]
 ----
-include::examples/domain_technology/workspace.yaml[]
+include::examples/domain_technology/.archicode.yaml[]
 ----
 
 ==== Node
@@ -803,7 +803,7 @@ ArchiCode places a strong emphasis on the dynamic generation of views, fostering
 .The workspace defined a View representing an __overview__ of the TerminalSession node
 [source,yaml]
 ----
-include::examples/domain_viewpoint_views/workspace.yaml[]
+include::examples/domain_viewpoint_views/.archicode.yaml[]
 ----
 
 A view that has an `id` is a named view. Without `--view`, `archicode views generate` draws the views it finds from the elements of the model (a named view is drawn when it is asked for); `archicode views generate --view terminal-session` (or `-i`) draws the views of that `id` alone, no other view with them, into `views/plantuml/technology/terminal-session.puml`. A view can be a manifest of its own, in the folders of the manifests (see <<stories>>); it belongs to no plateau, see <<plateau-untied>>.
@@ -814,7 +814,7 @@ A view that has an `id` is a named view. Without `--view`, `archicode views gene
 .The content of `workspace.yaml` of the example `domain_technology_map`: three maps of a technology layer
 [source,yaml]
 ----
-include::examples/domain_technology_map/workspace.yaml[]
+include::examples/domain_technology_map/.archicode.yaml[]
 ----
 
 [source,shell]
@@ -1179,7 +1179,7 @@ mv manifests/* plateaus/baseline/
 .`workspace.yaml`
 [source,yaml]
 ----
-include::examples/domain_plateaus/workspace.yaml[]
+include::examples/domain_plateaus/.archicode.yaml[]
 ----
 
 A manifest of kind `archicode.morin.io/plateau` is optional for the root. This one only gives it a name and a horizon, and the tools show them (`baseline` is its `id`, and cannot be another):
@@ -2842,7 +2842,7 @@ In this code snippet, we illustrate the initial configuration and elements inclu
 .Step #1 - The initial `workspace.yaml`
 [source,yaml]
 ----
-include::examples/facet_example_step_1/workspace.yaml[]
+include::examples/facet_example_step_1/.archicode.yaml[]
 ----
 
 Here, we execute a command to generate the views for all viewpoints. It renders the initial complex view of the ecommerce platform, laying down the groundwork for further refinement.
@@ -2880,7 +2880,7 @@ We expand the ___workspace.yaml___ file to integrate the __oidic__ relationships
 .Step #2 - The `workspace.yaml` with the _oidc_ relationships
 [source,yaml]
 ----
-include::examples/facet_example_step_2/workspace.yaml[]
+include::examples/facet_example_step_2/.archicode.yaml[]
 ----
 
 A command is executed to refresh the views, reflecting the newly integrated authorization relationships. This allows for a visualization of how the authorization concern is woven into the ecommerce platform model.
@@ -2917,7 +2917,7 @@ The _workspace.yaml_ file is enhanced with the definition of the _oidc_ facet. T
 .Step #3 - The `workspace.yaml` with the facet definition
 [source,yaml]
 ----
-include::examples/facet_example_step_3/workspace.yaml[]
+include::examples/facet_example_step_3/.archicode.yaml[]
 ----
 
 With the _oidc_ facet defined, we re-run the command to generate the views. The outcome is a set of refined visuals where the focus is intensively on the _odic_ qualified relationships and elements.
@@ -2954,7 +2954,7 @@ The _workspace.yaml_ is updated to include the definition of the _main_ facet. T
 .Step #4 - The `workspace.yaml` with the facet definition
 [source,yaml]
 ----
-include::examples/facet_example_step_4/workspace.yaml[]
+include::examples/facet_example_step_4/.archicode.yaml[]
 ----
 
 A regeneration of the views is executed to reflect the integration of the _main_ facet. This provides a fresh perspective where the specific authorization elements are filtered out, offering a cleaner, uncluttered view of the ecommerce platform’s primary architecture.

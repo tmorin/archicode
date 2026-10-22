@@ -116,7 +116,7 @@ test('(a) with the future the plateau drawn is the base of the comparison: its o
 // a and b say the same thing as n: the kernel proposes (a, n) and (b, n), a merge. p1 removes a; p2 over p1 removes b and adds n.
 const SAME = '  description: "Books the parcels of every order and tracks them."\n';
 const MERGE = {
-  'workspace.yaml': WORKSPACE,
+  '.archicode.yaml': WORKSPACE,
   'manifests/base/a.yaml': SYSTEM('a', 'A', SAME),
   'manifests/base/b.yaml': SYSTEM('b', 'B', SAME),
   'manifests/base/k.yaml': SYSTEM('k', 'K'),

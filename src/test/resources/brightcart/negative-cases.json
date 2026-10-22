@@ -1,5 +1,5 @@
 {
-  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of workspace.yaml:`, `Could not read/parse workspace.yaml: `), and the position `(line L, column C)` of a file is not told: the page reads a file into a tree that has no positions, and the column the command line gives is where its reader stopped, so a copy of it would be a guess (decided in wave 015, run 0092; brightcart-negative.test.js pins that no sentence of the page carries one). A null where a list or an object is expected is absent in both tools (N59 to N63, M65 to M73), a number is no kind and no value of an enum (N64, N66, N67), a list is no element (N65), the facets are told in kebab-case (N72 to N75, the camel-case spelling is read too, N76), and `0x1F` for an `int` is a known difference (N77, issue #103). One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type. Run 0100 (wave 015, W-12, issues #100 and #86) adds N79 to N82: a view and a story belong to no plateau, `plateau:` in their header means nothing and is not told (N79; it was a warning in wave 015, silent since wave 016, run 0107), what they name must exist in at least one plateau (N80, `entryProblems` of the page), and a name that another plateau has but the plateau drawn lacks is left out of a map and makes any other view undrawable in this plateau, which the command line skips with a warning and the page says in the view (N81, N82: `viewProblems` of the page, the sentence of the page alone). Run 0101 (wave 015, W-13, issue #24) adds N83 to N85: a step of a story may say `at` (the plateau it is told at) and `against` (the plateau it is compared with); each must be a plateau and the two cannot be one plateau (N83, N85: `entryProblems` of the page, the sentence of both tools), and a name that the plateau of the step lacks is no mistake (N84: the command line does not draw stories and says nothing, the page says it in the step, `stepProblems`: story -> step number -> the sentence of the page alone). A workspace that has no plateau refuses such a step too: the cases here are all layered, so `StepPlateausTest.java` and `story-steps-plateaus.test.js` say it. Run 0108 (wave 016, W-2) adds N86 to N88: the layer of a saved view is read in any case by both tools (N86, #108: `Technology` and `TECHNOLOGY` are the technology layer, the command line skips or warns as it does for `technology` and the page says the same in the view), an item with no value in `relationships` is no relationship in both (N87, #105: the page counted it as dangling), and a container, a component or a node with no `header.parent` in a workspace that has plateaus is one sentence with the file and the kind, told with the other mistakes of the layer (N88, #106; the same sentence and a workspace with no plateau, which is untouched, are in layer-checks-cases.json, K43 to K49).",
+  "comment": "The negative variants that today's tools run, on the layered rendition (wave 013 run 0070, rewritten for the layers by wave 014: W-9 moved it to layered/, W-11 added V1 and V3 to V10; the cases of the plateaus of waves 008 to 013 went with the old mechanism, and N41 is the key itself). Each case is Brightcart's layered/ with the alteration `ops` (replace: the text must occur once or more, the first occurrence is replaced, or every one with `all`; write; copy; delete; paths are relative to the folder). Nothing negative is committed as a workspace: BrightcartNegativeCasesTest.java (command line) and brightcart-negative.test.js (editor) build each altered folder in a temporary folder from layered/ and check `cli` and `editor` below. `cli`: the arguments after `archicode -w <workspace>`, the exit code and the lines of the error output (the warnings and one `error:` line, and no stack trace); `sameStdoutAs`: another command whose standard output is the same. `editor`: the plateau the page draws (null: none is asked for) and what it compares it with (`@past`: the plateau it overrides), then what it shows: fatalError, treeProblems and treeWarnings (the tree of the plateaus), layerProblems (what the first layer of the chain that is wrong says), baselineProblem, manifestErrors (file -> text), danglingRelationships, duplicates, warnings (those of the comparison). The editor says the sentence of the command line up to three differences, which the node test removes before it compares: the banners start with a capital and end with a full stop, the plateau rules come under a heading (`Could not read the plateaus of .archicode.yaml:`, `Could not read/parse .archicode.yaml: `), and the position `(line L, column C)` of a file is not told: the page reads a file into a tree that has no positions, and the column the command line gives is where its reader stopped, so a copy of it would be a guess (decided in wave 015, run 0092; brightcart-negative.test.js pins that no sentence of the page carries one). A null where a list or an object is expected is absent in both tools (N59 to N63, M65 to M73), a number is no kind and no value of an enum (N64, N66, N67), a list is no element (N65), the facets are told in kebab-case (N72 to N75, the camel-case spelling is read too, N76), and `0x1F` for an `int` is a known difference (N77, issue #103). One cause is one sentence in both tools: while a manifest is refused the command line stops there, so the editor says that file and not what its absence leaves behind (N21, N22, N26, N28); the elements declared under a parent that is not there are one sentence with how many others there are (N45), and so are the elements that point at one reference that is not there (N47). An entry `editor: null` has a `reason`: the page has nothing to type. Run 0100 (wave 015, W-12, issues #100 and #86) adds N79 to N82: a view and a story belong to no plateau, `plateau:` in their header means nothing and is not told (N79; it was a warning in wave 015, silent since wave 016, run 0107), what they name must exist in at least one plateau (N80, `entryProblems` of the page), and a name that another plateau has but the plateau drawn lacks is left out of a map and makes any other view undrawable in this plateau, which the command line skips with a warning and the page says in the view (N81, N82: `viewProblems` of the page, the sentence of the page alone). Run 0101 (wave 015, W-13, issue #24) adds N83 to N85: a step of a story may say `at` (the plateau it is told at) and `against` (the plateau it is compared with); each must be a plateau and the two cannot be one plateau (N83, N85: `entryProblems` of the page, the sentence of both tools), and a name that the plateau of the step lacks is no mistake (N84: the command line does not draw stories and says nothing, the page says it in the step, `stepProblems`: story -> step number -> the sentence of the page alone). A workspace that has no plateau refuses such a step too: the cases here are all layered, so `StepPlateausTest.java` and `story-steps-plateaus.test.js` say it. Run 0108 (wave 016, W-2) adds N86 to N88: the layer of a saved view is read in any case by both tools (N86, #108: `Technology` and `TECHNOLOGY` are the technology layer, the command line skips or warns as it does for `technology` and the page says the same in the view), an item with no value in `relationships` is no relationship in both (N87, #105: the page counted it as dangling), and a container, a component or a node with no `header.parent` in a workspace that has plateaus is one sentence with the file and the kind, told with the other mistakes of the layer (N88, #106; the same sentence and a workspace with no plateau, which is untouched, are in layer-checks-cases.json, K43 to K49).",
   "cases": [
     {
       "id": "N7",
@@ -593,7 +593,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  name: \"Brightcart\"\n",
           "to": "  name: \"Brightcart\"\n  foo: 1\n"
         }
@@ -607,7 +607,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo` (line 3, column 9)"
+            "error: `.archicode.yaml` is not valid: unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo` (line 3, column 9)"
           ]
         }
       ],
@@ -616,7 +616,7 @@
           "plateau": null,
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `foo` (known: current, facets, manifests, name, relationships, views) at `settings.foo`"
           }
         }
       ]
@@ -821,7 +821,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  views:\n    path: \"views\"\n",
           "to": "  views:\n    path: \"views\"\n    labels: \"x\"\n"
         }
@@ -835,7 +835,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: the value has the wrong shape (found a string) at `settings.views.labels` (line 5, column 13)"
+            "error: `.archicode.yaml` is not valid: the value has the wrong shape (found a string) at `settings.views.labels` (line 5, column 13)"
           ]
         }
       ],
@@ -844,7 +844,7 @@
           "plateau": null,
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: the value has the wrong shape (found a string) at `settings.views.labels`"
+            "fatalError": "Could not read/parse .archicode.yaml: the value has the wrong shape (found a string) at `settings.views.labels`"
           }
         }
       ]
@@ -856,7 +856,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "name: \"journey\"            # the purchase journey: no staff tools, no fulfilment",
           "to": "hide-unlinked: true"
         }
@@ -870,7 +870,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: Missing settings.facets.customs[0].name"
+            "error: `.archicode.yaml` is not valid: Missing settings.facets.customs[0].name"
           ]
         }
       ],
@@ -879,7 +879,7 @@
           "plateau": null,
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: Missing settings.facets.customs[0].name"
+            "fatalError": "Could not read/parse .archicode.yaml: Missing settings.facets.customs[0].name"
           }
         }
       ]
@@ -887,11 +887,11 @@
     {
       "id": "N33",
       "variant": "-",
-      "title": "a key of workspace.yaml that ArchiCode does not know",
+      "title": "a key of .archicode.yaml that ArchiCode does not know",
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "styles:\n  by-tags:",
           "to": "foo: 1\nstyles:\n  by-tags:"
         }
@@ -905,7 +905,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `foo` (known: application, formatters, settings, stories, story, styles, technology, view, views) at `foo` (line 21, column 7)"
+            "error: `.archicode.yaml` is not valid: unknown key `foo` (known: application, formatters, settings, stories, story, styles, technology, view, views) at `foo` (line 21, column 7)"
           ]
         }
       ],
@@ -914,7 +914,7 @@
           "plateau": null,
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `foo` (known: application, formatters, settings, stories, story, styles, technology, view, views) at `foo`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `foo` (known: application, formatters, settings, stories, story, styles, technology, view, views) at `foo`"
           }
         }
       ]
@@ -1000,7 +1000,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "operator: REMOVE",
           "to": "operator: ZAP"
         }
@@ -1014,7 +1014,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unrecognized `settings.facets.customs[0].actions[0].operator` \"ZAP\" (known: REMOVE) (line 9, column 23)"
+            "error: `.archicode.yaml` is not valid: unrecognized `settings.facets.customs[0].actions[0].operator` \"ZAP\" (known: REMOVE) (line 9, column 23)"
           ]
         }
       ],
@@ -1023,7 +1023,7 @@
           "plateau": null,
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unrecognized `settings.facets.customs[0].actions[0].operator` \"ZAP\" (known: REMOVE)"
+            "fatalError": "Could not read/parse .archicode.yaml: unrecognized `settings.facets.customs[0].actions[0].operator` \"ZAP\" (known: REMOVE)"
           }
         }
       ]
@@ -1035,7 +1035,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "background-color: \"lightgray\"",
           "to": "background-colour: \"lightgray\""
         }
@@ -1049,7 +1049,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `background-colour` (known: background-color, font-color, font-style, line-color, line-gap, line-style, line-thickness, round-corner, shadowing) at `styles.by-tags.external.background-colour` (line 24, column 37)"
+            "error: `.archicode.yaml` is not valid: unknown key `background-colour` (known: background-color, font-color, font-style, line-color, line-gap, line-style, line-thickness, round-corner, shadowing) at `styles.by-tags.external.background-colour` (line 24, column 37)"
           ]
         }
       ],
@@ -1058,7 +1058,7 @@
           "plateau": null,
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `background-colour` (known: background-color, font-color, font-style, line-color, line-gap, line-style, line-thickness, round-corner, shadowing) at `styles.by-tags.external.background-colour`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `background-colour` (known: background-color, font-color, font-style, line-color, line-gap, line-style, line-thickness, round-corner, shadowing) at `styles.by-tags.external.background-colour`"
           }
         }
       ]
@@ -1180,7 +1180,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  name: \"Brightcart\"\n",
           "to": "  name: \"Brightcart\"\n  plateaus:\n    - id: \"saas\"\n      path: \"plateaus/saas\"\n"
         }
@@ -1225,7 +1225,7 @@
           "plateau": null,
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: `settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)"
+            "fatalError": "Could not read/parse .archicode.yaml: `settings.plateaus` no longer exists: a plateau is a layer now. Remove the key, write `plateau: <id>` in the header of the manifests of each plateau, and declare each plateau in a manifest of kind `archicode.morin.io/plateau` (`id`, `name`, `override`: the plateau it builds on, `baseline` when absent, and `patches` for what it changes)"
           }
         }
       ]
@@ -1237,7 +1237,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  name: \"Brightcart\"\n",
           "to": "  name: \"Brightcart\"\n  current: \"nope\"\n"
         }
@@ -1276,7 +1276,7 @@
           "plateau": null,
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read the plateaus of workspace.yaml:\n`settings.current` names the plateau `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse`, `marketplace`, `saas`)"
+            "fatalError": "Could not read the plateaus of .archicode.yaml:\n`settings.current` names the plateau `nope`, which is not a plateau of this workspace (the plateaus are `baseline`, `inhouse`, `marketplace`, `saas`)"
           }
         }
       ]
@@ -2150,7 +2150,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "paths: [\"./**\"]",
           "to": "paths:\n      -\n      - \"./**\""
         }
@@ -2177,23 +2177,23 @@
     {
       "id": "N63",
       "variant": "-",
-      "title": "#80: the sections and the values of workspace.yaml that have nothing after their key are absent (the default is read)",
+      "title": "#80: the sections and the values of .archicode.yaml that have nothing after their key are absent (the default is read)",
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  views:\n    path: \"views\"\n",
           "to": "  relationships:\n    default-synthetic-label:\n  views:\n    path:\n    labels:\n"
         },
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  facets:\n",
           "to": "  facets:\n    global-enabled:\n    directory-name-template:\n"
         },
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "styles:\n  by-tags:",
           "to": "formatters:\napplication:\ntechnology:\nstyles:\n  by-tags:"
         }
@@ -2333,7 +2333,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "operator: REMOVE",
           "to": "operator: 0"
         }
@@ -2347,7 +2347,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unrecognized `settings.facets.customs[0].actions[0].operator` \"0\" (known: REMOVE) (line 9, column 23)"
+            "error: `.archicode.yaml` is not valid: unrecognized `settings.facets.customs[0].actions[0].operator` \"0\" (known: REMOVE) (line 9, column 23)"
           ]
         }
       ],
@@ -2356,7 +2356,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unrecognized `settings.facets.customs[0].actions[0].operator` \"0\" (known: REMOVE)"
+            "fatalError": "Could not read/parse .archicode.yaml: unrecognized `settings.facets.customs[0].actions[0].operator` \"0\" (known: REMOVE)"
           }
         }
       ]
@@ -2368,7 +2368,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "operator: REMOVE",
           "to": "operator: \" drop \""
         }
@@ -2382,7 +2382,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unrecognized `settings.facets.customs[0].actions[0].operator` \"drop\" (known: REMOVE) (line 9, column 23)"
+            "error: `.archicode.yaml` is not valid: unrecognized `settings.facets.customs[0].actions[0].operator` \"drop\" (known: REMOVE) (line 9, column 23)"
           ]
         }
       ],
@@ -2391,7 +2391,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unrecognized `settings.facets.customs[0].actions[0].operator` \"drop\" (known: REMOVE)"
+            "fatalError": "Could not read/parse .archicode.yaml: unrecognized `settings.facets.customs[0].actions[0].operator` \"drop\" (known: REMOVE)"
           }
         }
       ]
@@ -2403,7 +2403,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "line-gap: 4",
           "to": "line-gap: 9999999999"
         }
@@ -2417,7 +2417,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: Numeric value (9999999999) out of range of int (-2147483648 - 2147483647) at `styles.by-tags.legacy.line-gap` (line 27, column 27)"
+            "error: `.archicode.yaml` is not valid: Numeric value (9999999999) out of range of int (-2147483648 - 2147483647) at `styles.by-tags.legacy.line-gap` (line 27, column 27)"
           ]
         }
       ],
@@ -2426,7 +2426,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: Numeric value (9999999999) out of range of int (-2147483648 - 2147483647) at `styles.by-tags.legacy.line-gap`"
+            "fatalError": "Could not read/parse .archicode.yaml: Numeric value (9999999999) out of range of int (-2147483648 - 2147483647) at `styles.by-tags.legacy.line-gap`"
           }
         }
       ]
@@ -2475,7 +2475,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  name: \"Brightcart\"\n",
           "to": "  name: \"Brightcart\"\n  current: \"\"\n"
         }
@@ -2506,7 +2506,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  facets:\n",
           "to": "  facets:\n    nothing: 1\n"
         }
@@ -2520,7 +2520,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `nothing` (known: customs, directory-name-template, global-enabled) at `settings.facets.nothing` (line 6, column 15)"
+            "error: `.archicode.yaml` is not valid: unknown key `nothing` (known: customs, directory-name-template, global-enabled) at `settings.facets.nothing` (line 6, column 15)"
           ]
         }
       ],
@@ -2529,7 +2529,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `nothing` (known: customs, directory-name-template, global-enabled) at `settings.facets.nothing`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `nothing` (known: customs, directory-name-template, global-enabled) at `settings.facets.nothing`"
           }
         }
       ]
@@ -2541,7 +2541,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "      - name: \"journey\"",
           "to": "      - nothing: 1\n        name: \"journey\""
         }
@@ -2555,7 +2555,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `nothing` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].nothing` (line 7, column 19)"
+            "error: `.archicode.yaml` is not valid: unknown key `nothing` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].nothing` (line 7, column 19)"
           ]
         }
       ],
@@ -2564,7 +2564,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `nothing` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].nothing`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `nothing` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].nothing`"
           }
         }
       ]
@@ -2576,7 +2576,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "          - operator: REMOVE\n",
           "to": "          - nothing: 1\n            operator: REMOVE\n"
         }
@@ -2590,7 +2590,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `nothing` (known: json-path, operator) at `settings.facets.customs[0].actions[0].nothing` (line 9, column 23)"
+            "error: `.archicode.yaml` is not valid: unknown key `nothing` (known: json-path, operator) at `settings.facets.customs[0].actions[0].nothing` (line 9, column 23)"
           ]
         }
       ],
@@ -2599,7 +2599,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `nothing` (known: json-path, operator) at `settings.facets.customs[0].actions[0].nothing`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `nothing` (known: json-path, operator) at `settings.facets.customs[0].actions[0].nothing`"
           }
         }
       ]
@@ -2611,7 +2611,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "            json-path: \"$.application..elements[?(@.id == 'agent' || @.id == 'merchandiser' || @.id == 'backoffice' || @.id == 'fulfilment')]\"\n",
           "to": ""
         }
@@ -2625,7 +2625,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: Missing settings.facets.customs[0].actions[0].json-path"
+            "error: `.archicode.yaml` is not valid: Missing settings.facets.customs[0].actions[0].json-path"
           ]
         }
       ],
@@ -2634,7 +2634,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: Missing settings.facets.customs[0].actions[0].json-path"
+            "fatalError": "Could not read/parse .archicode.yaml: Missing settings.facets.customs[0].actions[0].json-path"
           }
         }
       ]
@@ -2646,7 +2646,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  facets:\n",
           "to": "  facets:\n    globalEnabled: true\n"
         }
@@ -2660,7 +2660,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `globalEnabled`, write `global-enabled` (known: customs, directory-name-template, global-enabled) at `settings.facets.globalEnabled` (line 6, column 24)"
+            "error: `.archicode.yaml` is not valid: unknown key `globalEnabled`, write `global-enabled` (known: customs, directory-name-template, global-enabled) at `settings.facets.globalEnabled` (line 6, column 24)"
           ]
         }
       ],
@@ -2669,7 +2669,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `globalEnabled`, write `global-enabled` (known: customs, directory-name-template, global-enabled) at `settings.facets.globalEnabled`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `globalEnabled`, write `global-enabled` (known: customs, directory-name-template, global-enabled) at `settings.facets.globalEnabled`"
           }
         }
       ]
@@ -2681,7 +2681,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "line-gap: 4",
           "to": "line-gap: 0x1F"
         }
@@ -3355,7 +3355,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "  facets:\n",
           "to": "  facets:\n    directoryNameTemplate: \"%s-%s\"\n"
         }
@@ -3369,7 +3369,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `directoryNameTemplate`, write `directory-name-template` (known: customs, directory-name-template, global-enabled) at `settings.facets.directoryNameTemplate` (line 6, column 35)"
+            "error: `.archicode.yaml` is not valid: unknown key `directoryNameTemplate`, write `directory-name-template` (known: customs, directory-name-template, global-enabled) at `settings.facets.directoryNameTemplate` (line 6, column 35)"
           ]
         }
       ],
@@ -3378,7 +3378,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `directoryNameTemplate`, write `directory-name-template` (known: customs, directory-name-template, global-enabled) at `settings.facets.directoryNameTemplate`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `directoryNameTemplate`, write `directory-name-template` (known: customs, directory-name-template, global-enabled) at `settings.facets.directoryNameTemplate`"
           }
         }
       ]
@@ -3390,7 +3390,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "      - name: \"journey\"",
           "to": "      - hideUnlinked: true\n        name: \"journey\""
         }
@@ -3404,7 +3404,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked` (line 7, column 27)"
+            "error: `.archicode.yaml` is not valid: unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked` (line 7, column 27)"
           ]
         }
       ],
@@ -3413,7 +3413,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `hideUnlinked`, write `hide-unlinked` (known: actions, hide-unlinked, name) at `settings.facets.customs[0].hideUnlinked`"
           }
         }
       ]
@@ -3425,7 +3425,7 @@
       "ops": [
         {
           "op": "replace",
-          "file": "workspace.yaml",
+          "file": ".archicode.yaml",
           "from": "json-path: \"$.application..elements[?(@.id == 'cart')]\"",
           "to": "jsonPath: \"$.application..elements[?(@.id == 'cart')]\""
         }
@@ -3439,7 +3439,7 @@
           ],
           "exit": 1,
           "stderr": [
-            "error: `workspace.yaml` is not valid: unknown key `jsonPath`, write `json-path` (known: json-path, operator) at `settings.facets.customs[2].actions[0].jsonPath` (line 18, column 67)"
+            "error: `.archicode.yaml` is not valid: unknown key `jsonPath`, write `json-path` (known: json-path, operator) at `settings.facets.customs[2].actions[0].jsonPath` (line 18, column 67)"
           ]
         }
       ],
@@ -3448,7 +3448,7 @@
           "plateau": "saas",
           "compareTo": null,
           "expect": {
-            "fatalError": "Could not read/parse workspace.yaml: unknown key `jsonPath`, write `json-path` (known: json-path, operator) at `settings.facets.customs[2].actions[0].jsonPath`"
+            "fatalError": "Could not read/parse .archicode.yaml: unknown key `jsonPath`, write `json-path` (known: json-path, operator) at `settings.facets.customs[2].actions[0].jsonPath`"
           }
         }
       ]

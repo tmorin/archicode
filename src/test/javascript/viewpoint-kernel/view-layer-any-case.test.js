@@ -11,7 +11,7 @@ const { memFolder } = require('./mem-folder');
 
 const view = (id, viewpoint, layer, properties) => 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "' + id + '"\n  viewpoint: "' + viewpoint + '"\n  layer: ' + layer + '\n  properties:\n' + properties;
 const FILES = {
-  'workspace.yaml': 'settings:\n  manifests:\n    paths: ["manifests"]\n',
+  '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["manifests"]\n',
   'manifests/shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n',
   'manifests/prod.yaml': 'header:\n  kind: "archicode.morin.io/environment"\n  version: "1"\ncontent:\n  id: "prod"\n  name: "Production"\n',
   'manifests/v-title.yaml': view('v_title', 'overview', 'Technology', '    element: "prod"\n'),

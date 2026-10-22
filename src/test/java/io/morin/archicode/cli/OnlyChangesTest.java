@@ -62,7 +62,7 @@ class OnlyChangesTest {
 
     private CliHarness.Result generate(Path workspaceFolder, String... args) {
         val all = new java.util.ArrayList<String>(
-            List.of("-w", workspaceFolder.resolve("workspace.yaml").toString(), "views", "generate")
+            List.of("-w", workspaceFolder.resolve(".archicode.yaml").toString(), "views", "generate")
         );
         all.addAll(List.of(args));
         return CliHarness.run(factory, errorOutput, all.toArray(String[]::new));

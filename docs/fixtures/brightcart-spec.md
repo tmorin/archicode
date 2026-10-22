@@ -82,7 +82,7 @@ The two alternatives exclude each other: they are two answers to the same questi
 
 **Manifests.** One root element per file, with its subtree nested, like the existing examples. A container or a node whose parent lives in another file uses `parent:` in the header. A file is named after its root reference. A relationship is owned by its source.
 
-**Where a manifest belongs.** The plateau of a manifest is its `plateau:` header, whatever folder it is in; a manifest without one belongs to `baseline` (L0). Each plateau has a folder (`baseline/`, `saas/`, `inhouse/`, `marketplace/`) with a `plateau.yaml` (`Kind: Plateau`: its `id`, `name`, `horizon`, `override` when its parent is not `baseline`, and its `patches`) and the manifests that say `plateau: <id>`; the folder only keeps the files of a plateau together, and the tools do not look at it. The manifests of `baseline` carry no header, the others carry one each. A file never sits outside a plateau folder, except `workspace.yaml`.
+**Where a manifest belongs.** The plateau of a manifest is its `plateau:` header, whatever folder it is in; a manifest without one belongs to `baseline` (L0). Each plateau has a folder (`baseline/`, `saas/`, `inhouse/`, `marketplace/`) with a `plateau.yaml` (`Kind: Plateau`: its `id`, `name`, `horizon`, `override` when its parent is not `baseline`, and its `patches`) and the manifests that say `plateau: <id>`; the folder only keeps the files of a plateau together, and the tools do not look at it. The manifests of `baseline` carry no header, the others carry one each. A file never sits outside a plateau folder, except `.archicode.yaml`.
 
 **One rendition, `layered/`.** It is committed and read by the layered tools: `archicode diff --plateau <id>`, `views generate --plateau <id>`, `plateau list`, and the editor, which opens it and draws any plateau of its band. It is the source of truth: four folders, the patches in the `plateau.yaml` of each plateau but `baseline`, `settings.manifests.paths: ["./**"]`, no `settings.plateaus`. The tree forks (`inhouse` and `saas` both override `baseline`), so every command names the plateau. It is generated from one description by `generate.mjs`, which resolves the layered files back and fails if a plateau differs from what the model resolves.
 
@@ -121,7 +121,7 @@ flowchart TB
 
 ## 4. The workspace
 
-`workspace.yaml` holds what is shared by every plateau: the name, the styles and the facets. In the layered rendition there is no `settings.plateaus`; `settings.manifests.paths` is `["./**"]`: every manifest below the folder of `workspace.yaml` is read, recursively and sorted, except the folders of generated views (`views-*`), and the plateau of each is its header (the default `manifests` folder does not exist there).
+`.archicode.yaml` holds what is shared by every plateau: the name, the styles and the facets. In the layered rendition there is no `settings.plateaus`; `settings.manifests.paths` is `["./**"]`: every manifest below the folder of `.archicode.yaml` is read, recursively and sorted, except the folders of generated views (`views-*`), and the plateau of each is its header (the default `manifests` folder does not exist there).
 
 ```yaml
 settings:
@@ -1473,7 +1473,7 @@ The complete-folder rendition was removed with the old mechanism (wave 014); the
 | Complete folders | 73 | 1913 | 52089 |
 | Layered with the views and the stories of section 9 (60 files: the 50 above, 7 views and 3 stories) | 60 | 1415 | 39186 |
 
-Counted on the files `generate.mjs` writes (the generator prints their count on every run, and `renditions.json` and a node test keep them), `workspace.yaml` left out (it is shared). The third row is what `layered/` holds since run 0110 of wave 016 (`renditions.json`: `files` 60, with `views` 7 and `stories` 3); the first two rows are the comparison of the two renditions of the elements, which the views and the stories (164 lines, 4740 bytes) do not enter. The layered rendition is about a third smaller, and about 9 of its 34 KB are patches. The saving is real and not dramatic; it grows with the number of plateaus and shrinks when plateaus restructure. The `inhouse` increment is 10.5 KB against 14.4 KB for its complete folder, because it adds 27 elements.
+Counted on the files `generate.mjs` writes (the generator prints their count on every run, and `renditions.json` and a node test keep them), `.archicode.yaml` left out (it is shared). The third row is what `layered/` holds since run 0110 of wave 016 (`renditions.json`: `files` 60, with `views` 7 and `stories` 3); the first two rows are the comparison of the two renditions of the elements, which the views and the stories (164 lines, 4740 bytes) do not enter. The layered rendition is about a third smaller, and about 9 of its 34 KB are patches. The saving is real and not dramatic; it grows with the number of plateaus and shrinks when plateaus restructure. The `inhouse` increment is 10.5 KB against 14.4 KB for its complete folder, because it adds 27 elements.
 
 ### Comparisons
 
@@ -1540,7 +1540,7 @@ Each case is a place where the fixture asks something specific. "State" is what 
 
 *One cause, one line.* When one mistake has many consequences, the tools say the first one (by reference) and count the others: the elements a layer declares under a parent that is not there are one sentence (V3, case N45: ``... (3 more elements of the plateau are declared under a parent that does not exist)``; the first told is a symptom of a missing layer, and a second wrong parent shows once the first is repaired), and so are the elements that point at one reference that is not there, one sentence for each reference (V5, case N47). While a manifest is refused the command line stops at it, before any layer is built; the editor, which draws what it can, says that file, in place of the parents its missing elements leave empty, for a plateau that has such layer problems (cases N21, N22, N26 and N28: `` `inhouse/application/commerce.yaml` is not valid: unknown kind ... ``).
 
-The other cases of the file are not variants of the document: a `replaces` that names nothing (a warning), a mistyped `--plateau` or `--against` (the editor offers no such option), an unknown key in a header, in a manifest, in `workspace.yaml` or in a style, a manifest that lacks `header.kind`, `header.version` or `content.id`, is empty, or has a nested element with no `id`, no `kind` or an unknown one, a relationship to an element that is not there (V8 within one plateau: a `dangling reference`, a badge in the editor), a workspace that still has `settings.plateaus`, a `settings.current` that names nothing and a plateau declared by two manifests.
+The other cases of the file are not variants of the document: a `replaces` that names nothing (a warning), a mistyped `--plateau` or `--against` (the editor offers no such option), an unknown key in a header, in a manifest, in `.archicode.yaml` or in a style, a manifest that lacks `header.kind`, `header.version` or `content.id`, is empty, or has a nested element with no `id`, no `kind` or an unknown one, a relationship to an element that is not there (V8 within one plateau: a `dangling reference`, a badge in the editor), a workspace that still has `settings.plateaus`, a `settings.current` that names nothing and a plateau declared by two manifests.
 
 **What the fixture drives.**
 
@@ -1582,7 +1582,7 @@ These are findings, not decisions. They are the record of the time they were mad
 - **E1 (fixed: issue #67, commit `ce452a2`). `views generate` failed on the comparison views of `inhouse` and `marketplace`** with `dangling application reference: shop.cache` and `dangling reference: shop.web`, while `diff` worked. On Brightcart, `views generate --plateau inhouse` (and `marketplace`) stopped with it, because those plateaus have a `baseline` key and the command then also draws the comparison; the views of the plateau itself (147 and 181 files) were written before it stopped. Removing the `replaces` from the element involved made the plateau generate, which isolated the cause. A workspace of four small files reproduced it, and is now a test:
 
 ```yaml
-# workspace.yaml: settings.plateaus a (plateaus/a) and b (plateaus/b, baseline: a)
+# .archicode.yaml: settings.plateaus a (plateaus/a) and b (plateaus/b, baseline: a)
 # plateaus/a: system s { container x }                  environment e { node n, applications: [s.x] }
 # plateaus/b: system s { container y, replaces: [s.x] } environment e { node m, applications: [s.y] }
 ```

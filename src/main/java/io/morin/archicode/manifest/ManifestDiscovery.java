@@ -29,7 +29,7 @@ import lombok.val;
  *   <li>An entry that does not end in {@code /**} names a folder, and the files directly in it are read (the manifests
  *       folder of every version before the layers). A folder that does not exist reads nothing.
  *   <li>An entry that ends in {@code /**} ({@code manifests/**}, or {@code ./**} for the folder of {@code
- *       workspace.yaml}) is read recursively. Below its folder, nothing is read in a folder or a file whose name begins
+ *       .archicode.yaml}) is read recursively. Below its folder, nothing is read in a folder or a file whose name begins
  *       with a dot, in a symbolic link to a folder (a link is never followed, so that a loop cannot happen; a link to a
  *       file is a file), or in the folder of the generated views: {@link #excludesViews the folder named by {@code
  *       views.path} and its siblings that begin with its name and a dash}, which is where the views of a plateau
@@ -37,6 +37,9 @@ import lombok.val;
  *       are written, and which hold a {@code gap.json} that is no manifest; nor in a folder that holds the pair of files a
  *       comparison writes ({@link #holdsComparison a {@code gap.json} and a {@code gap.md}}), whichever command reads and
  *       whatever {@code --output} named when it was written.
+ *   <li>A file named {@code .archicode.yaml} is never a manifest, in a folder read without {@code /**} as in one read with it
+ *       (it is hidden, so below a {@code /**} path it is left out with every hidden file): it is the workspace file of its
+ *       folder.
  *   <li>{@code **} means something only at the end of an entry, after a {@code /}. Anywhere else it is an error, told in
  *       one line, not a pattern that matches nothing.
  *   <li>The files are listed once, whichever entries find them, sorted by their path from the folder of the workspace,
@@ -48,6 +51,9 @@ public final class ManifestDiscovery {
 
     /** What ends an entry that is read recursively. */
     public static final String RECURSIVE = "/**";
+
+    /** The workspace file: a folder is a workspace when it holds it; it is hidden, and it is never a manifest. */
+    public static final String WORKSPACE_FILE_NAME = ".archicode.yaml";
 
     private ManifestDiscovery() {}
 
@@ -77,7 +83,7 @@ public final class ManifestDiscovery {
         if (folderOf(entry).contains("**")) {
             return (
                 "uses `**` where ArchiCode does not read it: only a path that ends in `/**` is read recursively" +
-                " (`manifests/**`, or `./**` for the folder of workspace.yaml), and `**` means nothing anywhere else." +
+                " (`manifests/**`, or `./**` for the folder of .archicode.yaml), and `**` means nothing anywhere else." +
                 " Write one path for each folder, or end the path with `/**`"
             );
         }
@@ -126,8 +132,8 @@ public final class ManifestDiscovery {
                         path +
                         "` of `settings.manifests.paths` " +
                         problem +
-                        ": a manifests folder must be below the folder of workspace.yaml, written relative to it, without `..`." +
-                        " Move the folder below workspace.yaml (or move workspace.yaml up, to a folder that holds both) and change" +
+                        ": a manifests folder must be below the folder of .archicode.yaml, written relative to it, without `..`." +
+                        " Move the folder below .archicode.yaml (or move .archicode.yaml up, to a folder that holds both) and change" +
                         " the path to match"
                 );
             } else if (patternProblem(path) != null) {
@@ -151,7 +157,7 @@ public final class ManifestDiscovery {
 
     /**
      * Whether a folder found below the entry is one of the generated views. {@code views.path} is read as it is written in
-     * {@code workspace.yaml}: it is the beginning of the name of every folder the tools write ({@code views}, {@code
+     * {@code .archicode.yaml}: it is the beginning of the name of every folder the tools write ({@code views}, {@code
      * views-<plateau>}, {@code views-<plateau>-vs-<against>}, {@code views-<facet>}). A command that was given {@code --output}
      * writes to the beginning that option names, so it hands that one too; a folder that is somewhere else, or that an earlier
      * run of {@code --output} named otherwise, is not known to the tools that read the manifests.
@@ -262,7 +268,12 @@ public final class ManifestDiscovery {
             } else {
                 val files = Arrays.stream(
                     Optional.ofNullable(
-                        folder.toFile().listFiles((dir, name) -> MapperFormat.resolve(name).isPresent())
+                        folder
+                            .toFile()
+                            .listFiles(
+                                (dir, name) ->
+                                    !WORKSPACE_FILE_NAME.equals(name) && MapperFormat.resolve(name).isPresent()
+                            )
                     ).orElseThrow(() -> new ArchiCodeException("unable to read the path %s", folder))
                 )
                     .map(File::toPath)

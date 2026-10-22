@@ -294,7 +294,7 @@ const MANIFESTS = {
 };
 
 test('the editor renames an element: the id, the references that follow and their comments are the only lines that differ', async () => {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': PLATEAUS }, Object.fromEntries(Object.entries(MANIFESTS).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': PLATEAUS }, Object.fromEntries(Object.entries(MANIFESTS).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -482,7 +482,7 @@ test('#57: the editor renames an element whose file writes its lists at the colu
       '  # flour comes from the mill', '  - destination: "mill" # why', '    label: "buys from"', '  - destination: "mill"    # again', '    label: "pays"', '# end of the bakery', ''
     ].join('\n')
   };
-  const mem = memFolder(Object.assign({ 'workspace.yaml': PLATEAUS }, Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': PLATEAUS }, Object.fromEntries(Object.entries(files).map(([file, body]) => ['plateaus/10_base/' + file, body]))));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };

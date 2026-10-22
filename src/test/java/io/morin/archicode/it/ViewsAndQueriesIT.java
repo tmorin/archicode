@@ -65,7 +65,7 @@ class ViewsAndQueriesIT {
 
     @Test
     void aWorkspaceThatIsNotThereIsOneErrorLine(QuarkusMainLauncher launcher) {
-        val result = launcher.launch("-w", dir.resolve("nothing/workspace.yaml").toString(), "views", "generate");
+        val result = launcher.launch("-w", dir.resolve("nothing/.archicode.yaml").toString(), "views", "generate");
         assertTrue(result.exitCode() == 1, () -> said(result));
         assertTrue(
             result

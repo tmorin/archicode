@@ -231,7 +231,7 @@ test('the root as the new parent: the line `override` is taken out, and saas/pla
 
 test('a plateau that only headers name is deleted from the middle too: the plateau over it overrides the root, and loses what the headers declared', async () => {
   const files = {
-    'workspace.yaml': 'settings:\n  current: later\n  manifests:\n    paths: ["./**"]\n',
+    '.archicode.yaml': 'settings:\n  current: later\n  manifests:\n    paths: ["./**"]\n',
     'app.ferry.yaml': ELEMENT('system', null, '  id: ferry\n'),
     'later/app.port.yaml': ELEMENT('system', 'later', '  id: port\n  relationships:\n    - destination: ferry\n'),
     'next/plateau.yaml': PLATEAU('next', '  name: "Next season"\n  override: "later"\n'),
@@ -250,9 +250,9 @@ test('a plateau that only headers name is deleted from the middle too: the plate
   assert.deepEqual(drawing(state), { plateau: 'baseline', compare: null });
   const out = await saved(opened);
   assert.deepEqual(out.removed, ['later/app.port.yaml']);
-  assert.deepEqual(out.changed, ['next/plateau.yaml', 'workspace.yaml']);
+  assert.deepEqual(out.changed, ['.archicode.yaml', 'next/plateau.yaml']);
   assert.equal(opened.mem.files.get('next/plateau.yaml').text, PLATEAU('next', '  name: "Next season"\n'));
-  assert.equal(opened.mem.files.get('workspace.yaml').text, 'settings:\n  manifests:\n    paths: ["./**"]\n');
+  assert.equal(opened.mem.files.get('.archicode.yaml').text, 'settings:\n  manifests:\n    paths: ["./**"]\n');
   const again = await reopen(opened);
   assert.deepEqual(plain(again.state.plateauTree.ids), ['baseline', 'next']);
 });

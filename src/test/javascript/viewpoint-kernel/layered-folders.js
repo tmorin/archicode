@@ -1,7 +1,7 @@
 'use strict';
 // Plateaus that are complete folders of manifests, written as layers (wave 014, run 0084).
 //
-// The key that listed such folders in workspace.yaml is gone. Tests that built "a plateau is a folder" in memory to have two states of an architecture to draw
+// The key that listed such folders in .archicode.yaml is gone. Tests that built "a plateau is a folder" in memory to have two states of an architecture to draw
 // and compare build the same two states here: each plateau is a layer over an empty `baseline`, the manifests of its folder say `plateau: <id>` in their header, and a
 // manifest of kind `archicode.morin.io/plateau` gives it its name and its horizon. Plateaus built this way do not stack (none overrides another), so each may declare
 // what the others declare, and a comparison is made on the band with `compareWithPlateau` (mode `other`: the plateau drawn is the target, the other one the base),
@@ -28,7 +28,7 @@ function plateauManifest(plateau) {
  * `paths`: the entry of `manifests.paths` that reads the folders (default `plateaus/**`). The plateau manifest of each plateau is `<path>/plateau.yaml`.
  */
 function layeredFiles(plateaus, files, settings, paths) {
-  const out = { 'workspace.yaml': 'settings:\n' + (settings || '') + '  manifests:\n    paths:\n      - ' + (paths || 'plateaus/**') + '\n' };
+  const out = { '.archicode.yaml': 'settings:\n' + (settings || '') + '  manifests:\n    paths:\n      - ' + (paths || 'plateaus/**') + '\n' };
   for (const [file, text] of Object.entries(files)) {
     const plateau = plateaus.find((p) => file.startsWith(p.path + '/'));
     out[file] = plateau ? inPlateau(plateau.id, text) : text;

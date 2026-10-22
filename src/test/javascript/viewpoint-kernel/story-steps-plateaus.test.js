@@ -29,7 +29,7 @@ const FERRY = {
 };
 
 async function open(files, settings) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': settings || 'settings:\n  manifests:\n    paths: ["./**"]\n' }, files));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };
@@ -76,10 +76,10 @@ test('a workspace with no plateau refuses a step that names one, in the story an
   assert.equal(sandbox.stepProblem(stepsOf(sandbox, 'tour')[0]), 'This workspace has no plateau, so a step cannot be told at “later”.');
 });
 
-test('the stories of workspace.yaml are looked at too', async () => {
+test('the stories of .archicode.yaml are looked at too', async () => {
   const { sandbox, state } = await open(FERRY, 'settings:\n  manifests:\n    paths: ["./**"]\nstories:\n  - id: old\n    steps:\n      - viewpoint: overview\n        properties:\n          element: ferry\n        at: nowhere\n');
   assert.deepEqual(plain(sandbox.entryProblemsOf(state.workspace.settings)), [
-    'the story `old` (`workspace.yaml`) step 1 says `at: nowhere`, which is not a plateau of this workspace (the plateaus are `baseline`, `later`, `latest`)'
+    'the story `old` (`.archicode.yaml`) step 1 says `at: nowhere`, which is not a plateau of this workspace (the plateaus are `baseline`, `later`, `latest`)'
   ]);
 });
 
@@ -281,12 +281,12 @@ test('the example of the manual (domain_plateaus) tells a story with steps at pl
 
 // ---- the edges (the read-only review of the diff of run 0101) ----
 
-test('a story kept in workspace.yaml is repaired in the page: the mistake it told goes with the edit, and a workspace with no plateau says the steps apart from the names', async () => {
+test('a story kept in .archicode.yaml is repaired in the page: the mistake it told goes with the edit, and a workspace with no plateau says the steps apart from the names', async () => {
   const settings = 'settings:\n  manifests:\n    paths: ["./**"]\nstories:\n  - id: old\n    steps:\n      - viewpoint: overview\n        properties:\n          element: ferry\n        at: gone\n';
   const { sandbox, state } = await open(FERRY, settings);
   assert.equal(sandbox.entryProblemsOf(state.workspace.settings).length, 1);
   assert.equal(sandbox.setStepPlateau('old', 0, 'at', 'later'), true);
-  assert.deepEqual(plain(sandbox.entryProblemsOf(state.workspace.settings)), [], 'the answer kept with the layers does not outlive the edit of workspace.yaml');
+  assert.deepEqual(plain(sandbox.entryProblemsOf(state.workspace.settings)), [], 'the answer kept with the layers does not outlive the edit of .archicode.yaml');
   assert.equal(state.workspace.settingsDirty, true);
   // a workspace that has no plateau: the band is shown, and says what is wrong with the steps, not that an element exists in no plateau
   const flat = await open({ 'app.ferry.yaml': SYSTEM('ferry'), 'story.tour.yaml': STORY('tour', '    - viewpoint: overview\n      properties:\n        element: ghost\n      at: later\n') });

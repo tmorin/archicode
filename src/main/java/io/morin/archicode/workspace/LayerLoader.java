@@ -79,7 +79,7 @@ public class LayerLoader {
     /**
      * Load a plateau.
      *
-     * @param start     the workspace of {@code workspace.yaml}: its settings, styles and formatters, and the elements it
+     * @param start     the workspace of {@code .archicode.yaml}: its settings, styles and formatters, and the elements it
      *                  declares itself, which belong to {@code baseline}
      * @param parsed    what the manifests declare, by plateau (see {@link ManifestParser.Parsed#ofPlateau})
      * @param plateauId the plateau to load, of the tree {@code parsed} holds
@@ -443,14 +443,14 @@ public class LayerLoader {
      * What the views and the stories name must exist in at least one plateau (the plateau-free check of issue #100): a name
      * the plateau drawn has is fine, and so is one that another plateau has and this one does not (the view then cannot be
      * drawn in this plateau, which is not a mistake of the view). "Another plateau has it" is decided from what the manifests
-     * and {@code workspace.yaml} declare, whatever the plateau: a patch never creates an element, so the patches need not be
+     * and {@code .archicode.yaml} declare, whatever the plateau: a patch never creates an element, so the patches need not be
      * resolved for a plateau that is not drawn (the editor does the same, {@code entryProblemsOf}). The views come first, then
      * the stories, each in the order of the files; one sentence for each name.
      */
     private static List<String> entryProblems(ManifestParser.Parsed parsed, Indexes drawn, Workspace start) {
         val out = new ArrayList<String>();
         val declared = new Declared(parsed, start);
-        // the views of workspace.yaml (an older place for them) are looked at after those of the manifests, unless a manifest
+        // the views of .archicode.yaml (an older place for them) are looked at after those of the manifests, unless a manifest
         // has the id (it shadows them, as it does in the editor)
         val manifestViews = new java.util.HashSet<String>();
         val views = new ArrayList<Entry<View>>();
@@ -480,7 +480,7 @@ public class LayerLoader {
     }
 
     /** Where the views and the stories that an older workspace keeps in its workspace file are said to be. */
-    private static final String LEGACY_SOURCE = "workspace.yaml";
+    private static final String LEGACY_SOURCE = ".archicode.yaml";
 
     record Entry<T>(String source, T item) {}
 
@@ -525,7 +525,7 @@ public class LayerLoader {
     }
 
     /**
-     * The stories of the workspace with the file of each: those of the manifests, then those of {@code workspace.yaml} (an
+     * The stories of the workspace with the file of each: those of the manifests, then those of {@code .archicode.yaml} (an
      * older place for them) that no manifest shadows, as the editor lists them.
      */
     static List<Entry<Story>> storiesOf(ManifestParser.Parsed parsed, Workspace start) {
@@ -608,7 +608,7 @@ public class LayerLoader {
         return layer == View.Layer.TECHNOLOGY ? "technology" : "application";
     }
 
-    /** The references the manifests declare in any plateau, and those of {@code workspace.yaml}, by layer. */
+    /** The references the manifests declare in any plateau, and those of {@code .archicode.yaml}, by layer. */
     private static Map<String, Set<String>> declaredAnywhere(ManifestParser.Parsed parsed, Workspace start) {
         val declared = new LinkedHashMap<String, Set<String>>();
         declared.put("application", new TreeSet<>(parsed.declared().getOrDefault("application", Set.of())));

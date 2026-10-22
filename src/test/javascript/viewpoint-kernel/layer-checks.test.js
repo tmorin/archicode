@@ -17,7 +17,7 @@ const SETTINGS = 'settings:\n  manifests:\n    paths: ["manifests/**"]\n';
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 async function open(files) {
-  const mem = memFolder(Object.assign({ 'workspace.yaml': SETTINGS }, files));
+  const mem = memFolder(Object.assign({ '.archicode.yaml': SETTINGS }, files));
   const sandbox = createApp({});
   const state = sandbox.__state();
   state.folder = { handle: mem.handle, name: 'ws' };

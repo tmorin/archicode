@@ -72,7 +72,7 @@ for (const id of Object.keys(SIZES)) {
     const relationships = sandbox.toKernelElements(state.index.application, true).elements.reduce((n, e) => n + (e.relationships || []).length, 0);
     assert.equal(relationships, want.relationships);
     assert.deepEqual(plain(state.duplicateReferences), []);
-    assert.deepEqual(plain(state.manifestFiles.map((f) => f.relPath).sort()), yamlFiles(LAYERED).filter((f) => f !== 'workspace.yaml'), 'every manifest of the folder is read, whatever the plateau drawn');
+    assert.deepEqual(plain(state.manifestFiles.map((f) => f.relPath).sort()), yamlFiles(LAYERED).filter((f) => f !== '.archicode.yaml'), 'every manifest of the folder is read, whatever the plateau drawn');
   });
 }
 
@@ -137,7 +137,7 @@ test('P4 is asked of the editor as the model answers it: marketplace compared wi
 
 // ---- the save: every manifest of the complete-folder rendition ----
 
-const LAYERED_FILES = yamlFiles(LAYERED).filter((f) => f !== 'workspace.yaml');
+const LAYERED_FILES = yamlFiles(LAYERED).filter((f) => f !== '.archicode.yaml');
 const app = createApp({});
 const parse = (text) => plain(app.parseYaml(text));
 
@@ -169,7 +169,7 @@ const renamed = (text, name) => {
 
 for (const [rendition, root, files] of [['layered', LAYERED, LAYERED_FILES]]) {
   test('save, ' + rendition + ': a file read and written back with no edit is the file, byte for byte (' + files.length + ' files)', () => {
-    for (const file of files.concat(['workspace.yaml'])) {
+    for (const file of files.concat(['.archicode.yaml'])) {
       const text = fs.readFileSync(path.join(root, file), 'utf8');
       assert.equal(app.patchYamlText(text, parse(text)), text, file);
     }
@@ -214,7 +214,7 @@ for (const [rendition, root, files] of [['layered', LAYERED, LAYERED_FILES]]) {
 
 /** `layered/` as a writable in-memory folder: the files as the generator wrote them. */
 function layeredInMemory() {
-  const initial = { 'workspace.yaml': fs.readFileSync(path.join(LAYERED, 'workspace.yaml'), 'utf8') };
+  const initial = { '.archicode.yaml': fs.readFileSync(path.join(LAYERED, '.archicode.yaml'), 'utf8') };
   for (const f of LAYERED_FILES) initial[f] = fs.readFileSync(path.join(LAYERED, f), 'utf8');
   return { mem: memFolder(initial), initial };
 }

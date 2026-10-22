@@ -94,7 +94,7 @@ class LayeredCommandsTest {
     @Test
     void plateauListOfAWorkspaceWithoutPlateausIsTheRootAlone() {
         val files = new TreeMap<String, String>();
-        files.put("workspace.yaml", "settings:\n  manifests:\n    paths: [manifests]\n");
+        files.put(".archicode.yaml", "settings:\n  manifests:\n    paths: [manifests]\n");
         files.put(
             "manifests/s.yaml",
             "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
@@ -228,7 +228,7 @@ class LayeredCommandsTest {
     @Test
     void againstOnAWorkspaceWithoutPlateausIsOneLine() {
         val files = new TreeMap<String, String>();
-        files.put("workspace.yaml", "settings:\n  manifests:\n    paths: [manifests]\n");
+        files.put(".archicode.yaml", "settings:\n  manifests:\n    paths: [manifests]\n");
         files.put(
             "manifests/s.yaml",
             "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
@@ -268,7 +268,7 @@ class LayeredCommandsTest {
     @Test
     void plateauListTellsUpToThreeFilesThenHowManyMore() {
         val files = new TreeMap<String, String>();
-        files.put("workspace.yaml", "settings:\n  manifests:\n    paths: [\"m/**\"]\n");
+        files.put(".archicode.yaml", "settings:\n  manifests:\n    paths: [\"m/**\"]\n");
         for (val name : List.of("a", "b", "c", "d", "e")) {
             files.put(
                 "m/" + name + ".yaml",
@@ -288,7 +288,7 @@ class LayeredCommandsTest {
         val system = "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n";
         LayeredFixtures.write(
             dir,
-            Map.of("workspace.yaml", "settings:\n  current: x\n  manifests:\n    paths: [m]\n", "m/s.yaml", system)
+            Map.of(".archicode.yaml", "settings:\n  current: x\n  manifests:\n    paths: [m]\n", "m/s.yaml", system)
         );
         val current =
             "error: `settings.current` is `x` but the workspace declares no plateau (a `plateau` key in a header, or a manifest of kind `archicode.morin.io/plateau`)";

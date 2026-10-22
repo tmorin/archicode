@@ -58,7 +58,7 @@ class FacetOrderTest {
             facets.append(old.contains(name) ? facet(name, "@.qualifiers anyof ['%s']".formatted(name)) : facet(name))
         );
         Files.writeString(
-            root.resolve("workspace.yaml"),
+            root.resolve(".archicode.yaml"),
             "settings:\n  facets:\n    customs:\n" + facets + "  manifests:\n    paths: [\"manifests\"]\n"
         );
         Files.createDirectories(root.resolve("manifests"));
@@ -66,7 +66,7 @@ class FacetOrderTest {
             root.resolve("manifests/shop.yaml"),
             "header:\n  kind: archicode.morin.io/system\n  version: \"1\"\ncontent:\n  id: shop\n  name: Shop\n"
         );
-        return root.resolve("workspace.yaml");
+        return root.resolve(".archicode.yaml");
     }
 
     private String refusedFacet(Path workspace) {

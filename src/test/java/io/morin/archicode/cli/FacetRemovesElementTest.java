@@ -66,7 +66,7 @@ class FacetRemovesElementTest {
                 }
             }
         }
-        val workspace = into.resolve("workspace.yaml");
+        val workspace = into.resolve(".archicode.yaml");
         if (withFacets) {
             Files.writeString(workspace, Files.readString(workspace) + FACETS);
         }

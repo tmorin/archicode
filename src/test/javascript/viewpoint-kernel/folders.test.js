@@ -32,7 +32,7 @@ function workspaceFolder(name, workspaceName) {
 }
 
 function setWorkspaceName(dir, workspaceName) {
-  fs.writeFileSync(path.join(dir, 'workspace.yaml'), 'application:\n  elements: []\n' + (workspaceName ? 'settings:\n  name: ' + workspaceName + '\n' : ''));
+  fs.writeFileSync(path.join(dir, '.archicode.yaml'), 'application:\n  elements: []\n' + (workspaceName ? 'settings:\n  name: ' + workspaceName + '\n' : ''));
 }
 
 /** A directory handle on `dir`, as the picker or IndexedDB gives one; `permission` is what the browser answers. */
@@ -88,7 +88,7 @@ test('a folder stored by the earlier version is migrated in place: it gets a rec
   const again = await load(idb);
   assert.ok(again.state().workspace);
   assert.equal(folderRecords(idb).length, 1);
-  assert.equal(again.busy()[again.busy().length - 1], 'Opening “Shop”…', 'the stored name, before workspace.yaml is read');
+  assert.equal(again.busy()[again.busy().length - 1], 'Opening “Shop”…', 'the stored name, before .archicode.yaml is read');
 });
 
 test('a transaction writes all or nothing, and is reported done only once committed', async () => {
@@ -155,7 +155,7 @@ test('a migration that cannot clone the handle writes nothing, and the old recor
   await p.sandbox.closeFolder();
   await p.sandbox.forgetFolder(p.folders()[0]);
   assert.deepEqual(records(idb), {});
-  assert.ok(fs.existsSync(path.join(shop, 'workspace.yaml')), 'nothing on disk is touched');
+  assert.ok(fs.existsSync(path.join(shop, '.archicode.yaml')), 'nothing on disk is touched');
 });
 
 test('a migration whose write fails later (no room left) leaves the old record as it was', async () => {
@@ -233,7 +233,7 @@ test('the same folder picked twice is one entry', async () => {
   await p.sandbox.openFolder();
   assert.equal(folderRecords(idb).length, 1);
   assert.equal(folderRecords(idb)[0].id, first.id);
-  assert.equal(p.busy()[p.busy().length - 1], 'Opening “Shop”…', 'and its name is known before workspace.yaml is read');
+  assert.equal(p.busy()[p.busy().length - 1], 'Opening “Shop”…', 'and its name is known before .archicode.yaml is read');
   assert.equal(p.folders().length, 1);
 });
 
@@ -264,7 +264,7 @@ test('Remove deletes only the record of that folder, and the last-folder record 
   assert.equal(p.sandbox.landingScreenConfig().kind, 'reopen', 'still offering infra');
   assert.equal(p.sandbox.landingScreenConfig().notice, '“Shop” is no longer in the list. Nothing was deleted on disk.');
   assert.match(html(p.sandbox), /<p class="landing-notice" role="status">“Shop” is no longer in the list/);
-  assert.ok(fs.existsSync(path.join(a, 'workspace.yaml')) && fs.existsSync(path.join(a, 'manifests', 'app.s1.yaml')), 'nothing on disk is touched');
+  assert.ok(fs.existsSync(path.join(a, '.archicode.yaml')) && fs.existsSync(path.join(a, 'manifests', 'app.s1.yaml')), 'nothing on disk is touched');
 
   await p.sandbox.forgetFolder(entryOf(p, b));
   assert.deepEqual(records(idb), {}, 'the last folder goes with its pointer');
@@ -419,14 +419,14 @@ test('the name of the workspace is stored with its folder when it opens, and aga
   assert.equal(records(idb)['folder:' + id].name, '');
 });
 
-test('a folder whose workspace.yaml cannot be read: the error card leads back to the list, which says what happened', async () => {
+test('a folder whose .archicode.yaml cannot be read: the error card leads back to the list, which says what happened', async () => {
   const idb = fakeIndexedDB();
   const a = workspaceFolder('archi');
   const b = workspaceFolder('infra');
   const p = await load(idb, [handleOn(a), handleOn(b)]);
   await p.sandbox.openFolder();
   await p.sandbox.closeFolder();
-  fs.rmSync(path.join(b, 'workspace.yaml')); // as when the folder was moved: its handle no longer reaches its files
+  fs.rmSync(path.join(b, '.archicode.yaml')); // as when the folder was moved: its handle no longer reaches its files
   await p.sandbox.openFolder();
   const cfg = p.sandbox.landingScreenConfig();
   assert.equal(cfg.kind, 'error');
@@ -437,7 +437,7 @@ test('a folder whose workspace.yaml cannot be read: the error card leads back to
   assert.deepEqual(Object.keys(records(idb)).sort(), before, 'storage untouched');
   const list = p.sandbox.landingScreenConfig();
   assert.equal(list.kind, 'first-launch');
-  assert.equal(list.folders.find((f) => f.title === 'infra').problem, 'Its workspace.yaml could not be read the last time it was opened.');
+  assert.equal(list.folders.find((f) => f.title === 'infra').problem, 'Its .archicode.yaml could not be read the last time it was opened.');
   assert.equal(list.folders.find((f) => f.title === 'archi').problem, null);
 });
 
@@ -846,7 +846,7 @@ test('served by archicode editor serve: the folder of the server opens with no I
   // even with remembered folders in memory, and a failure on the landing card
   run(sandbox, "rememberedFolders = [{ id: 'x1', handle: { name: 'archi' }, name: 'Shop', openedAt: 5 }]");
   sandbox.__state().workspace = null;
-  sandbox.__state().fatalError = 'Could not read/parse workspace.yaml: gone';
+  sandbox.__state().fatalError = 'Could not read/parse .archicode.yaml: gone';
   const cfg = sandbox.landingScreenConfig();
   assert.equal(cfg.kind, 'error');
   assert.ok(!cfg.actions.some((x) => x.action === 'show-folders'));

@@ -27,7 +27,7 @@ import lombok.val;
 @UtilityClass
 public class LayeredFixtures {
 
-    public static final String WORKSPACE = "workspace.yaml";
+    public static final String WORKSPACE = ".archicode.yaml";
     public static final String INHOUSE = "plateaus/inhouse/plateau.yaml";
     public static final String MARKETPLACE = "plateaus/marketplace/plateau.yaml";
 

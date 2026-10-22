@@ -36,7 +36,7 @@ class OutputDirectoryTest {
 
     @SneakyThrows
     private Path copyWorkspace(Path dir) {
-        val workspaceFile = dir.resolve("workspace.yaml");
+        val workspaceFile = dir.resolve(".archicode.yaml");
         Files.copy(Path.of("src/test/workspaces/case_a.yaml"), workspaceFile);
         return workspaceFile;
     }

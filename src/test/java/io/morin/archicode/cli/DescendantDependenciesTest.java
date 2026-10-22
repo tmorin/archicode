@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class DescendantDependenciesTest {
 
-    private static final Path WORKSPACE = Path.of("src/test/resources/brightcart/layered/workspace.yaml");
+    private static final Path WORKSPACE = Path.of("src/test/resources/brightcart/layered/.archicode.yaml");
 
     @Inject
     WorkspaceFactory workspaceFactory;

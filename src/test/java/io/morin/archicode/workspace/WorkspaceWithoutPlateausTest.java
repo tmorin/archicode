@@ -48,7 +48,7 @@ class WorkspaceWithoutPlateausTest {
     private Path workspace(String text) {
         Files.createDirectories(dir.resolve("manifests"));
         Files.writeString(dir.resolve("manifests/shop.yaml"), SHOP);
-        return Files.writeString(dir.resolve("workspace.yaml"), text);
+        return Files.writeString(dir.resolve(".archicode.yaml"), text);
     }
 
     private String messageOf(Path workspace, String plateau) {
@@ -76,7 +76,7 @@ class WorkspaceWithoutPlateausTest {
                 null
             );
             assertTrue(message.startsWith("the path `" + bad + "` of `settings.manifests.paths` "), message);
-            assertTrue(message.contains("Move the folder below workspace.yaml"), message);
+            assertTrue(message.contains("Move the folder below .archicode.yaml"), message);
             assertTrue(message.contains("change the path to match"), message);
         }
     }

@@ -1,13 +1,13 @@
 {
-  "comment": "The cases of where the manifests are (run 0076, issue #73): the entries of settings.manifests.paths, the files they find, in what order, and what is refused. ManifestDiscoveryTest.java (command line) and discovery.test.js (editor) read this file; add a case here and both run it. `paths` and `views` are written in workspace.yaml (settings.manifests.paths, settings.views.path). `files`: a path from the folder of workspace.yaml -> the id of a system manifest (YAML or JSON by the extension; its name is its id), or {\"raw\": text}. `empty_dirs`: folders to create. `links`: a link -> the folder it points at. `expect.read`: the files the command line reads, in order (the editor reads the YAML ones, and counts the .json as unread); the references loaded are the ids of those. `expect.error`: the message, in which ${pattern} and ${below} stand for the end of the sentence given in `tails`. `expect.refused_file`: the load fails and names that file.",
+  "comment": "The cases of where the manifests are (run 0076, issue #73): the entries of settings.manifests.paths, the files they find, in what order, and what is refused. ManifestDiscoveryTest.java (command line) and discovery.test.js (editor) read this file; add a case here and both run it. `paths` and `views` are written in .archicode.yaml (settings.manifests.paths, settings.views.path). `files`: a path from the folder of .archicode.yaml -> the id of a system manifest (YAML or JSON by the extension; its name is its id), or {\"raw\": text}. `empty_dirs`: folders to create. `links`: a link -> the folder it points at. `expect.read`: the files the command line reads, in order (the editor reads the YAML ones, and counts the .json as unread); the references loaded are the ids of those. `expect.error`: the message, in which ${pattern} and ${below} stand for the end of the sentence given in `tails`. `expect.refused_file`: the load fails and names that file.",
   "tails": {
-    "pattern": "uses `**` where ArchiCode does not read it: only a path that ends in `/**` is read recursively (`manifests/**`, or `./**` for the folder of workspace.yaml), and `**` means nothing anywhere else. Write one path for each folder, or end the path with `/**`",
-    "below": "a manifests folder must be below the folder of workspace.yaml, written relative to it, without `..`. Move the folder below workspace.yaml (or move workspace.yaml up, to a folder that holds both) and change the path to match"
+    "pattern": "uses `**` where ArchiCode does not read it: only a path that ends in `/**` is read recursively (`manifests/**`, or `./**` for the folder of .archicode.yaml), and `**` means nothing anywhere else. Write one path for each folder, or end the path with `/**`",
+    "below": "a manifests folder must be below the folder of .archicode.yaml, written relative to it, without `..`. Move the folder below .archicode.yaml (or move .archicode.yaml up, to a folder that holds both) and change the path to match"
   },
   "cases": [
     {
       "id": "D01",
-      "what": "a path that ends in /** reads the sub-folders, and the files are sorted by their path from the folder of workspace.yaml, by code point, whatever order they were listed in: 'B' before 'a', '-' before '.', '.' before '/'",
+      "what": "a path that ends in /** reads the sub-folders, and the files are sorted by their path from the folder of .archicode.yaml, by code point, whatever order they were listed in: 'B' before 'a', '-' before '.', '.' before '/'",
       "paths": [
         "manifests/**"
       ],
@@ -74,7 +74,7 @@
     },
     {
       "id": "D04",
-      "what": "./** is the folder of workspace.yaml and everything below it: the workspace file, the folders of the generated views and the hidden folders are not manifests",
+      "what": "./** is the folder of .archicode.yaml and everything below it: the workspace file, the folders of the generated views and the hidden folders are not manifests",
       "paths": [
         "./**"
       ],
@@ -497,7 +497,7 @@
     },
     {
       "id": "D27",
-      "what": "the folder of workspace.yaml, '.', and an entry with a leading ./ are the same folders as without",
+      "what": "the folder of .archicode.yaml, '.', and an entry with a leading ./ are the same folders as without",
       "paths": [
         "./manifests/**",
         "manifests/",
@@ -704,6 +704,49 @@
           "manifests/b.toml",
           "manifests/sub/c.toml",
           "manifests/sub/d.yml"
+        ]
+      }
+    },
+    {
+      "id": "D37",
+      "what": "the workspace file is hidden and is never a manifest: ./** leaves out the one of the folder and the one of a folder below (every hidden file is left out below a /** path), and a file that only looks like it is read",
+      "paths": [
+        "./**"
+      ],
+      "files": {
+        "top.yaml": "top",
+        "sub/.archicode.yaml": {
+          "raw": "settings: {}\n"
+        },
+        "sub/a.yaml": "a",
+        "sub/archicode.yaml": "plain"
+      },
+      "expect": {
+        "read": [
+          "sub/a.yaml",
+          "sub/archicode.yaml",
+          "top.yaml"
+        ]
+      }
+    },
+    {
+      "id": "D38",
+      "what": "a path that does not end in /** reads the files directly in its folder, and the workspace file of that folder is never one of them: the folder of .archicode.yaml itself, and a folder below that has its own",
+      "paths": [
+        ".",
+        "sub"
+      ],
+      "files": {
+        "top.yaml": "top",
+        "sub/.archicode.yaml": {
+          "raw": "settings: {}\n"
+        },
+        "sub/a.yaml": "a"
+      },
+      "expect": {
+        "read": [
+          "sub/a.yaml",
+          "top.yaml"
         ]
       }
     }

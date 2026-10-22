@@ -152,7 +152,7 @@ const MANIFESTS = {
 
 /** The workspace as the editor opens a folder: one plain folder of manifests, no plateau. */
 async function openPlain(manifests) {
-  const files = Object.assign({ 'workspace.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' }, Object.fromEntries(Object.entries(manifests || MANIFESTS).map(([name, body]) => ['manifests/' + name, body])));
+  const files = Object.assign({ '.archicode.yaml': 'settings:\n  manifests:\n    paths:\n      - manifests\n' }, Object.fromEntries(Object.entries(manifests || MANIFESTS).map(([name, body]) => ['manifests/' + name, body])));
   const mem = memFolder(files);
   const sandbox = createApp({});
   const state = sandbox.__state();

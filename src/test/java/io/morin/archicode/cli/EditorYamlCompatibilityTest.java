@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /**
- * The standalone editor writes the manifests and the {@code workspace.yaml} with its own YAML emitter. The golden cases
+ * The standalone editor writes the manifests and the {@code .archicode.yaml} with its own YAML emitter. The golden cases
  * of {@code src/test/resources/editor-yaml/emitter-cases.json} pair a value with the exact text the emitter writes for
  * it (as the value of the key {@code k}); the editor's own tests ({@code yaml.test.js}) check the emitter and its parser
  * against them, and this test checks that the CLI reads every one of them, with the project's YAML mapper, as the very

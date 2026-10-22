@@ -110,7 +110,7 @@ class TechnologyMapTest {
         var checked = 0;
         var variants = 0;
         for (val entry : contract.path("workspaces")) {
-            val path = Path.of(entry.path("workspace").asText(), "workspace.yaml");
+            val path = Path.of(entry.path("workspace").asText(), ".archicode.yaml");
             for (val view : entry.path("views").properties()) {
                 val plateau = view.getValue().path("plateau").asText(null);
                 val workspace = workspaceFactory.create(path, null, plateau);
@@ -147,7 +147,7 @@ class TechnologyMapTest {
         copy(Path.of("src/doc/examples/domain_technology_map"), dir);
         val result = run(
             "-w",
-            dir.resolve("workspace.yaml").toString(),
+            dir.resolve(".archicode.yaml").toString(),
             "views",
             "generate",
             "-i",
@@ -197,7 +197,7 @@ class TechnologyMapTest {
         writeOpenMap("tm_neither", "    applications: false\n    relationships: false");
         val result = run(
             "-w",
-            dir.resolve("workspace.yaml").toString(),
+            dir.resolve(".archicode.yaml").toString(),
             "views",
             "generate",
             "--plateau",
@@ -230,7 +230,7 @@ class TechnologyMapTest {
     @SneakyThrows
     void shouldDrawTheMapOfTheApplicationLayerToo() {
         Files.writeString(
-            dir.resolve("workspace.yaml"),
+            dir.resolve(".archicode.yaml"),
             """
             application:
               elements:
@@ -257,7 +257,7 @@ class TechnologyMapTest {
                     - "sol_b"
             """
         );
-        val result = run("-w", dir.resolve("workspace.yaml").toString(), "views", "generate", "-i", "apps");
+        val result = run("-w", dir.resolve(".archicode.yaml").toString(), "views", "generate", "-i", "apps");
         assertEquals(0, result.exit(), result.err());
         val puml = Files.readString(dir.resolve("views/plantuml/application/apps.puml"));
         assertTrue(puml.contains("sol_a.sys_aa --> sol_b.sys_bb : calls"), puml);
@@ -286,7 +286,7 @@ class TechnologyMapTest {
         );
         val result = run(
             "-w",
-            dir.resolve("workspace.yaml").toString(),
+            dir.resolve(".archicode.yaml").toString(),
             "views",
             "generate",
             "--plateau",
@@ -307,7 +307,7 @@ class TechnologyMapTest {
     @SneakyThrows
     void shouldTellAMapThatCannotBeDrawnInOneLine() {
         copy(Path.of("src/doc/examples/domain_technology_map"), dir);
-        val workspace = dir.resolve("workspace.yaml");
+        val workspace = dir.resolve(".archicode.yaml");
         val source = Files.readString(workspace);
         // pinned on an element that is not there: the kernel names the first it cannot find
         Files.writeString(workspace, source.replace("\"datacentre.rack.db\"", "\"datacentre.rack.nowhere\""));

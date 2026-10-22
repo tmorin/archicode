@@ -135,7 +135,7 @@ test('the plateau drawn is greyed at the root, in the middle and at the leaf of 
   chooseOnBand(one.sandbox, 'plateau', 'to-be');
   assert.deepEqual(plain(bandOf(one.sandbox).compare.map((o) => [o.value, o.disabled])), [['', false], ['past', false], ['plateau:baseline', false], ['plateau:to-be', true]]);
   // no layer: the root is the only plateau, the one drawn, so there is nothing to choose but nothing
-  const none = await openIn({ 'manifests/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n', 'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' });
+  const none = await openIn({ 'manifests/app.shop.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: "shop"\n  name: "Shop"\n', '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n' });
   assert.deepEqual(plain(bandOf(none.sandbox).compare.map((o) => [o.value, o.selected, o.disabled])), [['', true, false], ['plateau:baseline', false, true]]);
 });
 

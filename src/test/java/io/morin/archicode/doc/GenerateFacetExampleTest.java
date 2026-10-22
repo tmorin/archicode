@@ -17,10 +17,10 @@ class GenerateFacetExampleTest extends AbstractGenerateViews {
     @SneakyThrows
     @ValueSource(
         strings = {
-            "src/doc/examples/facet_example_step_1/workspace.yaml",
-            "src/doc/examples/facet_example_step_2/workspace.yaml",
-            "src/doc/examples/facet_example_step_3/workspace.yaml",
-            "src/doc/examples/facet_example_step_4/workspace.yaml"
+            "src/doc/examples/facet_example_step_1/.archicode.yaml",
+            "src/doc/examples/facet_example_step_2/.archicode.yaml",
+            "src/doc/examples/facet_example_step_3/.archicode.yaml",
+            "src/doc/examples/facet_example_step_4/.archicode.yaml"
         }
     )
     @ParameterizedTest

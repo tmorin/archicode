@@ -292,7 +292,7 @@ test('a plain edit of the form that does not change the id asks nothing', async 
 
 test('a workspace with no plateau renames as it always did: no dialog, the view follows', async () => {
   const files = {
-    'workspace.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
+    '.archicode.yaml': 'settings:\n  manifests:\n    paths: ["./**"]\n',
     'app.ferry.yaml': system('ferry', null).replace('name: "ferry of null"', 'name: "Ferry"'),
     'app.pier.yaml': system('pier', null).replace('name: "pier of null"', 'name: "Pier"'),
     'view.ferry_overview.yaml': 'header:\n  kind: "archicode.morin.io/view"\n  version: "1"\ncontent:\n  id: "ferry_overview"\n  viewpoint: overview\n  properties:\n    element: ferry\n'
