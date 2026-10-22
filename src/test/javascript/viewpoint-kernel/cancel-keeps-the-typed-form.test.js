@@ -278,3 +278,28 @@ test('the typed values are not kept once the write succeeds', async () => {
   assert.equal(sandbox.findElementRecord('mailer', 'application').name, 'Typed name');
   assert.equal(screen.value('edit-name-input'), 'Typed name');
 });
+
+// ---- the yes of a dialog, and a write that fails on it (wave 019, run 0138, issue #137) ----
+// `confirmLayerWrite` ran the write again after the yes and, when that failed, drew the sentence next to a form given afresh from the model. It keeps the fields as typed, as
+// `writeElementDraft` does. It fails on the page of tag archicode-0.17.0, where the three fields are the model's.
+
+test('layer-confirm: a write that the yes then fails on gives the typed fields back, next to the sentence', async () => {
+  const { sandbox, state } = await open(BRIGHTCART, 'baseline');
+  const screen = giveForm(sandbox, 'mailer');
+  typeAll(screen, { 'edit-id-input': 'mailer', 'edit-name-input': 'Typed name', 'edit-description-input': 'Typed description' });
+  const typed = screen.values();
+  sandbox.commitElementWithDraft('mailer', null);
+  assert.equal(dialogOf(sandbox).kind, 'layer-confirm');
+  assert.deepEqual(screen.values(), typed, 'behind the dialog');
+  const dialog = dialogOf(sandbox);
+  dialog.onConfirm = () => { throw new Error('disk full'); };
+  const version = run(sandbox, 'modelVersion');
+  sandbox.submitAppDialog({});
+  assert.equal(dialogOf(sandbox), null);
+  assert.equal(run(sandbox, 'saveStatus').message, 'disk full');
+  assert.deepEqual(screen.values(), typed, 'the form holds what was typed');
+  assert.equal(draftTyped(sandbox), true);
+  assert.equal(kept(sandbox), null, 'the copy is gone once the form is back');
+  assert.equal(run(sandbox, 'modelVersion'), version, 'view state: no modelsChanged()');
+  assert.equal(state.manifestFiles.filter((f) => f.dirty).length, 0);
+});
