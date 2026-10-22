@@ -426,6 +426,7 @@ public class WorkspaceFactory {
         val source = read(path);
         val rawWorkspace = source.rawWorkspace();
         requireReadablePaths(rawWorkspace.getSettings(), plateauId);
+        requireFacetsThatAreFolders(rawWorkspace.getSettings());
 
         // The folder of the views: the one of the settings, or the one asked for. The plateaus add their own name once the
         // plateau is known (`views-saas`, or `out-saas` for `--output out`), so that drawing two plateaus does not overwrite
@@ -463,6 +464,16 @@ public class WorkspaceFactory {
         val problems = new ArrayList<String>(ManifestDiscovery.pathProblems(settings.getManifests().getPaths()));
         if (!problems.isEmpty()) {
             problems.addAll(noPlateausProblems(settings, requested));
+            throw new ArchiCodeException("%s", String.join("\n", problems));
+        }
+    }
+
+    /**
+     * Refuse the facet whose name cannot be the name of a folder, before any manifest is read ({@link FacetNames}, issue #147).
+     */
+    private void requireFacetsThatAreFolders(Settings settings) {
+        val problems = FacetNames.problems(settings);
+        if (!problems.isEmpty()) {
             throw new ArchiCodeException("%s", String.join("\n", problems));
         }
     }

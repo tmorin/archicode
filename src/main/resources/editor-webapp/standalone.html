@@ -4656,6 +4656,53 @@ function manifestsPathProblems(settings) {
   return problems;
 }
 
+/**
+ * Why a facet name cannot be the name of a folder, or null when it can (wave 020, run 0146, issue #147): the name of a facet goes into the name of the folders the views are
+ * written in, as it is written, so the command line refuses one that is not a folder name when it loads the workspace (`FacetNames.reasonOf`, the same words). Refused: an empty
+ * name, `.`, `..`, a name that holds `/`, `\`, a NUL or another control character, and the names Windows refuses (`<>:"|?*` and a name that ends with a dot or a space). The first
+ * reason found, reading from the left, is the one told.
+ */
+function facetNameReason(name) {
+  if (name === '') return 'is empty';
+  if (name === '.') return 'is `.`, the folder itself';
+  if (name === '..') return 'is `..`, the folder above';
+  for (let i = 0; i < name.length; i++) {
+    const c = name.charAt(i);
+    const code = name.charCodeAt(i);
+    if (c === '/' || c === '\\') return 'holds `' + c + '`, which separates the folders of a path';
+    if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) return 'holds a control character (' + facetNameEscape(code) + ')';
+    if ('<>:"|?*'.indexOf(c) >= 0) return 'holds `' + c + '`, which Windows does not allow in the name of a folder';
+  }
+  const last = name.charAt(name.length - 1);
+  if (last === '.') return 'ends with a dot, which Windows does not allow in the name of a folder';
+  if (last === ' ') return 'ends with a space, which Windows does not allow in the name of a folder';
+  return null;
+}
+
+/** A control character as the sentence writes it, `\u0001`. */
+function facetNameEscape(code) {
+  return '\\u' + code.toString(16).toUpperCase().padStart(4, '0');
+}
+
+/** The sentence for a facet whose name cannot be the name of a folder (`FacetNames.problemOf`), or null. */
+function facetNameProblem(name) {
+  const reason = facetNameReason(name);
+  if (reason === null) return null;
+  const shown = Array.from(name).map((ch) => { const code = ch.charCodeAt(0); return ch.length === 1 && (code < 0x20 || (code >= 0x7f && code <= 0x9f)) ? facetNameEscape(code) : ch; }).join('');
+  return 'the facet name `' + shown + '` cannot be the name of a folder: it ' + reason + ' (write a plain word, such as `journey`)';
+}
+
+/** The sentences for the facets of the settings that cannot be a folder, in the order of the file (`FacetNames.problems`). */
+function facetNameProblems(settings) {
+  const problems = [];
+  for (const facet of settings.facets.customs) {
+    const name = typeof facet.name === 'string' ? facet.name : facet.name === undefined || facet.name === null ? '' : String(facet.name);
+    const sentence = facetNameProblem(name);
+    if (sentence !== null) problems.push(sentence);
+  }
+  return problems;
+}
+
 /** What the page calls a plateau: its name, else its id. */
 function plateauTitle(plateau) {
   return plateau.name.trim() !== '' ? plateau.name : plateau.id;
@@ -8333,6 +8380,15 @@ async function loadWorkspace(dirHandle) {
     render();
     return;
   }
+
+  // a facet whose name cannot be the name of a folder is refused like the command line refuses it, with its words (after the paths, as it does)
+  const facetProblems = facetNameProblems(settings);
+  if (facetProblems.length) {
+    AppState.fatalError = 'Could not read the plateaus of .archicode.yaml:\n' + facetProblems.join('\n');
+    AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    render();
+    return;
+  }
   AppState.changesOnly = recalledFlag('changes-only'); // run 0040: how the comparison is read, as the last time in this folder
   AppState.hideWording = recalledFlag('hide-wording');
 
@@ -11451,6 +11507,11 @@ function validateFacetName(name, existingCustoms) {
   }
   if (Array.isArray(existingCustoms) && existingCustoms.some((f) => f.name === trimmed)) {
     return { valid: false, error: 'A facet named "' + trimmed + '" already exists.' };
+  }
+  // the name goes into the name of a folder: one the command line would refuse when it loads the workspace is not written (issue #147)
+  const reason = facetNameReason(trimmed);
+  if (reason !== null) {
+    return { valid: false, error: 'Facet name ' + reason + ': it is the name of a folder, write a plain word, such as "journey".' };
   }
   return { valid: true, name: trimmed };
 }

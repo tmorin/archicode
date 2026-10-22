@@ -138,7 +138,7 @@ test('the editor sentences are the command line sentences, up to the capital, th
         if (typeof value === 'number' || key === 'viewProblems' || key === 'stepProblems') continue; // a count, told by a badge and not by a sentence; what the page says in a view it cannot draw here
         const texts = typeof value === 'string' ? [value] : Array.isArray(value) ? value : Object.values(value);
         const known = key === 'manifestErrors' || key === 'fatalError' ? bare : whole; // the banner for .archicode.yaml names the file in its heading
-        for (const text of texts) assert.ok(known.has(normal(text)), c.id + ': the editor says (' + key + ') "' + text + '" and the command line does not say it');
+        for (const text of texts) for (const line of normal(text).split('\n')) assert.ok(known.has(normal(line)), c.id + ': the editor says (' + key + ') "' + line + '" and the command line does not say it'); // a banner with several sentences is one line each for the command line
       }
     }
   }
