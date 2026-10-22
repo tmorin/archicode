@@ -134,7 +134,7 @@ wave_manifest:
       slug: story-reading-mode
       phase: P1
       depends_on: [W-4]
-      run: null
+      run: 0150
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
