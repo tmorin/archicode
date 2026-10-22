@@ -31,6 +31,7 @@ rectangle svc_shop_catalog_service <<Quarkus>> <<container>> <<atomic>> [
 }
 }
 }
+svc_shop_catalog_service --> pg_shop_catalog_db : reads\n""[JDBC]""
 svc_shop_catalog_service --> pg_shop_catalog_db : reads and writes\n""[JDBC]""
 prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
 <style>

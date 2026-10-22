@@ -598,8 +598,8 @@ fn starts_with_parts(actual: &[&str], expected: &[&str]) -> bool {
     actual.len() >= expected.len() && actual[..expected.len()] == *expected
 }
 fn is_descendant_of(candidate: &str, reference: &str) -> bool {
-    let (c, r) = (parts(candidate), parts(reference));
-    c.len() > r.len() && starts_with_parts(&c, &r)
+    // the segments of `reference` are the first ones of `candidate`, and `candidate` has more (no allocation: this is called for every pair of elements)
+    candidate.len() > reference.len() && candidate.starts_with(reference) && candidate.as_bytes()[reference.len()] == b'.'
 }
 fn is_ancestor_of(candidate: &str, reference: &str) -> bool {
     let (c, r) = (parts(candidate), parts(reference));
@@ -939,7 +939,7 @@ fn map(input: &Input, known: &Known) -> Result<Content, String> {
         }
         if input.layer == "technology" {
             for d in derived_dependencies(input, &app_known) {
-                let destination = d.rel.destination.as_str();
+                let destination = d.to_app;
                 if is_hidden(d.from_node) || is_hidden(d.to_node) {
                     continue;
                 }
@@ -1103,6 +1103,8 @@ struct Derived<'a> {
     from_app: &'a str,
     /// the element that declares `rel`: `from_app` itself or one of its descendants
     source: &'a str,
+    /// the deployed application the destination of `rel` is, or is inside (issue #139, decision T5)
+    to_app: &'a str,
     to_node: &'a str,
     rel: &'a Rel,
 }
@@ -1116,6 +1118,18 @@ fn hosts_of_applications(elements: &[Elem]) -> BTreeMap<&str, BTreeSet<&str>> {
         }
     }
     hosts
+}
+
+/// The deployed application that `reference` is or is inside (the nearest one when applications are nested), if any: a relationship
+/// towards a component of `shop.app` is a relationship towards the deployed application `shop.app` (issue #139, decision T5).
+fn deployed_application_of<'a>(hosts: &BTreeMap<&'a str, BTreeSet<&'a str>>, reference: &str) -> Option<&'a str> {
+    let mut end = reference.len();
+    loop {
+        if let Some((app, _)) = hosts.get_key_value(&reference[..end]) {
+            return Some(*app);
+        }
+        end = reference[..end].rfind('.')?;
+    }
 }
 
 /// The relationships that stand for the dependencies of a deployed application: its own and those of everything inside it
@@ -1135,7 +1149,7 @@ fn relationships_of_deployed<'a>(input: &'a Input, app: &'a str) -> Vec<(&'a str
 }
 
 /// The dependencies the applications of an environment have on applications deployed in another one. A relationship of
-/// an application, or of anything inside it, towards another application is a dependency of the node that hosts the first on the node that hosts
+/// an application, or of anything inside it, towards another application, or anything inside it (issue #139), is a dependency of the node that hosts the first on the node that hosts
 /// the second. An environment reaches what it hosts itself first; what it does not host, it finds in the environments
 /// (or the nodes) it `uses`, and nowhere else: an application deployed in several environments is therefore reached
 /// where the environment says so.
@@ -1148,7 +1162,8 @@ fn derived_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Deri
             continue;
         }
         for (source, rel) in relationships_of_deployed(input, app) {
-            let Some(to_nodes) = hosts.get(rel.destination.as_str()) else { continue };
+            let Some(to_app) = deployed_application_of(&hosts, &rel.destination) else { continue };
+            let Some(to_nodes) = hosts.get(to_app) else { continue };
             for from_node in from_nodes {
                 let environment = environment_of(from_node);
                 if to_nodes.iter().any(|to_node| environment_of(to_node) == environment) {
@@ -1156,7 +1171,7 @@ fn derived_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Deri
                 }
                 let Some(scope) = scopes.get(environment) else { continue };
                 for to_node in to_nodes.iter().filter(|to_node| scope.iter().any(|used| within(to_node, used))) {
-                    out.push(Derived { from_node, from_app: app, source, to_node, rel });
+                    out.push(Derived { from_node, from_app: app, source, to_app, to_node, rel });
                 }
             }
         }
@@ -1170,12 +1185,15 @@ fn local_dependencies<'a>(input: &'a Input, app_known: &Known<'a>) -> Vec<Derive
     let hosts = hosts_of_applications(&input.elements);
     let mut out = Vec::new();
     for (app, from_nodes) in &hosts {
-        let Some(elem) = app_known.get(app) else { continue };
-        for rel in elem.relationships.iter().collect::<BTreeSet<_>>() {
-            let Some(to_nodes) = hosts.get(rel.destination.as_str()) else { continue };
+        if !app_known.contains_key(app) {
+            continue;
+        }
+        for (source, rel) in relationships_of_deployed(input, app) {
+            let Some(to_app) = deployed_application_of(&hosts, &rel.destination) else { continue };
+            let Some(to_nodes) = hosts.get(to_app) else { continue };
             for from_node in from_nodes {
                 for to_node in to_nodes.iter().filter(|to_node| *to_node != from_node && environment_of(to_node) == environment_of(from_node)) {
-                    out.push(Derived { from_node, from_app: app, source: app, to_node, rel });
+                    out.push(Derived { from_node, from_app: app, source, to_app, to_node, rel });
                 }
             }
         }
@@ -1197,6 +1215,7 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
         }
     }
     let app_known: Known = input.app_elements.iter().map(|e| (e.reference.as_str(), e)).collect();
+    let hosts = hosts_of_applications(&input.elements);
     // the dependencies between environments that touch the focal element, with the nodes they end on
     let derived: Vec<Derived> = derived_dependencies(input, &app_known)
         .into_iter()
@@ -1245,10 +1264,13 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
         item_of.insert(((*r).clone(), (*app).clone()), item_id);
     }
     for (app, from_items) in &by_app {
-        let app_elem = app_known.get(app.as_str()).ok_or_else(|| format!("dangling application reference: {app}"))?;
+        if !app_known.contains_key(app.as_str()) {
+            return Err(format!("dangling application reference: {app}"));
+        }
         for (from_id, from_node) in from_items {
-            for rel in app_elem.relationships.iter().collect::<BTreeSet<_>>() {
-                if let Some(to_items) = by_app.get(&rel.destination) {
+            for (source, rel) in relationships_of_deployed(input, app) {
+                let to_app = deployed_application_of(&hosts, &rel.destination);
+                if let Some(to_items) = to_app.and_then(|to_app| by_app.get(to_app)) {
                     for (to_id, to_node) in to_items {
                         if environment_of(from_node) != environment_of(to_node) {
                             continue; // between two environments, only what the environment uses is drawn (below)
@@ -1261,7 +1283,7 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
                             qualifiers: if input.application_links { rel.qualifiers.clone() } else { QSet::default() },
                             tags: rel.tags.clone(),
                             secondary: !input.application_links,
-                            relationships: BTreeSet::from([OutRel::of_application(app, rel)]),
+                            relationships: BTreeSet::from([OutRel::of_application(source, rel)]),
                             change: None,
                         });
                     }
@@ -1272,7 +1294,7 @@ fn deep_technology(input: &Input, known: &Known) -> Result<Content, String> {
     for d in &derived {
         let (Some(from), Some(to)) = (
             item_of.get(&(d.from_node.to_string(), d.from_app.to_string())),
-            item_of.get(&(d.to_node.to_string(), d.rel.destination.clone())),
+            item_of.get(&(d.to_node.to_string(), d.to_app.to_string())),
         ) else {
             continue;
         };
@@ -2919,6 +2941,82 @@ mod tests {
         let out = descendants("map", "", json!({ "opened": ["dev", "int"] }));
         let drawn = out["links"].as_array().unwrap().iter().any(|l| l["relationships"].as_array().unwrap().iter().any(|r| r["from"] == "shop.app.payments" && r["destination"] == "ext.registry"));
         assert!(drawn, "{out}");
+    }
+
+    /// Issue #139 (decision T5), the other end: `dev.app` hosts `shop.app`, whose component `payments` calls `ext.registry.client`, a
+    /// component of the application `int.a` hosts; `shop.app.cart` calls `ext.other.sub`, inside the application `dev.db` hosts; `shop.app.audit`
+    /// calls `shop.app.cart` (internal) and `ext.nowhere.x` (inside no deployed application).
+    fn toward_inside(viewpoint: &str, focal: &str, extra: Value) -> Value {
+        let mut input = json!({
+            "viewpoint": viewpoint, "layer": "technology", "focal": focal,
+            "elements": [
+                { "reference": "dev", "parent": true, "uses": ["int"] },
+                { "reference": "dev.app", "applications": ["shop.app"] },
+                { "reference": "dev.db", "applications": ["ext.other"] },
+                { "reference": "int", "parent": true },
+                { "reference": "int.a", "applications": ["ext.registry"] }
+            ],
+            "app_elements": [
+                { "reference": "shop", "parent": true },
+                { "reference": "shop.app" },
+                { "reference": "shop.app.payments", "relationships": [ { "destination": "ext.registry.client", "label": "charges" } ] },
+                { "reference": "shop.app.cart", "relationships": [ { "destination": "ext.other.sub", "label": "stores" } ] },
+                { "reference": "shop.app.audit", "relationships": [ { "destination": "shop.app.cart", "label": "reads" }, { "destination": "ext.nowhere.x", "label": "lost" } ] },
+                { "reference": "ext", "parent": true },
+                { "reference": "ext.registry" },
+                { "reference": "ext.registry.client" },
+                { "reference": "ext.other" },
+                { "reference": "ext.other.sub" },
+                { "reference": "ext.nowhere", "parent": true },
+                { "reference": "ext.nowhere.x" }
+            ]
+        });
+        for (key, value) in extra.as_object().cloned().unwrap_or_default() {
+            input[key] = value;
+        }
+        compute(input)
+    }
+
+    #[test]
+    fn a_relationship_towards_the_inside_of_a_deployed_application_is_a_dependency_towards_its_node() {
+        let out = toward_inside("deep", "dev", json!({}));
+        let found = link(&out, "app_shop_app", "a_ext_registry").expect("the box of the container is linked to the box of the application that holds the component");
+        assert_eq!(found["label"], "charges");
+        assert_eq!(found["relationships"][0]["from"], "shop.app.payments");
+        assert_eq!(found["relationships"][0]["destination"], "ext.registry.client", "the relationship says what it ends on");
+        assert!(!found["secondary"].as_bool().unwrap());
+        assert_eq!(out["links"].as_array().unwrap().iter().filter(|l| !l["secondary"].as_bool().unwrap()).count(), 1, "internal, same-environment and undeployed ends give nothing: {out}");
+        for viewpoint in ["overview", "detailed"] {
+            let out = toward_inside(viewpoint, "dev", json!({}));
+            let from = if viewpoint == "overview" { "dev" } else { "dev.app" };
+            let l = link(&out, from, "int").unwrap_or_else(|| panic!("{viewpoint}: the node depends on the environment: {out}"));
+            assert_eq!(l["relationships"][0]["destination"], "ext.registry.client");
+        }
+    }
+
+    #[test]
+    fn the_map_of_the_technology_layer_takes_the_dependencies_towards_the_inside() {
+        let out = toward_inside("map", "", json!({ "opened": ["dev", "int", "dev.app", "int.a"] }));
+        let l = link(&out, "app_shop_app", "a_ext_registry").unwrap_or_else(|| panic!("{out}"));
+        assert_eq!(l["relationships"][0]["destination"], "ext.registry.client");
+        let closed = toward_inside("map", "", json!({ "opened": [] }));
+        assert!(link(&closed, "dev", "int").is_some(), "grouped under the closed boxes: {closed}");
+    }
+
+    #[test]
+    fn the_secondary_links_read_what_is_inside_the_deployed_element_on_both_ends() {
+        let out = toward_inside("deep", "dev", json!({}));
+        let secondary: Vec<&Value> = out["links"].as_array().unwrap().iter().filter(|l| l["secondary"].as_bool().unwrap()).collect();
+        assert_eq!(secondary.len(), 1, "the component of shop.app towards a component of ext.other, on another node of the environment: {out}");
+        assert_eq!((secondary[0]["from"].as_str(), secondary[0]["to"].as_str()), (Some("app_shop_app"), Some("db_ext_other")));
+        assert_eq!(secondary[0]["relationships"][0]["from"], "shop.app.cart");
+        assert!(secondary[0]["label"].is_null(), "not drawn, so not captioned");
+        let flow = toward_inside("deep", "dev", json!({ "application_links": true }));
+        let drawn = link(&flow, "app_shop_app", "db_ext_other").expect("a flow draws it");
+        assert_eq!(drawn["label"], "stores");
+        let overview = toward_inside("overview", "dev.app", json!({ "application_links": true }));
+        let l = link(&overview, "dev.app", "dev.db").unwrap_or_else(|| panic!("{overview}"));
+        assert_eq!(l["relationships"][0]["from"], "shop.app.cart");
     }
 
     #[test]

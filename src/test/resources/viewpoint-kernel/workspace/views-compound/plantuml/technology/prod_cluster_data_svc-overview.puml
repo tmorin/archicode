@@ -32,6 +32,7 @@ rectangle prod.cluster.web <<node>> <<atomic>> [
 }
 }
 prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
+prod.cluster.data.svc --> prod.cluster.data.pg : reads\n""[JDBC]""
 prod.cluster.data.svc --> prod.cluster.data.pg : reads and writes\n""[JDBC]""
 prod.cluster.web --> prod.cluster.data.svc : uses\n""[gRPC]""
 <style>

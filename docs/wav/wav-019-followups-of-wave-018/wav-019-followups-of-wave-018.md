@@ -122,7 +122,7 @@ wave_manifest:
       slug: dependencies-into-the-inside
       phase: P0
       depends_on: []
-      run: null
+      run: 0140
       delegation: standard
       likely_paths:
         - 'src/main/rust/viewpoint-kernel/**'

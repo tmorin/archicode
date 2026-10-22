@@ -39,6 +39,7 @@ rectangle pod_b_shop_web_api <<Spring Boot>> <<container>> <<atomic>> [
 }
 }
 }
+svc_shop_catalog_service --> pg_shop_catalog_db : reads\n""[JDBC]""
 svc_shop_catalog_service --> pg_shop_catalog_db : reads and writes\n""[JDBC]""
 pod_b_shop_web_api --> svc_shop_catalog_service : queries\n""[gRPC]""
 prod.cluster.data.svc --> prod.cluster.data.pg : ""[TCP:5432]""
