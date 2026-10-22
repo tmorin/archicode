@@ -46,7 +46,7 @@
 //! reference). For `REMOVE`, `removed` lists every element that left the graph (the subtree included) and `dropped` the entries
 //! taken out of the elements that stay, in the order of the document: an element that only lost an entry to the cascade is in
 //! `dropped`, not in `touched`.
-use super::facet::{remove_nodes, References, Step};
+use super::facet::{remove_nodes, RefCounts, References, Step};
 use super::{null_as_default, CONTRACT_VERSION};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
@@ -419,7 +419,7 @@ fn differing<'a>(a: &'a References, b: &'a References) -> Option<(&'static str, 
 }
 
 /// Applies one patch. Returns what it says about itself: `matched`, `touched` and, for REMOVE, `removed` and `dropped`.
-fn apply_one(doc: &mut Value, patch: &Patch) -> Result<Map<String, Value>, String> {
+fn apply_one(doc: &mut Value, patch: &Patch, known: &mut Option<RefCounts>) -> Result<Map<String, Value>, String> {
     let (op, selector) = check(patch)?;
     let found = select(doc, &selector)?;
     let mut touched: BTreeSet<(&'static str, String)> = BTreeSet::new();
@@ -452,7 +452,7 @@ fn apply_one(doc: &mut Value, patch: &Patch) -> Result<Map<String, Value>, Strin
         if let Some(steps) = found.iter().find(|steps| matches!(steps.last(), Some(Step::Name(name)) if name == "id")) {
             return Err(format!("would remove an `id`: a patch never changes an id or a parent ({})", path_text(steps)));
         }
-        let removal = remove_nodes(doc, found);
+        let removal = remove_nodes(doc, found, known);
         let mut removed: Vec<Value> = sorted(&removal.gone.application).into_iter().map(|r| reference_json("application", r)).collect();
         removed.extend(sorted(&removal.gone.technology).into_iter().map(|r| reference_json("technology", r)));
         report.insert("removed".into(), Value::Array(removed));
@@ -460,19 +460,24 @@ fn apply_one(doc: &mut Value, patch: &Patch) -> Result<Map<String, Value>, Strin
         report.insert("dropped".into(), Value::Array(dropped.collect()));
         return Ok(report);
     }
-    let before = References::of(doc);
+    // a patch with a `field` sets, appends to or merges into that field of an object, and `check` refuses `id`, `parent` and `elements`: the references of the two layers
+    // cannot change, and are not read. Without a `field` the selected nodes themselves are replaced, and may be elements, or lists of them.
+    let reads_references = patch.field.is_none();
+    let before = reads_references.then(|| References::of(doc));
     for steps in found.iter().rev() {
         let (layer, reference) = element_of(doc, steps).expect("checked: every selected node is in an element");
         let owner = shown(layer, &reference);
         let node = node_at_mut(doc, steps).ok_or_else(|| format!("{owner} changed under the patch"))?;
         change(node, op, patch, &owner)?;
     }
+    let Some(before) = before else { return Ok(report) };
     let after = References::of(doc);
     if after != before {
         // what disappeared first (that is the reference the patch changed), else what appeared
         let (layer, reference) = differing(&before, &after).or_else(|| differing(&after, &before)).expect("the references differ");
         return Err(format!("would change the reference {}: a patch never changes an id or a parent", shown(layer, reference)));
     }
+    *known = None; // the references were read as sets: the next removal counts them again
     Ok(report)
 }
 
@@ -485,10 +490,12 @@ fn run(input: &str) -> Result<Value, Fail> {
     }
     let plateau = request.plateau.as_deref().filter(|p| !p.is_empty());
     let mut reports = Vec::with_capacity(request.patches.len());
+    // the references of the document after the last patch that read them, for the next one (see `remove_nodes`)
+    let mut known: Option<RefCounts> = None;
     for (index, raw) in request.patches.iter().enumerate() {
         let who = Who { plateau, rank: index + 1, operator: raw.get("operator").and_then(Value::as_str).map(str::to_string), selector: selector_text(raw) };
         let patch = Patch::deserialize(raw).map_err(|e| who.fail(format!("invalid patch: {e}")))?;
-        let body = apply_one(&mut doc, &patch).map_err(|problem| who.fail(problem))?;
+        let body = apply_one(&mut doc, &patch, &mut known).map_err(|problem| who.fail(problem))?;
         let mut report = Map::new();
         report.insert("rank".into(), json!(who.rank));
         report.insert("operator".into(), json!(patch.operator));

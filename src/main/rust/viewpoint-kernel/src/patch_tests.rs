@@ -174,3 +174,201 @@ fn a_field_taken_out_is_not_a_removal_and_leaves_no_cascade() {
     assert!(out["workspace"]["technology"]["elements"][0]["elements"][0].get("applications").is_none());
     assert_eq!(out["workspace"]["application"], workspace()["application"]);
 }
+
+// ---- run 0143 (issue #125): the patches of a plateau read the references of the document as few times as they need ----
+// The oracle is the plain rule: every patch alone, on the workspace the one before left. A run of patches keeps what it counted between them, and must give the same
+// workspace and the same reports.
+
+/// A workspace with an element declared twice (`dup`), an element with no `id` (and one inside it), a nesting three deep, and links in both layers.
+fn counted_workspace() -> Value {
+    json!({
+        "application": { "elements": [
+            { "id": "a", "kind": "system", "relationships": [{ "destination": "b.c" }, { "destination": "dup" }, { "destination": "keep" }], "elements": [
+                { "id": "x", "kind": "container", "relationships": [{ "destination": "b.c.d" }] } ] },
+            { "id": "b", "kind": "system", "elements": [ { "id": "c", "kind": "container", "elements": [ { "id": "d", "kind": "component" } ] } ] },
+            { "id": "dup", "kind": "system" },
+            { "id": "dup", "kind": "system", "description": "the second one" },
+            { "kind": "system", "elements": [ { "id": "orphan", "kind": "container" } ] },
+            { "id": "keep", "kind": "system", "relationships": [{ "destination": "orphan" }] }
+        ] },
+        "technology": { "elements": [
+            { "id": "env", "kind": "environment", "uses": ["env2", "env2.n"], "elements": [ { "id": "n", "kind": "node", "applications": ["a", "b.c", "keep"] } ] },
+            { "id": "env2", "kind": "environment", "elements": [ { "id": "n", "kind": "node", "applications": ["dup"] } ] }
+        ] }
+    })
+}
+
+/// The patches one at a time, each on the workspace the one before gave: the reports in order, and the workspace at the end (or the first error).
+fn one_by_one(workspace: &Value, patches: &[Value]) -> Value {
+    let mut doc = workspace.clone();
+    let mut reports = Vec::new();
+    for (index, patch) in patches.iter().enumerate() {
+        let answer: Value = serde_json::from_str(&apply_patches_json(&json!({ "workspace": doc, "patches": [patch] }).to_string())).unwrap();
+        if answer.get("error").is_some() {
+            return json!({ "error": answer["error"], "rank": index + 1 });
+        }
+        let mut report = answer["patches"][0].clone();
+        report["rank"] = json!(index + 1);
+        reports.push(report);
+        doc = answer["workspace"].clone();
+    }
+    json!({ "workspace": doc, "patches": reports })
+}
+
+fn in_one_call(workspace: &Value, patches: &[Value]) -> Value {
+    let answer: Value = serde_json::from_str(&apply_patches_json(&json!({ "workspace": workspace, "patches": patches }).to_string())).unwrap();
+    if let Some(error) = answer.get("error") {
+        let rank = answer["patch"]["rank"].clone();
+        return json!({ "error": error, "rank": rank });
+    }
+    json!({ "workspace": answer["workspace"], "patches": answer["patches"] })
+}
+
+fn same_as_one_by_one(patches: Vec<Value>) {
+    let workspace = counted_workspace();
+    let (together, alone) = (in_one_call(&workspace, &patches), one_by_one(&workspace, &patches));
+    // an error sentence names the plateau and the rank: only whether and where it fails is compared
+    if together.get("error").is_some() || alone.get("error").is_some() {
+        assert_eq!(together["rank"], alone["rank"], "{together}\n{alone}");
+        assert_eq!(together.get("error").is_some(), alone.get("error").is_some());
+        return;
+    }
+    assert_eq!(together, alone);
+}
+
+fn remove(target: &str) -> Value {
+    json!({ "operator": "REMOVE", "target": target })
+}
+
+fn remove_layer(target: &str, layer: &str) -> Value {
+    json!({ "operator": "REMOVE", "target": target, "layer": layer })
+}
+
+#[test]
+fn removals_in_a_row_drop_what_points_at_each_as_one_patch_at_a_time_does() {
+    same_as_one_by_one(vec![remove("a.x"), remove("b.c.d"), remove("b.c"), remove("keep"), remove("a")]);
+    same_as_one_by_one(vec![remove("b"), remove("a.x"), remove("a")]);
+    same_as_one_by_one(vec![remove("b.c"), remove_layer("env.n", "technology"), remove_layer("env", "technology")]);
+}
+
+#[test]
+fn an_element_declared_twice_is_gone_when_both_are() {
+    // the first removal leaves the reference to the second one: nothing points to nowhere yet, so nothing is dropped; the second makes it gone
+    same_as_one_by_one(vec![remove("dup"), remove("dup"), remove("a")]);
+    same_as_one_by_one(vec![remove("dup"), remove_layer("env2.n", "technology")]);
+}
+
+#[test]
+fn a_removal_of_a_path_inside_another_in_one_patch_reads_the_document() {
+    let path = |p: &str| json!({ "operator": "REMOVE", "json-path": p });
+    same_as_one_by_one(vec![path("$.application..elements[?(@.id == 'c' || @.id == 'd')]"), remove("keep")]);
+    same_as_one_by_one(vec![path("$.application.elements[0:2]"), remove("keep")]);
+    same_as_one_by_one(vec![path("$.application"), remove("keep")]);
+}
+
+#[test]
+fn patches_that_set_with_and_without_a_field_between_removals_leave_the_references_as_one_at_a_time_reads_them() {
+    let set = |target: &str, field: &str| json!({ "operator": "SET", "target": target, "field": field, "value": "new" });
+    same_as_one_by_one(vec![remove("b.c.d"), set("b.c", "description"), remove("b.c"), set("keep", "name"), remove("a.x")]);
+    // without a field the nodes themselves are replaced: here an element gets another one inside it
+    let replace = json!({ "operator": "SET", "json-path": "$.application.elements[2]", "value": { "id": "dup", "kind": "system", "elements": [{ "id": "kid", "kind": "container" }] } });
+    same_as_one_by_one(vec![remove("a.x"), replace.clone(), remove("dup.kid"), remove("b.c")]);
+    // a patch that renames an element is refused, and a removal before it changes nothing about that
+    let rename = json!({ "operator": "SET", "json-path": "$.application.elements[1]", "value": { "id": "other", "kind": "system" } });
+    same_as_one_by_one(vec![remove("a.x"), rename, remove("b")]);
+}
+
+#[test]
+fn removing_a_field_that_is_an_id_is_still_refused_and_a_field_of_an_element_does_not_confuse_the_next_removal() {
+    let field = |target: &str, field: &str| json!({ "operator": "REMOVE", "target": target, "field": field });
+    same_as_one_by_one(vec![remove("a.x"), field("keep", "relationships"), remove("orphan")]);
+    same_as_one_by_one(vec![remove("a.x"), json!({ "operator": "REMOVE", "json-path": "$.application.elements[5].id" }), remove("b")]);
+}
+
+#[test]
+fn a_facet_that_removes_an_id_then_an_element_reads_the_references_again() {
+    // the actions of a facet run one after the other on what the one before left: one call is the same as one call for each
+    let actions = |paths: &[&str]| -> Vec<Value> { paths.iter().map(|p| json!({ "operator": "REMOVE", "json_path": p })).collect() };
+    let apply = |workspace: &Value, list: &[Value]| -> Value { serde_json::from_str(&apply_facet_json(&json!({ "workspace": workspace, "actions": list }).to_string())).unwrap() };
+    let paths = [
+        "$.application.elements[1].id",
+        "$.application.elements[0].elements[0]",
+        "$.application.elements[3]",
+        "$.application.elements[0].relationships[0]",
+        "$.technology.elements[0].elements[0]",
+        "$.application.elements[2]",
+    ];
+    for take in 1..=paths.len() {
+        let list = actions(&paths[..take]);
+        let together = apply(&counted_workspace(), &list);
+        let mut doc = counted_workspace();
+        for action in &list {
+            doc = apply(&doc, std::slice::from_ref(action))["workspace"].clone();
+        }
+        assert_eq!(together["workspace"], doc, "after {take} actions");
+    }
+}
+
+#[test]
+fn what_a_removal_says_is_gone_is_what_the_document_no_longer_holds() {
+    use super::facet::{remove_nodes, References, Step};
+    let name = |n: &str| Step::Name(n.to_string());
+    let element = |layer: &str, path: &[usize]| -> Vec<Step> {
+        let mut steps = vec![name(layer)];
+        for index in path {
+            steps.push(name("elements"));
+            steps.push(Step::Index(*index));
+        }
+        steps
+    };
+    let cases: Vec<Vec<Vec<Step>>> = vec![
+        vec![element("application", &[0, 0])],
+        vec![element("application", &[1]), element("application", &[0, 0])],
+        vec![element("application", &[1, 0]), element("application", &[1])], // one inside the other
+        vec![element("application", &[2])],                                   // declared twice: the other stays
+        vec![element("application", &[2]), element("application", &[3])],    // both go
+        vec![element("application", &[4])],                                  // no `id`, nor its children
+        vec![element("application", &[4, 0])],
+        vec![element("technology", &[0]), element("application", &[5])],
+        vec![vec![name("application")]],
+        vec![vec![name("application"), name("elements")]],
+        vec![element("application", &[0, 0]), vec![name("application"), name("elements"), Step::Index(1), name("id")]],
+    ];
+    for (n, found) in cases.into_iter().enumerate() {
+        let mut fast = counted_workspace();
+        let mut slow = counted_workspace();
+        let before = References::of(&slow);
+        let mut counts = None;
+        let removal = remove_nodes(&mut fast, found.iter().map(|steps| steps.iter().map(|s| match s { Step::Name(x) => name(x), Step::Index(i) => Step::Index(*i) }).collect()).collect(), &mut counts);
+        // the rule: what the document held before and does not hold after, taken out of the document through the same removal without the counts
+        let mut sorted = found;
+        sorted.sort_unstable_by(|a, b| b.cmp(a));
+        sorted.dedup();
+        for steps in &sorted {
+            let mut node = &mut slow;
+            let (last, parents) = steps.split_last().unwrap();
+            for step in parents {
+                node = match (step, node) {
+                    (Step::Name(k), Value::Object(m)) => m.get_mut(k).unwrap(),
+                    (Step::Index(i), Value::Array(a)) => a.get_mut(*i).unwrap(),
+                    _ => unreachable!(),
+                };
+            }
+            match (last, node) {
+                (Step::Name(k), Value::Object(m)) => {
+                    m.remove(k);
+                }
+                (Step::Index(i), Value::Array(a)) => {
+                    a.remove(*i);
+                }
+                _ => unreachable!(),
+            }
+        }
+        let after = References::of(&slow);
+        let any_element = sorted.iter().any(|steps| matches!(steps.as_slice(), [_, Step::Name(e), ..] if e == "elements") || steps.len() == 1);
+        if any_element {
+            assert!(removal.gone.application == before.application.difference(&after.application).cloned().collect(), "case {n}: application");
+            assert!(removal.gone.technology == before.technology.difference(&after.technology).cloned().collect(), "case {n}: technology");
+        }
+    }
+}
