@@ -243,13 +243,30 @@ test('a plain scalar that YAML 1.1 reads as a number is read as the command line
   assert.equal(parent, '0');
 });
 
-test('KNOWN DIFFERENCE (issue #103): a number the reader refuses under a key the header does not take is told as the number by the page, as the unknown key by the command line', () => {
-  // the command line meets the key first and never decodes its value; the page decodes every scalar when it reads the file
-  assert.equal(errorOf('header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n  foo: .inf\ncontent:\n  id: s\n'), "Malformed numeric value '.inf' at `header.foo`");
-  // the command line: `unknown key `foo` (known: kind, parent, plateau, version) at `header.foo``
+test('a number the reader refuses under a key the header does not take is the unknown key, as the command line says it (issue #136, was a known difference of #103)', () => {
+  // the command line meets the key first and never decodes its value; so does the page, which holds the scalar it cannot read as a mark until it gets to the key (Y125 to Y144)
+  const header = (body) => 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\n' + body + 'content:\n  id: s\n';
+  assert.equal(errorOf(header('  foo: .inf\n')), 'unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`');
+  assert.equal(errorOf(header('  parent: .inf\n  foo: 1\n')), "Malformed numeric value '.inf' at `header.parent`");
+  assert.equal(errorOf(header('  foo: 1\n  parent: .inf\n')), 'unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`');
+  // a tagged integer is refused when the reader gets to the token, under an unknown key too, and with the place `header`
+  assert.equal(errorOf(header('  foo: !!int 09\n')), "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`");
 });
 
-test('KNOWN DIFFERENCE: the page does not tell the line and the column of a file, the command line does (negative-cases.json)', () => {
+test('KNOWN DIFFERENCE (issue #136): a float that JavaScript prints another way than Java is held as the text Java prints, also as the value of a patch, where the command line holds a number', () => {
+  const plateau = 'header:\n  kind: "archicode.morin.io/plateau"\n  version: "1"\ncontent:\n  id: later\n  override: baseline\n  patches:\n    - operator: SET\n      target: s\n      field: qualifiers\n      value: [5.0, 1e3, 7.5, 12]\n';
+  const parsed = app.parseManifestText(plateau);
+  assert.equal(parsed.error, null);
+  // `5.0` and `1e3` are `5.0` and `1000.0` for the command line, which holds them as numbers; the page has no number that prints `5.0` and holds the text (`7.5` and `12` are the numbers)
+  assert.deepEqual(JSON.parse(JSON.stringify(parsed.content.patches[0].value)), ['5.0', '1000.0', 7.5, 12]);
+  // what the patch makes is the same: the qualifiers are texts, `5.0` and `1000.0` for both tools (yaml-number-cases.json, Y252)
+});
+
+test('KNOWN DIFFERENCE (issue #136): the page does not tell the line and the column of a file, the command line does (negative-cases.json)', () => {
+  // The command line's position is where its reader (SnakeYAML under Jackson) stopped, which depends on the kind of mistake and not on the place of the value (measured on
+  // the jar of 0.17.0): the end of the value for an unknown key (`  foo: 1` on line 4 is column 9), one past the end of a number it cannot read (`  name: .inf` is column 13),
+  // the start of the value for a value of the wrong shape (`  kind: .inf` is column 9). The page reads a file into a tree that has no positions, so a column from the page
+  // would be a guess, and it says none. The sentence is the same without the position (the Java tests strip it: YamlOneDotOneNumbersTest).
   const sentence = errorOf(manifest('  id: s\n  foo: 1\n'));
   assert.equal(sentence, 'unknown key `foo` (known: description, elements, id, name, qualifiers, relationships, replaces, tags) at `foo`');
   assert.doesNotMatch(sentence, /\(line \d+, column \d+\)/);

@@ -1279,6 +1279,16 @@ let yamlModelNumbers = false;
 /** The last plain scalar read as a number whose value is not a JS number: `notePlainNumber` takes it to the collection that holds the value. */
 let yamlPlainNumberSeen = null;
 
+/**
+ * Set while `parseManifestText` reads a manifest: a scalar the command line's reader refuses (`.inf`, `!!int 09`, a `!!binary` that is not base64) does not stop the reading, it is
+ * held as the text it was written as and marked (`kind: 'malformed'`, with the sentence), and `manifestProblem` says it where the command line would meet it (issue #136): the
+ * content of a manifest is decoded whole when the reader gets to it, the header is read key by key, so `foo: .inf` under an unknown key of the header is the unknown key.
+ */
+let yamlDeferMalformed = false;
+
+/** Set while the plain scalar that follows a tag is read: the tag says what it is, so it is not looked at as a number first (`!!int .inf` is a text for the command line). */
+let yamlRawScalars = false;
+
 /** Set while `patchYamlText` saves `workspace.yaml`: `parseYamlAsModel` reads as the plain `parseYaml` does (the numbers as written; see `yamlModelNumbers`). */
 let yamlPlainReading = false;
 
@@ -1292,7 +1302,12 @@ function javaDoubleText(d) {
   if (Object.is(d, -0)) return '-0.0';
   if (d === 0) return '0.0';
   const sign = d < 0 ? '-' : '';
-  const parts = Math.abs(d).toExponential().split('e');
+  let parts = Math.abs(d).toExponential().split('e');
+  // one digit is enough to tell the number, but Java then takes the closest of the numbers with two (`4.9E-324` for the smallest one, where JavaScript prints `5e-324`)
+  if (parts[0].length === 1) {
+    const two = Math.abs(d).toExponential(1).split('e');
+    if (two[0][2] !== '0') parts = two;
+  }
   const digits = parts[0].replace('.', '');
   const exp = Number(parts[1]);
   if (exp >= -3 && exp < 7) {
@@ -1336,11 +1351,42 @@ function yamlOneDotOneNumber(text) {
   return { kind: 'float', value, javaText: javaDoubleText(value) };
 }
 
-/** The error for a scalar the command line's reader refuses as a number (`.inf`): its sentence, without the place (`at \`content\`` is added for a manifest, as the command line does). */
-function yamlMalformedNumber(text) {
-  const e = new Error("Malformed numeric value '" + text + "'");
+/** The error for a scalar the command line's reader refuses (`.inf`, `!!int 09`): its sentence, without the place (`at \`content\`` is added for a manifest, as the command line does). */
+function yamlRefusedScalar(message) {
+  const e = new Error(message);
   e.name = 'YamlMalformedNumber';
   return e;
+}
+
+function yamlMalformedNumber(text) {
+  return yamlRefusedScalar("Malformed numeric value '" + text + "'");
+}
+
+/**
+ * A scalar the reader refuses: an error, or, while a manifest is read (`yamlDeferMalformed`), the text it was written as with a mark that `manifestProblem` reads, so that the sentence
+ * comes at the place the command line would say it (issue #136). A number it cannot read (`.inf`, `!!float x`) is refused when a value is asked of it, so not under a key that is
+ * not taken; a tagged integer and a binary text (`eager`) are refused when the reader gets to the token, wherever it stands.
+ */
+function refuseYamlScalar(message, text, eager) {
+  if (!yamlDeferMalformed) throw yamlRefusedScalar(message);
+  yamlPlainNumberSeen = { value: text, number: { kind: 'malformed', big: null, value: null, source: text, message, eager: eager === true } };
+  return text;
+}
+
+/** What a scalar that is a number is in the model: the number itself when the page can hold it as the command line prints it, else the text (see `resolveYamlPlain`). */
+function yamlNumberValue(number, text) {
+  let value = text;
+  if (!yamlKeepWords && yamlModelNumbers) {
+    if (number.kind === 'int') {
+      value = number.big >= -9007199254740991n && number.big <= 9007199254740991n ? Number(number.big) : number.javaText;
+    } else {
+      value = Number.isFinite(number.value) && !Number.isInteger(number.value) && String(number.value) === number.javaText ? number.value : number.javaText;
+    }
+  } else if (!yamlKeepWords && ((number.kind === 'int' && /^-?\d+$/.test(text)) || /^-?\d+\.\d+$/.test(text)) && String(Number(text)) === text) {
+    value = Number(text); // (a number tagged `!!float` that is written as a whole number stays a float: the text, marked)
+  }
+  if (typeof value === 'string') yamlPlainNumberSeen = { value, number: { kind: number.kind, big: number.kind === 'int' ? number.big : null, value: number.kind === 'float' ? number.value : null, source: text } };
+  return value;
 }
 
 /**
@@ -1349,27 +1395,18 @@ function yamlMalformedNumber(text) {
  * is exactly what `String(number)` gives back (so `01234`, `1.50`, `2.0`, `-0` and integers beyond 2^53 stay the text
  * they were and are written back unchanged); in a manifest (`yamlModelNumbers`) every YAML 1.1 number is the number the command line reads
  * (`010` is `8`), or the text Java prints for it when JavaScript cannot hold it as that text. `wordsOnly`: only the null and the booleans are looked at.
+ * `yamlRawScalars`: the scalar follows a tag, which says what it is (`applyYamlTag`): it is the text.
  */
 function resolveYamlPlain(text, wordsOnly) {
+  if (yamlRawScalars && !wordsOnly) return text;
   if (text === '' || text === '~' || /^(null|Null|NULL)$/.test(text)) return null;
   if (/^(true|True|TRUE|yes|Yes|YES|on|On|ON)$/.test(text)) return yamlKeepWords ? text : true;
   if (/^(false|False|FALSE|no|No|NO|off|Off|OFF)$/.test(text)) return yamlKeepWords ? text : false;
   if (wordsOnly) return text;
   const number = yamlOneDotOneNumber(text);
   if (number === null) return text;
-  if (number.kind === 'malformed') throw yamlMalformedNumber(text);
-  let value = text;
-  if (!yamlKeepWords && yamlModelNumbers) {
-    if (number.kind === 'int') {
-      value = number.big >= -9007199254740991n && number.big <= 9007199254740991n ? Number(number.big) : number.javaText;
-    } else {
-      value = !Number.isInteger(number.value) && String(number.value) === number.javaText ? number.value : number.javaText;
-    }
-  } else if (!yamlKeepWords && (/^-?\d+$/.test(text) || /^-?\d+\.\d+$/.test(text)) && String(Number(text)) === text) {
-    value = Number(text);
-  }
-  if (typeof value === 'string') yamlPlainNumberSeen = { value, number: { kind: number.kind, big: number.kind === 'int' ? number.big : null, value: number.kind === 'float' ? number.value : null, source: text } };
-  return value;
+  if (number.kind === 'malformed') return refuseYamlScalar(yamlMalformedNumber(text).message, text);
+  return yamlNumberValue(number, text);
 }
 
 /** Record, for the collection that now holds `value` under `key`, that it was a plain scalar read as a number (the text the page holds is not one a quoted scalar can be told from). */
@@ -1720,7 +1757,15 @@ function parseYamlFlowNode(p, startLine) {
     if (p.notes) p.notes.unsupported = true;
     const props = readYamlProperties(p);
     skipYamlFlowSpace(p, startLine);
-    const node = parseYamlFlowNode(p, startLine);
+    const raw = yamlRawScalars;
+    const first = p.lines[p.i][p.col];
+    yamlRawScalars = props.tag !== null && props.tag !== '!' && first !== undefined && '[{"\'*&!|>,]}'.indexOf(first) === -1;
+    let node;
+    try {
+      node = parseYamlFlowNode(p, startLine);
+    } finally {
+      yamlRawScalars = raw;
+    }
     return { value: adoptYamlProperties(p, props, node.value, node.scalar ? node.text : '', p.i), text: node.text, scalar: node.scalar };
   }
   if (',]}|>'.indexOf(c) !== -1) throw yamlError('unexpected "' + c + '" in a flow collection', p.i);
@@ -1844,38 +1889,238 @@ function readYamlAlias(p) {
   return cloneYamlValue(p.anchors.get(name));
 }
 
+/** The bits a digit of a radix holds, and how many digits Java's `BigInteger` reads at once (`digitsPerInt`): what the command line's reader goes by when it turns `0x...`, `0b...` and `0...` into a number. */
+const JAVA_RADIX_BITS = { 2: 1, 8: 3, 16: 4 };
+const JAVA_RADIX_DIGITS_PER_INT = { 2: 30, 8: 10, 16: 7 };
+
+/** The value of one ASCII digit in a radix, or -1 (Java's `Character.digit`; the digits of other scripts that Java reads are not read here). */
+function javaDigit(ch, radix) {
+  const v = /^[0-9]$/.test(ch) ? ch.charCodeAt(0) - 48 : /^[a-zA-Z]$/.test(ch) ? ch.toLowerCase().charCodeAt(0) - 87 : -1;
+  return v >= 0 && v < radix ? v : -1;
+}
+
+/** `Integer.parseInt(text, radix)` / `Long.parseLong(text, radix)` for a text that fits: a number, or the sentence Java gives. */
+function javaParseRadix(text, radix) {
+  let i = text[0] === '-' || text[0] === '+' ? 1 : 0;
+  let ok = i < text.length;
+  for (let k = i; ok && k < text.length; k++) if (javaDigit(text[k], radix) < 0) ok = false;
+  if (!ok) return { message: 'For input string: "' + text + '" under radix ' + radix };
+  const big = text.slice(i).split('').reduce((acc, ch) => acc * BigInt(radix) + BigInt(javaDigit(ch, radix)), 0n);
+  return { big: text[0] === '-' ? -big : big };
+}
+
+/** `new BigInteger(text, radix)`: a number, or the sentence Java gives (the first group of digits that is not one: it reads them by groups, the first one the shorter). */
+function javaBigInteger(text, radix) {
+  const len = text.length;
+  if (len === 0) return { message: 'Zero length BigInteger' };
+  let cursor = 0;
+  let negative = false;
+  const minus = text.lastIndexOf('-');
+  const plus = text.lastIndexOf('+');
+  if (minus >= 0) {
+    if (minus !== 0 || plus >= 0) return { message: 'Illegal embedded sign character' };
+    negative = true;
+    cursor = 1;
+  } else if (plus >= 0) {
+    if (plus !== 0) return { message: 'Illegal embedded sign character' };
+    cursor = 1;
+  }
+  if (cursor === len) return { message: 'Zero length BigInteger' };
+  while (cursor < len && javaDigit(text[cursor], radix) === 0) cursor++;
+  if (cursor === len) return { big: 0n };
+  const perInt = JAVA_RADIX_DIGITS_PER_INT[radix];
+  let first = (len - cursor) % perInt;
+  if (first === 0) first = perInt;
+  let big = 0n;
+  let size = first;
+  while (cursor < len) {
+    const group = text.slice(cursor, cursor + size);
+    const parsed = javaParseRadix(group, radix);
+    if (parsed.message) return parsed;
+    big = big * BigInt(radix) ** BigInt(group.length) + parsed.big;
+    cursor += size;
+    size = perInt;
+  }
+  return { big: negative ? -big : big };
+}
+
 /**
- * What a tag makes of a scalar, the way the Java side's reader takes it: `!!str` is the text, `!!int` and `!!float` the number (a text that is not one is an error), `!!bool`
+ * What the command line's reader makes of a scalar tagged `!!int` (Jackson over SnakeYAML; found by trying every spelling of up to five characters, and the long ones that decide
+ * between `int`, `long` and `BigInteger`): `{ kind: 'int', big, javaText }`; null when it stays the text (`1:30`, `1e3`, `abc`, `0o17`); `{ refused }` for a number it cannot read (`09` is
+ * not an octal number, `0x` has no digits). A sign, then `0` and a digit or `_` is an octal number, `0x` a hexadecimal one and `0b` a binary one; otherwise only digits and `_` make a decimal
+ * number. The `_` are dropped first. The digits of a script other than ASCII, which Java reads, are not.
+ */
+function yamlTaggedInt(body) {
+  const signed = body[0] === '-' || body[0] === '+';
+  const rest = signed ? body.slice(1) : body;
+  const negative = body[0] === '-';
+  const cleaned = rest.replace(/_/g, '');
+  let radix = 0;
+  if (rest[0] === '0' && rest.length > 1) radix = /[0-9_]/.test(rest[1]) ? 8 : /[xX]/.test(rest[1]) ? 16 : /[bB]/.test(rest[1]) ? 2 : 0;
+  let big;
+  if (radix !== 0) {
+    const digits = cleaned.slice(radix === 8 ? 1 : 2);
+    const parsed = digits.length * JAVA_RADIX_BITS[radix] <= 63 ? javaParseRadix(digits, radix) : javaBigInteger(digits, radix);
+    if (parsed.message) return { refused: 'Invalid base-' + radix + " number ('" + digits + "'), problem: " + parsed.message };
+    big = parsed.big;
+  } else if (/^[0-9_]*$/.test(rest)) {
+    if (cleaned === '') return { refused: "Invalid number ('" + body + "')" };
+    big = BigInt(cleaned);
+  } else {
+    return null;
+  }
+  if (negative) big = -big;
+  return { kind: 'int', big, javaText: big.toString() };
+}
+
+/**
+ * What the command line's reader makes of a scalar tagged `!!float`: Java's `Double.parseDouble` of the text without its `_`, so `{ kind: 'float', value, javaText }` for `12` (`12.0`),
+ * `1e3`, `5.`, `1d`, `0x1p3`, `Infinity` and `NaN` (which are the text `Infinity` and `NaN` in the content, as a number JSON cannot hold), and `{ refused }` with the sentence of the
+ * reader (`Malformed numeric value 'x'`) for anything else. A hexadecimal one that is not a normal number is not rounded the way Java does.
+ */
+function yamlTaggedFloat(body) {
+  const underscored = body.indexOf('_') !== -1 ? (body[0] === '+' ? body.slice(1) : body).replace(/_/g, '') : body; // with a `_` in it a first `+` goes too
+  const cleaned = underscored.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '');
+  const refused = { refused: "Malformed numeric value '" + body + "'" };
+  const named = /^([-+]?)(NaN|Infinity)$/.exec(cleaned);
+  if (named) {
+    const value = named[2] === 'NaN' ? NaN : named[1] === '-' ? -Infinity : Infinity;
+    return { kind: 'float', value, javaText: named[2] === 'NaN' ? 'NaN' : value < 0 ? '-Infinity' : 'Infinity' };
+  }
+  const decimal = /^([-+]?)((?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)[fFdD]?$/.exec(cleaned);
+  if (decimal) {
+    const value = Number(decimal[2]) * (decimal[1] === '-' ? -1 : 1);
+    return { kind: 'float', value, javaText: javaDoubleText(value) };
+  }
+  const hex = /^([-+]?)0[xX]([0-9a-fA-F]*)\.?([0-9a-fA-F]*)[pP]([-+]?\d+)[fFdD]?$/.exec(cleaned);
+  if (hex && (hex[2] !== '' || hex[3] !== '') && /^0[xX][0-9a-fA-F]*(\.[0-9a-fA-F]*)?[pP]/.test(cleaned.replace(/^[-+]/, ''))) {
+    // the mantissa is rounded once, to the nearest, as Java does; the power of two that scales it is exact (but for the numbers that are not normal)
+    const scale = Number(hex[4]) - 4 * hex[3].length;
+    const value = Number(BigInt('0x' + (hex[2] + hex[3] || '0'))) * Math.pow(2, Math.trunc(scale / 2)) * Math.pow(2, scale - Math.trunc(scale / 2)) * (hex[1] === '-' ? -1 : 1);
+    return { kind: 'float', value, javaText: javaDoubleText(value) };
+  }
+  return refused;
+}
+
+const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/**
+ * What the command line's reader makes of a scalar tagged `!!binary`: the bytes of the base64 text, which the content then holds as the base64 text of those bytes (`aGVsbG8=` is
+ * `aGVsbG8=`; a text whose last bits are not zero is written with them zero). Jackson's decoder of the MIME variant, with its sentences. `{ text }` or `{ refused }`.
+ */
+function yamlTaggedBinary(body) {
+  const bad = (ch, index, extra) => {
+    const code = ch.charCodeAt(0);
+    let base;
+    if (code <= 32) base = 'Illegal white space character (code 0x' + code.toString(16) + ') as character #' + (index + 1) + ' of 4-char base64 unit: can only used between units';
+    else if (ch === '=') base = "Unexpected padding character ('=') as character #" + (index + 1) + ' of 4-char base64 unit: padding only legal as 3rd or 4th character';
+    else if (code < 32 || (code >= 127 && code < 160)) base = 'Illegal character (code 0x' + code.toString(16) + ') in base64 content';
+    else base = "Illegal character '" + ch + "' (code 0x" + code.toString(16) + ') in base64 content';
+    return { refused: extra ? base + ': ' + extra : base };
+  };
+  const eof = { refused: "Unexpected end of base64-encoded String: base64 variant 'MIME' expects padding (one or more '=' characters) at the end. This Base64Variant might have been incorrectly configured" };
+  const value = (ch) => BASE64_ALPHABET.indexOf(ch);
+  const bytes = [];
+  const len = body.length;
+  let ptr = 0;
+  main: while (ptr < len) {
+    let ch;
+    do {
+      if (ptr >= len) break main;
+      ch = body[ptr++];
+    } while (ch.charCodeAt(0) <= 32);
+    let bits = value(ch);
+    if (bits < 0) return bad(ch, 0);
+    let data = bits;
+    if (ptr >= len) return eof;
+    ch = body[ptr++];
+    bits = value(ch);
+    if (bits < 0) return bad(ch, 1);
+    data = (data << 6) | bits;
+    if (ptr >= len) return eof;
+    ch = body[ptr++];
+    bits = value(ch);
+    if (bits < 0) {
+      if (ch !== '=') return bad(ch, 2);
+      if (ptr >= len) return eof;
+      ch = body[ptr++];
+      if (ch !== '=') return bad(ch, 3, "expected padding character '='");
+      bytes.push((data >> 4) & 255);
+      continue;
+    }
+    data = (data << 6) | bits;
+    if (ptr >= len) return eof;
+    ch = body[ptr++];
+    bits = value(ch);
+    if (bits < 0) {
+      if (ch !== '=') return bad(ch, 3);
+      data >>= 2;
+      bytes.push((data >> 8) & 255, data & 255);
+    } else {
+      data = (data << 6) | bits;
+      bytes.push((data >> 16) & 255, (data >> 8) & 255, data & 255);
+    }
+  }
+  let text = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const n = (bytes[i] << 16) | ((bytes[i + 1] || 0) << 8) | (bytes[i + 2] || 0);
+    const chunk = BASE64_ALPHABET[(n >> 18) & 63] + BASE64_ALPHABET[(n >> 12) & 63] + BASE64_ALPHABET[(n >> 6) & 63] + BASE64_ALPHABET[n & 63];
+    text += i + 2 < bytes.length ? chunk : i + 1 < bytes.length ? chunk.slice(0, 3) + '=' : chunk.slice(0, 2) + '==';
+  }
+  return { text };
+}
+
+/**
+ * What a tag makes of a scalar, the way the Java side's reader takes it: `!!str` is the text, `!!int` and `!!float` the number (`yamlTaggedInt`, `yamlTaggedFloat`: what the reader cannot
+ * read is its sentence, the text when it only is no integer), `!!binary` the base64 text of its bytes (`yamlTaggedBinary`), `!!bool`
  * the boolean (or the text, when it is not a boolean word), `!!null` a null, any other tag (`!!timestamp`, `!local`) the text. A tag on a collection is left out. `text` is the
  * scalar as written.
  */
-function applyYamlTag(tag, value, text, lineIndex) {
+function applyYamlTag(tag, value, text) {
   if (value !== null && typeof value === 'object') return value;
   if (tag === '!') return value;
   const named = /^!!(.+)$/.exec(tag) || /^!<tag:yaml\.org,2002:(.+)>$/.exec(tag);
   const name = named ? named[1] : null;
   const body = String(text);
-  if (name === 'binary') throw yamlError('a binary value (!!binary) is not supported', lineIndex);
   if (name === 'null') return resolveYamlPlain(body, true) === null ? null : body;
   if (name === 'bool') {
     const word = resolveYamlPlain(body, true);
     return typeof word === 'boolean' ? word : body;
   }
   if (body === '') return body;
-  if (name === 'int') {
-    if (!/^[-+]?\d+$/.test(body)) throw yamlError('"' + body.slice(0, 30) + '" is not an integer (tag ' + tag + ')', lineIndex);
-    return Number(body);
+  yamlPlainNumberSeen = null;
+  if (name === 'binary') {
+    const decoded = yamlTaggedBinary(body);
+    return decoded.refused ? refuseYamlScalar(decoded.refused, body, true) : decoded.text;
   }
-  if (name === 'float') {
-    if (!/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(body)) throw yamlError('"' + body.slice(0, 30) + '" is not a number (tag ' + tag + ')', lineIndex);
-    return Number(body);
+  if (name === 'int' || name === 'float') {
+    const number = name === 'int' ? yamlTaggedInt(body) : yamlTaggedFloat(body);
+    if (number === null) return body;
+    if (number.refused) return refuseYamlScalar(number.refused, body, name === 'int');
+    return yamlNumberValue(number, body);
   }
   return body;
 }
 
+/** What a plain scalar reads as without a tag (no mark is left behind and nothing is refused). */
+function untaggedReadingOf(text) {
+  const seen = yamlPlainNumberSeen;
+  const raw = yamlRawScalars;
+  const deferring = yamlDeferMalformed;
+  yamlRawScalars = false;
+  yamlDeferMalformed = true;
+  try {
+    return resolveYamlPlain(text);
+  } finally {
+    yamlPlainNumberSeen = seen;
+    yamlRawScalars = raw;
+    yamlDeferMalformed = deferring;
+  }
+}
+
 /** The value of a node that has an anchor and a tag: the tag applied, the anchor given to the result. */
 function adoptYamlProperties(p, props, value, text, lineIndex) {
-  const result = props.tag === null ? value : applyYamlTag(props.tag, value, text, lineIndex);
+  const result = props.tag === null ? value : applyYamlTag(props.tag, value, text);
   if (props.anchor !== null) p.anchors.set(props.anchor, result);
   return result;
 }
@@ -1904,8 +2149,16 @@ function parseYamlProperties(p, parentIndent, keyed) {
     const c = line[p.col];
     inline = c === '"' || c === "'" ? 'quoted' : c === '[' || c === '{' ? 'flow' : c === '|' || c === '>' ? 'block' : 'plain';
     p.plain = undefined;
-    value = parseYamlInline(p, parentIndent, keyed);
+    const raw = yamlRawScalars;
+    yamlRawScalars = inline === 'plain' && props.tag !== null && props.tag !== '!';
+    try {
+      value = parseYamlInline(p, parentIndent, keyed);
+    } finally {
+      yamlRawScalars = raw;
+    }
     if (value === null || typeof value !== 'object') text = p.plain !== undefined ? p.plain : value === null ? '' : String(value);
+    // a plain scalar after a tag was read as the text (the tag says what it is): `value` is what the line reads as without the tag, which the save compares the tagged value with
+    if (inline === 'plain' && props.tag !== null && props.tag !== '!') value = untaggedReadingOf(text);
   }
   const tagged = adoptYamlProperties(p, props, value, text, lineIndex);
   if (p.notes) {
@@ -2237,10 +2490,14 @@ function patchYamlTextRead(oldText, newValue) {
  */
 function openYamlDecorations(text) {
   const notes = { list: [], unsupported: false };
+  const numbers = yamlModelNumbers;
+  yamlModelNumbers = !yamlPlainReading; // the numbers are read as the model reads them, as `parseYamlAsModel` does for the check that follows
   try {
     parseYaml(text, notes);
   } catch (e) {
     return null;
+  } finally {
+    yamlModelNumbers = numbers;
   }
   if (notes.list.length === 0 && !notes.unsupported) return null;
   if (notes.unsupported || /[\u0002\u0003]/.test(text) || notes.list.some((note) => note.kind === 'props' && note.multiline && note.changed)) return { unsupported: true };
@@ -2879,16 +3136,19 @@ function yamlEmittedWordsOf(original, at) {
   const before = yamlModelNumbers;
   yamlModelNumbers = !yamlPlainReading;
   let value;
+  let heldAsText = false;
   try {
+    yamlPlainNumberSeen = null;
     value = resolveYamlPlain(stripYamlComment(line).replace(/\s+$/, '').slice(read.valueAt));
+    heldAsText = yamlPlainNumberSeen !== null && yamlPlainNumberSeen.number.kind !== 'malformed'; // a number held as the text Java prints (`1e3` is `1000.0`)
   } catch (e) {
     return words; // a number the reader refuses is not one the emitter writes
   } finally {
     yamlModelNumbers = before;
     yamlPlainNumberSeen = null;
   }
-  if (value !== null && typeof value !== 'boolean' && typeof value !== 'number') return words;
-  return (yamlWordsOf(line.slice(0, read.valueAt)) + ' ' + serializeYamlScalarToken(value)).trim();
+  if (value !== null && typeof value !== 'boolean' && typeof value !== 'number' && !heldAsText) return words;
+  return (yamlWordsOf(line.slice(0, read.valueAt)) + ' ' + (typeof value === 'string' ? value : serializeYamlScalarToken(value))).trim();
 }
 
 /**
@@ -7327,10 +7587,19 @@ function headerProblem(header) {
   if (!readIsObject(header)) return readWrongShape(header, 'header');
   for (const key of Object.keys(header)) {
     if (!MANIFEST_HEADER_KEYS.includes(key)) {
+      // the reader reads the value of a key before it says the key is not one: a tagged integer or binary text it cannot read is said first
+      const refusedUnder = plainNumberOf(header, key);
+      if (refusedUnder !== undefined && refusedUnder.kind === 'malformed' && refusedUnder.eager) return refusedUnder.message + ' at `header`';
       return 'unknown key `' + key + '` (known: ' + MANIFEST_HEADER_KEYS.join(', ') + ') at `header.' + key + '`';
     }
     const value = header[key];
     if (readIsMissing(value)) continue;
+    const refused = plainNumberOf(header, key);
+    if (refused !== undefined && refused.kind === 'malformed') {
+      // a scalar the reader refuses: the command line meets it when it gets to the key (the kind is an enum, which a refused number is the wrong shape of)
+      if (refused.eager) return refused.message + ' at `header`';
+      return key === 'kind' ? readWrongShape(value, 'header.kind', refused) : refused.message + ' at `header.' + key + '`';
+    }
     if (key !== 'kind') {
       const problem = readValue('text', value, 'header.' + key, '');
       if (problem) return problem;
@@ -7345,6 +7614,19 @@ function headerProblem(header) {
   return null;
 }
 
+/** The sentence of the first scalar of `container[key]`, at any depth and in the order of the file, that the reader refuses (`yamlDeferMalformed`), or null. */
+function firstRefusedScalarIn(container, key) {
+  const mark = plainNumberOf(container, key);
+  if (mark !== undefined && mark.kind === 'malformed') return mark.message;
+  const value = container[key];
+  if (value === null || typeof value !== 'object') return null;
+  for (const inner of Array.isArray(value) ? value.keys() : yamlKeysOf(value)) {
+    const found = firstRefusedScalarIn(value, inner);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
 /**
  * The first problem a manifest has, as the command line's sentence without the file and the place, or null. The command line reads the
  * file as a manifest (a header and a content, the keys in the order of the file), then the content as the kind of the header says; so does this.
@@ -7353,11 +7635,20 @@ function manifestProblem(root) {
   if (!readIsObject(root)) return readWrongShape(root, '');
   for (const key of Object.keys(root)) {
     if (key === 'header') {
+      const refused = plainNumberOf(root, 'header');
+      if (refused !== undefined && refused.kind === 'malformed') return refused.eager ? refused.message : refused.message + ' at `header`'; // the header is a scalar the reader refuses
       const problem = headerProblem(root.header);
       if (problem) return problem;
     } else if (key === 'content') {
+      // the command line decodes the content whole when it gets to it, so a scalar it refuses anywhere in it is the first thing it says of it
+      const own = plainNumberOf(root, 'content');
+      if (own !== undefined && own.kind === 'malformed') return own.eager ? own.message : readWrongShape(root.content, 'content', own); // a content that is a scalar the reader refuses is a number, said before it is decoded
+      const refused = Array.isArray(root.content) ? null : firstRefusedScalarIn(root, 'content'); // (a list is the wrong shape whatever it holds)
+      if (refused !== null) return refused + ' at `content`';
       if (!readIsMissing(root.content) && !readIsObject(root.content)) return readWrongShape(root.content, 'content');
     } else {
+      const refused = plainNumberOf(root, key);
+      if (refused !== undefined && refused.kind === 'malformed' && refused.eager) return refused.message;
       return 'unknown key `' + key + '` (known: content, header) at `' + key + '`';
     }
   }
@@ -7451,21 +7742,6 @@ function keepHeaderAsWritten(parsed, text) {
   }
 }
 
-/** The sentence for a number the reader refuses in a manifest: it names the key of the header (`header.parent`) and `content` for anything in the content, wherever it stands. */
-function malformedNumberSentence(e, text) {
-  const lines = String(text).split(/\r\n|\r|\n/);
-  const at = e.line ? e.line - 1 : -1;
-  let section = 'content';
-  for (let i = Math.min(at, lines.length - 1); i >= 0; i--) {
-    const found = /^(header|content)\s*:/.exec(lines[i]);
-    if (found) { section = found[1]; break; }
-  }
-  if (section === 'content') return e.message + ' at `content`';
-  const word = /'(.*)'$/.exec(e.message)[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const key = new RegExp('([A-Za-z0-9_-]+)\\s*:\\s*' + word).exec(lines[at] || '');
-  return e.message + ' at `header' + (key ? '.' + key[1] : '') + '`';
-}
-
 /**
  * Parse one manifest file's text the way every load/edit path needs
  * (loadWorkspace, commitFileEdit, reloadManifestFile): `{ header, content,
@@ -7473,13 +7749,17 @@ function malformedNumberSentence(e, text) {
  * valid YAML or is a manifest the command line refuses (`manifestProblem`).
  */
 function parseManifestText(text) {
+  const deferring = yamlDeferMalformed;
+  yamlDeferMalformed = true;
   try {
     const parsed = parseYamlAsModel(text) || {};
     const header = (parsed.header && typeof parsed.header === 'object') ? parsed.header : null;
     const content = (parsed.content && typeof parsed.content === 'object') ? parsed.content : null;
     return { header, content, error: manifestProblem(parsed) };
   } catch (e) {
-    return { header: null, content: null, error: e && e.name === 'YamlMalformedNumber' ? malformedNumberSentence(e, text) : e && e.message ? e.message : String(e) };
+    return { header: null, content: null, error: e && e.message ? e.message : String(e) };
+  } finally {
+    yamlDeferMalformed = deferring;
   }
 }
 
@@ -15176,6 +15456,24 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+/** The properties of a style that are whole numbers (`Style` of the command line: `int`). */
+const STYLE_WHOLE_NUMBER_KEYS = ['line-style', 'line-gap', 'line-thickness', 'round-corner'];
+
+/**
+ * What the command line reads of the property `key` of a style: a whole number is any YAML number, and a number with a dot or an exponent is cut to its whole part
+ * (`line-gap: 0x1F` is 31, `round-corner: 8.0` is 8, `1.5` is 1), where the page holds the text of a number it prints another way and draws only digits (issue #136). Anything else is as written.
+ */
+function styleValueAsRead(entry, key) {
+  const value = entry[key];
+  if (!STYLE_WHOLE_NUMBER_KEYS.includes(key)) return value;
+  const plain = plainNumberOf(entry, key);
+  if (plain !== undefined && plain.kind !== 'malformed') {
+    const whole = plain.kind === 'int' ? Number(plain.big) : Math.trunc(plain.value);
+    return Number.isFinite(whole) ? whole : value;
+  }
+  return typeof value === 'number' && Number.isFinite(value) && !Number.isInteger(value) ? Math.trunc(value) : value;
+}
+
 /** The style the workspace gives a stereotype, or null when `styles` does not mention it (a key with no property is a style with none). `by-tags` overrides `by-qualifiers` for the same key. */
 function stereotypeStyleOf(name) {
   const styles = AppState.workspace && AppState.workspace.styles;
@@ -15189,7 +15487,7 @@ function stereotypeStyleOf(name) {
     const entry = map[name];
     if (!isPlainObject(entry)) continue;
     for (const key of STYLE_KEYS) {
-      if (Object.prototype.hasOwnProperty.call(entry, key) && entry[key] !== null && entry[key] !== undefined && String(entry[key]).trim() !== '') merged[key] = entry[key];
+      if (Object.prototype.hasOwnProperty.call(entry, key) && entry[key] !== null && entry[key] !== undefined && String(entry[key]).trim() !== '') merged[key] = styleValueAsRead(entry, key);
     }
   }
   return declared ? merged : null;

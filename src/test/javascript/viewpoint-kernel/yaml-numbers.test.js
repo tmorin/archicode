@@ -113,9 +113,66 @@ test('workspace.yaml keeps its numbers when it is saved (the text as written, qu
   assert.equal(sandbox.patchYamlText(text, value, true), text.replace('    line-style: 5.0\n', '    line-style: 5.0\n    round-corner: 4\n'));
 });
 
-test('a style written as a YAML 1.1 number is accepted, and drawn as the editor draws a text it cannot tell from a quoted one: with the default (pinned, issue #103)', () => {
+test('a style written as a YAML 1.1 number is drawn as the command line reads it: the whole number (issue #136, was pinned in #103)', async () => {
+  const workspace = [
+    'settings:', '  manifests:', '    paths: [manifests]', 'styles:', '  by-tags:',
+    '    hot:', '      line-style: 0x5', '      line-gap: 1_0', '      line-thickness: 1e1', '      round-corner: 8.0',
+    '    cut:', '      line-style: 0b11', '      line-gap: 1.5', '      round-corner: 8.9',
+    '    quoted:', '      line-style: "7"', '      round-corner: !!int 0x1F', '      line-gap: 0x7FFFFFFF', ''
+  ].join('\n');
+  const mem = memFolder({ 'workspace.yaml': workspace, 'manifests/m0.yaml': 'header:\n  kind: "archicode.morin.io/system"\n  version: "1"\ncontent:\n  id: s\n' });
   const sandbox = createApp({});
-  const look = sandbox.styleLookOf(sandbox.parseYaml('line-style: 0x5\nline-gap: 1_0\nround-corner: 8.0\n'));
-  assert.deepEqual(JSON.parse(JSON.stringify(look.vars)), {}, 'the diagram draws only whole numbers written in digits; the command line reads these as 5, 10 and 8');
-  assert.equal(look.rx, null);
+  const state = sandbox.__state();
+  state.folder = { handle: mem.handle, name: 'ws' };
+  state.permissionState = 'granted';
+  await sandbox.loadWorkspace(mem.handle);
+  assert.equal(state.fatalError, null);
+  const plain = (value) => JSON.parse(JSON.stringify(value));
+  // the numbers the command line reads (StyleNumbersTest.java): 0x5 is 5, 1_0 is 10, 1e1 is 10, 8.0 and 8.9 are 8, 1.5 is 1
+  assert.deepEqual(plain(sandbox.styleLookOf(sandbox.stereotypeStyleOf('hot')).vars), { '--st-width': '10px', '--st-dash': '5 10' });
+  assert.equal(sandbox.styleLookOf(sandbox.stereotypeStyleOf('hot')).rx, 4);
+  assert.deepEqual(plain(sandbox.styleLookOf(sandbox.stereotypeStyleOf('cut')).vars), { '--st-dash': '3 1' });
+  assert.equal(sandbox.styleLookOf(sandbox.stereotypeStyleOf('cut')).rx, 4);
+  // a quoted whole number is the number, a tagged one too (`!!int 0x1F` is 31, which is more than the diagram draws: it stops at 100)
+  assert.deepEqual(plain(sandbox.styleLookOf(sandbox.stereotypeStyleOf('quoted')).vars), { '--st-dash': '7 50' });
+  assert.equal(sandbox.styleLookOf(sandbox.stereotypeStyleOf('quoted')).rx, 15.5);
+  // the file is not touched by it: the text of the number is the one the author wrote
+  assert.equal(state.workspace.styles['by-tags'].hot['line-style'], '0x5');
+});
+
+// ---- a number with a tag (issue #136, tagged scalars of #78): read as the command line reads it, and written back as it was written
+test('a tagged number is saved as written: the line, its tag and its comment stay when another field is edited', () => {
+  const sandbox = createApp({});
+  const text = [
+    'header:', '  kind: "archicode.morin.io/system"', '  version: !!int 010', 'content:',
+    '  id: !!int 0x1F   # hex id', '  name: Shop', '  description: !!binary YR==',
+    '  qualifiers:', '    - !!int 0x1F', '    - !!float 5   # five', '    - !!float 1e3', '    - a',
+    '  tags:', '    size: !!float 1e3', '    n: !!int 1_000', '    big: !!int 0xFFFFFFFFFFFFFFFFFFFFFF',
+    '  elements:', '    - kind: container', '      id: !!int 010', '      name: Till', ''
+  ].join('\n');
+  const parsed = sandbox.parseManifestText(text);
+  assert.equal(parsed.error, null);
+  const plain = JSON.parse(JSON.stringify(parsed.content));
+  // what the command line makes of them (Y145 to Y200): the numbers, and the text of a number JavaScript prints otherwise
+  assert.deepEqual(plain.qualifiers, [31, '5.0', '1000.0', 'a']);
+  assert.equal(plain.id, 31);
+  assert.equal(plain.description, 'YQ==', 'a binary text is the base64 text of its bytes, with the bits that are zero');
+  assert.equal(plain.tags.big, '309485009821345068724781055');
+  assert.equal(plain.elements[0].id, 8);
+  parsed.content.name = 'Shop2';
+  assert.equal(sandbox.patchYamlText(text, { header: parsed.header, content: parsed.content }), text.replace('name: Shop\n', 'name: Shop2\n'));
+  const again = sandbox.parseManifestText(text);
+  again.content.elements[0].name = 'Till2';
+  assert.equal(sandbox.patchYamlText(text, { header: again.header, content: again.content }), text.replace('name: Till', 'name: Till2'));
+});
+
+test('a tag says what a plain scalar is before it is looked at as a number: `.inf` is a text under `!!str` and `!!int`', () => {
+  const sandbox = createApp({});
+  const read = (text) => JSON.parse(JSON.stringify(sandbox.parseYaml(text)));
+  assert.deepEqual(read('a: !!str .inf\nb: !!int .inf\nc: !!int 1e3\nd: !!int 1:30\n'), { a: '.inf', b: '.inf', c: '1e3', d: '1:30' });
+  // the tagged integer is the number the command line reads (Jackson over SnakeYAML), and what it cannot read is its sentence
+  const failing = (text) => { try { sandbox.parseYaml(text); } catch (e) { return e.message; } return null; };
+  assert.equal(failing('a: !!int 09\n'), "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8");
+  assert.equal(failing('a: !!float 0x1F\n'), "Malformed numeric value '0x1F'");
+  assert.equal(failing('a: !!binary abc\n').startsWith('Unexpected end of base64-encoded String'), true);
 });

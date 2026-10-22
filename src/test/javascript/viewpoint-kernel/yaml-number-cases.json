@@ -1,5 +1,5 @@
 {
- "comment": "Plain scalars that YAML 1.1 reads as numbers (issue #103, wave 018 run 0134), as the command line reads them: `expect` is what `query graph` prints (the references of the elements and the qualifiers that they have) or the one-line error without the file and the place (`file` is the file it names). Each case is a folder: `files` are its files (`workspace.yaml` is `settings: {manifests: {paths: [manifests]}}` when a case does not give it). YamlOneDotOneNumbersTest.java (command line) and yaml-numbers.test.js (editor) run every case; a case that has `editor` is one where the editor says another thing, with the `reason`. The expectations were written from the jar of archicode-0.16.0, which reads these scalars as the jar of this tree does.",
+ "comment": "Plain scalars that YAML 1.1 reads as numbers (issue #103, wave 018 run 0134), as the command line reads them: `expect` is what `query graph` prints (the references of the elements and the qualifiers that they have) or the one-line error without the file and the place (`file` is the file it names). Each case is a folder: `files` are its files (`workspace.yaml` is `settings: {manifests: {paths: [manifests]}}` when a case does not give it). YamlOneDotOneNumbersTest.java (command line) and yaml-numbers.test.js (editor) run every case; a case that has `editor` is one where the editor says another thing, with the `reason`. The expectations were written from the jar of archicode-0.16.0, which reads these scalars as the jar of this tree does. Y125 to Y279 (wave 019, run 0137, issues #136 and #78): where the reader meets a scalar it refuses (Y125 to Y144: the header is read key by key and the content whole, so `foo: .inf` under an unknown key of the header is the unknown key), the scalars with a tag (`!!int`, `!!float`, `!!binary`, `!!str`: Y145 to Y254, found by trying every spelling of up to five characters on Jackson 2.21 and the long ones that decide between `int`, `long` and `BigInteger`; a tagged integer or binary text it cannot read is refused when the reader gets to the token, a tagged float when a value is asked of it, Y255 to Y279), and the number a patch holds (Y252 to Y254). Their expectations were written from the jar of archicode-0.17.0 (build the jar and run it, do not guess).",
  "cases": [
   {
    "id": "Y01",
@@ -1783,6 +1783,2031 @@
    },
    "expect": {
     "error": "Malformed numeric value '.inf' at `header.parent`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y125",
+   "title": "`foo: .inf` under an unknown key of the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y126",
+   "title": "`foo: [.nan, .inf]` under an unknown key of the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: [.nan, .inf]\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y127",
+   "title": "`foo: 1` then `parent: .inf` in the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: 1\n  parent: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y128",
+   "title": "`parent: .inf` then `foo: 1` in the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: .inf\n  foo: 1\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header.parent`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y129",
+   "title": "`parent: .inf` then `foo: .inf` in the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: .inf\n  foo: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header.parent`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y130",
+   "title": "`plateau: .inf` in the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header.plateau`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y131",
+   "title": "`version: .inf` in the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header.version`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y132",
+   "title": "`kind: .inf` in the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: .inf\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `header.kind`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y133",
+   "title": "`kind: .nan` in the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: .nan\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `header.kind`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y134",
+   "title": "an unknown key of the header, then `name: .inf` in the content",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: 1\ncontent:\n  id: s\n  name: .inf\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y135",
+   "title": "`name: .inf` in the content, then an unknown key of the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "content:\n  id: s\n  name: .inf\nheader:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: 1\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y136",
+   "title": "an unknown key of the content, then `name: .inf` (the content is decoded whole)",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  foo: 1\n  name: .inf\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y137",
+   "title": "`extra: .inf` as an unknown key of the manifest, after the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\nextra: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `extra` (known: content, header) at `extra`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y138",
+   "title": "`extra: .inf` as an unknown key of the manifest, before the header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "extra: .inf\nheader:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `extra` (known: content, header) at `extra`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y139",
+   "title": "`name: .inf` in the content, then `extra: 1` as an unknown key of the manifest",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  name: .inf\nextra: 1\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y140",
+   "title": "`extra: 1` as an unknown key of the manifest, then `name: .inf` in the content",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\nextra: 1\ncontent:\n  id: s\n  name: .inf\n"
+   },
+   "expect": {
+    "error": "unknown key `extra` (known: content, header) at `extra`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y141",
+   "title": "`parent: .inf` in a flow header with an unknown key after it",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header: {kind: \"archicode.morin.io/system\", version: \"1\", parent: .inf, foo: 1}\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header.parent`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y142",
+   "title": "an unknown key `foo: .inf` before `parent: .inf` in a flow header",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header: {kind: \"archicode.morin.io/system\", version: \"1\", foo: .inf, parent: .inf}\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y143",
+   "title": "`content: .inf`",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent: .inf\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y144",
+   "title": "`header: .inf`",
+   "group": "header-order",
+   "files": {
+    "manifests/m0.yaml": "header: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y145",
+   "title": "`id: !!int 0x1F`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 0x1F\n"
+   },
+   "expect": {
+    "references": [
+     "31"
+    ]
+   }
+  },
+  {
+   "id": "Y146",
+   "title": "`id: !!int 010`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 010\n"
+   },
+   "expect": {
+    "references": [
+     "8"
+    ]
+   }
+  },
+  {
+   "id": "Y147",
+   "title": "`id: !!int 0b11`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 0b11\n"
+   },
+   "expect": {
+    "references": [
+     "3"
+    ]
+   }
+  },
+  {
+   "id": "Y148",
+   "title": "`id: !!int 1_000`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 1_000\n"
+   },
+   "expect": {
+    "references": [
+     "1000"
+    ]
+   }
+  },
+  {
+   "id": "Y149",
+   "title": "`id: !!int +12`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int +12\n"
+   },
+   "expect": {
+    "references": [
+     "12"
+    ]
+   }
+  },
+  {
+   "id": "Y150",
+   "title": "`id: !!int -0x1F`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int -0x1F\n"
+   },
+   "expect": {
+    "references": [
+     "-31"
+    ]
+   }
+  },
+  {
+   "id": "Y151",
+   "title": "`id: !!int 0X1F`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 0X1F\n"
+   },
+   "expect": {
+    "references": [
+     "31"
+    ]
+   }
+  },
+  {
+   "id": "Y152",
+   "title": "`id: !!int 0_7`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 0_7\n"
+   },
+   "expect": {
+    "references": [
+     "7"
+    ]
+   }
+  },
+  {
+   "id": "Y153",
+   "title": "`id: !!int 1:30`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 1:30\n"
+   },
+   "expect": {
+    "references": [
+     "1:30"
+    ]
+   }
+  },
+  {
+   "id": "Y154",
+   "title": "`id: !!int abc`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int abc\n"
+   },
+   "expect": {
+    "references": [
+     "abc"
+    ]
+   }
+  },
+  {
+   "id": "Y155",
+   "title": "`id: !!int 1e3`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 1e3\n"
+   },
+   "expect": {
+    "references": [
+     "1e3"
+    ]
+   }
+  },
+  {
+   "id": "Y156",
+   "title": "`id: !!int 0o17`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 0o17\n"
+   },
+   "expect": {
+    "references": [
+     "0o17"
+    ]
+   }
+  },
+  {
+   "id": "Y157",
+   "title": "`id: !!int \"0x1F\"`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int \"0x1F\"\n"
+   },
+   "expect": {
+    "references": [
+     "31"
+    ]
+   }
+  },
+  {
+   "id": "Y158",
+   "title": "`id: !!int \"12\"`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int \"12\"\n"
+   },
+   "expect": {
+    "references": [
+     "12"
+    ]
+   }
+  },
+  {
+   "id": "Y159",
+   "title": "`id: !!int 99999999999999999999`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 99999999999999999999\n"
+   },
+   "expect": {
+    "references": [
+     "99999999999999999999"
+    ]
+   }
+  },
+  {
+   "id": "Y160",
+   "title": "`id: !!int 0xFFFFFFFFFFFFFFFFFFFFFF`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 0xFFFFFFFFFFFFFFFFFFFFFF\n"
+   },
+   "expect": {
+    "references": [
+     "309485009821345068724781055"
+    ]
+   }
+  },
+  {
+   "id": "Y161",
+   "title": "`id: !!int 1.5`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 1.5\n"
+   },
+   "expect": {
+    "error": "the id `1.5` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y162",
+   "title": "`id: !!int .inf`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int .inf\n"
+   },
+   "expect": {
+    "error": "the id `.inf` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y163",
+   "title": "`id: !!int 09`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 09\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y164",
+   "title": "`id: !!int 0x`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 0x\n"
+   },
+   "expect": {
+    "error": "Invalid base-16 number (''), problem: For input string: \"\" under radix 16 at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y165",
+   "title": "`id: !!int 0b2`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 0b2\n"
+   },
+   "expect": {
+    "error": "Invalid base-2 number ('2'), problem: For input string: \"2\" under radix 2 at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y166",
+   "title": "`id: !!int _`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int _\n"
+   },
+   "expect": {
+    "error": "Invalid number ('_') at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y167",
+   "title": "`id: !!int 0xGGGGGGGGGGGGGGGGGGGGGGGG`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!int 0xGGGGGGGGGGGGGGGGGGGGGGGG\n"
+   },
+   "expect": {
+    "error": "Invalid base-16 number ('GGGGGGGGGGGGGGGGGGGGGGGG'), problem: For input string: \"GGG\" under radix 16 at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y168",
+   "title": "`id: !<tag:yaml.org,2002:int> 0x1F`",
+   "group": "tag-int",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !<tag:yaml.org,2002:int> 0x1F\n"
+   },
+   "expect": {
+    "references": [
+     "31"
+    ]
+   }
+  },
+  {
+   "id": "Y169",
+   "title": "`id: !!str .inf`",
+   "group": "tag-str",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!str .inf\n"
+   },
+   "expect": {
+    "error": "the id `.inf` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y170",
+   "title": "`id: !!str 0x1F`",
+   "group": "tag-str",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!str 0x1F\n"
+   },
+   "expect": {
+    "references": [
+     "0x1F"
+    ]
+   }
+  },
+  {
+   "id": "Y171",
+   "title": "`id: !!float 1e3`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float 1e3\n"
+   },
+   "expect": {
+    "error": "the id `1000.0` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y172",
+   "title": "`id: !!float 12`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float 12\n"
+   },
+   "expect": {
+    "error": "the id `12.0` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y173",
+   "title": "`id: !!float 5.0`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float 5.0\n"
+   },
+   "expect": {
+    "error": "the id `5.0` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y174",
+   "title": "`id: !!float 1_0.5`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float 1_0.5\n"
+   },
+   "expect": {
+    "error": "the id `10.5` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y175",
+   "title": "`id: !!float 1d`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float 1d\n"
+   },
+   "expect": {
+    "error": "the id `1.0` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y176",
+   "title": "`id: !!float 0x1p3`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float 0x1p3\n"
+   },
+   "expect": {
+    "error": "the id `8.0` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y177",
+   "title": "`id: !!float 0x1F`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float 0x1F\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '0x1F' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y178",
+   "title": "`id: !!float Infinity`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float Infinity\n"
+   },
+   "expect": {
+    "references": [
+     "Infinity"
+    ]
+   }
+  },
+  {
+   "id": "Y179",
+   "title": "`id: !!float -NaN`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float -NaN\n"
+   },
+   "expect": {
+    "references": [
+     "NaN"
+    ]
+   }
+  },
+  {
+   "id": "Y180",
+   "title": "`id: !!float .inf`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float .inf\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y181",
+   "title": "`id: !!float abc`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float abc\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value 'abc' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y182",
+   "title": "`id: !!float 1:30.5`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float 1:30.5\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '1:30.5' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y183",
+   "title": "`id: !!float 1e400`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float 1e400\n"
+   },
+   "expect": {
+    "references": [
+     "Infinity"
+    ]
+   }
+  },
+  {
+   "id": "Y184",
+   "title": "`id: !!float \"2.5\"`",
+   "group": "tag-float",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!float \"2.5\"\n"
+   },
+   "expect": {
+    "error": "the id `2.5` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y185",
+   "title": "`id: !!binary aGVsbG8=`",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!binary aGVsbG8=\n"
+   },
+   "expect": {
+    "references": [
+     "aGVsbG8="
+    ]
+   }
+  },
+  {
+   "id": "Y186",
+   "title": "`id: !!binary \"aGVsbG8=\"`",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!binary \"aGVsbG8=\"\n"
+   },
+   "expect": {
+    "references": [
+     "aGVsbG8="
+    ]
+   }
+  },
+  {
+   "id": "Y187",
+   "title": "`id: !!binary YQ==`",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!binary YQ==\n"
+   },
+   "expect": {
+    "references": [
+     "YQ=="
+    ]
+   }
+  },
+  {
+   "id": "Y188",
+   "title": "`id: !!binary YR==`",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!binary YR==\n"
+   },
+   "expect": {
+    "references": [
+     "YQ=="
+    ]
+   }
+  },
+  {
+   "id": "Y189",
+   "title": "`id: !!binary aGVs bG8=`",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!binary aGVs bG8=\n"
+   },
+   "expect": {
+    "references": [
+     "aGVsbG8="
+    ]
+   }
+  },
+  {
+   "id": "Y190",
+   "title": "`id: !!binary abc`",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!binary abc\n"
+   },
+   "expect": {
+    "error": "Unexpected end of base64-encoded String: base64 variant 'MIME' expects padding (one or more '=' characters) at the end. This Base64Variant might have been incorrectly configured at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y191",
+   "title": "`id: !!binary abc=`",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!binary abc=\n"
+   },
+   "expect": {
+    "references": [
+     "abc="
+    ]
+   }
+  },
+  {
+   "id": "Y192",
+   "title": "`id: !!binary a?c=`",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!binary a?c=\n"
+   },
+   "expect": {
+    "error": "Illegal character '?' (code 0x3f) in base64 content at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y193",
+   "title": "`id: !!binary aGVsbG8`",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: !!binary aGVsbG8\n"
+   },
+   "expect": {
+    "error": "Unexpected end of base64-encoded String: base64 variant 'MIME' expects padding (one or more '=' characters) at the end. This Base64Variant might have been incorrectly configured at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y194",
+   "title": "`description: !!binary |` over two lines",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers:\n    - !!binary |\n      aGVs\n      bG8=\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "aGVsbG8="
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y195",
+   "title": "`description: !!binary |` with a character that is no base64",
+   "group": "tag-binary",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers:\n    - !!binary |\n      aGVs\n      bG8?\n"
+   },
+   "expect": {
+    "error": "Illegal character '?' (code 0x3f) in base64 content at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y196",
+   "title": "`qualifiers: [!!int 0x1F, !!float 1e3, !!binary aGVsbG8=]`",
+   "group": "tag-text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [!!int 0x1F, !!float 1e3, !!binary aGVsbG8=, !!str .inf, !!int abc]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "31",
+      "1000.0",
+      "aGVsbG8=",
+      ".inf",
+      "abc"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y197",
+   "title": "`qualifiers` as a block list of tagged numbers",
+   "group": "tag-text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers:\n    - !!int 010\n    - !!float 5\n    - !!int 1:30\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "8",
+      "5.0",
+      "1:30"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y198",
+   "title": "`name: !!int 09` (a number the reader cannot read) and an unknown key before it",
+   "group": "tag-text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  foo: 1\n  name: !!int 09\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y199",
+   "title": "`name: !!float x` in a flow list",
+   "group": "tag-text",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n  qualifiers: [a, !!float x]\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value 'x' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y200",
+   "title": "`header.parent: !!int 010`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"010\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: !!int 010\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "010",
+     "010.c"
+    ]
+   }
+  },
+  {
+   "id": "Y201",
+   "title": "`header.parent: !!int 010` and the parent `8`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"8\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: !!int 010\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "010.c",
+     "8"
+    ]
+   }
+  },
+  {
+   "id": "Y202",
+   "title": "`header.parent: !!int 0x1F`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"0x1F\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: !!int 0x1F\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "0x1F",
+     "0x1F.c"
+    ]
+   }
+  },
+  {
+   "id": "Y203",
+   "title": "`header.parent: !!int 0x1F` and the parent `31`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"31\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: !!int 0x1F\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "0x1F.c",
+     "31"
+    ]
+   }
+  },
+  {
+   "id": "Y204",
+   "title": "`header.parent: !!float 5`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"5\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: !!float 5\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "5",
+     "5.c"
+    ]
+   }
+  },
+  {
+   "id": "Y205",
+   "title": "`header.parent: !!float 5` and the parent `5.0`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"5.0\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: !!float 5\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "error": "the id `5.0` contains a dot, which separates the levels of a reference, at `content.id`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y206",
+   "title": "`header.parent: !!int 09`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"09\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: !!int 09\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m1.yaml"
+   }
+  },
+  {
+   "id": "Y207",
+   "title": "`header.parent: !!binary aGVsbG8=`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: \"aGVsbG8=\"\n",
+    "manifests/m1.yaml": "header:\n  kind: \"archicode.morin.io/container\"\n  version: \"1\"\n  parent: !!binary aGVsbG8=\ncontent:\n  id: c\n"
+   },
+   "expect": {
+    "references": [
+     "aGVsbG8=",
+     "aGVsbG8=.c"
+    ]
+   }
+  },
+  {
+   "id": "Y208",
+   "title": "`header.version: !!int 010`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: !!int 010\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y209",
+   "title": "`header.version: !!int 09`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y210",
+   "title": "`header.kind: !!int 5`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: !!int 5\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unrecognized `header.kind` \"5\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y211",
+   "title": "`header.kind: !!int 0x1F`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: !!int 0x1F\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unrecognized `header.kind` \"31\" (known: archicode.morin.io/component, archicode.morin.io/container, archicode.morin.io/environment, archicode.morin.io/node, archicode.morin.io/person, archicode.morin.io/plateau, archicode.morin.io/solution, archicode.morin.io/story, archicode.morin.io/system, archicode.morin.io/view)",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y212",
+   "title": "`header.kind: !!float 5`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: !!float 5\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `header.kind`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y213",
+   "title": "`header.kind: !!str archicode.morin.io/system`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: !!str archicode.morin.io/system\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y214",
+   "title": "an unknown key of the header with `!!int 09`",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y215",
+   "title": "`header.parent: !!int 09` then an unknown key",
+   "group": "tag-header",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: !!int 09\n  foo: 1\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y216",
+   "title": "`line-gap: !!int 0x1F`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 0x1F\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y217",
+   "title": "`line-gap: !!int 010`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 010\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y218",
+   "title": "`line-gap: !!int abc`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int abc\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a string) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y219",
+   "title": "`line-gap: !!float 1e2`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float 1e2\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y220",
+   "title": "`line-gap: !!float 1.5`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float 1.5\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y221",
+   "title": "`line-gap: !!float Infinity`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float Infinity\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Numeric value (Infinity) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y222",
+   "title": "`line-gap: !!float NaN`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float NaN\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y223",
+   "title": "`line-gap: !!int 09`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 09\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y224",
+   "title": "`line-gap: !!int 0x80000000`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!int 0x80000000\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Numeric value (0x80000000) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y225",
+   "title": "`line-gap: !!float 1e22`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!float 1e22\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Numeric value (1e22) out of range of int (-2147483648 - 2147483647) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y226",
+   "title": "`line-gap: !!binary aGVsbG8=`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    line-gap: !!binary aGVsbG8=\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Cannot deserialize value of type `java.lang.Integer` from Embedded Object value (token `JsonToken.VALUE_EMBEDDED_OBJECT`) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   },
+   "editor": {
+    "error": "the value has the wrong shape (found a string) at `styles.composite.line-gap`",
+    "file": "workspace.yaml"
+   },
+   "reason": "KNOWN DIFFERENCE (issue #136): the command line names the Java class of the target and the token (\"Cannot deserialize value of type `java.lang.Integer` from Embedded Object value\"); the page has no Java classes and says what it says of a text. The same holds for a boolean, an enum and the kind of a header. In a text field the binary text is read alike (Y185 to Y195, Y240, Y207)."
+  },
+  {
+   "id": "Y227",
+   "title": "`shadowing: !!int 1`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 1\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y228",
+   "title": "`shadowing: !!int 012`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 012\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y229",
+   "title": "`shadowing: !!int 0x1`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 0x1\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y230",
+   "title": "`shadowing: !!float 1`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!float 1\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `styles.composite.shadowing`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y231",
+   "title": "`shadowing: !!int abc`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int abc\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a string) at `styles.composite.shadowing`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y232",
+   "title": "`shadowing: !!str true`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!str true\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y233",
+   "title": "`shadowing: !!bool yes`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!bool yes\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y234",
+   "title": "`shadowing: !!int 9999999999999999999`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nstyles:\n  composite:\n    shadowing: !!int 9999999999999999999\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y235",
+   "title": "`settings.name: !!int 0x1F`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: !!int 0x1F\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y236",
+   "title": "`settings.name: !!float 5`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: !!float 5\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y237",
+   "title": "`settings.name: !!int 09`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: !!int 09\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y238",
+   "title": "`settings.name: !!int abc`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: !!int abc\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y239",
+   "title": "`settings.name: !!str 010`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: !!str 010\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y240",
+   "title": "`settings.name: !!binary aGVsbG8=`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  name: !!binary aGVsbG8=\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y241",
+   "title": "`settings.current: !!int 010` and a plateau `010`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  current: !!int 010\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"010\"\n  override: baseline\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y242",
+   "title": "`settings.current: !!float 5` and a plateau `5`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  current: !!float 5\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"5\"\n  override: baseline\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y243",
+   "title": "`settings.current: !!str 010` and a plateau `010`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  current: !!str 010\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"010\"\n  override: baseline\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y244",
+   "title": "`settings.current: !!int 09` and a plateau `09`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  current: !!int 09\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"09\"\n  override: baseline\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y245",
+   "title": "`settings.current: !!int 1_000` and a plateau `1_000`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  current: !!int 1_000\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: \"1_000\"\n  override: baseline\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y246",
+   "title": "`settings.facets.global-enabled: !!int 1` and `!!float 1`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: !!int 1\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ]
+   }
+  },
+  {
+   "id": "Y247",
+   "title": "`settings.facets.global-enabled: !!float 1`",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n  facets:\n    global-enabled: !!float 1\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `settings.facets.global-enabled`",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y248",
+   "title": "`foo: !!int 09` an unknown key of workspace.yaml",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\nfoo: !!int 09\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
+    "file": "workspace.yaml"
+   }
+  },
+  {
+   "id": "Y249",
+   "title": "`layer: !!int 0x1F` of a view",
+   "group": "tag-workspace",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: overview\n  layer: !!int 0x1F\n"
+   },
+   "expect": {
+    "error": "unrecognized `layer` \"31\" (known: APPLICATION, TECHNOLOGY)",
+    "file": "manifests/v.yaml"
+   }
+  },
+  {
+   "id": "Y250",
+   "title": "`layer: !!int 1` of a view",
+   "group": "tag-workspace",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: overview\n  layer: !!int 1\n"
+   },
+   "expect": {
+    "error": "unrecognized `layer` \"1\" (known: APPLICATION, TECHNOLOGY)",
+    "file": "manifests/v.yaml"
+   }
+  },
+  {
+   "id": "Y251",
+   "title": "`layer: !!float 5` of a view",
+   "group": "tag-workspace",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/v.yaml": "header:\n  kind: \"archicode.morin.io/view\"\n  version: \"1\"\ncontent:\n  id: v\n  viewpoint: overview\n  layer: !!float 5\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `layer`",
+    "file": "manifests/v.yaml"
+   }
+  },
+  {
+   "id": "Y252",
+   "title": "a patch that sets `qualifiers` to `[5.0, 1e3, 0x1F, 1_0.5, 0.0001]`",
+   "group": "patch-value",
+   "files": {
+    "workspace.yaml": "settings:\n  current: later\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: later\n  override: baseline\n  patches:\n    - operator: SET\n      target: s\n      field: qualifiers\n      value: [5.0, 1e3, 0x1F, 1_0.5, 0.0001]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "5.0",
+      "1000.0",
+      "31",
+      "10.5",
+      "1.0E-4"
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y253",
+   "title": "a patch that sets `qualifiers` to `[!!int 0x1F, !!float 5, !!binary aGVsbG8=]`",
+   "group": "patch-value",
+   "files": {
+    "workspace.yaml": "settings:\n  current: later\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: later\n  override: baseline\n  patches:\n    - operator: SET\n      target: s\n      field: qualifiers\n      value: [!!int 0x1F, !!float 5, !!binary aGVsbG8=]\n"
+   },
+   "expect": {
+    "references": [
+     "s"
+    ],
+    "qualifiers": {
+     "s": [
+      "31",
+      "5.0",
+      "aGVsbG8="
+     ]
+    }
+   }
+  },
+  {
+   "id": "Y254",
+   "title": "a patch whose `value` is `.inf`",
+   "group": "patch-value",
+   "files": {
+    "workspace.yaml": "settings:\n  manifests:\n    paths: [manifests]\n",
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent:\n  id: s\n",
+    "manifests/p.yaml": "header:\n  kind: \"archicode.morin.io/plateau\"\n  version: \"1\"\ncontent:\n  id: later\n  override: baseline\n  patches:\n    - operator: SET\n      target: s\n      field: qualifiers\n      value: [.inf]\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `content`",
+    "file": "manifests/p.yaml"
+   }
+  },
+  {
+   "id": "Y255",
+   "title": "`extra: !!int 09`, an unknown key of the manifest",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\nextra: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y256",
+   "title": "`extra: [!!int 09]`, an unknown key of the manifest with a list",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\nextra: [!!int 09]\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `extra` (known: content, header) at `extra`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y257",
+   "title": "`foo: [!!int 09]`, an unknown key of the header with a list",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: [!!int 09]\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y258",
+   "title": "`foo: {a: !!int 09}`, an unknown key of the header with a map",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: {a: !!int 09}\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y259",
+   "title": "`foo:` over `a: !!int 09`, an unknown key of the header with a block map",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo:\n    a: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y260",
+   "title": "`parent: [!!int 09]` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: [!!int 09]\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found an array) at `header.parent`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y261",
+   "title": "`plateau: !!int 09` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  plateau: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y262",
+   "title": "`foo: 1` then `parent: !!int 09` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: 1\n  parent: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y263",
+   "title": "`parent: !!int 09` in the header, then `name: .inf` in the content",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: !!int 09\ncontent:\n  id: s\n  name: .inf\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y264",
+   "title": "`name: .inf` in the content, then `parent: !!int 09` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "content:\n  id: s\n  name: .inf\nheader:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: !!int 09\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y265",
+   "title": "`name: !!int 09` in the content, then an unknown key of the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "content:\n  id: s\n  name: !!int 09\nheader:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: 1\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y266",
+   "title": "`header: !!int 09`",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y267",
+   "title": "`content: !!int 09`",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent: !!int 09\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y268",
+   "title": "`content: !!int 12`",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent: !!int 12\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y269",
+   "title": "`content: [!!int 09]`",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\ncontent: [!!int 09]\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found an array) at `content`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y270",
+   "title": "`parent: .inf` then `foo: !!int 09` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: .inf\n  foo: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value '.inf' at `header.parent`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y271",
+   "title": "`foo: !!int 09` then `parent: .inf` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: !!int 09\n  parent: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y272",
+   "title": "`foo: .inf` then `parent: !!int 09` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: .inf\n  parent: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y273",
+   "title": "`kind: .inf` then `version: !!int 09` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: .inf\n  version: !!int 09\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "the value has the wrong shape (found a number) at `header.kind`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y274",
+   "title": "`kind: !!int 09` then `version: .inf` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: !!int 09\n  version: .inf\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y275",
+   "title": "`parent: !!int 09` in a flow header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header: {kind: \"archicode.morin.io/system\", version: \"1\", parent: !!int 09}\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y276",
+   "title": "`foo: !!int 09` in a flow header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header: {kind: \"archicode.morin.io/system\", version: \"1\", foo: !!int 09}\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Invalid base-8 number ('9'), problem: For input string: \"9\" under radix 8 at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y277",
+   "title": "`parent: !!binary abc` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: !!binary abc\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Unexpected end of base64-encoded String: base64 variant 'MIME' expects padding (one or more '=' characters) at the end. This Base64Variant might have been incorrectly configured at `header`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y278",
+   "title": "`parent: !!float x` in the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  parent: !!float x\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "Malformed numeric value 'x' at `header.parent`",
+    "file": "manifests/m0.yaml"
+   }
+  },
+  {
+   "id": "Y279",
+   "title": "`foo: !!float x` under an unknown key of the header",
+   "group": "tag-order",
+   "files": {
+    "manifests/m0.yaml": "header:\n  kind: \"archicode.morin.io/system\"\n  version: \"1\"\n  foo: !!float x\ncontent:\n  id: s\n"
+   },
+   "expect": {
+    "error": "unknown key `foo` (known: kind, parent, plateau, version) at `header.foo`",
     "file": "manifests/m0.yaml"
    }
   }

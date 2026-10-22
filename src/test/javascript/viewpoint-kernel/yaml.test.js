@@ -139,8 +139,6 @@ test('whatever the parser cannot read is an error that names the line, never a s
     ['a: 1\nb: *alias\n', 2],
     ['a: 1\n&key b: 2\n', 2],
     ['a: 1\nb: &anchor *a\n', 2],
-    ['a: !!int x\n', 1],
-    ['a: !!binary YQ==\n', 1],
     ['a: 1\n---\nb: 2\n', 2],
     ['a: 1\n   b: 2\n', 2],
     ['a:\n  b: 1\n c: 2\n', 3],

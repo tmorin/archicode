@@ -58,9 +58,6 @@ test('what the reader still refuses says so on the line', () => {
     ['a: 1\n&k b: 2\n', 2, /expected a "key: value" entry/],
     ['a: &k b: 2\n', 1, /an anchor or a tag on a key is not supported/],
     ['a: 1\nb: &x *a\n', 2, /undefined alias|an alias cannot have an anchor/],
-    ['a: !!int x\n', 1, /is not an integer/],
-    ['a: !!float x\n', 1, /is not a number/],
-    ['a: !!binary YQ==\n', 1, /binary/],
     ['a: &\n', 1, /an anchor needs a name/],
     ['a: &x &y 1\n', 1, /only one anchor/],
     ['a: !!str !!int 1\n', 1, /only one tag/]
