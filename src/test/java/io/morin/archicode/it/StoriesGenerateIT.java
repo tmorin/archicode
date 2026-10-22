@@ -77,6 +77,32 @@ class StoriesGenerateIT {
     }
 
     @Test
+    void aComparisonStepWritesItsTableAndTheFacetsAreDrawnBesideTheStepFolders(QuarkusMainLauncher launcher) {
+        val folder = Shipped.copy(BRIGHTCART, dir, "brightcart");
+        succeeded(
+            launcher.launch(
+                "-w",
+                workspace(folder),
+                "stories",
+                "generate",
+                "--plateau",
+                "marketplace",
+                "-s",
+                "fork_tour"
+            )
+        );
+        val steps = folder.resolve("views-stories/fork_tour");
+        notEmpty(steps.resolve("02-overview/gap.md"));
+        notEmpty(steps.resolve("02-overview/gap.json"));
+        assertFalse(Files.exists(steps.resolve("01-shop_overview/gap.md")));
+        for (val facet : new String[] { "journey", "no-externals", "without-cart" }) {
+            notEmpty(steps.resolve("01-shop_overview-" + facet + "/plantuml/application/shop_overview.puml"));
+        }
+        assertTrue(read(steps.resolve("02-overview-journey/plantuml/application/step_02.puml")).contains("<<new>>"));
+        assertFalse(Files.exists(steps.resolve("02-overview-journey/gap.md")));
+    }
+
+    @Test
     void migrationIsDrawnWithoutAnOption(QuarkusMainLauncher launcher) {
         val folder = Shipped.copy(EXAMPLES.resolve("domain_plateaus"), dir, "plateaus");
         succeeded(launcher.launch("-w", workspace(folder), "stories", "generate"));

@@ -48,6 +48,21 @@ class GenerateStoriesTest {
             at: "inhouse"
     """;
 
+    /** A step that names the cart, which the facet {@code without-cart} removes. */
+    private static final String CART = """
+      header:
+        kind: "archicode.morin.io/story"
+        version: "1"
+      content:
+        id: "cart_story"
+        steps:
+          - viewpoint: "overview"
+            layer: "application"
+            properties:
+              element: "shop.app.cart"
+            at: "baseline"
+    """;
+
     private static final String EMPTY = """
       header:
         kind: "archicode.morin.io/story"
@@ -219,6 +234,92 @@ class GenerateStoriesTest {
         assertFalse(
             puml(workspace, "migration", "01-overview", "application/step_01.puml").contains("<<contains-changes>>")
         );
+    }
+
+    @Test
+    @SneakyThrows
+    void aStepThatComparesWritesTheTableOfChangesViewsGenerateWritesForThePair() {
+        val workspace = copy(BRIGHTCART, dir.resolve("brightcart"));
+        assertEquals(0, stories(workspace, "--plateau", "marketplace", "--story", "fork_tour").exit());
+        val views = CliHarness.run(
+            factory,
+            errorOutput,
+            "--workspace",
+            workspace.toString(),
+            "views",
+            "generate",
+            "--plateau",
+            "saas",
+            "--against",
+            "baseline"
+        );
+        assertEquals(0, views.exit(), views.err());
+        val step = workspace.resolveSibling("views-stories/fork_tour/02-overview");
+        for (val name : List.of("gap.md", "gap.json")) {
+            assertEquals(
+                Files.readString(workspace.resolveSibling("views-saas-vs-baseline/" + name)),
+                Files.readString(step.resolve(name)),
+                name
+            );
+        }
+        // a step that compares nothing has no table
+        assertFalse(Files.exists(workspace.resolveSibling("views-stories/fork_tour/01-shop_overview/gap.md")));
+    }
+
+    @Test
+    @SneakyThrows
+    void theFacetsAreDrawnBesideEachStepFolderAndAFacetThatRemovesTheElementIsSkipped() {
+        val workspace = copy(BRIGHTCART, dir.resolve("brightcart"));
+        write(workspace, "shared/story.cart.yaml", CART);
+        val result = stories(workspace, "--plateau", "marketplace", "--story", "fork_tour", "--story", "cart_story");
+        assertEquals(0, result.exit(), result.err());
+        val steps = workspace.resolveSibling("views-stories/fork_tour");
+        for (val facet : List.of("journey", "no-externals", "without-cart")) {
+            assertTrue(
+                Files.size(steps.resolve("01-shop_overview-" + facet + "/plantuml/application/shop_overview.puml")) > 0,
+                facet
+            );
+        }
+        // a compared step: the facets are drawn on the comparison, and the table is in the folder of the step only
+        assertTrue(puml(workspace, "fork_tour", "02-overview-journey", "application/step_02.puml").contains("<<new>>"));
+        assertFalse(Files.exists(steps.resolve("02-overview-journey/gap.md")));
+        assertTrue(Files.exists(steps.resolve("02-overview/gap.md")));
+        // the global folder is as it was
+        assertTrue(Files.exists(steps.resolve("01-shop_overview/plantuml/application/shop_overview.puml")));
+        val cart = workspace.resolveSibling("views-stories/cart_story");
+        assertTrue(Files.isDirectory(cart.resolve("01-overview")));
+        assertTrue(Files.isDirectory(cart.resolve("01-overview-journey")));
+        assertFalse(Files.exists(cart.resolve("01-overview-without-cart")));
+        assertTrue(
+            result
+                .err()
+                .contains(
+                    "warning: skip cart_story/1 in the facet `without-cart`: it names `shop.app.cart`, which the facet removes"
+                ),
+            result.err()
+        );
+    }
+
+    @Test
+    @SneakyThrows
+    void globalEnabledFalseDrawsOnlyTheFacets() {
+        val workspace = copy(PLATEAUS, dir.resolve("plateaus"));
+        val yaml = Files.readString(workspace);
+        Files.writeString(
+            workspace,
+            yaml.replaceFirst(
+                "settings:",
+                "settings:\n  facets:\n    global-enabled: false\n    customs:\n      - name: \"none\"\n        actions: []"
+            )
+        );
+        val result = stories(workspace, "--story", "migration");
+        assertEquals(0, result.exit(), result.err());
+        val steps = workspace.resolveSibling("views-stories/migration");
+        assertFalse(Files.exists(steps.resolve("01-overview")));
+        assertTrue(Files.isDirectory(steps.resolve("02-overview-none")));
+        // the table of a comparison is written whatever the global views
+        assertTrue(Files.exists(steps.resolve("02-overview/gap.md")));
+        assertFalse(Files.exists(steps.resolve("02-overview/plantuml")));
     }
 
     @SneakyThrows

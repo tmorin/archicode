@@ -8,8 +8,6 @@ import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
 import io.morin.archicode.Warnings;
 import io.morin.archicode.rendering.Renderer;
-import io.morin.archicode.rendering.gap.GapFormat;
-import io.morin.archicode.rendering.gap.GapReport;
 import io.morin.archicode.resource.view.View;
 import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
@@ -22,8 +20,6 @@ import io.morin.archicode.workspace.StateTags;
 import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -263,15 +259,7 @@ public class GenerateViewsCommand implements Runnable {
     /** The table of changes next to the views of the comparison, for a reviewer who reads text. */
     @SneakyThrows
     private void writeGap(Workspace union, Comparison comparison, List<Removal.Effect> cascade) {
-        val directory = outputDirectory(union);
-        Files.createDirectories(directory);
-        for (val gapFormat : List.of(GapFormat.MARKDOWN, GapFormat.JSON)) {
-            Files.writeString(
-                directory.resolve("gap." + gapFormat.extension()),
-                GapReport.render(comparison, gapFormat, false, cascade),
-                StandardCharsets.UTF_8
-            );
-        }
+        GapFiles.write(outputDirectory(union), comparison, cascade);
     }
 
     /**

@@ -7,17 +7,22 @@ import io.morin.archicode.Warnings;
 import io.morin.archicode.rendering.Renderer;
 import io.morin.archicode.resource.story.Story;
 import io.morin.archicode.resource.view.View;
+import io.morin.archicode.resource.workspace.Settings;
 import io.morin.archicode.viewpoint.ViewpointServiceRepository;
 import io.morin.archicode.viewpoint.kernel.Comparison;
+import io.morin.archicode.viewpoint.kernel.KernelViewpointFactory;
 import io.morin.archicode.viewpoint.kernel.PlateauComparer;
+import io.morin.archicode.workspace.Removal;
 import io.morin.archicode.workspace.StateTags;
 import io.morin.archicode.workspace.Workspace;
 import io.morin.archicode.workspace.WorkspaceFactory;
 import jakarta.inject.Inject;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
@@ -32,8 +37,12 @@ import picocli.CommandLine;
  * loader, the same {@code compare}, the same viewpoints and the same renderer as {@code views generate}.
  * <p>
  * The files go to {@code <views.path>-stories/<story>/<NN>-<view>/}, {@code NN} being the number of the step (two digits,
- * from 1) and {@code <view>} the id of the view the step names, else the viewpoint of the view it carries. Only the global
- * views are drawn (the facets are not applied to a story), and no table of changes is written.
+ * from 1) and {@code <view>} the id of the view the step names, else the viewpoint of the view it carries. The facets of the
+ * settings are drawn as {@code views generate} draws them (issue #140): the global views in that folder (unless
+ * {@code global-enabled} is false), one more folder beside it for each facet, named with the template of the facets applied
+ * to the name of the step folder ({@code <NN>-<view>-<facet>}), and a step that says {@code against} gets {@code gap.md} and
+ * {@code gap.json} in its folder, the table {@code views generate} writes for the same pair. A facet that removes the element
+ * a step names is a warning and that facet's folder is skipped.
  */
 @Slf4j
 @SuppressWarnings("java:S6813")
@@ -98,7 +107,10 @@ public class GenerateStoriesCommand implements Runnable {
     private Path workspacePath;
 
     /** The workspace of the plateau at the target, the comparison and the workspace that is drawn for it. */
-    private record Compared(Comparison comparison, Workspace union) {}
+    private record Compared(Comparison comparison, Workspace union, Workspace base) {}
+
+    /** The workspaces the facets make of a plateau or of a comparison, by the same keys as above, in the order of the file. */
+    private final Map<String, Map<Settings.Facets.Facet, Workspace>> faceted = new HashMap<>();
 
     @Override
     public void run() {
@@ -180,21 +192,98 @@ public class GenerateStoriesCommand implements Runnable {
             return;
         }
         var from = workspace;
+        Compared made = null;
         Comparison comparison = null;
         if (against != null) {
-            val made = compare(at, against);
+            made = compare(at, against);
             comparison = made.comparison();
             from = made.union();
         }
         val folder = root.resolve(
             "%02d-%s".formatted(number, step.getView() != null ? step.getView() : view.getViewpoint())
         );
+        val settings = workspace.getSettings().getFacets();
+        if (settings.isGlobalEnabled()) {
+            drawIn(from, view, comparison, folder, label);
+        }
+        if (!settings.getCustoms().isEmpty()) {
+            final Compared pair = made;
+            val key = pair == null ? at : at + "\u0000" + against;
+            val facets = faceted.computeIfAbsent(key, k ->
+                facetWorkspaces(pair == null ? workspace : pair.union(), pair == null ? null : pair.comparison())
+            );
+            // the folder of a facet sits beside the folder of the step, as the folder of a facet sits beside the views folder
+            // (the template of the facets applied to the folder of the step)
+            for (val entry : facets.entrySet()) {
+                val facet = entry.getKey();
+                if (facetRemovesWhatTheStepNames(workspace, entry.getValue(), view, facet, label)) {
+                    continue;
+                }
+                val facetFolder = root.resolve(
+                    String.format(settings.getDirectoryNameTemplate(), folder.getFileName().toString(), facet.getName())
+                );
+                drawIn(entry.getValue(), view, comparison, facetFolder, label);
+            }
+        }
+        if (made != null) {
+            // the table of changes of the pair the step compares, next to the views of the step, as views generate writes it next to its comparison
+            try {
+                GapFiles.write(folder, made.comparison(), Removal.cascade(workspace.getRemovals(), made.base()));
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        }
+    }
+
+    private void drawIn(Workspace from, View view, Comparison comparison, Path folder, String label) {
         log.info("render {} in {}", label, folder);
         val viewpoint = viewpointServiceRepository
             .get(view.getViewpoint())
             .createViewpointFactory(comparison, false)
             .create(from, view);
         renderer.render(viewpoint, rendererName, folder);
+    }
+
+    private Map<Settings.Facets.Facet, Workspace> facetWorkspaces(Workspace workspace, Comparison comparison) {
+        val made = new LinkedHashMap<Settings.Facets.Facet, Workspace>();
+        workspace
+            .getSettings()
+            .getFacets()
+            .getCustoms()
+            .forEach(facet -> made.put(facet, workspaceFactory.create(workspace, facet, comparison)));
+        return made;
+    }
+
+    /**
+     * A facet that removes the element a step names cannot draw the step (the kernel could only say {@code dangling reference}):
+     * that facet's folder is skipped, with a warning, the others are drawn. An entry of a map that a facet removes is dropped
+     * without a word, as in {@code views generate}.
+     */
+    private boolean facetRemovesWhatTheStepNames(
+        Workspace plateau,
+        Workspace faceted,
+        View view,
+        Settings.Facets.Facet facet,
+        String label
+    ) {
+        if (KernelViewpointFactory.MAP.equals(view.getViewpoint()) || view.getProperties() == null) {
+            return false;
+        }
+        val element = view.getProperties().path("element").asText("");
+        if (
+            element.isBlank() ||
+            plateau.resolveMainIndexForView(view).searchElement(element).isEmpty() ||
+            faceted.resolveMainIndexForView(view).searchElement(element).isPresent()
+        ) {
+            return false;
+        }
+        warnings.warn(
+            "skip %s in the facet `%s`: it names `%s`, which the facet removes",
+            label,
+            facet.getName(),
+            element
+        );
+        return true;
     }
 
     /** The view a step draws: the one it names, else the one it carries; null (with a warning) when it has none. */
@@ -241,7 +330,7 @@ public class GenerateStoriesCommand implements Runnable {
             val union = workspaceFactory.createUnion(target, base, comparison);
             warnings.warnAll(comparison.getWarnings());
             warnings.warnAll(StateTags.warnings(union, comparison));
-            return new Compared(comparison, union);
+            return new Compared(comparison, union, base);
         });
     }
 }
