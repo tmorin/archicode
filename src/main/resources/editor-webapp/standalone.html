@@ -6269,11 +6269,14 @@ function guardedLayerWrite(spec) {
 
 /** What the dialog "this also changes ..." does when the author says yes: the write again, confirmed. A refusal is told in the top bar, as any write's. */
 function confirmLayerWrite(dialog) {
+  // the form behind the dialog holds what was typed (`render()` put it back): kept before the write, so that a write the yes then fails on gives it back, as `writeElementDraft` does (wave 019, run 0138, #137)
+  const typedForm = keepElementForm();
   try {
     const result = dialog.onConfirm();
     if (dialog.afterConfirm) dialog.afterConfirm(result); // what the click that asked would have done next (select what was created, unfold what was moved)
   } catch (e) {
     saveStatus = { state: 'error', failedFile: dialog.plateau, message: e && e.message ? e.message : String(e) };
+    keptElementForm = typedForm; // `render()` puts it back and drops it (no dialog is open): view state, no `modelsChanged()`
     render();
   }
 }
@@ -16310,7 +16313,9 @@ function renderDiagramFallbackHtml(result, layer, readonly) {
 }
 
 /** The diagram of an element fails through the facet and not without it: the facet removes the element itself (a rule that takes a whole layer away, for one). */
-function facetRemovesElement(kernel, viewpoint, reference, layer) {
+function facetRemovesElement(kernel, viewpoint, reference, layer, error) {
+  // a facet the kernel refuses (the Jayway dialect, a path it cannot read, an action it does not know) removes nothing: its sentence is the error of the view (wave 019, run 0138, #137)
+  if (error && /^(the facet path |unsupported facet action|invalid facet JSONPath|a facet cannot remove the whole|a facet left an unreadable)/.test(error)) return false;
   const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer }).input);
   return !plain.error;
 }
@@ -16356,7 +16361,7 @@ async function markElementTabs() {
       if (id === current || (id === 'detailed' && LEAF_KINDS.includes(record.kind))) continue;
       const { input } = buildKernelInput(id, record.reference, { facet });
       const result = kernel.compute(input);
-      if (result.error) { if (facet && facetRemovesElement(kernel, id, record.reference)) empty[id] = true; continue; }
+      if (result.error) { if (facet && facetRemovesElement(kernel, id, record.reference, undefined, result.error)) empty[id] = true; continue; }
       const ghosts = buildDiagramGhosts(result, record.reference, input.layer);
       empty[id] = diagramHasNothingToDraw({ items: result.items.concat(ghosts.items), links: result.links.concat(ghosts.links) });
     }
@@ -17517,7 +17522,7 @@ function mountDiagramIfNeeded() {
       const result = isMap && facet ? computeMapThroughFacet(kernel, input) : kernel.compute(input);
       if (seq !== diagramSeq) return;
       if (result.error) {
-        const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference, recipe.layer);
+        const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference, recipe.layer, result.error);
         showDiagramScene(buildDiagramScene(viewKey, removed
           ? '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes this element.' + (readonly ? '' : ' <button type="button" data-action="clear-facet">Show it without the facet</button>') + '</div>'
           : '<div class="error-panel">' + escapeHtml(result.error) + '</div>', '', '', { width: 0, height: 0 }, null));
@@ -21229,6 +21234,9 @@ window.addEventListener('codemirror-ready', () => {
   if (fallbacks.length === 0) return;
   if (Array.from(fallbacks).every((el) => el.value === el.defaultValue)) render();
 });
+
+// the cap of the open key is 30 % of the diagram area, which a resize of the window changes (wave 019, run 0138, #137): view state, nothing is drawn again
+window.addEventListener('resize', syncDiagramKey);
 
 window.addEventListener('hashchange', () => {
   // the change came from the app itself (setPerspective writes the hash after it has set the state): the state is

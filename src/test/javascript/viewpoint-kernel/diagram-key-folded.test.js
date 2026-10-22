@@ -103,3 +103,25 @@ test('a new folder folds the key again', () => {
   run(sandbox, 'resetUiState()');
   assert.equal(run(sandbox, 'diagramKeyOpen'), false);
 });
+
+test('a resize of the window sets the cap of the open key again (wave 019, run 0138, #137)', () => {
+  const sandbox = createApp({});
+  const page = giveKey(sandbox);
+  run(sandbox, 'diagramKeyOpen = true');
+  run(sandbox, 'syncDiagramKey()');
+  assert.equal(page.properties['--dg-key-max'], '180px');
+  // the diagram area is taller now: the window was resized, and the page listens
+  const holder = sandbox.document.getElementById('diagram-key').closest('.diagram-status').parentElement;
+  holder.clientHeight = 1000;
+  const listeners = sandbox.__windowListeners.resize || [];
+  assert.ok(listeners.length > 0, 'the page listens to resize');
+  const version = run(sandbox, 'modelVersion');
+  for (const fn of listeners) fn();
+  assert.equal(page.properties['--dg-key-max'], '300px');
+  assert.equal(run(sandbox, 'modelVersion'), version, 'view state: no modelsChanged()');
+  // a folded key has no cap to set
+  run(sandbox, 'diagramKeyOpen = false');
+  holder.clientHeight = 500;
+  for (const fn of listeners) fn();
+  assert.equal(page.properties['--dg-key-max'], '300px', 'folded: left as it was');
+});
