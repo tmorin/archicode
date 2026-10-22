@@ -3,9 +3,9 @@
 // before, the reader refused all three, so such a file was listed as unreadable and never written, and the command line read an alias as its name: the command line is
 // `AnchorsAliasesTagsTest.java`, on the same texts). The editor reads an alias as a copy of the node it points at (the model is a plain tree), and a tag as the Java side does
 // (`!!str 12` is the text `12`). The line-preserving save writes them back as they were written: a line the edit does not touch is the line of the file, a line it changes
-// keeps its anchor and its tag, and an alias stays as long as the text says what the edit says (an alias whose anchor was changed becomes the value it has). What cannot be
-// carried safely (an anchor, an alias or a tag inside brackets, a tag on a text that goes over several lines) keeps the fallback of the save, the emitter's text, which reads back
-// as the edit; it is filed as tmorin/archicode#78. Everything here is invented: a mill and a bakery.
+// keeps its anchor and its tag, and an alias stays as long as the text says what the edit says (an alias whose anchor was changed becomes the value it has). An anchor, an alias
+// or a tag inside brackets and a tag on a text that goes over several lines kept the fallback of the save (the emitter's text) until wave 019, run 0142 (#78), which follows them:
+// save-keeps-anchors-in-brackets.test.js has those cases and the ones that still keep the fallback. Everything here is invented: a mill and a bakery.
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -88,7 +88,6 @@ test('a line the edit does not touch is the line of the file: an anchor, an alia
 
 test('no edit is the file, byte for byte, for every form the save follows', () => {
   for (const [form, [text]] of Object.entries(READ)) {
-    if (/flow/.test(form)) continue; // the fallback, below
     const value = app.parseYaml(text);
     const out = app.patchYamlText(text, value);
     assert.equal(out, text, form);
@@ -150,15 +149,15 @@ test('the CRLF line breaks and the final line break of the file stay', () => {
   assert.equal(out, crlf.replace('zone: north', 'zone: south'));
 });
 
-test('an anchor, an alias or a tag inside brackets, or a tag on a text over several lines, gives the emitter\'s text, which reads back as the edit', () => {
-  const unsupported = {
+test('an anchor, an alias or a tag inside brackets, and a tag on a text over several lines, stay as written (#78; they gave the emitter\'s text before wave 019)', () => {
+  const kept = {
     'in brackets': HEAD + '  name: Bakery\n  qualifiers: [&a oven, *a]\n',
     'in curly brackets': HEAD + '  name: Bakery\n  tags: {zone: &z north, other: *z}\n',
-    'a tag on a text over several lines': HEAD + '  description: !!int 12\n    13\n  name: x\n'.replace('!!int', '!!str')
+    'a tag on a text over several lines': HEAD + '  description: !!str 12\n    13\n  name: x\n'
   };
-  for (const [form, text] of Object.entries(unsupported)) {
-    const { out, emitted } = saved(text, (c) => { c.name = 'y'; });
-    assert.equal(out, emitted, form);
+  for (const [form, text] of Object.entries(kept)) {
+    const { out } = saved(text, (c) => { c.name = 'y'; });
+    assert.equal(out, text.replace(/name: (Bakery|x)/, 'name: y'), form);
   }
 });
 
@@ -273,12 +272,21 @@ test('in the editor, an element can be moved while a file has an anchor, and the
 });
 
 test('in the editor, a file whose anchor the save cannot follow is written as the emitter writes it, and still says what the edit says', async () => {
-  const bracketed = HEAD + '  name: "Bakery"\n  qualifiers: [&a oven, *a]\n';
+  // an anchor on a key, which the reader takes inside brackets only (save-keeps-anchors-in-brackets.test.js lists what keeps the fallback)
+  const bracketed = HEAD + '  name: "Bakery"\n  qualifiers: [oven]\n  tags: {&k zone: north}\n';
   const { mem, sandbox, state } = await openMem({ 'app.bakery.yaml': bracketed });
   assert.deepEqual(plain(state.manifestFiles.filter((f) => f.error)), []);
   sandbox.commitElementEdit('bakery', (node) => { node.name = 'Boulangerie'; return {}; });
   await sandbox.saveAllChanges();
   const text = mem.files.get('plateaus/10_base/app.bakery.yaml').text;
-  assert.equal(text.includes('&a'), false);
-  assert.deepEqual(plain(app.parseYaml(text).content), { id: 'bakery', name: 'Boulangerie', qualifiers: ['oven', 'oven'] });
+  assert.equal(text.includes('&k'), false);
+  assert.deepEqual(plain(app.parseYaml(text).content), { id: 'bakery', name: 'Boulangerie', qualifiers: ['oven'], tags: { zone: 'north' } });
+});
+
+test('in the editor, a file with an anchor and an alias in brackets is saved with only the edited line changed (#78)', async () => {
+  const bracketed = HEAD + '  name: "Bakery"\n  qualifiers: [&a oven, *a]\n';
+  const { mem, sandbox } = await openMem({ 'app.bakery.yaml': bracketed });
+  sandbox.commitElementEdit('bakery', (node) => { node.name = 'Boulangerie'; return {}; });
+  await sandbox.saveAllChanges();
+  assert.equal(mem.files.get('plateaus/10_base/app.bakery.yaml').text, bracketed.replace('"Bakery"', '"Boulangerie"'));
 });

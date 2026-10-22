@@ -150,7 +150,7 @@ wave_manifest:
       slug: save-keeps-anchors-in-brackets
       phase: P0
       depends_on: []
-      run: null
+      run: 0142
       delegation: hard_judgment
       delegation_reason: 'changes the line-preserving save that writes the author manifests: a wrong splice loses or corrupts the text of a file (data loss)'
       likely_paths:
