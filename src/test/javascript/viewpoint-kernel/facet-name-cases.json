@@ -1,0 +1,230 @@
+{
+  "comment": "Which facet names can be the name of a folder (wave 020, run 0146, issue #147, decision T2). `problem` is the sentence for a name that cannot, null for a name that can; the command line (FacetNames, FacetNamesTest.java) and the editor (facetNameProblem and validateFacetName, facet-names.test.js) say it word for word. The sentences of a workspace file that holds such a name are the cases N94 to N104 of negative-cases.json.",
+  "cases": [
+    {
+      "name": "journey",
+      "what": "accepted: a plain word",
+      "problem": null
+    },
+    {
+      "name": "no-externals",
+      "what": "accepted: a dash",
+      "problem": null
+    },
+    {
+      "name": "without_cart",
+      "what": "accepted: an underscore",
+      "problem": null
+    },
+    {
+      "name": "été 2.0 - ça",
+      "what": "accepted: letters of other scripts, a dot and a space inside",
+      "problem": null
+    },
+    {
+      "name": "日本語",
+      "what": "accepted: other scripts",
+      "problem": null
+    },
+    {
+      "name": "a b",
+      "what": "accepted: a space inside",
+      "problem": null
+    },
+    {
+      "name": "a.b",
+      "what": "accepted: a dot inside",
+      "problem": null
+    },
+    {
+      "name": ".hidden",
+      "what": "accepted: a dot at the start",
+      "problem": null
+    },
+    {
+      "name": "-",
+      "what": "accepted: a dash alone",
+      "problem": null
+    },
+    {
+      "name": "..a",
+      "what": "accepted: two dots at the start",
+      "problem": null
+    },
+    {
+      "name": "a..b",
+      "what": "accepted: two dots inside",
+      "problem": null
+    },
+    {
+      "name": " a",
+      "what": "accepted: a space at the start",
+      "problem": null
+    },
+    {
+      "name": "100%",
+      "what": "accepted: a percent sign",
+      "problem": null
+    },
+    {
+      "name": "a'b",
+      "what": "accepted: a quote",
+      "problem": null
+    },
+    {
+      "name": "CON",
+      "what": "accepted: a name of a device on Windows, which is not refused (the rule is the characters and the end)",
+      "problem": null
+    },
+    {
+      "name": "😀",
+      "what": "accepted: a character outside the first plane",
+      "problem": null
+    },
+    {
+      "name": "a+b=c,d;e@f#g&h(i)[j]{k}!~`",
+      "what": "accepted: the punctuation that is allowed",
+      "problem": null
+    },
+    {
+      "name": "a b",
+      "what": "accepted: a no-break space (not a control character)",
+      "problem": null
+    },
+    {
+      "name": "",
+      "what": "empty",
+      "problem": "the facet name `` cannot be the name of a folder: it is empty (write a plain word, such as `journey`)"
+    },
+    {
+      "name": ".",
+      "what": "the folder itself",
+      "problem": "the facet name `.` cannot be the name of a folder: it is `.`, the folder itself (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "..",
+      "what": "the folder above",
+      "problem": "the facet name `..` cannot be the name of a folder: it is `..`, the folder above (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "...",
+      "what": "three dots end with a dot",
+      "problem": "the facet name `...` cannot be the name of a folder: it ends with a dot, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a/b",
+      "what": "a slash",
+      "problem": "the facet name `a/b` cannot be the name of a folder: it holds `/`, which separates the folders of a path (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "/",
+      "what": "a slash alone",
+      "problem": "the facet name `/` cannot be the name of a folder: it holds `/`, which separates the folders of a path (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "../x",
+      "what": "a path up",
+      "problem": "the facet name `../x` cannot be the name of a folder: it holds `/`, which separates the folders of a path (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a\\b",
+      "what": "a backslash",
+      "problem": "the facet name `a\\b` cannot be the name of a folder: it holds `\\`, which separates the folders of a path (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a\u0000b",
+      "what": "a NUL",
+      "problem": "the facet name `a\\u0000b` cannot be the name of a folder: it holds a control character (\\u0000) (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a\u0001b",
+      "what": "a control character",
+      "problem": "the facet name `a\\u0001b` cannot be the name of a folder: it holds a control character (\\u0001) (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a\tb",
+      "what": "a tab",
+      "problem": "the facet name `a\\u0009b` cannot be the name of a folder: it holds a control character (\\u0009) (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a\nb",
+      "what": "a line feed",
+      "problem": "the facet name `a\\u000Ab` cannot be the name of a folder: it holds a control character (\\u000A) (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "ab",
+      "what": "DEL",
+      "problem": "the facet name `a\\u007Fb` cannot be the name of a folder: it holds a control character (\\u007F) (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "ab",
+      "what": "a control character of the second block (NEL)",
+      "problem": "the facet name `a\\u0085b` cannot be the name of a folder: it holds a control character (\\u0085) (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a<b",
+      "what": "Windows refuses <",
+      "problem": "the facet name `a<b` cannot be the name of a folder: it holds `<`, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a>b",
+      "what": "Windows refuses >",
+      "problem": "the facet name `a>b` cannot be the name of a folder: it holds `>`, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a:b",
+      "what": "Windows refuses :",
+      "problem": "the facet name `a:b` cannot be the name of a folder: it holds `:`, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a\"b",
+      "what": "Windows refuses \"",
+      "problem": "the facet name `a\"b` cannot be the name of a folder: it holds `\"`, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a|b",
+      "what": "Windows refuses |",
+      "problem": "the facet name `a|b` cannot be the name of a folder: it holds `|`, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a?b",
+      "what": "Windows refuses ?",
+      "problem": "the facet name `a?b` cannot be the name of a folder: it holds `?`, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a*b",
+      "what": "Windows refuses *",
+      "problem": "the facet name `a*b` cannot be the name of a folder: it holds `*`, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "journey.",
+      "what": "a trailing dot",
+      "problem": "the facet name `journey.` cannot be the name of a folder: it ends with a dot, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "journey ",
+      "what": "a trailing space",
+      "problem": "the facet name `journey ` cannot be the name of a folder: it ends with a space, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": " ",
+      "what": "a space alone",
+      "problem": "the facet name ` ` cannot be the name of a folder: it ends with a space, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a.b.",
+      "what": "a trailing dot after a dot inside",
+      "problem": "the facet name `a.b.` cannot be the name of a folder: it ends with a dot, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a/b.",
+      "what": "the first reason found from the left, not the last",
+      "problem": "the facet name `a/b.` cannot be the name of a folder: it holds `/`, which separates the folders of a path (write a plain word, such as `journey`)"
+    },
+    {
+      "name": "a?b/",
+      "what": "the first reason found from the left",
+      "problem": "the facet name `a?b/` cannot be the name of a folder: it holds `?`, which Windows does not allow in the name of a folder (write a plain word, such as `journey`)"
+    }
+  ]
+}

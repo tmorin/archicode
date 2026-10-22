@@ -1737,6 +1737,15 @@
     "allPublicFields": true
   },
   {
+    "name": "io.morin.archicode.workspace.FacetNames",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "io.morin.archicode.workspace.ViewIndex",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
