@@ -27,6 +27,9 @@ import picocli.CommandLine;
  * ({@link ArchiCodeException}, a file that cannot be read or is not valid) is one line, {@code error: <what is wrong>}, and
  * the exit code is {@link #FAILURE}; a usage error keeps picocli's own code (2). What nobody expected (a bug) keeps its
  * stack trace, so that a report has it.
+ *
+ * <p>The message is the one the failure carries, never reworded after a guess about its text: a workspace file that cannot be had
+ * is a {@code WorkspaceFileException} (issue #146), a message that happens to name {@code .archicode.yaml} is printed as it is.
  */
 @ApplicationScoped
 @RequiredArgsConstructor

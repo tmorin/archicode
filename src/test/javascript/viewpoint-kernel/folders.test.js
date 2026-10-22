@@ -441,6 +441,30 @@ test('a folder whose .archicode.yaml cannot be read: the error card leads back t
   assert.equal(list.folders.find((f) => f.title === 'archi').problem, null);
 });
 
+// wave 020, run 0147 (#146): the list notes a folder whose workspace file cannot be had (absent, or under its former name), by the type of the failure; a folder
+// whose file was read and found wrong keeps its own sentence on the card and gets no note about reading
+for (const [what, prepare, problem] of [
+  ['is absent', (dir) => fs.rmSync(path.join(dir, '.archicode.yaml')), 'Its .archicode.yaml could not be read the last time it was opened.'],
+  ['is under its former name', (dir) => fs.renameSync(path.join(dir, '.archicode.yaml'), path.join(dir, 'workspace.yaml')), 'Its .archicode.yaml could not be read the last time it was opened.'],
+  ['has a key that does not exist', (dir) => fs.writeFileSync(path.join(dir, '.archicode.yaml'), 'settings:\n  foo: 1\n'), null]
+]) {
+  test('a folder whose .archicode.yaml ' + what + ': the list says ' + (problem ? 'it could not be read' : 'nothing about reading'), async () => {
+    const idb = fakeIndexedDB();
+    const a = workspaceFolder('archi');
+    const b = workspaceFolder('infra');
+    const p = await load(idb, [handleOn(a), handleOn(b)]);
+    await p.sandbox.openFolder();
+    await p.sandbox.closeFolder();
+    prepare(b);
+    await p.sandbox.openFolder();
+    assert.equal(p.sandbox.landingScreenConfig().kind, 'error');
+    await p.sandbox.showRememberedFolders();
+    const list = p.sandbox.landingScreenConfig();
+    assert.equal(list.kind, 'first-launch');
+    assert.equal(list.folders.find((f) => f.title === 'infra').problem, problem);
+  });
+}
+
 test('with no remembered folder the error card has no way to a list', async () => {
   const p = await load(fakeIndexedDB({ failOpen: 'UnknownError' }), [handleOn(workspaceFolder('x').replace(/x$/, 'nowhere'))]);
   await p.sandbox.openFolder();

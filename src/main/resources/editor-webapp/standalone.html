@@ -4480,6 +4480,7 @@ function createInitialAppState() {
     selection: { kind: 'none', key: null, mode: 'view' },
     expanded: new Set(),
     fatalError: null,
+    fatalErrorKind: null, // what kind of failure `fatalError` is, when the page needs to tell: 'unreadable' (the workspace file cannot be had: absent, not a file, refused) or 'renamed' (the folder holds the former name); see setFatalError (#146)
     // TDD-0010 DEC-6/DEC-9: relPaths pending a removeEntry at next save, and
     // (since the removed mf object itself leaves AppState.manifestFiles
     // immediately) the baseline lastKnownDiskModified a save's stale-check
@@ -8229,6 +8230,17 @@ function parseManifestText(text) {
   }
 }
 
+/**
+ * The failure that stops a folder from opening (`AppState.fatalError`), with its type when the page has to tell it from the others (#146): `'unreadable'` when the
+ * workspace file cannot be had (absent, not a file, refused) and `'renamed'` when the folder holds `workspace.yaml` and not `.archicode.yaml`, the two failures of
+ * `WorkspaceFileException` in the command line. The landing card words the first one as "could not be read" and the list of the remembered folders notes both; no other
+ * failure is reworded, whatever file name its sentence holds. `setFatalError(null)` clears both.
+ */
+function setFatalError(message, kind) {
+  AppState.fatalError = message;
+  AppState.fatalErrorKind = message === null ? null : (kind || null);
+}
+
 const WORKSPACE_FILE_NAME = '.archicode.yaml'; // the only workspace file the editor opens (and writes)
 const FORMER_WORKSPACE_FILE_NAME = 'workspace.yaml'; // its name before 0.18: no alias, a folder that still has it is told to rename it
 /** The sentence for a folder that holds the former file and not the new one; the command line says the same, word for word (`WorkspaceFactory.FORMER_NAME_SENTENCE`; `workspace-file-name-cases.json` pins both). */
@@ -8315,7 +8327,7 @@ async function loadWorkspace(dirHandle) {
     filesFoldsOwner = dirHandle;
   }
   landingBusy = null; // the next render() is the result (workspace or error), not another "Opening…"
-  AppState.fatalError = null;
+  setFatalError(null);
   AppState.workspace = null;
   AppState.manifestFiles = [];
   AppState.unreadManifestFiles = [];
@@ -8338,24 +8350,33 @@ async function loadWorkspace(dirHandle) {
   let workspaceLastKnownDiskModified = null; // TDD-0010 DEC-8
   let workspaceText = ''; // the file as it is: the next Save keeps of it what the edit did not touch
   let workspaceBom = false; // it starts with a UTF-8 byte-order mark (`workspaceText` does not, #119)
+  // The file cannot be had (absent, not a file, refused by the browser or the server): the typed failure of the page (`setFatalError(..., 'unreadable')`), the one the landing card words as "could not be read".
+  // What was read and found wrong (a YAML that is not valid, a document that is not a mapping, a key or a path the command line refuses) is told as it is, whatever file name its sentence holds (#146).
   try {
     const fileHandle = await dirHandle.getFileHandle(WORKSPACE_FILE_NAME);
     const file = await fileHandle.getFile();
     workspaceLastKnownDiskModified = file.lastModified;
     const read = await readTextAndMark(file);
-    const text = read.text;
-    workspaceText = text;
+    workspaceText = read.text;
     workspaceBom = read.bom;
-    workspaceRaw = parseYaml(text) || {};
-    // a .archicode.yaml that is not a mapping is not one the editor can write back without losing it
-    if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw)) throw new Error(readWrongShape(workspaceRaw, '')); // the sentence of the command line
   } catch (e) {
     let renamed = false;
     try { await dirHandle.getFileHandle(WORKSPACE_FILE_NAME); } catch (_) {
       try { await dirHandle.getFileHandle(FORMER_WORKSPACE_FILE_NAME); renamed = true; } catch (__) { /* neither: the error below */ }
     }
     // the file is absent and the folder still has its former name: the one sentence, as the command line says it (a file that is there and cannot be read is the error below)
-    AppState.fatalError = renamed ? FORMER_WORKSPACE_FILE_SENTENCE : 'Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e));
+    if (renamed) setFatalError(FORMER_WORKSPACE_FILE_SENTENCE, 'renamed');
+    else setFatalError('Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e)), 'unreadable');
+    AppState.selection = { kind: 'none', key: null, mode: 'view' };
+    render();
+    return;
+  }
+  try {
+    workspaceRaw = parseYaml(workspaceText) || {};
+    // a .archicode.yaml that is not a mapping is not one the editor can write back without losing it
+    if (typeof workspaceRaw !== 'object' || Array.isArray(workspaceRaw)) throw new Error(readWrongShape(workspaceRaw, '')); // the sentence of the command line
+  } catch (e) {
+    setFatalError('Could not read/parse .archicode.yaml: ' + (e && e.message ? e.message : String(e)));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     render();
     return;
@@ -8364,7 +8385,7 @@ async function loadWorkspace(dirHandle) {
   // run 0072: the key that no longer exists, then the keys and the shapes the command line refuses, in its words
   const readProblem = workspaceProblem(workspaceRaw);
   if (readProblem) {
-    AppState.fatalError = 'Could not read/parse .archicode.yaml: ' + readProblem;
+    setFatalError('Could not read/parse .archicode.yaml: ' + readProblem);
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     render();
     return;
@@ -8375,7 +8396,7 @@ async function loadWorkspace(dirHandle) {
   // a manifests path that leaves the folder, or uses `**` where it is not read, is refused like the command line refuses it, with its words
   const pathProblems = manifestsPathProblems(settings);
   if (pathProblems.length) {
-    AppState.fatalError = 'Could not read the plateaus of .archicode.yaml:\n' + pathProblems.join('\n');
+    setFatalError('Could not read the plateaus of .archicode.yaml:\n' + pathProblems.join('\n'));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     render();
     return;
@@ -8384,7 +8405,7 @@ async function loadWorkspace(dirHandle) {
   // a facet whose name cannot be the name of a folder is refused like the command line refuses it, with its words (after the paths, as it does)
   const facetProblems = facetNameProblems(settings);
   if (facetProblems.length) {
-    AppState.fatalError = 'Could not read the plateaus of .archicode.yaml:\n' + facetProblems.join('\n');
+    setFatalError('Could not read the plateaus of .archicode.yaml:\n' + facetProblems.join('\n'));
     AppState.selection = { kind: 'none', key: null, mode: 'view' };
     render();
     return;
@@ -8426,7 +8447,7 @@ async function loadWorkspace(dirHandle) {
   if (settings.current !== '') {
     const sentence = layersOfSettingsCurrentProblem(settings.current, plateauTree);
     if (sentence !== null) {
-      AppState.fatalError = 'Could not read the plateaus of .archicode.yaml:\n' + sentence;
+      setFatalError('Could not read the plateaus of .archicode.yaml:\n' + sentence);
       AppState.selection = { kind: 'none', key: null, mode: 'view' };
       render();
       return;
@@ -8629,7 +8650,7 @@ async function openServedFolder() {
   } catch (e) {
     landingBusy = null;
     console.error('ArchiCode: opening the served folder failed', e);
-    AppState.fatalError = 'The editor server could not be reached: ' + (e && e.message ? e.message : String(e)) + '. Reload the page, or restart `archicode editor serve`.';
+    setFatalError('The editor server could not be reached: ' + (e && e.message ? e.message : String(e)) + '. Reload the page, or restart `archicode editor serve`.');
     render();
   }
 }
@@ -8664,7 +8685,7 @@ async function openFolder() {
     landingBusy = null;
     if (e && e.name === 'AbortError') { render(); return; } // user dismissed the picker
     console.error('ArchiCode: openFolder failed', e);
-    AppState.fatalError = 'Failed to open folder: ' + (e && e.message ? e.message : String(e));
+    setFatalError('Failed to open folder: ' + (e && e.message ? e.message : String(e)));
     render();
   }
 }
@@ -8784,7 +8805,7 @@ async function checkFolderPermissions() {
 /** "Remembered folders" on the error card: leaves the folder that did not open (storage untouched) for the list. */
 async function showRememberedFolders() {
   const failed = AppState.folder ? rememberedFolderById(AppState.folder.id) : null;
-  if (failed && AppState.fatalError) failed.problem = FOLDER_UNREADABLE;
+  if (failed && AppState.fatalErrorKind) failed.problem = FOLDER_UNREADABLE;
   AppState = createInitialAppState();
   resetUiState();
   landingNotice = null;
@@ -21454,7 +21475,7 @@ function landingScreenConfig() {
   if (landingBusy) return { kind: 'busy', busy: landingBusy };
   const folderName = AppState.folder ? AppState.folder.name : null;
   if (AppState.fatalError) {
-    const unreadable = /\.archicode\.yaml/.test(AppState.fatalError) && AppState.fatalError !== FORMER_WORKSPACE_FILE_SENTENCE;
+    const unreadable = AppState.fatalErrorKind === 'unreadable'; // the type, not a file name found in the text (#146)
     return {
       kind: 'error',
       title: 'Can’t open this workspace',

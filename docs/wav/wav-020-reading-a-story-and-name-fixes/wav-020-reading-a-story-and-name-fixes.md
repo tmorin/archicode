@@ -49,7 +49,7 @@ Choices made by the plan, not by the author; each can be reversed by the author 
 wave_manifest:
   wave: 020
   slug: reading-a-story-and-name-fixes
-  status: proposed
+  status: in-progress
   sources: []
   phases:
     - id: P0
@@ -97,7 +97,7 @@ wave_manifest:
       slug: typed-unreadable-workspace-error
       phase: P0
       depends_on: []
-      run: null
+      run: 0147
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/**'

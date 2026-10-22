@@ -1,5 +1,5 @@
 {
-  "comment": "The workspace file is `.archicode.yaml` (wave 019, run 0144, #133, decision T9): a rename with no alias. A folder that holds `workspace.yaml` and no `.archicode.yaml` is told with one sentence, the same in both tools, word for word: the command line prints it as the `error:` line (exit 1) before anything is loaded, the editor shows it as the reason the folder cannot be opened. WorkspaceFileNameTest.java (command line, and `editor serve`) and workspace-file-name.test.js (editor) read this file; `files` are written in an empty folder. `expect.loads`: the folder opens; `expect.error`: the sentence.",
+  "comment": "The workspace file is `.archicode.yaml` (wave 019, run 0144, #133, decision T9): a rename with no alias. A folder that holds `workspace.yaml` and no `.archicode.yaml` is told with one sentence, the same in both tools, word for word: the command line prints it as the `error:` line (exit 1) before anything is loaded, the editor shows it as the reason the folder cannot be opened. WorkspaceFileNameTest.java (command line, and `editor serve`) and workspace-file-name.test.js (editor) read this file; `files` are written in an empty folder. `expect.loads`: the folder opens; `expect.error`: the sentence. Wave 020, run 0147 (#146): `expect.failure` says which kind of failure the folder is, the same in both tools and never decided by the words of a message: `unreadable` (the workspace file cannot be had: there is none, or it is not a file; the command line raises WorkspaceFileException, reason MISSING, the editor sets fatalErrorKind `unreadable` and its landing card says \"could not be read\"), `renamed` (the folder holds the former name only: reason FORMER_NAME, kind `renamed`, the card says the sentence) or `content` (the file is there and what it says is wrong, whatever file name the sentence holds: an ArchiCodeException that is no WorkspaceFileException, kind null, the card says the sentence as it is). `directories` are folders made in the empty folder before the test (a folder where the file should be).",
   "sentence": "`workspace.yaml` is no longer the name of the workspace file: rename it to `.archicode.yaml` (`git mv workspace.yaml .archicode.yaml`), or tell the command line where it is with `-w workspace.yaml`",
   "cases": [
     {
@@ -9,7 +9,8 @@
         "workspace.yaml": "settings: {}\n"
       },
       "expect": {
-        "error": "${sentence}"
+        "error": "${sentence}",
+        "failure": "renamed"
       }
     },
     {
@@ -31,6 +32,77 @@
       },
       "expect": {
         "loads": true
+      }
+    },
+    {
+      "id": "F04",
+      "what": "no workspace file at all: the file is missing, not wrong",
+      "files": {
+        "notes.yaml": "a: 1\n"
+      },
+      "expect": {
+        "failure": "unreadable"
+      }
+    },
+    {
+      "id": "F05",
+      "what": "a folder where the file should be: nothing to read",
+      "files": {},
+      "directories": [
+        ".archicode.yaml"
+      ],
+      "expect": {
+        "failure": "unreadable"
+      }
+    },
+    {
+      "id": "F06",
+      "what": "the file names a key that does not exist: its sentence names the file, it is not a failure to read it",
+      "files": {
+        ".archicode.yaml": "settings:\n  foo: 1\n"
+      },
+      "expect": {
+        "failure": "content"
+      }
+    },
+    {
+      "id": "F07",
+      "what": "the file still has `settings.plateaus`: told as it is",
+      "files": {
+        ".archicode.yaml": "settings:\n  plateaus: []\n"
+      },
+      "expect": {
+        "failure": "content"
+      }
+    },
+    {
+      "id": "F08",
+      "what": "the file is not valid YAML: read, found wrong",
+      "files": {
+        ".archicode.yaml": "settings: [\n"
+      },
+      "expect": {
+        "failure": "content"
+      }
+    },
+    {
+      "id": "F09",
+      "what": "the file is not a mapping: read, found wrong",
+      "files": {
+        ".archicode.yaml": "- a\n- b\n"
+      },
+      "expect": {
+        "failure": "content"
+      }
+    },
+    {
+      "id": "F10",
+      "what": "a manifests path that leaves the folder: the sentence says .archicode.yaml twice, and is not reworded",
+      "files": {
+        ".archicode.yaml": "settings:\n  manifests:\n    paths: [\"../x\"]\n"
+      },
+      "expect": {
+        "failure": "content"
       }
     }
   ]
