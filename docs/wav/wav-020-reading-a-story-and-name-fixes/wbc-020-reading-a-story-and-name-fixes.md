@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 020
-status: proposed
+status: completed
 date: 2026-10-22
 related:
   - docs/wav/wav-019-followups-of-wave-018/wav-019-followups-of-wave-018.md
