@@ -259,9 +259,12 @@ test('a layout the aligner cannot follow gives the emitter\'s text, with or with
   // a collection that does not close: the file is not read at all, the text is the emitter's
   const broken = 'content:\n  id: m\n  tags: [a, b\n  name: N\n';
   assert.equal(app.patchYamlText(broken, { content: { id: 'm', tags: ['a', 'b'], name: 'M' } }), 'content:\n  id: m\n  tags:\n    - a\n    - b\n  name: M');
-  // an anchor inside the brackets is not followed (anchors-tags-save.test.js follows the other ones): the same
+  // an anchor inside the brackets is followed since wave 019, run 0142 (#78; save-keeps-anchors-in-brackets.test.js): the collection the edit changes is a block that keeps it
   const anchored = 'content:\n  id: m\n  tags: {a: &x b}\n';
-  assert.equal(app.patchYamlText(anchored, { content: { id: 'm', tags: { a: 'c' } } }), 'content:\n  id: m\n  tags:\n    a: c');
+  assert.equal(app.patchYamlText(anchored, { content: { id: 'm', tags: { a: 'c' } } }), 'content:\n  id: m\n  tags:\n    a: &x c\n');
+  // an anchor on a key inside the brackets is not: the emitter's text
+  const keyed = 'content:\n  id: m\n  tags: {&x a: b}\n';
+  assert.equal(app.patchYamlText(keyed, { content: { id: 'm', tags: { a: 'c' } } }), 'content:\n  id: m\n  tags:\n    a: c');
 });
 
 test('a result that does not read back as the emitter\'s text is not accepted, whatever the collections did: the emitter\'s text is what comes back', () => {
