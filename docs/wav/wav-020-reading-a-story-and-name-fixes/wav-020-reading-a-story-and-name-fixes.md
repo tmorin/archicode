@@ -123,7 +123,7 @@ wave_manifest:
       slug: story-step-menu
       phase: P1
       depends_on: [W-1, W-2, W-3]
-      run: null
+      run: 0149
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
