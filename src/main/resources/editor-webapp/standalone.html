@@ -634,6 +634,17 @@
      wraps to a line of its own and the bar does not scroll sideways. A step that cannot be shown is told in the text of its entry. */
   .story-step-menu { flex: 0 1 18rem; min-width: 0; max-width: 100%; box-sizing: border-box; text-overflow: ellipsis; }
   .story-bar-actions button { padding: 0.2rem 0.7rem !important; }
+  /* The reading mode (wave 020, run 0150, #142): the diagram, the words of the step, the menu of the steps and Previous / Next, full screen, with nothing that edits. The shell is as high as the window
+     (the diagram takes what the bar leaves) and never wider: the line of the bar wraps, the menu shrinks (as the one of the bar does), the words scroll, and nothing goes past the right edge at 360 px. */
+  .reading-shell { height: 100vh; height: 100dvh; display: flex; flex-direction: column; min-width: 0; max-width: 100vw; overflow: hidden; background: var(--bg); color: var(--fg); }
+  .reading-shell .reading-center { flex: 1 1 0; min-height: 0; min-width: 0; }
+  .reading-shell .reading-view { min-width: 0; }
+  .reading-bar { max-height: 45vh; overflow-y: auto; min-width: 0; }
+  .reading-title { font-size: 1.1rem; overflow-wrap: anywhere; min-width: 0; }
+  .reading-step-menu { flex: 0 1 22rem; min-width: 0; max-width: 100%; box-sizing: border-box; text-overflow: ellipsis; }
+  .reading-words { font-size: 1.05rem; line-height: 1.5; max-height: 30vh; overflow-wrap: anywhere; }
+  .reading-bar .story-step-problem { overflow-wrap: anywhere; }
+  .reading-bar .story-bar-plateaus { overflow-wrap: anywhere; min-width: 0; }
   .story-bar-text { width: 100%; box-sizing: border-box; margin-top: 0.4rem; resize: vertical; }
   .button-group { display: inline-flex; }
   .button-group button { border-radius: 0 !important; }
@@ -8684,6 +8695,7 @@ async function loadWorkspace(dirHandle) {
   };
   await openLayers(settings, plateauTree);
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
+  drawStepOfReadingAddress();
   render();
   await noteWorkspaceName(); // the list of folders says it, and so does the next "Opening" of this folder (TDD-0020 DEC-4)
 }
@@ -9078,6 +9090,7 @@ function resetUiState() {
   storyBarNotice = null;
   removedStep = null;
   activeStory = null;
+  readingMode = false;
   selectedStoryId = null;
   selectedViewId = null;
   libraryTab = 'stories';
@@ -9277,11 +9290,12 @@ function refFromHash() {
  */
 function applyDiagramParamsFromHash() {
   const id = pageIdFromHash();
-  if (id !== 'elements' && id !== 'map' && id !== 'environments' && id !== 'library') return;
+  if (id !== 'elements' && id !== 'map' && id !== 'environments' && id !== 'library') { readingMode = false; return; } // the mode is read on the pages that draw the story only
   const queryIdx = location.hash.indexOf('?');
   const params = new URLSearchParams(queryIdx === -1 ? '' : location.hash.slice(queryIdx + 1));
   const storyParam = params.get('story');
   if (id === 'library') {
+    readingMode = false;
     libraryTab = libraryTabFromHash();
     selectedStoryId = storyParam && findStory(storyParam) ? storyParam : null;
     const viewParam = params.get('view');
@@ -9292,6 +9306,8 @@ function applyDiagramParamsFromHash() {
   const storyOfUrl = storyParam ? findStory(storyParam) : null;
   const stepOfUrl = Number(params.get('step'));
   activeStory = storyOfUrl && Number.isInteger(stepOfUrl) && stepOfUrl >= 0 && stepOfUrl < storySteps(storyOfUrl).length ? { id: storyParam, step: stepOfUrl } : null;
+  // `read=1` opens the reading mode on the step the address names; with no story, an unknown story or a step that is not one, the mode stays off (and the page writes its own address back)
+  readingMode = params.get('read') === '1' && activeStory !== null;
   if (id === 'elements') {
     const tab = params.get('tab');
     elementTab = tab && Object.prototype.hasOwnProperty.call(ELEMENT_TABS, tab) ? tab : 'details';
@@ -9419,6 +9435,7 @@ function syncPerspectiveFromHash() {
   if (AppState.workspace) {
     drawLayersNamedByAddress(); // before the selection: an element may exist in the plateau the address names only
     applySelectionFromHashRef();
+    drawStepOfReadingAddress();
   }
 }
 
@@ -9491,6 +9508,7 @@ function currentRouteHash() {
   }
   if ((currentPerspective === 'elements' || mapIsShown()) && activeStory) {
     params.push('story=' + encodeURIComponent(activeStory.id), 'step=' + activeStory.step);
+    if (readingModeOn()) params.push('read=1'); // the mode travels with the step it reads (wave 020, run 0150, T6)
   }
   const link = linkInRoute();
   if (link) params.push('link-from=' + encodeURIComponent(link.from), 'link-to=' + encodeURIComponent(link.to));
@@ -14266,6 +14284,7 @@ function walkChange(direction, options) {
  * diagram. The list may be one tab away (the Selected or View tab is showing): the walk brings the Changes tab back, as a button of the list would have been used.
  */
 function changesListIsOnPage() {
+  if (readingModeOn()) return false; // the reading mode has no list, and selects nothing (wave 020, run 0150)
   const state = comparisonState();
   if (!state || state.problems || state.pending || !state.changes) return false;
   if (currentPerspective === 'plateaus') return true;
@@ -15081,7 +15100,7 @@ function reconcileLinkSelection() {
 function markLinkSelection() {
   const canvas = document.getElementById('diagram-canvas');
   if (!canvas) return;
-  const sel = diagramSelection();
+  const sel = readingModeOn() ? NO_SELECTION : diagramSelection(); // nothing is selected in the reading mode
   canvas.querySelectorAll('.dg-link, .dg-label').forEach((el) => {
     const selected = sel.kind === 'link' && el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to;
     el.classList.toggle('dg-link-selected', selected);
@@ -17566,6 +17585,7 @@ function showDiagramScene(scene) {
     const sel = AppState.selection;
     const pickedRemoved = removedInspectionOf(sel, 'map'); // a removed box that was clicked is the element Center puts in the middle
     scene.focal = pickedRemoved && scene.boxes && scene.boxes[pickedRemoved.reference] ? scene.boxes[pickedRemoved.reference] : sel.kind === 'element' && scene.boxes && scene.boxes[sel.key] ? scene.boxes[sel.key] : null;
+    if (readingModeOn()) scene.focal = null; // the reading mode frames the whole drawing: nothing is selected there
     // scenes that say nothing about what they draw (an error) leave the selection alone and the check for the next one
     if (scene.drawnIds) {
       const selectionIsDrawn = sel.kind === 'element' && (sel.layer === 'application' && mapLayer() === 'technology' ? !!scene.drawnApps && scene.drawnApps.has(sel.key) : scene.drawnIds.has(sel.key));
@@ -17601,6 +17621,7 @@ function showDiagramScene(scene) {
   markMapScope();
   markInspection();
   restoreDiagramFocus(canvas);
+  if (readingModeOn()) quietDiagramForReading(canvas);
   if (diagramResizeObserver) diagramResizeObserver.disconnect();
   if (typeof ResizeObserver === 'function') {
     diagramResizeObserver = new ResizeObserver(() => applyDiagramScale());
@@ -17613,6 +17634,7 @@ function markMapSelection() {
   const canvas = document.getElementById('diagram-canvas');
   if (!canvas || !(canvas.hasAttribute('data-map') || canvas.getAttribute('data-host') === 'library')) return;
   canvas.querySelectorAll('.dg-selected').forEach((el) => el.classList.remove('dg-selected'));
+  if (readingModeOn()) return; // nothing is selected in the reading mode, whatever the editor had selected before
   const sel = diagramSelection();
   const removed = removedInspectionOf(sel, canvas.getAttribute('data-host') === 'library' ? 'library' : 'map'); // a removed box that was clicked
   if (removed) {
@@ -17764,6 +17786,8 @@ function diagramNeighbor(from, key) {
 /** Keyboard on the diagram: arrows move between boxes, Enter opens, + - 0 F zoom. */
 function handleDiagramKeydown(e) {
   if (!(e.target.closest && e.target.closest('.diagram-stage')) || e.ctrlKey || e.metaKey || e.altKey) return;
+  // the reading mode (wave 020, run 0150): the diagram is zoomed and panned, no box takes the focus or opens: the arrow keys are the story's (`handleReadingKeydown`), Enter does nothing
+  if (readingModeOn() && !['+', '=', '-', '0', 'f', 'F', 'c', 'C'].includes(e.key)) return;
   const canvas = document.getElementById('diagram-canvas');
   if (e.key === 'Enter' || e.key === ' ') {
     const actionable = e.target.closest('[data-action]');
@@ -17951,16 +17975,35 @@ function pushDiagramHistory() {
  * `host` is only given by the page of a view in the Library ({ view, isMap, hideUnlinked, shows }, see `libraryDiagramRecipe`): its
  * canvas names the view, its tools show what that page draws and offer no folding (a Map view's open boxes are part of the view).
  */
-function renderDiagramCanvasHtml(record, overlayHtml, host) {
+function renderDiagramCanvasHtml(record, overlayHtml, host, options) {
+  const reading = !!(options && options.reading); // the reading mode (wave 020, run 0150): zoom and pan are all the diagram has
   // no record: the map of the whole layer (the workspace for the application layer)
   const subject = host ? 'the view ' + escapeHtml(viewLabel(host.view)) : record ? escapeHtml(record.name || record.id) : mapLayer() === 'technology' ? 'the technology layer' : 'the workspace';
   const canvasAttributes = host
     ? ' data-host="library" data-view="' + escapeHtml(host.view.id) + '" tabindex="0" aria-label="Diagram of ' + subject + '. Arrow keys move between boxes, Enter selects one, plus and minus zoom."'
     : (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
-      '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' + (record ? escapeHtml(record.reference) : '') + '"';
+      (reading ? '. Plus and minus zoom, drag to move. The left and right arrow keys show the previous and the next step.' : '. Arrow keys move between boxes, Enter opens one, plus and minus zoom.') + '" data-ref="' + (record ? escapeHtml(record.reference) : '') + '"';
   const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
   return '<div class="diagram-stage">' + (overlayHtml || '') + '<div class="diagram-canvas" id="diagram-canvas"' + canvasAttributes + '><span class="muted">Computing the diagram…</span></div>' +
     '<div class="diagram-tools" role="toolbar" aria-label="Diagram tools">' +
+      (reading ? '' : renderDiagramEditingToolsHtml(record, host, hideUnlinked)) +
+      '<span class="button-group" role="group" aria-label="Zoom">' +
+        '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
+        '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
+        '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
+      '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' + (diagramScale === 'auto') + '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
+      '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' + (diagramScale === 'fit') + '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
+    '</div></div>' +
+    // under the drawing: what it is (its status), the hint, and the key to the lines
+    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>';
+}
+
+/**
+ * The tools of the diagram that change what it draws or how (fold, hide unlinked, the comparison, the parts of a map, the texts), before the zoom group. The reading mode has none of them;
+ * they are written exactly as they were when they were inline in `renderDiagramCanvasHtml`.
+ */
+function renderDiagramEditingToolsHtml(record, host, hideUnlinked) {
+  return (
       // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
       (record || host ? '' : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
           '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
@@ -17973,16 +18016,8 @@ function renderDiagramCanvasHtml(record, overlayHtml, host) {
       renderMapPartsToolHtml(record, host) +
       '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
       renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
-      '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
-      '<span class="button-group" role="group" aria-label="Zoom">' +
-        '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
-        '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
-        '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
-      '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' + (diagramScale === 'auto') + '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
-      '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' + (diagramScale === 'fit') + '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
-    '</div></div>' +
-    // under the drawing: what it is (its status), the hint, and the key to the lines
-    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>';
+      '<span class="diagram-tools-sep" aria-hidden="true"></span>'
+  );
 }
 
 /**
@@ -18636,6 +18671,13 @@ function renderSettingsPerspectiveHtml() {
 
 /** The story walked through on the diagrams ({ id, step }), kept in the URL (`story=`, `step=`). Null: none. */
 let activeStory = null;
+/**
+ * The reading mode of a story (wave 020, run 0150, #142, plan decisions T4 to T6): the story walked through is read full screen, with the tools that edit out of the way
+ * (`renderReadingShellHtml`). View state only, like the key under the diagram: not an input of any model, diagram or comparison cache (no `modelsChanged()`), nothing written; it is in
+ * the address as `read=1` beside `story=` and `step=`, and folded again with a new folder (`resetUiState`). Whether the page is *in* the mode is `readingModeOn()`, which also asks for
+ * a story on a step and a page that draws a diagram, so a flag left over by a story that is gone shows nothing.
+ */
+let readingMode = false;
 /** The story the Stories perspective shows, kept in the URL (`story=`). */
 let selectedStoryId = null;
 let selectedViewId = null;
@@ -19853,11 +19895,12 @@ function stepDrawing(step, home) {
 }
 
 /** Where the home is for the step about to be drawn in the story: what was drawn when the story began, unless the reader changed it since. */
-function homeOfStory(storyId) {
+function homeOfStory(storyId, fromAddress) {
   const now = currentPlateauDrawing();
   if (!now) return null;
   if (!storyHome || storyHome.story !== storyId || !activeStory || activeStory.id !== storyId) storyHome = { story: storyId, plateau: now.plateau, against: now.against, set: now };
-  else if (storyHome.set && (storyHome.set.plateau !== now.plateau || storyHome.set.against !== now.against)) { storyHome.plateau = now.plateau; storyHome.against = now.against; }
+  // an address (Back, Forward, a link) draws the plateau it names: that is not a choice of the reader's, and does not move the home (wave 020, run 0150)
+  else if (!fromAddress && storyHome.set && (storyHome.set.plateau !== now.plateau || storyHome.set.against !== now.against)) { storyHome.plateau = now.plateau; storyHome.against = now.against; }
   return storyHome;
 }
 
@@ -19865,8 +19908,8 @@ function homeOfStory(storyId) {
  * Draws the plateau and the comparison of a step, when it has something to say about them (or the reader moved them since the story began): the plateau is drawn as the band
  * draws it, without an entry in the history (the step is the entry). A step with a plateau that is none, or one the editor cannot draw, changes nothing: the bar says why.
  */
-function drawPlateausOfStep(storyId, step) {
-  const home = homeOfStory(storyId);
+function drawPlateausOfStep(storyId, step, fromAddress) {
+  const home = homeOfStory(storyId, fromAddress);
   if (!home || !AppState.plateauTree || !AppState.plateauTree.layered || stepPlateauProblem(step)) return;
   const wanted = stepDrawing(step, home);
   drawPlateau(wanted.plateau, { compare: wanted.against ? 'other:' + wanted.against : '', fromAddress: true });
@@ -20183,6 +20226,171 @@ function chooseStoryStep(storyId, index) {
   return true;
 }
 
+// ---- The reading mode of a story (wave 020, run 0150, #142, first request; plan decisions T4 to T6) ----
+
+/**
+ * Whether the page is in the reading mode: the flag, a story on one of its steps, and a page that draws a diagram (the Map or an element's diagram). Anything else is the editing layout,
+ * whatever the flag says (a story that went away leaves nothing behind).
+ */
+function readingModeOn() {
+  if (!readingMode || !activeStory || !AppState.workspace) return false;
+  if (currentPerspective !== 'elements' && !mapIsShown()) return false;
+  const story = findStory(activeStory.id);
+  return !!story && activeStory.step >= 0 && activeStory.step < storySteps(story).length;
+}
+
+/**
+ * An address that carries `read=1` (a link, Back, Forward, a folder opened on one) draws the plateau and the comparison the step names, which the address does not carry (it names the
+ * plateau only): the reader of a shared link sees the step, not the comparison that was on screen. The home of the story is not moved by it (`homeOfStory`). The editing layout
+ * does nothing of this: it never has, and an address without `read=1` is read as it was.
+ */
+function drawStepOfReadingAddress() {
+  if (!readingModeOn()) return;
+  const story = findStory(activeStory.id);
+  drawPlateausOfStep(story.id, storySteps(story)[activeStory.step], true);
+}
+
+/**
+ * Enters the reading mode on a step: from the bar of a story (`index` absent: the step on screen, nothing is drawn again) or from the Stories page (`index` 0 for Play's first step: the
+ * step is drawn as *Next* draws it, plateau and comparison included). The address gets the entry, so that Back leaves the mode. The focus goes to the menu of the steps (else to *Next*,
+ * else to *Edit*). View state only: nothing is written and no model changes. Returns whether the mode is on.
+ */
+function enterReadingMode(storyId, index) {
+  const story = findStory(storyId);
+  const steps = story ? storySteps(story) : [];
+  if (!story || !steps.length) return false;
+  const walking = activeStory && activeStory.id === storyId;
+  const at = Number.isInteger(index) ? index : walking ? activeStory.step : 0;
+  if (at < 0 || at >= steps.length) return false;
+  pendingFocusSelector = READING_FIRST_FOCUS;
+  readingMode = true;
+  if (walking && at === activeStory.step && (mapIsShown() || currentPerspective === 'elements')) {
+    storyBarEditing = false;
+    storyBarNotice = null;
+    location.hash = currentRouteHash();
+    render();
+  } else {
+    goToStoryStep(storyId, at); // draws the step, writes the address with `read=1` and draws the page once
+  }
+  return readingModeOn();
+}
+
+/** Where the focus goes when the mode opens: the menu of the steps, else *Next*, else the way back. */
+const READING_FIRST_FOCUS = '.reading-bar [data-story-step-menu], .reading-bar [data-action="story-next"]:not([disabled]), .reading-bar [data-action="story-read-exit"]';
+
+/**
+ * Leaves the reading mode (*Edit*, Escape): the editing layout is drawn again on the step that was read, with the plateau and the comparison that step drew (the home of the story is
+ * not touched by the mode, so the reader who walks on from there, or leaves the story, is where they would have been). The focus goes to the *Read* button of the bar. The address gets
+ * an entry, so that Forward comes back to the mode.
+ */
+function leaveReadingMode() {
+  if (!readingModeOn()) { if (readingMode) { readingMode = false; render(); } return false; }
+  readingMode = false;
+  pendingFocusSelector = '[data-action="story-read"]';
+  location.hash = currentRouteHash();
+  render();
+  return true;
+}
+
+/**
+ * Shows another step of the story being read, as *Previous* and *Next* and the menu do (`goToStoryStep`), after the question those ask when a form holds what was typed. The control that
+ * had the focus keeps it, or the other of the two buttons when this one is disabled at the end of the story. Returns whether the step was drawn.
+ */
+function readStep(index, focus, asked) {
+  const story = activeStory ? findStory(activeStory.id) : null;
+  const steps = story ? storySteps(story) : [];
+  if (!story || !Number.isInteger(index) || index < 0 || index >= steps.length || index === activeStory.step) return false;
+  storyBarNotice = null;
+  removedStep = null;
+  if (!asked && draftTyped && !confirmDiscardingDraft()) return false; // a click on Previous or Next has asked already (`ACTIONS_LEAVING_THE_FORM`)
+  pendingFocusSelector = focus === 'next' ? (index < steps.length - 1 ? '.reading-bar [data-action="story-next"]' : '.reading-bar [data-action="story-prev"]')
+    : focus === 'previous' ? (index > 0 ? '.reading-bar [data-action="story-prev"]' : '.reading-bar [data-action="story-next"]') : null;
+  goToStoryStep(story.id, index);
+  return true;
+}
+
+/**
+ * The keys of the reading mode, one listener on the document (bubbling, like `handleChangesKeydown`, whose rule it follows): Left and Right show the previous and the next step, Home and End
+ * the first and the last, Escape leaves. Up and Down are not taken, so that the words of a long step scroll as they should. It leaves the key alone when a modifier is held (Shift included),
+ * when the reader types or has a control that owns the arrows (an input, a textarea, a select, a contenteditable, a code editor: the target and the focused element are both looked at;
+ * the list of the steps is a select, whose arrows choose a step on their own), when a dialog, the help or the menu of the header is open, when a rejected YAML text is waiting, and when the
+ * page is not in the reading mode. The step that is already the first or the last is not walked past, and the key is kept from the browser only when it did something.
+ */
+function handleReadingKeydown(e) {
+  const key = String(e.key || '');
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape'].includes(key) || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.defaultPrevented || e.isComposing) return;
+  if (!readingModeOn()) return;
+  const focused = typeof document.activeElement === 'undefined' ? null : document.activeElement;
+  if (isTypingTarget(e.target) || isTypingTarget(focused)) return;
+  if (appDialog || helpOpen || headerMenuOpen || rawYamlEditDraft) return;
+  const onButton = focused && focused.getAttribute ? focused.getAttribute('data-action') : null;
+  const steps = storySteps(findStory(activeStory.id));
+  const here = activeStory.step;
+  const target = key === 'ArrowLeft' ? here - 1 : key === 'ArrowRight' ? here + 1 : key === 'Home' ? 0 : key === 'End' ? steps.length - 1 : here;
+  const acted = key === 'Escape' ? leaveReadingMode() : readStep(target, onButton === 'story-next' ? 'next' : onButton === 'story-prev' ? 'previous' : null); // a key leaves the focus where it is; on Previous or Next, those buttons are drawn again and keep it
+  if (acted && e.preventDefault) e.preventDefault();
+}
+document.addEventListener('keydown', handleReadingKeydown);
+
+/**
+ * The page in the reading mode: no top bar, band, tree, inspection, form or tool bar, only the diagram (zoom and pan: its tools are the zoom group, Center and Fit), the key to a comparison,
+ * and over it a bar with the title of the story, "Step n of N", the menu of the steps (`renderStoryStepMenuHtml`, W-4's, with a class of its own), the plateau and the comparison the step names
+ * (said, not chosen), the words of the step, *Previous*, *Next* and *Edit*, the way back. A step that cannot be shown says why, as the bar does. The region is labelled for assistive technology.
+ * A dialog that is open (it cannot be opened from here) is still drawn, so that the page's state and its screen agree.
+ */
+function renderReadingShellHtml() {
+  const story = findStory(activeStory.id);
+  const steps = storySteps(story);
+  const n = activeStory.step;
+  const view = stepView(steps[n]);
+  const problem = stepProblem(steps[n]);
+  const text = steps[n].text || '';
+  const sel = elementSelection();
+  const reading = { reading: true };
+  const canvas = mapIsShown() ? renderDiagramCanvasHtml(null, '', undefined, reading)
+    : diagramTabShown() ? renderDiagramCanvasHtml(findElementRecord(sel.key), '', undefined, reading)
+    : '<div class="center-placeholder">There is no diagram to show for this step.</div>';
+  rightPanelPending = false; // no panel waits for the kernel
+  return '<div class="reading-shell" role="region" aria-label="Reading the story ' + escapeHtml(storyLabel(story)) + '" data-reading-mode>' +
+    '<main id="panel-center" class="center-panel reading-center"><div class="diagram-view reading-view">' +
+      '<div class="story-bar reading-bar">' +
+        '<div class="story-bar-line">' +
+          '<span class="story-bar-title reading-title">' + escapeHtml(storyLabel(story)) + '</span>' +
+          '<span class="story-bar-step" aria-live="polite">Step ' + (n + 1) + ' of ' + steps.length + (view ? ' · ' + escapeHtml(viewLabel(view)) : '') + '</span>' +
+          renderStoryStepMenuHtml(story, n, 'reading-step-menu') +
+          stepPlateausHtml(steps[n], 'story-bar-plateaus') +
+          '<span class="story-bar-actions reading-actions">' +
+            '<span class="button-group" role="group" aria-label="Steps">' +
+              '<button type="button" data-action="story-prev"' + (n === 0 ? ' disabled' : '') + ' aria-keyshortcuts="ArrowLeft" title="The step before (Left arrow)">Previous</button>' +
+              '<button type="button" data-action="story-next"' + (n === steps.length - 1 ? ' disabled' : '') + ' aria-keyshortcuts="ArrowRight" title="The next step (Right arrow)">Next</button>' +
+            '</span>' +
+            '<button type="button" data-action="story-read-exit" aria-keyshortcuts="Escape" title="Back to the editor, on this step (Escape)">Edit</button>' +
+          '</span>' +
+        '</div>' +
+        (problem ? '<div class="story-step-problem" role="status">Step ' + (n + 1) + ' cannot be shown: ' + escapeHtml(problem) + ' The diagram below is the one before it.</div>' : '') +
+        '<p class="story-bar-words reading-words' + (text ? '' : ' muted') + '">' + (text ? escapeHtml(text) : 'No words for this step yet.') + '</p>' +
+      '</div>' +
+      canvas +
+    '</div></main>' +
+    renderAppDialogHtml() +
+  '</div>';
+}
+
+/**
+ * Takes away what lets a click or a key on the diagram of the reading mode do anything but look: the boxes and the links lose their action (a click selects nothing and opens no inspection),
+ * the fold buttons go (they change the map), and nothing inside the drawing takes the focus or says it is a link. The drawing itself, which the cache keeps, is not touched; this is done on
+ * the copy on screen.
+ */
+function quietDiagramForReading(canvas) {
+  if (!canvas || !canvas.querySelectorAll) return;
+  canvas.querySelectorAll('.dg-fold').forEach((el) => el.remove());
+  canvas.querySelectorAll('[data-action]').forEach((el) => el.removeAttribute('data-action'));
+  canvas.querySelectorAll('.dg-node, .dg-link').forEach((el) => {
+    el.removeAttribute('tabindex');
+    if (el.getAttribute('role') === 'link') el.setAttribute('role', 'img');
+  });
+}
+
 /**
  * Over a diagram that belongs to a story: where we are in it, the way to the other steps, and the words of the step
  * (read, or typed when "Edit text" is on). A step that cannot be drawn says why here, and the way on stays open.
@@ -20210,6 +20418,7 @@ function renderStoryBarHtml() {
           '<button type="button" data-action="story-prev"' + (n === 0 ? ' disabled' : '') + ' title="The step before">Previous</button>' +
           '<button type="button" data-action="story-next"' + (n === steps.length - 1 ? ' disabled' : '') + ' title="The next step">Next</button>' +
         '</span>' +
+        '<button type="button" data-action="story-read" title="Read the story full screen, with the tools that edit out of the way">Read</button>' +
         (here || problem ? '' : '<button type="button" data-action="story-restore" title="Draw this step again, as it was saved">Back to this step</button>') +
         '<button type="button" data-action="story-bar-edit" aria-pressed="' + storyBarEditing + '" title="Type the words of this step (they are also in Edit story)">' + (storyBarEditing ? 'Done' : 'Edit text') + '</button>' +
         '<button type="button" data-action="story-edit" title="Reorder the steps, rename the story">Edit story</button>' +
@@ -20500,7 +20709,8 @@ function renderLibraryPerspectiveHtml() {
     const story = selectedStoryId ? findStory(selectedStoryId) : null;
     if (story) {
       subject = '<span class="element-header-subject">' + escapeHtml(storyLabel(story)) + '</span>';
-      actions = '<button type="button" data-action="story-play" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Walk through the story on the diagrams, from its first step">Play</button>';
+      actions = '<button type="button" data-action="story-play" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Walk through the story on the diagrams, from its first step">Play</button>' +
+        '<button type="button" data-action="story-read" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Read the story full screen, from its first step, with the tools that edit out of the way">Read</button>';
     }
     body = story ? renderStoryEditorHtml(story)
       : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. To start, open a diagram in Applications or in Elements and press “Add to story…”, or create an empty story with “New story…”.</p>';
@@ -20586,6 +20796,8 @@ function renderActivePerspectiveHtml() {
  * grid-template-columns.
  */
 function renderShellHtml() {
+  // wave 020 (run 0150, #142): the story read full screen has a layout of its own, with none of the tools that edit; the editing layout below is not touched
+  if (AppState.workspace && !AppState.fatalError && readingModeOn()) return renderReadingShellHtml();
   // wave 014 (run 0080): the band of plateaus sits under the top bar; wave 015 (run 0097, W-9, #98): only while a page of the perspective Timeline is on screen (the plateau
   // drawn and the comparison are the editor's state, `AppState.layers`, and stay what they were while Stories, Files or Settings is open)
   const band = bandIsShown() ? renderPlateauBandHtml() : '';
@@ -20653,7 +20865,7 @@ const ACTIONS_LEAVING_THE_FORM = new Set([
   'timeline-draw', 'timeline-changes',
   'set-perspective', 'set-page', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
   'select-link', 'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
-  'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
+  'select-story', 'story-play', 'story-read', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
   'library-tab', 'select-view', 'library-go-story', 'library-go-view', 'library-open-element', 'select-change'
 ]);
 
@@ -20693,6 +20905,8 @@ function handleAppClick(e) {
     else if (target) setHeaderMenuOpen(false, { focusButton: true });
   }
   if (!target) return;
+  // the diagram of the reading mode is looked at, not clicked: a box, a link or a fold button does nothing there (nothing is selected, no inspection opens); the zoom tools are outside the drawing
+  if (readingModeOn() && e.target.closest && e.target.closest('#diagram-canvas')) return;
   // what an action said (a line over the story bar, the step that can be put back) lasts until the next one
   if (action !== 'dialog-submit') storyBarNotice = null;
   if (removedStep && action !== 'story-undo' && action !== 'story-step-remove') removedStep = null;
@@ -20905,9 +21119,16 @@ function handleAppClick(e) {
     case 'story-play':
       goToStoryStep(target.getAttribute('data-story'), Number(target.getAttribute('data-step') || 0));
       break;
+    case 'story-read': // the Read of the bar names no step (the one on screen), the Read of the Stories page names the story and its first step
+      enterReadingMode(target.getAttribute('data-story') || (activeStory ? activeStory.id : null), target.getAttribute('data-step') === null ? undefined : Number(target.getAttribute('data-step')));
+      break;
+    case 'story-read-exit':
+      leaveReadingMode();
+      break;
     case 'story-prev':
     case 'story-next':
-      if (activeStory) goToStoryStep(activeStory.id, activeStory.step + (action === 'story-next' ? 1 : -1));
+      if (activeStory && readingModeOn()) readStep(activeStory.step + (action === 'story-next' ? 1 : -1), action === 'story-next' ? 'next' : 'previous', true);
+      else if (activeStory) goToStoryStep(activeStory.id, activeStory.step + (action === 'story-next' ? 1 : -1));
       break;
     case 'story-restore':
       if (activeStory) goToStoryStep(activeStory.id, activeStory.step);
@@ -21886,6 +22107,7 @@ function render() {
   const app = document.getElementById('app');
   if (AppState.selection.kind !== 'file') filesSelectionSeen = null; // opening the file again, from anywhere, unfolds its group again
   draftTyped = !!rawYamlEditDraft; // a redraw gives every form afresh; only a rejected YAML text is kept
+  if (readingMode && !readingModeOn()) readingMode = false; // the story went away, or the page no longer draws it: the flag does not wait for the next story
 
   // Every branch below replaces #app's innerHTML wholesale, which already
   // discards whatever DOM node a mounted CodeMirror instance lived on — but

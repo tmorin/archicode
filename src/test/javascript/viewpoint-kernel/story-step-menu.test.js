@@ -379,7 +379,7 @@ function pageOfTag() {
   }
 }
 
-test('against the page of archicode-0.18.0: the bar is the same with the menu taken out, and the bar of a story of one step is the same', { skip: pageOfTag() === null || process.env.ARCHICODE_EDITOR_HTML ? 'the page of the tag is not available, or another page is under test' : false }, async () => {
+test('against the page of archicode-0.18.0: the bar is the same with the menu and the Read button taken out, and the bar of a story of one step is the same', { skip: pageOfTag() === null || process.env.ARCHICODE_EDITOR_HTML ? 'the page of the tag is not available, or another page is under test' : false }, async () => {
   const html = pageOfTag();
   const one = Object.assign({}, FERRY, { 'story.solo.yaml': STORY('solo', '    - viewpoint: overview\n      properties:\n        element: ferry\n      text: Only this.\n') });
   const open0 = async (files, name) => {
@@ -402,7 +402,8 @@ test('against the page of archicode-0.18.0: the bar is the same with the menu ta
       now.goToStoryStep(story, step);
       const was = old.renderStoryBarHtml();
       const is = now.renderStoryBarHtml();
-      assert.equal(is.replace(/<select class="story-step-menu"[\s\S]*?<\/select>/, ''), was, story + ' step ' + (step + 1) + ': the bar of 0.18.0, and a menu');
+      // the menu (W-4) and the *Read* button (W-5, the reading mode) are the two things the bar gained
+      assert.equal(is.replace(/<select class="story-step-menu"[\s\S]*?<\/select>/, '').replace(/<button type="button" data-action="story-read"[^>]*>Read<\/button>/, ''), was, story + ' step ' + (step + 1) + ': the bar of 0.18.0, and a menu');
       assert.equal(is.includes('data-story-step-menu'), steps.length > 1, story + ': a menu where there is a step to choose');
     }
   }
