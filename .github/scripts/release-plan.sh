@@ -102,7 +102,11 @@ case "${event}" in
       fi
       source="refs/tags/${tag}"
       case "${input_draft}" in
-        false) publish=true ;;
+        false)
+          # the scripts that assemble, smoke-test and publish are those of the ref that was dispatched: only main's are reviewed
+          [ "${ref}" = "refs/heads/main" ] || die "a release is published from main only: dispatch from main (this run is on \`${ref}\`), or leave draft=true"
+          publish=true
+          ;;
         true) publish=false ;;
         *) die "the input draft is \`${input_draft}\`, not true or false" ;;
       esac
