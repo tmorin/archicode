@@ -130,6 +130,11 @@ final class ManifestCorpus {
         return out;
     }
 
+    /** C3: the manifests {@code archicode init} wrote under {@code folder} (wave 022, run 0160). They are positives. */
+    static List<Entry> init(Path folder) {
+        return manifestsUnder(folder, "init");
+    }
+
     @SneakyThrows
     private static JsonNode parse(String path, String text) {
         return mapperOf(Path.of(path)).readTree(text);

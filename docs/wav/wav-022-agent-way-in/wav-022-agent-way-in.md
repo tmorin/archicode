@@ -156,7 +156,7 @@ wave_manifest:
       slug: init-command
       phase: P1
       depends_on: [W-2]
-      run: null
+      run: 0160
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/**'
@@ -172,7 +172,7 @@ wave_manifest:
       slug: agent-walk
       phase: P1
       depends_on: [W-3]
-      run: null
+      run: 0161
       delegation: standard
       likely_paths:
         - 'src/test/java/io/morin/archicode/it/**'
@@ -218,8 +218,8 @@ wave_manifest:
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
 | W-2 | 0159 | `guide-command` | W-1 | `archicode guide` (#144) | T4: a `GuideCommand` on the top command; the guide is built from the schema of W-1, the Picocli spec and a resource text; in the native image; golden file; budget; V4 and the IT; the draft pull request is opened (T9) | the first three criteria of P1 for the guide; the `Native` job of the CI run proves the guide |
-| W-3 | — | `init-command` | W-2 | `archicode init` (#144) | T5: an `InitCommand`; the files it writes are resources; C3; loaded by the CLI and by the editor in a node test; the guide's quick-start line; `InitIT` | the third criterion of P1 |
-| W-4 | — | `agent-walk` | W-3 | the walk from nothing (#144) | V6: the scripted walk as an IT, then the cold-agent trial run by the orchestrator against the built jar; every gap it finds is a fix in the guide, the schema or `init`, or an issue; the sweep of V7 | the fourth and fifth criteria of P1 |
+| W-3 | 0160 | `init-command` | W-2 | `archicode init` (#144) | T5: an `InitCommand`; the files it writes are resources; C3; loaded by the CLI and by the editor in a node test; the guide's quick-start line; `InitIT` | the third criterion of P1 |
+| W-4 | 0161 | `agent-walk` | W-3 | the walk from nothing (#144) | V6: the scripted walk as an IT, then the cold-agent trial run by the orchestrator against the built jar; every gap it finds is a fix in the guide, the schema or `init`, or an issue; the sweep of V7 | the fourth and fifth criteria of P1 |
 
 **Gate:** the six criteria of P1 in the manifest.
 

@@ -1,0 +1,8 @@
+header:
+  kind: "archicode.morin.io/view"
+  version: "1"
+content:
+  id: "shop_overview"
+  viewpoint: "overview"
+  properties:
+    element: "shop"
