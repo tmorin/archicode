@@ -16,13 +16,13 @@ archicode views generate -i shop_overview
 ## The loop
 
 1. Write or change a manifest under `manifests/`.
-2. `archicode query graph` loads everything and prints the resolved elements and relationships as JSON (exit 0 when the workspace is valid). It is the cheapest check.
+2. `archicode query graph` loads everything and prints the resolved elements and relationships as one line of JSON (`{"elements":[{"reference":...}],"relationships":[...]}`; exit 0 when the workspace is valid), for `jq` or any JSON reader; without a tool, `archicode query graph | grep -o '"reference"' | wc -l` counts the elements. It is the cheapest check.
 3. `archicode views generate` draws: for every element the `overview`, `detailed` and `deep` views, into `views/plantuml/<layer>/<reference>-<viewpoint>.puml` (a `.` of the reference becomes `_`; with plateaus the folder is `views-<plateau>`). A saved view (a manifest of kind view) is drawn only when named: `views generate -i <view id>`.
-4. Plateaus: `archicode plateau list`, then `archicode diff` to see what a plateau changes.
+4. Plateaus: `archicode plateau list`, then `archicode diff` to see what a plateau changes (it compares the plateau drawn with `--against <id>`, default the plateau it overrides; the root `baseline` has none, so `diff` on it is one `error:` line: name one with `--against`).
 
 Output and exit codes:
 
-- A problem the author can fix is one line on the error output, `error: <sentence>`, and exit 1. **Only the first problem is reported**: there is no `validate` command yet, so fix it and run again. The sentence names the file and the key (for example ``error: `manifests/a.yaml` is not valid: unknown key `foo` (known: ...) at `content.foo` ``).
+- A problem the author can fix is one line on the error output, `error: <sentence>`, and exit 1. **Only the first problem is reported**: there is no `validate` command yet, so fix it and run again. The sentence names the file and the key (for example ``error: `manifests/a.yaml` is not valid: unknown key `foo` (known: ...) at `content.foo` ``); a reference that does not resolve is named alone (``error: unable to find the element shop.nowhere``): write the reference of an element that exists, as `query graph` prints it.
 - A warning is `warning: <sentence>` on the error output; the exit code stays 0.
 - A usage error (an unknown option or command) is exit 2, with the usage.
 - `archicode diff --fail-on <states>` exits 3 when the comparison holds a change of one of the states (`new`, `changed`, `removed`, `moved`, `split`, `merged`, `contains-changes`, `any`), else 0: use it in a build.
@@ -52,7 +52,7 @@ Conventions:
 - **Ids and references.** An `id` is one level of a name: no dot (write lowercase letters, digits, `_`, `-`). A **reference** is the ids from the root of the layer joined by dots: `shop.web.api`. The application layer (person, solution, system, container, component) and the technology layer (environment, node) have separate references. A relationship `destination`, `replaces`, `uses`, `applications`, `target` and the elements a view or a step names are references; they must exist. A reference declared twice is an error.
 - **Nesting.** An element is written in the `elements` of its parent (with a `kind`), or in a manifest of its own with `header.parent` set to the reference of the parent, and then its `kind` is in the header. Each kind holds only the kinds listed above; at the top of a layer only the kinds marked as such.
 - **Relationships** are written on the source element and name the destination. A node lists in `applications` the application-layer references it hosts; an environment lists in `uses` the environments it depends on.
-- **Tags and qualifiers.** `qualifiers` are words shown on the box (a technology: `React`); `tags.rendering-stereotypes` is a free stereotype that `styles.by-tags` can style.
+- **Tags and qualifiers.** `qualifiers` are words shown on the box (a technology: `React`; the diagram writes `[system: React]`) and each is also a PlantUML stereotype, so `styles.by-qualifiers` can style it. `tags.rendering-stereotypes` is a string of space-separated stereotypes that are not shown and that `styles.by-tags` can style (it overrides `by-qualifiers`). There is no `external` flag, no other key marks a system as external and the code gives no word a special meaning: write `qualifiers: ["external"]` on the system, the box then reads `[system: external]`, and style the stereotype `external` in `styles.by-qualifiers` if it should look different.
 - **Views.** A view has an `id`, a `viewpoint` and `properties`. The viewpoints are `overview`, `detailed` and `deep` (about one element: the element and what it is linked to; the element opened to what it holds; opened down to its leaves) and `map` (a whole layer, folded). `layer` is `application` (default) or `technology`. The `properties` of a view are not in the schema (the code reads them by name); the keys that the command line reads are:
 
   | key | viewpoint | value |
@@ -65,7 +65,7 @@ Conventions:
   | `relationships` | map, technology | `false` leaves out the links |
 
   The keys `facet`, `hide-unlinked`, `labels`, `qualifiers`, `descriptions` and `wrap` are written by the editor and ignored by the command line: facets come from `settings.facets`.
-- **Plateaus** are layers of the architecture in time. The root is `baseline` (implicit; it needs no manifest). A manifest of an element says `plateau: <id>` in its `header`; with none it belongs to `baseline`. A manifest of kind plateau gives `id`, `override` (the plateau it builds on; absent means `baseline`), `name`, `horizon` and `patches`. A plateau sees the elements of the plateaus it overrides, plus its own, then its patches are applied. A patch has an `operator` (`ADD`, `SET`, `MERGE`, `REMOVE`), a `target` reference (or a `json-path`), a `field`, a `value` and optionally a `where` (`destination`, `label`) that picks one relationship. A `REMOVE` also removes what points at the element. An element of a plateau may say `replaces: [reference, ...]` (references of the plateau it is compared with) so that `diff` reads a move, a split or a merge instead of a removal and a new element. A patch that selects nothing, a relationship to an element that is gone and a cycle of plateaus are errors. Views and stories belong to no plateau (a `plateau:` in their header means nothing).
+- **Plateaus** are layers of the architecture in time. The root is `baseline` (implicit; it needs no manifest). A manifest of an element says `plateau: <id>` in its `header`; with none it belongs to `baseline`. A plateau is drawn by the command that is given `--plateau <id>`; without it the plateau is `settings.current`, else the last plateau when the plateaus form one line (a tree that forks needs `--plateau`, or the command is `error:`). Its views go to `views-<plateau>`, so a `views/` folder drawn before the first plateau existed stays behind, stale; a workspace with no plateau draws into `views`. A manifest of kind plateau gives `id`, `override` (the plateau it builds on; absent means `baseline`), `name`, `horizon` and `patches`. A plateau sees the elements of the plateaus it overrides, plus its own, then its patches are applied. A patch has an `operator`, a `target` reference (or a `json-path`), a `field`, a `value` and optionally a `where` (`destination`, `label`) that picks one relationship. `SET` replaces the `field` with `value` (with `where`, changes the keys of one relationship). `ADD` appends `value` to the list `field` (each item if `value` is a list; the list is created if it is missing): `field: relationships`, `value: [{destination: ..., label: ...}]` adds relationships. `MERGE` sets the keys of an object `field` (`tags`) and keeps the others. `REMOVE` takes no `value`: with a `field` it takes that field out, without one it removes the element and what points at it. An element of a plateau may say `replaces: [reference, ...]` (references of the plateau it is compared with) so that `diff` reads a move, a split or a merge instead of a removal and a new element. A patch that selects nothing, a relationship to an element that is gone and a cycle of plateaus are errors. Views and stories belong to no plateau (a `plateau:` in their header means nothing).
 - **Stories** are a list of `steps`, each a view (`view`: the id of a saved view, or `viewpoint`, `layer` and `properties` in the step) and a `text`. A step may say `at` (a plateau id: where it is drawn) and `against` (the plateau it is compared with). `archicode stories generate` draws them into `views-stories/<story>/<NN>-<view>/`.
 - **Not in the schema**, so only the loader says it, one error at a time: a reference that does not resolve, an id or a view declared twice, a plateau cycle or an unknown plateau, a patch that selects nothing, an element a view or a step names that exists in no plateau, the name of a facet that is not a folder name, and everything of `.archicode.yaml`.
 
@@ -77,7 +77,7 @@ Every command takes `-h`/`--help` and `-w`/`--workspace=<workspace file>` (defau
 
 ## A small workspace
 
-These files are tested: they load, they are drawn, and the commands below exit as written. Put them in an empty folder.
+These files are tested: they load, they are drawn, and the commands below exit as written. Put them in an empty folder, or add the files that `init` did not write (`customer.yaml`, `shop.yaml` and `view.shop_overview.yaml` are its shorter forms of the first three) to the workspace it made: every reference they use (`shop`, `shop.web`) is there too.
 
 ```yaml
 # file: .archicode.yaml
@@ -211,9 +211,15 @@ content:
   override: "baseline"
   patches:
     - operator: SET
-      target: "shop.catalog"
+      target: "shop.web"
       field: description
-      value: "The books on sale, with their covers."
+      value: "The web site, with a search box."
+    - operator: ADD
+      target: "shop.web"
+      field: relationships
+      value:
+        - destination: "shop.payments"
+          label: "pays with"
 ```
 
 ```yaml
