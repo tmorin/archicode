@@ -19,7 +19,8 @@ import picocli.CommandLine;
         PlateauGroup.class,
         StoriesGroup.class,
         DiffCommand.class,
-        GuideCommand.class
+        GuideCommand.class,
+        InitCommand.class
     }
 )
 @SuppressWarnings("java:S6813")

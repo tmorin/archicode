@@ -2,6 +2,17 @@
 
 ArchiCode draws an architecture that is written as files. You write a **workspace**: a folder with a `.archicode.yaml` at its root and YAML manifests. Each manifest is an element (a person, a system, a container, a component, an environment, a node), a view, a story or a plateau. The tools check the files, resolve the references between them and draw PlantUML files. This guide is printed by the binary you are running and is all you need: `guide` loads no workspace and reads nothing outside the application. The kinds and the commands below are generated from the code that reads the files; the rest is the conventions an agent cannot guess.
 
+## Starting from nothing
+
+```sh
+archicode init my-architecture   # or `archicode init` in the current folder
+cd my-architecture
+archicode query graph
+archicode views generate -i shop_overview
+```
+
+`init` writes `.archicode.yaml`, three manifests in `manifests/` (a person, a system with one container and a relationship between them, and a saved view of the system) and the line `/views*/` in `.gitignore` (added to a `.gitignore` that exists, once; nothing is removed). It overwrites nothing: a folder that already holds `.archicode.yaml`, or one of those manifests, is `error:` and exit 1 with nothing written. Edit those files, add manifests, and loop as below.
+
 ## The loop
 
 1. Write or change a manifest under `manifests/`.
@@ -250,4 +261,4 @@ archicode diff --fail-on removed
 archicode views generate --plateau nowhere   # exit 1
 ```
 
-Not built yet: `validate` (every problem at once), commands that edit manifests, and `init`.
+Not built yet: `validate` (every problem at once) and commands that edit manifests.

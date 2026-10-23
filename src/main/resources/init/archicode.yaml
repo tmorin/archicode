@@ -1,0 +1,4 @@
+settings:
+  name: "My architecture"
+  manifests:
+    paths: ["manifests"]
