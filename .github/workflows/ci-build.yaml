@@ -107,6 +107,15 @@ jobs:
     # an `if:` here (for example `if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}`).
     runs-on: "ubuntu-latest"
     timeout-minutes: 45
+    env:
+      # the target the binary is built for, the last two words of the name of the file: archicode-<version>-<TARGET>. The
+      # release job (wave 021, W-5) turns this job into a matrix over the targets, with `matrix.target` in place of this
+      # variable, and downloads the artifacts `archicode-<version>-<target>`; `outputs` below is what a job that `needs`
+      # this one can read for the single target.
+      TARGET: "linux-amd64"
+    outputs:
+      version: ${{ steps.collect.outputs.version }}
+      artifact: ${{ steps.collect.outputs.artifact }}
     steps:
       - uses: "actions/checkout@v7"
       - name: "Set up Mandrel for JDK 25"
@@ -130,3 +139,43 @@ jobs:
             --update-snapshots \
             -Dnative \
             -Dplugin.asciidoctor.skip=true
+      - name: "Collect the native binary and its checksum"
+        id: collect
+        # Runs only when the build and the integration tests above passed (the default `success()`): a failed build keeps
+        # nothing. The runner is `target/archicode-<version>-runner`; the name is looked for rather than built, in `target`
+        # and one folder below it (the folder `archicode-<version>-native-image-source-jar` holds the `-runner.jar` the image
+        # is made from, which the pattern does not match), and there must be exactly one executable. The version is the
+        # one of the pom, and the binary must tell the same (`archicode --version`: a first smoke test of the file as it is
+        # uploaded). `native-dist` holds what is uploaded: the binary and `<binary>.sha256`, in the format of `sha256sum -c`.
+        run: |
+          set -euo pipefail
+          version="$(./mvnw --batch-mode --quiet help:evaluate -Dexpression=project.version -DforceStdout)"
+          mapfile -t runners < <(find target -maxdepth 2 -type f -name 'archicode-*-runner' -perm -u+x | sort)
+          if [ "${#runners[@]}" -ne 1 ]; then
+            echo "::error::expected exactly one native runner (target/archicode-*-runner), found ${#runners[@]}: ${runners[*]:-none}"
+            find target -maxdepth 2 -name 'archicode-*' | sort
+            exit 1
+          fi
+          runner="${runners[0]}"
+          told="$("${runner}" --version)"
+          if [ "${told}" != "archicode ${version}" ]; then
+            echo "::error::${runner} --version prints '${told}', expected 'archicode ${version}'"
+            exit 1
+          fi
+          name="archicode-${version}-${TARGET}"
+          mkdir -p native-dist
+          cp "${runner}" "native-dist/${name}"
+          (cd native-dist && sha256sum "${name}" > "${name}.sha256" && sha256sum --check "${name}.sha256")
+          ls -l native-dist
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "artifact=${name}" >> "${GITHUB_OUTPUT}"
+      - name: "Keep the native binary as an artifact of the workflow"
+        # Also on pull requests and on main, so that anyone can download the binary of a change from the run (Actions, the
+        # run, Artifacts: a zip with the binary and its .sha256, the executable bit is lost in the zip: `chmod +x`). 7 days:
+        # these are for trying a change, a release keeps its binaries on the release page (W-5).
+        uses: "actions/upload-artifact@v7.0.2"
+        with:
+          name: ${{ steps.collect.outputs.artifact }}
+          path: native-dist/*
+          if-no-files-found: error
+          retention-days: 7
