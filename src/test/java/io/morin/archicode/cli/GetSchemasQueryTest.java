@@ -30,6 +30,20 @@ class GetSchemasQueryTest {
             .readTree(
                 writer.writeValueAsString(getSchemasQuery.generateSchema(GetSchemasQuery.SchemaType.WORKSPACE, writer))
             );
+        // the workspace schema is the one of the last release, byte for byte (wave 022, T1)
+        assertEquals(
+            java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/test/resources/schemas/workspace.schema.json")
+            ).strip(),
+            GetSchemasQuery.sortedWriter(mapperFactory)
+                .writeValueAsString(
+                    getSchemasQuery.generateSchema(
+                        GetSchemasQuery.SchemaType.WORKSPACE,
+                        GetSchemasQuery.sortedWriter(mapperFactory)
+                    )
+                )
+                .strip()
+        );
         val settings = schema.at("/properties/settings");
         assertEquals("string", settings.at("/properties/current/type").asText());
         // a plateau is a layer now (a header and a manifest): the settings list none

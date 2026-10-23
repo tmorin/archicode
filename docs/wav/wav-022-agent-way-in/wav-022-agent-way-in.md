@@ -126,7 +126,7 @@ wave_manifest:
       slug: manifest-content-schema
       phase: P0
       depends_on: []
-      run: null
+      run: 0158
       delegation: standard
       likely_paths:
         - 'src/main/java/io/morin/archicode/cli/GetSchemasQuery.java'
@@ -209,7 +209,7 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-1 | — | `manifest-content-schema` | — | the manifest schema an agent can write from (#144) | T2, T3: generate the content schema of each `ManifestKind` from its class, the nesting from `Parent#elementType()` and `Nesting`, the id and reference rules, `plateau`, `replaces`; check that `workspace` says `settings`, the facets and the styles, and add what it lacks (listed); `ManifestCorpus` (C1, C2, each negative tagged structural or semantic) and the checker for the subset of the dialect; V1, V2, V3; golden file; `QueryGroup` unchanged apart from the option if T3 chooses one; report what the dialect cannot express (Q1) and how the polymorphic `elements` came out | the five criteria of P0; `NativeReflectionConfigTest` and the IT of `query schemas manifest` pass; the table of what the schema cannot say is in the test |
+| W-1 | 0158 | `manifest-content-schema` | — | the manifest schema an agent can write from (#144) | T2, T3: generate the content schema of each `ManifestKind` from its class, the nesting from `Parent#elementType()` and `Nesting`, the id and reference rules, `plateau`, `replaces`; check that `workspace` says `settings`, the facets and the styles, and add what it lacks (listed); `ManifestCorpus` (C1, C2, each negative tagged structural or semantic) and the checker for the subset of the dialect; V1, V2, V3; golden file; `QueryGroup` unchanged apart from the option if T3 chooses one; report what the dialect cannot express (Q1) and how the polymorphic `elements` came out | the five criteria of P0; `NativeReflectionConfigTest` and the IT of `query schemas manifest` pass; the table of what the schema cannot say is in the test |
 
 **Gate:** the five criteria of P0 in the manifest.
 

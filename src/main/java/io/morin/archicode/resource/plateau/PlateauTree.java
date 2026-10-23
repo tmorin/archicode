@@ -1,6 +1,7 @@
 package io.morin.archicode.resource.plateau;
 
 import io.morin.archicode.ArchiCodeException;
+import io.morin.archicode.resource.Identifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -38,7 +39,7 @@ import lombok.val;
  */
 public final class PlateauTree {
 
-    private static final Pattern ID = Pattern.compile("[a-z0-9_-]+");
+    private static final Pattern ID = Identifier.Of.PLATEAU.compiled();
     private static final Pattern HORIZON_YEAR = Pattern.compile("(\\d{4})");
     private static final Pattern HORIZON_MONTH = Pattern.compile("(\\d{4})-(\\d{2})");
     private static final Pattern HORIZON_DAY = Pattern.compile("(\\d{4})-(\\d{2})-(\\d{2})");

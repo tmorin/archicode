@@ -1,0 +1,1385 @@
+{
+  "additionalProperties" : false,
+  "description" : "A manifest is a file with a `header` and a `content`. The content is described by `kinds[header.kind].content`; an element nested in `elements` by `nested[<kind>]`.",
+  "id" : "urn:jsonschema:io:morin:archicode:manifest:Manifest",
+  "kinds" : {
+    "archicode.morin.io/component" : {
+      "content" : {
+        "additionalProperties" : false,
+        "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Component",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+            "pattern" : "^[^.]+$",
+            "required" : true,
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "qualifiers" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "relationships" : {
+            "items" : {
+              "additionalProperties" : false,
+              "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+              "properties" : {
+                "destination" : {
+                  "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                  "pattern" : "^[^.]+(\\.[^.]+)*$",
+                  "required" : true,
+                  "type" : "string"
+                },
+                "label" : {
+                  "type" : "string"
+                },
+                "qualifiers" : {
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                },
+                "tags" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "replaces" : {
+            "items" : {
+              "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+              "pattern" : "^[^.]+(\\.[^.]+)*$",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "type" : "object"
+      },
+      "heldAtTheTop" : false,
+      "holds" : [ ],
+      "kind" : "component",
+      "layer" : "application"
+    },
+    "archicode.morin.io/container" : {
+      "content" : {
+        "additionalProperties" : false,
+        "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Container",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "elements" : {
+            "items" : {
+              "type" : [ {
+                "$ref" : "#/nested/component"
+              } ]
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+            "pattern" : "^[^.]+$",
+            "required" : true,
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "qualifiers" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "relationships" : {
+            "items" : {
+              "additionalProperties" : false,
+              "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+              "properties" : {
+                "destination" : {
+                  "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                  "pattern" : "^[^.]+(\\.[^.]+)*$",
+                  "required" : true,
+                  "type" : "string"
+                },
+                "label" : {
+                  "type" : "string"
+                },
+                "qualifiers" : {
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                },
+                "tags" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "replaces" : {
+            "items" : {
+              "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+              "pattern" : "^[^.]+(\\.[^.]+)*$",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "type" : "object"
+      },
+      "heldAtTheTop" : false,
+      "holds" : [ "component" ],
+      "kind" : "container",
+      "layer" : "application"
+    },
+    "archicode.morin.io/environment" : {
+      "content" : {
+        "additionalProperties" : false,
+        "id" : "urn:jsonschema:io:morin:archicode:resource:element:technology:Environment",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "elements" : {
+            "items" : {
+              "type" : [ {
+                "$ref" : "#/nested/node"
+              } ]
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+            "pattern" : "^[^.]+$",
+            "required" : true,
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "qualifiers" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "relationships" : {
+            "items" : {
+              "additionalProperties" : false,
+              "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+              "properties" : {
+                "destination" : {
+                  "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                  "pattern" : "^[^.]+(\\.[^.]+)*$",
+                  "required" : true,
+                  "type" : "string"
+                },
+                "label" : {
+                  "type" : "string"
+                },
+                "qualifiers" : {
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                },
+                "tags" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "replaces" : {
+            "items" : {
+              "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+              "pattern" : "^[^.]+(\\.[^.]+)*$",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "uses" : {
+            "items" : {
+              "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+              "pattern" : "^[^.]+(\\.[^.]+)*$",
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "heldAtTheTop" : true,
+      "holds" : [ "node" ],
+      "kind" : "environment",
+      "layer" : "technology"
+    },
+    "archicode.morin.io/node" : {
+      "content" : {
+        "additionalProperties" : false,
+        "id" : "urn:jsonschema:io:morin:archicode:resource:element:technology:Node",
+        "properties" : {
+          "applications" : {
+            "items" : {
+              "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+              "pattern" : "^[^.]+(\\.[^.]+)*$",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "elements" : {
+            "items" : {
+              "type" : [ {
+                "$ref" : "#/nested/node"
+              } ]
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+            "pattern" : "^[^.]+$",
+            "required" : true,
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "qualifiers" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "relationships" : {
+            "items" : {
+              "additionalProperties" : false,
+              "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+              "properties" : {
+                "destination" : {
+                  "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                  "pattern" : "^[^.]+(\\.[^.]+)*$",
+                  "required" : true,
+                  "type" : "string"
+                },
+                "label" : {
+                  "type" : "string"
+                },
+                "qualifiers" : {
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                },
+                "tags" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "replaces" : {
+            "items" : {
+              "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+              "pattern" : "^[^.]+(\\.[^.]+)*$",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "type" : "object"
+      },
+      "heldAtTheTop" : false,
+      "holds" : [ "node" ],
+      "kind" : "node",
+      "layer" : "technology"
+    },
+    "archicode.morin.io/person" : {
+      "content" : {
+        "additionalProperties" : false,
+        "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Person",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+            "pattern" : "^[^.]+$",
+            "required" : true,
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "qualifiers" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "relationships" : {
+            "items" : {
+              "additionalProperties" : false,
+              "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+              "properties" : {
+                "destination" : {
+                  "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                  "pattern" : "^[^.]+(\\.[^.]+)*$",
+                  "required" : true,
+                  "type" : "string"
+                },
+                "label" : {
+                  "type" : "string"
+                },
+                "qualifiers" : {
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                },
+                "tags" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "replaces" : {
+            "items" : {
+              "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+              "pattern" : "^[^.]+(\\.[^.]+)*$",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "type" : "object"
+      },
+      "heldAtTheTop" : true,
+      "holds" : [ ],
+      "kind" : "person",
+      "layer" : "application"
+    },
+    "archicode.morin.io/plateau" : {
+      "content" : {
+        "additionalProperties" : false,
+        "id" : "urn:jsonschema:io:morin:archicode:resource:plateau:Plateau",
+        "properties" : {
+          "horizon" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "The identifier of the plateau: lowercase letters, digits, `_` and `-`, declared once. `baseline` is the implicit root.",
+            "pattern" : "^[a-z0-9_-]+$",
+            "required" : true,
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "override" : {
+            "description" : "The identifier of a plateau of the workspace.",
+            "pattern" : "^[a-z0-9_-]+$",
+            "type" : "string"
+          },
+          "patches" : {
+            "items" : {
+              "additionalProperties" : false,
+              "id" : "urn:jsonschema:io:morin:archicode:resource:plateau:Patch",
+              "properties" : {
+                "expect" : {
+                  "type" : "integer"
+                },
+                "field" : {
+                  "type" : "string"
+                },
+                "json-path" : {
+                  "aliases" : [ "json_path" ],
+                  "type" : "string"
+                },
+                "layer" : {
+                  "description" : "Read in any case: upper and lower case are the same value.",
+                  "enum" : [ "application", "technology" ],
+                  "type" : "string"
+                },
+                "operator" : {
+                  "description" : "Read in any case: upper and lower case are the same value.",
+                  "enum" : [ "add", "merge", "remove", "set" ],
+                  "required" : true,
+                  "type" : "string"
+                },
+                "target" : {
+                  "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                  "pattern" : "^[^.]+(\\.[^.]+)*$",
+                  "type" : "string"
+                },
+                "value" : {
+                  "type" : "any"
+                },
+                "where" : {
+                  "additionalProperties" : false,
+                  "id" : "urn:jsonschema:io:morin:archicode:resource:plateau:Patch:Where",
+                  "properties" : {
+                    "destination" : {
+                      "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                      "pattern" : "^[^.]+(\\.[^.]+)*$",
+                      "required" : true,
+                      "type" : "string"
+                    },
+                    "label" : {
+                      "type" : "string"
+                    }
+                  },
+                  "type" : "object"
+                }
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "kind" : "plateau"
+    },
+    "archicode.morin.io/solution" : {
+      "content" : {
+        "additionalProperties" : false,
+        "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Solution",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "elements" : {
+            "items" : {
+              "type" : [ {
+                "$ref" : "#/nested/system"
+              } ]
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+            "pattern" : "^[^.]+$",
+            "required" : true,
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "qualifiers" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "relationships" : {
+            "items" : {
+              "additionalProperties" : false,
+              "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+              "properties" : {
+                "destination" : {
+                  "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                  "pattern" : "^[^.]+(\\.[^.]+)*$",
+                  "required" : true,
+                  "type" : "string"
+                },
+                "label" : {
+                  "type" : "string"
+                },
+                "qualifiers" : {
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                },
+                "tags" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "replaces" : {
+            "items" : {
+              "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+              "pattern" : "^[^.]+(\\.[^.]+)*$",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "type" : "object"
+      },
+      "heldAtTheTop" : true,
+      "holds" : [ "system" ],
+      "kind" : "solution",
+      "layer" : "application"
+    },
+    "archicode.morin.io/story" : {
+      "content" : {
+        "id" : "urn:jsonschema:io:morin:archicode:resource:story:Story",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "required" : true,
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "steps" : {
+            "items" : {
+              "id" : "urn:jsonschema:io:morin:archicode:resource:story:Story:Step",
+              "properties" : {
+                "against" : {
+                  "description" : "The identifier of a plateau of the workspace.",
+                  "pattern" : "^[a-z0-9_-]+$",
+                  "type" : "string"
+                },
+                "at" : {
+                  "description" : "The identifier of a plateau of the workspace.",
+                  "pattern" : "^[a-z0-9_-]+$",
+                  "type" : "string"
+                },
+                "layer" : {
+                  "description" : "Read in any case: upper and lower case are the same value.",
+                  "enum" : [ "application", "technology" ],
+                  "type" : "string"
+                },
+                "name" : {
+                  "type" : "string"
+                },
+                "properties" : {
+                  "type" : "any"
+                },
+                "text" : {
+                  "type" : "string"
+                },
+                "view" : {
+                  "description" : "The identifier of a view declared in the workspace.",
+                  "type" : "string"
+                },
+                "viewpoint" : {
+                  "type" : "string"
+                }
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "kind" : "story"
+    },
+    "archicode.morin.io/system" : {
+      "content" : {
+        "additionalProperties" : false,
+        "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:System",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "elements" : {
+            "items" : {
+              "type" : [ {
+                "$ref" : "#/nested/container"
+              } ]
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+            "pattern" : "^[^.]+$",
+            "required" : true,
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "qualifiers" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "relationships" : {
+            "items" : {
+              "additionalProperties" : false,
+              "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+              "properties" : {
+                "destination" : {
+                  "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                  "pattern" : "^[^.]+(\\.[^.]+)*$",
+                  "required" : true,
+                  "type" : "string"
+                },
+                "label" : {
+                  "type" : "string"
+                },
+                "qualifiers" : {
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                },
+                "tags" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "replaces" : {
+            "items" : {
+              "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+              "pattern" : "^[^.]+(\\.[^.]+)*$",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "type" : "object"
+      },
+      "heldAtTheTop" : true,
+      "holds" : [ "container" ],
+      "kind" : "system",
+      "layer" : "application"
+    },
+    "archicode.morin.io/view" : {
+      "content" : {
+        "id" : "urn:jsonschema:io:morin:archicode:resource:view:View",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "required" : true,
+            "type" : "string"
+          },
+          "layer" : {
+            "description" : "Read in any case: upper and lower case are the same value.",
+            "enum" : [ "application", "technology" ],
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "properties" : {
+            "type" : "any"
+          },
+          "viewpoint" : {
+            "required" : true,
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "kind" : "view"
+    }
+  },
+  "nested" : {
+    "component" : {
+      "additionalProperties" : false,
+      "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Component",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+          "pattern" : "^[^.]+$",
+          "required" : true,
+          "type" : "string"
+        },
+        "kind" : {
+          "enum" : [ "component" ],
+          "required" : true,
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "qualifiers" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "relationships" : {
+          "items" : {
+            "additionalProperties" : false,
+            "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+            "properties" : {
+              "destination" : {
+                "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                "pattern" : "^[^.]+(\\.[^.]+)*$",
+                "required" : true,
+                "type" : "string"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "qualifiers" : {
+                "items" : {
+                  "type" : "string"
+                },
+                "type" : "array"
+              },
+              "tags" : {
+                "additionalProperties" : {
+                  "type" : "string"
+                },
+                "type" : "object"
+              }
+            },
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "replaces" : {
+          "items" : {
+            "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+            "pattern" : "^[^.]+(\\.[^.]+)*$",
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "tags" : {
+          "additionalProperties" : {
+            "type" : "string"
+          },
+          "type" : "object"
+        }
+      },
+      "type" : "object"
+    },
+    "container" : {
+      "additionalProperties" : false,
+      "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Container",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "elements" : {
+          "items" : {
+            "type" : [ {
+              "$ref" : "#/nested/component"
+            } ]
+          },
+          "type" : "array"
+        },
+        "id" : {
+          "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+          "pattern" : "^[^.]+$",
+          "required" : true,
+          "type" : "string"
+        },
+        "kind" : {
+          "enum" : [ "container" ],
+          "required" : true,
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "qualifiers" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "relationships" : {
+          "items" : {
+            "additionalProperties" : false,
+            "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+            "properties" : {
+              "destination" : {
+                "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                "pattern" : "^[^.]+(\\.[^.]+)*$",
+                "required" : true,
+                "type" : "string"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "qualifiers" : {
+                "items" : {
+                  "type" : "string"
+                },
+                "type" : "array"
+              },
+              "tags" : {
+                "additionalProperties" : {
+                  "type" : "string"
+                },
+                "type" : "object"
+              }
+            },
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "replaces" : {
+          "items" : {
+            "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+            "pattern" : "^[^.]+(\\.[^.]+)*$",
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "tags" : {
+          "additionalProperties" : {
+            "type" : "string"
+          },
+          "type" : "object"
+        }
+      },
+      "type" : "object"
+    },
+    "environment" : {
+      "additionalProperties" : false,
+      "id" : "urn:jsonschema:io:morin:archicode:resource:element:technology:Environment",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "elements" : {
+          "items" : {
+            "type" : [ {
+              "$ref" : "#/nested/node"
+            } ]
+          },
+          "type" : "array"
+        },
+        "id" : {
+          "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+          "pattern" : "^[^.]+$",
+          "required" : true,
+          "type" : "string"
+        },
+        "kind" : {
+          "enum" : [ "environment" ],
+          "required" : true,
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "qualifiers" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "relationships" : {
+          "items" : {
+            "additionalProperties" : false,
+            "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+            "properties" : {
+              "destination" : {
+                "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                "pattern" : "^[^.]+(\\.[^.]+)*$",
+                "required" : true,
+                "type" : "string"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "qualifiers" : {
+                "items" : {
+                  "type" : "string"
+                },
+                "type" : "array"
+              },
+              "tags" : {
+                "additionalProperties" : {
+                  "type" : "string"
+                },
+                "type" : "object"
+              }
+            },
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "replaces" : {
+          "items" : {
+            "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+            "pattern" : "^[^.]+(\\.[^.]+)*$",
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "tags" : {
+          "additionalProperties" : {
+            "type" : "string"
+          },
+          "type" : "object"
+        },
+        "uses" : {
+          "items" : {
+            "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+            "pattern" : "^[^.]+(\\.[^.]+)*$",
+            "type" : "string"
+          },
+          "type" : "array"
+        }
+      },
+      "type" : "object"
+    },
+    "node" : {
+      "additionalProperties" : false,
+      "id" : "urn:jsonschema:io:morin:archicode:resource:element:technology:Node",
+      "properties" : {
+        "applications" : {
+          "items" : {
+            "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+            "pattern" : "^[^.]+(\\.[^.]+)*$",
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "elements" : {
+          "items" : {
+            "type" : [ {
+              "$ref" : "#/nested/node"
+            } ]
+          },
+          "type" : "array"
+        },
+        "id" : {
+          "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+          "pattern" : "^[^.]+$",
+          "required" : true,
+          "type" : "string"
+        },
+        "kind" : {
+          "enum" : [ "node" ],
+          "required" : true,
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "qualifiers" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "relationships" : {
+          "items" : {
+            "additionalProperties" : false,
+            "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+            "properties" : {
+              "destination" : {
+                "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                "pattern" : "^[^.]+(\\.[^.]+)*$",
+                "required" : true,
+                "type" : "string"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "qualifiers" : {
+                "items" : {
+                  "type" : "string"
+                },
+                "type" : "array"
+              },
+              "tags" : {
+                "additionalProperties" : {
+                  "type" : "string"
+                },
+                "type" : "object"
+              }
+            },
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "replaces" : {
+          "items" : {
+            "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+            "pattern" : "^[^.]+(\\.[^.]+)*$",
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "tags" : {
+          "additionalProperties" : {
+            "type" : "string"
+          },
+          "type" : "object"
+        }
+      },
+      "type" : "object"
+    },
+    "person" : {
+      "additionalProperties" : false,
+      "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Person",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+          "pattern" : "^[^.]+$",
+          "required" : true,
+          "type" : "string"
+        },
+        "kind" : {
+          "enum" : [ "person" ],
+          "required" : true,
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "qualifiers" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "relationships" : {
+          "items" : {
+            "additionalProperties" : false,
+            "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+            "properties" : {
+              "destination" : {
+                "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                "pattern" : "^[^.]+(\\.[^.]+)*$",
+                "required" : true,
+                "type" : "string"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "qualifiers" : {
+                "items" : {
+                  "type" : "string"
+                },
+                "type" : "array"
+              },
+              "tags" : {
+                "additionalProperties" : {
+                  "type" : "string"
+                },
+                "type" : "object"
+              }
+            },
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "replaces" : {
+          "items" : {
+            "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+            "pattern" : "^[^.]+(\\.[^.]+)*$",
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "tags" : {
+          "additionalProperties" : {
+            "type" : "string"
+          },
+          "type" : "object"
+        }
+      },
+      "type" : "object"
+    },
+    "solution" : {
+      "additionalProperties" : false,
+      "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Solution",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "elements" : {
+          "items" : {
+            "type" : [ {
+              "$ref" : "#/nested/system"
+            } ]
+          },
+          "type" : "array"
+        },
+        "id" : {
+          "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+          "pattern" : "^[^.]+$",
+          "required" : true,
+          "type" : "string"
+        },
+        "kind" : {
+          "enum" : [ "solution" ],
+          "required" : true,
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "qualifiers" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "relationships" : {
+          "items" : {
+            "additionalProperties" : false,
+            "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+            "properties" : {
+              "destination" : {
+                "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                "pattern" : "^[^.]+(\\.[^.]+)*$",
+                "required" : true,
+                "type" : "string"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "qualifiers" : {
+                "items" : {
+                  "type" : "string"
+                },
+                "type" : "array"
+              },
+              "tags" : {
+                "additionalProperties" : {
+                  "type" : "string"
+                },
+                "type" : "object"
+              }
+            },
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "replaces" : {
+          "items" : {
+            "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+            "pattern" : "^[^.]+(\\.[^.]+)*$",
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "tags" : {
+          "additionalProperties" : {
+            "type" : "string"
+          },
+          "type" : "object"
+        }
+      },
+      "type" : "object"
+    },
+    "system" : {
+      "additionalProperties" : false,
+      "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:System",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "elements" : {
+          "items" : {
+            "type" : [ {
+              "$ref" : "#/nested/container"
+            } ]
+          },
+          "type" : "array"
+        },
+        "id" : {
+          "description" : "The identifier of the element: one level of its reference, so it holds no dot. Write lowercase letters, digits, `_` and `-`.",
+          "pattern" : "^[^.]+$",
+          "required" : true,
+          "type" : "string"
+        },
+        "kind" : {
+          "enum" : [ "system" ],
+          "required" : true,
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "qualifiers" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "relationships" : {
+          "items" : {
+            "additionalProperties" : false,
+            "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+            "properties" : {
+              "destination" : {
+                "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+                "pattern" : "^[^.]+(\\.[^.]+)*$",
+                "required" : true,
+                "type" : "string"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "qualifiers" : {
+                "items" : {
+                  "type" : "string"
+                },
+                "type" : "array"
+              },
+              "tags" : {
+                "additionalProperties" : {
+                  "type" : "string"
+                },
+                "type" : "object"
+              }
+            },
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "replaces" : {
+          "items" : {
+            "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+            "pattern" : "^[^.]+(\\.[^.]+)*$",
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "tags" : {
+          "additionalProperties" : {
+            "type" : "string"
+          },
+          "type" : "object"
+        }
+      },
+      "type" : "object"
+    }
+  },
+  "properties" : {
+    "content" : {
+      "description" : "Depends on `header.kind`: the schema is `kinds[header.kind].content`.",
+      "required" : true,
+      "type" : "object"
+    },
+    "header" : {
+      "additionalProperties" : false,
+      "id" : "urn:jsonschema:io:morin:archicode:manifest:Manifest:Header",
+      "properties" : {
+        "kind" : {
+          "enum" : [ "archicode.morin.io/component", "archicode.morin.io/container", "archicode.morin.io/person", "archicode.morin.io/solution", "archicode.morin.io/system", "archicode.morin.io/environment", "archicode.morin.io/node", "archicode.morin.io/view", "archicode.morin.io/story", "archicode.morin.io/plateau" ],
+          "required" : true,
+          "type" : "string"
+        },
+        "parent" : {
+          "description" : "A reference to an element of the same layer: the ids from the root of the layer, joined by dots (`shop.web.api`). It must exist in the plateau.",
+          "pattern" : "^[^.]+(\\.[^.]+)*$",
+          "type" : "string"
+        },
+        "plateau" : {
+          "description" : "The identifier of a plateau of the workspace.",
+          "pattern" : "^[a-z0-9_-]+$",
+          "type" : "string"
+        },
+        "version" : {
+          "required" : true,
+          "type" : "string"
+        }
+      },
+      "required" : true,
+      "type" : "object"
+    }
+  },
+  "type" : "object"
+}

@@ -2,6 +2,7 @@ package io.morin.archicode.resource.element.application;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.morin.archicode.resource.Reference;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -21,6 +22,7 @@ public class Relationship {
     @ToString.Include
     @NonNull
     @JsonProperty(required = true)
+    @Reference(Reference.To.ELEMENT)
     String destination;
 
     /**

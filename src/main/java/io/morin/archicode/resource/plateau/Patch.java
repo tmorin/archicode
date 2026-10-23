@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.morin.archicode.resource.Reference;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.ToString;
@@ -56,6 +57,7 @@ public class Patch {
 
     /** A full reference: selects exactly one element. */
     @ToString.Include
+    @Reference(Reference.To.ELEMENT)
     String target;
 
     /** The layer of {@code target}: the application layer when absent. */
@@ -88,6 +90,7 @@ public class Patch {
 
         @NonNull
         @JsonProperty(required = true)
+        @Reference(Reference.To.ELEMENT)
         String destination;
 
         String label;

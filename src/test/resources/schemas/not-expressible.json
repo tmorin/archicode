@@ -1,0 +1,65 @@
+{
+  "comment": "What the schema of `archicode query schemas manifest` cannot say, and where the loader says it instead. The cases are the ids of src/test/resources/brightcart/negative-cases.json whose first command fails for that reason and not for the shape of a manifest: ManifestSchemaCorpusTest checks that every such case is listed here exactly once and that every listed case is one (a listed case that the schema refuses, or that the loader accepts, fails the test). An entry with no case is a limit no negative case runs yet. The guide (archicode guide) tells the same table: it is the list an agent reads to know that a file that conforms may still be refused.",
+  "limits": [
+    {
+      "id": "dangling-reference",
+      "what": "A relationship, `uses`, `applications`, `replaces`, a patch target or `header.parent` names an element that exists in no file.",
+      "reason": "A schema describes one file; whether a reference resolves depends on every other manifest of the plateau and its ancestors.",
+      "cases": ["N23", "N55"]
+    },
+    {
+      "id": "declared-twice",
+      "what": "A reference, a plateau, a view or a story is declared by two manifests (in one plateau, or in a plateau and its ancestor).",
+      "reason": "Uniqueness is a property of the whole workspace, not of a file.",
+      "cases": ["N7", "N43", "N53"]
+    },
+    {
+      "id": "parent-not-found",
+      "what": "An element names a `header.parent` (or a `header.plateau`) that does not exist in the plateau, or a parent whose kind cannot hold it.",
+      "reason": "The schema gives the kinds each kind holds (`kinds[...].holds`), but which element `header.parent` points at is known only from the other files.",
+      "cases": ["N45", "N46", "N47", "N54"]
+    },
+    {
+      "id": "layered-root",
+      "what": "In a workspace that has plateaus, an element of a kind that its layer does not hold at the top (a container, a component, a node) has no `header.parent`.",
+      "reason": "`heldAtTheTop` says it, but the rule applies only when some manifest of the workspace names a plateau, which no single file shows.",
+      "cases": ["N88"]
+    },
+    {
+      "id": "plateau-tree",
+      "what": "A plateau is declared twice, overrides a plateau that does not exist, overrides itself through a cycle, or has an id one letter apart from another (a typo); `--plateau` or `settings.current` names a plateau that does not exist.",
+      "reason": "The tree of plateaus is built from every manifest of the workspace.",
+      "cases": ["N9", "N42"]
+    },
+    {
+      "id": "patch-does-not-resolve",
+      "what": "A patch selects nothing, changes an `id` or a `parent`, or names a relationship the element does not have.",
+      "reason": "A patch is applied to the elements of the plateau it overrides; whether it fits is known when the layer is built. `target` or `json-path` (exactly one) is also a rule the dialect cannot write (no `oneOf`).",
+      "cases": ["N44", "N48", "N49", "N50"]
+    },
+    {
+      "id": "view-or-story-names-nothing",
+      "what": "A view or a story step names an element that exists in no plateau, a view that is not declared, a plateau that does not exist, or the same plateau in `at` and `against`.",
+      "reason": "It is checked against the elements and the plateaus of the whole workspace.",
+      "cases": ["N80", "N83", "N85"]
+    },
+    {
+      "id": "workspace-file",
+      "what": "`.archicode.yaml` (settings, facets, styles, formatters) is not a manifest.",
+      "reason": "It is described by `archicode query schemas workspace`, a separate output; this schema is the one of the manifests.",
+      "cases": ["N25", "N31", "N32", "N33", "N36", "N37", "N41", "N67", "N68", "N69", "N72", "N73", "N74", "N75", "N76", "N91", "N92", "N93"]
+    },
+    {
+      "id": "facet-name",
+      "what": "The name of a facet is one folder name: not empty, not `.` or `..`, no `/`, `\\`, control character or `<>:\"|?*`, not ending with a dot or a space.",
+      "reason": "A rule of `.archicode.yaml`, which the workspace schema does not write (it types the name as a text).",
+      "cases": ["N94", "N95", "N96", "N97", "N98", "N99", "N100", "N101", "N102", "N103", "N104"]
+    },
+    {
+      "id": "what-a-value-means",
+      "what": "A `json-path` that is not RFC 9535, a `value` that does not fit the field a patch sets, a `horizon` earlier than the one of the plateau it overrides (a warning), two `SET` of one field in one plateau (a warning), a `replaces` that names nothing (a warning).",
+      "reason": "The schema types the value (`any` for the free ones); what it means is the kernel's to say when the layer is built.",
+      "cases": []
+    }
+  ]
+}

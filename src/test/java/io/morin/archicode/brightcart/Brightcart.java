@@ -33,11 +33,11 @@ import picocli.CommandLine;
  * {@code layered/} in a temporary folder: {@code views generate} writes {@code views-*} folders next to
  * {@code .archicode.yaml}, and the repository is never written.
  */
-final class Brightcart {
+public final class Brightcart {
 
-    static final Path ROOT = Path.of("src/test/resources/brightcart");
+    public static final Path ROOT = Path.of("src/test/resources/brightcart");
     static final Path LAYERED = ROOT.resolve("layered");
-    static final ObjectMapper MAPPER = new ObjectMapper();
+    public static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** The four plateaus, the root first. */
     static final List<String> PLATEAUS = List.of("baseline", "saas", "inhouse", "marketplace");
@@ -100,7 +100,7 @@ final class Brightcart {
     }
 
     /** A copy of {@code layered/} into {@code into}; returns its {@code .archicode.yaml}. */
-    static Path copy(Path into) {
+    public static Path copy(Path into) {
         return copy(LAYERED, into);
     }
 

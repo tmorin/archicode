@@ -1,6 +1,9 @@
 package io.morin.archicode.resource.plateau;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.morin.archicode.resource.Identifier;
+import io.morin.archicode.resource.Reference;
+import io.morin.archicode.resource.Required;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -30,7 +33,9 @@ public class Plateau {
 
     /** The identifier: what {@code plateau:} in a header, {@code override} and {@code --plateau} name. */
     @NonNull
+    @Required
     @ToString.Include
+    @Identifier(Identifier.Of.PLATEAU)
     String id;
 
     /** The human name of the plateau. */
@@ -41,6 +46,7 @@ public class Plateau {
 
     /** The one plateau this one is a layer over: {@code baseline} when absent. */
     @ToString.Include
+    @Reference(Reference.To.PLATEAU)
     String override;
 
     /** The changes this plateau makes to the graph of the plateau it overrides, in the order they are applied. */
