@@ -11,6 +11,7 @@ import picocli.CommandLine;
 @TopCommand
 @CommandLine.Command(
     description = "ArchiCode provides features to support architecture work with an as-code approach.",
+    versionProvider = VersionProvider.class,
     subcommands = {
         ViewsGroup.class,
         QueryGroup.class,
@@ -48,4 +49,12 @@ public class ArchiCode {
         scope = CommandLine.ScopeType.INHERIT
     )
     boolean usageHelpRequested;
+
+    /** {@code -V} and {@code --version} are the top command's alone: the usage of every other command is as it was. */
+    @CommandLine.Option(
+        names = { "-V", "--version" },
+        versionHelp = true,
+        description = "Print the version of ArchiCode and exit."
+    )
+    boolean versionRequested;
 }

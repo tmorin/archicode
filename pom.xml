@@ -200,6 +200,8 @@
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
+                        <!-- what the option version of archicode must print (VersionCommandTest) -->
+                        <archicode.version>${project.version}</archicode.version>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -219,6 +221,8 @@
                     <systemPropertyVariables>
                         <native.image.path>${project.build.directory}/${project.build.finalName}-runner
                         </native.image.path>
+                        <!-- what the option version of archicode must print (VersionIT) -->
+                        <archicode.version>${project.version}</archicode.version>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
