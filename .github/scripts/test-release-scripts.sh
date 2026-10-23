@@ -108,6 +108,9 @@ check "plan: a rehearsal builds the dispatched commit" "$(output source "${work}
 
 fails "plan: a dispatch with a tag that is not a release tag is refused" \
   plan "${work}/p9" EVENT_NAME=workflow_dispatch INPUT_TAG=v1.0 INPUT_DRAFT=true
+fails "plan: a dispatch with a tag and draft=false from another ref than main is refused" \
+  plan "${work}/p11" EVENT_NAME=workflow_dispatch REF=refs/heads/feature INPUT_TAG=archicode-0.18.0 INPUT_DRAFT=false
+check "plan: a dispatch with a tag and draft=true from another ref is allowed (a draft)" "$(plan "${work}/p12" EVENT_NAME=workflow_dispatch REF=refs/heads/feature INPUT_TAG=archicode-0.18.0 INPUT_DRAFT=true >/dev/null 2>&1; output publish "${work}/p12")" "false"
 fails "plan: a dispatch with a draft that is not a boolean is refused" \
   plan "${work}/p10" EVENT_NAME=workflow_dispatch INPUT_TAG=archicode-0.18.0 INPUT_DRAFT=maybe
 
@@ -121,7 +124,7 @@ check "plan: a dispatched tag that exists is accepted" "$(output tag "${work}/p1
 check "plan: the newest release tag is the latest" "$(output latest "${work}/p11")" "true"
 git -C "${work}/clone" tag archicode-0.20.0
 git -C "${work}/clone" push --quiet "${work}/remote.git" refs/tags/archicode-0.20.0
-plan "${work}/p13" EVENT_NAME=workflow_dispatch INPUT_TAG=archicode-0.18.0 INPUT_DRAFT=false REMOTE="${work}/remote.git"
+plan "${work}/p13" EVENT_NAME=workflow_dispatch REF=refs/heads/main INPUT_TAG=archicode-0.18.0 INPUT_DRAFT=false REMOTE="${work}/remote.git"
 check "plan: an older release published again is not the latest" "$(output latest "${work}/p13")" "false"
 check "plan: a rehearsal is never the latest" "$(output latest "${work}/p8")" "false"
 fails "plan: a dispatched tag that does not exist is refused" \
