@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 021
-status: in-progress
+status: completed
 date: 2026-10-23
 related:
   - docs/wav/wav-021-story-player-and-release-binaries/wbc-021-story-player-and-release-binaries.md
@@ -50,7 +50,7 @@ None open. The 14 decisions D01 to D14 were taken by the author on 2026-10-23, a
 wave_manifest:
   wave: 021
   slug: story-player-and-release-binaries
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P0
@@ -142,7 +142,7 @@ wave_manifest:
       slug: manual-and-notes-021
       phase: P2
       depends_on: [W-2, W-3, W-5]
-      run: null
+      run: 0157
       delegation: standard
       likely_paths:
         - 'src/doc/**'
@@ -202,4 +202,4 @@ P2:  W-6 <── (W-2, W-3, W-5)
 
 ## Completion Criteria
 
-The three phase gates verified; the verification set passes on the final tree; every shipped story is played in the modal in a test and playing writes nothing and leaves the editor as it was; every shipped example and fixture is loaded by the command line and the editor in a test; #153, #150, #151 and #149 are closed by their commits; #144, #143, #134, #135, #65 and #24 stay open. Named as not verified by the wave, for the author: a real phone (the modal, the picker, a finger on the diagram), the File System Access path (a folder picked in the browser), a screen reader on the announcement of a step, the rehearsal of the release job if GitHub could not run it before the merge, and the Native job of the final CI run.
+The three phase gates verified (they were); the verification set passes on the final tree; every shipped story is played in the modal in a test and playing writes nothing and leaves the editor as it was; every shipped example and fixture is loaded by the command line and the editor in a test; #153, #150, #151 and #149 are closed by their commits; #144, #143, #134, #135, #65 and #24 stay open. Named as not verified by the wave, for the author: a real phone (the modal, the picker, a finger on the diagram), the File System Access path (a folder picked in the browser), a screen reader on the announcement of a step, the rehearsal of the release job if GitHub could not run it before the merge, and the Native job of the final CI run.
