@@ -5,13 +5,34 @@ on:
     branches: [main]
     tags: ["*"]
   pull_request:
+  # The release by hand (jobs Targets to Publish below): builds the native binaries of the three targets, puts them with
+  # SHA256SUMS on a DRAFT release and smoke-tests each file as it is there. Only those jobs run: Build is skipped, so a
+  # dispatch publishes no Maven artifact, no image and no website. From the Actions tab or
+  # `gh workflow run ci-build.yaml --ref <branch> [-f tag=archicode-X.Y.Z] [-f draft=false]`.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "A release tag (archicode-X.Y.Z): build it again and attach its files to its release (a new draft, or the draft that is there). Empty: a rehearsal, a draft named for the version of the pom of the branch, never published."
+        type: string
+        required: false
+        default: ""
+      draft:
+        description: "With a tag: leave the release a draft after the smoke tests (true), or publish it (false). A rehearsal is never published."
+        type: boolean
+        required: false
+        default: true
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A dispatch never cancels nor is cancelled by a push to the same branch; a dispatch waits for the one running (only
+  # the latest dispatch waiting is kept: GitHub cancels an older pending run of the group).
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   Build:
+    # Not on a dispatch: its publishing steps test the ref, not the event, and a dispatch from main would publish a
+    # snapshot (a dispatch from a tag, the website).
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: "ubuntu-latest"
     steps:
       - uses: "actions/checkout@v7"
@@ -100,28 +121,82 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: "target/site"
 
-  Native:
-    # Builds the native image on every pull request and push, in parallel with Build, so that a missing reflection
-    # registration or resource (src/main/resources/META-INF/native-image, quarkus.native.resources.includes in
-    # application.properties) is seen on the pull request that causes it, not after a release. To run it less often, add
-    # an `if:` here (for example `if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}`).
-    runs-on: "ubuntu-latest"
-    timeout-minutes: 45
-    env:
-      # the target the binary is built for, the last two words of the name of the file: archicode-<version>-<TARGET>. The
-      # release job (wave 021, W-5) turns this job into a matrix over the targets, with `matrix.target` in place of this
-      # variable, and downloads the artifacts `archicode-<version>-<target>`; `outputs` below is what a job that `needs`
-      # this one can read for the single target.
-      TARGET: "linux-amd64"
+  Targets:
+    # What this run builds and releases, decided once by .github/scripts/release-plan.sh, whose header lists the cases
+    # (a release: a tag whose head commit message begins `chore(release)`, the condition of "Publish release artifacts"
+    # above, or a dispatch). The scripts of the release are tested first, with fakes, so that a change that breaks them
+    # fails on its pull request rather than on the day of a release (Native waits for this job).
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 10
+    permissions:
+      contents: read
     outputs:
-      version: ${{ steps.collect.outputs.version }}
-      artifact: ${{ steps.collect.outputs.artifact }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      release: ${{ steps.plan.outputs.release }}
+      publish: ${{ steps.plan.outputs.publish }}
+      rehearsal: ${{ steps.plan.outputs.rehearsal }}
+      latest: ${{ steps.plan.outputs.latest }}
+      tag: ${{ steps.plan.outputs.tag }}
+      version: ${{ steps.plan.outputs.version }}
+      title: ${{ steps.plan.outputs.title }}
+      source: ${{ steps.plan.outputs.source }}
     steps:
-      - uses: "actions/checkout@v7"
+      - uses: "actions/checkout@v7.0.1"
+        with:
+          persist-credentials: false
+      - name: "Test the scripts of the release"
+        run: .github/scripts/test-release-scripts.sh
+      - name: "Decide the targets and the release"
+        id: plan
+        # the contexts go through the environment, never into the script
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_DRAFT: ${{ inputs.draft }}
+          RUN_ID: ${{ github.run_id }}
+          REMOTE: ${{ github.server_url }}/${{ github.repository }}.git
+        run: .github/scripts/release-plan.sh
+
+  Native:
+    # Builds the native image, in parallel with Build, so that a missing reflection registration or resource
+    # (src/main/resources/META-INF/native-image, quarkus.native.resources.includes in application.properties) is seen on
+    # the pull request that causes it, not after a release: on linux-amd64 for a pull request and a push to main (the
+    # job is then named `Native`), on each target of .github/scripts/release-lib.sh for a release (`Native (<target>)`).
+    # The integration tests run against the binary on each target, and the binary is kept as an artifact of the
+    # workflow, `archicode-<version>-<target>` with its `.sha256`, which the job Release downloads.
+    name: ${{ needs.Targets.outputs.release == 'true' && format('Native ({0})', matrix.target) || 'Native' }}
+    needs: Targets
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.Targets.outputs.matrix) }}
+    env:
+      # the target the binary is built for, the last two words of the name of the file: archicode-<version>-<TARGET>
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: "actions/checkout@v7.0.1"
+        with:
+          # the tag for a dispatch with a tag, else the commit of the event
+          ref: ${{ needs.Targets.outputs.source }}
+          persist-credentials: false
+      - name: "Check out the scripts of the release"
+        # those of the commit that runs the workflow, which may be newer than the tag it builds
+        uses: "actions/checkout@v7.0.1"
+        with:
+          path: ".release-scripts"
+          sparse-checkout: ".github/scripts"
+          persist-credentials: false
       - name: "Set up Mandrel for JDK 25"
         # Mandrel is what Quarkus builds native images with by default; with java-version 25 the action takes the latest
-        # Mandrel release of JDK 25, the Java of the project (.sdkmanrc, maven.compiler.release). The image is built with
-        # this local Mandrel (JAVA_HOME / GRAALVM_HOME), not in a builder container.
+        # Mandrel release of JDK 25, the Java of the project (.sdkmanrc, maven.compiler.release), for the OS and the
+        # architecture of the runner (Mandrel publishes linux-amd64, linux-aarch64 and macos-aarch64). The image is built
+        # with this local Mandrel (JAVA_HOME / GRAALVM_HOME), not in a builder container.
         uses: "graalvm/setup-graalvm@v1.6.7"
         with:
           java-version: "25"
@@ -141,41 +216,133 @@ jobs:
             -Dplugin.asciidoctor.skip=true
       - name: "Collect the native binary and its checksum"
         id: collect
-        # Runs only when the build and the integration tests above passed (the default `success()`): a failed build keeps
-        # nothing. The runner is `target/archicode-<version>-runner`; the name is looked for rather than built, in `target`
-        # and one folder below it (the folder `archicode-<version>-native-image-source-jar` holds the `-runner.jar` the image
-        # is made from, which the pattern does not match), and there must be exactly one executable. The version is the
-        # one of the pom, and the binary must tell the same (`archicode --version`: a first smoke test of the file as it is
-        # uploaded). `native-dist` holds what is uploaded: the binary and `<binary>.sha256`, in the format of `sha256sum -c`.
-        run: |
-          set -euo pipefail
-          version="$(./mvnw --batch-mode --quiet help:evaluate -Dexpression=project.version -DforceStdout)"
-          mapfile -t runners < <(find target -maxdepth 2 -type f -name 'archicode-*-runner' -perm -u+x | sort)
-          if [ "${#runners[@]}" -ne 1 ]; then
-            echo "::error::expected exactly one native runner (target/archicode-*-runner), found ${#runners[@]}: ${runners[*]:-none}"
-            find target -maxdepth 2 -name 'archicode-*' | sort
-            exit 1
-          fi
-          runner="${runners[0]}"
-          told="$("${runner}" --version)"
-          if [ "${told}" != "archicode ${version}" ]; then
-            echo "::error::${runner} --version prints '${told}', expected 'archicode ${version}'"
-            exit 1
-          fi
-          name="archicode-${version}-${TARGET}"
-          mkdir -p native-dist
-          cp "${runner}" "native-dist/${name}"
-          (cd native-dist && sha256sum "${name}" > "${name}.sha256" && sha256sum --check "${name}.sha256")
-          ls -l native-dist
-          echo "version=${version}" >> "${GITHUB_OUTPUT}"
-          echo "artifact=${name}" >> "${GITHUB_OUTPUT}"
+        # Only when the build and the integration tests passed: a failed build keeps nothing. The binary must tell the
+        # version of the pom, which must be the version of the release (EXPECTED_VERSION, empty on a pull request).
+        env:
+          EXPECTED_VERSION: ${{ needs.Targets.outputs.version }}
+        run: .release-scripts/.github/scripts/native-collect.sh
       - name: "Keep the native binary as an artifact of the workflow"
         # Also on pull requests and on main, so that anyone can download the binary of a change from the run (Actions, the
         # run, Artifacts: a zip with the binary and its .sha256, the executable bit is lost in the zip: `chmod +x`). 7 days:
-        # these are for trying a change, a release keeps its binaries on the release page (W-5).
+        # these are for trying a change, a release keeps its binaries on the release page.
         uses: "actions/upload-artifact@v7.0.2"
         with:
           name: ${{ steps.collect.outputs.artifact }}
           path: native-dist/*
           if-no-files-found: error
           retention-days: 7
+
+  Release:
+    # Puts the binaries of every target and SHA256SUMS on a DRAFT release (.github/scripts/release-draft.sh: a new
+    # draft with the notes GitHub generates, or the files replaced on the draft that is there; a published release is
+    # refused). Skipped, not failed, when the run makes no release. Build must have passed on a tag (it is skipped on a
+    # dispatch); `!cancelled()` because a job that needs a skipped one is skipped otherwise.
+    needs: [Targets, Build, Native]
+    if: ${{ !cancelled() && needs.Targets.outputs.release == 'true' && needs.Native.result == 'success' && (needs.Build.result == 'success' || needs.Build.result == 'skipped') }}
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: "actions/checkout@v7.0.1"
+        with:
+          sparse-checkout: ".github/scripts"
+          persist-credentials: false
+      - name: "Download the binaries of the targets"
+        uses: "actions/download-artifact@v8.0.2"
+        with:
+          pattern: archicode-${{ needs.Targets.outputs.version }}-*
+          path: dist
+          merge-multiple: true
+      - name: "Check the binaries and write SHA256SUMS"
+        env:
+          VERSION: ${{ needs.Targets.outputs.version }}
+        run: .github/scripts/release-assemble.sh dist "${VERSION}" upload
+      - name: "Put them on a draft release"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.Targets.outputs.tag }}
+          TITLE: ${{ needs.Targets.outputs.title }}
+          VERSION: ${{ needs.Targets.outputs.version }}
+          REHEARSAL: ${{ needs.Targets.outputs.rehearsal }}
+          TARGET_COMMIT: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: .github/scripts/release-draft.sh upload
+
+  Smoke:
+    # Each file as it is on the draft release, on a runner of its target: downloaded from the release, checked against
+    # SHA256SUMS, then `--version`, `views generate` on a copy of an example of the manual and `editor serve` answering
+    # one request (.github/scripts/release-smoke.sh). `contents: write` only because a draft release is visible to a
+    # token that can push, no other way; the token is given to the download step alone.
+    name: Smoke (${{ matrix.target }})
+    needs: [Targets, Release]
+    if: ${{ !cancelled() && needs.Release.result == 'success' }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.Targets.outputs.matrix) }}
+    steps:
+      - name: "Check out the example"
+        uses: "actions/checkout@v7.0.1"
+        with:
+          ref: ${{ needs.Targets.outputs.source }}
+          sparse-checkout: "src/doc/examples/domain_plateaus"
+          persist-credentials: false
+      - name: "Check out the scripts of the release"
+        uses: "actions/checkout@v7.0.1"
+        with:
+          path: ".release-scripts"
+          sparse-checkout: ".github/scripts"
+          persist-credentials: false
+      - name: "Download the file of this target and SHA256SUMS from the release"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.Targets.outputs.tag }}
+          VERSION: ${{ needs.Targets.outputs.version }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          gh release download "${TAG}" --dir published --pattern "archicode-${VERSION}-${TARGET}" --pattern SHA256SUMS
+          ls -l published
+      - name: "Smoke-test the file"
+        env:
+          VERSION: ${{ needs.Targets.outputs.version }}
+          TARGET: ${{ matrix.target }}
+        run: .release-scripts/.github/scripts/release-smoke.sh published "${TARGET}" "${VERSION}" src/doc/examples/domain_plateaus to-be
+
+  Publish:
+    # Publishes the draft once every smoke test passed: a release tag, or a dispatch with a tag and draft=false. A
+    # rehearsal is never published (release-plan.sh sets no `publish`, and the step refuses any tag that is not a
+    # release tag).
+    needs: [Targets, Smoke]
+    if: ${{ !cancelled() && needs.Targets.outputs.publish == 'true' && needs.Smoke.result == 'success' }}
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: "Publish the release"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.Targets.outputs.tag }}
+          # "Latest" only when no release tag is newer (release-plan.sh): an older release published again keeps it off
+          LATEST: ${{ needs.Targets.outputs.latest }}
+        run: |
+          set -euo pipefail
+          case "${TAG}" in
+            archicode-[0-9]*) ;;
+            *) echo "::error::${TAG} is not a release tag: not published"; exit 1 ;;
+          esac
+          gh release edit "${TAG}" --draft=false --latest="${LATEST}"
+          state="$(gh release view "${TAG}" --json isDraft,url --jq '"\(.isDraft) \(.url)"')"
+          echo "${state}"
+          case "${state}" in
+            "false "*) ;;
+            *) echo "::error::the release ${TAG} is still a draft"; exit 1 ;;
+          esac
