@@ -2539,6 +2539,11 @@ function serializeManifestFile(header, content) {
  * as it was written when the edit did not touch it (see `openFlowLists`); one that the edit changes goes back in brackets on its line when it fits and has no comment inside
  * (since wave 020, #145: see `bracketChangedFlows`), else it stays a block.
  *
+ * What the edit writes again keeps what the author wrote (wave 021, run 0154, #150 and #151): a scalar that comes back on a line that is new (its collection changed shape, an
+ * item was reordered) has the quotes it had, found by its key and its text (`movedYamlQuote`), and so has a key; a comment follows its own line when the line is written again
+ * (`patchYamlLines`: the same key and text, the line of the same collection, the item that an edit empties); and a run of lines that goes or comes sits where it covers whole
+ * items, so that removing the first of two items that read the same removes the first (`slideAmbiguousRuns`). The generated test `save-keeps-quotes-and-comments.test.js` checks it.
+ *
  * A list written at the column of its key (`tags:` then `- a` at the same column) is followed too (see `markKeyColumnLists`): the file is read as the emitter would write it, with
  * those lists two columns deeper, and the lists go back to their column in the result, the items the edit adds with them.
  *
@@ -3074,8 +3079,9 @@ function patchYamlTextAt(oldText, newValue) {
   const marked = opened.lists.length === 0 ? null : markOpenedFlows(opened); // nothing was opened: there is no collection in brackets to write back
   const textLines = oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
   const widest = marked === null ? 0 : textLines.reduce((most, line) => Math.max(most, line.length), 0);
+  const itemMarks = new Set(opened.lists.map((list, n) => (list.kind === 'item' ? n : -1)).filter((n) => n !== -1)); // the collections in brackets that are items of a list, by the number of their mark
   const attempt = (styled, brackets) => {
-    const patched = patchYamlLines(brackets ? marked : opened.text, emitted, newValue, styled);
+    const patched = patchYamlLines(brackets ? marked : opened.text, emitted, newValue, styled, itemMarks);
     if (patched === null) return null;
     if (!brackets) return closeFlowLists(patched, opened.lists);
     const bracketed = bracketChangedFlows(patched, opened, widest);
@@ -3610,9 +3616,9 @@ function yamlWordsOf(line) {
 }
 
 /**
- * A line that is a scalar, `key: value`, `- value` or `- key: value`, read for its quoting: `{ prefix, key, valueAt, quote, plainable }`, or `null` for any other line
+ * A line that is a scalar, `key: value`, `- value` or `- key: value`, read for its quoting: `{ prefix, key, valueAt, quote, text, plainable }`, or `null` for any other line
  * (a key alone, a flow collection, a block scalar, an anchor, a text that does not close). `prefix` is the indentation and the dashes, `key` the name (`null` for a list
- * item), `valueAt` the index where the value starts, `quote` how it is written (`'"'`, `"'"` or `''` for plain), `plainable` whether the emitter would have written the
+ * item), `valueAt` the index where the value starts, `quote` how it is written (`'"'`, `"'"` or `''` for plain), `text` the string it reads as, `plainable` whether the emitter would have written the
  * string without quotes: a quote that the text needs (`"1"`, `"a: b"`) is not a choice of the author and says nothing about the style of the file.
  */
 function readYamlScalarLine(line) {
@@ -3637,7 +3643,7 @@ function readYamlScalarLine(line) {
   } catch (e) {
     return null;
   }
-  return { prefix, key: found ? found.key : null, valueAt: at, quote, plainable: !yamlStringNeedsQuoting(value) };
+  return { prefix, key: found ? found.key : null, valueAt: at, quote, text: value, plainable: !yamlStringNeedsQuoting(value) };
 }
 
 /**
@@ -3680,19 +3686,37 @@ function dominantYamlQuote(votes) {
 }
 
 /**
+ * The quote of the very same text with the same key, written in the lines that go (a collection that changed shape, a value that moved or was reordered: the lines are new, the scalar
+ * is not): `null` when none goes, else the quote it had (`''` for plain). The line that goes is used up. Asked of every line that comes before any other rule is, so that a line which
+ * only looks like the one that goes (same place, other text) does not take its quotes.
+ */
+function movedYamlQuote(line, dropped, pool) {
+  const added = readYamlScalarLine(line);
+  if (added === null || added.quote !== '' || !added.plainable) return null;
+  const same = (d) => d.read !== null && !d.used && d.read.plainable && d.read.text === added.text && (d.read.key === added.key || d.read.key === null || added.key === null); // `k: v` that becomes `k:` and `- v`, and back
+  const moved = dropped.find(same) || (pool || []).find(same);
+  if (!moved) return null;
+  moved.used = true;
+  return moved.read.quote;
+}
+
+/**
  * The line the emitter wrote for a new or changed value, written in the quotes of the file: the style of the line it replaces (`dropped`: the lines the edit takes out
- * next to it, read by `readYamlScalarLine`) when one has the same key, else the one of a line that stays next to it (`siblings`) with the same key, else the one most
+ * next to it, read by `readYamlScalarLine`) when one has the same key, else the one of a line that goes anywhere in the edit (`pool`) with the same key and the same text (the
+ * scalar is the author's, only its line is new: #150, see `movedYamlQuote`), else the one of a line that stays next to it (`siblings`) with the same key, else the one most
  * lines with that key use, else the one most scalar lines of the file use, else none. Only a string that the emitter writes plain is touched (a number, a boolean, a text the emitter had to quote stay as the emitter wrote them), and the line comes
  * back as it was when the choice is plain.
  */
-function quoteYamlAddedLine(line, dropped, siblings, votes) {
+function quoteYamlAddedLine(line, dropped, siblings, votes, moved) {
   const added = readYamlScalarLine(line);
   if (added === null || added.quote !== '' || !added.plainable) return line;
-  let quote = null;
-  const twin = dropped.find((d) => d.read !== null && !d.used && d.read.prefix === added.prefix && d.read.key === added.key);
-  if (twin) {
-    twin.used = true;
-    if (twin.read.plainable) quote = twin.read.quote;
+  let quote = moved === undefined ? null : moved; // see `movedYamlQuote`
+  if (quote === null) {
+    const twin = dropped.find((d) => d.read !== null && !d.used && d.read.prefix === added.prefix && d.read.key === added.key);
+    if (twin) {
+      twin.used = true;
+      if (twin.read.plainable) quote = twin.read.quote;
+    }
   }
   if (quote === null) { // a line of the same list or the same mapping, next to the new one, as the author wrote it
     const sibling = siblings.find((read) => read !== null && read.plainable && read.prefix === added.prefix && read.key === added.key);
@@ -3810,10 +3834,62 @@ function locateEmittedLines(original, before) {
 }
 
 /**
+ * `steps` (the edit as `keep`, `drop` and `add` steps over `before`, the lines the emitter writes for the old value) with each run of lines that only go, or only come, moved to
+ * where it covers whole items (#151). Lines that read the same (`-`, the bare dash of an item that is a list) leave a choice: removing the first of two items `- [a, b]  # row a`
+ * and `- [c, d]  # row c` drops `- a`, `- b` and one `-`, and the common start takes the first `-` for the kept item, so that the comment of the first stays on the second. A run
+ * slides over the lines that read like the ones it passes (the text written is the same wherever it is); it takes the first position, the nearest the diff's own, where it starts
+ * at its shallowest line and the line after it is not deeper (items, not the tail of one and the head of the next). A run that is already whole items, or that has no such
+ * position, stays where it is.
+ */
+function slideAmbiguousRuns(steps, before) {
+  const wholeItems = (lines, following) => {
+    const first = yamlIndentOf(lines[0]);
+    return lines.every((line) => yamlIndentOf(line) >= first) && (following === undefined || yamlIndentOf(following) <= first);
+  };
+  const same = (a, b) => a.length === b.length && a.every((line, i) => line === b[i]);
+  const textOf = (step) => (step.keep !== undefined ? before[step.keep] : step.drop !== undefined ? before[step.drop] : step.add);
+  for (let from = 0; from < steps.length; from++) {
+    if (steps[from].keep !== undefined) continue;
+    let to = from;
+    while (to < steps.length && steps[to].keep === undefined) to++;
+    const dropping = steps.slice(from, to).every((step) => step.drop !== undefined);
+    if (!dropping && !steps.slice(from, to).every((step) => step.add !== undefined)) { from = to - 1; continue; } // lines that are replaced: paired below
+    const n = to - from;
+    // the kept steps around the run, up to `n` on each side with no other edit between: the run and these lines, in the order of the text the edit leaves (the lines that go are
+    // left out of it, the lines that come are in it), are what the run can slide over
+    let lo = from;
+    while (from - lo < n && lo > 0 && steps[lo - 1].keep !== undefined) lo--;
+    let hi = to;
+    while (hi - to < n && hi < steps.length && steps[hi].keep !== undefined) hi++;
+    const segment = steps.slice(lo, hi);
+    const lines = segment.map(textOf);
+    const home = from - lo;
+    const without = (at) => lines.slice(0, at).concat(lines.slice(at + n)); // the text without the run, or the text around it: the same wherever the run can be
+    let best;
+    for (let distance = 0; distance <= lines.length && best === undefined; distance++) {
+      // the positions are tried from the nearest to the home one: home, then one up, one down, two up...
+      for (const position of distance === 0 ? [home] : [home - distance, home + distance]) {
+        if (position < 0 || position + n > lines.length || (position !== home && !same(without(position), without(home)))) continue;
+        if (best === undefined && wholeItems(lines.slice(position, position + n), lines[position + n])) best = position;
+      }
+    }
+    if (best === undefined || best === home) { from = to - 1; continue; }
+    const keeps = segment.filter((step) => step.keep !== undefined);
+    const indexes = dropping ? segment.map((step) => (step.keep !== undefined ? step.keep : step.drop)) : [];
+    steps.splice(lo, segment.length, ...segment.map((step, i) => {
+      const inRun = i >= best && i < best + n;
+      if (dropping) return inRun ? { drop: indexes[i] } : { keep: indexes[i] };
+      return inRun ? { add: lines[i] } : keeps.shift();
+    }));
+    from = hi - 1;
+  }
+}
+
+/**
  * `patchYamlText` for a layout it can follow: the text of `oldText` with the difference between what the emitter writes for the old value and `emitted`
  * (what it writes for `newValue`) applied; `null` when a line the emitter writes for the old value cannot be found in `oldText`.
  */
-function patchYamlLines(oldText, emitted, newValue, styled) {
+function patchYamlLines(oldText, emitted, newValue, styled, itemMarks) {
   let oldValue;
   try {
     oldValue = parseYamlAsModel(oldText); // the model holds `parent: yes` as the text it is (issue #85), so does the old value it is compared with
@@ -3864,6 +3940,22 @@ function patchYamlLines(oldText, emitted, newValue, styled) {
   }
   for (let k = endBefore; k < before.length; k++) steps.push({ keep: k });
 
+  // what a line is, for telling it again on another line: a value by key and text, the line of a collection by key (`null` for any other line)
+  const identityOf = (line) => {
+    const read = readYamlScalarLine(line);
+    if (read !== null) return 'value\n' + read.key + '\n' + read.text;
+    const shape = readYamlKeyLine(line);
+    return shape !== null && shape.collection ? 'collection\n' + shape.key : null;
+  };
+  const commentOf = (line) => line.slice(stripYamlComment(line).replace(/\s+$/, '').length);
+  // the first line of an item that is a collection in brackets (a mark of `markOpenedFlows` of the kind `item`), not of a key's: its comment is the item's
+  const itemFlow = (line) => {
+    const mark = /\u0006(\d+)\u0007/.exec(commentOf(line));
+    return mark !== null && itemMarks !== undefined && itemMarks.has(Number(mark[1]));
+  };
+
+  slideAmbiguousRuns(steps, before);
+
   // in a run of lines that go and lines that come, each line that goes is followed by the one that replaces it (the first with the first, the second with the second): the
   // comments and blank lines that sit above a line that goes stay above the line that takes its place, and not below it
   for (let from = 0; from < steps.length; from++) {
@@ -3873,10 +3965,30 @@ function patchYamlLines(oldText, emitted, newValue, styled) {
     const drops = steps.slice(from, to).filter((step) => step.drop !== undefined);
     const adds = steps.slice(from, to).filter((step) => step.add !== undefined);
     const paired = [];
-    for (let k = 0; k < Math.max(drops.length, adds.length); k++) {
-      if (k < drops.length) paired.push(drops[k]);
-      if (k < adds.length) paired.push(adds[k]);
+    const alternate = (goes, comes) => {
+      for (let k = 0; k < Math.max(goes.length, comes.length); k++) {
+        if (k < goes.length) paired.push(goes[k]);
+        if (k < comes.length) paired.push(comes[k]);
+      }
+    };
+    // a line that comes back as it was (the same key and text, or the same key for a collection, on a line that is new: re-indented, a dash taken or given) follows the line that goes, in the order of both: what sits
+    // between the lines that go (the comments above the next one) stays above its line (#151); the other lines are paired in turn
+    let goneFrom = 0;
+    let comeFrom = 0;
+    for (let g = 0; g < drops.length; g++) {
+      const gone = identityOf(original[place[drops[g].drop]]);
+      if (gone === null || g < goneFrom) continue;
+      const c = adds.findIndex((add, k) => k >= comeFrom && identityOf(add.add) === gone);
+      if (c === -1) continue;
+      // the lines that come before it with none left that goes are written after the line that goes (the comments above it stay above them), else it is written just before its own
+      const surplus = c - comeFrom > g - goneFrom;
+      alternate(drops.slice(goneFrom, surplus ? g + 1 : g), adds.slice(comeFrom, c));
+      if (!surplus) paired.push(drops[g]);
+      paired.push(adds[c]);
+      goneFrom = g + 1;
+      comeFrom = c + 1;
     }
+    alternate(drops.slice(goneFrom), adds.slice(comeFrom));
     steps.splice(from, to - from, ...paired);
     from = to - 1;
   }
@@ -3885,19 +3997,33 @@ function patchYamlLines(oldText, emitted, newValue, styled) {
   if (styled) {
     let all = null;
     const votes = () => all || (all = yamlQuotingVotes(styled.voteLines || original));
+    const pool = steps.filter((step) => step.drop !== undefined).map((step) => ({ step, read: readYamlScalarLine(original[place[step.drop]]), used: false })); // every line that goes, for a scalar that comes back elsewhere
+    const moved = new Map(); // the lines that come with the quotes of the same text that goes, found first for every line of the edit (see `movedYamlQuote`)
     for (let from = 0; from < steps.length; from++) {
       if (steps[from].keep !== undefined) continue;
       let to = from;
       while (to < steps.length && steps[to].keep === undefined) to++;
       const hunk = steps.slice(from, to);
-      const dropped = hunk.filter((step) => step.drop !== undefined).map((step) => ({ read: readYamlScalarLine(original[place[step.drop]]), used: false }));
+      const dropped = pool.filter((entry) => hunk.includes(entry.step));
+      for (const step of hunk) {
+        const quote = step.add === undefined ? null : movedYamlQuote(step.add, dropped, pool);
+        if (quote !== null) moved.set(step, quote);
+      }
+      from = to - 1;
+    }
+    for (let from = 0; from < steps.length; from++) {
+      if (steps[from].keep !== undefined) continue;
+      let to = from;
+      while (to < steps.length && steps[to].keep === undefined) to++;
+      const hunk = steps.slice(from, to);
+      const dropped = pool.filter((entry) => hunk.includes(entry.step));
       // the lines that stay just before and after the edit, read for their quotes: what a new item of their list is written like
       const around = [steps[from - 1], steps[to]].filter((step) => step !== undefined).map((step) => readYamlScalarLine(original[place[step.keep]]));
       let shallowest = Infinity; // the new lines of a list that goes with a key of its own (a new `replaces:`) are not next to the lines before it
       for (const step of hunk) {
         if (step.add === undefined) continue;
         const depth = yamlIndentOf(step.add);
-        const line = quoteYamlAddedLine(step.add, dropped, shallowest < depth ? [] : around, votes);
+        const line = quoteYamlAddedLine(step.add, dropped, shallowest < depth ? [] : around, votes, moved.get(step));
         shallowest = Math.min(shallowest, depth);
         if (line !== step.add) { step.add = line; styled.lines++; }
       }
@@ -3906,41 +4032,120 @@ function patchYamlLines(oldText, emitted, newValue, styled) {
   }
 
   // a line that is changed keeps what the edit did not change of it: how its key is written and its trailing comment (`id: "a"  # why` renamed is `id: "b"  # why`)
+  const keyEndOf = (line) => {
+    const found = scanYamlKey(line, line.match(/^ *(?:- +)*/)[0].length, 0);
+    return found === null ? -1 : found.end;
+  };
+  const writtenKeys = new Map(); // every line that goes, by key: how the key was written (`"tier"`), for a key that comes back on a line that is new
+  for (const step of steps) {
+    if (step.drop === undefined) continue;
+    const line = original[place[step.drop]];
+    const lead = line.match(/^ *(?:- +)*/)[0];
+    const found = scanYamlKey(line, lead.length, 0);
+    if (found === null) continue;
+    if (!writtenKeys.has(found.key)) writtenKeys.set(found.key, new Set());
+    writtenKeys.get(found.key).add(line.slice(lead.length, found.end - 1).replace(/\s+$/, ''));
+  }
+  // a line that comes back as it was written, a little further (re-indented, a dash added or taken away: its collection became a list, a list became its item; or the aligner took
+  // another line for the one that stayed) keeps its comment: the same key and the same text for a value, the same key for the line of a collection, when it is the only one of its
+  // kind within three kept lines of it (else it is not known which is which)
+  const going = [];
+  const coming = [];
+  steps.forEach((step, i) => {
+    if (step.drop !== undefined) {
+      const line = original[place[step.drop]];
+      going.push({ i, step, line, id: identityOf(line) });
+    } else if (step.add !== undefined) coming.push({ i, step, id: identityOf(step.add) });
+  });
+  const goneIds = new Set(going.map((g) => g.id));
+  const comeIds = new Set(coming.map((c) => c.id));
+  const near = (i, j) => steps.slice(Math.min(i, j), Math.max(i, j)).filter((step) => step.keep !== undefined).length <= 3;
+  for (const gone of going) {
+    if (gone.id === null || gone.step.matched || commentOf(gone.line).trim() === '') continue;
+    // the comment of an item in brackets is the item's, not its first key's: only the first line of an item takes it
+    const asItem = itemFlow(gone.line);
+    const comers = coming.filter((c) => c.id === gone.id && !c.step.paired && near(c.i, gone.i) && (!asItem || /- $/.test(c.step.add.match(/^ *(?:- +)*/)[0])));
+    if (comers.length !== 1 || going.filter((g) => g.id === gone.id && !g.step.matched && near(g.i, comers[0].i)).length !== 1) continue;
+    gone.step.matched = true;
+    comers[0].step.paired = true;
+    comers[0].step.add += commentOf(gone.line);
+  }
   for (let from = 0; from < steps.length; from++) {
     if (steps[from].keep !== undefined) continue;
     let to = from;
     while (to < steps.length && steps[to].keep === undefined) to++;
     const hunk = steps.slice(from, to);
-    const goneLines = hunk.filter((step) => step.drop !== undefined).map((step) => ({ line: original[place[step.drop]], read: readYamlScalarLine(original[place[step.drop]]), shape: readYamlKeyLine(original[place[step.drop]]), used: false }));
+    const goneLines = hunk.filter((step) => step.drop !== undefined).map((step) => ({ line: original[place[step.drop]], read: readYamlScalarLine(original[place[step.drop]]), shape: readYamlKeyLine(original[place[step.drop]]), used: step.matched === true }));
     const addSteps = hunk.filter((step) => step.add !== undefined);
     for (const step of addSteps) {
+      if (step.paired) continue;
       const added = readYamlScalarLine(step.add);
       if (added === null) {
-        // the line of a key whose collection an edit fills or empties (`tags: [] # note` and `tags: # note` become `tags:`, and back) keeps its comment
+        // the line of a key whose collection an edit fills or empties (`tags: [] # note` and `tags: # note` become `tags:`, and back) keeps its comment and the way its key is written
         const shape = readYamlKeyLine(step.add);
         const gone = shape !== null && shape.collection ? goneLines.find((g) => !g.used && g.shape !== null && g.shape.prefix === shape.prefix && g.shape.key === shape.key) : undefined;
         if (gone) {
           gone.used = true;
-          step.add += gone.line.slice(stripYamlComment(gone.line).replace(/\s+$/, '').length);
+          step.paired = true;
+          step.add = gone.line.slice(0, keyEndOf(gone.line)) + step.add.slice(keyEndOf(step.add)) + commentOf(gone.line);
         }
         continue;
       }
-      const same = (g) => !g.used && g.read !== null && g.read.prefix === added.prefix && g.read.key === added.key;
+      // a value that is on a line that goes, or a line that goes and comes back, is the same value moved (see above), not one that was changed: it does not take the place of another
+      const moves = (id) => id !== null && goneIds.has(id) && comeIds.has(id);
+      const same = (g) => !g.used && g.read !== null && g.read.prefix === added.prefix && g.read.key === added.key && !moves(identityOf(g.line)) && !goneIds.has(identityOf(step.add));
       // an item of a list has no key: it is told from the other items only when as many items go as come (the first that goes is the first that comes), as in a rename of the items of a list
       const items = (reads) => reads.filter((r) => r !== null && r.key === null && r.prefix === added.prefix).length;
       if (added.key === null && items(goneLines.map((g) => g.read)) !== items(addSteps.map((o) => readYamlScalarLine(o.add)))) continue;
       const twin = goneLines.find(same);
-      if (!twin) continue;
+      if (!twin) {
+        // a value where there was a collection (`tags: [a, b]  # note` becomes `tags: none`): the line is the same key's, with its comment
+        const header = added.key === null ? undefined : goneLines.find((g) => !g.used && g.shape !== null && g.shape.collection && g.shape.prefix === added.prefix && g.shape.key === added.key);
+        if (header) {
+          header.used = true;
+          step.paired = true;
+          step.add = header.line.slice(0, keyEndOf(header.line)) + step.add.slice(keyEndOf(step.add)) + commentOf(header.line);
+        }
+        continue;
+      }
       twin.used = true;
+      step.paired = true;
       const kept = twin.line;
-      const comment = kept.slice(stripYamlComment(kept).replace(/\s+$/, '').length);
-      step.add = kept.slice(0, twin.read.valueAt) + step.add.slice(added.valueAt) + comment;
+      step.add = kept.slice(0, twin.read.valueAt) + step.add.slice(added.valueAt) + commentOf(kept);
+    }
+    // the item of a list that is a collection in brackets (`- {k: v}  # note`, marked by `markOpenedFlows`) or a list below a bare dash (`-  # note`) and that an edit changes so that its
+    // first line is another one (the first key goes, the list is emptied, `- {}`) is the same item: its comment stays on its first line. One item goes and one comes, in a column
+    const itemColumnOf = (line) => {
+      const prefix = line.match(/^ *(?:- +)*/)[0];
+      if (/- $/.test(prefix) && stripYamlComment(line).trim() !== '') return prefix.length - 2;
+      const bare = /^( *(?:- +)*)-[ \t]*(?:#.*)?$/.exec(line);
+      return bare ? bare[1].length : -1;
+    };
+    const isBareDash = (line) => /^ *(?:- +)*-[ \t]*(?:#.*)?$/.test(line);
+    for (const gone of goneLines) {
+      const column = itemColumnOf(gone.line);
+      if (gone.used || column === -1 || commentOf(gone.line).trim() === '' || !(itemFlow(gone.line) || isBareDash(gone.line))) continue;
+      const comers = addSteps.filter((step) => !step.paired && itemColumnOf(step.add) === column);
+      if (comers.length !== 1 || goneLines.filter((g) => !g.used && itemColumnOf(g.line) === column).length !== 1) continue;
+      gone.used = true;
+      comers[0].paired = true;
+      comers[0].add += commentOf(gone.line);
+    }
+    // a key that comes back on a line that is new is written as it was (`"tier": gold` in brackets, `tier:` as a list's key now)
+    for (const step of addSteps) {
+      const lead = step.add.match(/^ *(?:- +)*/)[0];
+      const found = scanYamlKey(step.add, lead.length, 0);
+      const forms = found === null ? undefined : writtenKeys.get(found.key);
+      if (forms === undefined || forms.size !== 1 || step.add.slice(lead.length, found.end - 1) !== serializeYamlKey(found.key)) continue;
+      const [written] = Array.from(forms);
+      if (written !== serializeYamlKey(found.key)) step.add = lead + written + step.add.slice(found.end - 1);
     }
     from = to - 1;
   }
 
   // the original lines, the ones that sit between two lines of the value (comments, blank lines) with the line before them
   const out = [];
+  const stray = new Set(); // the lines of `out` that are comments and blank lines left behind by a line that goes
   let next = 0; // the next original line not yet written
   const copyUpTo = (index) => { // up to and including the original line `index`
     while (next <= index) out.push(original[next++]);
@@ -3949,12 +4154,34 @@ function patchYamlLines(oldText, emitted, newValue, styled) {
     if (step.keep !== undefined) copyUpTo(place[step.keep] + spans[step.keep]);
     else if (step.drop !== undefined) {
       // the comments above a dropped line are not its own: they stay, the line goes
-      while (next < place[step.drop]) out.push(original[next++]);
+      while (next < place[step.drop]) { stray.add(out.length); out.push(original[next++]); }
       next = place[step.drop] + 1 + spans[step.drop];
     } else out.push(step.add);
   }
   while (next < original.length) out.push(original[next++]); // what follows the last line of the value: a trailing comment, a blank line
+  keepStrayCommentsOutOfBlockScalars(out, stray);
   return out.join(eol) + (endsWithBreak ? eol : '');
+}
+
+/**
+ * Moves the comments that a line which goes left behind (`stray`, indexes of `out`) out of the block scalar they now follow: a comment indented as the text of a `key: |` above it is
+ * text of that scalar for the reader, and the file would no longer say what the edit says. It goes to the column of the key (the column the scalar's text must go past), where it ends the scalar.
+ */
+function keepStrayCommentsOutOfBlockScalars(out, stray) {
+  let blockFrom = -1; // the column a block scalar's text must go past
+  for (let i = 0; i < out.length; i++) {
+    const line = out[i];
+    if (blockFrom !== -1) {
+      if (line.trim() === '') continue;
+      if (yamlIndentOf(line) > blockFrom) {
+        if (stray.has(i) && line.trim().startsWith('#')) out[i] = ' '.repeat(blockFrom) + line.trim();
+        continue;
+      }
+      blockFrom = -1;
+    }
+    const header = stripYamlComment(line).match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+    if (header) blockFrom = header[1].length;
+  }
 }
 
 /** The path of `node` in the tree of elements under `root`, by identity (`['elements', 0, 'elements', 2]`), or null when it is not there. */

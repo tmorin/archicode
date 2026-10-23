@@ -95,7 +95,7 @@ test('an item added to a list in brackets: the list stays on its line, with its 
 
 test('an item removed, and items reordered, in a list in brackets', () => {
   assert.equal(save(MILL, (v) => { v.content.qualifiers.splice(1, 1); }), MILL.replace('[Sack, "Cart", \'Belt\']', "[Sack, 'Belt']"));
-  assert.equal(save(MILL, (v) => { v.content.qualifiers.reverse(); }), MILL.replace('[Sack, "Cart", \'Belt\']', '[Belt, Cart, Sack]')); // a line that moves is a new line for the aligner: its quotes are not carried, in a block as in brackets
+  assert.equal(save(MILL, (v) => { v.content.qualifiers.reverse(); }), MILL.replace('[Sack, "Cart", \'Belt\']', '[\'Belt\', "Cart", Sack]')); // a line that moves is a new line for the aligner, but a scalar keeps the quotes of its text (wave 021, run 0154, #150: they were not carried over a reorder, in a block as in brackets)
   assert.equal(save(MILL, (v) => { v.content.replaces.shift(); }), MILL.replace('replaces: [mill.old, mill.older]', 'replaces: [mill.older]'));
   assert.equal(save(MILL, (v) => { v.content.qualifiers[0] = 'Bag'; }), MILL.replace('[Sack, "Cart", \'Belt\']', '[Bag, "Cart", \'Belt\']'));
 });
