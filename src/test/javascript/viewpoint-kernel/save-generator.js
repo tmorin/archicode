@@ -54,7 +54,7 @@ function generate(rand) {
   });
   const scalar = (flowContext, inList) => {
     const id = uid();
-    const block = !flowContext && !inList && rand.chance(0.08); // a block scalar as an item of a list (`- |`) is a layout the save does not follow (pinned: see the test)
+    const block = !flowContext && rand.chance(0.08); // a block scalar, as the value of a key or as an item of a list (`- |`, #154)
     const text = block ? 'w' + id + ' one\nw' + id + ' two\n' : 'w' + id;
     const quote = block ? '' : rand.pick(['', '', '"', "'"]);
     return { type: 'scalar', id, text, quote, block };
@@ -94,6 +94,17 @@ function generate(rand) {
     }
   };
   decorate(root);
+  // the second key of a map that is an item of a list is a block scalar (`note: |`) in nearly half of them: the key before it takes the dash line, and goes (#155, L2)
+  walk(root, (node) => {
+    if (node.type !== 'list') return;
+    for (const s of node.slots) {
+      const item = s.node;
+      if (item.type !== 'map' || item.flow || item.slots.length < 2 || !rand.chance(0.45)) continue;
+      const id = uid();
+      item.slots[1].node = { type: 'scalar', id, text: 'w' + id + ' one\nw' + id + ' two\n', quote: '', block: true };
+      item.slots[1].after = null;
+    }
+  });
   // the first entry of a map that is an item of a list shares the dash line: what is above it is the item's
   walk(root, (node) => {
     if (node.type === 'list') for (const s of node.slots) if (s.node.type === 'map' && !s.node.flow && s.node.slots.length > 0) { s.node.slots[0].above = []; s.node.slots[0].blank = false; }
@@ -213,10 +224,15 @@ function chooseEdit(root, rand) {
   const lists = [];
   const maps = [];
   walk(root, (node) => { if (node.type === 'list') lists.push(node); if (node.type === 'map') maps.push(node); });
-  const kinds = ['set', 'set', 'add-item', 'add-item', 'remove-item', 'remove-item', 'add-key', 'remove-key', 'wrap', 'wrap', 'unwrap', 'to-scalar', 'reorder'];
+  const kinds = ['set', 'set', 'add-item', 'add-item', 'remove-item', 'remove-item', 'add-key', 'remove-key', 'wrap', 'wrap', 'unwrap', 'to-scalar', 'reorder', 'first-key', 'first-key', 'first-key'];
+  // the maps that are items of a list and whose second key is a block scalar: the first key is the one that changes (#155, L2)
+  const itemMaps = [];
+  walk(root, (node) => { if (node.type === 'list') for (const s of node.slots) if (s.node.type === 'map' && !s.node.flow && s.node.slots.length >= 2 && s.node.slots[1].node.block) itemMaps.push(s.node); });
   for (let attempt = 0; attempt < 12; attempt++) {
     const kind = rand.pick(kinds);
-    if (kind === 'set') {
+    if (kind === 'first-key') {
+      if (itemMaps.length) { const map = rand.pick(itemMaps); return { kind: rand.chance(0.5) ? 'add-key' : 'remove-key', target: map.id, at: 0, shape: 'first-key' }; }
+    } else if (kind === 'set') {
       const leaves = slots.filter((s) => s.slot.node.type === 'scalar' && !s.slot.node.block);
       if (leaves.length) return { kind, target: rand.pick(leaves).slot.id };
     } else if (kind === 'add-item' && lists.length) {
@@ -492,13 +508,6 @@ function limitOf(root, d) {
   const slots = allSlots(root);
   const nodes = [];
   walk(root, (node) => nodes.push(node));
-  if ((d.kind === 'add-key' && d.at === 0) || (d.kind === 'remove-key' && d.at === 0)) {
-    // the first key of a map that is an item of a list changes: the key that comes second takes the dash line, and a block scalar on it is written again as a quoted text
-    const item = slots.find((x) => x.slot.node.id === d.target && x.parent.type === 'list' && !x.slot.node.flow);
-    const entries = item ? item.slot.node.slots : [];
-    const next = d.kind === 'add-key' ? entries[0] : entries[1];
-    if (next && next.node.type === 'scalar' && next.node.block) return 'dash-line-of-a-block-scalar';
-  }
   if (d.kind === 'wrap' || d.kind === 'unwrap') {
     // a comment on an item that is a list (`-  # why`, then its items, or `- [a, b]  # why`): lost, or taken by another item, when the lists around it are nested again, which writes every dash line anew
     const target = slots.find((x) => x.slot.id === d.target);
@@ -589,7 +598,7 @@ function reduce(page, root, d, kind) {
 /** All cases of the generator on `page`: `{ stats, failures }`, each failure with the case's number, the edit, the file and the result. */
 function run(page, seed, cases, options = {}) {
   const failures = [];
-  const stats = { cases: 0, edits: {}, skipped: 0, limits: {} };
+  const stats = { cases: 0, edits: {}, skipped: 0, limits: {}, shapes: { 'block-scalar-item': 0, 'first-key-before-block': 0 } }; // the shapes of #154 and of #155 L2
   for (let n = 0; n < cases; n++) {
     const rand = prng(seed * 100003 + n);
     const root = generate(rand, n);
@@ -606,6 +615,8 @@ function run(page, seed, cases, options = {}) {
     const limit = limitOf(root, d);
     if (limit !== null) { stats.limits[limit] = (stats.limits[limit] || 0) + 1; continue; }
     stats.cases++;
+    if (/^ *(?:- +)*- \|/m.test(file.text)) stats.shapes['block-scalar-item']++;
+    if (d.shape === 'first-key') stats.shapes['first-key-before-block']++;
     stats.edits[d.kind] = (stats.edits[d.kind] || 0) + 1;
     const result = attempt(page, root, d);
     if (result.problems.length) failures.push(Object.assign({ n, kind: d.kind, d, root }, result));

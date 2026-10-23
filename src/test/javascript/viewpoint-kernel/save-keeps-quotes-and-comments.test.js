@@ -126,21 +126,23 @@ test('the generator is deterministic: the same seed writes the same files on eve
   assert.deepEqual([rand.next(), rand.next(), rand.next()].map((x) => Math.round(x * 1e6)), [627074, 2736, 527447]);
   const root = G.generate(G.prng(SEED * 100003), 0);
   assert.equal(G.write(root).text, G.write(G.generate(G.prng(SEED * 100003), 0)).text);
-  const sample = G.write(G.generate(G.prng(SEED * 100003 + 3), 3)).text;
+  const sample = G.write(G.generate(G.prng(SEED * 100003 + 4), 4)).text;
   assert.equal(sample.length > 100, true);
-  assert.equal(sample, G.write(G.generate(G.prng(SEED * 100003 + 3), 3)).text);
-  assert.deepEqual(plain(app.parseYaml(sample)), G.valueOf(G.generate(G.prng(SEED * 100003 + 3), 3)));
+  assert.equal(sample, G.write(G.generate(G.prng(SEED * 100003 + 4), 4)).text);
+  assert.deepEqual(plain(app.parseYaml(sample)), G.valueOf(G.generate(G.prng(SEED * 100003 + 4), 4)));
 });
 
 test('generated: ' + CASES + ' files, one random edit each; the save keeps the model, every quote and comment, every line the edit did not touch, and a second save changes nothing', () => {
-  const started = Date.now();
   const { stats, failures } = G.run(app, SEED, CASES);
   assert.equal(failures.length, 0, failures.length + ' of ' + stats.cases + ' cases fail; the first:\n' + failures.slice(0, 3).map((f) => describeFailure(app, f)).join('\n\n'));
   // the generator makes every kind of edit, in numbers
   for (const kind of ['set', 'add-item', 'remove-item', 'add-key', 'remove-key', 'wrap', 'unwrap', 'to-scalar', 'reorder']) assert.equal((stats.edits[kind] || 0) >= 80, true, kind + ' ' + JSON.stringify(stats.edits));
   assert.equal(stats.cases + Object.values(stats.limits).reduce((a, b) => a + b, 0) + stats.skipped, CASES);
   assert.equal(stats.cases >= 1900, true, JSON.stringify(stats));
-  assert.equal(Date.now() - started < 60000, true, 'it takes seconds');
+  // no wall-clock bound: the property is what the save writes, not how fast (it takes seconds alone and a minute inside the parallel run of every test file; wave 022, run 0162)
+  // the shapes of #154 and of #155 L2 are in it, in numbers
+  assert.equal(stats.shapes['block-scalar-item'] >= 100, true, JSON.stringify(stats.shapes));
+  assert.equal(stats.shapes['first-key-before-block'] >= 40, true, JSON.stringify(stats.shapes));
 });
 
 // ---- against the page of the tag archicode-0.18.0 --------------------------------------------------------------------------------------------------------------------------
@@ -197,10 +199,9 @@ const placesOf = (value, at = []) => {
 };
 const at = (value, where) => where.reduce((x, k) => x[k], value);
 
-test('every shipped file with no collection in brackets, saved with an edit of every kind, is the same bytes as the page of archicode-0.18.0 writes', { skip: SKIP_TAG }, () => {
+function sweepShipped(before, differing) {
   // a value set, an item added, the first and the last item removed, a key added, the first and the last key removed; in the first and the last place of each kind. The files with brackets
   // are the business of wave 020 (a collection that an edit changes goes back in brackets: save-keeps-the-brackets.test.js, which compares the edits that do not reach them)
-  const before = createApp({ html: released });
   let files = 0;
   let edits = 0;
   for (const file of shippedYaml()) {
@@ -226,28 +227,100 @@ test('every shipped file with no collection in brackets, saved with an edit of e
       if (list) cases.push((v) => at(v, list.at).push('zz new'), (v) => at(v, list.at).shift(), (v) => at(v, list.at).pop());
       if (map) cases.push((v) => { at(v, map.at).zz_probe = 'x'; }, (v) => { delete at(v, map.at)[Object.keys(at(v, map.at)).pop()]; }, (v) => { delete at(v, map.at)[Object.keys(at(v, map.at))[0]]; });
       for (const change of cases) {
-        assert.equal(app.patchYamlText(text, edit(app, change)), before.patchYamlText(text, edit(before, change)), path.relative(REPO, file));
+        const mine = app.patchYamlText(text, edit(app, change));
+        const theirs = before.patchYamlText(text, edit(before, change));
+        if (differing === undefined) assert.equal(mine, theirs, path.relative(REPO, file));
+        else if (mine !== theirs) differing.push(path.relative(REPO, file));
         edits++;
       }
     }
   }
   assert.equal(files > 150, true, 'many shipped files (' + files + ')');
   assert.equal(edits > 2000, true, 'many edits (' + edits + ')');
+  return { files, edits };
+}
+
+test('every shipped file with no collection in brackets, saved with an edit of every kind, is the same bytes as the page of archicode-0.18.0 writes', { skip: SKIP_TAG }, () => {
+  sweepShipped(createApp({ html: released }));
+});
+
+// ---- against the page of the tag archicode-0.19.0 (the base of wave 022) --------------------------------------------------------------------------------------------------
+
+const TAG19 = 'archicode-0.19.0';
+let base19 = null;
+try {
+  base19 = execFileSync('git', ['show', TAG19 + ':src/main/resources/editor-webapp/standalone.html'], { cwd: REPO, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
+} catch (e) {
+  base19 = null; // no tag in this clone
+}
+const SKIP_19 = base19 === null ? 'the tag ' + TAG19 + ' is not in this clone' : process.env.ARCHICODE_EDITOR_HTML ? 'another page is run for every test (ARCHICODE_EDITOR_HTML)' : false;
+
+test('every shipped file with no collection in brackets, saved with an edit of every kind, is the same bytes as the page of archicode-0.19.0 writes (wave 022: only the shapes of #154 and #155 L2 may differ, and no shipped file has them)', { skip: SKIP_19 }, () => {
+  const differing = [];
+  const { files, edits } = sweepShipped(createApp({ html: base19 }), differing);
+  assert.deepEqual(differing, [], differing.length + ' of ' + edits + ' edits over ' + files + ' files write other bytes than the page of the tag');
+});
+
+test('the page of archicode-0.19.0 fails the generated test for the shapes of #154 and #155 L2 and for no other', { skip: SKIP_19 }, () => {
+  const before = createApp({ html: base19 });
+  const { failures } = G.run(before, SEED, CASES);
+  assert.equal(failures.length > 100, true, failures.length + ' cases fail on the page of the tag');
+  const hasBlockItem = (f) => /^ *(?:- +)*- \|/m.test(f.file);
+  const firstKey = (f) => { // the first key of a map that is an item of a list changes, and the key that comes second is a block scalar (or takes the dash line)
+    if (f.d.kind !== 'add-key' && f.d.kind !== 'remove-key') return false;
+    if (f.d.at !== 0) return false;
+    let found = false;
+    const visit = (node) => {
+      if (node.type === 'scalar') return;
+      for (const slot of node.slots) {
+        const item = slot.node;
+        if (node.type === 'list' && item.id === f.d.target && item.type === 'map') {
+          const next = f.d.kind === 'add-key' ? item.slots[0] : item.slots[1];
+          if (next && next.node.type === 'scalar' && next.node.block) found = true;
+        }
+        visit(item);
+      }
+    };
+    visit(f.root);
+    return found;
+  };
+  const other = failures.filter((f) => !hasBlockItem(f) && !firstKey(f));
+  assert.equal(other.length, 0, other.length + ' cases fail on the page of the tag for another shape; the first: ' + (other[0] ? other[0].edit + '\n' + other[0].file : ''));
+  assert.equal(failures.filter(firstKey).length >= 20, true, 'the first key of an item before a block scalar (#155 L2) fails on the page of the tag');
+  assert.equal(failures.filter(hasBlockItem).length >= 100, true, 'a block scalar that is an item of a list (#154) fails on the page of the tag');
 });
 
 // ---- what the generator found and the save does not do (listed in the run, kept out of the generator, pinned here) ---------------------------------------------------------------
 
-test('known limit: a block scalar that is an item of a list (`- |`) is a layout the save does not follow: the file is the emitter\'s text, whatever the edit', () => {
+test('#154: a block scalar that is an item of a list (`- |`) is followed by the save: the comments and the layout of the file stay, whatever the edit', () => {
   const text = 'content:  # top\n  id: a\n  notes:\n    - |\n      one\n      two\n  name: N # why\n';
-  const out = save(text, (v) => { v.content.name = 'M'; });
-  assert.equal(out.includes('# top') || out.includes('# why'), false, 'the comments go with the layout: ' + out);
-  assert.equal(plain(app.parseYaml(out)).content.notes[0], 'one\ntwo\n');
+  assert.equal(save(text, (v) => { v.content.name = 'M'; }), 'content:  # top\n  id: a\n  notes:\n    - |\n      one\n      two\n  name: M # why\n');
+  // an item added next to it, one removed, the block kept after a re-indentation, a comment above it
+  const more = 'content:\n  id: a\n  notes:\n    # first\n    - |  # the text\n      one\n      two\n    - z # last\n';
+  assert.equal(save(more, (v) => { v.content.notes.push('y'); }), more + '    - y\n');
+  assert.equal(save(more, (v) => { v.content.notes.pop(); }), 'content:\n  id: a\n  notes:\n    # first\n    - |  # the text\n      one\n      two\n');
+  assert.equal(save(more, (v) => { v.content.notes.shift(); }), 'content:\n  id: a\n  notes:\n    # first\n    - z # last\n'); // a comment above a line that goes stays
+  assert.equal(save(text, (v) => { v.content.notes = [v.content.notes]; }).includes('# why'), true);
+  // the text itself changed: a line of the item is new, the rest stays
+  const changed = save(text, (v) => { v.content.notes[0] = 'one\nthree\n'; });
+  assert.equal(changed.startsWith('content:  # top\n  id: a\n  notes:\n') && changed.endsWith('  name: N # why\n'), true, changed);
+  // a folded block, in a list with other items
+  const nested = 'content:\n  id: a\n  rows:\n    - q # c\n    - >-\n      folded\n      text\n    - r\n  name: N # why\n';
+  assert.equal(save(nested, (v) => { v.content.name = 'M'; }), nested.replace('name: N', 'name: M'));
 });
 
-test('known limit: a block scalar on the key that comes first or second in a map that is an item of a list is written as a quoted text when that key takes the dash line', () => {
+test('#155 L2: a block scalar on the key that takes the dash line of a map that is an item of a list stays a block scalar', () => {
   const text = 'content:\n  id: a\n  steps:\n    - drop: y\n      note: |\n        one\n        two\n      other: x # why\n';
-  const out = save(text, (v) => { delete v.content.steps[0].drop; });
-  assert.equal(out, 'content:\n  id: a\n  steps:\n    - note: "one\\ntwo\\n"\n      other: x # why\n');
+  assert.equal(save(text, (v) => { delete v.content.steps[0].drop; }), 'content:\n  id: a\n  steps:\n    - note: |\n        one\n        two\n      other: x # why\n');
+  // a comment above the key that goes stays where it was (as for any line that goes), and the comment after the header stays on it
+  const commented = 'content:\n  id: a\n  steps:\n    - drop: y\n      # about the note\n      note: |  # text\n        one\n        two\n      other: x\n';
+  assert.equal(save(commented, (v) => { delete v.content.steps[0].drop; }), 'content:\n  id: a\n  steps:\n      # about the note\n    - note: |  # text\n        one\n        two\n      other: x\n');
+  // a key added in front: the block key gives the dash line up and keeps its block
+  const front = save(text, (v) => { v.content.steps[0] = Object.assign({ first: 'f' }, v.content.steps[0]); });
+  assert.equal(front.includes('      note: |\n        one\n        two\n'), true, front);
+  // the first key removed when the block key is not the second one: nothing to take over
+  const third = 'content:\n  id: a\n  steps:\n    - drop: y\n      mid: m\n      note: |\n        one\n        two\n';
+  assert.equal(save(third, (v) => { delete v.content.steps[0].drop; }), 'content:\n  id: a\n  steps:\n    - mid: m\n      note: |\n        one\n        two\n');
 });
 
 test('known limit: a comment on the dash of an item that is a list is lost, or taken by the new item above, when the lists around it are nested again', () => {

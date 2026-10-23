@@ -2972,6 +2972,44 @@ function patchYamlTextPlain(oldText, newValue) {
 }
 
 /**
+ * The block scalar a line opens (`key: |`, `- key: >-`, or an item of a list that is one, `- |`): `{ 0: the indentation the text of the block must go past }` as a match, else null. For a key it
+ * is what precedes the key (the dashes included); for `- |` it is the column of the last dash, as the text only has to go past the list (wave 022, run 0162, #154).
+ */
+function yamlBlockHeader(line) {
+  const stripped = stripYamlComment(line);
+  const keyed = stripped.match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+  if (keyed) return keyed;
+  const item = stripped.match(/^( *(?:- +)*)- +[|>][-+0-9]*\s*$/);
+  return item;
+}
+
+/** Whether the item `- |` at line `at` of `original` (its dash at column `dash`) is the value the emitter wrote on `emitted` (`- "one\ntwo\n"`, or `- text` for a folded one): the same lead, the same text. */
+function yamlKeylessBlockIsLine(original, at, dash, emitted) {
+  const lead = original[at].match(/^ *(?:- +)*/)[0];
+  if (emitted.match(/^ *(?:- +)*/)[0] !== lead) return false;
+  const body = [];
+  for (let k = at + 1; k < original.length; k++) {
+    if (original[k].trim() !== '' && yamlIndentOf(original[k]) <= dash) break;
+    body.push(original[k]);
+  }
+  while (body.length > 0 && body[body.length - 1].trim() === '') body.pop();
+  try {
+    const read = parseYaml(original[at].slice(dash) + '\n' + body.map((l) => shiftYamlLine(l, -dash)).join('\n'));
+    const wrote = parseYaml(emitted.slice(dash));
+    return JSON.stringify(read) === JSON.stringify(wrote);
+  } catch (e) {
+    return false;
+  }
+}
+
+/** The column of the last dash of a line that is an item of a list opening a block scalar (`- |`, `- >-`), else null: the column the text of the block must go past. */
+function yamlKeylessBlockHeader(line) {
+  if (/^ *(?:- +)*(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/.test(stripYamlComment(line))) return null;
+  const item = yamlBlockHeader(line);
+  return item === null ? null : item[1].length;
+}
+
+/**
  * The text with each item of a list whose map starts on the line below its dash (`-` alone on its line, with its comment, then the keys deeper) written as the emitter writes
  * it: the dash and the first key on one line (`- id: a`), the other lines of the map moved to the column the emitter gives them (two past the dash). The line carries a mark
  * (`\u0004` and a number, in its comment) that tells `splitBareDashItems` which item it was: `{ text, items }`, `items` the dash line, the comments between it and the first key,
@@ -2992,7 +3030,7 @@ function mergeBareDashItems(text) {
       if (line.trim() === '' || yamlIndentOf(line) > blockFrom) { out.push(line); continue; }
       blockFrom = -1;
     }
-    const header = stripYamlComment(line).match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+    const header = yamlBlockHeader(line);
     if (header) { blockFrom = header[1].length; out.push(line); continue; }
     const dash = /^( *)-$/.exec(stripYamlComment(line).replace(/[ \t]+$/, ''));
     let j = i + 1;
@@ -3149,7 +3187,7 @@ function markKeyColumnLists(text) {
       if (lines[i].trim() === '' || yamlIndentOf(lines[i]) > blockFrom) continue;
       blockFrom = -1;
     }
-    const header = stripYamlComment(lines[i]).match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+    const header = yamlBlockHeader(lines[i]);
     if (header) { blockFrom = header[1].length; continue; }
     const col = yamlBareKeyColumn(lines[i]);
     const last = col === -1 ? i : yamlLastLineUnderKey(lines, i, col, true);
@@ -3288,7 +3326,7 @@ function openFlowListsRead(text) {
       if (line.trim() === '' || yamlIndentOf(line) > blockFrom) { out.push(line); continue; }
       blockFrom = -1;
     }
-    const header = stripYamlComment(line).match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+    const header = yamlBlockHeader(line);
     if (header) { blockFrom = header[1].length; out.push(line); continue; }
     // `key: [`, `- key: {` (the key plain or quoted), or `- [` / `- {`: where a flow collection starts, and the text before it
     const lead = line.match(/^ *(?:- +)*/)[0];
@@ -3668,7 +3706,7 @@ function yamlQuotingVotes(original) {
       if (line.trim() === '' || yamlIndentOf(line) > blockFrom) continue;
       blockFrom = -1;
     }
-    const header = stripYamlComment(line).match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+    const header = yamlBlockHeader(line);
     if (header) { blockFrom = header[1].length; continue; }
     const read = readYamlScalarLine(line);
     if (read !== null && read.plainable) votes.push({ key: read.key, quote: read.quote });
@@ -3807,8 +3845,16 @@ function locateEmittedLines(original, before) {
       const candidate = original[j];
       if (wordsOf(candidate) === '' ) continue; // a comment or a blank line
       if (indentOf(candidate) === indentOf(line)) {
+        const keylessBlock = yamlKeylessBlockHeader(candidate); // `- |`: the emitter writes it `- "one\ntwo\n"` (#154)
         if (wordsOf(candidate) === wordsOf(line) || yamlEmittedWordsOf(original, j) === wordsOf(line)) found = j;
-        else {
+        else if (keylessBlock !== null && yamlKeylessBlockIsLine(original, j, keylessBlock, line)) {
+          found = j;
+          for (let k = j + 1; k < original.length; k++) {
+            if (original[k].trim() === '') continue;
+            if (indentOf(original[k]) <= keylessBlock) break;
+            span = k - j;
+          }
+        } else {
           // a text over several lines is a block (| or >) in the file and a quoted string on one line for the emitter
           const key = line.slice(0, line.indexOf(': ') + 1);
           const header = stripYamlComment(candidate).replace(/["']/g, '').trim();
@@ -4054,7 +4100,7 @@ function patchYamlLines(oldText, emitted, newValue, styled, itemMarks) {
   steps.forEach((step, i) => {
     if (step.drop !== undefined) {
       const line = original[place[step.drop]];
-      going.push({ i, step, line, id: identityOf(line) });
+      going.push({ i, step, line, id: identityOf(yamlKeylessBlockHeader(line) === null ? line : before[step.drop]) }); // `- |` is the value the emitter writes on its line (#154)
     } else if (step.add !== undefined) coming.push({ i, step, id: identityOf(step.add) });
   });
   const goneIds = new Set(going.map((g) => g.id));
@@ -4143,6 +4189,63 @@ function patchYamlLines(oldText, emitted, newValue, styled, itemMarks) {
     from = to - 1;
   }
 
+  // a block scalar (`note: |`) whose key goes to another line (the key before it was removed or one was added in front, so it takes the dash line of its item, or gives it up) comes back as a
+  // block scalar, not as the quoted text the emitter writes: the header and the text of the original, moved to the column of the new key (wave 022, run 0162, #155 L2). Only when the text
+  // read from the block is the one the emitter's line says, and only in the pass that follows the quotes of the file (`styled`): the pass without it writes what the emitter wrote
+  if (styled) {
+    for (let from = 0; from < steps.length; from++) {
+      if (steps[from].keep !== undefined) continue;
+      let to = from;
+      while (to < steps.length && steps[to].keep === undefined) to++;
+      const hunk = steps.slice(from, to);
+      for (const step of hunk) {
+        if (step.add === undefined || step.addLines !== undefined) continue;
+        const lead = step.add.match(/^ *(?:- +)*/)[0];
+        const found = scanYamlKey(step.add, lead.length, 0);
+        if (found === null) continue;
+        const quoted = /^: ("(?:[^"\\]|\\.)*")$/.exec(step.add.slice(found.end - 1));
+        if (quoted === null) continue;
+        let text;
+        try {
+          text = JSON.parse(quoted[1]);
+        } catch (e) {
+          continue;
+        }
+        if (typeof text !== 'string' || text.indexOf('\n') === -1) continue;
+        const goes = hunk.find((g) => {
+          if (g.drop === undefined || g.blockTaken || spans[g.drop] === 0) return false;
+          const line = original[place[g.drop]];
+          const head = yamlBlockHeader(line);
+          if (head === null || yamlKeylessBlockHeader(line) !== null) return false;
+          const oldLead = line.match(/^ *(?:- +)*/)[0];
+          const oldKey = scanYamlKey(line, oldLead.length, 0);
+          if (oldKey === null || oldKey.key !== found.key) return false;
+          const body = original.slice(place[g.drop] + 1, place[g.drop] + 1 + spans[g.drop]);
+          try {
+            const read = parseYaml(line.slice(oldLead.length) + '\n' + body.map((l) => shiftYamlLine(l, -oldLead.length)).join('\n'));
+            return read !== null && typeof read === 'object' && read[found.key] === text;
+          } catch (e) {
+            return false;
+          }
+        });
+        if (goes === undefined) continue;
+        const line = original[place[goes.drop]];
+        const oldLead = line.match(/^ *(?:- +)*/)[0];
+        goes.blockTaken = true;
+        step.add = lead + line.slice(oldLead.length);
+        step.addLines = original.slice(place[goes.drop] + 1, place[goes.drop] + 1 + spans[goes.drop]).map((l) => shiftYamlLine(l, lead.length - oldLead.length));
+        styled.lines++;
+        const wasAt = steps.indexOf(step);
+        const goesAt = steps.indexOf(goes);
+        if (goesAt > wasAt && steps.slice(wasAt + 1, goesAt + 1).every((other) => other.drop !== undefined)) {
+          steps.splice(wasAt, 1);
+          steps.splice(goesAt, 0, step); // the comments above the key that went stay above the block, which is written after the lines that go with it
+        }
+      }
+      from = to - 1;
+    }
+  }
+
   // the original lines, the ones that sit between two lines of the value (comments, blank lines) with the line before them
   const out = [];
   const stray = new Set(); // the lines of `out` that are comments and blank lines left behind by a line that goes
@@ -4156,7 +4259,10 @@ function patchYamlLines(oldText, emitted, newValue, styled, itemMarks) {
       // the comments above a dropped line are not its own: they stay, the line goes
       while (next < place[step.drop]) { stray.add(out.length); out.push(original[next++]); }
       next = place[step.drop] + 1 + spans[step.drop];
-    } else out.push(step.add);
+    } else {
+      out.push(step.add);
+      if (step.addLines !== undefined) out.push(...step.addLines);
+    }
   }
   while (next < original.length) out.push(original[next++]); // what follows the last line of the value: a trailing comment, a blank line
   keepStrayCommentsOutOfBlockScalars(out, stray);
@@ -4179,7 +4285,7 @@ function keepStrayCommentsOutOfBlockScalars(out, stray) {
       }
       blockFrom = -1;
     }
-    const header = stripYamlComment(line).match(/^( *(?:- +)*)(?:[^\s].*?)?:\s+[|>][-+0-9]*\s*$/);
+    const header = yamlBlockHeader(line);
     if (header) blockFrom = header[1].length;
   }
 }
