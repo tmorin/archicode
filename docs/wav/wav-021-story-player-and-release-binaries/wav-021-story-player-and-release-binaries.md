@@ -131,7 +131,7 @@ wave_manifest:
       slug: binaries-on-the-release-page
       phase: P1
       depends_on: [W-4]
-      run: null
+      run: 0156
       delegation: hard_judgment
       delegation_reason: 'builds the job that publishes to the public release page: a live capability that only a real workflow run proves, and a public side effect'
       likely_paths:
