@@ -34,6 +34,12 @@ jobs:
     # snapshot (a dispatch from a tag, the website).
     if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: "ubuntu-latest"
+    # What the steps below write, and nothing else: the website goes to the gh-pages branch (contents), the Maven
+    # artifacts to GitHub Packages and the image to ghcr.io (packages). Without this block the token has all the scopes
+    # the repository default gives (write-all). Pull requests from forks get a read-only token whatever is asked here.
+    permissions:
+      contents: write
+      packages: write
     steps:
       - uses: "actions/checkout@v7"
         with:
