@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 021
-status: proposed
+status: completed
 date: 2026-10-23
 related:
   - docs/wav/wav-020-reading-a-story-and-name-fixes/wav-020-reading-a-story-and-name-fixes.md
