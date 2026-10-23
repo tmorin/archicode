@@ -359,6 +359,30 @@ test('Escape and Edit leave a mode that was entered from the Stories page: the d
   assert.ok(['map', 'environments', 'elements'].includes(run(sandbox, 'currentPerspective')));
 });
 
+test('the step on screen is said through a live region outside the page that is replaced, and only when it changes', async () => {
+  const { sandbox } = await open(shippedFiles(LAYERED), 'layered');
+  const region = { textContent: '' };
+  const original = sandbox.document.getElementById;
+  const say = () => run(sandbox, 'announceReadingStep()'); // what render() does right after it draws the page (the harness's render stops short of it)
+  sandbox.document.getElementById = (id) => (id === 'reading-announcer' ? region : original.call(sandbox.document, id));
+  sandbox.goToStoryStep('order_journey', 2);
+  say();
+  assert.equal(region.textContent, '', 'the editing layout says nothing');
+  sandbox.enterReadingMode('order_journey');
+  say();
+  assert.match(region.textContent, /^Step 3 of \d+/);
+  const said = region.textContent;
+  say();
+  assert.equal(region.textContent, said, 'a redraw of the same step does not say it again');
+  choose(sandbox, 'order_journey', 0);
+  say();
+  assert.match(region.textContent, /^Step 1 of \d+/);
+  assert.ok(!sandbox.renderReadingShellHtml().includes('aria-live'), 'no live region inside the part that is replaced');
+  press(sandbox, 'Escape');
+  say();
+  assert.equal(region.textContent, '', 'leaving the mode empties it');
+});
+
 // ---- 5. the address ----
 
 test('the mode is in the address as read=1 beside story= and step=, and only while a story is on a step', async () => {
@@ -510,6 +534,14 @@ test('the keys do nothing while a control that owns them has the focus, a dialog
     quiet('End', { focus: el }, name + ' focused, End');
     quiet('Escape', { focus: el }, name + ' focused, Escape');
   }
+  // the list of the steps is where the focus lands: its arrows and Home/End are its own (they choose a step), Escape is the one key it does not use, so Escape leaves from it
+  const menu = { tagName: 'SELECT', closest: (selector) => (selector.includes('select') ? menu : null), matches: (selector) => selector === '[data-story-step-menu]' };
+  quiet('ArrowRight', { focus: menu, event: { target: menu } }, 'the step menu, ArrowRight');
+  quiet('Home', { focus: menu, event: { target: menu } }, 'the step menu, Home');
+  const left = press(sandbox, 'Escape', { focus: menu, event: { target: menu } });
+  assert.equal(left.prevented, true, 'Escape on the step menu leaves');
+  assert.ok(!reading(sandbox), 'the mode is off');
+  sandbox.enterReadingMode('order_journey', 1);
   // modifiers
   for (const modifier of ['ctrlKey', 'metaKey', 'altKey', 'shiftKey']) {
     for (const key of ['ArrowRight', 'ArrowLeft', 'Home', 'End', 'Escape']) quiet(key, { event: { [modifier]: true } }, modifier + ' ' + key);
