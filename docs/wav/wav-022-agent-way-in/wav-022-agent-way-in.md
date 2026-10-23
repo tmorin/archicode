@@ -185,7 +185,7 @@ wave_manifest:
       slug: save-block-scalar-in-list
       phase: P2
       depends_on: []
-      run: null
+      run: 0162
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'
@@ -196,7 +196,7 @@ wave_manifest:
       slug: manual-and-notes-022
       phase: P2
       depends_on: [W-4, W-5]
-      run: null
+      run: 0163
       delegation: standard
       likely_paths:
         - 'src/doc/**'
@@ -227,8 +227,8 @@ wave_manifest:
 
 | # | Run | Slug | Depends on | Focus | Scope | Exit evidence |
 |---|-----|------|------------|-------|-------|---------------|
-| W-5 | — | `save-block-scalar-in-list` | — | #154 and #155 L2 | T8: `locateEmittedLines` and the header test that three functions share want a key before `: \|`; the key that takes the dash line of an item map keeps a block scalar after it; the generator gains the two shapes; the pinned limits of the two become passing tests | the first criterion of P2; closes #154 and, with L3 and L4 left, the rewrite of #155 is proposed to the author |
-| W-6 | — | `manual-and-notes-022` | W-4, W-5 | the manual and `CLAUDE.md` | the three commands under the commands reference (and the section on schemas, with what the schema cannot say), the upgrade block `[[upgrade-0-19]]` (a reader who knows 0.19.0), the save's limits, the notes of `CLAUDE.md`, the open issues | the last three criteria of P2 |
+| W-5 | 0162 | `save-block-scalar-in-list` | — | #154 and #155 L2 | T8: `locateEmittedLines` and the header test that three functions share want a key before `: \|`; the key that takes the dash line of an item map keeps a block scalar after it; the generator gains the two shapes; the pinned limits of the two become passing tests | the first criterion of P2; closes #154 and, with L3 and L4 left, the rewrite of #155 is proposed to the author |
+| W-6 | 0163 | `manual-and-notes-022` | W-4, W-5 | the manual and `CLAUDE.md` | the three commands under the commands reference (and the section on schemas, with what the schema cannot say), the upgrade block `[[upgrade-0-19]]` (a reader who knows 0.19.0), the save's limits, the notes of `CLAUDE.md`, the open issues | the last three criteria of P2 |
 
 **Gate:** the four criteria of P2 in the manifest.
 
