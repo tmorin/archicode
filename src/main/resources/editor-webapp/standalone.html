@@ -634,18 +634,7 @@
      wraps to a line of its own and the bar does not scroll sideways. A step that cannot be shown is told in the text of its entry. */
   .story-step-menu { flex: 0 1 18rem; min-width: 0; max-width: 100%; box-sizing: border-box; text-overflow: ellipsis; }
   .story-bar-actions button { padding: 0.2rem 0.7rem !important; }
-  /* The reading mode (wave 020, run 0150, #142): the diagram, the words of the step, the menu of the steps and Previous / Next, full screen, with nothing that edits. The shell is as high as the window
-     (the diagram takes what the bar leaves) and never wider: the line of the bar wraps, the menu shrinks (as the one of the bar does), the words scroll, and nothing goes past the right edge at 360 px. */
-  .reading-shell { height: 100vh; height: 100dvh; display: flex; flex-direction: column; min-width: 0; max-width: 100vw; overflow: hidden; background: var(--bg); color: var(--fg); }
-  .reading-shell .reading-center { flex: 1 1 0; min-height: 0; min-width: 0; }
-  .reading-shell .reading-view { min-width: 0; }
-  .reading-announcer { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .reading-bar { max-height: 45vh; overflow-y: auto; min-width: 0; }
-  .reading-title { font-size: 1.1rem; overflow-wrap: anywhere; min-width: 0; }
-  .reading-step-menu { flex: 0 1 22rem; min-width: 0; max-width: 100%; box-sizing: border-box; text-overflow: ellipsis; }
-  .reading-words { font-size: 1.05rem; line-height: 1.5; max-height: 30vh; overflow-wrap: anywhere; }
-  .reading-bar .story-step-problem { overflow-wrap: anywhere; }
-  .reading-bar .story-bar-plateaus { overflow-wrap: anywhere; min-width: 0; }
+  .story-announcer { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .story-bar-text { width: 100%; box-sizing: border-box; margin-top: 0.4rem; resize: vertical; }
   .button-group { display: inline-flex; }
   .button-group button { border-radius: 0 !important; }
@@ -964,8 +953,8 @@
 </head>
 <body>
 <div id="app"></div>
-<!-- the announcements of the reading mode: outside #app, which render() replaces, so that a screen reader sees a text change and not a new node -->
-<div id="reading-announcer" class="reading-announcer" role="status" aria-live="polite"></div>
+<!-- the announcements of the story player: outside #app, which render() replaces, so that a screen reader sees a text change and not a new node -->
+<div id="story-announcer" class="story-announcer" role="status" aria-live="polite"></div>
 
 <!--
   CodeMirror, for the raw-YAML file editor (form UX review follow-up — "un
@@ -5011,8 +5000,8 @@ function rememberFlag(name, value) {
 }
 
 /** The plateau the one drawn is compared with (a plateau of the page), or null: nothing is compared, or the band still waits for the choice of the future. */
-function compareTargetPlateau() {
-  return layerCompareOther();
+function compareTargetPlateau(layers) {
+  return layerCompareOther(layers);
 }
 
 function parseSettings(rawSettings) {
@@ -6193,16 +6182,18 @@ function normalizedLayerCompare(layers) {
   return { mode: 'other', other: c.other, chosen: true };
 }
 
-/** The plateau compared with, as a plateau of the page, or null (nothing compared, or the band still waits for the choice of the future). */
-function layerCompareOther() {
-  const layers = AppState.layers;
+/**
+ * The plateau compared with, as a plateau of the page, or null (nothing compared, or the band still waits for the choice of the future). `layers`: the band's state it is read in, the
+ * editor's (`AppState.layers`) unless a scene of the story player asks for the one of a step (`drawingOfPlateaus`).
+ */
+function layerCompareOther(layers = AppState.layers) {
   if (!layers || !layers.compare || !layers.compare.other || layers.compare.other === layers.current || !AppState.plateauTree.nodes.has(layers.compare.other)) return null;
   return layerPlateauModel(layers.compare.other);
 }
 
-/** The comparison is with the future: the plateau drawn is the base and the other one the target. */
-function layerCompareIsFuture() {
-  return !!(AppState.layers && AppState.layers.compare && AppState.layers.compare.mode === 'future' && layerCompareOther());
+/** The comparison is with the future: the plateau drawn is the base and the other one the target. `layers` as for `layerCompareOther`. */
+function layerCompareIsFuture(layers = AppState.layers) {
+  return !!(layers && layers.compare && layers.compare.mode === 'future' && layerCompareOther(layers));
 }
 
 /**
@@ -8699,7 +8690,6 @@ async function loadWorkspace(dirHandle) {
   };
   await openLayers(settings, plateauTree);
   applySelectionFromHashRef(); // a bookmarked/shared "?ref=..." lands directly there; otherwise the DEC-9 default empty selection
-  drawStepOfReadingAddress();
   render();
   await noteWorkspaceName(); // the list of folders says it, and so does the next "Opening" of this folder (TDD-0020 DEC-4)
 }
@@ -9094,7 +9084,6 @@ function resetUiState() {
   storyBarNotice = null;
   removedStep = null;
   activeStory = null;
-  readingMode = false;
   selectedStoryId = null;
   selectedViewId = null;
   libraryTab = 'stories';
@@ -9294,12 +9283,11 @@ function refFromHash() {
  */
 function applyDiagramParamsFromHash() {
   const id = pageIdFromHash();
-  if (id !== 'elements' && id !== 'map' && id !== 'environments' && id !== 'library') { readingMode = false; return; } // the mode is read on the pages that draw the story only
+  if (id !== 'elements' && id !== 'map' && id !== 'environments' && id !== 'library') return;
   const queryIdx = location.hash.indexOf('?');
   const params = new URLSearchParams(queryIdx === -1 ? '' : location.hash.slice(queryIdx + 1));
   const storyParam = params.get('story');
   if (id === 'library') {
-    readingMode = false;
     libraryTab = libraryTabFromHash();
     selectedStoryId = storyParam && findStory(storyParam) ? storyParam : null;
     const viewParam = params.get('view');
@@ -9310,8 +9298,6 @@ function applyDiagramParamsFromHash() {
   const storyOfUrl = storyParam ? findStory(storyParam) : null;
   const stepOfUrl = Number(params.get('step'));
   activeStory = storyOfUrl && Number.isInteger(stepOfUrl) && stepOfUrl >= 0 && stepOfUrl < storySteps(storyOfUrl).length ? { id: storyParam, step: stepOfUrl } : null;
-  // `read=1` opens the reading mode on the step the address names; with no story, an unknown story or a step that is not one, the mode stays off (and the page writes its own address back)
-  readingMode = params.get('read') === '1' && activeStory !== null;
   if (id === 'elements') {
     const tab = params.get('tab');
     elementTab = tab && Object.prototype.hasOwnProperty.call(ELEMENT_TABS, tab) ? tab : 'details';
@@ -9439,7 +9425,6 @@ function syncPerspectiveFromHash() {
   if (AppState.workspace) {
     drawLayersNamedByAddress(); // before the selection: an element may exist in the plateau the address names only
     applySelectionFromHashRef();
-    drawStepOfReadingAddress();
   }
 }
 
@@ -9512,7 +9497,6 @@ function currentRouteHash() {
   }
   if ((currentPerspective === 'elements' || mapIsShown()) && activeStory) {
     params.push('story=' + encodeURIComponent(activeStory.id), 'step=' + activeStory.step);
-    if (readingModeOn()) params.push('read=1'); // the mode travels with the step it reads (wave 020, run 0150, T6)
   }
   const link = linkInRoute();
   if (link) params.push('link-from=' + encodeURIComponent(link.from), 'link-to=' + encodeURIComponent(link.to));
@@ -9690,6 +9674,24 @@ function layerOfReference(reference, layer) {
   if (has('application')) return 'application';
   if (has('technology')) return 'technology';
   return null;
+}
+
+/**
+ * The layer a reference lives in, in a model that is not the editor's (the `index` of a step of the story player): the layer asked for when it has the reference, else the
+ * application one, else the technology one, else null. `layerOfReference` without the selection, which belongs to the editor.
+ */
+function layerOfReferenceIn(index, reference, layer) {
+  const has = (candidate) => !!index && !!index[candidate] && index[candidate].has(reference);
+  if (layer && has(layer)) return layer;
+  if (has('application')) return 'application';
+  if (has('technology')) return 'technology';
+  return null;
+}
+
+/** The record of a reference in the model `index` of a step of the story player (`layerOfReferenceIn` picks the layer); null when it has none. */
+function recordIn(index, reference, layer) {
+  const resolved = layerOfReferenceIn(index, reference, layer);
+  return resolved ? index[resolved].get(reference) : null;
 }
 
 /** Whether both layers have an element with this reference (then a link to it needs to say which one). */
@@ -14288,7 +14290,6 @@ function walkChange(direction, options) {
  * diagram. The list may be one tab away (the Selected or View tab is showing): the walk brings the Changes tab back, as a button of the list would have been used.
  */
 function changesListIsOnPage() {
-  if (readingModeOn()) return false; // the reading mode has no list, and selects nothing (wave 020, run 0150)
   const state = comparisonState();
   if (!state || state.problems || state.pending || !state.changes) return false;
   if (currentPerspective === 'plateaus') return true;
@@ -15104,7 +15105,7 @@ function reconcileLinkSelection() {
 function markLinkSelection() {
   const canvas = document.getElementById('diagram-canvas');
   if (!canvas) return;
-  const sel = readingModeOn() ? NO_SELECTION : diagramSelection(); // nothing is selected in the reading mode
+  const sel = diagramSelection();
   canvas.querySelectorAll('.dg-link, .dg-label').forEach((el) => {
     const selected = sel.kind === 'link' && el.getAttribute('data-from') === sel.from && el.getAttribute('data-to') === sel.to;
     el.classList.toggle('dg-link-selected', selected);
@@ -15695,25 +15696,26 @@ function toKernelElements(map, withProperties) {
 // ---- The comparison of two plateaus (run 0039) ----
 
 /** The plateau drawn, as a plateau of the page: the one of the band. */
-function drawnPlateau() {
-  return layerPlateauModel(AppState.layers.current);
+function drawnPlateau(layers = AppState.layers) {
+  return layerPlateauModel(layers.current);
 }
 
 /** The cascade of the REMOVE patches of the target of the comparison on screen, among what the base has (see `cascadeOf`): what the command line lists after the table of changes. */
-function layeredCascadeNow(future) {
-  const targetId = future ? AppState.layers.compare.other : AppState.layers.current;
-  return cascadeOf(layerModelOf(targetId, AppState.workspace.settings).removals, future ? AppState.index : AppState.baseline.index);
+function layeredCascadeNow(future, drawing = editorDrawing()) {
+  const targetId = future ? drawing.layers.compare.other : drawing.layers.current;
+  return cascadeOf(layerModelOf(targetId, AppState.workspace.settings).removals, future ? drawing.index : drawing.baseline.index);
 }
 
 /**
  * The input of the kernel's `compare`: both layers of the two plateaus, with the properties a comparison reads (kind, name, description). The plateau drawn is the
  * target and the plateau compared with the base, except with the future (the layers): there the plateau drawn is the base.
  */
-function comparisonInput() {
-  const future = layerCompareIsFuture();
-  const onOneChain = plateausOnOneChain(AppState.layers.current, AppState.layers.compare.other);
-  const [baseId, targetId] = future ? [AppState.layers.current, AppState.layers.compare.other] : [AppState.layers.compare.other, AppState.layers.current];
-  return comparisonInputBetween(future ? AppState.index : AppState.baseline.index, future ? AppState.baseline.index : AppState.index, onOneChain, replacesChainBetween(baseId, targetId));
+function comparisonInput(drawing = editorDrawing()) {
+  const { layers } = drawing;
+  const future = layerCompareIsFuture(layers);
+  const onOneChain = plateausOnOneChain(layers.current, layers.compare.other);
+  const [baseId, targetId] = future ? [layers.current, layers.compare.other] : [layers.compare.other, layers.current];
+  return comparisonInputBetween(future ? drawing.index : drawing.baseline.index, future ? drawing.baseline.index : drawing.index, onOneChain, replacesChainBetween(baseId, targetId));
 }
 
 /**
@@ -15841,32 +15843,60 @@ function setWordingAside(value) {
  * `contains_changes` when the kernel says that the box did not change and holds a change (`comparisonStateOfElement`).
  */
 function comparisonState() {
-  const target = compareTargetPlateau();
-  if (!target || !AppState.baseline || !AppState.baseline.plateau || AppState.baseline.plateau.id !== target.id) return null;
-  if (AppState.layerUndrawable) return { problems: ['The plateau “' + plateauTitle(drawnPlateau()) + '” cannot be drawn, so there is nothing to compare:'].concat(AppState.layerProblems || []) };
-  if (AppState.baseline.undrawable) return { problems: ['The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, cannot be drawn:'].concat(AppState.baseline.problem.split('\n')) };
+  return comparisonStateOf(editorDrawing(), editorComparisonMemo);
+}
+
+/**
+ * What the editor draws, as the data `comparisonStateOf` and the scene of a story read: the band's layers (the plateau drawn and the comparison), the model of the plateau drawn,
+ * the plateau compared with (`AppState.baseline`), whether the plateau drawn can be drawn at all, the sentences of its mistakes, and the two toggles of the diagram.
+ */
+function editorDrawing() {
+  return { layers: AppState.layers, index: AppState.index, baseline: AppState.baseline, undrawable: AppState.layerUndrawable, problems: AppState.layerProblems, hideWording: AppState.hideWording, changesOnly: AppState.changesOnly };
+}
+
+/** Where the editor keeps the answer of the kernel's `compare` for the two models on screen (`comparisonCache`, valid while `modelVersion` and the two indexes are what they were). */
+const editorComparisonMemo = {
+  find(drawing, future) {
+    const kept = comparisonCache;
+    return kept && kept.version === modelVersion && kept.index === drawing.index && kept.baselineIndex === drawing.baseline.index && kept.future === future ? kept.value : null;
+  },
+  keep(drawing, future, value) {
+    comparisonCache = { version: modelVersion, index: drawing.index, baselineIndex: drawing.baseline.index, future, value };
+  }
+};
+
+/**
+ * The comparison of a drawing (`editorDrawing()`, or the one of a step of a story, `drawingOfPlateaus`), as `comparisonState` says it. `memo` keeps the answer of the kernel for
+ * a pair of models (`find`, `keep`): the editor's is `editorComparisonMemo`, and nothing here writes to `AppState`.
+ */
+function comparisonStateOf(drawing, memo) {
+  const target = compareTargetPlateau(drawing.layers);
+  if (!target || !drawing.baseline || !drawing.baseline.plateau || drawing.baseline.plateau.id !== target.id) return null;
+  if (drawing.undrawable) return { problems: ['The plateau “' + plateauTitle(drawnPlateau(drawing.layers)) + '” cannot be drawn, so there is nothing to compare:'].concat(drawing.problems || []) };
+  if (drawing.baseline.undrawable) return { problems: ['The plateau “' + plateauTitle(target) + '”, which the drawing is compared with, cannot be drawn:'].concat(drawing.baseline.problem.split('\n')) };
   if (!loadedKernel) return { pending: true };
   // run 0045: the answer is kept while the version of the models is the one it was computed at (the two models themselves are compared too, a net
   // under a replacement that forgot `modelsChanged()`): a plain render serialises nothing and builds no input
-  const future = layerCompareIsFuture();
-  if (!comparisonCache || comparisonCache.version !== modelVersion || comparisonCache.index !== AppState.index || comparisonCache.baselineIndex !== AppState.baseline.index || comparisonCache.future !== future) {
-    const answer = loadedKernel.compare(comparisonInput());
-    comparisonCache = { version: modelVersion, index: AppState.index, baselineIndex: AppState.baseline.index, future, value: answer.error ? { error: answer.error } : Object.assign({ answer, cascade: layeredCascadeNow(future) }, unionLayersOf(answer)) };
+  const future = layerCompareIsFuture(drawing.layers);
+  let value = memo.find(drawing, future);
+  if (!value) {
+    const answer = loadedKernel.compare(comparisonInput(drawing));
+    value = answer.error ? { error: answer.error } : Object.assign({ answer, cascade: layeredCascadeNow(future, drawing) }, unionLayersOf(answer));
+    memo.keep(drawing, future, value);
   }
-  const value = comparisonCache.value;
   if (value.error) return { problems: ['The comparison with “' + plateauTitle(target) + '” could not be made: ' + value.error] };
   if (!value.shown) {
     const full = { layers: value.layers, records: value.records, counts: value.answer.counts, changes: value.answer.changes, wordingHidden: 0 };
     value.shown = { full: Object.assign(full, { wordingOnly: value.answer.counts.elements.wording_only }) };
   }
-  if (AppState.hideWording && !value.shown.quiet) {
+  if (drawing.hideWording && !value.shown.quiet) {
     const quiet = setWordingAside(value);
     value.shown.quiet = Object.assign(quiet, { wordingOnly: value.answer.counts.elements.wording_only });
   }
   // wave 009: the pairs the kernel proposes as one thing said twice (never applied) and what it ignored in the `replaces` it was given; neither depends on the wording toggle
   // `full`: the answer with every change in it, whatever the wording toggle says (what the hand-written state words are compared with, see `stateWordHintsOf`)
-  const drawn = drawnPlateau();
-  return Object.assign({ base: future ? drawn : AppState.baseline.plateau, target: future ? AppState.baseline.plateau : drawn, future, cascade: value.cascade, candidates: value.answer.candidates || [], warnings: value.answer.warnings || [], full: value.shown.full }, value.shown[AppState.hideWording ? 'quiet' : 'full']);
+  const drawn = drawnPlateau(drawing.layers);
+  return Object.assign({ base: future ? drawn : drawing.baseline.plateau, target: future ? drawing.baseline.plateau : drawn, future, cascade: value.cascade, candidates: value.answer.candidates || [], warnings: value.answer.warnings || [], full: value.shown.full }, value.shown[drawing.hideWording ? 'quiet' : 'full']);
 }
 
 /** Whether the references of the union (the elements of both plateaus) include this one in a layer: the map can open a removed box. */
@@ -15891,18 +15921,22 @@ function toKernelFacet(facet) {
  *   a map has no element to decide: its layer is this one, else the application one;
  * options.facet — a facet of the settings: the diagram is then the one the CLI generates for that facet;
  * options.collapsed — ids of the diagram boxes that are folded;
- * options.expanded — ids of the diagram boxes that are opened (overview and detailed only).
+ * options.expanded — ids of the diagram boxes that are opened (overview and detailed only);
+ * options.source — what the input is made from when it is not the editor's drawing (a step of the story player, `storyStepScene`): `{ index, comparison, changesOnly }`, read and never
+ *   written. Absent, the model on screen, its comparison and its toggles, as ever.
  */
 function buildKernelInput(viewpoint, reference, options) {
   const opts = options || {};
+  const source = opts.source || null;
+  const index = source ? source.index : AppState.index;
   const isMap = viewpoint === 'map';
-  const layer = isMap ? (opts.layer === 'technology' ? 'technology' : 'application') : (opts.layer || layerOfReference(reference) || 'technology'); // no layer asked: the selected element's own, else the application one
-  const main = toKernelElements(AppState.index[layer], !!opts.facet);
+  const layer = isMap ? (opts.layer === 'technology' ? 'technology' : 'application') : (opts.layer || (source ? layerOfReferenceIn(index, reference) : layerOfReference(reference)) || 'technology'); // no layer asked: the selected element's own, else the application one
+  const main = toKernelElements(index[layer], !!opts.facet);
   // the applications deployed on the nodes are what the viewpoints of an element draw inside a node (and derive links from), and the Map of the technology layer draws them too
   // (issue #107): the Map of the application layer needs no other layer
-  const apps = layer === 'technology' ? toKernelElements(AppState.index.application, !!opts.facet) : { elements: [], dangling: 0 };
+  const apps = layer === 'technology' ? toKernelElements(index.application, !!opts.facet) : { elements: [], dangling: 0 };
   // run 0039: with a comparison on, the kernel draws the union of the two plateaus (each element and relationship says what changed); `dangling` is still the plateau drawn's own
-  const comparison = comparisonState();
+  const comparison = source ? source.comparison : comparisonState();
   if (comparison && comparison.layers) {
     main.elements = comparison.layers[layer];
     if (layer === 'technology') apps.elements = comparison.layers.application;
@@ -15924,7 +15958,7 @@ function buildKernelInput(viewpoint, reference, options) {
   }
   if (opts.facet) input.facet = toKernelFacet(opts.facet);
   // run 0040: Changes only, for every host (the Map, the diagrams of Elements, the page of a view): the kernel keeps what changed and, as context, what places it
-  if (comparison && comparison.layers && AppState.changesOnly) input.only_changes = true;
+  if (comparison && comparison.layers && (source ? source.changesOnly : AppState.changesOnly)) input.only_changes = true;
   const collapsed = Array.from(opts.collapsed || []); // a Set in the UI, an array in tests
   if (collapsed.length) input.collapsed = collapsed;
   const expanded = Array.from(opts.expanded || []);
@@ -16457,7 +16491,7 @@ function stereotypeBadgesHtml(names) {
 }
 
 /** What a diagram box says about its element. `show` (qualifiers) puts the qualifiers of the element in the line of its kind, as the command line does. */
-function diagramItemText(item, show, layer, focalReference) {
+function diagramItemText(item, show, layer, focalReference, source) {
   if (item.ghost) {
     return {
       title: item.reference,
@@ -16474,6 +16508,7 @@ function diagramItemText(item, show, layer, focalReference) {
   // a removed element is not in the plateau drawn: the comparison told what it was (`tellRemovedItems`)
   const record = item.removed
     ? { id: item.removed.id, name: item.removed.name, kind: item.removed.kind, description: item.removed.description, qualifiers: item.removed.qualifiers }
+    : source ? recordIn(source.index, item.reference, layer ? (item.id === item.reference ? layer : 'application') : undefined)
     : findElementRecord(item.reference, layer ? (item.id === item.reference ? layer : 'application') : undefined);
   const hidden = item.collapsed ? ' · ' + item.hidden + ' hidden' : '';
   const qualifiers = record && Array.isArray(record.qualifiers) ? record.qualifiers.filter((q) => typeof q === 'string' && q) : [];
@@ -16488,7 +16523,7 @@ function diagramItemText(item, show, layer, focalReference) {
   const look = stereotypeLookOf(stereotypes, state);
   const name = record ? (record.name || record.id) : item.reference;
   // with the future the plateau drawn is the base: the plateau compared with is the next one, and what a moved, split or merged box replaces is in the plateau drawn
-  const future = layerCompareIsFuture();
+  const future = source ? !!(source.comparison && source.comparison.future) : layerCompareIsFuture();
   const withThat = future ? 'the plateau that overrides the one drawn' : 'the plateau it is compared with';
   const ofBase = future ? 'the plateau drawn' : 'the plateau it is compared with';
   const says = state === null ? '' : '\n' + CHANGE_WORDS[state].word.charAt(0).toUpperCase() + CHANGE_WORDS[state].word.slice(1) + ': ' + (
@@ -16541,7 +16576,12 @@ function diagramTitleHtml(line, text) {
  * union and a click shows what the other plateau says of it, read-only. With the past these are the removed elements; with the future (the plateau drawn is the base)
  * they are the ones the plateau compared with adds, whatever their state (new, or the new place of a moved, split or merged one).
  */
-function elementIsOnlyInTheOtherPlateau(layer, reference, change) {
+function elementIsOnlyInTheOtherPlateau(layer, reference, change, source) {
+  if (source) {
+    if (!(source.comparison && source.comparison.future)) return change === 'removed';
+    const other = source.baselineIndex;
+    return !!other && !!other[layer] && other[layer].has(String(reference)) && !(source.index[layer] && source.index[layer].has(String(reference)));
+  }
   if (!layerCompareIsFuture()) return change === 'removed';
   return !!AppState.baseline && AppState.baseline.index[layer] && AppState.baseline.index[layer].has(String(reference)) && !(AppState.index[layer] && AppState.index[layer].has(String(reference)));
 }
@@ -16561,10 +16601,10 @@ function targetSideIndex() {
  * Wave 009: the answer of `compute` does not say what a box replaces, the union does. A moved, split or merged box is told what it replaces
  * (`item.replaces`), and a removed box that is only the place of what was replaced is told what replaced it (`item.replacedBy`), for the title.
  */
-function tellRemovedItems(result, comparison, layer) {
+function tellRemovedItems(result, comparison, layer, source) {
   for (const item of result.items) {
     const itemLayer = item.id === item.reference ? layer : 'application';
-    const onlyThere = elementIsOnlyInTheOtherPlateau(itemLayer, item.reference, item.change);
+    const onlyThere = elementIsOnlyInTheOtherPlateau(itemLayer, item.reference, item.change, source);
     if (item.change !== 'removed' && !IDENTITY_STATES.includes(item.change) && !onlyThere) continue;
     const element = comparison.records.get(itemLayer + '|' + item.reference);
     if (!element) continue;
@@ -16782,8 +16822,8 @@ function diagramLinkMark(link) {
 }
 
 /** What a link stands for, for its tooltip: each declared relationship, and a note when it groups several. */
-function diagramLinkTitle(link, itemById, layer) {
-  const name = (id) => { const item = itemById.get(id); return item ? diagramItemText(item, undefined, layer).name : id; };
+function diagramLinkTitle(link, itemById, layer, source) {
+  const name = (id) => { const item = itemById.get(id); return item ? diagramItemText(item, undefined, layer, undefined, source).name : id; };
   const caption = diagramLinkText(link);
   const lines = [name(link.from) + ' → ' + name(link.to) + (caption ? ' : ' + caption : '')];
   if (diagramLinkMark(link)) lines.push(CHANGE_GLYPHS[link.change] + ' ' + CHANGE_WORDS[link.change].word + (link.synthetic ? ' (as a group: see the relationships below)' : ''));
@@ -16802,8 +16842,8 @@ function diagramLinkTitle(link, itemById, layer) {
  * The relationships of the elements the view is about that point at nothing: each becomes a dashed red "unknown
  * element" box next to its owner, so it can be seen and fixed instead of silently missing. The kernel never sees them.
  */
-function buildDiagramGhosts(result, focalReference, layer) {
-  const map = AppState.index[layer];
+function buildDiagramGhosts(result, focalReference, layer, source) {
+  const map = (source ? source.index : AppState.index)[layer];
   const ghosts = { items: [], links: [], total: 0 };
   for (const item of result.items) {
     if (item.id !== item.reference) continue; // an application box inside a technology node
@@ -16842,7 +16882,7 @@ function buildElkGraph(result, options) {
     childrenOf.get(parent).push(item);
   }
   const toNode = (item) => {
-    const text = diagramItemText(item, show, options && options.itemLayer);
+    const text = diagramItemText(item, show, options && options.itemLayer, undefined, options && options.source);
     // a comparison turned the other way flips `new` and `removed`: their pills take the room of the wider one in the layout, so that no box changes size
     // (and nothing moves) when the same pair is drawn from the other plateau
     const roomBadges = text.state === 'new' ? text.badges.map((name) => (name === 'new' ? 'removed' : name)) : text.badges;
@@ -16959,7 +16999,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   for (const box of boxes.sort((a, b) => a.depth - b.depth)) {
     const item = itemById.get(box.node.id);
     if (!item) continue;
-    const text = diagramItemText(item, show, options && options.itemLayer, focalReference);
+    const text = diagramItemText(item, show, options && options.itemLayer, focalReference, options && options.source);
     const ownFill = parseCssColor(text.look.vars['--st-fill']);
     const behind = ownFill && ownFill.a !== 0 ? ownFill : (fillBehind.get(box.parentId) || null);
     fillBehind.set(box.node.id, behind);
@@ -17020,7 +17060,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
   const pairs = new Map();
   const endOf = (id) => {
     const item = itemById.get(id);
-    const text = item ? diagramItemText(item, undefined, options && options.itemLayer) : { title: id, sub: '' };
+    const text = item ? diagramItemText(item, undefined, options && options.itemLayer, undefined, options && options.source) : { title: id, sub: '' };
     return { id, reference: item ? item.reference : id, title: text.name === undefined ? text.title : text.name, sub: text.sub, ghost: !!(item && item.ghost), collapsed: !!(item && item.collapsed), hidden: item && item.hidden ? item.hidden : 0 };
   };
   // the links drawn between the same two boxes, in order: the ones of a pair of several say which of them they are (`data-nth`)
@@ -17050,7 +17090,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
     const select = ends + (drawnPerPair.get(pairKey) > 1 ? ' data-nth="' + nth + '"' : '') + layerAttribute + ' data-action="select-link"';
     // the links are one tab stop (roving tabindex, `syncLinkTabStop` moves it): the first one until the page says otherwise
     edges += '<g class="dg-link"' + select + ' tabindex="' + (edges ? '-1' : '0') + '" role="button" aria-pressed="false" aria-label="' +
-      escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '') + (state ? ', ' + CHANGE_WORDS[state].word : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer)) + '</title>' +
+      escapeHtml('Link from ' + pairs.get(pairKey).fromEnd.title + ' to ' + pairs.get(pairKey).toEnd.title + (caption ? ': ' + caption : '') + (state ? ', ' + CHANGE_WORDS[state].word : '')) + '"><title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer, options && options.source)) + '</title>' +
       '<path class="dg-hit-edge" d="' + d + '"/>' +
       '<path class="dg-edge' + (link.synthetic ? ' dg-aggregated' : '') + (link.ghost ? ' dg-ghost-edge' : '') + (state ? ' dg-chg-' + state : '') + '" marker-end="url(#' + (state ? 'dg-arrow-' + state : 'dg-arrow') + ')" d="' + d + '"/></g>';
     const label = edge.labels && edge.labels[0];
@@ -17065,7 +17105,7 @@ function renderDiagramSvg(layout, result, focalReference, options) {
       const lineHtml = (line, first) => (mark && first && line.startsWith(mark) ? '<tspan class="dg-glyph">' + escapeHtml(mark) + '</tspan>' + escapeHtml(line.slice(mark.length)) : escapeHtml(line));
       labels += '<text class="dg-label"' + select + ' text-anchor="middle" x="' + cx + '" y="' + top + '">' +
         (lines.length > 1
-          ? '<title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer)) + '</title>' +
+          ? '<title>' + escapeHtml(diagramLinkTitle(link, itemById, options && options.itemLayer, options && options.source)) + '</title>' +
             lines.map((line, i) => '<tspan x="' + cx + '" y="' + (top + i * DIAGRAM_LABEL_LINE_HEIGHT) + '">' + lineHtml(line, i === 0) + '</tspan>').join('')
           : lines.length ? lineHtml(lines[0], true) : escapeHtml(label.text)) + '</text>';
     }
@@ -17081,15 +17121,15 @@ function renderDiagramSvg(layout, result, focalReference, options) {
 }
 
 /** No layout engine (offline): the same information as a plain, still clickable, list. */
-function renderDiagramFallbackHtml(result, layer, readonly) {
+function renderDiagramFallbackHtml(result, layer, readonly, source) {
   const itemById = new Map(result.items.map((item) => [item.id, item]));
   const nameOf = (id) => {
     const item = itemById.get(id);
     // the page of a view selects an element but sends nothing to the form of the owner of a dangling relationship
-    if (readonly && !(item && !item.ghost)) return '<span class="relationship-name">' + escapeHtml(item ? diagramItemText(item, undefined, layer).title : id) + '</span>';
+    if (readonly && !(item && !item.ghost)) return '<span class="relationship-name">' + escapeHtml(item ? diagramItemText(item, undefined, layer, undefined, source).title : id) + '</span>';
     return '<button type="button" class="relationship-link" data-action="' + (item && item.ghost ? 'fix-dangling' : 'goto-element') + '" data-ref="' +
       escapeHtml(item ? (item.ghost ? item.owner : item.reference) : id) + '"' + (layer && !(item && item.ghost) ? ' data-layer="' + escapeHtml(layer) + '"' : '') + '>' +
-      escapeHtml(item ? diagramItemText(item, undefined, readonly ? layer : undefined).title : id) + '</button>';
+      escapeHtml(item ? diagramItemText(item, undefined, readonly ? layer : undefined, undefined, source).title : id) + '</button>';
   };
   const links = result.links.filter((link) => !link.secondary);
   if (!links.length) return '<span class="muted">No relationships to show.</span>';
@@ -17098,10 +17138,10 @@ function renderDiagramFallbackHtml(result, layer, readonly) {
 }
 
 /** The diagram of an element fails through the facet and not without it: the facet removes the element itself (a rule that takes a whole layer away, for one). */
-function facetRemovesElement(kernel, viewpoint, reference, layer, error) {
+function facetRemovesElement(kernel, viewpoint, reference, layer, error, source) {
   // a facet the kernel refuses (the Jayway dialect, a path it cannot read, an action it does not know) removes nothing: its sentence is the error of the view (wave 019, run 0138, #137)
   if (error && /^(the facet path |unsupported facet action|invalid facet JSONPath|a facet cannot remove the whole|a facet left )/.test(error)) return false;
-  const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer }).input);
+  const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer, source }).input);
   return !plain.error;
 }
 
@@ -17186,7 +17226,7 @@ function diagramStatusText(viewpoint, reference, facet, result, ghosts, layer) {
 function diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, options) {
   const readonly = !!(options && options.readonly); // the page of a view offers no way to change what it draws
   if (facet) {
-    const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer: options && options.layer }).input);
+    const plain = kernel.compute(buildKernelInput(viewpoint, reference, { layer: options && options.layer, source: options && options.source }).input);
     const removed = plain.error ? 0 : plain.links.filter((link) => !link.secondary).length;
     if (removed) {
       return '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes the ' +
@@ -17589,7 +17629,6 @@ function showDiagramScene(scene) {
     const sel = AppState.selection;
     const pickedRemoved = removedInspectionOf(sel, 'map'); // a removed box that was clicked is the element Center puts in the middle
     scene.focal = pickedRemoved && scene.boxes && scene.boxes[pickedRemoved.reference] ? scene.boxes[pickedRemoved.reference] : sel.kind === 'element' && scene.boxes && scene.boxes[sel.key] ? scene.boxes[sel.key] : null;
-    if (readingModeOn()) scene.focal = null; // the reading mode frames the whole drawing: nothing is selected there
     // scenes that say nothing about what they draw (an error) leave the selection alone and the check for the next one
     if (scene.drawnIds) {
       const selectionIsDrawn = sel.kind === 'element' && (sel.layer === 'application' && mapLayer() === 'technology' ? !!scene.drawnApps && scene.drawnApps.has(sel.key) : scene.drawnIds.has(sel.key));
@@ -17625,7 +17664,6 @@ function showDiagramScene(scene) {
   markMapScope();
   markInspection();
   restoreDiagramFocus(canvas);
-  if (readingModeOn()) quietDiagramForReading(canvas);
   if (diagramResizeObserver) diagramResizeObserver.disconnect();
   if (typeof ResizeObserver === 'function') {
     diagramResizeObserver = new ResizeObserver(() => applyDiagramScale());
@@ -17638,7 +17676,6 @@ function markMapSelection() {
   const canvas = document.getElementById('diagram-canvas');
   if (!canvas || !(canvas.hasAttribute('data-map') || canvas.getAttribute('data-host') === 'library')) return;
   canvas.querySelectorAll('.dg-selected').forEach((el) => el.classList.remove('dg-selected'));
-  if (readingModeOn()) return; // nothing is selected in the reading mode, whatever the editor had selected before
   const sel = diagramSelection();
   const removed = removedInspectionOf(sel, canvas.getAttribute('data-host') === 'library' ? 'library' : 'map'); // a removed box that was clicked
   if (removed) {
@@ -17790,8 +17827,6 @@ function diagramNeighbor(from, key) {
 /** Keyboard on the diagram: arrows move between boxes, Enter opens, + - 0 F zoom. */
 function handleDiagramKeydown(e) {
   if (!(e.target.closest && e.target.closest('.diagram-stage')) || e.ctrlKey || e.metaKey || e.altKey) return;
-  // the reading mode (wave 020, run 0150): the diagram is zoomed and panned, no box takes the focus or opens: the arrow keys are the story's (`handleReadingKeydown`), Enter does nothing
-  if (readingModeOn() && !['+', '=', '-', '0', 'f', 'F', 'c', 'C'].includes(e.key)) return;
   const canvas = document.getElementById('diagram-canvas');
   if (e.key === 'Enter' || e.key === ' ') {
     const actionable = e.target.closest('[data-action]');
@@ -17979,35 +18014,16 @@ function pushDiagramHistory() {
  * `host` is only given by the page of a view in the Library ({ view, isMap, hideUnlinked, shows }, see `libraryDiagramRecipe`): its
  * canvas names the view, its tools show what that page draws and offer no folding (a Map view's open boxes are part of the view).
  */
-function renderDiagramCanvasHtml(record, overlayHtml, host, options) {
-  const reading = !!(options && options.reading); // the reading mode (wave 020, run 0150): zoom and pan are all the diagram has
+function renderDiagramCanvasHtml(record, overlayHtml, host) {
   // no record: the map of the whole layer (the workspace for the application layer)
   const subject = host ? 'the view ' + escapeHtml(viewLabel(host.view)) : record ? escapeHtml(record.name || record.id) : mapLayer() === 'technology' ? 'the technology layer' : 'the workspace';
   const canvasAttributes = host
     ? ' data-host="library" data-view="' + escapeHtml(host.view.id) + '" tabindex="0" aria-label="Diagram of ' + subject + '. Arrow keys move between boxes, Enter selects one, plus and minus zoom."'
     : (record ? '' : ' data-map="true"') + ' tabindex="0" aria-label="' + (record ? 'Diagram' : 'Map') + ' of ' + subject +
-      (reading ? '. Plus and minus zoom, drag to move. The left and right arrow keys show the previous and the next step.' : '. Arrow keys move between boxes, Enter opens one, plus and minus zoom.') + '" data-ref="' + (record ? escapeHtml(record.reference) : '') + '"';
+      '. Arrow keys move between boxes, Enter opens one, plus and minus zoom." data-ref="' + (record ? escapeHtml(record.reference) : '') + '"';
   const hideUnlinked = host ? host.hideUnlinked : diagramHideUnlinked;
   return '<div class="diagram-stage">' + (overlayHtml || '') + '<div class="diagram-canvas" id="diagram-canvas"' + canvasAttributes + '><span class="muted">Computing the diagram…</span></div>' +
     '<div class="diagram-tools" role="toolbar" aria-label="Diagram tools">' +
-      (reading ? '' : renderDiagramEditingToolsHtml(record, host, hideUnlinked)) +
-      '<span class="button-group" role="group" aria-label="Zoom">' +
-        '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
-        '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
-        '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
-      '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' + (diagramScale === 'auto') + '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
-      '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' + (diagramScale === 'fit') + '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
-    '</div></div>' +
-    // under the drawing: what it is (its status), the hint, and the key to the lines
-    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>';
-}
-
-/**
- * The tools of the diagram that change what it draws or how (fold, hide unlinked, the comparison, the parts of a map, the texts), before the zoom group. The reading mode has none of them;
- * they are written exactly as they were when they were inline in `renderDiagramCanvasHtml`.
- */
-function renderDiagramEditingToolsHtml(record, host, hideUnlinked) {
-  return (
       // folding is for exploring: the three viewpoints of an element are drawn as the CLI draws them
       (record || host ? '' : '<span class="button-group" role="group" aria-label="Fold the boxes">' +
           '<button type="button" data-action="fold-all" title="Fold every box that contains others and close the ones that were opened">Fold all</button>' +
@@ -18020,8 +18036,16 @@ function renderDiagramEditingToolsHtml(record, host, hideUnlinked) {
       renderMapPartsToolHtml(record, host) +
       '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
       renderDiagramShowGroupHtml(host ? host.isMap : !record, host ? host.shows : undefined) +
-      '<span class="diagram-tools-sep" aria-hidden="true"></span>'
-  );
+      '<span class="diagram-tools-sep" aria-hidden="true"></span>' +
+      '<span class="button-group" role="group" aria-label="Zoom">' +
+        '<button type="button" data-action="diagram-zoom" data-dir="out" aria-label="Zoom out" title="Zoom out (−)">−</button>' +
+        '<button type="button" id="diagram-zoom-label" data-action="diagram-zoom" data-dir="reset" aria-label="Actual size" title="Actual size (0)">100%</button>' +
+        '<button type="button" data-action="diagram-zoom" data-dir="in" aria-label="Zoom in" title="Zoom in (+)">+</button></span>' +
+      '<button type="button" id="diagram-center-button" data-action="diagram-recenter" data-lit="' + (diagramScale === 'auto') + '" title="Back to how the diagram opens: this element in the middle, at a readable size (C). Lit while the diagram is framed that way.">Center</button>' +
+      '<button type="button" id="diagram-fit-button" data-action="diagram-zoom" data-dir="fit" aria-pressed="' + (diagramScale === 'fit') + '" title="Fit the whole diagram in the panel (F)">Fit</button>' +
+    '</div></div>' +
+    // under the drawing: what it is (its status), the hint, and the key to the lines
+    '<div class="diagram-status"><span id="diagram-status" role="status"></span><span id="diagram-hint"></span><span id="diagram-legend" class="dg-legend"></span></div>';
 }
 
 /**
@@ -18240,22 +18264,30 @@ function mapPartsOf(view) {
 /** The recipe of a saved view, or null when it cannot be drawn (`viewProblem`). Reads the view and the model, and nothing else: an edit of the view is an edit of the entry. */
 function libraryDiagramRecipe(view) {
   if (!view || viewProblem(view)) return null;
+  return viewDiagramRecipe(view, AppState.index, 'library');
+}
+
+/**
+ * The recipe of a view (or of a step that carries its own recipe) that can be drawn in the model `index`: the pins, the open and hidden boxes it names that the model has, the
+ * facet, the texts and the parts of a map, as the view says them. `host` is the place that draws it (`library`, `story`). Reads the view, the settings and `index`, nothing else.
+ */
+function viewDiagramRecipe(view, index, host) {
   const properties = isPlainObject(view.properties) ? view.properties : {};
   const isMap = view.viewpoint === 'map';
   const layer = viewLayerOf(view);
   const facet = typeof properties.facet === 'string' ? AppState.workspace.settings.facets.customs.find((candidate) => candidate.name === properties.facet) || null : null;
   const shows = shownTextsOf(view);
   const recipe = {
-    host: 'library', view, isMap, reference: '', record: null, layer, viewpoint: 'map', facet, mapState: null, parts: isMap ? mapPartsOf(view) : null,
+    host, view, isMap, reference: '', record: null, layer, viewpoint: 'map', facet, mapState: null, parts: isMap ? mapPartsOf(view) : null,
     hideUnlinked: properties['hide-unlinked'] === true,
     shows
   };
   if (isMap) {
-    const known = (list) => stringList(list).filter((reference) => AppState.index[layer].has(reference));
+    const known = (list) => stringList(list).filter((reference) => index[layer].has(reference));
     recipe.mapState = { opened: known(properties.opened), pinned: known(properties.pinned), hidden: known(properties.hidden) };
   } else {
     recipe.reference = properties.element;
-    recipe.record = AppState.index[layer].get(properties.element);
+    recipe.record = index[layer].get(properties.element);
     recipe.viewpoint = leafSafeViewpoint(view.viewpoint, recipe.record);
   }
   return recipe;
@@ -18296,18 +18328,9 @@ function mountDiagramIfNeeded() {
   const viewKey = [isMap ? 'map' : reference, viewpoint, facet ? facet.name : '', isMap ? mapState.pinned.join(',') : ''].concat(isMap && recipe.layer === 'technology' ? ['technology'] : [], readonly ? ['view:' + recipe.view.id] : []).join('|');
   const comparison = comparisonState();
   const key = diagramCacheKey(recipe, comparison, viewKey);
-  const duplicates = elementDuplicates();
-  if (duplicates.length) {
-    // a reference declared twice is not chosen between: nothing is drawn from a model that has no single answer
-    showDiagramScene(buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' +
-      (duplicates.length === 1 ? 'a reference is' : duplicates.length + ' references are') + ' declared more than once.</strong><ul>' +
-      duplicates.map((d) => '<li>' + duplicateMessageHtml(d.message) + '</li>').join('') + '</ul></div>', '', '', { width: 0, height: 0 }, null));
-    return;
-  }
-  if (comparison && comparison.problems) {
-    // the two plateaus cannot be compared (a reference twice in the baseline, a pair the kernel refuses): said, and nothing is drawn from it
-    showDiagramScene(buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' + escapeHtml(comparison.problems[0]) + '</strong>' +
-      (comparison.problems.length > 1 ? '<ul>' + comparison.problems.slice(1).map((m) => '<li>' + duplicateMessageHtml(m) + '</li>').join('') + '</ul>' : '') + '</div>', '', '', { width: 0, height: 0 }, null));
+  const nothing = nothingDrawnScene(viewKey, comparison);
+  if (nothing) {
+    showDiagramScene(nothing);
     return;
   }
   if (diagramCache && diagramCache.key === key && modelsAreThoseOf(diagramCache)) {
@@ -18320,56 +18343,9 @@ function mountDiagramIfNeeded() {
   (async () => {
     try {
       const [kernel, elk] = await Promise.all([loadViewpointKernel(), loadElk()]);
-      const result = isMap && facet ? computeMapThroughFacet(kernel, input) : kernel.compute(input);
+      const { scene, cacheable } = await computeDiagramScene(recipe, input, comparison, null, kernel, elk, viewKey, readonly);
       if (seq !== diagramSeq) return;
-      if (result.error) {
-        const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference, recipe.layer, result.error);
-        showDiagramScene(buildDiagramScene(viewKey, removed
-          ? '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes this element.' + (readonly ? '' : ' <button type="button" data-action="clear-facet">Show it without the facet</button>') + '</div>'
-          : '<div class="error-panel">' + escapeHtml(result.error) + '</div>', '', '', { width: 0, height: 0 }, null));
-        return;
-      }
-      if (comparison && comparison.layers) tellRemovedItems(result, comparison, input.layer);
-      const ghosts = buildDiagramGhosts(result, isMap ? null : reference, input.layer);
-      let drawn = { items: result.items.concat(ghosts.items), links: result.links.concat(ghosts.links) };
-      let shownResult = result;
-      let hiddenCount = 0;
-      if (hideUnlinked) {
-        const kept = hideUnlinkedItems(drawn.items, drawn.links, isMap ? input.pinned : reference);
-        hiddenCount = kept.hidden;
-        drawn = { items: kept.items, links: kept.links };
-        const ids = new Set(kept.items.map((item) => item.id));
-        shownResult = Object.assign({}, result, { items: result.items.filter((item) => ids.has(item.id)), links: result.links.filter((link) => ids.has(link.from) && ids.has(link.to)) });
-      }
-      let status = diagramStatusText(viewpoint, reference, facet, shownResult, ghosts, input.layer);
-      if (hiddenCount) status += ' ' + hiddenCount + ' unlinked ' + (hiddenCount === 1 ? 'box' : 'boxes') + ' hidden.';
-      // the styled stereotypes of the boxes on screen, each once, in the order they are met
-      const drawnStereotypes = [];
-      for (const item of drawn.items) for (const name of (item.ghost || !Array.isArray(item.stereotypes) ? [] : item.stereotypes)) if (!drawnStereotypes.includes(name)) drawnStereotypes.push(name);
-      const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes) + (comparison && comparison.layers ? diagramComparisonLegendHtml(comparison, comparisonCountsOf(shownResult, isMap ? null : reference)) : '');
-      let scene;
-      if (!elk) {
-        scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer, readonly), status, '', { width: 0, height: 0 }, null);
-        scene.drawnIds = new Set(drawn.items.filter((item) => !item.ghost).map((item) => item.id));
-      } else if (isMap && !drawn.items.length) {
-        scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no ' + (input.layer === 'technology' ? 'technology' : 'application') + ' element' +
-          (input.hidden.length ? ' left once the hidden ones are out' + (readonly ? '.' : ': show some again with their eye, or with the chips above the map.') : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
-        scene.drawnIds = new Set();
-      } else if (!isMap && diagramHasNothingToDraw(drawn)) {
-        const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? (readonly ? ' (the deep viewpoint includes what is inside it)' : ' (try Deep to include what is inside it)') : '';
-        scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, { readonly, layer: recipe.layer }), status, '', { width: 0, height: 0 }, null);
-      } else {
-        // the Map starts without captions on its links (they take most of its room): the tooltip says what a link stands for
-        const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap, itemLayer: recipe.layer })), drawn, reference, { map: isMap, layer: input.layer, opened: isMap ? input.opened : [], pinned: isMap ? input.pinned : [], show: shows, readonly, itemLayer: recipe.layer });
-        scene = buildDiagramScene(viewKey, drawing.html, status, legend, drawing, drawing.focal);
-        scene.boxes = drawing.boxes;
-        scene.links = drawing.links;
-        scene.drawnIds = new Set(Object.keys(drawing.boxes));
-      }
-      if (seq !== diagramSeq) return;
-      // the applications deployed on the nodes that the Map of the technology layer draws are elements of the other layer: a box has their reference, not their id (issue #107)
-      if (isMap) scene.drawnApps = new Set(drawn.items.filter((item) => !item.ghost && item.id !== item.reference).map((item) => item.reference));
-      if (isMap && !readonly) Object.assign(scene, diagramFoldTargets(shownResult, reference));
+      if (!cacheable) { showDiagramScene(scene); return; } // a message (an error, a facet that removes the element) is shown, not kept
       diagramCache = Object.assign({ key, scene }, models);
       showDiagramScene(Object.assign({}, scene));
     } catch (e) {
@@ -18379,6 +18355,86 @@ function mountDiagramIfNeeded() {
       }
     }
   })();
+}
+
+/**
+ * The scene of a recipe: what `showDiagramScene` puts on screen, computed from a kernel input and nothing else (wave 021, run 0152, #153: the editor's `mountDiagramIfNeeded` and the
+ * story player draw through this one function). `input` is the kernel's input (`buildKernelInput`, with the lists of a map), `comparison` the comparison it was made with (or null),
+ * `source` what the drawing reads of the model beside the input: null for the editor's own (`AppState.index` and the comparison on screen), else the `{ index, baselineIndex, comparison,
+ * changesOnly }` of a step (`storyStepScene`). It reads no selection, writes no global and no `AppState`, and touches no cache or page. Returns `{ scene, cacheable }`: `cacheable` is
+ * false for a message (an error, a facet that removes the element), which the editor shows and does not keep.
+ */
+async function computeDiagramScene(recipe, input, comparison, source, kernel, elk, viewKey, readonly) {
+  const { isMap, reference, record, viewpoint, facet, shows, hideUnlinked } = recipe;
+  const result = isMap && facet ? computeMapThroughFacet(kernel, input) : kernel.compute(input);
+  if (result.error) {
+    const removed = !isMap && facet && facetRemovesElement(kernel, viewpoint, reference, recipe.layer, result.error, source);
+    return {
+      scene: buildDiagramScene(viewKey, removed
+        ? '<div class="muted diagram-empty">Nothing to show: facet “' + escapeHtml(facet.name) + '” removes this element.' + (readonly ? '' : ' <button type="button" data-action="clear-facet">Show it without the facet</button>') + '</div>'
+        : '<div class="error-panel">' + escapeHtml(result.error) + '</div>', '', '', { width: 0, height: 0 }, null),
+      cacheable: false
+    };
+  }
+  if (comparison && comparison.layers) tellRemovedItems(result, comparison, input.layer, source);
+  const ghosts = buildDiagramGhosts(result, isMap ? null : reference, input.layer, source);
+  let drawn = { items: result.items.concat(ghosts.items), links: result.links.concat(ghosts.links) };
+  let shownResult = result;
+  let hiddenCount = 0;
+  if (hideUnlinked) {
+    const kept = hideUnlinkedItems(drawn.items, drawn.links, isMap ? input.pinned : reference);
+    hiddenCount = kept.hidden;
+    drawn = { items: kept.items, links: kept.links };
+    const ids = new Set(kept.items.map((item) => item.id));
+    shownResult = Object.assign({}, result, { items: result.items.filter((item) => ids.has(item.id)), links: result.links.filter((link) => ids.has(link.from) && ids.has(link.to)) });
+  }
+  let status = diagramStatusText(viewpoint, reference, facet, shownResult, ghosts, input.layer);
+  if (hiddenCount) status += ' ' + hiddenCount + ' unlinked ' + (hiddenCount === 1 ? 'box' : 'boxes') + ' hidden.';
+  // the styled stereotypes of the boxes on screen, each once, in the order they are met
+  const drawnStereotypes = [];
+  for (const item of drawn.items) for (const name of (item.ghost || !Array.isArray(item.stereotypes) ? [] : item.stereotypes)) if (!drawnStereotypes.includes(name)) drawnStereotypes.push(name);
+  const legend = diagramLegendHtml(ghosts.items.length > 0, drawnStereotypes) + (comparison && comparison.layers ? diagramComparisonLegendHtml(comparison, comparisonCountsOf(shownResult, isMap ? null : reference)) : '');
+  let scene;
+  if (!elk) {
+    scene = buildDiagramScene(viewKey, renderDiagramFallbackHtml(drawn, input.layer, readonly, source), status, '', { width: 0, height: 0 }, null);
+    scene.drawnIds = new Set(drawn.items.filter((item) => !item.ghost).map((item) => item.id));
+  } else if (isMap && !drawn.items.length) {
+    scene = buildDiagramScene(viewKey, '<div class="muted diagram-empty">Nothing to show: the map has no ' + (input.layer === 'technology' ? 'technology' : 'application') + ' element' +
+      (input.hidden.length ? ' left once the hidden ones are out' + (readonly ? '.' : ': show some again with their eye, or with the chips above the map.') : ' yet.') + '</div>', status, '', { width: 0, height: 0 }, null);
+    scene.drawnIds = new Set();
+  } else if (!isMap && diagramHasNothingToDraw(drawn)) {
+    const hint = viewpoint === 'overview' && !LEAF_KINDS.includes(record.kind) ? (readonly ? ' (the deep viewpoint includes what is inside it)' : ' (try Deep to include what is inside it)') : '';
+    scene = buildDiagramScene(viewKey, diagramEmptyHtml(kernel, viewpoint, reference, facet, hint, { readonly, layer: recipe.layer, source }), status, '', { width: 0, height: 0 }, null);
+  } else {
+    // the Map starts without captions on its links (they take most of its room): the tooltip says what a link stands for
+    const drawing = renderDiagramSvg(await elk.layout(buildElkGraph(drawn, { captions: shows.labels, qualifiers: shows.qualifiers, descriptions: shows.descriptions, wrap: shows.wrap, itemLayer: recipe.layer, source })), drawn, reference, { map: isMap, layer: input.layer, opened: isMap ? input.opened : [], pinned: isMap ? input.pinned : [], show: shows, readonly, itemLayer: recipe.layer, source });
+    scene = buildDiagramScene(viewKey, drawing.html, status, legend, drawing, drawing.focal);
+    scene.boxes = drawing.boxes;
+    scene.links = drawing.links;
+    scene.drawnIds = new Set(Object.keys(drawing.boxes));
+  }
+  // the applications deployed on the nodes that the Map of the technology layer draws are elements of the other layer: a box has their reference, not their id (issue #107)
+  if (isMap) scene.drawnApps = new Set(drawn.items.filter((item) => !item.ghost && item.id !== item.reference).map((item) => item.reference));
+  if (isMap && !readonly) Object.assign(scene, diagramFoldTargets(shownResult, reference));
+  return { scene, cacheable: true };
+}
+
+/**
+ * The scene that says nothing is drawn, or null: a reference declared more than once (a model that has no single answer is not drawn from), or two plateaus that cannot be compared
+ * (a reference twice in the baseline, a pair the kernel refuses). `comparison` is the comparison the drawing is made with. Both are mistakes of the workspace, not of the view.
+ */
+function nothingDrawnScene(viewKey, comparison) {
+  const duplicates = elementDuplicates();
+  if (duplicates.length) {
+    return buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' +
+      (duplicates.length === 1 ? 'a reference is' : duplicates.length + ' references are') + ' declared more than once.</strong><ul>' +
+      duplicates.map((d) => '<li>' + duplicateMessageHtml(d.message) + '</li>').join('') + '</ul></div>', '', '', { width: 0, height: 0 }, null);
+  }
+  if (comparison && comparison.problems) {
+    return buildDiagramScene(viewKey, '<div class="error-panel" role="alert"><strong>Nothing is drawn: ' + escapeHtml(comparison.problems[0]) + '</strong>' +
+      (comparison.problems.length > 1 ? '<ul>' + comparison.problems.slice(1).map((m) => '<li>' + duplicateMessageHtml(m) + '</li>').join('') + '</ul>' : '') + '</div>', '', '', { width: 0, height: 0 }, null);
+  }
+  return null;
 }
 
 /** The center of Elements on a diagram tab: the header (tabs, facet, Maximize) and the diagram of the selected element. */
@@ -18675,13 +18731,6 @@ function renderSettingsPerspectiveHtml() {
 
 /** The story walked through on the diagrams ({ id, step }), kept in the URL (`story=`, `step=`). Null: none. */
 let activeStory = null;
-/**
- * The reading mode of a story (wave 020, run 0150, #142, plan decisions T4 to T6): the story walked through is read full screen, with the tools that edit out of the way
- * (`renderReadingShellHtml`). View state only, like the key under the diagram: not an input of any model, diagram or comparison cache (no `modelsChanged()`), nothing written; it is in
- * the address as `read=1` beside `story=` and `step=`, and folded again with a new folder (`resetUiState`). Whether the page is *in* the mode is `readingModeOn()`, which also asks for
- * a story on a step and a page that draws a diagram, so a flag left over by a story that is gone shows nothing.
- */
-let readingMode = false;
 /** The story the Stories perspective shows, kept in the URL (`story=`). */
 let selectedStoryId = null;
 let selectedViewId = null;
@@ -18782,12 +18831,13 @@ function stepView(step) {
 /**
  * Why a step cannot be drawn now, or null when it can. A step is drawn in the plateau it says (`at`, else the plateau drawn, which is what the page has when the step is
  * played) and compared with the one it names (`against`): the plateau that is not one, and one the editor cannot draw, are told before the view is looked at, and the
- * view is looked at in the plateau of the step, not in the one that happens to be drawn now.
+ * view is looked at in the plateau of the step, not in the one that happens to be drawn now. `plateau` (the scene of the story player, wave 021): the plateau the step is drawn
+ * at once the home is applied (a step that names none is drawn at the home), null for a workspace whose plateaus are not drawn; absent, what the step says.
  */
-function stepProblem(step) {
-  const plateau = stepPlateauProblem(step);
-  if (plateau) return plateau.problem;
-  const at = stepPlateauKeys(step).at;
+function stepProblem(step, plateau) {
+  const plateauProblem = stepPlateauProblem(step);
+  if (plateauProblem) return plateauProblem.problem;
+  const at = plateau !== undefined ? plateau : stepPlateauKeys(step).at;
   if (typeof step.view === 'string' && step.view) {
     const view = findSavedView(step.view);
     return view ? viewProblem(view, at) : 'The view “' + step.view + '” does not exist any more.';
@@ -19899,12 +19949,11 @@ function stepDrawing(step, home) {
 }
 
 /** Where the home is for the step about to be drawn in the story: what was drawn when the story began, unless the reader changed it since. */
-function homeOfStory(storyId, fromAddress) {
+function homeOfStory(storyId) {
   const now = currentPlateauDrawing();
   if (!now) return null;
   if (!storyHome || storyHome.story !== storyId || !activeStory || activeStory.id !== storyId) storyHome = { story: storyId, plateau: now.plateau, against: now.against, set: now };
-  // an address (Back, Forward, a link) draws the plateau it names: that is not a choice of the reader's, and does not move the home (wave 020, run 0150)
-  else if (!fromAddress && storyHome.set && (storyHome.set.plateau !== now.plateau || storyHome.set.against !== now.against)) { storyHome.plateau = now.plateau; storyHome.against = now.against; }
+  else if (storyHome.set && (storyHome.set.plateau !== now.plateau || storyHome.set.against !== now.against)) { storyHome.plateau = now.plateau; storyHome.against = now.against; }
   return storyHome;
 }
 
@@ -19912,8 +19961,8 @@ function homeOfStory(storyId, fromAddress) {
  * Draws the plateau and the comparison of a step, when it has something to say about them (or the reader moved them since the story began): the plateau is drawn as the band
  * draws it, without an entry in the history (the step is the entry). A step with a plateau that is none, or one the editor cannot draw, changes nothing: the bar says why.
  */
-function drawPlateausOfStep(storyId, step, fromAddress) {
-  const home = homeOfStory(storyId, fromAddress);
+function drawPlateausOfStep(storyId, step) {
+  const home = homeOfStory(storyId);
   if (!home || !AppState.plateauTree || !AppState.plateauTree.layered || stepPlateauProblem(step)) return;
   const wanted = stepDrawing(step, home);
   drawPlateau(wanted.plateau, { compare: wanted.against ? 'other:' + wanted.against : '', fromAddress: true });
@@ -20199,7 +20248,7 @@ function storyStepTitle(step) {
 /**
  * The menu of the steps of a story (wave 020, run 0149, #142, second request; T7): a native `<select>`, so that the keys, the touch and the screen readers work as for any list
  * and the bar does not grow past the window at 360 px. One entry per step, "n. title", the step on screen selected; a step that cannot be shown (`stepProblem`) says so in the
- * text of its entry and carries the sentence as its title. A story with one step has nothing to choose: no menu. The bar places it, and the reading mode will place it in its
+ * text of its entry and carries the sentence as its title. A story with one step has nothing to choose: no menu. The bar places it, and the player of wave 021 will place it in its
  * own layout (the one function that renders it, `chooseStoryStep` the one handler, called from `handleAppChange`); `className` is the class of the list.
  */
 function renderStoryStepMenuHtml(story, current, className) {
@@ -20230,188 +20279,126 @@ function chooseStoryStep(storyId, index) {
   return true;
 }
 
-// ---- The reading mode of a story (wave 020, run 0150, #142, first request; plan decisions T4 to T6) ----
+// ---- The announcer of the story player (wave 021, run 0152) ----
 
 /**
- * Whether the page is in the reading mode: the flag, a story on one of its steps, and a page that draws a diagram (the Map or an element's diagram). Anything else is the editing layout,
- * whatever the flag says (a story that went away leaves nothing behind).
+ * What a screen reader is told when a step of a story is shown: "Step n of N", then the title of the view when the step names one. Pure: it reads the story, not the page.
  */
-function readingModeOn() {
-  if (!readingMode || !activeStory || !AppState.workspace) return false;
-  if (currentPerspective !== 'elements' && !mapIsShown()) return false;
-  const story = findStory(activeStory.id);
-  return !!story && activeStory.step >= 0 && activeStory.step < storySteps(story).length;
-}
-
-/**
- * An address that carries `read=1` (a link, Back, Forward, a folder opened on one) draws the plateau and the comparison the step names, which the address does not carry (it names the
- * plateau only): the reader of a shared link sees the step, not the comparison that was on screen. The home of the story is not moved by it (`homeOfStory`). The editing layout
- * does nothing of this: it never has, and an address without `read=1` is read as it was.
- */
-function drawStepOfReadingAddress() {
-  if (!readingModeOn()) return;
-  const story = findStory(activeStory.id);
-  drawPlateausOfStep(story.id, storySteps(story)[activeStory.step], true);
-}
-
-/**
- * Enters the reading mode on a step: from the bar of a story (`index` absent: the step on screen, nothing is drawn again) or from the Stories page (`index` 0 for Play's first step: the
- * step is drawn as *Next* draws it, plateau and comparison included). The address gets the entry, so that Back leaves the mode. The focus goes to the menu of the steps (else to *Next*,
- * else to *Edit*). View state only: nothing is written and no model changes. Returns whether the mode is on.
- */
-function enterReadingMode(storyId, index) {
-  const story = findStory(storyId);
+function storyStepAnnouncement(story, index) {
   const steps = story ? storySteps(story) : [];
-  if (!story || !steps.length) return false;
-  const walking = activeStory && activeStory.id === storyId;
-  const at = Number.isInteger(index) ? index : walking ? activeStory.step : 0;
-  if (at < 0 || at >= steps.length) return false;
-  pendingFocusSelector = READING_FIRST_FOCUS;
-  readingMode = true;
-  if (walking && at === activeStory.step && (mapIsShown() || currentPerspective === 'elements')) {
-    storyBarEditing = false;
-    storyBarNotice = null;
-    location.hash = currentRouteHash();
-    render();
-  } else {
-    goToStoryStep(storyId, at); // draws the step, writes the address with `read=1` and draws the page once
-  }
-  return readingModeOn();
-}
-
-/** Where the focus goes when the mode opens: the menu of the steps, else *Next*, else the way back. */
-const READING_FIRST_FOCUS = '.reading-bar [data-story-step-menu], .reading-bar [data-action="story-next"]:not([disabled]), .reading-bar [data-action="story-read-exit"]';
-
-/**
- * Leaves the reading mode (*Edit*, Escape): the editing layout is drawn again on the step that was read, with the plateau and the comparison that step drew (the home of the story is
- * not touched by the mode, so the reader who walks on from there, or leaves the story, is where they would have been). The focus goes to the *Read* button of the bar. The address gets
- * an entry, so that Forward comes back to the mode.
- */
-function leaveReadingMode() {
-  if (!readingModeOn()) { if (readingMode) { readingMode = false; render(); } return false; }
-  readingMode = false;
-  pendingFocusSelector = '[data-action="story-read"]';
-  location.hash = currentRouteHash();
-  render();
-  return true;
+  if (!Number.isInteger(index) || index < 0 || index >= steps.length) return '';
+  const view = stepView(steps[index]);
+  return 'Step ' + (index + 1) + ' of ' + steps.length + (view ? ', ' + viewLabel(view) : '');
 }
 
 /**
- * Shows another step of the story being read, as *Previous* and *Next* and the menu do (`goToStoryStep`), after the question those ask when a form holds what was typed. The control that
- * had the focus keeps it, or the other of the two buttons when this one is disabled at the end of the story. Returns whether the step was drawn.
+ * Says `text` once through the live region outside #app (`#story-announcer`, which `render()` does not replace: it is the text that changes, so the change is announced). The same text
+ * twice in a row is said once; an empty text empties the region, so that the next step is a change again. The player of wave 021 drives it; nothing in the editing layout calls it.
  */
-function readStep(index, focus, asked) {
-  const story = activeStory ? findStory(activeStory.id) : null;
-  const steps = story ? storySteps(story) : [];
-  if (!story || !Number.isInteger(index) || index < 0 || index >= steps.length || index === activeStory.step) return false;
-  storyBarNotice = null;
-  removedStep = null;
-  if (!asked && draftTyped && !confirmDiscardingDraft()) return false; // a click on Previous or Next has asked already (`ACTIONS_LEAVING_THE_FORM`)
-  pendingFocusSelector = focus === 'next' ? (index < steps.length - 1 ? '.reading-bar [data-action="story-next"]' : '.reading-bar [data-action="story-prev"]')
-    : focus === 'previous' ? (index > 0 ? '.reading-bar [data-action="story-prev"]' : '.reading-bar [data-action="story-next"]') : null;
-  goToStoryStep(story.id, index);
-  return true;
-}
-
-/**
- * The keys of the reading mode, one listener on the document (bubbling, like `handleChangesKeydown`, whose rule it follows): Left and Right show the previous and the next step, Home and End
- * the first and the last, Escape leaves. Up and Down are not taken, so that the words of a long step scroll as they should. It leaves the key alone when a modifier is held (Shift included),
- * when the reader types or has a control that owns the arrows (an input, a textarea, a select, a contenteditable, a code editor: the target and the focused element are both looked at;
- * the list of the steps is a select, whose arrows choose a step on their own; only Escape leaves from it), when a dialog, the help or the menu of the header is open, when a rejected YAML text is waiting, and when the
- * page is not in the reading mode. The step that is already the first or the last is not walked past, and the key is kept from the browser only when it did something.
- */
-function handleReadingKeydown(e) {
-  const key = String(e.key || '');
-  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape'].includes(key) || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.defaultPrevented || e.isComposing) return;
-  if (!readingModeOn()) return;
-  const focused = typeof document.activeElement === 'undefined' ? null : document.activeElement;
-  // the focus lands on the list of the steps when the mode opens, and the arrows and Home/End are the list's own there (they choose a step): Escape is the one key the list does not use, so it leaves
-  const onStepMenu = !!(focused && focused.matches && focused.matches('[data-story-step-menu]'));
-  if (!(key === 'Escape' && onStepMenu) && (isTypingTarget(e.target) || isTypingTarget(focused))) return;
-  if (appDialog || helpOpen || headerMenuOpen || rawYamlEditDraft) return;
-  const onButton = focused && focused.getAttribute ? focused.getAttribute('data-action') : null;
-  const steps = storySteps(findStory(activeStory.id));
-  const here = activeStory.step;
-  const target = key === 'ArrowLeft' ? here - 1 : key === 'ArrowRight' ? here + 1 : key === 'Home' ? 0 : key === 'End' ? steps.length - 1 : here;
-  const acted = key === 'Escape' ? leaveReadingMode() : readStep(target, onButton === 'story-next' ? 'next' : onButton === 'story-prev' ? 'previous' : null); // a key leaves the focus where it is; on Previous or Next, those buttons are drawn again and keep it
-  if (acted && e.preventDefault) e.preventDefault();
-}
-document.addEventListener('keydown', handleReadingKeydown);
-
-/**
- * The page in the reading mode: no top bar, band, tree, inspection, form or tool bar, only the diagram (zoom and pan: its tools are the zoom group, Center and Fit), the key to a comparison,
- * and over it a bar with the title of the story, "Step n of N", the menu of the steps (`renderStoryStepMenuHtml`, W-4's, with a class of its own), the plateau and the comparison the step names
- * (said, not chosen), the words of the step, *Previous*, *Next* and *Edit*, the way back. A step that cannot be shown says why, as the bar does. The region is labelled for assistive technology.
- * A dialog that is open (it cannot be opened from here) is still drawn, so that the page's state and its screen agree.
- */
-function renderReadingShellHtml() {
-  const story = findStory(activeStory.id);
-  const steps = storySteps(story);
-  const n = activeStory.step;
-  const view = stepView(steps[n]);
-  const problem = stepProblem(steps[n]);
-  const text = steps[n].text || '';
-  const sel = elementSelection();
-  const reading = { reading: true };
-  const canvas = mapIsShown() ? renderDiagramCanvasHtml(null, '', undefined, reading)
-    : diagramTabShown() ? renderDiagramCanvasHtml(findElementRecord(sel.key), '', undefined, reading)
-    : '<div class="center-placeholder">There is no diagram to show for this step.</div>';
-  rightPanelPending = false; // no panel waits for the kernel
-  return '<div class="reading-shell" role="region" aria-label="Reading the story ' + escapeHtml(storyLabel(story)) + '" data-reading-mode>' +
-    '<main id="panel-center" class="center-panel reading-center"><div class="diagram-view reading-view">' +
-      '<div class="story-bar reading-bar">' +
-        '<div class="story-bar-line">' +
-          '<span class="story-bar-title reading-title">' + escapeHtml(storyLabel(story)) + '</span>' +
-          '<span class="story-bar-step">Step ' + (n + 1) + ' of ' + steps.length + (view ? ' · ' + escapeHtml(viewLabel(view)) : '') + '</span>' +
-          renderStoryStepMenuHtml(story, n, 'reading-step-menu') +
-          stepPlateausHtml(steps[n], 'story-bar-plateaus') +
-          '<span class="story-bar-actions reading-actions">' +
-            '<span class="button-group" role="group" aria-label="Steps">' +
-              '<button type="button" data-action="story-prev"' + (n === 0 ? ' disabled' : '') + ' aria-keyshortcuts="ArrowLeft" title="The step before (Left arrow)">Previous</button>' +
-              '<button type="button" data-action="story-next"' + (n === steps.length - 1 ? ' disabled' : '') + ' aria-keyshortcuts="ArrowRight" title="The next step (Right arrow)">Next</button>' +
-            '</span>' +
-            '<button type="button" data-action="story-read-exit" aria-keyshortcuts="Escape" title="Back to the editor, on this step (Escape)">Edit</button>' +
-          '</span>' +
-        '</div>' +
-        (problem ? '<div class="story-step-problem" role="status">Step ' + (n + 1) + ' cannot be shown: ' + escapeHtml(problem) + ' The diagram below is the one before it.</div>' : '') +
-        '<p class="story-bar-words reading-words' + (text ? '' : ' muted') + '">' + (text ? escapeHtml(text) : 'No words for this step yet.') + '</p>' +
-      '</div>' +
-      canvas +
-    '</div></main>' +
-    renderAppDialogHtml() +
-  '</div>';
-}
-
-/** The step on screen, said once to a screen reader through the live region outside #app (it is the text that changes, so the change is announced); empty when the mode is off. */
-let readingAnnounced = '';
-function announceReadingStep() {
-  const region = typeof document.getElementById === 'function' ? document.getElementById('reading-announcer') : null;
+let storyAnnounced = '';
+function announceStoryStep(text) {
+  const region = typeof document.getElementById === 'function' ? document.getElementById('story-announcer') : null;
   if (!region) return;
-  let said = '';
-  if (readingModeOn()) {
-    const story = findStory(activeStory.id);
-    const steps = storySteps(story);
-    const view = stepView(steps[activeStory.step]);
-    said = 'Step ' + (activeStory.step + 1) + ' of ' + steps.length + (view ? ', ' + viewLabel(view) : '');
-  }
-  if (said === readingAnnounced) return;
-  readingAnnounced = said;
+  const said = String(text || '');
+  if (said === storyAnnounced) return;
+  storyAnnounced = said;
   region.textContent = said;
 }
 
+// ---- The scene of a step, drawn without the editor (wave 021, run 0152, #153; plan decision T4) ----
+
 /**
- * Takes away what lets a click or a key on the diagram of the reading mode do anything but look: the boxes and the links lose their action (a click selects nothing and opens no inspection),
- * the fold buttons go (they change the map), and nothing inside the drawing takes the focus or says it is a link. The drawing itself, which the cache keeps, is not touched; this is done on
- * the copy on screen.
+ * The plateau and the comparison the editor draws now, as a plain copy: the home of a story that is played (what a step that names none is drawn at), fixed when *Play* is pressed.
+ * Null while no workspace is open.
  */
-function quietDiagramForReading(canvas) {
-  if (!canvas || !canvas.querySelectorAll) return;
-  canvas.querySelectorAll('.dg-fold').forEach((el) => el.remove());
-  canvas.querySelectorAll('[data-action]').forEach((el) => el.removeAttribute('data-action'));
-  canvas.querySelectorAll('.dg-node, .dg-link').forEach((el) => {
-    el.removeAttribute('tabindex');
-    if (el.getAttribute('role') === 'link') el.setAttribute('role', 'img');
-  });
+function storyHomeNow() {
+  const now = currentPlateauDrawing();
+  return now ? { plateau: now.plateau, against: now.against } : null;
+}
+
+/**
+ * The drawing of a plateau and a comparison that is not the editor's (`editorDrawing()` has the same shape): the layers of the band as `syncLayers` would settle them for
+ * `plateau` and `against`, the model of each from `layerModelOf` (kept in `layerCache`), and the toggles of the diagram as the editor has them now. It reads `AppState`, and writes nothing
+ * to it. A workspace whose plateaus are not drawn (not layered, or `blocked`) has one drawing, the editor's.
+ */
+function drawingOfPlateaus(plateau, against) {
+  const tree = AppState.plateauTree;
+  if (!AppState.layers || !tree || !tree.layered || AppState.layers.blocked) return editorDrawing();
+  const settings = AppState.workspace.settings;
+  const layers = { current: plateau, compare: against ? { mode: 'other', other: against, chosen: true } : null, blocked: null };
+  layers.compare = normalizedLayerCompare(layers);
+  const model = layerModelOf(plateau, settings);
+  const other = layerCompareOther(layers);
+  const otherModel = other ? layerModelOf(other.id, settings) : null;
+  return {
+    layers, index: model.index, undrawable: model.undrawable, problems: model.problems, hideWording: AppState.hideWording, changesOnly: AppState.changesOnly,
+    baseline: other ? { plateau: other, index: otherModel.index, problem: otherModel.problems ? otherModel.problems.join('\n') : null, undrawable: otherModel.undrawable } : null
+  };
+}
+
+/** Where a scene keeps the answers of `compare` for the pairs of plateaus it has drawn: on `layerCache`, so that they go with the manifests they were made from. */
+function sceneComparisonMemo() {
+  const cache = ensureLayerCache(AppState.workspace.settings);
+  if (!cache.comparisons) cache.comparisons = new Map();
+  const keyOf = (drawing, future) => drawing.layers.current + '>' + drawing.layers.compare.other + (future ? ':future' : '');
+  return {
+    find(drawing, future) {
+      const kept = cache.comparisons.get(keyOf(drawing, future));
+      return kept && kept.index === drawing.index && kept.baselineIndex === drawing.baseline.index ? kept.value : null;
+    },
+    keep(drawing, future, value) {
+      cache.comparisons.set(keyOf(drawing, future), { index: drawing.index, baselineIndex: drawing.baseline.index, value });
+    }
+  };
+}
+
+/**
+ * The scene of step `index` of a story, as the editor draws it for that step, computed on the side (wave 021, run 0152, #153): the plateau the step is told at (`at`, else the
+ * home) and the one it is compared with (`against`, else the home's, as `stepDrawing` settles them) come from `layerModelOf`, the comparison from the kernel's `compare`, the drawing
+ * from `computeDiagramScene` (the function the editor draws through), laid out and rendered as the editor does. It writes no `AppState` (no `index`, `baseline`, `layers`, selection
+ * or address), no page and no cache but `layerCache`, and never calls `modelsChanged()`. `options.home` is `{ plateau, against }`, fixed by the caller when the story begins
+ * (`storyHomeNow()`), else taken now; `options.readonly` draws the page-of-a-view way (no fold buttons). Resolves to null for a story or a step that is not there, else
+ * `{ storyId, index, count, title, text, announcement, plateau, against, told, problem, comparison, diagram }`:
+ *   title, text      the title the menu gives the step (`storyStepTitle`) and its words;   announcement   what a screen reader is told (`storyStepAnnouncement`);
+ *   plateau, against the ids it is drawn at and compared with (null: no comparison); told  `{ at, against }` as the step says them (`stepPlateauKeys`);
+ *   problem          why it cannot be drawn (`stepProblem`, in the plateau of the step), else null; the diagram is then null;
+ *   comparison       null, or `{ base, target, future }`: the ids of the two sides of the comparison drawn;
+ *   diagram          the scene `showDiagramScene` takes: `{ html, status, legend (the key of a comparison included), width, height, focal, hasSvg, boxes, links, drawnIds, ... }`.
+ */
+async function storyStepScene(storyId, index, options) {
+  const story = findStory(storyId);
+  const steps = story ? storySteps(story) : [];
+  if (!story || !Number.isInteger(index) || index < 0 || index >= steps.length) return null;
+  const step = steps[index];
+  const home = (options && options.home) || storyHomeNow();
+  const readonly = !!(options && options.readonly);
+  const tree = AppState.plateauTree;
+  const layered = !!(AppState.layers && tree && tree.layered && !AppState.layers.blocked);
+  const wanted = layered && home ? stepDrawing(step, home) : { plateau: AppState.layers ? AppState.layers.current : BASELINE_PLATEAU, against: null };
+  const scene = {
+    storyId, index, count: steps.length, title: storyStepTitle(step), text: typeof step.text === 'string' ? step.text : '', announcement: storyStepAnnouncement(story, index),
+    plateau: wanted.plateau, against: wanted.against, told: stepPlateauKeys(step), problem: stepProblem(step, layered ? wanted.plateau : null), comparison: null, diagram: null
+  };
+  if (scene.problem) return scene;
+  const viewKey = 'story|' + storyId + '|' + index + '|' + wanted.plateau + '|' + (wanted.against || '');
+  try {
+    const [kernel, elk] = await Promise.all([loadViewpointKernel(), loadElk()]);
+    const drawing = layered ? drawingOfPlateaus(wanted.plateau, wanted.against) : editorDrawing();
+    const comparison = drawing.layers && drawing.baseline ? comparisonStateOf(drawing, sceneComparisonMemo()) : null;
+    if (comparison && comparison.layers) scene.comparison = { base: comparison.base.id, target: comparison.target.id, future: comparison.future };
+    const nothing = nothingDrawnScene(viewKey, comparison);
+    if (nothing) { scene.diagram = nothing; return scene; }
+    const source = { index: drawing.index, baselineIndex: drawing.baseline ? drawing.baseline.index : null, comparison, changesOnly: drawing.changesOnly };
+    const recipe = viewDiagramRecipe(stepView(step), drawing.index, 'story');
+    const { isMap, reference, viewpoint, facet, mapState } = recipe;
+    const { input } = buildKernelInput(viewpoint, reference, isMap ? { facet, layer: recipe.layer, opened: mapState.opened, pinned: mapState.pinned, applications: recipePartsOf(recipe).applications, relationships: recipePartsOf(recipe).relationships, source } : { facet, layer: recipe.layer, source });
+    if (isMap) input.hidden = mapState.hidden;
+    scene.diagram = (await computeDiagramScene(recipe, input, comparison, source, kernel, elk, viewKey, readonly)).scene;
+  } catch (e) {
+    scene.problem = 'The diagram could not be computed: ' + (e && e.message ? e.message : String(e));
+    scene.diagram = null;
+  }
+  return scene;
 }
 
 /**
@@ -20441,7 +20428,6 @@ function renderStoryBarHtml() {
           '<button type="button" data-action="story-prev"' + (n === 0 ? ' disabled' : '') + ' title="The step before">Previous</button>' +
           '<button type="button" data-action="story-next"' + (n === steps.length - 1 ? ' disabled' : '') + ' title="The next step">Next</button>' +
         '</span>' +
-        '<button type="button" data-action="story-read" title="Read the story full screen, with the tools that edit out of the way">Read</button>' +
         (here || problem ? '' : '<button type="button" data-action="story-restore" title="Draw this step again, as it was saved">Back to this step</button>') +
         '<button type="button" data-action="story-bar-edit" aria-pressed="' + storyBarEditing + '" title="Type the words of this step (they are also in Edit story)">' + (storyBarEditing ? 'Done' : 'Edit text') + '</button>' +
         '<button type="button" data-action="story-edit" title="Reorder the steps, rename the story">Edit story</button>' +
@@ -20732,8 +20718,7 @@ function renderLibraryPerspectiveHtml() {
     const story = selectedStoryId ? findStory(selectedStoryId) : null;
     if (story) {
       subject = '<span class="element-header-subject">' + escapeHtml(storyLabel(story)) + '</span>';
-      actions = '<button type="button" data-action="story-play" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Walk through the story on the diagrams, from its first step">Play</button>' +
-        '<button type="button" data-action="story-read" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Read the story full screen, from its first step, with the tools that edit out of the way">Read</button>';
+      actions = '<button type="button" data-action="story-play" data-story="' + escapeHtml(story.id) + '" data-step="0"' + (storySteps(story).length ? '' : ' disabled') + ' title="Walk through the story on the diagrams, from its first step">Play</button>';
     }
     body = story ? renderStoryEditorHtml(story)
       : '<p class="muted story-intro">A story puts diagrams in order, with a sentence for each, to tell how part of the architecture works. To start, open a diagram in Applications or in Elements and press “Add to story…”, or create an empty story with “New story…”.</p>';
@@ -20819,8 +20804,6 @@ function renderActivePerspectiveHtml() {
  * grid-template-columns.
  */
 function renderShellHtml() {
-  // wave 020 (run 0150, #142): the story read full screen has a layout of its own, with none of the tools that edit; the editing layout below is not touched
-  if (AppState.workspace && !AppState.fatalError && readingModeOn()) return renderReadingShellHtml();
   // wave 014 (run 0080): the band of plateaus sits under the top bar; wave 015 (run 0097, W-9, #98): only while a page of the perspective Timeline is on screen (the plateau
   // drawn and the comparison are the editor's state, `AppState.layers`, and stay what they were while Stories, Files or Settings is open)
   const band = bandIsShown() ? renderPlateauBandHtml() : '';
@@ -20888,7 +20871,7 @@ const ACTIONS_LEAVING_THE_FORM = new Set([
   'timeline-draw', 'timeline-changes',
   'set-perspective', 'set-page', 'select-file', 'select-element', 'goto-element', 'set-element-tab', 'toggle-element-edit',
   'select-link', 'open-create-child-form', 'open-create-top-level-form', 'open-as-diagram', 'show-on-map', 'close-folder',
-  'select-story', 'story-play', 'story-read', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
+  'select-story', 'story-play', 'story-prev', 'story-next', 'story-restore', 'story-edit', 'saved-view-open',
   'library-tab', 'select-view', 'library-go-story', 'library-go-view', 'library-open-element', 'select-change'
 ]);
 
@@ -20928,8 +20911,6 @@ function handleAppClick(e) {
     else if (target) setHeaderMenuOpen(false, { focusButton: true });
   }
   if (!target) return;
-  // the diagram of the reading mode is looked at, not clicked: a box, a link or a fold button does nothing there (nothing is selected, no inspection opens); the zoom tools are outside the drawing
-  if (readingModeOn() && e.target.closest && e.target.closest('#diagram-canvas')) return;
   // what an action said (a line over the story bar, the step that can be put back) lasts until the next one
   if (action !== 'dialog-submit') storyBarNotice = null;
   if (removedStep && action !== 'story-undo' && action !== 'story-step-remove') removedStep = null;
@@ -21142,16 +21123,9 @@ function handleAppClick(e) {
     case 'story-play':
       goToStoryStep(target.getAttribute('data-story'), Number(target.getAttribute('data-step') || 0));
       break;
-    case 'story-read': // the Read of the bar names no step (the one on screen), the Read of the Stories page names the story and its first step
-      enterReadingMode(target.getAttribute('data-story') || (activeStory ? activeStory.id : null), target.getAttribute('data-step') === null ? undefined : Number(target.getAttribute('data-step')));
-      break;
-    case 'story-read-exit':
-      leaveReadingMode();
-      break;
     case 'story-prev':
     case 'story-next':
-      if (activeStory && readingModeOn()) readStep(activeStory.step + (action === 'story-next' ? 1 : -1), action === 'story-next' ? 'next' : 'previous', true);
-      else if (activeStory) goToStoryStep(activeStory.id, activeStory.step + (action === 'story-next' ? 1 : -1));
+      if (activeStory) goToStoryStep(activeStory.id, activeStory.step + (action === 'story-next' ? 1 : -1));
       break;
     case 'story-restore':
       if (activeStory) goToStoryStep(activeStory.id, activeStory.step);
@@ -22130,7 +22104,6 @@ function render() {
   const app = document.getElementById('app');
   if (AppState.selection.kind !== 'file') filesSelectionSeen = null; // opening the file again, from anywhere, unfolds its group again
   draftTyped = !!rawYamlEditDraft; // a redraw gives every form afresh; only a rejected YAML text is kept
-  if (readingMode && !readingModeOn()) readingMode = false; // the story went away, or the page no longer draws it: the flag does not wait for the next story
 
   // Every branch below replaces #app's innerHTML wholesale, which already
   // discards whatever DOM node a mounted CodeMirror instance lived on — but
@@ -22198,7 +22171,6 @@ function render() {
   const focusedPlain = focusedScopeRef || focusedControl || focusedBox ? null : plainControlFocusOf(document.activeElement);
 
   app.innerHTML = renderShellHtml();
-  announceReadingStep();
   if (focusedControl) {
     const control = app.querySelector(focusedControl);
     if (control && !control.disabled) focusControl(control);
