@@ -41,8 +41,8 @@ function fakeMark(attributes, classes) {
 async function startPage(options) {
   let opened;
   let mem = null;
-  if (options && options.mem) { // a workspace in an in-memory folder, to save and to cancel
-    mem = memFolder(Object.assign(fixtureFiles(), options.files || {}));
+  if (options && (options.mem || options.only)) { // a workspace in an in-memory folder, to save and to cancel; `only`: exactly these files (path -> text), not the fixture's
+    mem = memFolder(options.only || Object.assign(fixtureFiles(), options.files || {}));
     const app = createApp();
     await app.loadWorkspace(mem.handle);
     const appState = app.__state();

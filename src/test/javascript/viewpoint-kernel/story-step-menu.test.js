@@ -1,7 +1,7 @@
 'use strict';
 // Wave 020, run 0149 (W-4), issue #142, second request: the bar of a story has a menu that shows any step directly (T7). It lists the steps by number and title, marks the one on
 // screen and the ones that cannot be drawn (with the sentence), and choosing one is `goToStoryStep`, so the plateau and the comparison of the step are drawn as for Next. It is a
-// native list (`<select data-story-step-menu>`) whose one handler, `chooseStoryStep`, is called from `handleAppChange`; the reading mode of W-5 places the same function in its layout.
+// native list (`<select data-story-step-menu>`) whose one handler, `chooseStoryStep`, is called from `handleAppChange`; the player of wave 021 places the same function in its own layout.
 // Here: on each shipped story (`migration` of domain_plateaus; `fork_tour`, `order_journey`, `seller_journey` of the layered Brightcart) the menu, then every step reached from the
 // menu is what Next pressed to get there draws (the plateau, the comparison, the view, the counts, the bar, the address); steps that cannot be drawn are marked; viewing writes
 // nothing and changes no model; the bar of a story with one step, and the page of a story, are as they were.
@@ -254,8 +254,8 @@ test('the control is a native list with a label, one handler, and it keeps the f
   assert.match(bar, /<select class="story-step-menu" data-story-step-menu data-story="order_journey" aria-label="Show a step of the story" title="[^"]+">/);
   // the same piece, rendered for another layout: the class is the caller's
   const story = sandbox.findStory('order_journey');
-  const reused = sandbox.renderStoryStepMenuHtml(story, 1, 'reading-menu');
-  assert.ok(reused.startsWith('<select class="reading-menu" data-story-step-menu data-story="order_journey"'));
+  const reused = sandbox.renderStoryStepMenuHtml(story, 1, 'player-menu');
+  assert.ok(reused.startsWith('<select class="player-menu" data-story-step-menu data-story="order_journey"'));
   assert.deepEqual(entriesOf(reused), entriesOf(bar));
   // the list keeps the focus across the redraw
   choose(sandbox, 'order_journey', 2);
@@ -379,7 +379,7 @@ function pageOfTag() {
   }
 }
 
-test('against the page of archicode-0.18.0: the bar is the same with the menu and the Read button taken out, and the bar of a story of one step is the same', { skip: pageOfTag() === null || process.env.ARCHICODE_EDITOR_HTML ? 'the page of the tag is not available, or another page is under test' : false }, async () => {
+test('against the page of archicode-0.18.0: the bar is the same with the menu taken out, and the bar of a story of one step is the same', { skip: pageOfTag() === null || process.env.ARCHICODE_EDITOR_HTML ? 'the page of the tag is not available, or another page is under test' : false }, async () => {
   const html = pageOfTag();
   const one = Object.assign({}, FERRY, { 'story.solo.yaml': STORY('solo', '    - viewpoint: overview\n      properties:\n        element: ferry\n      text: Only this.\n') });
   const open0 = async (files, name) => {
@@ -402,8 +402,8 @@ test('against the page of archicode-0.18.0: the bar is the same with the menu an
       now.goToStoryStep(story, step);
       const was = old.renderStoryBarHtml();
       const is = now.renderStoryBarHtml();
-      // the menu (W-4) and the *Read* button (W-5, the reading mode) are the two things the bar gained
-      assert.equal(is.replace(/<select class="story-step-menu"[\s\S]*?<\/select>/, '').replace(/<button type="button" data-action="story-read"[^>]*>Read<\/button>/, ''), was, story + ' step ' + (step + 1) + ': the bar of 0.18.0, and a menu');
+      // the menu (wave 020, W-4) is the one thing the bar gained
+      assert.equal(is.replace(/<select class="story-step-menu"[\s\S]*?<\/select>/, ''), was, story + ' step ' + (step + 1) + ': the bar of 0.18.0, and a menu');
       assert.equal(is.includes('data-story-step-menu'), steps.length > 1, story + ': a menu where there is a step to choose');
     }
   }

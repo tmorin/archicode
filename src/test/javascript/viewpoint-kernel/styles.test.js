@@ -711,7 +711,7 @@ test('the legend lists each styled stereotype of the diagram once, as a badge, a
   state.workspace.styles = {};
   assert.equal(sandbox.diagramLegendHtml(false, ['external', 'changed']), none, 'a workspace without styles');
   // the page builds that list from the boxes drawn, each stereotype once, and the ghosts have none
-  const mount = sandbox.mountDiagramIfNeeded.toString();
+  const mount = sandbox.computeDiagramScene.toString(); // the page draws through `computeDiagramScene` (the editor's `mountDiagramIfNeeded` and the story player share it, wave 021)
   assert.match(mount, /drawnStereotypes\.includes\(name\)/);
   assert.match(mount, /item\.ghost \|\| !Array\.isArray\(item\.stereotypes\)/);
   assert.match(mount, /diagramLegendHtml\(ghosts\.items\.length > 0, drawnStereotypes\)/);
