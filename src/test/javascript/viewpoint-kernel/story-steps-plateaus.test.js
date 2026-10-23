@@ -211,7 +211,7 @@ test('a step is drawn in its plateau and, with `against`, as a comparison; a ste
   sandbox.goToStoryStep('tour', 4);
   assert.deepEqual(drawing(state).plateau, 'later', 'the plateau of the step is drawn');
   assert.match(sandbox.renderStoryBarHtml(), /Step 5 cannot be shown: The element “ferry.pier” is not in the plateau “later”\./);
-  assert.match(sandbox.renderStoryBarHtml(), /data-action="story-prev"(?! disabled)/, 'the way on stays open');
+  assert.doesNotMatch(sandbox.renderStoryBarHtml(), /data-action="story-(prev|next)"/, 'the way on is the player\'s (story-player-modal.test.js), not the bar\'s');
 });
 
 test('a plateau chosen on the band in the middle of a story is the new home of the steps that name none, and "Back to this step" draws the step again', async () => {
