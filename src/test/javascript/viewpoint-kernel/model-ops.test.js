@@ -950,7 +950,7 @@ test('walking a story puts the editor back where each view was saved, and the UR
   assert.equal(ev(sandbox, 'currentPerspective'), 'elements');
   assert.equal(state.selection.key, 'shop.web.api');
   assert.equal(ev(sandbox, 'elementTab'), 'overview');
-  assert.match(sandbox.renderStoryBarHtml(), /data-action="story-prev" disabled/);
+  assert.doesNotMatch(sandbox.renderStoryBarHtml(), /data-action="story-(prev|next)"/, 'Previous and Next are the player\'s (wave 021, run 0153), not the bar\'s');
 
   ev(sandbox, 'activeStory = null');
   sandbox.applyDiagramParamsFromHash();
@@ -1073,7 +1073,7 @@ test('renaming or deleting an element: the views and the steps that point at it 
   assert.equal(ev(sandbox, 'currentPerspective'), 'map', 'the story bar stays, on a diagram: the way on is open');
   const bar = sandbox.renderStoryBarHtml();
   assert.match(bar, /Step 1 cannot be shown/);
-  assert.doesNotMatch(bar, /data-action="story-next" disabled/);
+  assert.doesNotMatch(bar, /data-action="story-(prev|next)"/, 'the way on is the player\'s (story-player-modal.test.js)');
   assert.doesNotMatch(bar, /Back to this step/, 'nothing to go back to');
   assert.match(sandbox.renderLibraryPerspectiveHtml().center, /story-step broken/);
   sandbox.goToStoryStep(story.id, 1);

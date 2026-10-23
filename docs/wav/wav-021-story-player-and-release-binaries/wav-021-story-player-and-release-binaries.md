@@ -94,7 +94,7 @@ wave_manifest:
       slug: story-player-modal
       phase: P0
       depends_on: [W-1]
-      run: null
+      run: 0153
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'

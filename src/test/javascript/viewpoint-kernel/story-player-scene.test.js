@@ -6,7 +6,7 @@
 // Here: on each shipped story (`migration` of domain_plateaus; `fork_tour`, `order_journey`, `seller_journey` of the layered Brightcart) and for several homes (the plateau and the
 // comparison on screen when Play is pressed), every step's scene is the one the editing walk (`goToStoryStep`, the real `render()`, the same fake layout) draws, box by box and link
 // by link, key included; drawing every scene leaves the editor as it was; a step that cannot be drawn is a problem, not an exception; and the editing layout is that of the page of
-// `archicode-0.18.0` apart from the step menu the bar gained in wave 020.
+// `archicode-0.18.0` apart from what wave 021 moved into the player (run 0153: Previous, Next and Play).
 // Run with: node --test "src/test/javascript/**/*.test.js"
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -387,7 +387,7 @@ function pageOfTag() {
 
 const SKIP_TAG = pageOfTag() === null || process.env.ARCHICODE_EDITOR_HTML ? 'the page of the tag archicode-0.18.0 is not available (a shallow clone), or another page is under test' : false;
 
-test('against the page of archicode-0.18.0: the editing layout (the whole shell, on every step of every shipped story, and the page of the stories) is the same with the step menu taken out', { skip: SKIP_TAG }, async () => {
+test('against the page of archicode-0.18.0: the editing layout (the whole shell, on every step of every shipped story, and the page of the stories) is the same but for what wave 021 moved into the player', { skip: SKIP_TAG }, async () => {
   const html = pageOfTag();
   const open0 = async (files, withHtml) => {
     const mem = memFolder(files);
@@ -400,7 +400,11 @@ test('against the page of archicode-0.18.0: the editing layout (the whole shell,
     sandbox.render = () => { sandbox.syncHashFromState(); };
     return sandbox;
   };
-  const withoutMenu = (text) => text.replace(/<select class="story-step-menu"[\s\S]*?<\/select>/g, '');
+  // what wave 021 (run 0153) takes out of the editing layout: Previous and Next on the bar of a story (the player has them), and Play, which opens the player instead of walking the diagrams
+  const asNow = (text) => text
+    .replace(/<span class="button-group" role="group" aria-label="Steps"><button type="button" data-action="story-prev"[^>]*>Previous<\/button><button type="button" data-action="story-next"[^>]*>Next<\/button><\/span>/g, '')
+    .replace(/<button type="button" data-action="story-play" data-story="([^"]*)" data-step="0"( disabled)? title="Walk through the story on the diagrams, from its first step">Play<\/button>/g,
+      (all, id, disabled) => '<button type="button" data-action="story-player-open" data-story="' + id + '"' + (disabled || '') + ' title="Play the story like slides, in a window of its own, from its first step: the editor behind it is not touched">Play</button>');
   let compared = 0;
   for (const { story, dir } of SHIPPED) {
     const files = shippedFiles(dir);
@@ -410,12 +414,14 @@ test('against the page of archicode-0.18.0: the editing layout (the whole shell,
     for (let step = 0; step < steps; step++) {
       old.goToStoryStep(story, step);
       now.goToStoryStep(story, step);
-      assert.equal(withoutMenu(now.renderShellHtml()), old.renderShellHtml(), story + ' step ' + (step + 1) + ': the shell');
+      assert.equal(now.renderShellHtml(), asNow(old.renderShellHtml()), story + ' step ' + (step + 1) + ': the shell');
       assert.equal(now.renderDiagramCanvasHtml(null, ''), old.renderDiagramCanvasHtml(null, ''), story + ' step ' + (step + 1) + ': the diagram and its tools');
+      assert.doesNotMatch(now.renderStoryBarHtml(), /story-prev|story-next|story-step-menu|>Read</, 'the bar has no Previous, Next, menu or Read');
       compared++;
     }
     for (const sandbox of [old, now]) { sandbox.selectStory(story); run(sandbox, "currentPerspective = 'library';"); }
-    assert.equal(withoutMenu(now.renderShellHtml()), old.renderShellHtml(), story + ': the page of the stories');
+    assert.equal(now.renderShellHtml(), asNow(old.renderShellHtml()), story + ': the page of the stories');
+    assert.match(now.renderShellHtml(), /data-action="story-player-open" data-story="/, 'Play opens the player');
   }
   assert.ok(compared >= 10, 'the shells of the steps were compared');
 });
