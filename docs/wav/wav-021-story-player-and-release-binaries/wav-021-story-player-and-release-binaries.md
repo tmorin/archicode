@@ -105,7 +105,7 @@ wave_manifest:
       slug: save-keeps-quotes-and-comments
       phase: P1
       depends_on: []
-      run: null
+      run: 0154
       delegation: standard
       likely_paths:
         - 'src/main/resources/editor-webapp/standalone.html'

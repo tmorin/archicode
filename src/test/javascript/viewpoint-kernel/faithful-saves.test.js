@@ -468,8 +468,10 @@ test('#57: a result that does not read back as the emitter\'s text is not accept
 test('#57: when the aligner keeps the line of a key for another value (the first item of a list of maps goes, the second stays), the lines under it are the emitter\'s and the data is right', () => {
   const text = 'content:\n  id: m\n  size:\n  - note:\n    - gamma   # c1\n    # c2\n    - x\n  - note:   # c3\n      q: 1\n    label: l\n';
   const out = save(text, (v) => { v.content.size.splice(0, 1); });
-  // the same lines as for the same file with the lists indented: the first `note:` line is the one that stays, so the comment of the second (`# c3`) goes with the line that goes
-  assert.equal(out, 'content:\n  id: m\n  size:\n  - note:\n      # c2\n      q: 1\n    label: l\n');
+  // the item that goes is the first one, whose lines (`- note:`, `- gamma`) read like the next item's `- note:`: the line that stays is the second item's own, with its comment
+  // (`# c3`; wave 021, run 0154, #151: the aligner used to keep the first `- note:` and the comment of the second went with the line that went). What the first item left in the
+  // middle of its lines (`# c2`, on a line of its own) stays, as a comment between two lines of an item that goes does everywhere in the aligner
+  assert.equal(out, 'content:\n  id: m\n  size:\n      # c2\n  - note:   # c3\n      q: 1\n    label: l\n');
 });
 
 test('#57: the editor renames an element whose file writes its lists at the column of their keys: the id, the references and the comments are the only lines that differ', async () => {

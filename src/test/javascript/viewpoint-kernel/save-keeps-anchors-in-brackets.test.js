@@ -286,12 +286,12 @@ test('an item whose map starts below its dash: a key added, an item added, an it
   assert.equal(saved(DASHES, (c) => { c.elements.push({ kind: 'container', id: 'cart' }); }).out, edited(DASHES, ['        name: Van\n', '        name: Van\n    - kind: container\n      id: cart\n']));
   // the last item removed: its lines go; a comment on a line of its own between two of its keys stays, as it does in any list the aligner follows
   assert.equal(saved(DASHES, (c) => { c.elements.splice(2, 1); }).out, edited(DASHES, ['    -   # deeper\n        kind: container\n        id: van\n        # its name\n        name: Van\n', '      # its name\n']));
-  // an item removed whose first line is the first line of the next one too (`kind: container`): the aligner keeps the first of two lines that read the same, as it does in
-  // any list, so the next item takes the dash line, the comments and the columns of the removed one; the file says the edit, the keys and the comments of the item that
-  // stays are its own
+  // an item removed whose first line is the first line of the next one too (`kind: container`): the lines that read the same leave a choice, and the item that goes is the whole
+  // item the model says (its dash line, the comment between its dash and its first key, its keys); the next one keeps its own dash line, its comments and its columns (wave 021, run 0154,
+  // #151: the aligner used to keep the first of two lines that read the same, so the next item took the dash line, the comments and the columns of the removed one)
   assert.equal(
     saved(DASHES, (c) => { c.elements.splice(1, 1); }).out,
-    edited(DASHES, ['      id: oven\n      name: Oven\n    -   # deeper\n        kind: container\n        id: van\n        # its name\n        name: Van\n', '      id: van\n      # its name\n      name: Van\n'])
+    edited(DASHES, ['    -\n      # the second one\n      kind: container\n      id: oven\n      name: Oven\n', ''])
   );
 });
 
