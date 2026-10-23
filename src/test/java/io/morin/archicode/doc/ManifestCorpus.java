@@ -116,6 +116,25 @@ final class ManifestCorpus {
         return out;
     }
 
+    /**
+     * C4: the manifests of the small workspace that {@code archicode guide} ends with (wave 022, run 0159): the {@code yaml}
+     * blocks of the guide that are files under {@code manifests/}, read as the loader reads them. They are positives.
+     */
+    static List<Entry> guide(String guide) {
+        val out = new ArrayList<Entry>();
+        GuideBlocks.files(guide).forEach((path, text) -> {
+            if (path.startsWith("manifests/")) {
+                out.add(new Entry("guide", path, parse(path, text)));
+            }
+        });
+        return out;
+    }
+
+    @SneakyThrows
+    private static JsonNode parse(String path, String text) {
+        return mapperOf(Path.of(path)).readTree(text);
+    }
+
     /** The ids of the cases of {@code negative-cases.json}, in the order of the file. */
     @SneakyThrows
     static List<JsonNode> caseNodes() {
