@@ -14,7 +14,9 @@ import io.morin.archicode.workspace.WorkspaceFactory;
 import io.morin.archicode.workspace.WorkspaceFileException;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
@@ -257,5 +259,19 @@ class WorkspaceFileNameTest {
         } finally {
             editorHttpServer.stop(running);
         }
+    }
+
+    @Test
+    void an_exception_of_the_file_system_without_a_reason_is_still_told_in_words(@TempDir Path folder) {
+        val path = folder.resolve(".archicode.yaml");
+        // built from a path alone, these two carry the path as their message and no reason
+        assertEquals(
+            "the workspace file `" + path + "` cannot be read: permission denied",
+            WorkspaceFileException.unreadable(path, new AccessDeniedException(path.toString())).getMessage()
+        );
+        assertEquals(
+            "the workspace file `" + path + "` cannot be read: no such file",
+            WorkspaceFileException.unreadable(path, new NoSuchFileException(path.toString())).getMessage()
+        );
     }
 }

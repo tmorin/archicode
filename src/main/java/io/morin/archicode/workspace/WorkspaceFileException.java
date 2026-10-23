@@ -2,7 +2,9 @@ package io.morin.archicode.workspace;
 
 import io.morin.archicode.ArchiCodeException;
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystemException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -80,6 +82,12 @@ public class WorkspaceFileException extends ArchiCodeException {
     /** What the file system said, without the path (which the sentence already has), in lower case: "permission denied". */
     private static String reasonOf(IOException e) {
         var reason = e instanceof FileSystemException file && file.getReason() != null ? file.getReason() : null;
+        // an AccessDeniedException built from a path alone has no reason, and its message is that path
+        if (reason == null && e instanceof AccessDeniedException) {
+            reason = "permission denied";
+        } else if (reason == null && e instanceof NoSuchFileException) {
+            reason = "no such file";
+        }
         if (reason == null) {
             val message = e.getMessage();
             if (message == null) {

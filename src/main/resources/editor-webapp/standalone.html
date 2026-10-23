@@ -639,6 +639,7 @@
   .reading-shell { height: 100vh; height: 100dvh; display: flex; flex-direction: column; min-width: 0; max-width: 100vw; overflow: hidden; background: var(--bg); color: var(--fg); }
   .reading-shell .reading-center { flex: 1 1 0; min-height: 0; min-width: 0; }
   .reading-shell .reading-view { min-width: 0; }
+  .reading-announcer { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .reading-bar { max-height: 45vh; overflow-y: auto; min-width: 0; }
   .reading-title { font-size: 1.1rem; overflow-wrap: anywhere; min-width: 0; }
   .reading-step-menu { flex: 0 1 22rem; min-width: 0; max-width: 100%; box-sizing: border-box; text-overflow: ellipsis; }
@@ -963,6 +964,8 @@
 </head>
 <body>
 <div id="app"></div>
+<!-- the announcements of the reading mode: outside #app, which render() replaces, so that a screen reader sees a text change and not a new node -->
+<div id="reading-announcer" class="reading-announcer" role="status" aria-live="polite"></div>
 
 <!--
   CodeMirror, for the raw-YAML file editor (form UX review follow-up — "un
@@ -3059,8 +3062,9 @@ function patchYamlTextAt(oldText, newValue) {
   const opened = openFlowLists(oldText);
   if (opened === null) return emitted;
   // a collection in brackets that the edit changes goes back in brackets where it can (see `bracketChangedFlows`); if that does not read as the edit, the blocks, as before
-  const marked = markOpenedFlows(opened);
-  const widest = oldText.split(/\r\n|\r|\n/).reduce((most, line) => Math.max(most, line.length), 0);
+  const marked = opened.lists.length === 0 ? null : markOpenedFlows(opened); // nothing was opened: there is no collection in brackets to write back
+  const textLines = oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/);
+  const widest = marked === null ? 0 : textLines.reduce((most, line) => Math.max(most, line.length), 0);
   const attempt = (styled, brackets) => {
     const patched = patchYamlLines(brackets ? marked : opened.text, emitted, newValue, styled);
     if (patched === null) return null;
@@ -3069,7 +3073,7 @@ function patchYamlTextAt(oldText, newValue) {
     return closeFlowLists(bracketed.text, opened.lists.filter((list) => !bracketed.done.has(list)));
   };
   const run = (brackets) => {
-    const quoted = { lines: 0, voteLines: oldText.replace(/^\ufeff/, '').split(/\r\n|\r|\n/) }; // the quotes of the author are in the text as written, not in the lists opened
+    const quoted = { lines: 0, voteLines: textLines.slice() }; // the quotes of the author are in the text as written, not in the lists opened
     let closed = attempt(quoted, brackets);
     if (closed === null) return null;
     if (quoted.lines > 0 && !says(closed)) closed = attempt(undefined, brackets);
@@ -20313,7 +20317,7 @@ function readStep(index, focus, asked) {
  * The keys of the reading mode, one listener on the document (bubbling, like `handleChangesKeydown`, whose rule it follows): Left and Right show the previous and the next step, Home and End
  * the first and the last, Escape leaves. Up and Down are not taken, so that the words of a long step scroll as they should. It leaves the key alone when a modifier is held (Shift included),
  * when the reader types or has a control that owns the arrows (an input, a textarea, a select, a contenteditable, a code editor: the target and the focused element are both looked at;
- * the list of the steps is a select, whose arrows choose a step on their own), when a dialog, the help or the menu of the header is open, when a rejected YAML text is waiting, and when the
+ * the list of the steps is a select, whose arrows choose a step on their own; only Escape leaves from it), when a dialog, the help or the menu of the header is open, when a rejected YAML text is waiting, and when the
  * page is not in the reading mode. The step that is already the first or the last is not walked past, and the key is kept from the browser only when it did something.
  */
 function handleReadingKeydown(e) {
@@ -20321,7 +20325,9 @@ function handleReadingKeydown(e) {
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape'].includes(key) || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.defaultPrevented || e.isComposing) return;
   if (!readingModeOn()) return;
   const focused = typeof document.activeElement === 'undefined' ? null : document.activeElement;
-  if (isTypingTarget(e.target) || isTypingTarget(focused)) return;
+  // the focus lands on the list of the steps when the mode opens, and the arrows and Home/End are the list's own there (they choose a step): Escape is the one key the list does not use, so it leaves
+  const onStepMenu = !!(focused && focused.matches && focused.matches('[data-story-step-menu]'));
+  if (!(key === 'Escape' && onStepMenu) && (isTypingTarget(e.target) || isTypingTarget(focused))) return;
   if (appDialog || helpOpen || headerMenuOpen || rawYamlEditDraft) return;
   const onButton = focused && focused.getAttribute ? focused.getAttribute('data-action') : null;
   const steps = storySteps(findStory(activeStory.id));
@@ -20356,7 +20362,7 @@ function renderReadingShellHtml() {
       '<div class="story-bar reading-bar">' +
         '<div class="story-bar-line">' +
           '<span class="story-bar-title reading-title">' + escapeHtml(storyLabel(story)) + '</span>' +
-          '<span class="story-bar-step" aria-live="polite">Step ' + (n + 1) + ' of ' + steps.length + (view ? ' · ' + escapeHtml(viewLabel(view)) : '') + '</span>' +
+          '<span class="story-bar-step">Step ' + (n + 1) + ' of ' + steps.length + (view ? ' · ' + escapeHtml(viewLabel(view)) : '') + '</span>' +
           renderStoryStepMenuHtml(story, n, 'reading-step-menu') +
           stepPlateausHtml(steps[n], 'story-bar-plateaus') +
           '<span class="story-bar-actions reading-actions">' +
@@ -20374,6 +20380,23 @@ function renderReadingShellHtml() {
     '</div></main>' +
     renderAppDialogHtml() +
   '</div>';
+}
+
+/** The step on screen, said once to a screen reader through the live region outside #app (it is the text that changes, so the change is announced); empty when the mode is off. */
+let readingAnnounced = '';
+function announceReadingStep() {
+  const region = typeof document.getElementById === 'function' ? document.getElementById('reading-announcer') : null;
+  if (!region) return;
+  let said = '';
+  if (readingModeOn()) {
+    const story = findStory(activeStory.id);
+    const steps = storySteps(story);
+    const view = stepView(steps[activeStory.step]);
+    said = 'Step ' + (activeStory.step + 1) + ' of ' + steps.length + (view ? ', ' + viewLabel(view) : '');
+  }
+  if (said === readingAnnounced) return;
+  readingAnnounced = said;
+  region.textContent = said;
 }
 
 /**
@@ -22175,6 +22198,7 @@ function render() {
   const focusedPlain = focusedScopeRef || focusedControl || focusedBox ? null : plainControlFocusOf(document.activeElement);
 
   app.innerHTML = renderShellHtml();
+  announceReadingStep();
   if (focusedControl) {
     const control = app.querySelector(focusedControl);
     if (control && !control.disabled) focusControl(control);
