@@ -534,7 +534,11 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
 <li><a href="#_introduction">Introduction</a></li>
-<li><a href="#_availability_license_and_deliverables">Availability, License, and Deliverables</a></li>
+<li><a href="#_availability_license_and_deliverables">Availability, License, and Deliverables</a>
+<ul class="sectlevel2">
+<li><a href="#install">Install</a></li>
+</ul>
+</li>
 <li><a href="#_features">Features</a></li>
 <li><a href="#domain">Domain</a>
 <ul class="sectlevel2">
@@ -622,6 +626,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 <li><a href="#_commands">Commands</a>
 <ul class="sectlevel2">
+<li><a href="#version">Print the version</a></li>
 <li><a href="#errors-and-warnings">Errors, warnings and exit codes</a></li>
 <li><a href="#serve-the-editor">Serve the editor</a></li>
 <li><a href="#generate-views">Generate views</a></li>
@@ -693,7 +698,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <h2 id="_availability_license_and_deliverables">Availability, License, and Deliverables</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>ArchiCode is an open-source software hosted on GitHub, fostering transparency and collaboration. It operates under the MIT license, granting users flexibility in its use and modification. The software is distributed as a Maven Artifact and an OCI Image (Docker Image), simplifying integration.</p>
+<p>ArchiCode is an open-source software hosted on GitHub, fostering transparency and collaboration. It operates under the MIT license, granting users flexibility in its use and modification. The software is distributed as a native program for Linux and macOS on the release page, as a Maven Artifact and as an OCI Image (Docker Image), simplifying integration.</p>
 </div>
 <div class="ulist">
 <ul>
@@ -704,15 +709,83 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <p>Licensing: ArchiCode is licensed under the permissive MIT license, enabling users to freely utilize, modify, and distribute the software.</p>
 </li>
 <li>
-<p>Deliverables: ArchiCode is conveniently available as a Maven Artifact and an OCI Image, facilitating easy integration into development workflows.</p>
+<p>Deliverables: ArchiCode is conveniently available as a native program (one file for each of Linux amd64, Linux arm64 and macOS arm64), as a Maven Artifact and as an OCI Image, facilitating easy integration into development workflows. <a href="#install">Install</a> tells how to get and check each of them.</p>
 </li>
 <li>
-<p>Access to Deliverables: The practical deliverables can be accessed through the dedicated packages repository at <a href="https://github.com/tmorin/archicode/packages" class="bare">https://github.com/tmorin/archicode/packages</a>.</p>
+<p>Access to Deliverables: The native programs, with their checksums, are on the release page at <a href="https://github.com/tmorin/archicode/releases" class="bare">https://github.com/tmorin/archicode/releases</a>. The Maven Artifact and the OCI Image can be accessed through the dedicated packages repository at <a href="https://github.com/tmorin/archicode/packages" class="bare">https://github.com/tmorin/archicode/packages</a>.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
 <p>This accessibility, licensing, and practical distribution emphasize ArchiCode&#8217;s commitment to fostering an open and collaborative architectural community.</p>
+</div>
+<div class="sect2">
+<h3 id="install">Install</h3>
+<div class="paragraph">
+<p>ArchiCode is one program, <code>archicode</code>, and the commands are the same whichever form of it you run. This section is about getting it and checking that it is the file the project built.</p>
+</div>
+<div class="paragraph">
+<p><strong>The native program of a release.</strong> The releases after 0.18.0 carry, on <a href="https://github.com/tmorin/archicode/releases" class="bare">https://github.com/tmorin/archicode/releases</a>, one file for each machine and a file of checksums:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">File</th>
+<th class="tableblock halign-left valign-top">For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>archicode-&lt;version&gt;-linux-amd64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux on an x86-64 processor</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>archicode-&lt;version&gt;-linux-arm64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux on an ARM 64-bit processor</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>archicode-&lt;version&gt;-macos-arm64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">macOS on Apple silicon</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SHA256SUMS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the SHA-256 checksum of each of the three files above</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Each is a single file, built as a native image: nothing else has to be installed, no Java and no container runtime, and the editor (<code>archicode editor serve</code>, see <a href="#serve-the-editor">Serve the editor</a>) is inside it. <code>views generate</code> writes PlantUML source files and draws no image, so the program needs neither PlantUML nor Graphviz either; turning a <code>.puml</code> file into a picture is done with PlantUML, as with any form of ArchiCode. On Linux, download the file for your machine and <code>SHA256SUMS</code> into one folder, then:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">sha256sum --check --ignore-missing SHA256SUMS
+chmod +x archicode-&lt;version&gt;-linux-amd64
+./archicode-&lt;version&gt;-linux-amd64 --version</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The first line checks the files of the folder against their lines of <code>SHA256SUMS</code> and prints <code>archicode-&lt;version&gt;-linux-amd64: OK</code> (<code>--ignore-missing</code> leaves out the files you did not download); the last prints <code>archicode &lt;version&gt;</code>, and nothing needs a workspace for that. To use it as <code>archicode</code>, put it on your <code>PATH</code> under that name, for example <code>install -m 755 archicode-&lt;version&gt;-linux-amd64 ~/.local/bin/archicode</code>. On macOS, <code>shasum</code> replaces <code>sha256sum</code> and checks the lines it is given, so give it the line of the file you downloaded:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">grep archicode-&lt;version&gt;-macos-arm64 SHA256SUMS | shasum -a 256 --check
+chmod +x archicode-&lt;version&gt;-macos-arm64
+./archicode-&lt;version&gt;-macos-arm64 --version</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>The macOS file is not notarized.</strong> It is not signed with an Apple developer identity, so macOS Gatekeeper stops a file that a browser downloaded (the browser marks it as quarantined) with a message that Apple cannot check it for malicious software. Allow it once, either with <code>xattr -d com.apple.quarantine archicode-&lt;version&gt;-macos-arm64</code> or in System Settings, Privacy &amp; Security, with <strong>Open Anyway</strong>. A file fetched with <code>curl</code> or <code>gh release download</code> is not marked and runs as it is. The checksum is how you know the file is the one the release published.</p>
+</div>
+<div class="paragraph">
+<p><strong>Where it runs.</strong> The Linux files are built on Ubuntu 24.04 and need glibc 2.34 or later (a system that uses another C library, such as Alpine, which uses musl, was not tried); the macOS file is built on macOS 15 and says it needs macOS 15.0 or later. There is no Windows file and no file for an Intel Mac yet: there, and anywhere else, use the JAR (Java 25) or the OCI Image, which runs the same JAR: <code>java -jar quarkus-run.jar --version</code> and <code>docker run --rm ghcr.io/tmorin/archicode --version</code> print the same line as the native programs do.</p>
+</div>
+<div class="paragraph">
+<p>Each file of a release is run on its own kind of machine, as it is published, before the release is made public: its checksum, <code>--version</code>, <code>views generate</code> on an example of this manual and <code>editor serve</code> answering a request. That check is what the project does; it does not replace yours.</p>
+</div>
 </div>
 </div>
 </div>
@@ -3818,7 +3891,7 @@ LineThickness: 2
 <p><strong>Move</strong> puts an element under another parent (or, for a kind that may be a root, at the top level), with what is inside it, and rewrites the references to it (see <a href="#editor-move">Moving an element under another parent</a>); it moves an element that the plateau drawn declares, such as <em>Ratings</em> of <code>to-be</code>, and refuses one it inherits. <strong>Move</strong> writes no <code>replaces</code>.</p>
 </li>
 <li>
-<p><strong>Stories</strong> lists the stories and the views of the workspace, whatever plateau is drawn. The story <em>From the shop to the new shop</em> (<code>plateaus/story.migration.yaml</code>, the file shown in <a href="#story-step-plateaus">[story-step-plateaus]</a>) tells it in four steps: <strong>Play</strong> walks through them, and each step that says <code>at</code> and <code>against</code> draws that plateau and that comparison first, so that the first step shows the shop of <em>As is</em> and the second the shop of <em>To be</em> with what changed marked. The bar says <em>told at To be, compared with As is</em> (see <a href="#editor-stories">Stories: stories and views</a>).</p>
+<p><strong>Stories</strong> lists the stories and the views of the workspace, whatever plateau is drawn. The story <em>From the shop to the new shop</em> (<code>plateaus/story.migration.yaml</code>, the file shown in <a href="#story-step-plateaus">[story-step-plateaus]</a>) tells it in four steps: <strong>Play</strong> opens the story in a window of its own that covers the editor and plays it like slides, and each step that says <code>at</code> and <code>against</code> is drawn at that plateau and with that comparison, so that the first step shows the shop of <em>As is</em> and the second the shop of <em>To be</em> with what changed marked; the slide says <em>Plateau To be · compared with As is</em>, and closing it leaves the editor as it was (see <a href="#editor-stories">Stories: stories and views</a> and <a href="#editor-story-player">[editor-story-player]</a>). <strong>Show on diagram</strong>, on a step, draws that step on the editing diagram instead, and the bar over it says <em>told at To be, compared with As is</em>.</p>
 </li>
 <li>
 <p><strong>Files</strong> lists every file, in a group for each plateau: <em>As is</em> with its five manifests, <em>To be</em> with its seven, and, last, <em>No plateau</em> with the story, which belongs to none (see <a href="#editor-files">Files</a>).</p>
@@ -3956,8 +4029,47 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </li>
 </ol>
 </div>
+<div id="upgrade-0-18" class="paragraph">
+<p><strong>What changes for a reader who knows 0.18.0.</strong> These are the changes after the release 0.18.0; the release that carries them has no number in this manual yet. One of them can stop a workspace that loaded before, a facet whose name cannot be the name of a folder, and it comes first; the others change a sentence, a saved file or a screen, or add something. As for the blocks below, there is no release notes file in the repository: these blocks are the notes. The <code>error:</code> lines are the ones the tools print.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>A facet whose name is not a folder name is refused</strong> (Breaking, for such a name). The name of a facet goes as it is written into the folders of its views, so a name that is empty, is <code>.</code> or <code>..</code>, holds <code>/</code>, <code>\</code>, a NUL or another control character or one of <code>&lt; &gt; : " | ? *</code>, or ends with a dot or a space is now refused by every command that loads the workspace and by the editor, with one <code>error:</code> line for each facet, exit code 1, before anything is written. A facet called <code>a/b</code> loaded in 0.18.0 and wrote its views in <code>views-a/b</code>, a folder inside a folder; it now stops with:</p>
+<div class="listingblock">
+<div class="content">
+<pre>error: the facet name `a/b` cannot be the name of a folder: it holds `/`, which separates the folders of a path (write a plain word, such as `journey`)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Rename the facet in <code>.archicode.yaml</code>, and rename or delete the folder it wrote if you keep it. Every facet of the examples of this manual and of the repository&#8217;s tests uses plain words, so their views are the ones they were, byte for byte. The rule and the names it does not look at are in <a href="#facets">Tackling view clutter</a>.</p>
+</div>
+</li>
+<li>
+<p><strong>A workspace file that cannot be read is one line, not a stack trace</strong> (see <a href="#errors-and-warnings">Errors, warnings and exit codes</a>). A <code>.archicode.yaml</code> that is there and that the file system refuses to read (a file without the right to read it) printed <code>error: unexpected java.io.FileNotFoundException: &#8230;&#8203; (Permission denied)</code> and a stack trace in 0.18.0; it is now <code>error: the workspace file `...` cannot be read: permission denied</code>, exit code 1. The other ways to have no workspace file, and the sentence for <code>workspace.yaml</code>, are word for word what they were.</p>
+</li>
+<li>
+<p><strong>The editor&#8217;s card says what is wrong with the file</strong> (see <a href="#editor-open">Opening the editor</a>). For a <code>.archicode.yaml</code> that is read and found wrong (a key that does not exist, YAML that is not valid, a file that is not a mapping, <code>settings.plateaus</code>, a path or a facet name that is refused) the card <em>Can&#8217;t open this workspace</em> shows the sentence of the command line, where it said that the file could not be read and added a hint to check that it is valid YAML. It keeps those words for a file that cannot be had, and the list of the remembered folders notes only those.</p>
+</li>
+<li>
+<p><strong>The editor keeps the brackets</strong> (see <a href="#editor-elements">Elements</a>). A list or a map that you wrote in brackets (<code>qualifiers: [a, b]</code>, <code>tags: {zone: north}</code>) and that a change reaches is saved in brackets, on its line, when it fits, where it was saved as a block. Nothing is lost either way: the file reads the same, and the cases that still become a block are listed there.</p>
+</li>
+<li>
+<p><strong>A story can be played</strong> (see <a href="#editor-stories">Stories: stories and views</a> and <a href="#editor-story-player">[editor-story-player]</a>). <strong>Play</strong>, on the page of a story, opens the story in a window of its own that covers the editor and plays it like slides: the diagram of each step, drawn at the plateau and with the comparison the step names, its words, a list of the steps, <strong>Previous</strong> and <strong>Next</strong>, full screen, and the arrow keys, <code>Home</code>, <code>End</code> and <code>Esc</code>. The editor behind it does not change: when the window closes, the plateau, the comparison, the selection, the page and the address are what they were, and nothing is written. <code>play=</code> in the address keeps the window in a link. The bar over the editing diagram, which <strong>Show on diagram</strong> raises for one step, no longer has <strong>Previous</strong>, <strong>Next</strong> or a list of the steps: they are in the player. Nothing the command line writes changes: <code>archicode stories generate</code> and <code>views generate</code> draw what they drew.</p>
+</li>
+<li>
+<p><strong>The save keeps the quotes and the comments it can</strong> (see <a href="#editor-elements">Elements</a> and <a href="#plateau-limits">Limits of today</a>). When you save a file, a value that comes back on a line that is written again (a map in brackets that becomes a list of maps, an item that moves, a list that gives back its item) keeps the quotes it had, and so does a key; a comment stays on the line of its own key or item; and removing the first of two items that read the same removes the first, with its comment, where the comment could stay on the second. A comment that a removed line left right under a block scalar (<code>key: |</code>) no longer makes the editor write the whole file again in its own layout, which lost every comment of the file. The file reads the same either way; what changes is that quotes and comments that were lost or put on the wrong item are kept.</p>
+</li>
+<li>
+<p><strong><code>archicode --version</code></strong> is new (see <a href="#version">Print the version</a>): one line, <code>archicode &lt;version&gt;</code>, on the top command only. Nothing else changes on the command line.</p>
+</li>
+<li>
+<p><strong>The release page carries native programs</strong> (see <a href="#install">Install</a>). The releases after 0.18.0 attach <code>archicode-&lt;version&gt;-linux-amd64</code>, <code>archicode-&lt;version&gt;-linux-arm64</code> and <code>archicode-&lt;version&gt;-macos-arm64</code> with a <code>SHA256SUMS</code> file, each run on its own kind of machine before the release is public. The Maven Artifact and the OCI Image are as they were. There is no file for Windows or for an Intel Mac yet.</p>
+</li>
+</ol>
+</div>
 <div id="upgrade-0-17" class="paragraph">
-<p><strong>What changes for a reader who knows 0.17.0.</strong> This release has one change that stops every workspace, the name of the workspace file, so it comes first. There is no release notes file in the repository: this block and the two that follow are the notes. The <code>error:</code> lines below are the ones the tools print.</p>
+<p><strong>What changes for a reader who knows 0.17.0.</strong> This release has one change that stops every workspace, the name of the workspace file, so it comes first. There is no release notes file in the repository: this block and the ones that follow are the notes. The <code>error:</code> lines below are the ones the tools print.</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
@@ -4110,7 +4222,13 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <div class="ulist">
 <ul>
 <li>
-<p><strong>The save of the editor writes a file again in its own layout</strong> in a few cases, with the comments lost and the aliases written as their values: an anchor or a tag on a key inside brackets (<code>{&amp;k zone: north}</code>); a single pair in a list in brackets that also holds an anchor, an alias or a tag (<code>[&amp;a one: two]</code>); a tagged text over several lines inside brackets; and a list item whose map starts under its dash, nested inside another such item. The file is read and the model is what it says. The other layouts that were in this list in 0.17.0 are kept as written (see <a href="#editor-elements">Elements</a>).</p>
+<p><strong>The save of the editor writes a file again in its own layout</strong> in a few cases, with the comments lost and the aliases written as their values: an anchor or a tag on a key inside brackets (<code>{&amp;k zone: north}</code>); a single pair in a list in brackets that also holds an anchor, an alias or a tag (<code>[&amp;a one: two]</code>); a tagged text over several lines inside brackets; a list item whose map starts under its dash, nested inside another such item; and a list item that is a block scalar (<code>- |</code>, then its text), where any save of the file, even of another key, writes the whole file again. The file is read and the model is what it says. The other layouts that were in this list in 0.17.0 are kept as written (see <a href="#editor-elements">Elements</a>).</p>
+</li>
+<li>
+<p><strong>A few comments and block scalars are lost or move when the lists around them are nested again.</strong> Three cases, found by a generated test of the save, are left: a comment on an item that is itself a list (<code>-</code> then its items, or <code>- [c, d]  # second row</code>) is lost, or taken by the item above, when the list around it is wrapped in another list or unwrapped; a block scalar (<code>note: |</code>) that sits on the second key of a map that is a list item is written as a quoted text (<code>"one\ntwo\n"</code>) when the first key goes or another comes before it; and a list that holds a list in brackets, wrapped in another list, is written in brackets as a whole. The value read is the same in each case; the layout, or a comment, is not what you wrote. In every other layout the generated test of the save covers, it finds no quote or comment lost on a line that an edit did not touch.</p>
+</li>
+<li>
+<p><strong>A collection in brackets that a change reaches is sometimes saved as a block.</strong> It stays in brackets, on its line, when it fits (see <a href="#editor-elements">Elements</a>); it becomes a block when it would be wider than the widest line of the file (100 to 120 columns), when a comment stands inside its brackets, when it is an empty <code>[]</code> or <code>{}</code> that the change fills, and when it has an anchor, an alias or a tag in it. A block in the file is never turned into brackets. The file reads the same either way; only its layout differs from what you wrote.</p>
 </li>
 <li>
 <p><strong>An anchor or a tag on a mapping key</strong> (<code>&amp;k name: x</code>) is read by the command line and refused by the editor, which does not open the file and says <code>an anchor or a tag on a key is not supported</code> (not planned: a splice on a key could lose text, for a form nobody writes). <strong>The merge key <code>&lt;&lt;</code></strong> is no merge in either tool: it is read as a key named <code>&lt;&lt;</code>, which a manifest does not have, so both refuse it (not planned).</p>
@@ -4131,7 +4249,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </ul>
 </div>
 <div class="paragraph">
-<p><strong>The editor on a phone</strong> (not planned). Nobody has used the editor on a real phone: what the editor does in a window 360 pixels wide was measured in a desktop browser, and is told in <a href="#editor-small-screen">The editor on a small screen</a>.</p>
+<p><strong>The editor on a phone</strong> (not planned). Nobody has used the editor on a real phone: what the editor does in a window 360 pixels wide was measured in a desktop browser, and is told in <a href="#editor-small-screen">The editor on a small screen</a>. That includes the player of a story, which was measured at such a window but not tried on a phone: the finger that moves its diagram, the picker of its list of the steps, full screen on a phone and the on-screen keyboard are not checked.</p>
 </div>
 </div>
 </div>
@@ -4159,6 +4277,9 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </div>
 <div class="paragraph">
 <p>The folder to open is the one that holds the workspace file, <code>.archicode.yaml</code>. You pick the folder, not the file, so the hidden name is no obstacle in the dialog of the browser. A folder that has a <code>workspace.yaml</code> and no <code>.archicode.yaml</code> is not opened: the editor gives the reason beside the folder, with the sentence the command line prints (see <a href="#upgrade-0-17">[upgrade-0-17]</a>).</p>
+</div>
+<div class="paragraph">
+<p>When a folder cannot be opened, the editor says so on a card, <em>Can&#8217;t open this workspace</em>, and what it says depends on what went wrong with <code>.archicode.yaml</code>. If the file cannot be had at all (there is none, a folder stands in its place, or the browser or the server refuses to read it), the card says <code>.archicode.yaml could not be read in “folder”</code>, with the reason the browser gave and the hint to choose the root of the workspace. If the file is read and found wrong (a key that does not exist, YAML that is not valid, a file that is not a mapping, <code>settings.plateaus</code>, a path of <code>manifests.paths</code> or a facet name that is refused), the card shows the sentence the command line prints for it, as it is, without <em>could not be read</em> and without the hint: the file was read, and the sentence says what to change. The sentence for <code>workspace.yaml</code> is shown as it is as well. In the list of the remembered folders, the note <em>Its .archicode.yaml could not be read the last time it was opened</em> is given to a folder whose file could not be had, or is still named <code>workspace.yaml</code>, and not to one that failed for another reason.</p>
 </div>
 <div id="editor-folders" class="paragraph">
 <p>The published page remembers, in the browser, every folder it opened, with the name its workspace gives itself (see <a href="#editor-workspace-name">Name of the workspace</a>). When the page opens again, it opens the last folder directly if the browser still lets it read it; otherwise it asks for a click (<strong>Reopen</strong>), because a browser only gives that permission back on a click. <strong>Close folder</strong>, at the top right, closes the folder and shows the list of the remembered folders: the closed one stays in it, and the next visit does not open it by itself. When no folder is open, the list shows each folder by the name of its workspace, with the name of the folder below it when they differ, most recent first: a click on one opens it, <strong>Remove from the list</strong> makes the browser forget it, and nothing is deleted on disk. Under each folder, the list says what a click will meet, as the browser answers without asking anything: <em>Opens without asking</em>, <em>Will ask for permission</em> (the browser shows its prompt), <em>Blocked by the browser</em>, or <em>Could not be reached</em> / <em>Could not be checked</em> (the folder may have been moved or deleted). A folder picked again is not added twice, even by two tabs at the same moment: the browser then holds two records for it for an instant, and the editor merges them into one, keeping the name of its workspace and its place in the list. A folder that cannot be opened (the permission refused, the folder moved or deleted) stays in the list, which says why, until it is removed. Served by <code>archicode editor serve</code>, the editor has one folder, the one of the server: there is no list and no <strong>Close folder</strong>.</p>
@@ -4273,7 +4394,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p>The badges and colours of styled stereotypes, on the boxes and in the tree, are explained in <a href="#stereotypes-and-styles">Stereotypes and styles</a>.</p>
 </div>
 <div class="paragraph">
-<p>Changes stay in memory, with a mark on the tree for each modified element, until <strong>Save all changes</strong> writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one. A file that is saved keeps what the changes did not touch: its comments, its blank lines, the quotes of the values, its final line break and, for a file that starts with one, its UTF-8 byte-order mark (<code>.archicode.yaml</code> as well as the manifests; a browser never hands the mark to the page, so the editor reads the first three bytes of the file to know it, and puts the mark back when it writes; a file the editor creates has none). Only the lines that changed are rewritten, and a value written anew (a renamed id, a new parent, a reference that follows, a <code>replaces</code>) keeps the quoting of the line it replaces, the way its key is written and its trailing comment; a line that is added is written like the lines around it (double quotes, single quotes or none, as the file does), and plain when the file quotes nothing. A list or a map written in square or curly brackets (<code>replaces: [a, b]</code>, <code>tags: {zone: north}</code>, on one line or on several, nested, as an item of a list of maps) stays as written when the change does not reach it; a change to it writes it as a block, in which the comments that were inside its brackets stay as lines of the block (a comment above a value above it, a comment after a value at the end of its line), and the quotes of its values and of its keys and the words of its booleans (<code>on</code>, <code>yes</code>) are the ones you wrote, except for a value the change sets. The same words (<code>yes</code>, <code>no</code>, <code>on</code>, <code>off</code>, <code>~</code>) and a key with no value (<code>description:</code>) stay as written in the lines the change does not reach, and a comment or a blank line above a line that is rewritten stays above it. A list written at the same column as its key (<code>tags:</code> then <code>- a</code> at the same column) is followed too: its items and comments stay, and an item that is added is written at the column the list uses; the comment after <code>[]</code>, <code>{}</code> or a key with no value stays on the line when a change fills the collection, and the comments inside empty brackets stay under the key. A manifest that uses a YAML anchor, an alias or a tag is read by the editor and by the command line the same way: an alias (<code>description: *n</code>) is the value of the anchor it points at (<code>name: &amp;n "Bakery"</code>), not its name, and a tag qualifies a scalar (<code>!!str 12</code> is the text <code>12</code>; <code>!!int</code>, <code>!!float</code>, <code>!!bool</code> and <code>!!null</code> read it as such, any other tag as a text; a tagged number is read as the command line reads it: <code>!!int 0x1F</code> is <code>31</code>, <code>!!int 1:30</code> stays the text <code>1:30</code> and <code>!!binary aGVsbG8=</code> stays the text <code>aGVsbG8=</code>). A merge key (<code>&lt;&lt;: *base</code>) is not a merge: it is a key named <code>&lt;&lt;</code>. The anchor, the alias and the tag stay as written in the lines a change does not touch, and a line a change rewrites keeps its anchor and its tag; an alias stays an alias as long as the line still says what its anchor says, and is written as its value when a change makes them differ. An anchor, an alias or a tag inside square or curly brackets (<code>qualifiers: [&amp;a oven, *a]</code>), a text that goes over several lines (tagged or not) and a list item whose map starts on the line under its dash (<code>-</code>, then its keys, with or without an anchor) stay as written as well: every line a change does not reach is the line of the file, byte for byte. A collection in brackets that a change reaches is written as a block that keeps its anchors, aliases and tags; an anchored value that a change edits keeps its anchor, and each alias of it is written as the value it had, since it would now say the new one. An anchor or a tag on a key (<code>&amp;k name: x</code>) is read by the command line and refused by the editor, which does not open the file and says so (see <a href="#plateau-limits">Limits of today</a>). A few layouts are still written again entirely in the editor&#8217;s own layout, with the comments lost and the aliases written as their values, and <a href="#plateau-limits">Limits of today</a> lists them; so is a file laid out in a way the editor does not write (an indentation other than two spaces, for example).</p>
+<p>Changes stay in memory, with a mark on the tree for each modified element, until <strong>Save all changes</strong> writes them. A file that changed on disk since the editor read it is not overwritten: the save is refused and says which one. A file that is saved keeps what the changes did not touch: its comments, its blank lines, the quotes of the values, its final line break and, for a file that starts with one, its UTF-8 byte-order mark (<code>.archicode.yaml</code> as well as the manifests; a browser never hands the mark to the page, so the editor reads the first three bytes of the file to know it, and puts the mark back when it writes; a file the editor creates has none). Only the lines that changed are rewritten, and a value written anew (a renamed id, a new parent, a reference that follows, a <code>replaces</code>) keeps the quoting of the line it replaces, the way its key is written and its trailing comment; a line that is added is written like the lines around it (double quotes, single quotes or none, as the file does), and plain when the file quotes nothing. A value that comes back on a line that is new (a map in brackets that becomes a list of maps, an item that moves, a list that gives back its item) keeps the quotes it had, and so does a key; a comment after a line stays on the line of its own key or item when that line is written again, and removing the first of two items that read the same removes the first, with its comment. A comment on a line of its own between two lines of an item that is removed stays where it was. A list or a map written in square or curly brackets (<code>replaces: [a, b]</code>, <code>tags: {zone: north}</code>, on one line or on several, nested, as an item of a list of maps) stays as written when the change does not reach it; when a change reaches it, it is written in brackets again, on the line where it started: <code>qualifiers: [a, b]</code> that gets a <code>c</code> is <code>qualifiers: [a, b, c]</code>, a map in curly brackets that gets a key stays a map in curly brackets, and so does an item of a list of maps (<code>- {destination: x}</code>). The comment after the closing bracket, the quotes of the values and of the keys, the words of the booleans (<code>on</code>, <code>yes</code>) and the spacing inside the brackets (<code>[ a ]</code> or <code>[a]</code>) are the ones you wrote, except for a value the change sets; a collection that you had over several lines goes on one line when it fits, and one that a change empties is <code>[]</code> or <code>{}</code>. It fits when its line, the comment included, is no wider than the widest line of the file, but at least 100 and at most 120 columns, or no wider than it already was. A collection stays a block, as the editor has always written it, in four cases: it no longer fits; it has a comment inside its brackets (the comments stay as lines of the block, a comment above a value above it, a comment after a value at the end of its line); it is an empty <code>[]</code> or <code>{}</code> that the change fills (the emitter&#8217;s own spelling for nothing, which a new element or story has); or it has an anchor, an alias or a tag in it. A collection that is a block in the file is never turned into brackets. The same words (<code>yes</code>, <code>no</code>, <code>on</code>, <code>off</code>, <code>~</code>) and a key with no value (<code>description:</code>) stay as written in the lines the change does not reach, and a comment or a blank line above a line that is rewritten stays above it. A list written at the same column as its key (<code>tags:</code> then <code>- a</code> at the same column) is followed too: its items and comments stay, and an item that is added is written at the column the list uses; the comment after <code>[]</code>, <code>{}</code> or a key with no value stays on the line when a change fills the collection, and the comments inside empty brackets stay under the key. A manifest that uses a YAML anchor, an alias or a tag is read by the editor and by the command line the same way: an alias (<code>description: *n</code>) is the value of the anchor it points at (<code>name: &amp;n "Bakery"</code>), not its name, and a tag qualifies a scalar (<code>!!str 12</code> is the text <code>12</code>; <code>!!int</code>, <code>!!float</code>, <code>!!bool</code> and <code>!!null</code> read it as such, any other tag as a text; a tagged number is read as the command line reads it: <code>!!int 0x1F</code> is <code>31</code>, <code>!!int 1:30</code> stays the text <code>1:30</code> and <code>!!binary aGVsbG8=</code> stays the text <code>aGVsbG8=</code>). A merge key (<code>&lt;&lt;: *base</code>) is not a merge: it is a key named <code>&lt;&lt;</code>. The anchor, the alias and the tag stay as written in the lines a change does not touch, and a line a change rewrites keeps its anchor and its tag; an alias stays an alias as long as the line still says what its anchor says, and is written as its value when a change makes them differ. An anchor, an alias or a tag inside square or curly brackets (<code>qualifiers: [&amp;a oven, *a]</code>), a text that goes over several lines (tagged or not) and a list item whose map starts on the line under its dash (<code>-</code>, then its keys, with or without an anchor) stay as written as well: every line a change does not reach is the line of the file, byte for byte. A collection in brackets that a change reaches is written as a block that keeps its anchors, aliases and tags; an anchored value that a change edits keeps its anchor, and each alias of it is written as the value it had, since it would now say the new one. An anchor or a tag on a key (<code>&amp;k name: x</code>) is read by the command line and refused by the editor, which does not open the file and says so (see <a href="#plateau-limits">Limits of today</a>). A few layouts are still written again entirely in the editor&#8217;s own layout, with the comments lost and the aliases written as their values, and <a href="#plateau-limits">Limits of today</a> lists them; so is a file laid out in a way the editor does not write (an indentation other than two spaces, for example).</p>
 </div>
 </div>
 <div class="sect2">
@@ -4382,13 +4503,20 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <td class="tableblock halign-left valign-top"><p class="tableblock">the widest control of Settings, the list <em>Current plateau</em> included</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ends at 332 pixels</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the story player (below), in a window 360 pixels wide, dark scheme only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the page is 360 pixels wide, no horizontal scroll</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
 <p>Nothing is wider than the window, on the seven pages, on 52 states of the Brightcart in each theme (the forms of ten elements in view, edit, <em>Move</em> and delete, three stories, seven views) and on 20 of <code>domain_application</code>; the diagram is drawn to scale and scrolls in its own box, and the code editor of Files scrolls inside itself, as they do on a large screen. Four places did go past the window inside the scroll of the center and are fixed: the row that adds a tag, the four buttons in the header of an element, the list of saved views of a story, and the lists of the references in <em>Confirm delete</em>. The list of the places not offered in the dialog of <em>Move</em> has text wider than its box and scrolls inside it.</p>
 </div>
 <div class="paragraph">
-<p>What this does not say: whether the order of the stacked regions and their heights suit a phone, whether the buttons are easy to touch, and how the on-screen keyboard behaves. They are a judgment on a real device, which nobody has made and which is not planned (see <a href="#plateau-limits">Limits of today</a>).</p>
+<p>The story player (see <a href="#editor-story-player">[editor-story-player]</a>) is not a stacked layout either: it is a window of its own, as high and as wide as the browser window, and nothing in it makes the page scroll sideways. Its bar (the title, "Step n of N", the list of the steps, <strong>Previous</strong>, <strong>Next</strong>, <strong>Full screen</strong> and <strong>Close</strong>) wraps onto as many lines as it needs (four at 360 pixels), the plateau and the comparison are one line under it, the diagram takes the room that is left and is moved with a finger or the mouse inside its own box, the status line and the folded key under a comparison are one row that scrolls along, and the words of the step scroll in their own box. It was looked at in a desktop browser (the browser pane of the development tool), on the example <code>domain_plateaus</code>, in a window 360 pixels wide in the dark scheme, and the page was as wide as the window (<code>scrollWidth</code> 360), the diagram, the status and the words readable, zoom, <strong>Fit</strong>, <strong>Center</strong> and the wheel moving the drawing, and the open key capped and scrolling inside itself; the wide window in the light scheme was looked at as well, the same way (the first build of the player, before the cap on the key went from 30 to 24 percent of the height). The player is tested with a fake layout in the automated tests, which do not see pixels.</p>
+</div>
+<div class="paragraph">
+<p>What this does not say: whether the order of the stacked regions and their heights suit a phone, whether the buttons are easy to touch, and how the on-screen keyboard behaves. They are a judgment on a real device, which nobody has made and which is not planned (see <a href="#plateau-limits">Limits of today</a>). The same goes for the player: nobody has tried a finger on its diagram, its list of the steps (a native list, so that the phone shows its own picker), <strong>Full screen</strong> on a phone, a screen reader on the announcement of a step, or the player in a folder picked in the browser (the File System Access path; a served folder was tried). <strong>Full screen</strong> itself was not seen working in a real browser: the pane used for the look refuses the request, so the grant is tested in the automated tests only.</p>
 </div>
 </div>
 <div class="sect2">
@@ -4432,13 +4560,31 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 </ul>
 </div>
 <div class="paragraph">
-<p>While a story is being walked through, a bar over the diagram says where you are, with <strong>Previous</strong> and <strong>Next</strong>, and the words of the step, to read; <strong>Edit text</strong> turns them into a box to type in (it opens by itself right after <strong>Add to story&#8230;&#8203;</strong>, so that you can write as you go). <strong>Back to this step</strong> draws the saved view again when you moved away from it, and <strong>Leave story</strong> closes the bar. A step that cannot be drawn (its element was deleted) says why in the bar, which stays: <strong>Next</strong> and <strong>Previous</strong> still work. The story is in the URL, so a link or Back lands on the same step.</p>
+<p><strong>Show on diagram</strong>, on a step of a story on the Stories side, draws that step on the editing diagram, on the page that shows its view, and raises a bar over the diagram that says where you are: the title of the story, "Step n of N", the plateau and the comparison the step names, and the words of the step, to read. <strong>Edit text</strong> turns the words into a box to type in (it opens by itself right after <strong>Add to story&#8230;&#8203;</strong>, so that you can write as you go), <strong>Edit story</strong> goes to the story, <strong>Back to this step</strong> draws the saved view again when you moved away from it, and <strong>Leave story</strong> closes the bar. The bar has no <strong>Previous</strong>, <strong>Next</strong> or list of the steps: press the <strong>Show on diagram</strong> of another step, or play the story (below). A step that cannot be drawn (its element was deleted) says why in the bar, which stays, over the diagram that was there. The story is in the URL (<code>story=</code> and <code>step=</code>), so a link or Back lands on the same step.</p>
+</div>
+<div id="editor-story-player" class="paragraph">
+<p><strong>Playing a story.</strong> <strong>Play</strong>, in the header of a story on the Stories side (off for a story that has no step), opens the story at its first step in a window of its own, on top of the editor, to be read like slides. The window covers the browser window and the editor behind it cannot be reached while it is open: the focus stays inside (Tab and Shift+Tab go round its controls), and closing it gives the focus back to the <strong>Play</strong> that opened it. It is a dialog with the story as its name, and each step is said to a screen reader when it changes, through a live region that nothing redraws: "Step n of N", then the name of the view, then <em>cannot be shown</em> and the reason when it cannot.</p>
 </div>
 <div class="paragraph">
-<p><strong>A step told at a plateau.</strong> A step that says <code>at</code> or <code>against</code> (see <a href="#story-step-plateaus">[story-step-plateaus]</a>) draws its plateau and its comparison before it draws its view, in the whole editor: the band, the <strong>Changes</strong> panel and the diagram are the ones of that plateau, and it is the step, not the plateau, that is an entry of the history. The bar says <em>told at To be, compared with As is</em>. A step that names none is drawn as the reader had it when the story began; a plateau or a comparison that the reader chooses on the band in the middle of the story is the new home of the steps that name none. <strong>Back to this step</strong> is offered when the plateau or the comparison on screen is not the step&#8217;s, and <strong>Leave story</strong> closes the bar and changes nothing: the diagram stays as it is. A name that the plateau of the step lacks is no mistake of the story: the step says <em>The element “x” is not in the plateau “p”.</em> and cannot be drawn. A step whose plateau is none, or cannot be drawn, changes nothing, says why in the bar, and stays.</p>
+<p>The slide holds, in a bar, the title of the story, "Step n of N" with the name of the view, the list of the steps (an entry for each, its number and a title; a story of one step has no list), <strong>Previous</strong> and <strong>Next</strong>, <strong>Full screen</strong> and <strong>Close</strong>. In a workspace that has plateaus a line under it says the plateau the step is drawn at and, when it has one, the plateau it is compared with: it is said, not chosen, and when the step names none it says <em>(from the editor)</em>, since a step that names none is drawn at the plateau, and with the comparison, that the editor had when <strong>Play</strong> was pressed, which stay that way for as long as the window is open. Under the line comes the diagram, which can be zoomed (the buttons, or Ctrl or Cmd with the wheel, around the pointer), moved (a drag, or the wheel) and put back by <strong>Fit</strong> and <strong>Center</strong>, but not clicked: a click on a box or a link selects nothing and opens no panel. A step opens at a readable size, from the top of its drawing. Under the diagram are the status line, the key of the comparison when one is drawn (folded, <strong>Key</strong> opens it and a long one scrolls inside itself) and the words of the step. A step that cannot be drawn (its element is not in its plateau, its plateau is none, it is compared with itself) says why where the diagram would be, and the way on stays open: the list, <strong>Previous</strong> and <strong>Next</strong> still work, and the entry of that step in the list says <em>cannot be shown</em> and the reason. The bar of <strong>Show on diagram</strong> says the same with <em>cannot be shown</em>.</p>
 </div>
 <div class="paragraph">
-<p>On the Stories side, a story is open as soon as there is one, and edited in place: its name, its text, the order of its steps (<strong>Up</strong>, <strong>Down</strong>, <strong>Remove</strong>, which can be undone right away) and the words of each step. In a workspace that has plateaus, each step has two lists, <strong>Told at</strong> (the plateau drawn, by default) and <strong>Compared with</strong> (nothing, by default): a choice that is the default takes the key out of the step, a plateau that is none is listed and flagged <em>(not a plateau)</em> so that it is not lost, and <strong>Keep as named view</strong> keeps the two keys with the step. The step that is showing on the diagrams is marked. <strong>Play</strong> walks through the story from its first step, and <strong>Show on diagram</strong> draws one step. A step that carries its own view says so, and <strong>Keep as named view</strong> gives it a name and a file; a step whose view was deleted offers to point at another one. Renaming an element updates the views and steps that point at it. A change that is not saved yet is marked <strong>modified</strong>.</p>
+<p>Each step is drawn from the model of its own plateau, on the side. The player reads the editor (the model, the story, the plateau and comparison it had when <strong>Play</strong> was pressed) and writes nothing to it: when the window closes, the plateau drawn, the comparison, the selection, the page, the address and the files are what they were, and nothing is marked as changed. The <strong>Changes only</strong> and wording switches of the editor are not read; a comparison is drawn with all its boxes.</p>
+</div>
+<div class="paragraph">
+<p><strong>Full screen</strong> asks the browser to give the whole screen to the window. A browser that has no full screen does not show the button; one that refuses leaves the window as it is and says <em>The browser did not give full screen.</em> under the bar; closing the window leaves full screen.</p>
+</div>
+<div class="paragraph">
+<p>The keys are the arrow keys: Left and Right show the previous and the next step, <code>Home</code> and <code>End</code> the first and the last, and <code>Esc</code> closes the window, from the list of the steps too (the list owns the arrows, <code>Home</code> and <code>End</code>, and lets <code>Esc</code> through). Up and Down are not taken, so that nothing competes with the scroll of a long text. No other key acts while a control that types or owns the arrows has the focus (a field, a text box, a list), while a dialog, the help or the menu of the header is open (then <code>Esc</code> is theirs), or with Ctrl, Alt, Meta or Shift held; <code>J</code> and <code>K</code> of the changes do nothing in the window, which has no list of changes.</p>
+</div>
+<div class="paragraph">
+<p>The window is in the address, as <code>play=&lt;story&gt;&amp;step=n</code> after the keys of the editor, <code>n</code> counted from 0 as <code>step=</code> is. Opening it is an entry of the history; choosing another step is not (the entry is changed in place), so Back closes the window and Forward opens it again at the step it was left on; <strong>Close</strong> and <code>Esc</code> go Back when the history holds that entry, so that Forward brings it back. A link with <code>play=</code> opens it when the folder is loaded, for someone who has the folder open (<code>archicode editor serve</code>, or a folder picked in the browser), at the plateau the address names; it is then no entry of the history, and closing it writes the address in place. The <code>story=</code> and <code>step=</code> of the bar are not in the address while the window is open, so there is one <code>step=</code>. A story that is not there, a story with no step, a step that is missing, is not a number or does not exist, and a workspace that has no story leave the window closed, and the page writes the address it really is. It is not a page that exists outside the editor: the editor reads a folder, so a link opens nothing for someone who has none, and there is no export of a story as a document. The player reads; to change a story, <strong>Edit story</strong>, the page of a story and the story editor are as they were.</p>
+</div>
+<div class="paragraph">
+<p><strong>A step told at a plateau.</strong> A step that says <code>at</code> or <code>against</code> (see <a href="#story-step-plateaus">[story-step-plateaus]</a>) is drawn at its plateau and with its comparison in the player (above), without the editor changing. With <strong>Show on diagram</strong> it draws its plateau and its comparison before it draws its view, in the whole editor: the band, the <strong>Changes</strong> panel and the diagram are the ones of that plateau, and it is the step, not the plateau, that is an entry of the history. The bar says <em>told at To be, compared with As is</em>. With <strong>Show on diagram</strong>, a step that names none is drawn as the reader had it when the story began; a plateau or a comparison that the reader chooses on the band in the middle of the story is the new home of the steps that name none. <strong>Back to this step</strong> is offered when the plateau or the comparison on screen is not the step&#8217;s, and <strong>Leave story</strong> closes the bar and changes nothing: the diagram stays as it is. A name that the plateau of the step lacks is no mistake of the story: the step says <em>The element “x” is not in the plateau “p”.</em> and cannot be drawn. A step whose plateau is none, or cannot be drawn, changes nothing, says why in the bar, and stays.</p>
+</div>
+<div class="paragraph">
+<p>On the Stories side, a story is open as soon as there is one, and edited in place: its name, its text, the order of its steps (<strong>Up</strong>, <strong>Down</strong>, <strong>Remove</strong>, which can be undone right away) and the words of each step. In a workspace that has plateaus, each step has two lists, <strong>Told at</strong> (the plateau drawn, by default) and <strong>Compared with</strong> (nothing, by default): a choice that is the default takes the key out of the step, a plateau that is none is listed and flagged <em>(not a plateau)</em> so that it is not lost, and <strong>Keep as named view</strong> keeps the two keys with the step. The step that is showing on the diagrams is marked. <strong>Play</strong> opens the story in the player, from its first step (see <a href="#editor-story-player">[editor-story-player]</a>), and <strong>Show on diagram</strong> draws one step on the editing diagram. A step that carries its own view says so, and <strong>Keep as named view</strong> gives it a name and a file; a step whose view was deleted offers to point at another one. Renaming an element updates the views and steps that point at it. A change that is not saved yet is marked <strong>modified</strong>.</p>
 </div>
 <div class="paragraph">
 <p>On the Views side, the page of a view that can be drawn draws it in the center, from the model, with the canvas and the tools of the Map and Elements: zoom, <strong>Center</strong>, <strong>Fit</strong>, <strong>Hide unlinked</strong>, the four texts (see <a href="#editor-texts">The texts of a diagram</a>), and <strong>PNG</strong> and <strong>SVG</strong> in the header. The facet of the view is applied: it is drawn here, not picked. There is no folding on this page, since the open boxes of a Map view are part of the view. The zoom and the moves are the page&#8217;s own and are not changes to the view, and the page changes nothing the Map and Elements show (selection, pins, tab, facet, texts, address). The header keeps <strong>Open on diagram</strong>, which draws the view on the Map of its layer or in Elements to explore it with their tools, <strong>Rename</strong> and <strong>Delete</strong>, and has <strong>Maximize</strong>, which hides the list of views and the right-hand panel (<code>M</code> maximizes, <code>Esc</code> restores; the Map is not touched).</p>
@@ -4478,7 +4624,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <div class="sect2">
 <h3 id="editor-facets">Facets</h3>
 <div class="paragraph">
-<p>The facets of the workspace (see <a href="#facets">Tackling view clutter</a>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out, and the elements it removes, with the relationships that pointed at them. In the tree, the elements the facet leaves with nothing to draw are greyed. A facet that the kernel refuses (an old path of the previous engine, an invalid JSONPath) shows its sentence as the error of the view. The facets themselves are edited in the <strong>Settings</strong> perspective, along with the other settings of the workspace (see <a href="#technical-configuration">Technical Configuration</a>).</p>
+<p>The facets of the workspace (see <a href="#facets">Tackling view clutter</a>) are in a list in the header of the diagrams: the diagram is then drawn as the command line generates it for that facet, with the relationships the facet removes left out, and the elements it removes, with the relationships that pointed at them. In the tree, the elements the facet leaves with nothing to draw are greyed. A facet that the kernel refuses (an old path of the previous engine, an invalid JSONPath) shows its sentence as the error of the view. The facets themselves are edited in the <strong>Settings</strong> perspective, along with the other settings of the workspace (see <a href="#technical-configuration">Technical Configuration</a>). <strong>Add facet</strong> there refuses a name that cannot be the name of a folder (<code>a/b</code>, <code>..</code>, a name that ends with a dot), with the reason under the field, as the command line refuses it when it loads the workspace (see <a href="#facets">Tackling view clutter</a>).</p>
 </div>
 </div>
 <div class="sect2">
@@ -4624,7 +4770,7 @@ new      element  application  shop.search    -        name: &quot;Search&quot;<
 <p><strong>Asking first.</strong> A plateau that other plateaus stand on is not written without a word: when an edit changes the resolution of a plateau that overrides the one written, the editor lists those plateaus (the ones that inherit what was written and do not set it themselves) and writes only when you say yes. <code>baseline</code> is the plateau most often in that case. A plateau at the end of the chain, or an edit that no other plateau sees, is written at once.</p>
 </div>
 <div class="paragraph">
-<p><strong>Only what was meant.</strong> Every write is made on the manifests in memory by the same line-preserving save as ever (the lines the edit does not touch, their comments and quotes, stay as they were written; a flow list or map that an edit changes becomes a block), and it is kept only if the plateaus are resolved again and all of this holds: the plateau written gives back the value that was edited; no plateau that resolved before is refused now, and no new mistake appears in the tree of the plateaus or in a plateau (a rename, a delete or a new parent that would make a patch of another plateau select nothing is refused, and says which plateau and which patch). A write that is refused is one sentence in the top bar, and nothing is changed: not a file, not a mark of what is modified. A new patch is always written at the end of the patches, never between two patches of yours, so that a comment above a patch stays above it.</p>
+<p><strong>Only what was meant.</strong> Every write is made on the manifests in memory by the same line-preserving save as ever (the lines the edit does not touch, their comments and quotes, stay as they were written; a list or map in brackets that an edit changes stays in brackets on its line when it fits, see <a href="#editor-elements">Elements</a>), and it is kept only if the plateaus are resolved again and all of this holds: the plateau written gives back the value that was edited; no plateau that resolved before is refused now, and no new mistake appears in the tree of the plateaus or in a plateau (a rename, a delete or a new parent that would make a patch of another plateau select nothing is refused, and says which plateau and which patch). A write that is refused is one sentence in the top bar, and nothing is changed: not a file, not a mark of what is modified. A new patch is always written at the end of the patches, never between two patches of yours, so that a comment above a patch stays above it.</p>
 </div>
 <div class="paragraph">
 <p><strong>Clearing what the plateau inherits.</strong> When you clear a name, a description or another text that the plateau only inherits, the editor writes a <code>REMOVE</code> patch with the <code>field</code>, at the end of the patches of the plateau drawn, after the question above if other plateaus stand on it. The Inspector then says where the value went (<em>taken out by patch 3 of saas (REMOVE target shop.web)</em>), and writing a text again changes that patch instead of adding one. A list or tags are emptied with a <code>SET</code> of an empty list or object, as before, and clearing a field that the plateau declares itself removes its line from the manifest, as before. If the plateau written does not give the field back gone, nothing is written.</p>
@@ -5053,6 +5199,14 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 </li>
 </ul>
 </div>
+<div class="ulist">
+<div class="title">In the story player</div>
+<ul>
+<li>
+<p>Left and Right show the previous and the next step, <code>Home</code> and <code>End</code> the first and the last, <code>Esc</code> closes the window and gives the focus back to <strong>Play</strong>; Tab and Shift+Tab go round inside it. Up and Down are not taken. Nothing else happens while a field, a text box or a list has the focus (the list of the steps has its own arrows, and lets <code>Esc</code> through), while a dialog, the help or the menu of the header is open, or with Ctrl, Alt, Meta or Shift held; <code>J</code> and <code>K</code> do nothing in it (see <a href="#editor-story-player">[editor-story-player]</a>).</p>
+</li>
+</ul>
+</div>
 </div>
 </div>
 </div>
@@ -5076,6 +5230,18 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 <p>As you delve deeper into the Command section of ArchiCode&#8217;s documentation, you&#8217;ll uncover the diverse set of commands at your disposal, each contributing to a more intuitive, efficient, and informed architectural workflow. Let&#8217;s embark on this journey through the realm of ArchiCode&#8217;s commands, discovering how they enhance your ability to shape, explore, and communicate architectural concepts.</p>
 </div>
 <div class="sect2">
+<h3 id="version">Print the version</h3>
+<div class="listingblock">
+<div class="title">Print the version - The command line</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">archicode --version</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Prints one line on the standard output, <code>archicode &lt;version&gt;</code>, and exits with the code 0. <code>-V</code> is the short form. The version is the one the program was built from, the same in the native program, the JAR and the OCI Image (a build from a branch says <code>-SNAPSHOT</code>). It reads no workspace file, so it works in any folder. The option belongs to <code>archicode</code> itself: <code>archicode views --version</code> is a usage error like any option that does not exist (see <a href="#errors-and-warnings">Errors, warnings and exit codes</a>), and the options of <code>archicode --help</code> are <code>-h</code>, <code>-V</code> and <code>-w=&lt;workspace file&gt;</code>, then the command.</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="errors-and-warnings">Errors, warnings and exit codes</h3>
 <div class="paragraph">
 <p>Every command speaks on its error output in the same way, and keeps its standard output for what it produces (the files it announces, a table, a graph), so that <code>archicode diff &gt; changes.txt</code> or <code>archicode query graph | jq</code> never mixes the two.</p>
@@ -5088,8 +5254,12 @@ the view `loyalty_overview` (`entries/view.loyalty.yaml`) is drawn in `beta`, `m
 <pre>error: dangling reference: payments
 error: unknown plateau `nope`: the plateaus of this workspace are `baseline` and `to-be`
 error: `manifests/shop.yaml` is not valid: the value has the wrong shape (found an array) at `header` (line 1, column 9)
-error: the workspace file `/work/.archicode.yaml` does not exist (`-w` names another one)</pre>
+error: the workspace file `/work/.archicode.yaml` does not exist (`-w` names another one)
+error: the workspace file `/work/.archicode.yaml` cannot be read: permission denied</pre>
 </div>
+</div>
+<div class="paragraph">
+<p>The last two lines are the two ways the command can fail to have the workspace file: there is no file under that name (a folder in its place counts), or there is one that the file system refuses to read (the reason is the one the system gives). The second used to be <code>error: unexpected java.io.FileNotFoundException &#8230;&#8203;</code> with a stack trace, which is for a bug; it is a line like the others after 0.18.0. A folder that has <code>workspace.yaml</code> and no <code>.archicode.yaml</code> has its own line (see <a href="#upgrade-0-17">[upgrade-0-17]</a>). A file that is there and is read, but is wrong, says what is wrong with it (<code>error: `.archicode.yaml` is not valid: ...</code>).</p>
 </div>
 <div class="paragraph">
 <p><strong>The same sentence in the editor.</strong> A manifest or a <code>.archicode.yaml</code> that the command line refuses, the editor refuses with the same sentence, without the file and the line (the editor shows it beside the file): a key that the element, the setting or the header does not have, a nested element whose <code>kind</code> is missing or none of those its parent takes, a value of the wrong shape, a <code>header.kind</code> that is none of the kinds, a key that is required and absent. The place is told by its path in the file, as the command line does:</p>
@@ -6767,6 +6937,45 @@ EcommercePlatform.UserManagement.UserProfileService --&gt; EcommercePlatform.Use
 <div class="title">Note</div>
 </td>
 <td class="content">
+<div class="title">The name of a facet is the name of a folder</div>
+<div class="paragraph">
+<p>The <code>name</code> of a facet goes, as it is written, into the name of the folders that hold its views: <code>views-oidc</code> in the steps below, and, next to each step of <code>archicode stories generate</code>, <code>&lt;NN&gt;-&lt;view&gt;-&lt;facet&gt;</code> (see <a href="#stories-generate">Draw the stories</a>); <code>directory-name-template</code> only says where the name goes. It must therefore be one folder name, and one that every system takes, since a workspace is shared. A name is refused when it:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>is empty, or is <code>.</code> or <code>..</code>;</p>
+</li>
+<li>
+<p>holds <code>/</code>, <code>\</code>, a NUL or another control character;</p>
+</li>
+<li>
+<p>holds one of <code>&lt; &gt; : " | ? *</code>, or ends with a dot or a space (the names Windows refuses).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The reserved device names of Windows (<code>CON</code>, <code>NUL</code>, <code>COM1</code>) are not looked at. A name is never rewritten, because two facets could then write in the same folder. Every command that loads the workspace (<code>views generate</code>, <code>stories generate</code>, <code>query graph</code> and <code>diff</code>) refuses a name that is not a folder name before it reads a manifest or writes a file, with one line for each such facet, in the order of the file, exit code 1; the first reason found, from the left of the name, is the one told:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>error: the facet name `a/b` cannot be the name of a folder: it holds `/`, which separates the folders of a path (write a plain word, such as `journey`)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>archicode plateau list</code> reads the tree of the plateaus only, and <code>archicode editor serve</code> loads nothing: neither looks at the facets. The editor refuses the workspace with the same sentence when it opens the folder, and <strong>Add facet</strong>, in <strong>Settings</strong> (see <a href="#editor-facets">Facets</a>), does not write such a name. A workspace that had a facet called <code>a/b</code> loaded in 0.18.0 and does not now: rename the facet, and its folder if you keep the old one (see <a href="#upgrade-0-18">[upgrade-0-18]</a>). The facets of every example of this manual use plain words.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
 <div class="title">A facet can remove an element, and what points at it goes with it</div>
 <div class="paragraph">
 <p><code>REMOVE</code> is not only for relationships: an action can select elements, such as <code>$.application..elements[?(@.id == 'catalog')]</code>. The element is removed with the elements inside it, and so is everything of the workspace that pointed at it or at one of them: the relationships whose <code>destination</code> is one of them, the entries of <code>uses</code> of an environment, and the entries of <code>applications</code> of a node. The views of the facet are then written without them; they do not stop with <code>dangling reference</code>. The facet says nothing when it does so, it is what it asked for. The workspace and its other facets are untouched.</p>
@@ -8126,7 +8335,7 @@ Its format should match the variable name in Java or Javascript.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-22 19:16:16 UTC
+Last updated 2026-10-23 14:14:02 UTC
 </div>
 </div>
 </body>

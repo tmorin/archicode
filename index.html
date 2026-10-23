@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="archicode-version" content="0.18.0">
+<meta name="archicode-version" content="0.19.0">
 <title>ArchiCode · Architecture as code</title>
 <meta name="description" content="Describe your systems and their relationships in YAML, in your repository. ArchiCode generates PlantUML views from that model.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6e5c'/%3E%3Cpath d='M9 22l7-12 7 12z' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
@@ -342,7 +342,7 @@ footer a { color: var(--muted); }
   -v "$(pwd):/workdir" -w /workdir \
   --rm ghcr.io/tmorin/archicode \
   views generate</span></code></pre>
-        <p class="note">The PlantUML files are written to <code>views/</code>.</p>
+        <p class="note">The PlantUML files are written to <code>views/</code>. No Docker? The release page has a <a href="docs/#install">native program</a> for Linux and macOS.</p>
       </div>
     </div>
   </div>
