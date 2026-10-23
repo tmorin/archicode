@@ -1,0 +1,404 @@
+{
+  "type" : "object",
+  "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Workspace",
+  "properties" : {
+    "application" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Application",
+      "properties" : {
+        "elements" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:ApplicationElement",
+            "properties" : {
+              "description" : {
+                "type" : "string"
+              },
+              "id" : {
+                "type" : "string"
+              },
+              "name" : {
+                "type" : "string"
+              },
+              "qualifiers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "string"
+                }
+              },
+              "relationships" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "id" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship",
+                  "properties" : {
+                    "destination" : {
+                      "type" : "string",
+                      "required" : true
+                    },
+                    "label" : {
+                      "type" : "string"
+                    },
+                    "qualifiers" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "tags" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "replaces" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "string"
+                }
+              },
+              "tags" : {
+                "type" : "object",
+                "additionalProperties" : {
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "formatters" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Formatters",
+      "properties" : {
+        "atomic" : {
+          "type" : "object",
+          "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Formatters:AtomicFormatter",
+          "properties" : {
+            "description" : {
+              "type" : "string"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "qualifiers" : {
+              "type" : "string"
+            }
+          }
+        },
+        "composite" : {
+          "type" : "object",
+          "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Formatters:CompositeFormatter",
+          "properties" : {
+            "name" : {
+              "type" : "string"
+            },
+            "qualifiers" : {
+              "type" : "string"
+            }
+          }
+        },
+        "link" : {
+          "type" : "object",
+          "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Formatters:LinkFormatter",
+          "properties" : {
+            "label" : {
+              "type" : "string"
+            },
+            "qualifiers" : {
+              "type" : "string"
+            }
+          }
+        }
+      }
+    },
+    "settings" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Settings",
+      "properties" : {
+        "current" : {
+          "type" : "string"
+        },
+        "facets" : {
+          "type" : "object",
+          "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Settings:Facets",
+          "properties" : {
+            "customs" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Settings:Facets:Facet",
+                "properties" : {
+                  "actions" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Settings:Facets:Facet:Action",
+                      "properties" : {
+                        "json-path" : {
+                          "type" : "string"
+                        },
+                        "operator" : {
+                          "type" : "string",
+                          "enum" : [ "remove" ]
+                        }
+                      }
+                    }
+                  },
+                  "hide-unlinked" : {
+                    "type" : "boolean"
+                  },
+                  "name" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            },
+            "directory-name-template" : {
+              "type" : "string"
+            },
+            "global-enabled" : {
+              "type" : "boolean"
+            }
+          }
+        },
+        "manifests" : {
+          "type" : "object",
+          "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Settings:Manifests",
+          "properties" : {
+            "paths" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          }
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "relationships" : {
+          "type" : "object",
+          "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Settings:Relationships",
+          "properties" : {
+            "default-synthetic-label" : {
+              "type" : "string"
+            }
+          }
+        },
+        "views" : {
+          "type" : "object",
+          "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Settings:Views",
+          "properties" : {
+            "labels" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "type" : "string"
+              }
+            },
+            "path" : {
+              "type" : "string"
+            },
+            "properties" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "type" : "any"
+              }
+            }
+          }
+        }
+      }
+    },
+    "stories" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "id" : "urn:jsonschema:io:morin:archicode:resource:story:Story",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "steps" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "id" : "urn:jsonschema:io:morin:archicode:resource:story:Story:Step",
+              "properties" : {
+                "against" : {
+                  "type" : "string"
+                },
+                "at" : {
+                  "type" : "string"
+                },
+                "layer" : {
+                  "type" : "string",
+                  "enum" : [ "application", "technology" ]
+                },
+                "name" : {
+                  "type" : "string"
+                },
+                "properties" : {
+                  "type" : "any"
+                },
+                "text" : {
+                  "type" : "string"
+                },
+                "view" : {
+                  "type" : "string"
+                },
+                "viewpoint" : {
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "styles" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Styles",
+      "properties" : {
+        "atomic" : {
+          "type" : "object",
+          "id" : "urn:jsonschema:io:morin:archicode:resource:workspace:Styles:Style",
+          "properties" : {
+            "background-color" : {
+              "type" : "string"
+            },
+            "font-color" : {
+              "type" : "string"
+            },
+            "font-style" : {
+              "type" : "string"
+            },
+            "line-color" : {
+              "type" : "string"
+            },
+            "line-gap" : {
+              "type" : "integer"
+            },
+            "line-style" : {
+              "type" : "integer"
+            },
+            "line-thickness" : {
+              "type" : "integer"
+            },
+            "round-corner" : {
+              "type" : "integer"
+            },
+            "shadowing" : {
+              "type" : "boolean"
+            }
+          }
+        },
+        "by-qualifiers" : {
+          "type" : "object",
+          "additionalProperties" : {
+            "type" : "object",
+            "$ref" : "urn:jsonschema:io:morin:archicode:resource:workspace:Styles:Style"
+          }
+        },
+        "by-tags" : {
+          "type" : "object",
+          "additionalProperties" : {
+            "type" : "object",
+            "$ref" : "urn:jsonschema:io:morin:archicode:resource:workspace:Styles:Style"
+          }
+        },
+        "composite" : {
+          "type" : "object",
+          "$ref" : "urn:jsonschema:io:morin:archicode:resource:workspace:Styles:Style"
+        }
+      }
+    },
+    "technology" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:io:morin:archicode:resource:element:technology:Technology",
+      "properties" : {
+        "elements" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "id" : "urn:jsonschema:io:morin:archicode:resource:element:technology:TechnologyElement",
+            "properties" : {
+              "description" : {
+                "type" : "string"
+              },
+              "id" : {
+                "type" : "string"
+              },
+              "name" : {
+                "type" : "string"
+              },
+              "qualifiers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "string"
+                }
+              },
+              "relationships" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "$ref" : "urn:jsonschema:io:morin:archicode:resource:element:application:Relationship"
+                }
+              },
+              "replaces" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "string"
+                }
+              },
+              "tags" : {
+                "type" : "object",
+                "additionalProperties" : {
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "views" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "id" : "urn:jsonschema:io:morin:archicode:resource:view:View",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "layer" : {
+            "type" : "string",
+            "enum" : [ "application", "technology" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "properties" : {
+            "type" : "any"
+          },
+          "viewpoint" : {
+            "type" : "string"
+          }
+        }
+      }
+    }
+  }
+}

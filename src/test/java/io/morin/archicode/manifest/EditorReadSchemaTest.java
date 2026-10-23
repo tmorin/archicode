@@ -1,6 +1,7 @@
 package io.morin.archicode.manifest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -337,5 +338,257 @@ class EditorReadSchemaTest {
             .map(k -> k.getId().substring("archicode.morin.io/".length()))
             .collect(Collectors.toCollection(TreeSet::new));
         assertEquals(expected, new TreeSet<>(names(kinds)));
+    }
+
+    /**
+     * The schema that {@code archicode query schemas manifest} prints says what the editor's table says (wave 022, V2): the classes,
+     * the page and the schema agree three ways, since the first two are compared above. The keys, the required keys, the enums, the
+     * shapes of the values, the unknown keys that are ignored, the kinds each kind holds and the kinds held at the top.
+     * <p>
+     * One difference is known and on purpose: the table lists {@code qualifier} on a relationship, the singular spelling that the
+     * builder of the class adds for {@code qualifiers} (a single text); a getter-based schema does not have it.
+     */
+    @Test
+    void shouldSayWhatTheEditorTableSays() {
+        val table = schema();
+        val types = table.get("types");
+        val kinds = table.get("kinds");
+        val manifest = manifestSchema();
+        val diffs = new ArrayList<String>();
+
+        val expectedKinds = new TreeSet<String>();
+        names(table.get("manifestKinds")).forEach(k -> expectedKinds.add("archicode.morin.io/" + k));
+        assertEquals(expectedKinds, new TreeSet<>(names(manifest.get("kinds"))), "the kinds of manifest");
+        assertEquals(
+            expectedKinds,
+            new TreeSet<String>(
+                ((List<JsonNode>) toList(manifest.at("/properties/header/properties/kind/enum")))
+                    .stream()
+                    .map(JsonNode::asText)
+                    .toList()
+            ),
+            "header.kind"
+        );
+
+        val topLevel = new TreeSet<String>();
+        topLevel.addAll(names(kinds.get("ApplicationElement")));
+        topLevel.addAll(names(kinds.get("TechnologyElement")));
+        for (val entry : table.get("manifestKinds").properties()) {
+            val kind = entry.getKey();
+            val type = entry.getValue().asText();
+            val schemaKind = manifest.get("kinds").get("archicode.morin.io/" + kind);
+            assertNotNull(schemaKind, kind);
+            assertEquals(kind, schemaKind.get("kind").asText());
+            compareType(types, kinds, type, schemaKind.get("content"), manifest, kind, diffs);
+            val elements = fields(types, type).get("elements");
+            if (!type.equals("View") && !type.equals("Story") && !type.equals("Plateau")) {
+                val iface = elements == null ? null : elements.substring(2, elements.length() - 1);
+                val held = iface == null ? new TreeSet<String>() : new TreeSet<>(names(kinds.get(iface)));
+                assertEquals(
+                    held,
+                    new TreeSet<>(toList(schemaKind.get("holds")).stream().map(JsonNode::asText).toList()),
+                    kind + " holds"
+                );
+                assertEquals(
+                    topLevel.contains(kind),
+                    schemaKind.get("heldAtTheTop").asBoolean(),
+                    kind + " held at the top"
+                );
+                val nested = manifest.get("nested").get(kind);
+                assertNotNull(nested, "nested " + kind);
+                assertEquals(
+                    List.of(kind),
+                    toList(nested.at("/properties/kind/enum")).stream().map(JsonNode::asText).toList()
+                );
+                assertTrue(nested.at("/properties/kind/required").asBoolean(), "nested " + kind + " needs its kind");
+            } else {
+                assertFalse(schemaKind.has("holds"), kind + " is no element");
+            }
+        }
+        assertEquals(
+            new TreeSet<>(names(table.get("manifestKinds")))
+                .stream()
+                .filter(k -> kindOf(kinds, readTypeOf(table, k)) != null)
+                .toList(),
+            new TreeSet<>(names(manifest.get("nested"))).stream().toList(),
+            "the nested forms are the kinds an element can have"
+        );
+        assertEquals(List.of(), diffs);
+    }
+
+    private static String readTypeOf(JsonNode table, String kind) {
+        return table.get("manifestKinds").get(kind).asText();
+    }
+
+    private static List<JsonNode> toList(JsonNode array) {
+        val out = new ArrayList<JsonNode>();
+        array.forEach(out::add);
+        return out;
+    }
+
+    @SneakyThrows
+    private static JsonNode manifestSchema() {
+        val factory = new MapperFactory();
+        val writer = io.morin.archicode.cli.GetSchemasQuery.sortedWriter(factory);
+        return MAPPER_JSON.readTree(
+            writer.writeValueAsString(ManifestSchema.generate(factory.create(MapperFormat.JSON), writer))
+        );
+    }
+
+    private static final ObjectMapper MAPPER_JSON = new ObjectMapper();
+
+    /** One type of the table against the schema of an object; {@code diffs} gets a sentence for each difference. */
+    private static void compareType(
+        JsonNode types,
+        JsonNode kinds,
+        String type,
+        JsonNode schema,
+        JsonNode root,
+        String where,
+        List<String> diffs
+    ) {
+        val expected = fields(types, type);
+        val properties = schema.path("properties");
+        val actual = new TreeSet<>(names(properties));
+        actual.remove("kind");
+        val aliases = aliases(types, type);
+        val expectedKeys = new TreeSet<>(expected.keySet());
+        expectedKeys.removeAll(aliases.keySet()); // another name of a key is not a key of the schema: it is an alias of one
+        if (type.equals("Relationship")) {
+            expectedKeys.remove("qualifier"); // known difference, see above
+        }
+        if (!expectedKeys.equals(actual)) {
+            diffs.add(
+                where + " (" + type + "): the keys differ, the table has " + expectedKeys + ", the schema " + actual
+            );
+            return;
+        }
+        for (val alias : aliases.entrySet()) {
+            val listed = toList(properties.path(alias.getValue()).path("aliases"))
+                .stream()
+                .map(JsonNode::asText)
+                .toList();
+            if (!listed.contains(alias.getKey())) {
+                diffs.add(
+                    where + ": " + alias.getValue() + " should list the alias " + alias.getKey() + " in the schema"
+                );
+            }
+        }
+        val required = new TreeSet<>(required(types, type));
+        val requiredActual = new TreeSet<String>();
+        properties.fields().forEachRemaining(e -> {
+            if (e.getValue().path("required").asBoolean(false) && !e.getKey().equals("kind")) {
+                requiredActual.add(e.getKey());
+            }
+        });
+        if (!required.equals(requiredActual)) {
+            diffs.add(
+                where +
+                    " (" +
+                    type +
+                    "): the required keys differ, the table has " +
+                    required +
+                    ", the schema " +
+                    requiredActual
+            );
+        }
+        val lenient = types.get(type).path("lenient").asBoolean(false);
+        if (lenient == schema.path("additionalProperties").isBoolean()) {
+            diffs.add(
+                where +
+                    " (" +
+                    type +
+                    "): lenient is " +
+                    lenient +
+                    " in the table, the schema says " +
+                    schema.path("additionalProperties")
+            );
+        }
+        for (val key : expectedKeys) {
+            compareSpec(types, kinds, expected.get(key), properties.get(key), root, where + "." + key, diffs);
+        }
+    }
+
+    private static void compareSpec(
+        JsonNode types,
+        JsonNode kinds,
+        String spec,
+        JsonNode schema,
+        JsonNode root,
+        String where,
+        List<String> diffs
+    ) {
+        if (spec.equals("any")) {
+            return;
+        }
+        if (spec.equals("text")) {
+            expectType(schema, "string", where, diffs);
+        } else if (spec.equals("int")) {
+            expectType(schema, "integer", where, diffs);
+        } else if (spec.equals("bool")) {
+            expectType(schema, "boolean", where, diffs);
+        } else if (spec.equals("texts")) {
+            expectType(schema, "array", where, diffs);
+            expectType(schema.path("items"), "string", where + "[]", diffs);
+        } else if (spec.equals("text-map")) {
+            expectType(schema, "object", where, diffs);
+            expectType(schema.path("additionalProperties"), "string", where + "{}", diffs);
+        } else if (spec.equals("object-map")) {
+            expectType(schema, "object", where, diffs);
+            if (!schema.path("additionalProperties").isObject()) {
+                diffs.add(where + ": a map of objects");
+            }
+        } else if (spec.startsWith("enum:")) {
+            val expected = new TreeSet<>(Arrays.asList(spec.substring(5).toUpperCase().split(",")));
+            val actual = new TreeSet<String>();
+            schema.path("enum").forEach(e -> actual.add(e.asText().toUpperCase()));
+            if (!expected.equals(actual)) {
+                diffs.add(where + ": the enum is " + expected + " in the table, " + actual + " in the schema");
+            }
+        } else if (spec.startsWith("[*")) {
+            val iface = spec.substring(2, spec.length() - 1);
+            expectType(schema, "array", where, diffs);
+            val expected = new TreeSet<String>();
+            names(kinds.get(iface)).forEach(k -> expected.add("#/nested/" + k));
+            val actual = new TreeSet<String>();
+            schema
+                .path("items")
+                .path("type")
+                .forEach(t -> actual.add(t.path("$ref").asText()));
+            if (!expected.equals(actual)) {
+                diffs.add(where + ": the nested kinds are " + expected + " in the table, " + actual + " in the schema");
+            }
+        } else if (spec.startsWith("[")) {
+            expectType(schema, "array", where, diffs);
+            compareType(
+                types,
+                kinds,
+                spec.substring(1, spec.length() - 1),
+                schema.path("items"),
+                root,
+                where + "[]",
+                diffs
+            );
+        } else if (spec.startsWith("{")) {
+            expectType(schema, "object", where, diffs);
+            compareType(
+                types,
+                kinds,
+                spec.substring(1, spec.length() - 1),
+                schema.path("additionalProperties"),
+                root,
+                where + "{}",
+                diffs
+            );
+        } else {
+            expectType(schema, "object", where, diffs);
+            compareType(types, kinds, spec, schema, root, where, diffs);
+        }
+    }
+
+    private static void expectType(JsonNode schema, String type, String where, List<String> diffs) {
+        if (!type.equals(schema.path("type").asText())) {
+            diffs.add(where + ": the type is " + type + " in the table, " + schema.path("type") + " in the schema");
+        }
     }
 }

@@ -3,6 +3,8 @@ package io.morin.archicode.resource.story;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+import io.morin.archicode.resource.Reference;
+import io.morin.archicode.resource.Required;
 import java.util.List;
 import lombok.Builder;
 import lombok.NonNull;
@@ -30,6 +32,7 @@ public class Story {
      * The identifier of the story.
      */
     @NonNull
+    @Required
     @ToString.Include
     String id;
 
@@ -62,6 +65,7 @@ public class Story {
         /**
          * The identifier of a view of the workspace. Absent when the step carries its own view.
          */
+        @Reference(Reference.To.VIEW)
         String view;
 
         /**
@@ -95,12 +99,14 @@ public class Story {
          * {@code plateau:} of a header, which says what a manifest belongs to: a story belongs to no plateau, a step may
          * be told at one. Only the editor plays it; the command line checks that it names a plateau.
          */
+        @Reference(Reference.To.PLATEAU)
         String at;
 
         /**
          * The plateau the step is compared with, as {@code archicode diff --plateau <at> --against <against>} would. Absent:
          * the step is not a comparison. With no {@link #at}, the step is told at the plateau that is drawn.
          */
+        @Reference(Reference.To.PLATEAU)
         String against;
     }
 }

@@ -1,6 +1,7 @@
 package io.morin.archicode.resource.element.technology;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.morin.archicode.resource.Reference;
 import io.morin.archicode.resource.element.AbstractElement;
 import io.morin.archicode.resource.element.application.Parent;
 import java.util.LinkedHashSet;
@@ -30,6 +31,7 @@ public class Environment extends AbstractElement implements Parent<EnvironmentEl
      */
     @Builder.Default
     @JsonDeserialize(as = LinkedHashSet.class)
+    @Reference(Reference.To.ELEMENT)
     Set<String> uses = new LinkedHashSet<>();
 
     @Override

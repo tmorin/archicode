@@ -2,6 +2,8 @@ package io.morin.archicode.resource.element;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.morin.archicode.resource.Identifier;
+import io.morin.archicode.resource.Reference;
 import io.morin.archicode.resource.element.application.Relationship;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -24,6 +26,7 @@ public abstract class AbstractElement implements Element {
      */
     @NonNull
     @JsonProperty(required = true)
+    @Identifier(Identifier.Of.ELEMENT)
     String id;
 
     /**
@@ -71,6 +74,7 @@ public abstract class AbstractElement implements Element {
      */
     @Builder.Default
     @JsonDeserialize(using = Replaces.Deserializer.class)
+    @Reference(Reference.To.ELEMENT)
     Set<String> replaces = new LinkedHashSet<>();
 
     @Override

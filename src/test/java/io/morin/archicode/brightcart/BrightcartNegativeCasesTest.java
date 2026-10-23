@@ -32,7 +32,7 @@ import picocli.CommandLine;
  * {@code brightcart-negative.test.js} and says the same sentence.
  */
 @QuarkusTest
-class BrightcartNegativeCasesTest {
+public class BrightcartNegativeCasesTest {
 
     private static final Path CASES = Brightcart.ROOT.resolve("negative-cases.json");
 
@@ -67,7 +67,7 @@ class BrightcartNegativeCasesTest {
 
     /** The alteration of a case: the operations on the copy of {@code layered/}. */
     @SneakyThrows
-    static void alter(Path root, JsonNode ops) {
+    public static void alter(Path root, JsonNode ops) {
         for (val op : ops) {
             val kind = op.get("op").asText();
             switch (kind) {

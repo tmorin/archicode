@@ -6,7 +6,7 @@ import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchemaGenerator;
 import io.morin.archicode.MapperFactory;
 import io.morin.archicode.MapperFormat;
-import io.morin.archicode.manifest.Manifest;
+import io.morin.archicode.manifest.ManifestSchema;
 import io.morin.archicode.resource.workspace.Workspace;
 import jakarta.inject.Inject;
 import lombok.SneakyThrows;
@@ -24,7 +24,7 @@ public class GetSchemasQuery implements Runnable {
     @Inject
     MapperFactory mapperFactory;
 
-    enum SchemaType {
+    public enum SchemaType {
         WORKSPACE,
         MANIFEST
     }
@@ -49,9 +49,9 @@ public class GetSchemasQuery implements Runnable {
     @SneakyThrows
     @Override
     public void run() {
-        val mapper = sortedWriter(mapperFactory);
-        val schema = generateSchema(type, mapper);
-        val schemaAsJson = mapper.writeValueAsString(schema);
+        val writer = sortedWriter(mapperFactory);
+        val schema = generateSchema(type, writer);
+        val schemaAsJson = writer.writeValueAsString(schema);
         queryOutputWriter.write(schemaAsJson);
     }
 
@@ -67,7 +67,7 @@ public class GetSchemasQuery implements Runnable {
      *
      * @return the writer, with a pretty printer
      */
-    static ObjectWriter sortedWriter(MapperFactory mapperFactory) {
+    public static ObjectWriter sortedWriter(MapperFactory mapperFactory) {
         return mapperFactory
             .create(MapperFormat.JSON)
             .copy()
@@ -82,14 +82,14 @@ public class GetSchemasQuery implements Runnable {
      *
      * @param type   the type of schema to generate
      * @param mapper the JSON writer the schema is generated with
-     * @return the generated schema
+     * @return the generated schema: a {@link JsonSchema} for the workspace, the tree of {@link ManifestSchema} for the manifests
      */
     @SneakyThrows
-    public JsonSchema generateSchema(SchemaType type, ObjectWriter mapper) {
+    public Object generateSchema(SchemaType type, ObjectWriter mapper) {
         val schemaGen = new JsonSchemaGenerator(mapper);
         return switch (type) {
             case WORKSPACE -> schemaGen.generateSchema(Workspace.class);
-            case MANIFEST -> schemaGen.generateSchema(Manifest.class);
+            case MANIFEST -> ManifestSchema.generate(mapperFactory.create(MapperFormat.JSON), mapper);
         };
     }
 }

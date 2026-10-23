@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.morin.archicode.resource.Required;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.ToString;
@@ -23,6 +24,7 @@ public class View {
      * Its format should match the variable name in Java or Javascript.
      */
     @NonNull
+    @Required
     @ToString.Include
     String id;
 
@@ -30,6 +32,7 @@ public class View {
      * The code of the viewpoint identifying the viewpoint service.
      */
     @NonNull
+    @Required
     @ToString.Include
     String viewpoint;
 

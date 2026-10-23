@@ -3,6 +3,7 @@ package io.morin.archicode.manifest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.morin.archicode.resource.Reference;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.ToString;
@@ -42,6 +43,7 @@ public class Manifest {
         @JsonProperty(required = true)
         String version;
 
+        @Reference(Reference.To.ELEMENT)
         String parent;
 
         /**
@@ -49,6 +51,7 @@ public class Manifest {
          * {@code baseline} when it names none. A manifest of kind {@code plateau} names its plateau by {@code content.id}, and
          * this key means nothing there.
          */
+        @Reference(Reference.To.PLATEAU)
         String plateau;
     }
 }
