@@ -94,6 +94,16 @@ jobs:
           ./mvnw verify \
             --batch-mode \
             --update-snapshots
+      - name: "Keep the Java coverage report"
+        # the report `./mvnw verify` writes (and checks: the floors are in the pom), HTML, jacoco.csv and jacoco.xml; kept
+        # when a floor fails too, which is when it is read. Actions, the run, Artifacts. 7 days.
+        if: ${{ !cancelled() }}
+        uses: "actions/upload-artifact@v7.0.2"
+        with:
+          name: java-coverage-report
+          path: target/jacoco-report
+          if-no-files-found: warn
+          retention-days: 7
       - name: "Publish snapshot artifacts"
         if: ${{ github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore(release)') }}
         run: |

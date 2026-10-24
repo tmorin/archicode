@@ -47,6 +47,7 @@
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.40.1</quarkus.platform.version>
         <skipITs>true</skipITs>
+        <jacoco.version>0.8.15</jacoco.version>
         <surefire-plugin.version>3.6.0</surefire-plugin.version>
         <plugin.asciidoctor.skip>false</plugin.asciidoctor.skip>
     </properties>
@@ -204,6 +205,105 @@
                         <archicode.version>${project.version}</archicode.version>
                     </systemPropertyVariables>
                 </configuration>
+            </plugin>
+            <plugin>
+                <!-- a file of coverage left by a previous build would add its lines to the figure of this one: the build
+                     deletes it before the tests write it (jacoco-maven-plugin has no goal for that) -->
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>forget-the-previous-coverage</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <configuration>
+                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                            <filesets>
+                                <fileset>
+                                    <directory>${project.build.directory}</directory>
+                                    <includes>
+                                        <include>jacoco-quarkus.exec</include>
+                                    </includes>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- The coverage of src/main/java, from every test of the build: the plain JUnit ones through this agent,
+                     the @QuarkusTest ones through the quarkus-jacoco extension (it instruments what Quarkus' own class
+                     loader loads, which the agent must leave alone: exclClassLoaders), both into the one file
+                     target/jacoco-quarkus.exec (quarkus.jacoco.reuse-data-file in src/test/resources/application.properties).
+                     The report is target/jacoco-report (HTML, jacoco.csv, jacoco.xml); check fails the build below the floor. -->
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <dataFile>${project.build.directory}/jacoco-quarkus.exec</dataFile>
+                    <outputDirectory>${project.build.directory}/jacoco-report</outputDirectory>
+                    <excludes>
+                        <!-- the code the chicory compiler writes from the WebAssembly of the viewpoint kernel: bytecode with
+                             no source (T10 of wave 023: the one exclusion besides Lombok, which lombok.config marks @Generated) -->
+                        <exclude>io/morin/archicode/viewpoint/kernel/ViewpointKernelModule*</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                        <configuration>
+                            <destFile>${project.build.directory}/jacoco-quarkus.exec</destFile>
+                            <append>true</append>
+                            <exclClassLoaders>*QuarkusClassLoader</exclClassLoaders>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <!-- The floors (wave 023, W-8): the lines and the instructions of src/main/java stay above 90 %, as the
+                             author asked; the branches have a guard-rail below the figure they have (92 %), to be raised to
+                             90 % by the author. A build below a floor fails here, after the report is written. -->
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.88</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <artifactId>maven-failsafe-plugin</artifactId>
