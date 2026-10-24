@@ -250,7 +250,7 @@ wave_manifest:
       slug: java-static-analysis-research
       phase: P2
       depends_on: []
-      run: null
+      run: 0170
       delegation: standard
       likely_paths:
         - 'docs/wav/wav-023-fixes-and-tooling/run/**'
