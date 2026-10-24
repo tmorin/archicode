@@ -1,7 +1,7 @@
 ---
 type: wbc
 wave: 022
-status: proposed
+status: completed
 date: 2026-10-23
 related:
   - docs/wav/wav-021-story-player-and-release-binaries/wav-021-story-player-and-release-binaries.md

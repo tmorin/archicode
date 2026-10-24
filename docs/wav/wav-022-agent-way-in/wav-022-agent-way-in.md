@@ -1,7 +1,7 @@
 ---
 type: wave
 wave: 022
-status: in-progress
+status: completed
 date: 2026-10-23
 related:
   - docs/wav/wav-022-agent-way-in/wbc-022-agent-way-in.md
@@ -91,7 +91,7 @@ A check is not run only on the final tree: each run runs the gate set and its ow
 wave_manifest:
   wave: 022
   slug: agent-way-in
-  status: in-progress
+  status: completed
   sources: []
   phases:
     - id: P0
@@ -256,3 +256,7 @@ P2:  W-5 (no edge)        W-6 <── (W-4, W-5)
 ## Completion Criteria
 
 The three gates in the manifest hold on the final tree; the progress log records the base of T1, the cold-agent trial, and the deferred items as issues (the gaps the trial found that are not fixed, the dialect if the author wants IDE validation, the publication of the guide on the site); `CLAUDE.md` lists #154 and L2 of #155 as fixed, keeps #144 open with its remaining steps (`validate`, edit commands, MCP) and keeps #143, #134, #135, #65 and #24 open; the PR closes #154 and does not close #144 or #155. Not verified by anyone, to be named in the final log: a real IDE using the schema, an agent client other than the one used for the trial, and the next release.
+
+### Outcome (2026-10-24)
+
+All three gates held. Exceptions and what was not verified: a real IDE using the schema, an agent client other than the one used for the trial (a `general-purpose` sub-agent with only the binary), and a screen of the editor in a browser for W-5 (the save is checked by the generated test and by the comparison with the page of 0.19.0, not by eye). The deferred items are filed as issues (the saved overview view with no `properties` that ends in a NullPointerException; the dangling-reference sentence that names no file). Q1 (dialect) kept, Q2 resolved (0.19.0 cut first), Q3 answered in the guide (kinds, nesting, commands and options generated; conventions as text), Q4 kept (the trial found five gaps in the text, all fixed).
